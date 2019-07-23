@@ -79,6 +79,8 @@ using namespace std;
  ******************************************************************************/
 
 #define COLLAPSE_EDGES_DEBUG 1
+#define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
+#define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
 /**
  *The definition of sizing used for remeshing
@@ -555,6 +557,33 @@ static float cloth_remeshing_norm2(float u[2], ClothSizing &s)
   float temp[2];
   mul_v2_m2v2(temp, s.m, u);
   return dot_v2v2(u, temp);
+}
+
+static void cloth_remeshing_uv_of_vert(BMesh *bm, BMVert *v, float r_uv[2])
+{
+  BMLoop *l;
+  v->e->l->v == v ? l = v->e->l : l = v->e->l->next;
+  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  MLoopUV *luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+  copy_v2_v2(r_uv, luv->uv);
+}
+
+static float cloth_remeshing_edge_size(BMesh *bm,
+                                       BMVert *v1,
+                                       BMVert *v2,
+                                       map<BMVert *, ClothSizing> &sizing)
+{
+  if (!v1 || !v2) {
+    return 0.0f;
+  }
+  float uv1[2], uv2[2];
+  cloth_remeshing_uv_of_vert(bm, v1, uv1);
+  cloth_remeshing_uv_of_vert(bm, v2, uv2);
+
+  float uv12[2];
+  sub_v2_v2v2(uv12, uv1, uv2);
+  return sqrtf(
+      (cloth_remeshing_norm2(uv12, sizing[v1]) + cloth_remeshing_norm2(uv12, sizing[v2])) * 0.5f);
 }
 
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, ClothSizing> &sizing)
@@ -1120,6 +1149,24 @@ static inline float cloth_remeshing_wedge(float v_01[2], float v_02[2])
 
 #define SQRT3 1.732050808f
 
+static float cloth_remeshing_area(float u1[2], float u2[2], float u3[2])
+{
+  float u21[2], u31[2];
+  sub_v2_v2v2(u21, u2, u1);
+  sub_v2_v2v2(u31, u3, u1);
+  return 0.5 * cloth_remeshing_wedge(u21, u31);
+}
+
+static float cloth_remeshing_perimeter(float u1[2], float u2[2], float u3[2])
+{
+  return len_v2(u1) + len_v2(u2) + len_v2(u3);
+}
+
+static float cloth_remeshing_aspect_ratio(float u1[2], float u2[2], float u3[2])
+{
+  return 12.0f * SQRT3 * cloth_remeshing_area(u1, u2, u3) * cloth_remeshing_perimeter(u1, u2, u3);
+}
+
 static bool cloth_remeshing_aspect_ratio(ClothModifierData *clmd, BMesh *bm, BMEdge *e)
 {
   BMFace *f1, *f2;
@@ -1171,60 +1218,97 @@ static bool cloth_remeshing_aspect_ratio(ClothModifierData *clmd, BMesh *bm, BME
   return true;
 }
 
-#define REMESHING_HYSTERESIS_PARAMETER 0.2
-static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
-                                              BMesh *bm,
-                                              BMEdge *e,
-                                              map<BMVert *, ClothSizing> &sizing)
+static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which)
 {
-  if (BM_edge_face_count(e) < 2) {
-#if COLLAPSE_EDGES_DEBUG
-    printf("edge face count < 2\n");
-#endif
-    return false;
+  if (which == 0) {
+    return e->v1;
   }
+  else {
+    return e->v2;
+  }
+}
 
-  /* aspect ratio parameter */
-  if (!cloth_remeshing_aspect_ratio(clmd, bm, e)) {
-#if COLLAPSE_EDGES_DEBUG
-    printf("aspect ratio not satisfied\n");
-#endif
-    return false;
+static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i)
+{
+  BMFace *f;
+  BMIter fiter;
+  int fi = 0;
+  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) {
+    if (fi == side) {
+      break;
+    }
   }
+  if (!f) {
+    return NULL;
+  }
+  BMVert *vs[3];
+  BM_face_as_array_vert_tri(f, vs);
+  for (int j = 0; j < 3; j++) {
+    if (vs[j] == cloth_remeshing_edge_vert(e, i)) {
+      return vs[j];
+    }
+  }
+  return NULL;
+}
 
-  BMFace *f1, *f2;
-  BM_edge_face_pair(e, &f1, &f2);
-#if 1
-  /* TODO(Ish): This was a hack, figure out why it doesn't give the
-   * fair pair even though face count is 2 or more
-   * It might be fixed if the UV seams if fixed */
-  if (!f1 || !f2) {
-#  if COLLAPSE_EDGES_DEBUG
-    printf("Couldn't find face pair\n");
-#  endif
-    return false;
-  }
-#endif
-  BMVert *v_01 = BM_face_other_vert_loop(f1, e->v1, e->v2)->v;
-  float size_01 = cloth_remeshing_edge_size_with_vert(bm, e, v_01, sizing);
-  if (size_01 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
-#if COLLAPSE_EDGES_DEBUG
-    printf("size_01: %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size_01);
-#endif
-    return false;
-  }
-  BMVert *v_02 = BM_face_other_vert_loop(f2, e->v1, e->v2)->v;
-  float size_02 = cloth_remeshing_edge_size_with_vert(bm, e, v_02, sizing);
-  if (size_02 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
-#if COLLAPSE_EDGES_DEBUG
-    printf("size_02: %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size_02);
-#endif
-    return false;
-  }
+#define REMESHING_HYSTERESIS_PARAMETER 0.2
+static bool cloth_remeshing_can_collapse_edge(
+    ClothModifierData *clmd, BMesh *bm, BMEdge *e, int which, map<BMVert *, ClothSizing> &sizing)
+{
+  for (int s = 0; s < 2; s++) {
+    BMVert *v1 = cloth_remeshing_edge_vert(e, s, which);
+    BMVert *v2 = cloth_remeshing_edge_vert(e, s, 1 - which);
 
+    if (!v1 || (s == 1 && v1 == cloth_remeshing_edge_vert(e, 0, which))) {
+      continue;
+    }
+
+    BMFace *f;
+    BMIter fiter;
+    BM_ITER_ELEM (f, &fiter, v1, BM_FACES_OF_VERT) {
+      if (BM_vert_in_face(v2, f)) {
+        continue;
+      }
+      BMVert *vs[3];
+      BM_face_as_array_vert_tri(f, vs);
+      /* Replace the v1 with v2 in vs */
+      for (int i = 0; i < 3; i++) {
+        if (vs[i] == v1) {
+          vs[i] = v2;
+        }
+      }
+
+      /* Aspect ratio part */
+      /* TODO(Ish): get the uvs of vs */
+      float uv1[2], uv2[2], uv3[2];
+      cloth_remeshing_uv_of_vert(bm, vs[0], uv1);
+      cloth_remeshing_uv_of_vert(bm, vs[1], uv2);
+      cloth_remeshing_uv_of_vert(bm, vs[2], uv3);
+      float uv_21[2], uv_31[2];
+      sub_v2_v2v2(uv_21, uv2, uv1);
+      sub_v2_v2v2(uv_31, uv3, uv1);
+      float a = cloth_remeshing_wedge(uv_21, uv_31) * 0.5f;
+      float asp = cloth_remeshing_aspect_ratio(uv1, uv2, uv3);
+      if (a < 1e-6 || asp < clmd->sim_parms->aspect_min) {
 #if COLLAPSE_EDGES_DEBUG
-  printf("Can collapse this edge\n");
+        printf("aspect %f < aspect_min\n", asp);
 #endif
+        return false;
+      }
+
+      for (int e = 0; e < 3; e++) {
+        if (vs[e] != v2) {
+          float size = cloth_remeshing_edge_size(bm, vs[NEXT(e)], vs[PREV(e)], sizing);
+          if (size > 1.0f - REMESHING_HYSTERESIS_PARAMETER) {
+#if COLLAPSE_EDGES_DEBUG
+            printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size);
+#endif
+            return false;
+          }
+        }
+      }
+    }
+  }
   return true;
 }
 
@@ -1313,20 +1397,22 @@ static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth,
 
 static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
                                                  BMEdge *e,
+                                                 int which,
                                                  map<BMVert *, ClothSizing> &sizing)
 {
   Cloth *cloth = clmd->clothObject;
   BMesh *bm = cloth->bm;
+  BMVert *v1 = cloth_remeshing_edge_vert(e, which);
 
-  if (cloth_remeshing_boundary_test(e->v1) && !cloth_remeshing_boundary_test(e)) {
+  if (cloth_remeshing_boundary_test(v1) && !cloth_remeshing_boundary_test(e)) {
     return NULL;
   }
 
-  if (cloth_remeshing_vert_on_seam_test(bm, e->v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
+  if (cloth_remeshing_vert_on_seam_test(bm, v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
     return NULL;
   }
 
-  if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, sizing)) {
+  if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, which, sizing)) {
     return NULL;
   }
 
@@ -1335,7 +1421,7 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
 
 static void cloth_remeshing_remove_face(vector<BMFace *> &faces, int index)
 {
-  faces[index] = faces[faces.size() - 1];
+  faces[index] = faces.back();
   faces.pop_back();
 }
 
@@ -1447,11 +1533,9 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
     BMIter eiter;
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
       BMVert *temp_vert;
-      temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, sizing);
+      temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, 0, sizing);
       if (!temp_vert) {
-        BM_edge_verts_swap(e);
-        temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, sizing);
-        BM_edge_verts_swap(e);
+        temp_vert = cloth_remeshing_try_edge_collapse(clmd, e, 1, sizing);
         if (!temp_vert) {
           continue;
         }
@@ -1755,9 +1839,6 @@ static void cloth_remeshing_compression_metric(float mat[2][2], float r_mat[2][2
   mul_m2_m2m2(temp_mat, q, diag_l);
   mul_m2_m2m2(r_mat, temp_mat, q_t);
 }
-
-#define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
-#define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
 static float cloth_remeshing_dihedral_angle(BMVert *v1, BMVert *v2)
 {
@@ -2236,7 +2317,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd);
   }
   else {
