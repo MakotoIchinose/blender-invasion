@@ -22,6 +22,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <list>
 #include <sstream>
 
 #include "GHOST_C-api.h"
@@ -47,8 +48,13 @@ struct OpenXRSessionData {
   int32_t swapchain_image_width, swapchain_image_height;
 };
 
-struct GHOST_XrDrawFrame {
+struct GHOST_XrDrawInfo {
   XrFrameState frame_state;
+
+  /** Time at frame start to benchmark frame render durations. */
+  std::chrono::high_resolution_clock::time_point frame_begin_time;
+  /* Time previous frames took for rendering (in ms) */
+  std::list<double> last_frame_times;
 };
 
 /* -------------------------------------------------------------------- */
@@ -181,6 +187,7 @@ void GHOST_XrSession::end()
 
   CHECK_XR(xrEndSession(m_oxr->session), "Failed to cleanly end the VR session.");
   unbindGraphicsContext();
+  m_draw_info = nullptr;
 }
 
 GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
@@ -303,6 +310,8 @@ void GHOST_XrSession::prepareDrawing()
   }
 
   m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
+
+  m_draw_info = std::unique_ptr<GHOST_XrDrawInfo>(new GHOST_XrDrawInfo());
 }
 
 void GHOST_XrSession::beginFrameDrawing()
@@ -318,32 +327,50 @@ void GHOST_XrSession::beginFrameDrawing()
   CHECK_XR(xrBeginFrame(m_oxr->session, &begin_info),
            "Failed to submit frame rendering start state.");
 
-  m_draw_frame = std::unique_ptr<GHOST_XrDrawFrame>(new GHOST_XrDrawFrame());
-  m_draw_frame->frame_state = frame_state;
+  m_draw_info->frame_state = frame_state;
 
   if (m_context->isDebugTimeMode()) {
-    m_timer_begin = std::chrono::high_resolution_clock::now();
+    m_draw_info->frame_begin_time = std::chrono::high_resolution_clock::now();
   }
+}
+
+static void print_debug_timings(GHOST_XrDrawInfo *draw_info)
+{
+  /** Render time of last 8 frames (in ms) to calculate an average. */
+  std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() -
+                                                       draw_info->frame_begin_time;
+  const double duration_ms = duration.count();
+  const int avg_frame_count = 8;
+  double avg_ms_tot = 0.0;
+
+  if (draw_info->last_frame_times.size() >= avg_frame_count) {
+    draw_info->last_frame_times.pop_front();
+    assert(draw_info->last_frame_times.size() == avg_frame_count - 1);
+  }
+  draw_info->last_frame_times.push_back(duration_ms);
+  for (double ms_iter : draw_info->last_frame_times) {
+    avg_ms_tot += ms_iter;
+  }
+
+  printf("VR frame render time: %.0fms - %.2f FPS (%.2f FPS 8 frames average)\n",
+         duration_ms,
+         1000.0 / duration_ms,
+         1000.0 / (avg_ms_tot / draw_info->last_frame_times.size()));
 }
 
 void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers)
 {
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
 
-  end_info.displayTime = m_draw_frame->frame_state.predictedDisplayTime;
+  end_info.displayTime = m_draw_info->frame_state.predictedDisplayTime;
   end_info.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
   end_info.layerCount = layers->size();
   end_info.layers = layers->data();
 
   CHECK_XR(xrEndFrame(m_oxr->session, &end_info), "Failed to submit rendered frame.");
-  m_draw_frame = nullptr;
 
   if (m_context->isDebugTimeMode()) {
-    std::chrono::duration<double, std::milli> duration =
-        std::chrono::high_resolution_clock::now() - m_timer_begin;
-
-    printf(
-        "VR frame render time: %.0fms (%.2f FPS)\n", duration.count(), 1000.0 / duration.count());
+    print_debug_timings(m_draw_info.get());
   }
 }
 
@@ -442,7 +469,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
   XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
   uint32_t view_count;
 
-  viewloc_info.displayTime = m_draw_frame->frame_state.predictedDisplayTime;
+  viewloc_info.displayTime = m_draw_info->frame_state.predictedDisplayTime;
   viewloc_info.space = m_oxr->reference_space;
 
   CHECK_XR(xrLocateViews(m_oxr->session,

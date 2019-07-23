@@ -21,7 +21,6 @@
 #ifndef __GHOST_XRSESSION_H__
 #define __GHOST_XRSESSION_H__
 
-#include <chrono>
 #include <map>
 #include <memory>
 
@@ -58,11 +57,8 @@ class GHOST_XrSession {
   class GHOST_Context *m_gpu_ctx{nullptr};
   std::unique_ptr<class GHOST_IXrGraphicsBinding> m_gpu_binding;
 
-  /** Information on the currently drawn frame. Set while drawing only. */
-  std::unique_ptr<struct GHOST_XrDrawFrame> m_draw_frame;
-
-  /** Timer storage to benchmark frame render durations. */
-  std::chrono::high_resolution_clock::time_point m_timer_begin;
+  /** Rendering information. Set when drawing starts. */
+  std::unique_ptr<struct GHOST_XrDrawInfo> m_draw_info;
 
   void initSystem();
 
