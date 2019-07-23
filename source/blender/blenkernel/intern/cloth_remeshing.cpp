@@ -78,6 +78,8 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
+#define COLLAPSE_EDGES_DEBUG 1
+
 /**
  *The definition of sizing used for remeshing
  */
@@ -1162,9 +1164,12 @@ static bool cloth_remeshing_aspect_ratio(ClothModifierData *clmd, BMesh *bm, BME
     copy_v2_v2(temp_03, uvs[1]);
     sub_v2_v2(temp_03, uvs[2]);
     float a = cloth_remeshing_wedge(temp_01, temp_02) * 0.5f;
-    float p = len_v2(temp_01) + len_v2(temp_02) + len_v3(temp_03); /* This might be wrong */
+    float p = len_v2(temp_01) + len_v2(temp_02) + len_v2(temp_03); /* This might be wrong */
     float aspect = 12.0f * SQRT3 * a / (p * p);
     if (a < 1e-6 || aspect < clmd->sim_parms->aspect_min) {
+#if COLLAPSE_EDGES_DEBUG
+      printf("aspect ratio: %f ", aspect);
+#endif
       return false;
     }
   }
@@ -1178,11 +1183,17 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
                                               map<BMVert *, ClothSizing> &sizing)
 {
   if (BM_edge_face_count(e) < 2) {
+#if COLLAPSE_EDGES_DEBUG
+    printf("edge face count < 2\n");
+#endif
     return false;
   }
 
   /* aspect ratio parameter */
   if (!cloth_remeshing_aspect_ratio(clmd, bm, e)) {
+#if COLLAPSE_EDGES_DEBUG
+    printf("aspect ratio not satisfied\n");
+#endif
     return false;
   }
 
@@ -1193,20 +1204,32 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
    * fair pair even though face count is 2 or more
    * It might be fixed if the UV seams if fixed */
   if (!f1 || !f2) {
+#  if COLLAPSE_EDGES_DEBUG
+    printf("Couldn't find face pair\n");
+#  endif
     return false;
   }
 #endif
   BMVert *v_01 = BM_face_other_vert_loop(f1, e->v1, e->v2)->v;
   float size_01 = cloth_remeshing_edge_size_with_vert(bm, e, v_01, sizing);
   if (size_01 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+#if COLLAPSE_EDGES_DEBUG
+    printf("size_01: %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size_01);
+#endif
     return false;
   }
   BMVert *v_02 = BM_face_other_vert_loop(f2, e->v1, e->v2)->v;
   float size_02 = cloth_remeshing_edge_size_with_vert(bm, e, v_02, sizing);
   if (size_02 > (1.0f - REMESHING_HYSTERESIS_PARAMETER)) {
+#if COLLAPSE_EDGES_DEBUG
+    printf("size_02: %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size_02);
+#endif
     return false;
   }
 
+#if COLLAPSE_EDGES_DEBUG
+  printf("Can collapse this edge\n");
+#endif
   return true;
 }
 
