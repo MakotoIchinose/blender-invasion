@@ -3496,14 +3496,36 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
-
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 75)) {
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       if (scene->master_collection != NULL) {
         scene->master_collection->flag &= ~(COLLECTION_RESTRICT_VIEWPORT |
                                             COLLECTION_RESTRICT_SELECT |
                                             COLLECTION_RESTRICT_RENDER);
+      }
+
+      UnitSettings *unit = &scene->unit;
+      if (unit->system == USER_UNIT_NONE) {
+        unit->length_unit = (char)USER_UNIT_ADAPTIVE;
+        unit->mass_unit = (char)USER_UNIT_ADAPTIVE;
+      }
+
+      RenderData *render_data = &scene->r;
+      switch (render_data->ffcodecdata.ffmpeg_preset) {
+        case FFM_PRESET_ULTRAFAST:
+        case FFM_PRESET_SUPERFAST:
+          render_data->ffcodecdata.ffmpeg_preset = FFM_PRESET_REALTIME;
+          break;
+        case FFM_PRESET_VERYFAST:
+        case FFM_PRESET_FASTER:
+        case FFM_PRESET_FAST:
+        case FFM_PRESET_MEDIUM:
+          render_data->ffcodecdata.ffmpeg_preset = FFM_PRESET_GOOD;
+          break;
+        case FFM_PRESET_SLOW:
+        case FFM_PRESET_SLOWER:
+        case FFM_PRESET_VERYSLOW:
+          render_data->ffcodecdata.ffmpeg_preset = FFM_PRESET_BEST;
       }
     }
 
@@ -3521,5 +3543,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
   }
 }

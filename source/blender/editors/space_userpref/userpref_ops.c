@@ -26,6 +26,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 

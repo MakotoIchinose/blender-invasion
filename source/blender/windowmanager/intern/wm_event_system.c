@@ -3235,18 +3235,34 @@ void wm_event_do_handlers(bContext *C)
       if (scene_eval != NULL) {
         const int is_playing_sound = BKE_sound_scene_playing(scene_eval);
 
-        if (is_playing_sound != -1) {
+        if (scene_eval->id.recalc & ID_RECALC_AUDIO_SEEK) {
+          /* Ignore seek here, the audio will be updated to the scene frame after jump during next
+           * dependency graph update. */
+        }
+        else if (is_playing_sound != -1) {
           bool is_playing_screen;
 
           is_playing_screen = (ED_screen_animation_playing(wm) != NULL);
 
           if (((is_playing_sound == 1) && (is_playing_screen == 0)) ||
               ((is_playing_sound == 0) && (is_playing_screen == 1))) {
+            wmWindow *context_old_win = CTX_wm_window(C);
+            bScreen *context_screen_win = CTX_wm_screen(C);
+            Scene *context_scene_win = CTX_data_scene(C);
+
+            CTX_wm_window_set(C, win);
+            CTX_wm_screen_set(C, screen);
+            CTX_data_scene_set(C, scene);
+
             ED_screen_animation_play(C, -1, 1);
+
+            CTX_data_scene_set(C, context_scene_win);
+            CTX_wm_screen_set(C, context_screen_win);
+            CTX_wm_window_set(C, context_old_win);
           }
 
           if (is_playing_sound == 0) {
-            const float time = BKE_sound_sync_scene(scene);
+            const float time = BKE_sound_sync_scene(scene_eval);
             if (isfinite(time)) {
               int ncfra = time * (float)FPS + 0.5f;
               if (ncfra != scene->r.cfra) {

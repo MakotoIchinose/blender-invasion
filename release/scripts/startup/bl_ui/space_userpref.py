@@ -40,17 +40,9 @@ class USERPREF_HT_header(Header):
 
         row = layout.row()
         row.menu("USERPREF_MT_save_load", text="", icon='COLLAPSEMENU')
-        if prefs.use_preferences_save:
-            if bpy.app.use_userpref_skip_save_on_exit:
-                # We should have an 'alert' icon, for now use 'error'.
-                sub = row.row(align=True)
-                props = sub.operator(
-                    "wm.context_toggle",
-                    text="Skip Auto-Save",
-                    icon='CHECKBOX_HLT',
-                )
-                props.module = "bpy.app"
-                props.data_path = "use_userpref_skip_save_on_exit"
+
+        if prefs.use_preferences_save and (not bpy.app.use_userpref_skip_save_on_exit):
+            pass
         else:
             sub = row.row(align=True)
             sub.active = prefs.is_dirty
@@ -98,13 +90,13 @@ class USERPREF_MT_save_load(Menu):
 
         layout.operator_context = 'EXEC_AREA'
         if prefs.use_preferences_save:
-            layout.operator("wm.save_userpref", text="Save Current State")
+            layout.operator("wm.save_userpref", text="Save Preferences")
         sub_revert = layout.column(align=True)
         sub_revert.active = prefs.is_dirty
-        sub_revert.operator("wm.read_userpref", text="Revert to Saved")
+        sub_revert.operator("wm.read_userpref", text="Revert to Saved Preferences")
 
         layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.read_factory_userpref", text="Load Factory Settings")
+        layout.operator("wm.read_factory_userpref", text="Load Factory Preferences")
 
 
 class USERPREF_PT_save_preferences(Panel):

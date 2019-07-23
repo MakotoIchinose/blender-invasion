@@ -1067,11 +1067,7 @@ static const EnumPropertyItem *rna_View3DShading_color_type_itemf(bContext *UNUS
 
   int totitem = 0;
 
-  if (shading->type == OB_SOLID) {
-    r_free = false;
-    return rna_enum_shading_color_type_items;
-  }
-  else if (shading->type == OB_WIRE) {
+  if (shading->type == OB_WIRE) {
     EnumPropertyItem *item = NULL;
     RNA_enum_items_add_value(
         &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_SINGLE_COLOR);
@@ -1084,8 +1080,9 @@ static const EnumPropertyItem *rna_View3DShading_color_type_itemf(bContext *UNUS
     return item;
   }
   else {
-    *r_free = false;
-    return NULL;
+    /* Solid mode, or lookdev mode for workbench engine. */
+    r_free = false;
+    return rna_enum_shading_color_type_items;
   }
 }
 
@@ -2107,6 +2104,13 @@ static void rna_SpaceClipEditor_clip_mode_update(Main *UNUSED(bmain),
                                                  PointerRNA *ptr)
 {
   SpaceClip *sc = (SpaceClip *)(ptr->data);
+
+  if (sc->mode == SC_MODE_MASKEDIT && sc->view != SC_VIEW_CLIP) {
+    /* Make sure we are in the right view for mask editing */
+    sc->view = SC_VIEW_CLIP;
+    ScrArea *sa = rna_area_from_space(ptr);
+    ED_area_tag_refresh(sa);
+  }
 
   sc->scopes.ok = 0;
 }
