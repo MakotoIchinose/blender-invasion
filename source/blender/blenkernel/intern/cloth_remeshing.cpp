@@ -550,9 +550,15 @@ static ClothSizing cloth_remeshing_find_average_sizing(ClothSizing &size_01, Clo
   return new_size;
 }
 
+static float cloth_remeshing_norm2(float u[2], ClothSizing &s)
+{
+  float temp[2];
+  mul_v2_m2v2(temp, s.m, u);
+  return dot_v2v2(u, temp);
+}
+
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, ClothSizing> &sizing)
 {
-  /* BMVert v1 = *edge->v1; */
   float u1[2], u2[2];
   float u12[2];
 
@@ -596,19 +602,8 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, Cl
   copy_v2_v2(u12, u1);
   sub_v2_v2(u12, u2);
 
-  /**
-   *TODO(Ish): Need to add functionality when the vertex is on a seam
-   */
-
-  float value = 0.0;
-  float temp_v2[2];
-  /* TODO(Ish): need to fix this when sizing is improved */
-  ClothSizing sizing_temp = cloth_remeshing_find_average_sizing(sizing[edge->v1],
-                                                                sizing[edge->v2]);
-  mul_v2_m2v2(temp_v2, sizing_temp.m, u12);
-  value += dot_v2v2(u12, temp_v2);
-
-  return sqrtf(fmax(value, 0.0f));
+  return sqrtf((cloth_remeshing_norm2(u12, sizing[edge->v1]) +
+                (cloth_remeshing_norm2(u12, sizing[edge->v2])) * 0.5f));
 }
 
 static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
