@@ -100,20 +100,20 @@ static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *re
   RNA_POINTER_INVALIDATE(point_ptr);
 }
 
-/* HANS-TODO: Needs to change to a 2D output */
-//static float rna_ProfileWidget_evaluate(struct ProfileWidget *cuma, ReportList *reports, float value)
-//{
-//  if (!cuma->table) {
-//    BKE_report(reports, RPT_ERROR,
-//        "CurveMap table not initialized, call initialize() on CurveMapping owner of the CurveMap");
-//    return 0.0f;
-//  }
-//  return curvemap_evaluateF(cuma, value);
-//}
+/* HANS-TODO: Can I use these arguments as return values too? */
+static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt, ReportList *reports,
+                                        float length_portion, float *location)
+{
+  if (!prwdgt->table) {
+    BKE_report(reports, RPT_ERROR,"ProfileWidget table not initialized, call initialize()");
+  }
+  profilewidget_evaluate_portion(prwdgt, length_portion, &location[0], &location[1]);
+
+}
 
 static void rna_ProfileWidget_initialize(struct ProfileWidget *prwdgt, int nsegments)
 {
-  profilewidget_initialize(prwdgt, nsegments);
+  profilewidget_initialize(prwdgt, (short)nsegments);
 }
 
 static void rna_ProfileWidget_changed(struct ProfileWidget *prwdgt)
@@ -154,7 +154,6 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Select", "Selection state of the path point");
 }
 
-/* HANS-TODO: Add more API callbacks */
 static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -185,14 +184,6 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
-/* HANS-STRETCH-GOAL: Give the presets icons! */
-/* HANS-TODO: Add more props? */
-const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
-    {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
-    {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on either side of the profile"},
-    {PROF_PRESET_EXAMPLE1, "EXAMPLE1", 0, "Molding Example", "An example use case"},
-    {0, NULL, 0, NULL, NULL},
-};
 
 static void rna_def_profilewidget(BlenderRNA *brna)
 {
@@ -200,6 +191,14 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   PropertyRNA *prop;
   PropertyRNA *parm;
   FunctionRNA *func;
+
+  /* HANS-STRETCH-GOAL: Give the presets icons! */
+  static const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
+      {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
+      {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on either side of the profile"},
+      {PROF_PRESET_EXAMPLE1, "EXAMPLE1", 0, "Molding Example", "An example use case"},
+      {0, NULL, 0, NULL, NULL},
+  };
 
   srna = RNA_def_struct(brna, "ProfileWidget", NULL);
   RNA_def_struct_ui_text(srna,"ProfileWidget", "Profile Path editor used to build a profile path");
@@ -235,16 +234,19 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Points", "");
   rna_def_profilewidget_points_api(brna, prop);
 
-  /* HANS-TODO: This is disabled until I figure out how to return the X/Y pair */
-//  func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_Evaluate");
-//  RNA_def_function_flag(func, FUNC_USE_REPORTS);
-//  RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
-//  parm = RNA_def_float(func, "position", 0.0f, -FLT_MAX, FLT_MAX, "Position",
-//                       "Position to evaluate curve at", -FLT_MAX, FLT_MAX);
-//  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-//  parm = RNA_def_float(func, "value", 0.0f, -FLT_MAX, FLT_MAX, "Value",
-//                       "Value of curve at given location", -FLT_MAX, FLT_MAX);
-//  RNA_def_function_return(func, parm);
+  /* HANS-TODO: This needs to return a vector */
+  func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_evaluate");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
+  parm = RNA_def_float(func, "length_portion", 0.0f, -FLT_MAX, FLT_MAX, "Length Portion",
+                       "Portion of the path's length to travel before evaluation", -FLT_MAX, FLT_MAX);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_float_vector(func, "location", 2, NULL, -100, 100, "Location",
+                       "The location at that portion of the profile", -10, 10);
+  RNA_def_function_output(func, parm);
+
+  /* HANS-TODO: Maybe also add a function to return the whole set of samples. Although the return
+   * length of that function's vector would be variable */
 }
 
 void RNA_def_profile(BlenderRNA *brna)
