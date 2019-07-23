@@ -479,6 +479,19 @@ static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMEdge *e)
   return !f1 || !f2 || cloth_remeshing_edge_vert(e, 0, 0) != cloth_remeshing_edge_vert(e, 1, 0);
 }
 
+static bool cloth_remeshing_vert_on_seam_or_boundary_test(BMVert *v)
+{
+  BMEdge *e;
+  BMIter eiter;
+
+  BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+    if (cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 #if 1
 static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
                                                            map<BMVert *, ClothSizing> &sizing,
@@ -1396,9 +1409,10 @@ static bool cloth_remeshing_can_collapse_edge(
         return false;
       }
 
+      float size;
       for (int e = 0; e < 3; e++) {
         if (vs[e] != v2) {
-          float size = cloth_remeshing_edge_size(bm, vs[NEXT(e)], vs[PREV(e)], sizing);
+          size = cloth_remeshing_edge_size(bm, vs[NEXT(e)], vs[PREV(e)], sizing);
           if (size > 1.0f - REMESHING_HYSTERESIS_PARAMETER) {
 #if COLLAPSE_EDGES_DEBUG
             printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size);
@@ -1407,6 +1421,9 @@ static bool cloth_remeshing_can_collapse_edge(
           }
         }
       }
+#if COLLAPSE_EDGES_DEBUG
+      printf("size: %f ", size);
+#endif
     }
   }
   return true;
@@ -1483,15 +1500,23 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v)
   return false;
 }
 
-static BMVert *cloth_remeshing_collapse_edge(Cloth *cloth,
-                                             BMesh *bm,
-                                             BMEdge *e,
-                                             map<BMVert *, ClothSizing> &sizing)
+static BMVert *cloth_remeshing_collapse_edge(
+    Cloth *cloth, BMesh *bm, BMEdge *e, int which, map<BMVert *, ClothSizing> &sizing)
 {
-  BMVert v1 = *e->v1;
-  BMVert *v2 = BM_edge_collapse(bm, e, e->v1, true, true);
+  BMVert *v1 = cloth_remeshing_edge_vert(e, which);
+  BMVert v = *v1;
+  BMVert *v2 = BM_edge_collapse(bm, e, v1, true, true);
 
-  cloth_remeshing_remove_vertex_from_cloth(cloth, &v1, sizing);
+  cloth_remeshing_remove_vertex_from_cloth(cloth, &v, sizing);
+#if COLLAPSE_EDGES_DEBUG
+  printf("killed %f %f %f into %f %f %f\n",
+         v.co[0],
+         v.co[1],
+         v.co[2],
+         v2->co[0],
+         v2->co[1],
+         v2->co[2]);
+#endif
   return v2;
 }
 
@@ -1504,11 +1529,20 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
   BMesh *bm = cloth->bm;
   BMVert *v1 = cloth_remeshing_edge_vert(e, which);
 
-  if (cloth_remeshing_boundary_test(v1) && !cloth_remeshing_boundary_test(e)) {
-    return NULL;
-  }
+  /* if (cloth_remeshing_boundary_test(v1) && !cloth_remeshing_boundary_test(e)) { */
+  /*   return NULL; */
+  /* } */
 
-  if (cloth_remeshing_vert_on_seam_test(bm, v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
+  /* if (cloth_remeshing_vert_on_seam_test(bm, v1) && !cloth_remeshing_edge_on_seam_test(bm, e)) {
+   */
+  /*   return NULL; */
+  /* } */
+
+  if (cloth_remeshing_vert_on_seam_or_boundary_test(v1) &&
+      !cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+#if COLLAPSE_EDGES_DEBUG
+    printf("vertex on seam or boundary but not edge\n");
+#endif
     return NULL;
   }
 
@@ -1516,7 +1550,7 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
     return NULL;
   }
 
-  return cloth_remeshing_collapse_edge(cloth, bm, e, sizing);
+  return cloth_remeshing_collapse_edge(cloth, bm, e, which, sizing);
 }
 
 static void cloth_remeshing_remove_face(vector<BMFace *> &faces, int index)
@@ -1660,12 +1694,13 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       count++;
       return true;
     }
-    /* printf("Skipped previous part! size: %d i: %d ", (int)active_faces.size(), i); */
+    /* printf("Skipped previous part! active_faces.size: %d i: %d ", (int)active_faces.size(), i);
+     */
     cloth_remeshing_remove_face(active_faces, i--);
     /* TODO(Ish): a double i-- is a hacky way to ensure there is no
      * crash when removing a face */
-    i--;
-    /* printf("new size: %d new i: %d\n", (int)active_faces.size(), i); */
+    /* i--; */
+    /* printf("new active_faces.size: %d new i: %d\n", (int)active_faces.size(), i); */
   }
   return false;
 }
@@ -1834,6 +1869,10 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph, Object *ob, ClothModif
   sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
   cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
 #endif
+  printf("totvert: %d totedge: %d totface: %d\n",
+         clmd->clothObject->bm->totvert,
+         clmd->clothObject->bm->totedge,
+         clmd->clothObject->bm->totface);
 }
 
 static void cloth_remeshing_face_data(BMesh *bm, BMFace *f, float r_mat[2][2])
