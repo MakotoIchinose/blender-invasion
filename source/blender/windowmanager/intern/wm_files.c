@@ -623,8 +623,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   /* we didn't succeed, now try to read Blender file */
   if (retval == BKE_READ_EXOTIC_OK_BLEND) {
-    bool use_data = true;
-    bool use_userdef = false;
     const int G_f_orig = G.f;
     ListBase wmbase;
 
@@ -634,7 +632,17 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
     /* confusing this global... */
     G.relbase_valid = 1;
-    retval = BKE_blendfile_read(C, filepath, &(const struct BlendFileReadParams){0}, reports);
+    retval = BKE_blendfile_read(
+        C,
+        filepath,
+        /* Loading preferences when the user intended to load a regular file is a security risk,
+         * because the excluded path list is also loaded.
+         * Further it's just confusing if a user loads a file and various preferences change. */
+        &(const struct BlendFileReadParams){
+            .is_startup = false,
+            .skip_flags = BLO_READ_SKIP_USERDEF,
+        },
+        reports);
 
     /* BKE_file_read sets new Main into context. */
     Main *bmain = CTX_data_main(C);
@@ -660,18 +668,14 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     wm_window_match_do(C, &wmbase, &bmain->wm, &bmain->wm);
     WM_check(C); /* opens window(s), checks keymaps */
 
-    if (retval == BKE_BLENDFILE_READ_OK_USERPREFS) {
-      /* in case a userdef is read from regular .blend */
-      wm_init_userdef(bmain, false);
-      use_userdef = true;
-    }
-
     if (retval != BKE_BLENDFILE_READ_FAIL) {
       if (do_history) {
         wm_history_file_update();
       }
     }
 
+    const bool use_data = true;
+    const bool use_userdef = false;
     wm_file_read_post(C, false, false, use_data, use_userdef, false);
 
     success = true;
@@ -1376,7 +1380,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
   /* operator now handles overwrite checks */
 
   if (G.fileflags & G_FILE_AUTOPACK) {
-    packAll(bmain, reports, false);
+    BKE_packedfile_pack_all(bmain, reports, false);
   }
 
   /* don't forget not to return without! */
@@ -1861,7 +1865,9 @@ void WM_OT_read_factory_userpref(wmOperatorType *ot)
 {
   ot->name = "Load Factory Preferences";
   ot->idname = "WM_OT_read_factory_userpref";
-  ot->description = "Load default preferences";
+  ot->description =
+      "Load factory default preferences. "
+      "To make changes to preferences permanent, use \"Save Preferences\"";
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_userpref_read_exec;
@@ -2034,7 +2040,9 @@ void WM_OT_read_factory_settings(wmOperatorType *ot)
 {
   ot->name = "Load Factory Settings";
   ot->idname = "WM_OT_read_factory_settings";
-  ot->description = "Load default file and preferences";
+  ot->description =
+      "Load factory default startup file and preferences. "
+      "To make changes permanent, use \"Save Startup File\" and \"Save Preferences\"";
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_homefile_read_exec;
@@ -2949,7 +2957,12 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   UI_popup_block_close(C, win, arg_block);
 
   if (save_images_when_file_is_closed) {
-    if (!ED_image_should_save_modified(C)) {
+    if (ED_image_should_save_modified(C)) {
+      ReportList *reports = CTX_wm_reports(C);
+      ED_image_save_all_modified(C, reports);
+      WM_report_banner_show();
+    }
+    else {
       execute_callback = false;
     }
   }

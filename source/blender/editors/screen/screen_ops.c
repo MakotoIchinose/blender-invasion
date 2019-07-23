@@ -74,6 +74,7 @@
 #include "ED_clip.h"
 #include "ED_image.h"
 #include "ED_keyframes_draw.h"
+#include "ED_mesh.h"
 #include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_screen_types.h"
@@ -369,6 +370,12 @@ bool ED_operator_object_active_editable_font(bContext *C)
 {
   Object *ob = ED_object_active_context(C);
   return ((ob != NULL) && !ID_IS_LINKED(ob) && !ed_object_hidden(ob) && (ob->type == OB_FONT));
+}
+
+bool ED_operator_editable_mesh(bContext *C)
+{
+  Mesh *mesh = ED_mesh_context(C);
+  return (mesh != NULL) && !ID_IS_LINKED(mesh);
 }
 
 bool ED_operator_editmesh(bContext *C)
@@ -4200,6 +4207,7 @@ static int match_region_with_redraws(int spacetype,
 static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
 {
   bScreen *screen = CTX_wm_screen(C);
+  wmWindow *win = CTX_wm_window(C);
 
 #ifdef PROFILE_AUDIO_SYNCH
   static int old_frame = 0;
@@ -4209,8 +4217,9 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
   if (screen->animtimer && screen->animtimer == event->customdata) {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
-    Depsgraph *depsgraph = CTX_data_depsgraph(C);
-    Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+    ViewLayer *view_layer = WM_window_get_active_view_layer(win);
+    Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, false);
+    Scene *scene_eval = (depsgraph != NULL) ? DEG_get_evaluated_scene(depsgraph) : NULL;
     wmTimer *wt = screen->animtimer;
     ScreenAnimData *sad = wt->customdata;
     wmWindowManager *wm = CTX_wm_manager(C);
@@ -4230,7 +4239,11 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
       sync = (scene->flag & SCE_FRAME_DROP);
     }
 
-    if (scene_eval->id.recalc & ID_RECALC_AUDIO_SEEK) {
+    if (scene_eval == NULL) {
+      /* Happens when undo/redo system is used during playback, nothing meaningful we can do here.
+       */
+    }
+    else if (scene_eval->id.recalc & ID_RECALC_AUDIO_SEEK) {
       /* Ignore seek here, the audio will be updated to the scene frame after jump during next
        * dependency graph update. */
     }
@@ -4335,7 +4348,9 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     /* since we follow drawflags, we can't send notifier but tag regions ourselves */
-    ED_update_for_newframe(bmain, depsgraph);
+    if (depsgraph != NULL) {
+      ED_update_for_newframe(bmain, depsgraph);
+    }
 
     for (window = wm->windows.first; window; window = window->next) {
       const bScreen *win_screen = WM_window_get_active_screen(window);

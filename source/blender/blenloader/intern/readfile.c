@@ -1712,22 +1712,26 @@ BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 /** \name Old/New Pointer Map
  * \{ */
 
-static void *newdataadr(FileData *fd, const void *adr) /* only direct databocks */
+/* only direct databocks */
+static void *newdataadr(FileData *fd, const void *adr)
 {
   return oldnewmap_lookup_and_inc(fd->datamap, adr, true);
 }
 
-static void *newdataadr_no_us(FileData *fd, const void *adr) /* only direct databocks */
+/* only direct databocks */
+static void *newdataadr_no_us(FileData *fd, const void *adr)
 {
   return oldnewmap_lookup_and_inc(fd->datamap, adr, false);
 }
 
-static void *newglobadr(FileData *fd, const void *adr) /* direct data-locks with global linking */
+/* direct datablocks with global linking */
+static void *newglobadr(FileData *fd, const void *adr)
 {
   return oldnewmap_lookup_and_inc(fd->globmap, adr, true);
 }
 
-static void *newimaadr(FileData *fd, const void *adr) /* used to restore image data after undo */
+/* used to restore image data after undo */
+static void *newimaadr(FileData *fd, const void *adr)
 {
   if (fd->imamap && adr) {
     return oldnewmap_lookup_and_inc(fd->imamap, adr, true);
@@ -1735,7 +1739,8 @@ static void *newimaadr(FileData *fd, const void *adr) /* used to restore image d
   return NULL;
 }
 
-static void *newsceadr(FileData *fd, const void *adr) /* used to restore scene data after undo */
+/* used to restore scene data after undo */
+static void *newsceadr(FileData *fd, const void *adr)
 {
   if (fd->scenemap && adr) {
     return oldnewmap_lookup_and_inc(fd->scenemap, adr, true);
@@ -1743,8 +1748,8 @@ static void *newsceadr(FileData *fd, const void *adr) /* used to restore scene d
   return NULL;
 }
 
-static void *newmclipadr(FileData *fd,
-                         const void *adr) /* used to restore movie clip data after undo */
+/* used to restore movie clip data after undo */
+static void *newmclipadr(FileData *fd, const void *adr)
 {
   if (fd->movieclipmap && adr) {
     return oldnewmap_lookup_and_inc(fd->movieclipmap, adr, true);
@@ -1752,7 +1757,8 @@ static void *newmclipadr(FileData *fd,
   return NULL;
 }
 
-static void *newsoundadr(FileData *fd, const void *adr) /* used to restore sound data after undo */
+/* used to restore sound data after undo */
+static void *newsoundadr(FileData *fd, const void *adr)
 {
   if (fd->soundmap && adr) {
     return oldnewmap_lookup_and_inc(fd->soundmap, adr, true);
@@ -1760,8 +1766,8 @@ static void *newsoundadr(FileData *fd, const void *adr) /* used to restore sound
   return NULL;
 }
 
-static void *newpackedadr(FileData *fd,
-                          const void *adr) /* used to restore packed data after undo */
+/* used to restore packed data after undo */
+static void *newpackedadr(FileData *fd, const void *adr)
 {
   if (fd->packedmap && adr) {
     return oldnewmap_lookup_and_inc(fd->packedmap, adr, true);
@@ -1770,19 +1776,20 @@ static void *newpackedadr(FileData *fd,
   return oldnewmap_lookup_and_inc(fd->datamap, adr, true);
 }
 
-static void *newlibadr(FileData *fd, const void *lib, const void *adr) /* only lib data */
+/* only lib data */
+static void *newlibadr(FileData *fd, const void *lib, const void *adr)
 {
   return oldnewmap_liblookup(fd->libmap, adr, lib);
 }
 
-void *blo_do_versions_newlibadr(FileData *fd, const void *lib, const void *adr) /* only lib data */
+/* only lib data */
+void *blo_do_versions_newlibadr(FileData *fd, const void *lib, const void *adr)
 {
   return newlibadr(fd, lib, adr);
 }
 
-static void *newlibadr_us(FileData *fd,
-                          const void *lib,
-                          const void *adr) /* increases user number */
+/* increases user number */
+static void *newlibadr_us(FileData *fd, const void *lib, const void *adr)
 {
   ID *id = newlibadr(fd, lib, adr);
 
@@ -1791,16 +1798,14 @@ static void *newlibadr_us(FileData *fd,
   return id;
 }
 
-void *blo_do_versions_newlibadr_us(FileData *fd,
-                                   const void *lib,
-                                   const void *adr) /* increases user number */
+/* increases user number */
+void *blo_do_versions_newlibadr_us(FileData *fd, const void *lib, const void *adr)
 {
   return newlibadr_us(fd, lib, adr);
 }
 
-static void *newlibadr_real_us(FileData *fd,
-                               const void *lib,
-                               const void *adr) /* ensures real user */
+/* ensures real user */
+static void *newlibadr_real_us(FileData *fd, const void *lib, const void *adr)
 {
   ID *id = newlibadr(fd, lib, adr);
 
@@ -4507,8 +4512,9 @@ static void direct_link_pointcache_cb(FileData *fd, void *data)
 
     /* the cache saves non-struct data without DNA */
     if (pm->data[i] && ptcache_data_struct[i][0] == '\0' && (fd->flags & FD_FLAGS_SWITCH_ENDIAN)) {
-      int tot = (BKE_ptcache_data_size(i) * pm->totpoint) /
-                sizeof(int); /* data_size returns bytes */
+      /* data_size returns bytes. */
+      int tot = (BKE_ptcache_data_size(i) * pm->totpoint) / sizeof(int);
+
       int *poin = pm->data[i];
 
       BLI_endian_switch_int32_array(poin, tot);
@@ -4776,8 +4782,10 @@ static void direct_link_particlesystems(FileData *fd, ListBase *particles)
     if (psys->particles && psys->particles->boid) {
       pa = psys->particles;
       pa->boid = newdataadr(fd, pa->boid);
-      pa->boid->ground =
-          NULL; /* This is purely runtime data, but still can be an issue if left dangling. */
+
+      /* This is purely runtime data, but still can be an issue if left dangling. */
+      pa->boid->ground = NULL;
+
       for (a = 1, pa++; a < psys->totpart; a++, pa++) {
         pa->boid = (pa - 1)->boid + 1;
         pa->boid->ground = NULL;
@@ -7169,8 +7177,10 @@ static void direct_link_area(FileData *fd, ScrArea *area)
 
   BLI_listbase_clear(&area->handlers);
   area->type = NULL; /* spacetype callbacks */
-  area->butspacetype =
-      SPACE_EMPTY; /* Should always be unset so that rna_Area_type_get works correctly */
+
+  /* Should always be unset so that rna_Area_type_get works correctly. */
+  area->butspacetype = SPACE_EMPTY;
+
   area->region_active_win = -1;
 
   area->flag &= ~AREA_FLAG_ACTIVE_TOOL_UPDATE;
@@ -7180,8 +7190,9 @@ static void direct_link_area(FileData *fd, ScrArea *area)
   /* if we do not have the spacetype registered we cannot
    * free it, so don't allocate any new memory for such spacetypes. */
   if (!BKE_spacetype_exists(area->spacetype)) {
-    area->butspacetype =
-        area->spacetype; /* Hint for versioning code to replace deprecated space types. */
+    /* Hint for versioning code to replace deprecated space types. */
+    area->butspacetype = area->spacetype;
+
     area->spacetype = SPACE_EMPTY;
   }
 
@@ -9498,7 +9509,7 @@ static void lib_link_all(FileData *fd, Main *main)
      * re-read all library data-blocks.
      * Unfortunately, that means that we do not clear Collections' parents lists, which then get
      * improperly extended in some cases by lib_link_scene() and lib_link_collection() calls above
-     * (when ome local collection is parent of linked ones).
+     * (when one local collection is parent of linked ones).
      * I do not really see a way to address that issue, besides brute force call below which
      * invalidates and re-creates all parenting relationships between collections. Yet another
      * example of why it is such a bad idea to keep that kind of double-linked relationships info

@@ -714,8 +714,14 @@ void wm_window_ghostwindows_ensure(wmWindowManager *wm)
 
       wm_window_ghostwindow_add(wm, "Blender", win);
     }
-    /* happens after fileread */
-    wm_window_ensure_eventstate(win);
+
+    if (win->ghostwin != NULL) {
+      /* If we have no ghostwin this is a buggy window that should be removed.
+       * However we still need to initialize it correctly so the screen doesn't hang. */
+
+      /* happens after fileread */
+      wm_window_ensure_eventstate(win);
+    }
 
     /* add keymap handlers (1 handler for all keys in map!) */
     keymap = WM_keymap_ensure(wm->defaultconf, "Window", 0, 0);
@@ -1201,8 +1207,8 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 //#  define USE_WIN_ACTIVATE
 #endif
 
-        wm->winactive =
-            win; /* no context change! c->wm->windrawable is drawable, or for area queues */
+        /* No context change! C->wm->windrawable is drawable, or for area queues. */
+        wm->winactive = win;
 
         win->active = 1;
         //              window_handle(win, INPUTCHANGE, win->active);
@@ -1454,8 +1460,9 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
         event.prevx = event.x;
         event.prevy = event.y;
 
-        wm->winactive =
-            win; /* no context change! c->wm->windrawable is drawable, or for area queues */
+        /* No context change! C->wm->windrawable is drawable, or for area queues. */
+        wm->winactive = win;
+
         win->active = 1;
 
         wm_event_add(win, &event);

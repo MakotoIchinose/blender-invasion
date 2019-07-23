@@ -1502,7 +1502,7 @@ void *BKE_libblock_copy_for_localize(const ID *id)
 void BKE_library_free(Library *lib)
 {
   if (lib->packedfile) {
-    freePackedFile(lib->packedfile);
+    BKE_packedfile_free(lib->packedfile);
   }
 }
 
@@ -1855,8 +1855,9 @@ static void library_make_local_copying_check(ID *id,
   MainIDRelationsEntry *entry = BLI_ghash_lookup(id_relations->id_used_to_user, id);
   BLI_gset_insert(loop_tags, id);
   for (; entry != NULL; entry = entry->next) {
-    ID *par_id =
-        (ID *)entry->id_pointer; /* used_to_user stores ID pointer, not pointer to ID pointer... */
+
+    /* Used_to_user stores ID pointer, not pointer to ID pointer. */
+    ID *par_id = (ID *)entry->id_pointer;
 
     /* Our oh-so-beloved 'from' pointers... */
     if (entry->usage_flag & IDWALK_CB_LOOPBACK) {
@@ -1912,7 +1913,8 @@ static void library_make_local_copying_check(ID *id,
  * \param bmain: Almost certainly global main.
  * \param lib: If not NULL, only make local data-blocks from this library.
  * \param untagged_only: If true, only make local data-blocks not tagged with
- * LIB_TAG_PRE_EXISTING. \param set_fake: If true, set fake user on all localized data-blocks
+ * LIB_TAG_PRE_EXISTING.
+ * \param set_fake: If true, set fake user on all localized data-blocks
  * (except group and objects ones).
  */
 /* Note: Old (2.77) version was simply making (tagging) data-blocks as local,

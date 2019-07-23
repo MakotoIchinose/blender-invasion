@@ -444,7 +444,7 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, struct Report
   if ((id->tag & LIB_TAG_NO_MAIN) != (ob->id.tag & LIB_TAG_NO_MAIN)) {
     BKE_report(reports,
                RPT_ERROR,
-               "Can only assign evaluated data to to evaluated object, or original data to "
+               "Can only assign evaluated data to evaluated object, or original data to "
                "original object");
     return;
   }
@@ -638,7 +638,7 @@ static void rna_Object_dup_collection_set(PointerRNA *ptr,
       id_us_plus(&ob->instance_collection->id);
     }
     else {
-      BKE_report(NULL, RPT_ERROR, "Only empty objects support group instances");
+      BKE_report(NULL, RPT_ERROR, "Only empty objects support collection instances");
     }
   }
   else {
@@ -2358,7 +2358,7 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Data", "Object data");
-  RNA_def_property_update(prop, 0, "rna_Object_internal_update_data");
+  RNA_def_property_update(prop, 0, "rna_Object_internal_update_data_dependency");
 
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");

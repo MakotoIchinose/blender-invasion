@@ -109,8 +109,9 @@ static void set_operation_types(SpaceOutliner *soops,
         }
       }
       else {
-        int idcode = GS(tselem->id->name);
-        switch (idcode) {
+        const int idcode = (int)GS(tselem->id->name);
+        bool is_standard_id = false;
+        switch ((ID_Type)idcode) {
           case ID_SCE:
             *scenelevel = 1;
             break;
@@ -134,21 +135,47 @@ static void set_operation_types(SpaceOutliner *soops,
           case ID_KE:
           case ID_WO:
           case ID_AC:
-          case ID_NLA:
           case ID_TXT:
           case ID_GR:
           case ID_LS:
           case ID_LI:
-            if (*idlevel == 0) {
-              *idlevel = idcode;
-            }
-            else if (*idlevel != idcode) {
-              *idlevel = -1;
-            }
-            if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
-              *datalevel = 0;
-            }
+          case ID_VF:
+          case ID_NT:
+          case ID_BR:
+          case ID_PA:
+          case ID_GD:
+          case ID_MC:
+          case ID_MSK:
+          case ID_PAL:
+          case ID_PC:
+          case ID_CF:
+          case ID_WS:
+          case ID_LP:
+            is_standard_id = true;
             break;
+          case ID_WM:
+          case ID_SCR:
+            /* Those are ignored here. */
+            /* Note: while Screens should be manageable here, deleting a screen used by a workspace
+             * will cause crashes when trying to use that workspace, so for now let's play minimal,
+             * safe change. */
+            break;
+        }
+        if (idcode == ID_NLA) {
+          /* Fake one, not an actual ID type... */
+          is_standard_id = true;
+        }
+
+        if (is_standard_id) {
+          if (*idlevel == 0) {
+            *idlevel = idcode;
+          }
+          else if (*idlevel != idcode) {
+            *idlevel = -1;
+          }
+          if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
+            *datalevel = 0;
+          }
         }
       }
     }
@@ -288,31 +315,33 @@ static void unlink_object_cb(bContext *C,
                              TreeStoreElem *tselem,
                              void *UNUSED(user_data))
 {
-  Main *bmain = CTX_data_main(C);
-  Object *ob = (Object *)tselem->id;
+  if (tsep && tsep->id) {
+    Main *bmain = CTX_data_main(C);
+    Object *ob = (Object *)tselem->id;
 
-  if (GS(tsep->id->name) == ID_OB) {
-    /* Parented objects need to find which collection to unlink from. */
-    TreeElement *te_parent = te->parent;
-    while (tsep && GS(tsep->id->name) == ID_OB) {
-      te_parent = te_parent->parent;
-      tsep = te_parent ? TREESTORE(te_parent) : NULL;
+    if (GS(tsep->id->name) == ID_OB) {
+      /* Parented objects need to find which collection to unlink from. */
+      TreeElement *te_parent = te->parent;
+      while (tsep && GS(tsep->id->name) == ID_OB) {
+        te_parent = te_parent->parent;
+        tsep = te_parent ? TREESTORE(te_parent) : NULL;
+      }
     }
-  }
 
-  if (tsep) {
-    if (GS(tsep->id->name) == ID_GR) {
-      Collection *parent = (Collection *)tsep->id;
-      BKE_collection_object_remove(bmain, parent, ob, true);
-      DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE);
-      DEG_relations_tag_update(bmain);
-    }
-    else if (GS(tsep->id->name) == ID_SCE) {
-      Scene *scene = (Scene *)tsep->id;
-      Collection *parent = BKE_collection_master(scene);
-      BKE_collection_object_remove(bmain, parent, ob, true);
-      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-      DEG_relations_tag_update(bmain);
+    if (tsep && tsep->id) {
+      if (GS(tsep->id->name) == ID_GR) {
+        Collection *parent = (Collection *)tsep->id;
+        BKE_collection_object_remove(bmain, parent, ob, true);
+        DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_relations_tag_update(bmain);
+      }
+      else if (GS(tsep->id->name) == ID_SCE) {
+        Scene *scene = (Scene *)tsep->id;
+        Collection *parent = BKE_collection_master(scene);
+        BKE_collection_object_remove(bmain, parent, ob, true);
+        DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_relations_tag_update(bmain);
+      }
     }
   }
 }

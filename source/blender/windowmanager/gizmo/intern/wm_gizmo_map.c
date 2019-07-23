@@ -552,6 +552,9 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
 
   bool use_select_bias = false;
 
+  /* TODO: waiting for the GPU in the middle of the event loop for every
+   * mouse move is bad for performance, we need to find a solution to not
+   * use the GPU or draw something once. (see T61474) */
   GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
   /* do the drawing */
   gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
@@ -644,7 +647,7 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
           break;
         }
       }
-      else {
+      else if (gz->type->draw_select != NULL) {
         has_3d = true;
       }
     }
@@ -1239,7 +1242,7 @@ void wm_gizmos_keymap(wmKeyConfig *keyconf)
 /** \} */ /* wmGizmoMapType */
 
 /* -------------------------------------------------------------------- */
-/** \name Updates for Dynamic Type Registraion
+/** \name Updates for Dynamic Type Registration
  *
  * \{ */
 
@@ -1281,32 +1284,6 @@ void WM_gizmoconfig_update(struct Main *bmain)
 
   if (wm_gzmap_type_update_flag == 0) {
     return;
-  }
-
-  if (wm_gzmap_type_update_flag & WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE) {
-    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-          for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
-            wmGizmoMap *gzmap = ar->gizmo_map;
-            if (gzmap != NULL && gzmap->tag_remove_group) {
-              gzmap->tag_remove_group = false;
-
-              for (wmGizmoGroup *gzgroup = gzmap->groups.first, *gzgroup_next; gzgroup;
-                   gzgroup = gzgroup_next) {
-                gzgroup_next = gzgroup->next;
-                if (gzgroup->tag_remove) {
-                  wm_gizmogroup_free(NULL, gzgroup);
-                  ED_region_tag_redraw(ar);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    wm_gzmap_type_update_flag &= ~WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
   }
 
   if (wm_gzmap_type_update_flag & WM_GIZMOMAPTYPE_GLOBAL_UPDATE_REMOVE) {
@@ -1351,6 +1328,32 @@ void WM_gizmoconfig_update(struct Main *bmain)
     }
 
     wm_gzmap_type_update_flag &= ~WM_GIZMOMAPTYPE_GLOBAL_UPDATE_INIT;
+  }
+
+  if (wm_gzmap_type_update_flag & WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+          for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
+            wmGizmoMap *gzmap = ar->gizmo_map;
+            if (gzmap != NULL && gzmap->tag_remove_group) {
+              gzmap->tag_remove_group = false;
+
+              for (wmGizmoGroup *gzgroup = gzmap->groups.first, *gzgroup_next; gzgroup;
+                   gzgroup = gzgroup_next) {
+                gzgroup_next = gzgroup->next;
+                if (gzgroup->tag_remove) {
+                  wm_gizmogroup_free(NULL, gzgroup);
+                  ED_region_tag_redraw(ar);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    wm_gzmap_type_update_flag &= ~WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
   }
 }
 

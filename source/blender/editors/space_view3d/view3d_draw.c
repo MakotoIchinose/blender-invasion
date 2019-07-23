@@ -169,7 +169,13 @@ void ED_view3d_update_viewmat(Depsgraph *depsgraph,
     v2[2] = rv3d->persmat[2][1];
 
     len_px = 2.0f / sqrtf(min_ff(len_squared_v3(v1), len_squared_v3(v2)));
-    len_sc = (float)MAX2(ar->winx, ar->winy);
+
+    if (rect) {
+      len_sc = (float)max_ii(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect));
+    }
+    else {
+      len_sc = (float)MAX2(ar->winx, ar->winy);
+    }
 
     rv3d->pixsize = len_px / len_sc;
   }
@@ -798,7 +804,11 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
   GPU_depth_test(true);
 
   GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
-  DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
+  /* When Blender is starting, a click event can trigger a depth test while the viewport is not
+   * yet available. */
+  if (viewport != NULL) {
+    DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
+  }
 
   if (rv3d->rflag & RV3D_CLIPPING) {
     ED_view3d_clipping_disable();
