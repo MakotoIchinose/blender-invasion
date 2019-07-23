@@ -2615,8 +2615,7 @@ static void tselem_draw_icon(uiBlock *block,
                              float y,
                              TreeStoreElem *tselem,
                              TreeElement *te,
-                             float alpha,
-                             const bool is_clickable)
+                             float alpha)
 {
   TreeElementIcon data = tree_element_get_icon(tselem, te);
 
@@ -2624,7 +2623,11 @@ static void tselem_draw_icon(uiBlock *block,
     return;
   }
 
-  if (!is_clickable || x >= xmax) {
+  /* Icon is covered by restrict buttons */
+  if (x >= xmax) {
+    /* Reduce alpha to match icon buttons */
+    alpha *= 0.8f;
+
     /* placement of icons, copied from interface_widgets.c */
     float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
     x += 2.0f * aspect;
@@ -2732,7 +2735,6 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
     float ufac = UI_UNIT_X / 20.0f;
     float icon_color[4], icon_border[4];
     outliner_icon_background_colors(icon_color, icon_border);
-    icon_color[3] *= alpha_fac;
     if (active == OL_DRAWSEL_ACTIVE) {
       UI_GetThemeColor4fv(TH_EDITED_OBJECT, icon_color);
       icon_border[3] = 0.3f;
@@ -2760,7 +2762,7 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
   if (tselem->flag & TSE_HIGHLIGHTED) {
     alpha_fac += 0.5;
   }
-  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, false);
+  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac);
   te->xs = *offsx;
   te->ys = ys;
   te->xend = (short)*offsx + UI_UNIT_X;
@@ -3082,8 +3084,7 @@ static void outliner_draw_tree_element(bContext *C,
 
     /* datatype icon */
     if (!(ELEM(tselem->type, TSE_RNA_PROPERTY, TSE_RNA_ARRAY_ELEM, TSE_ID_BASE))) {
-      tselem_draw_icon(
-          block, xmax, (float)startx + offsx, (float)*starty, tselem, te, alpha_fac, true);
+      tselem_draw_icon(block, xmax, (float)startx + offsx, (float)*starty, tselem, te, alpha_fac);
       offsx += UI_UNIT_X + 4 * ufac;
     }
     else {
