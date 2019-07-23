@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <sstream>
 
@@ -319,6 +320,10 @@ void GHOST_XrSession::beginFrameDrawing()
 
   m_draw_frame = std::unique_ptr<GHOST_XrDrawFrame>(new GHOST_XrDrawFrame());
   m_draw_frame->frame_state = frame_state;
+
+  if (m_context->isDebugTimeMode()) {
+    m_timer_begin = std::chrono::high_resolution_clock::now();
+  }
 }
 
 void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers)
@@ -332,6 +337,14 @@ void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *
 
   CHECK_XR(xrEndFrame(m_oxr->session, &end_info), "Failed to submit rendered frame.");
   m_draw_frame = nullptr;
+
+  if (m_context->isDebugTimeMode()) {
+    std::chrono::duration<double, std::milli> duration =
+        std::chrono::high_resolution_clock::now() - m_timer_begin;
+
+    printf(
+        "VR frame render time: %.0fms (%.2f FPS)\n", duration.count(), 1000.0 / duration.count());
+  }
 }
 
 void GHOST_XrSession::draw(void *draw_customdata)

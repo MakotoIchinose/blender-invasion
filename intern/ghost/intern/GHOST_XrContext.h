@@ -66,6 +66,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
   GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
   XrInstance getInstance() const;
   bool isDebugMode() const;
+  bool isDebugTimeMode() const;
 
  private:
   std::unique_ptr<struct OpenXRInstanceData> m_oxr;
@@ -87,6 +88,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
 
   /** Enable debug message prints and OpenXR API validation layers */
   bool m_debug{false};
+  bool m_debug_time{false};
 
   void createOpenXRInstance();
   void initDebugMessenger();

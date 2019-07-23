@@ -57,7 +57,9 @@ void *GHOST_XrContext::s_error_handler_customdata = nullptr;
  * \{ */
 
 GHOST_XrContext::GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info)
-    : m_oxr(new OpenXRInstanceData()), m_debug(create_info->context_flag & GHOST_kXrContextDebug)
+    : m_oxr(new OpenXRInstanceData()),
+      m_debug(create_info->context_flag & GHOST_kXrContextDebug),
+      m_debug_time(create_info->context_flag & GHOST_kXrContextDebugTime)
 {
 }
 GHOST_XrContext::~GHOST_XrContext()
@@ -516,6 +518,11 @@ XrInstance GHOST_XrContext::getInstance() const
 bool GHOST_XrContext::isDebugMode() const
 {
   return m_debug;
+}
+
+bool GHOST_XrContext::isDebugTimeMode() const
+{
+  return m_debug_time;
 }
 
 /** \} */ /* Ghost Internal Accessors and Mutators */

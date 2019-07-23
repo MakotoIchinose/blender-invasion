@@ -591,6 +591,7 @@ typedef struct {
 
 enum {
   GHOST_kXrContextDebug = (1 << 0),
+  GHOST_kXrContextDebugTime = (1 << 1),
 };
 
 typedef struct {

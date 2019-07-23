@@ -117,6 +117,9 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
     if (G.debug & G_DEBUG_XR) {
       create_info.context_flag |= GHOST_kXrContextDebug;
     }
+    if (G.debug & G_DEBUG_XR_TIME) {
+      create_info.context_flag |= GHOST_kXrContextDebugTime;
+    }
 
     wm->xr_context = GHOST_XrContextCreate(&create_info);
   }
