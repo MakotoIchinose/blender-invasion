@@ -1243,7 +1243,8 @@ static void *mesh_tri_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
   GPUIndexBufBuilder *elb = MEM_callocN(sizeof(*elb), __func__);
   GPU_indexbuf_init(elb, GPU_PRIM_TRIS, mr->tri_len, mr->loop_len);
-
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  elb->index_len = mr->tri_len * 3;
   return elb;
 }
 static void mesh_tri_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1295,7 +1296,6 @@ static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *elb)
         mat_tri_ofs[mpoly->mat_nr] += poly_tri_len;
       }
     }
-    // memcpy(mat_tri_len, mat_tri_ofs, sizeof(*mat_tri_len) * mr->mat_len);
     /* Accumulate tri len per mat to have correct offsets. */
     int ofs = mat_tri_ofs[0];
     mat_tri_ofs[0] = 0;
@@ -1354,8 +1354,6 @@ static void mesh_tri_finish(const MeshRenderData *mr, void *ibo, void *elb)
     mr->cache->tri_mat_start[0] = 0;
     mr->cache->tri_mat_end[0] = mr->tri_len;
   }
-  /* XXX overriding here in case multithread hazard happened. */
-  ((GPUIndexBufBuilder *)elb)->index_len = mr->tri_len * 3;
   GPU_indexbuf_build_in_place(elb, ibo);
 
   MEM_freeN(elb);
@@ -1375,28 +1373,20 @@ static void *mesh_edge_init(const MeshRenderData *mr, void *UNUSED(buf))
   GPUIndexBufBuilder *elb = MEM_mallocN(sizeof(*elb), __func__);
   /* Allocate a buffer that is twice as large to sort loose edges in the second half. */
   GPU_indexbuf_init(elb, GPU_PRIM_LINES, mr->edge_len * 2, mr->loop_len + mr->loop_loose_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(elb->data, 0xFF, sizeof(uint) * mr->edge_len * 2 * 2);
   return elb;
 }
-static void mesh_edge_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+BLI_INLINE void mesh_edge_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
   if (!(iter->use_hide && (iter->medge->flag & ME_HIDE))) {
-    /* XXX TODO Make it threadsafe */
     GPU_indexbuf_set_line_verts(elb, iter->edge_idx, iter->v1, iter->v2);
   }
   else {
     GPU_indexbuf_set_line_restart(elb, iter->edge_idx);
   }
 }
-static void mesh_edge_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
+BLI_INLINE void mesh_edge_iter_edit(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
 {
   if (iter->eed && !BM_elem_flag_test(iter->eed, BM_ELEM_HIDDEN)) {
-    /* XXX TODO Make it threadsafe */
     GPU_indexbuf_set_line_verts(elb, iter->edge_idx, iter->v1, iter->v2);
   }
   else {
@@ -1405,6 +1395,61 @@ static void mesh_edge_iter_edit(const MeshExtractIterData *iter, void *UNUSED(bu
 }
 static void mesh_edge_finish(const MeshRenderData *mr, void *ibo, void *elb)
 {
+  /* HACK: unless we make the whole algorithm threadsafe
+   * we need to make another manual iteration. */
+  MeshExtractIterData itr = {0};
+  itr.mr = mr;
+  itr.use_hide = mr->use_hide;
+  switch (mr->extract_type) {
+    case MR_EXTRACT_BMESH:
+      for (int f = 0; f < mr->poly_len; f++) {
+        itr.efa = BM_face_at_index(itr.mr->bm, f);
+        BMIter iter_loop;
+        BM_ITER_ELEM (itr.eloop, &iter_loop, itr.efa, BM_LOOPS_OF_FACE) {
+          itr.eed = itr.eloop->e;
+          itr.eve = itr.eloop->v;
+          itr.v1 = BM_elem_index_get(itr.eloop);
+          itr.v2 = BM_elem_index_get(itr.eloop->next);
+          itr.loop_idx = itr.v1;
+          itr.edge_idx = BM_elem_index_get(itr.eed);
+          itr.vert_idx = BM_elem_index_get(itr.eve);
+          mesh_edge_iter_edit(&itr, NULL, elb);
+        }
+      }
+      break;
+    case MR_EXTRACT_MAPPED:
+      for (int f = 0; f < mr->poly_len; f++) {
+        itr.face_idx = f;
+        itr.mpoly = &mr->mpoly[f];
+        int loopstart = itr.mpoly->loopstart;
+        int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
+        for (itr.v1 = loopend - 1, itr.v2 = loopstart; itr.v2 < loopend; itr.v1 = itr.v2++) {
+          itr.loop_idx = itr.v1;
+          itr.mloop = &mr->mloop[itr.loop_idx];
+          itr.edge_idx = itr.mloop->e;
+          itr.eed = bm_original_edge_get(mr->bm, mr->e_origindex[itr.edge_idx]);
+          itr.medge = &mr->medge[itr.edge_idx];
+          mesh_edge_iter_edit(&itr, NULL, elb);
+        }
+      }
+      break;
+    case MR_EXTRACT_MESH:
+      for (int f = 0; f < mr->poly_len; f++) {
+        itr.face_idx = f;
+        itr.mpoly = &mr->mpoly[f];
+        int loopstart = itr.mpoly->loopstart;
+        int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
+        for (itr.v1 = loopend - 1, itr.v2 = loopstart; itr.v2 < loopend; itr.v1 = itr.v2++) {
+          itr.loop_idx = itr.v1;
+          itr.mloop = &mr->mloop[itr.loop_idx];
+          itr.edge_idx = itr.mloop->e;
+          itr.medge = &mr->medge[itr.edge_idx];
+          mesh_edge_iter(&itr, NULL, elb);
+        }
+      }
+      break;
+  }
+
   /* Sort loose edges at the end of the index buffer. */
   /* TODO We must take into consideration loose edges from hidden faces in edit mode. */
   if (mr->edge_loose_len > 0) {
@@ -1415,10 +1460,8 @@ static void mesh_edge_finish(const MeshRenderData *mr, void *ibo, void *elb)
       indices[dst][0] = indices[src][0];
       indices[dst][1] = indices[src][1];
       /* Set as restart index, we don't want to draw twice. */
-      indices[src][0] = indices[src][1] = 0xFFFFFFFF;
+      indices[src][0] = indices[src][1] = 0xFFFFFFFFu;
     }
-    /* TODO Search last visible loose edge for that. */
-    ((GPUIndexBufBuilder *)elb)->index_len = (mr->edge_len + mr->edge_loose_len) * 2;
     /* TODO Remove holes. */
 
     mr->cache->edge_loose_start = mr->edge_len;
@@ -1428,7 +1471,8 @@ static void mesh_edge_finish(const MeshRenderData *mr, void *ibo, void *elb)
     mr->cache->edge_loose_start = 0;
     mr->cache->edge_loose_end = 0;
   }
-  /* XXX overriding here in case multithread hazard happened. */
+  /* TODO Search last visible loose edge for that. */
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
   ((GPUIndexBufBuilder *)elb)->index_len = (mr->edge_len + mr->edge_loose_len) * 2;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
@@ -1451,12 +1495,8 @@ static void *mesh_vert_init(const MeshRenderData *mr, void *UNUSED(buf))
 {
   GPUIndexBufBuilder *elb = MEM_mallocN(sizeof(*elb), __func__);
   GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->vert_len, mr->loop_len + mr->loop_loose_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(elb->data, 0xFF, sizeof(uint) * mr->vert_len);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  elb->index_len = mr->vert_len;
   return elb;
 }
 static void mesh_vert_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1477,10 +1517,8 @@ static void mesh_vert_iter_edit(const MeshExtractIterData *iter, void *UNUSED(bu
     GPU_indexbuf_set_point_restart(elb, iter->vert_idx);
   }
 }
-static void mesh_vert_finish(const MeshRenderData *mr, void *ibo, void *elb)
+static void mesh_vert_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
 {
-  /* XXX overriding here in case multithread hazard happened. */
-  ((GPUIndexBufBuilder *)elb)->index_len = mr->vert_len;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
 }
@@ -1502,12 +1540,8 @@ static void *mesh_facedot_init(const MeshRenderData *mr, void *UNUSED(buf))
 {
   GPUIndexBufBuilder *elb = MEM_mallocN(sizeof(*elb), __func__);
   GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->poly_len, mr->poly_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(elb->data, 0xFF, sizeof(uint) * mr->poly_len);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  elb->index_len = mr->poly_len;
   return elb;
 }
 static void mesh_facedot_iter(const MeshExtractIterData *iter, void *UNUSED(buf), void *elb)
@@ -1530,10 +1564,8 @@ static void mesh_facedot_iter_edit(const MeshExtractIterData *iter, void *UNUSED
     GPU_indexbuf_set_point_restart(elb, iter->face_idx);
   }
 }
-static void mesh_facedot_finish(const MeshRenderData *mr, void *ibo, void *elb)
+static void mesh_facedot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
 {
-  /* XXX overriding here in case multithread hazard happened. */
-  ((GPUIndexBufBuilder *)elb)->index_len = mr->poly_len;
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
 }
@@ -1562,19 +1594,21 @@ static void *mesh_lines_paint_mask_init(const MeshRenderData *mr, void *UNUSED(b
   size_t bitmap_size = BLI_BITMAP_SIZE(mr->edge_len);
   MeshExtract_LinePaintMask_Data *data = MEM_callocN(sizeof(*data) + bitmap_size, __func__);
   GPU_indexbuf_init(&data->elb, GPU_PRIM_LINES, mr->edge_len, mr->loop_len);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  data->elb.index_len = mr->edge_len * 2;
+
   return data;
 }
-static void mesh_lines_paint_mask_iter(const MeshExtractIterData *iter,
-                                       void *UNUSED(buf),
-                                       void *data)
+BLI_INLINE void mesh_lines_paint_mask_iter(const MeshExtractIterData *iter,
+                                           void *UNUSED(buf),
+                                           void *data)
 {
   MeshExtract_LinePaintMask_Data *extract_data = (MeshExtract_LinePaintMask_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
     if (iter->mpoly->flag & ME_FACE_SEL) {
       if (BLI_BITMAP_TEST_AND_SET_ATOMIC(extract_data->select_map, iter->edge_idx)) {
         /* Hide edge as it has more than 2 selected loop. */
-        uint *elems = &extract_data->elb.data[iter->edge_idx * 2];
-        elems[0] = elems[1] = 0xFFFFFFFFu;
+        GPU_indexbuf_set_line_restart(&extract_data->elb, iter->edge_idx);
       }
       else {
         /* First selected loop. Set edge visible, overwritting any unsel loop. */
@@ -1589,27 +1623,44 @@ static void mesh_lines_paint_mask_iter(const MeshExtractIterData *iter,
     }
   }
 }
-static void mesh_lines_paint_mask_iter_edit(const MeshExtractIterData *UNUSED(iter),
-                                            void *UNUSED(buf),
-                                            void *UNUSED(elb))
-{
-  /* painting does not use the edit_bmesh */
-  BLI_assert(0);
-}
 static void mesh_lines_paint_mask_finish(const MeshRenderData *mr, void *ibo, void *data)
 {
   MeshExtract_LinePaintMask_Data *extract_data = (MeshExtract_LinePaintMask_Data *)data;
-  extract_data->elb.index_len = mr->edge_len;
+
+  BLI_assert(mr->extract_type == MR_EXTRACT_MESH);
+
+  /* HACK: unless we make the whole algorithm threadsafe
+   * we need to make another manual iteration. */
+  MeshExtractIterData itr = {0};
+  itr.mr = mr;
+  itr.use_hide = mr->use_hide;
+  switch (mr->extract_type) {
+    case MR_EXTRACT_BMESH:
+    case MR_EXTRACT_MAPPED:
+      BLI_assert(0);
+      break;
+    case MR_EXTRACT_MESH:
+      for (int f = 0; f < mr->poly_len; f++) {
+        itr.face_idx = f;
+        itr.mpoly = &mr->mpoly[f];
+        int loopstart = itr.mpoly->loopstart;
+        int loopend = itr.mpoly->loopstart + itr.mpoly->totloop;
+        for (itr.v1 = loopend - 1, itr.v2 = loopstart; itr.v2 < loopend; itr.v1 = itr.v2++) {
+          itr.loop_idx = itr.v1;
+          itr.mloop = &mr->mloop[itr.loop_idx];
+          itr.edge_idx = itr.mloop->e;
+          mesh_lines_paint_mask_iter(&itr, NULL, data);
+        }
+      }
+      break;
+  }
+
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
 
-MeshExtract extract_lines_paint_mask = {mesh_lines_paint_mask_init,
-                                        mesh_lines_paint_mask_iter,
-                                        mesh_lines_paint_mask_iter_edit,
-                                        mesh_lines_paint_mask_finish,
-                                        MR_ITER_LOOP,
-                                        0};
+MeshExtract extract_lines_paint_mask = {
+    mesh_lines_paint_mask_init, NULL, NULL, mesh_lines_paint_mask_finish, 0, 0};
 
 /** \} */
 
@@ -1808,12 +1859,8 @@ static void *mesh_edituv_tri_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
   MeshExtract_EditUvTri_Data *data = MEM_callocN(sizeof(*data), __func__);
   GPU_indexbuf_init(&data->elb, GPU_PRIM_TRIS, mr->tri_len, mr->loop_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->tri_len * 3);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  data->elb.index_len = mr->tri_len * 3;
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
@@ -1822,6 +1869,7 @@ static void mesh_edituv_tri_iter(const MeshExtractIterData *iter, void *UNUSED(b
 {
   MeshExtract_EditUvTri_Data *extract_data = (MeshExtract_EditUvTri_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+    /* This is treadsafe since different threads will never write to the same location. */
     GPU_indexbuf_set_tri_verts(&extract_data->elb, iter->tri_idx, iter->v1, iter->v2, iter->v3);
   }
   else {
@@ -1844,11 +1892,9 @@ static void mesh_edituv_tri_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_tri_restart(&extract_data->elb, iter->tri_idx);
   }
 }
-static void mesh_edituv_tri_finish(const MeshRenderData *mr, void *ibo, void *data)
+static void mesh_edituv_tri_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
 {
   MeshExtract_EditUvTri_Data *extract_data = (MeshExtract_EditUvTri_Data *)data;
-  /* XXX overriding here in case multithread hazard happened. */
-  extract_data->elb.index_len = mr->tri_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1875,12 +1921,8 @@ static void *mesh_edituv_line_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
   MeshExtract_EditUvLine_Data *data = MEM_callocN(sizeof(*data), __func__);
   GPU_indexbuf_init(&data->elb, GPU_PRIM_LINES, mr->loop_len, mr->loop_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len * 2);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  data->elb.index_len = mr->loop_len * 2;
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
@@ -1889,6 +1931,7 @@ static void mesh_edituv_line_iter(const MeshExtractIterData *iter, void *UNUSED(
 {
   MeshExtract_EditUvLine_Data *extract_data = (MeshExtract_EditUvLine_Data *)data;
   if (!(iter->use_hide && (iter->mpoly->flag & ME_HIDE))) {
+    /* This is treadsafe since different threads will never write to the same location. */
     GPU_indexbuf_set_line_verts(&extract_data->elb, iter->loop_idx, iter->v1, iter->v2);
   }
   else {
@@ -1908,11 +1951,9 @@ static void mesh_edituv_line_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_line_restart(&extract_data->elb, iter->loop_idx);
   }
 }
-static void mesh_edituv_line_finish(const MeshRenderData *mr, void *ibo, void *data)
+static void mesh_edituv_line_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
 {
   MeshExtract_EditUvLine_Data *extract_data = (MeshExtract_EditUvLine_Data *)data;
-  /* XXX overriding here in case multithread hazard happened. */
-  extract_data->elb.index_len = mr->loop_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -1939,12 +1980,8 @@ static void *mesh_edituv_point_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
   MeshExtract_EditUvPoint_Data *data = MEM_callocN(sizeof(*data), __func__);
   GPU_indexbuf_init(&data->elb, GPU_PRIM_POINTS, mr->loop_len, mr->loop_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->loop_len);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  data->elb.index_len = mr->loop_len;
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
@@ -1972,11 +2009,9 @@ static void mesh_edituv_point_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_point_restart(&extract_data->elb, iter->loop_idx);
   }
 }
-static void mesh_edituv_point_finish(const MeshRenderData *mr, void *ibo, void *data)
+static void mesh_edituv_point_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
 {
   MeshExtract_EditUvPoint_Data *extract_data = (MeshExtract_EditUvPoint_Data *)data;
-  /* XXX overriding here in case multithread hazard happened. */
-  extract_data->elb.index_len = mr->loop_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
@@ -2003,12 +2038,8 @@ static void *mesh_edituv_fdot_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
   MeshExtract_EditUvFdot_Data *data = MEM_callocN(sizeof(*data), __func__);
   GPU_indexbuf_init(&data->elb, GPU_PRIM_POINTS, mr->poly_len, mr->poly_len);
-  /* Set all indices to primitive restart. We do this to bypass hidden elements. */
-  /* NOTE: This is not the best method as it leave holes in the index buffer.
-   * TODO(fclem): Better approach would be to remove the holes by moving all the indices block to
-   * have a continuous buffer. The issue is that we need to randomly set indices in the buffer
-   * for multithreading. */
-  // memset(data->elb.data, 0xFF, sizeof(uint) * mr->poly_len);
+  /* Set index len because using GPU_indexbuf_set_* functions does not update it. */
+  data->elb.index_len = mr->poly_len;
 
   data->sync_selection = (mr->toolsettings->uv_flag & UV_SYNC_SELECTION) != 0;
   return data;
@@ -2038,11 +2069,9 @@ static void mesh_edituv_fdot_iter_edit(const MeshExtractIterData *iter,
     GPU_indexbuf_set_line_restart(&extract_data->elb, iter->face_idx);
   }
 }
-static void mesh_edituv_fdot_finish(const MeshRenderData *mr, void *ibo, void *data)
+static void mesh_edituv_fdot_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *data)
 {
   MeshExtract_EditUvFdot_Data *extract_data = (MeshExtract_EditUvFdot_Data *)data;
-  /* XXX overriding here in case multithread hazard happened. */
-  extract_data->elb.index_len = mr->poly_len;
   GPU_indexbuf_build_in_place(&extract_data->elb, ibo);
   MEM_freeN(extract_data);
 }
