@@ -459,8 +459,6 @@ GHOST_TSuccess GHOST_SystemWin32::disposeContext(GHOST_IContext *context)
 GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
 {
   GHOST_Context *context;
-  HDC prev_hdc = wglGetCurrentDC();
-  HGLRC prev_context = wglGetCurrentContext();
 
   /* TODO Doesn't use STATIC class to allow offscreen context framebuffer bigger than screen size.
    * For that, WM_GETMINMAXINFO event has to be listented to in custom WndProc callback. Need to
@@ -500,7 +498,6 @@ GHOST_IContext *GHOST_SystemWin32::createOffscreenContextD3D()
   if (context->initializeDrawingContext() == GHOST_kFailure) {
     delete context;
   }
-  wglMakeCurrent(prev_hdc, prev_context);
 
   return context;
 }

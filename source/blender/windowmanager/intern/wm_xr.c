@@ -141,7 +141,6 @@ static void wm_xr_session_free_data(wmSurface *surface)
 {
   wmXrSurfaceData *data = surface->customdata;
 
-  WM_opengl_context_dispose(surface->ghost_ctx);
   if (surface->secondary_ghost_ctx) {
 #ifdef WIN32
     if (data->gpu_binding_type == GHOST_kXrGraphicsD3D11) {
@@ -150,6 +149,7 @@ static void wm_xr_session_free_data(wmSurface *surface)
 #endif
   }
   GPU_context_active_set(surface->gpu_ctx);
+  DRW_opengl_context_enable_ex(false);
   if (data->viewport) {
     GPU_viewport_clear_from_offscreen(data->viewport);
     GPU_viewport_free(data->viewport);
@@ -157,7 +157,7 @@ static void wm_xr_session_free_data(wmSurface *surface)
   if (data->offscreen) {
     GPU_offscreen_free(data->offscreen);
   }
-  GPU_context_discard(surface->gpu_ctx);
+  DRW_opengl_context_disable_ex(false);
 
   MEM_freeN(surface->customdata);
 
@@ -173,7 +173,6 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
 
   wmSurface *surface = MEM_callocN(sizeof(*surface), __func__);
   wmXrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
-  unsigned int default_fb;
 
 #ifndef WIN32
   BLI_assert(gpu_binding_type == GHOST_kXrGraphicsOpenGL);
@@ -185,10 +184,8 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
   data->gpu_binding_type = gpu_binding_type;
   surface->customdata = data;
 
-  wm_window_clear_drawable(wm);
-  wm_surface_clear_drawable();
-  surface->ghost_ctx = WM_opengl_context_create();
-  WM_opengl_context_activate(surface->ghost_ctx);
+  surface->ghost_ctx = DRW_opengl_context_get();
+  DRW_opengl_context_enable();
 
   switch (gpu_binding_type) {
     case GHOST_kXrGraphicsOpenGL:
@@ -200,14 +197,9 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int
 #endif
   }
 
-  default_fb = GHOST_GetContextDefaultOpenGLFramebuffer(surface->ghost_ctx);
-  surface->gpu_ctx = GPU_context_create(default_fb);
+  surface->gpu_ctx = DRW_gpu_context_get();
 
-  wm_surface_set_drawable(surface, false);
-  GHOST_SwapContextBuffers(surface->ghost_ctx);
-  GPU_state_init();
-
-  wm_surface_clear_drawable();
+  DRW_opengl_context_disable();
 
   g_xr_surface = surface;
 
@@ -254,6 +246,7 @@ static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *d
     return true;
   }
 
+  DRW_opengl_context_enable();
   if (surface_data->offscreen) {
     GPU_viewport_clear_from_offscreen(surface_data->viewport);
     GPU_viewport_free(surface_data->viewport);
@@ -269,6 +262,7 @@ static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *d
     GPU_offscreen_free(surface_data->offscreen);
     failure = true;
   }
+  DRW_opengl_context_disable();
 
   if (failure) {
     fprintf(stderr, "%s: failed to get buffer, %s\n", __func__, err_out);
@@ -294,15 +288,14 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   wm_xr_draw_matrices_create(CTX_data_scene(C), draw_view, clip_start, clip_end, viewmat, winmat);
 
-  DRW_opengl_context_enable();
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     return NULL;
   }
-  DRW_opengl_context_disable();
 
   offscreen = surface_data->offscreen;
   viewport = surface_data->viewport;
   GPU_viewport_bind(viewport, &rect);
+  glClear(GL_DEPTH_BUFFER_BIT);
 
   BKE_screen_view3d_shading_init(&shading);
   ED_view3d_draw_offscreen_simple(CTX_data_depsgraph(C),
@@ -325,18 +318,12 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
                                   offscreen,
                                   viewport);
 
-  /* Blit from the DRW context into the offscreen surface context. Would be good to avoid this.
-   * Idea: Allow passing custom offscreen context to DRW? */
-  //  GHOST_ContextBlitOpenGLOffscreenContext(
-  //      g_xr_surface->ghost_ctx, DRW_opengl_context_get(), draw_view->width, draw_view->height);
-
-  GPU_viewport_unbind(viewport);
   GPU_framebuffer_restore();
 
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
 
-  WM_opengl_context_activate(g_xr_surface->ghost_ctx);
   wm_draw_offscreen_texture_parameters(offscreen);
+  GPU_depth_test(false);
 
   wmViewport(&rect);
   GPU_viewport_draw_to_screen(viewport, &rect);
@@ -346,6 +333,7 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
     wm_draw_upside_down(draw_view->width, draw_view->height);
     GPU_texture_unbind(texture);
   }
+  GPU_viewport_unbind(viewport);
 
   return g_xr_surface->ghost_ctx;
 }
