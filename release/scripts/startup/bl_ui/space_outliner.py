@@ -46,7 +46,7 @@ class OUTLINER_HT_header(Header):
 
         layout.separator_spacer()
 
-        if display_mode not in {'LIBRARIES', 'DATA_API', 'ORPHAN_DATA'}:
+        if display_mode == 'SEQUENCE':
             row = layout.row(align=True)
             row.prop(space, "use_sync_selection", text="")
 
@@ -306,6 +306,10 @@ class OUTLINER_PT_filter(Panel):
 
         space = context.space_data
         display_mode = space.display_mode
+
+        row = layout.row(align=True)
+        row.prop(space, "use_sync_selection", text="Sync Selection")
+        layout.separator()
 
         if display_mode == 'VIEW_LAYER':
             layout.label(text="Restriction Toggles:")
