@@ -1456,6 +1456,7 @@ static void move_profile_plane(BoundVert *bndv, BMVert *bmv)
   if (is_zero_v3(pro->proj_dir)) {
     return;
   }
+  /* HANS-TODO: Better variable names */
   sub_v3_v3v3(d1, bmv->co, pro->start);
   normalize_v3(d1);
   sub_v3_v3v3(d2, bmv->co, pro->end);
@@ -1858,16 +1859,6 @@ static void snap_to_superellipsoid(float co[3], const float super_r, bool midlin
   co[1] = y;
   co[2] = z;
 }
-
-/* This is meant to be the "custom" equivalent to the snap_to_superellipsoid function.
- * It has to be more complex because it's not as a simple as just snapping to a superellipsoid
- * function because the custom profile can't be parametrized. There are (seg_2 - 1) edges defining
- * the custom profile that could be the closest edge to snap to */
-/* HANS-TODO: Finish this. And params probably need to change */
-//static void snap_to_custom_profile(float co[3], Profile *pro)
-//{
-
-//}
 
 #define BEV_EXTEND_EDGE_DATA_CHECK(eh, flag) (BM_elem_flag_test(eh->e, flag))
 
@@ -4521,16 +4512,18 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_PIPE
   printf("PIPE ADJ VMESH\n");
-  float color[4] = {0.0f, 1.0f, 0.0f, 1.0f};
+  float green[4] = {0.0f, 1.0f, 0.0f, 1.0f};
+  float blue[4] = {0.0f, 0.0f, 1.0f, 1.0f};
   float new_profile_normal_end[3];
 #endif
   int ipipe, i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2;
   VMesh *vm;
   bool even, midline;
 //  Profile *pipe_profile;
-  float new_profile_plane_co[3], new_profile_plane_no[3], new_profile_plane[4];
+  float new_profile_plane_co[3], new_profile_plane_no[3], new_profile_plane[4], new_vert[3];
 
-  /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile */
+  /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile.
+   * Try just using "new_adj_vmesh" in that case. */
   vm = adj_vmesh(bp, bv);
 
   /* Now snap all interior coordinates to be on the epipe profile */
@@ -4542,35 +4535,58 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   ipipe2 = vpipe->next->next->index;
 
   if (bp->use_custom_profile) {
-    for (ipipe = 0; ipipe < 2; ipipe++) {
-      /* Adjust the side of the first pipe profile first, then the other profile's side second */
-      i = (ipipe == 0) ? ipipe1 : ipipe2;
+//    for (ipipe = 0; ipipe < 2; ipipe++) {
+//      /* Adjust the side of the first pipe profile first, then the other profile's side second */
+//      i = (ipipe == 0) ? ipipe1 : ipipe2;
+//      for (j = 1; j <= half_ns; j++) {
+//        for (k = 0; k <= ns; k++) {
+    for (i = 0; i < n_bndv; i++) {
       for (j = 1; j <= half_ns; j++) {
-        for (k = 0; k <= ns; k++) {
+       for (k = 1; k <= ns; k++) {
+         if (!is_canon(vm, i, j, k)) {
+           continue;
+          }
           /* Get a new profile plane by moving the original's position to this ring */
-          copy_v3_v3(new_profile_plane_co, mesh_vert(vm, i, j, 0)->co);
+          copy_v3_v3(new_profile_plane_co, mesh_vert(vm, i, j, k)->co);
           copy_v3_v3(new_profile_plane_no, vpipe->profile.plane_no);
           plane_from_point_normal_v3(new_profile_plane, new_profile_plane_co,
                                      new_profile_plane_no);
 
 
           /* Get this point's location by snapping the first profile's location to the new plane */
-          closest_to_plane_v3(mesh_vert(vm, i, j, k)->co, new_profile_plane,
+          closest_to_plane_v3(new_vert, new_profile_plane,
                               mesh_vert(vm, ipipe1, 0, k)->co);
+
+          copy_v3_v3(mesh_vert(vm, i, j, k)->co, new_vert);
 #if DEBUG_CUSTOM_PROFILE_PIPE
+          printf("i: %d, j: %d, k: %d\n", i, j, k);
           printf("new_profile_plane_co: (%.3f, %.3f, %.3f)\n", new_profile_plane_co[0],
                                                                new_profile_plane_co[1],
                                                                new_profile_plane_co[2]);
           printf("new_profile_plane_no: (%.3f, %.3f, %.3f)\n", new_profile_plane_no[0],
                                                                new_profile_plane_no[1],
                                                                new_profile_plane_no[2]);
-          printf("new vertex: (%.3f, %.3f, %.3f)\n", mesh_vert(vm, i, j, k)->co[0],
-                                                     mesh_vert(vm, i, j, k)->co[1],
-                                                     mesh_vert(vm, i, j, k)->co[2]);
-          DRW_debug_sphere(new_profile_plane_co, 0.03f, color);
+          printf("new vertex: (%.3f, %.3f, %.3f)\n", new_vert[0],
+                                                     new_vert[1],
+                                                     new_vert[2]);
+//          if (new_vert[0] > 1.0f || new_vert[0] < 0.0f ||
+//              new_vert[1] > 1.0f || new_vert[1] < -1.0f ||
+//              new_vert[0] > 1.0f || new_vert[0] < 0.0f) {
+//            printf("!! New vertex not in range for test bevel shape\n");
+//          }
+//          float bad_location1[3] = {0.970746f, 0.8f, 0.285874f};
+//          float bad_location2[3] = {0.970746f, 0.0f, 0.285874f};
+//          float bad_location3[3] = {0.750881f, -0.8f, 0.666078f};
+//          if (compare_v3v3(new_vert, bad_location1, BEVEL_EPSILON_BIG) ||
+//              compare_v3v3(new_vert, bad_location2, BEVEL_EPSILON_BIG) ||
+//              compare_v3v3(new_vert, bad_location3, BEVEL_EPSILON_BIG )) {
+//            printf("!! Bad location!\n");
+//          }
+          DRW_debug_sphere(new_profile_plane_co, 0.02f, green);
           madd_v3_v3v3fl(new_profile_normal_end, new_profile_plane_co, new_profile_plane_no,
                          0.1f);
-          DRW_debug_line_v3v3(new_profile_plane_co, new_profile_normal_end, color);
+          DRW_debug_line_v3v3(new_profile_plane_co, new_profile_normal_end, green);
+          DRW_debug_sphere(new_vert, 0.01f, blue);
 #endif
         }
       }
