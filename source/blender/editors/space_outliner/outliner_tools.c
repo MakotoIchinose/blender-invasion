@@ -478,7 +478,12 @@ void OUTLINER_OT_scene_operation(wmOperatorType *ot)
 }
 /* ******************************************** */
 
-void merged_element_search_free_cb(void *arg)
+typedef struct MergedSearchData {
+  TreeElement *parent_element;
+  TreeElement *select_element;
+} MergedSearchData;
+
+static void merged_element_search_free_cb(void *arg)
 {
   MEM_freeN(arg);
 }
@@ -532,7 +537,7 @@ static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1)
 /** Merged element search menu
  * Created on activation of a merged or aggregated iconrow icon.
  */
-uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *data)
+static uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *data)
 {
   static char search[64] = "";
   uiBlock *block;
@@ -572,6 +577,17 @@ uiBlock *merged_element_search_menu(bContext *C, ARegion *ar, void *data)
   UI_block_bounds_set_popup(block, 6, (const int[2]){-(menu_width / 2), 0});
 
   return block;
+}
+
+void merged_element_search_menu_invoke(bContext *C,
+                                       TreeElement *parent_te,
+                                       TreeElement *activate_te)
+{
+  MergedSearchData *select_data = MEM_callocN(sizeof(MergedSearchData), "merge_search_data");
+  select_data->parent_element = parent_te;
+  select_data->select_element = activate_te;
+
+  UI_popup_block_invoke(C, merged_element_search_menu, select_data, merged_element_search_free_cb);
 }
 
 static void object_select_cb(bContext *C,

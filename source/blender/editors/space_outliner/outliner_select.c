@@ -1422,12 +1422,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 
     /* If the selected icon was an aggregate of multiple elements, run the search popup */
     if (merged_elements) {
-      MergedSearchData *select_data = MEM_callocN(sizeof(MergedSearchData), "merge_search_data");
-      select_data->parent_element = te;
-      select_data->select_element = activate_te;
-
-      UI_popup_block_invoke(
-          C, merged_element_search_menu, select_data, merged_element_search_free_cb);
+      merged_element_search_menu_invoke(C, te, activate_te);
       return OPERATOR_CANCELLED;
     }
 
