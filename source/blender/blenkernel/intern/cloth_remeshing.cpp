@@ -78,7 +78,7 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
-#define COLLAPSE_EDGES_DEBUG 1
+#define COLLAPSE_EDGES_DEBUG 0
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
@@ -141,6 +141,7 @@ static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which);
 static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i);
 static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side);
 static void cloth_remeshing_uv_of_vert(BMesh *bm, BMVert *v, float r_uv[2]);
+static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_f2);
 
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
@@ -471,21 +472,51 @@ static bool cloth_remeshing_should_flip(
              (cloth_remeshing_wedge(zy, xy) + cloth_remeshing_wedge(xw, zw));
 }
 
-static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMEdge *e)
+static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMesh *bm, BMEdge *e)
 {
+#if 1
   BMFace *f1, *f2;
-  BM_edge_face_pair(e, &f1, &f2);
+  cloth_remeshing_edge_face_pair(e, &f1, &f2);
 
   return !f1 || !f2 || cloth_remeshing_edge_vert(e, 0, 0) != cloth_remeshing_edge_vert(e, 1, 0);
+#else
+  BMFace *f, *f1, *f2;
+  BMIter fiter;
+  int i = 0;
+  BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
+    if (i == 0) {
+      f1 = f;
+    }
+    else if (i == 1) {
+      f2 = f;
+    }
+    i++;
+  }
+
+  if (i < 2) {
+    return true;
+  }
+
+  if (!f1 || !f2) {
+    return false;
+  }
+  float uv_f1_v1[2], uv_f1_v2[2], uv_f2_v1[2], uv_f2_v2[2];
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_f1_v1);
+  cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v2, uv_f1_v2);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v1, uv_f2_v1);
+  cloth_remeshing_uv_of_vert_in_face(bm, f2, e->v2, uv_f2_v2);
+
+  return (!equals_v2v2(uv_f1_v1, uv_f2_v1) || !equals_v2v2(uv_f1_v2, uv_f2_v2));
+#endif
 }
 
-static bool cloth_remeshing_vert_on_seam_or_boundary_test(BMVert *v)
+static bool cloth_remeshing_vert_on_seam_or_boundary_test(BMesh *bm, BMVert *v)
 {
   BMEdge *e;
   BMIter eiter;
 
   BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
-    if (cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+    if (cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
       return true;
     }
   }
@@ -508,7 +539,7 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
   vector<BMEdge *> fedges;
   for (int i = 0; i < edges.size(); i++) {
     BMEdge *e = edges[i];
-    if (cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+    if (cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
       continue;
     }
     if (!cloth_remeshing_should_flip(bm, e, sizing)) {
@@ -1318,17 +1349,49 @@ static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which)
   }
 }
 
-static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i)
+static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_f2)
 {
   BMFace *f;
   BMIter fiter;
-  int fi = 0;
-  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) {
-    if (fi == side) {
+  int i = 0;
+  *r_f1 = NULL;
+  *r_f2 = NULL;
+  BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
+    if (i == 0) {
+      *r_f1 = f;
+    }
+    else if (i == 1) {
+      *r_f2 = f;
+    }
+    else {
       break;
     }
   }
+}
+
+static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i)
+{
+  /* BMFace *f, *f1 = NULL, *f2 = NULL; */
+  /* BMIter fiter; */
+  /* int fi = 0; */
+  /* BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) { */
+  /*   if (fi == 0) { */
+  /*     f1 = f; */
+  /*   } */
+  /*   else if (fi == 1) { */
+  /*     f2 = f; */
+  /*   } */
+  /*   if (fi == side) { */
+  /*     break; */
+  /*   } */
+  /* } */
+  BMFace *f, *f1, *f2;
+  cloth_remeshing_edge_face_pair(e, &f1, &f2);
+  side == 0 ? f = f1 : f = f2;
   if (!f) {
+#if 0
+    printf("didn't find f in %s\n", __func__);
+#endif
     return NULL;
   }
   BMVert *vs[3];
@@ -1343,15 +1406,21 @@ static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int side, int i)
 
 static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side)
 {
-  BMFace *f;
-  BMIter fiter;
-  int fi = 0;
-  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) {
-    if (fi == side) {
-      break;
-    }
-  }
+  /* BMFace *f; */
+  /* BMIter fiter; */
+  /* int fi = 0; */
+  /* BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, fi) { */
+  /*   if (fi == side) { */
+  /*     break; */
+  /*   } */
+  /* } */
+  BMFace *f, *f1, *f2;
+  cloth_remeshing_edge_face_pair(e, &f1, &f2);
+  side == 0 ? f = f1 : f = f2;
   if (!f) {
+#if 0
+    printf("didn't find f in %s\n", __func__);
+#endif
     return NULL;
   }
   BMVert *vs[3];
@@ -1538,10 +1607,10 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
   /*   return NULL; */
   /* } */
 
-  if (cloth_remeshing_vert_on_seam_or_boundary_test(v1) &&
-      !cloth_remeshing_edge_on_seam_or_boundary_test(e)) {
+  if (cloth_remeshing_vert_on_seam_or_boundary_test(bm, v1) &&
+      !cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
 #if COLLAPSE_EDGES_DEBUG
-    printf("vertex on seam or boundary but not edge\n");
+    printf("vertex %f %f %f on seam or boundary but not edge\n", v1->co[0], v1->co[1], v1->co[2]);
 #endif
     return NULL;
   }
@@ -1794,6 +1863,16 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   char file_name[100];
   sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
   cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
+#endif
+
+#if 1
+  int v_count = 0;
+  BM_ITER_MESH (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH) {
+    if (cloth_remeshing_vert_on_seam_or_boundary_test(clmd->clothObject->bm, v)) {
+      printf("%f %f %f on seam or boundary %d\n ", v->co[0], v->co[1], v->co[2], ++v_count);
+    }
+  }
+  printf("\n\n\n\n\n");
 #endif
 }
 
@@ -2456,7 +2535,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd);
   }
   else {
