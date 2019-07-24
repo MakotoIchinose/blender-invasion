@@ -753,6 +753,8 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         if mode == "DPIX" and lanpr.shader_error:
             layout.label(text="DPIX transform shader compile error!")
             return
+        
+        layout.prop(lanpr, "crease_threshold", slider=True)
 
         #if mode == "SOFTWARE" or mode == "DPIX":
         if not scene.camera:
@@ -763,27 +765,14 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         
         c=col.column()
         c.enabled = has_camera
-        if scene.render.engine!="BLENDER_LANPR":
-            c=layout.row(align=True)
-            c.enabled=has_camera
-            c.prop(lanpr,"auto_update", text='Auto Update')
-            c.prop(lanpr,"gpencil_overwrite", text='Overwrite')
-            if not lanpr.auto_update:
-                c=layout.row()
-                c.enabled=has_camera
-                c.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
-            c=layout.row()
-            c.enabled=has_camera
-            c.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
-        else:
+
+        if scene.render.engine=="BLENDER_LANPR":
             c.prop(lanpr,'auto_update', text='Auto Update')
             txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
             if not lanpr.auto_update:
                 c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
 
             c.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
-        
-        layout.prop(lanpr, "crease_threshold", slider=True)
 
         #deprecated
         #layout.label(text="Background Color:")
@@ -825,7 +814,6 @@ def lanpr_make_line_type(expand,layout,line_type,label):
         c = layout.column(align=True)
         c.prop(line_type, "color", text="Color")
         c.prop(line_type, "thickness", slider=True)
-
 
 class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
@@ -1073,6 +1061,39 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
             layout.label(text="---INOP---")
             layout.prop(lanpr,"extend_length")
 
+class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
+    bl_label = "Grease Pencil"
+    bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+        return scene.render.engine!='BLENDER_LANPR'
+
+    def draw(self, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        if not scene.camera:
+            has_camera=False
+            layout.label(text="No active camera.")
+        else:
+            has_camera=True
+
+        layout.enabled=has_camera
+        layout.prop(lanpr,"auto_update", text='Auto Update')
+        layout.prop(lanpr,"gpencil_overwrite", text='Overwrite')
+        if not lanpr.auto_update:
+            layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+        layout.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     bl_label = "Chaining Options"
     bl_parent_id = "RENDER_PT_lanpr"
@@ -1134,7 +1155,7 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
 
         if mode == "DPIX":
             layout.prop(lanpr,"gpu_cache_size")
-            
+
         layout.prop(lanpr,"enable_intersections")
         layout.prop(lanpr, "disable_edge_splits")
 
@@ -1175,6 +1196,7 @@ classes = (
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
+    RENDER_PT_lanpr_gpencil,
     RENDER_PT_lanpr_options,
     RENDER_PT_lanpr_line_components,
     RENDER_PT_lanpr_line_normal_effects,
