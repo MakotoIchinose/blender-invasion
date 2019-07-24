@@ -2914,7 +2914,7 @@ static void outliner_set_coord_tree_element(TreeElement *te, int startx, int sta
   TreeElement *ten;
 
   /* closed items may be displayed in row of parent, don't change their coordinate! */
-  if (!ELEM(te->flag, TE_ICONROW, TE_ICONROW_MERGED)) {
+  if ((te->flag & TE_ICONROW) == 0 && (te->flag & TE_ICONROW_MERGED) == 0) {
     /* store coord and continue, we need coordinatesfor elements outside view too */
     te->xs = startx;
     te->ys = starty;
