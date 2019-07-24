@@ -72,7 +72,8 @@ void RNA_def_lanpr(BlenderRNA *brna)
        0,
        "Directional",
        "Use directional vector to control line width"},
-      {LANPR_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"},
+      /* Currently inoperative */
+      /* {LANPR_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"}, */
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "LANPR_LineLayerComponent", NULL);
