@@ -40,6 +40,7 @@ class FILEBROWSER_HT_header(Header):
 
             layout.prop(params, "display_type", expand=True, text="")
             layout.prop(params, "sort_method", expand=True, text="")
+            layout.prop(params, "use_sort_invert")
             layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
 
             row = layout.row(align=True)
@@ -104,6 +105,7 @@ class FILEBROWSER_PT_filter(Panel):
 
         layout.label(text="Sort By:")
         layout.prop(params, "sort_method", expand=True, text="")
+        layout.prop(params, "use_sort_invert")
 
         layout.separator()
 

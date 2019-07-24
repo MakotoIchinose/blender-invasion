@@ -714,7 +714,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                (layout->tile_h + 2 * layout->tile_border_y);
     details_columns_init(params, layout);
 
-    if ((int)rowcount / numfiles >= 1) {
+    if (numfiles && (int)rowcount / numfiles >= 1) {
       layout->rows = rowcount;
     }
     else {
