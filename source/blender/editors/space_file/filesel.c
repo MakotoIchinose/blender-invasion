@@ -100,7 +100,7 @@ short ED_fileselect_set_params(SpaceFile *sfile)
     /* set the default thumbnails size */
     sfile->params->thumbnail_size = 128;
     /* Show size column by default. */
-    sfile->params->details_flags = FILE_DETAILS_SIZE;
+    sfile->params->details_flags = FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME;
   }
 
   params = sfile->params;
