@@ -66,6 +66,7 @@ _modules = [
     "properties_texture",
     "properties_world",
     "properties_collection",
+    "properties_lanpr",
 
     # Generic Space Modules
     #
