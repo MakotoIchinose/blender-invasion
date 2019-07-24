@@ -747,7 +747,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         if scene.render.engine=="BLENDER_LANPR":
             col.prop(lanpr, "master_mode") 
-
         elif mode != "SOFTWARE":
             mode = "SOFTWARE"
 
@@ -936,7 +935,45 @@ class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
             i=i+1
 
 
-class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
+class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
+    bl_label = "Normal Based Line Weight"
+    bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+
+    @classmethod
+    def poll(cls, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+        active_layer = lanpr.layers.active_layer
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "SOFTWARE"
+
+    # sub panel doesn't support this?
+    #def draw_header(self, context):
+        #active_layer = lanpr.layers.active_layer
+        #self.layout.prop(context.scene.lanpr, "enabled", text="")
+
+    def draw(self, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+        active_layer = lanpr.layers.active_layer
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        
+        if active_layer:
+            layout.prop(active_layer,"normal_mode", text="Mode")
+            layout.prop(active_layer,"normal_control_object")
+            layout.prop(active_layer,"normal_effect_inverse")
+            col = layout.column(align=True)
+            col.prop(active_layer,"normal_ramp_begin")
+            col.prop(active_layer,"normal_ramp_end")
+            col = layout.column(align=True)
+            col.prop(active_layer,"normal_thickness_begin", slider=True)
+            col.prop(active_layer,"normal_thickness_end", slider=True)
+
+class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):
     bl_label = "Effects"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
@@ -947,35 +984,26 @@ class RENDER_PT_lanpr_line_effects(RenderButtonsPanel, Panel):
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer
+        return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "DPIX"
 
     def draw(self, context):
-        layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
-        
-        if lanpr.master_mode == "DPIX":
-            row = layout.row(align = True)
-            row.prop(lanpr, "crease_threshold")
-            row.prop(lanpr, "crease_fade_threshold")
-            row = layout.row(align = True)
-            row.prop(lanpr, "depth_width_influence")
-            row.prop(lanpr, "depth_width_curve")
-            row = layout.row(align = True)
-            row.prop(lanpr, "depth_alpha_influence")
-            row.prop(lanpr, "depth_alpha_curve")
-        elif lanpr.master_mode == "SOFTWARE":
-            if active_layer:
-                layout.label(text= "Normal based line weight:")
-                layout.prop(active_layer,"normal_mode", expand = True)
-                if active_layer.normal_mode != "DISABLED":
-                    layout.prop(active_layer,"normal_control_object")
-                    layout.prop(active_layer,"normal_effect_inverse", toggle = True)
-                    layout.prop(active_layer,"normal_ramp_begin")
-                    layout.prop(active_layer,"normal_ramp_end")
-                    layout.prop(active_layer,"normal_thickness_begin", slider=True)
-                    layout.prop(active_layer,"normal_thickness_end", slider=True)
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column(align = True)
+        col.prop(lanpr, "crease_threshold")
+        col.prop(lanpr, "crease_fade_threshold")
+        col = layout.column(align = True)
+        col.prop(lanpr, "depth_width_influence")
+        col.prop(lanpr, "depth_width_curve")
+        col = layout.column(align = True)
+        col.prop(lanpr, "depth_alpha_influence")
+        col.prop(lanpr, "depth_alpha_curve")
 
 
 class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
@@ -1132,7 +1160,8 @@ classes = (
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_line_components,
-    RENDER_PT_lanpr_line_effects,
+    RENDER_PT_lanpr_line_normal_effects,
+    RENDER_PT_lanpr_line_gpu_effects,
     RENDER_PT_lanpr_snake_sobel_parameters,
     RENDER_PT_lanpr_snake_settings,
     RENDER_PT_lanpr_software_chain_styles,
