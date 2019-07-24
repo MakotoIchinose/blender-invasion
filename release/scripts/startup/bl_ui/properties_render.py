@@ -1099,33 +1099,29 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
         return lanpr.enable_chaining and not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX')
 
     def draw(self, context):
-        layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         
-        layout.label(text="Threasholds:")
-        row = layout.row(align=True)
-        row.prop(lanpr, "chaining_geometry_threshold", text="Geometry")
-        row.prop(lanpr, "chaining_image_threshold", text="Image")
+        layout.prop(lanpr, "chaining_geometry_threshold")
+        layout.prop(lanpr, "chaining_image_threshold")
 
         if scene.render.engine=="BLENDER_LANPR":
-            layout.label(text="Taper:")
-            layout.prop(lanpr, "use_same_taper", expand = True)
+            layout.prop(lanpr, "use_same_taper", text="Taper Tips")
             if lanpr.use_same_taper == "DISABLED":
-                split = layout.split()
-                col = split.column(align = True)
-                col.label(text="Left:")
+                col = layout.column(align = True)
                 col.prop(lanpr,"taper_left_distance")
                 col.prop(lanpr,"taper_left_strength")
-                col = split.column(align = True)
-                col.label(text="Right:")
+                col = layout.column(align = True)
                 col.prop(lanpr,"taper_right_distance")
                 col.prop(lanpr,"taper_right_strength")
             else:
-                split = layout.split()
-                col = split.column(align = True)
-                col.prop(lanpr,"taper_left_distance")
-                col.prop(lanpr,"taper_left_strength") 
+                col = layout.column(align = True)
+                col.prop(lanpr,"taper_left_distance", text="Distance")
+                col.prop(lanpr,"taper_left_strength", text="Strength") 
 
 
 classes = (
