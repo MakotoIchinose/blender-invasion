@@ -1915,6 +1915,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       case TSE_DEFGROUP_BASE:
         data.icon = ICON_GROUP_VERTEX;
         break;
+      case TSE_DEFGROUP:
+        data.icon = ICON_GROUP_VERTEX;
+        break;
       case TSE_BONE:
       case TSE_EBONE:
         data.icon = ICON_BONE_DATA;
