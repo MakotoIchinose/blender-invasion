@@ -747,7 +747,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
 
         if scene.render.engine=="BLENDER_LANPR":
             col.prop(lanpr, "master_mode") 
-        elif mode != "SOFTWARE":
+        else:
             mode = "SOFTWARE"
 
         if mode == "DPIX" and lanpr.shader_error:
@@ -784,19 +784,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             c.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
         
         layout.prop(lanpr, "crease_threshold", slider=True)
-
-        #goes to option panel
-        #if mode == "DPIX":
-        #    layout.label(text="Cache Size:")
-        #    layout.prop(lanpr,"gpu_cache_size", expand=True)
-        #    layout.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-        #layout.prop(lanpr, "disable_edge_splits")
-        #row = layout.row()
-        #row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-        #else:
-        #    row = layout.row()
-        #    row.label(text='Chain is enabled to generate GP strokes.')
-        #row.prop(lanpr,"enable_chaining", text = "Chaining")
 
         #deprecated
         #layout.label(text="Background Color:")
@@ -1123,6 +1110,39 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
                 col.prop(lanpr,"taper_left_distance", text="Distance")
                 col.prop(lanpr,"taper_left_strength", text="Strength") 
 
+class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
+    bl_label = "Options"
+    bl_parent_id = "RENDER_PT_lanpr"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def draw(self, context):
+        scene = context.scene
+        lanpr = scene.lanpr
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        mode = lanpr.master_mode
+        if scene.render.engine!="BLENDER_LANPR":
+            mode = "SOFTWARE"
+
+        if mode == "DPIX":
+            layout.prop(lanpr,"gpu_cache_size")
+            
+        layout.prop(lanpr,"enable_intersections")
+        layout.prop(lanpr, "disable_edge_splits")
+
+        if scene.render.engine=='BLENDER_LANPR':
+            layout.prop(lanpr,"enable_chaining", text = "Chain lines")
+        else:
+            layout.label(text='Chain is enabled to generate GP strokes.')
+
 
 classes = (
     RENDER_PT_context,
@@ -1155,6 +1175,7 @@ classes = (
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
+    RENDER_PT_lanpr_options,
     RENDER_PT_lanpr_line_components,
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_line_gpu_effects,
