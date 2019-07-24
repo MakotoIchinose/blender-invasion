@@ -133,11 +133,11 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->thickness = 1.0f;
   copy_v3_fl(ll->color, 0.8);
   ll->color[3] = 1.0f;
-  ll->enable_contour = 1;
-  ll->enable_crease = 1;
-  ll->enable_material_seperate = 1;
-  ll->enable_edge_mark = 1;
-  ll->enable_intersection = 1;
+  ll->contour.enabled = 1;
+  ll->crease.enabled = 1;
+  ll->material_separate.enabled = 1;
+  ll->edge_mark.enabled = 1;
+  ll->intersection.enabled = 1;
 
   lanpr->active_layer = ll;
   BLI_addtail(&lanpr->line_layers, ll);
@@ -291,23 +291,23 @@ static int lanpr_enable_all_line_types_exec(struct bContext *C, struct wmOperato
     return OPERATOR_FINISHED;
   }
 
-  ll->enable_contour = 1;
-  ll->enable_crease = 1;
-  ll->enable_edge_mark = 1;
-  ll->enable_material_seperate = 1;
-  ll->enable_intersection = 1;
+  ll->contour.enabled = 1;
+  ll->crease.enabled = 1;
+  ll->edge_mark.enabled = 1;
+  ll->material_separate.enabled = 1;
+  ll->intersection.enabled = 1;
 
-  copy_v3_v3(ll->contour_color, ll->color);
-  copy_v3_v3(ll->crease_color, ll->color);
-  copy_v3_v3(ll->edge_mark_color, ll->color);
-  copy_v3_v3(ll->material_color, ll->color);
-  copy_v3_v3(ll->intersection_color, ll->color);
+  copy_v3_v3(ll->contour.color, ll->color);
+  copy_v3_v3(ll->crease.color, ll->color);
+  copy_v3_v3(ll->edge_mark.color, ll->color);
+  copy_v3_v3(ll->material_separate.color, ll->color);
+  copy_v3_v3(ll->intersection.color, ll->color);
 
-  ll->thickness_contour = 1;
-  ll->thickness_crease = 1;
-  ll->thickness_material = 1;
-  ll->thickness_edge_mark = 1;
-  ll->thickness_intersection = 1;
+  ll->contour.thickness = 1;
+  ll->crease.thickness = 1;
+  ll->material_separate.thickness = 1;
+  ll->edge_mark.thickness = 1;
+  ll->intersection.thickness = 1;
 
   return OPERATOR_FINISHED;
 }
@@ -2597,7 +2597,7 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
 
   return Result;
 }
-static void lanpr_triangle_enable_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
+static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
                                                                  LANPR_RenderTriangle *rt,
                                                                  LANPR_BoundingArea *ba)
 {
@@ -2614,10 +2614,10 @@ static void lanpr_triangle_enable_intersections_in_bounding_area(LANPR_RenderBuf
   real *FBC0 = rt->v[0]->fbcoord, *FBC1 = rt->v[1]->fbcoord, *FBC2 = rt->v[2]->fbcoord;
 
   if (ba->child) {
-    lanpr_triangle_enable_intersections_in_bounding_area(rb, rt, &ba->child[0]);
-    lanpr_triangle_enable_intersections_in_bounding_area(rb, rt, &ba->child[1]);
-    lanpr_triangle_enable_intersections_in_bounding_area(rb, rt, &ba->child[2]);
-    lanpr_triangle_enable_intersections_in_bounding_area(rb, rt, &ba->child[3]);
+    lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[0]);
+    lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[1]);
+    lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[2]);
+    lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[3]);
     return;
   }
 
@@ -3322,7 +3322,7 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
                                                    LANPR_RenderTriangle *rt,
                                                    real *LRUB,
                                                    int Recursive);
-static void lanpr_triangle_enable_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
+static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
                                                                  LANPR_RenderTriangle *rt,
                                                                  LANPR_BoundingArea *ba);
 
@@ -3485,7 +3485,7 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
       lanpr_split_bounding_area(rb, RootBoundingArea);
     }
     if (Recursive && rb->enable_intersections) {
-      lanpr_triangle_enable_intersections_in_bounding_area(rb, rt, RootBoundingArea);
+      lanpr_triangle_calculate_intersections_in_bounding_area(rb, rt, RootBoundingArea);
     }
   }
   else {

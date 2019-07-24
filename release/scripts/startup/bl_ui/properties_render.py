@@ -833,6 +833,14 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         #    layout.label(text="Vectorization:")
         #    layout.prop(lanpr, "enable_vector_trace", expand = True)
 
+def lanpr_make_line_type(expand,layout,line_type,label):
+    layout.prop(line_type, "enabled", text=label)
+    if expand and line_type.enabled:
+        c = layout.column(align=True)
+        c.prop(line_type, "color", text="Color")
+        c.prop(line_type, "thickness", slider=True)
+
+
 class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
     bl_parent_id = "RENDER_PT_lanpr"
@@ -877,37 +885,14 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         if not expand:
             col.prop(active_layer, "color")
         col.prop(active_layer, "thickness")
-        
-        layout.prop(active_layer, "enable_contour", text="Draw Contour")
-        if expand and active_layer.enable_contour:
-            c = layout.column(align=True)
-            c.prop(active_layer, "contour_color", text="Color")
-            c.prop(active_layer, "thickness_contour", slider=True)
 
-        layout.prop(active_layer, "enable_crease", text="Draw Crease")
-        if expand and active_layer.enable_crease:
-            c = layout.column(align=True)
-            c.prop(active_layer, "contour_color", text="Color")
-            c.prop(active_layer, "thickness_contour", slider=True)
-
-        layout.prop(active_layer, "enable_edge_mark", text="Draw Mark")
-        if expand and active_layer.enable_edge_mark:
-            c = layout.column(align=True)
-            c.prop(active_layer, "edge_mark_color", text="Color")
-            c.prop(active_layer, "thickness_edge_mark", slider=True)
-
-        layout.prop(active_layer, "enable_material_seperate", text="Draw Material")
-        if expand and active_layer.enable_material_seperate:
-            c = layout.column(align=True)
-            c.prop(active_layer, "material_color", text="Color")
-            c.prop(active_layer, "thickness_material", slider=True)
+        lanpr_make_line_type(expand,layout,active_layer.contour,"Draw Contour")
+        lanpr_make_line_type(expand,layout,active_layer.crease,"Draw Crease")
+        lanpr_make_line_type(expand,layout,active_layer.edge_mark,"Draw EdgeMark")
+        lanpr_make_line_type(expand,layout,active_layer.material_separate,"Draw Material")
 
         if lanpr.enable_intersections:
-            layout.prop(active_layer, "enable_intersection", text="Draw Intersection")
-            if expand and active_layer.enable_intersection:
-                c = layout.column(align=True)
-                c.prop(active_layer, "intersection_color", text="Color")
-                c.prop(active_layer, "thickness_intersection", slider=True)
+            lanpr_make_line_type(expand,layout,active_layer.intersection,"Draw Intersection")
         else:
             layout.label(text= "Intersection calculation disabled.")
 

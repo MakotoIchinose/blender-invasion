@@ -81,6 +81,12 @@ typedef struct LANPR_LineLayerComponent {
 
 } LANPR_LineLayerComponent;
 
+typedef struct LANPR_LineType{
+  int enabled;
+  float thickness;
+  float color[4];
+}LANPR_LineType;
+
 typedef struct LANPR_LineLayer {
   struct LANPR_LineLayer *next, *prev;
 
@@ -90,25 +96,15 @@ typedef struct LANPR_LineLayer {
   int qi_begin;
   int qi_end; /* these are for QI Range thing... just occlusion levels */
 
-  int enable_contour;
-  int enable_crease;
-  int enable_edge_mark;
-  int enable_material_seperate;
-  int enable_intersection;
+  LANPR_LineType contour;
+  LANPR_LineType crease;
+  LANPR_LineType edge_mark;
+  LANPR_LineType material_separate;
+  LANPR_LineType intersection;
 
   float thickness;
-  float thickness_contour;
-  float thickness_crease;
-  float thickness_material;
-  float thickness_edge_mark;
-  float thickness_intersection;
 
   float color[4];
-  float contour_color[4];
-  float crease_color[4];
-  float material_color[4];
-  float edge_mark_color[4];
-  float intersection_color[4];
 
   int use_same_style;
 
