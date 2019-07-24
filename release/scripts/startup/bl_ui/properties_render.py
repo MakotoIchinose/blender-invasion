@@ -739,100 +739,101 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         mode = lanpr.master_mode
 
         layout = self.layout
-
         layout.active = scene.render.engine=="BLENDER_LANPR" or lanpr.enabled
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        col = layout.column()
 
         if scene.render.engine=="BLENDER_LANPR":
-            layout.prop(lanpr, "master_mode") 
+            col.prop(lanpr, "master_mode") 
 
-        if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
+        elif mode != "SOFTWARE":
             mode = "SOFTWARE"
 
         if mode == "DPIX" and lanpr.shader_error:
             layout.label(text="DPIX transform shader compile error!")
-            return;
+            return
 
-        if mode == "SOFTWARE" or mode == "DPIX":
-            if not scene.camera:
-                has_camera=False
-                layout.label(text="No active camera.")
-            else:
-                has_camera=True
-
-            if scene.render.engine!="BLENDER_LANPR":
-                row=layout.row(align=True)
-                row.enabled=has_camera
-                row.prop(lanpr,"auto_update",toggle=True,text='Auto Update')
-                row.prop(lanpr,"gpencil_overwrite",toggle=True,text='Overwrite')
-                if not lanpr.auto_update:
-                    row=layout.row()
-                    row.enabled=has_camera
-                    row.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
-                row=layout.row()
-                row.enabled=has_camera
-                row.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
-            else:
-                row=layout.row(align=True)
-                row.enabled = has_camera
-                row.prop(lanpr,'auto_update',toggle=True,text='Auto Update')
-                txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
-                if not lanpr.auto_update:
-                    row.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
-                layout.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
-            
-            if mode == "DPIX":
-                layout.label(text="Cache Size:")
-                layout.prop(lanpr,"gpu_cache_size", expand=True)
-                layout.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-
-            layout.prop(lanpr, "disable_edge_splits")
-            
-            layout.label(text="Background Color:")
-            row = layout.row(align=True)
-            row.prop(lanpr,"use_world_background",toggle=True,icon='WORLD',text="Use World")
-            if(lanpr.use_world_background):
-                row.prop(scene.world, "color",text="")
-            else:
-                row.prop(lanpr, "background_color",text="")
-            layout.prop(lanpr, "crease_threshold")
-
-            if mode == "DPIX" and len(lanpr.layers)==0:
-                layout.label(text="You don't have a layer to display.")
-                layout.operator("scene.lanpr_add_line_layer");
-
-            if mode == "SOFTWARE":
-                row = layout.row()
-                row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
-
-                if scene.render.engine=="BLENDER_LANPR":
-                    row.prop(lanpr,"enable_chaining", text = "Chaining")
-                    
-                    split = layout.split(factor=0.4)
-                    col = split.column()
-                    col.label(text="Line Layers:")
-                    col = split.column()
-                    col.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
-                    row=layout.row()
-                    row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
-                    col=row.column(align=True)
-                    if active_layer:
-                        col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-                        col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
-                        col.separator()
-                        col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
-                        col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
-                        col.separator()
-                        col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
-                    else:
-                        col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
-                else:
-                    row = layout.row()
-                    row.label(text='Chain is enabled to generate GP strokes.')
+        #if mode == "SOFTWARE" or mode == "DPIX":
+        if not scene.camera:
+            has_camera=False
+            col.label(text="No active camera.")
         else:
-            layout.label(text="Vectorization:")
-            layout.prop(lanpr, "enable_vector_trace", expand = True)
+            has_camera=True
+        
+        c=col.column()
+        c.enabled = has_camera
+        if scene.render.engine!="BLENDER_LANPR":
+            c=layout.row(align=True)
+            c.enabled=has_camera
+            c.prop(lanpr,"auto_update", text='Auto Update')
+            c.prop(lanpr,"gpencil_overwrite", text='Overwrite')
+            if not lanpr.auto_update:
+                c=layout.row()
+                c.enabled=has_camera
+                c.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+            c=layout.row()
+            c.enabled=has_camera
+            c.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
+        else:
+            c.prop(lanpr,'auto_update', text='Auto Update')
+            txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
+            if not lanpr.auto_update:
+                c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
 
-class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
+            c.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
+        
+        layout.prop(lanpr, "crease_threshold", slider=True)
+
+        #goes to option panel
+        #if mode == "DPIX":
+        #    layout.label(text="Cache Size:")
+        #    layout.prop(lanpr,"gpu_cache_size", expand=True)
+        #    layout.prop(lanpr,"enable_intersections", text = "Intersection Lines")
+        #layout.prop(lanpr, "disable_edge_splits")
+        #row = layout.row()
+        #row.prop(lanpr,"enable_intersections", text = "Intersection Lines")
+        #else:
+        #    row = layout.row()
+        #    row.label(text='Chain is enabled to generate GP strokes.')
+        #row.prop(lanpr,"enable_chaining", text = "Chaining")
+
+        #deprecated
+        #layout.label(text="Background Color:")
+        #row = layout.row(align=True)
+        #row.prop(lanpr,"use_world_background",toggle=True,icon='WORLD',text="Use World")
+        #if(lanpr.use_world_background):
+        #    row.prop(scene.world, "color",text="")
+        #else:
+        #    row.prop(lanpr, "background_color",text="")
+        
+
+        if mode == "DPIX" and len(lanpr.layers)==0:
+            layout.label(text="You don't have a layer to display.")
+            layout.operator("scene.lanpr_add_line_layer");
+
+        if scene.render.engine=="BLENDER_LANPR" and mode == "SOFTWARE":
+            layout.operator("scene.lanpr_auto_create_line_layer", text = "Default", icon = "ADD")
+            row=layout.row()
+            row.template_list("LANPR_UL_linesets", "", lanpr, "layers", lanpr.layers, "active_layer_index", rows=4)
+            col=row.column(align=True)
+            if active_layer:
+                col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+                col.operator("scene.lanpr_delete_line_layer", icon="REMOVE", text='')
+                col.separator()
+                col.operator("scene.lanpr_move_line_layer",icon='TRIA_UP', text='').direction = "UP"
+                col.operator("scene.lanpr_move_line_layer",icon='TRIA_DOWN', text='').direction = "DOWN"
+                col.separator()
+                col.operator("scene.lanpr_rebuild_all_commands",icon="FILE_REFRESH", text='')
+            else:
+                col.operator("scene.lanpr_add_line_layer", icon="ADD", text='')
+
+        #else:
+        #    layout.label(text="Vectorization:")
+        #    layout.prop(lanpr, "enable_vector_trace", expand = True)
+
+class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
     bl_label = "Layer Settings"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
@@ -846,10 +847,13 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
         return scene.render.engine=="BLENDER_LANPR" and active_layer
 
     def draw(self, context):
-        layout = self.layout
         scene = context.scene
         lanpr = scene.lanpr
         active_layer = lanpr.layers.active_layer
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
 
         mode = lanpr.master_mode
         if scene.render.engine!="BLENDER_LANPR" and mode != "SOFTWARE":
@@ -859,62 +863,52 @@ class RENDER_PT_lanpr_line_types(RenderButtonsPanel, Panel):
             active_layer = lanpr.layers[0]
 
         if mode == "SOFTWARE":
-            row = layout.row(align=True)
-            row.prop(active_layer, "use_multiple_levels", icon='GP_MULTIFRAME_EDITING', icon_only=True)
-            row.prop(active_layer, "qi_begin", text='Level')
+            layout.prop(active_layer, "use_multiple_levels")
+            col = layout.column(align=True)
+            col.prop(active_layer, "qi_begin", text='Level Start')
             if active_layer.use_multiple_levels:
-                row.prop(active_layer, "qi_end", text='To')
+                col.prop(active_layer, "qi_end", text='End')
         
-        row = layout.row(align=True)
-        row.prop(active_layer,"use_same_style")
-        if active_layer.use_same_style:
-            row = layout.row(align=True)
-            row.prop(active_layer, "color", text="")
-            row.prop(active_layer, "thickness", text="")
-            row = layout.row(align=True)
-            row.prop(active_layer, "enable_contour", text="Contour", toggle=True)
-            row.prop(active_layer, "enable_crease", text="Crease", toggle=True)
-            row.prop(active_layer, "enable_edge_mark", text="Mark", toggle=True)
-            row.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
-            row.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
+        layout.prop(active_layer,"use_same_style")
+
+        expand = not active_layer.use_same_style
+
+        col = layout.column(align=True)
+        if not expand:
+            col.prop(active_layer, "color")
+        col.prop(active_layer, "thickness")
+        
+        layout.prop(active_layer, "enable_contour", text="Draw Contour")
+        if expand and active_layer.enable_contour:
+            c = layout.column(align=True)
+            c.prop(active_layer, "contour_color", text="Color")
+            c.prop(active_layer, "thickness_contour", slider=True)
+
+        layout.prop(active_layer, "enable_crease", text="Draw Crease")
+        if expand and active_layer.enable_crease:
+            c = layout.column(align=True)
+            c.prop(active_layer, "contour_color", text="Color")
+            c.prop(active_layer, "thickness_contour", slider=True)
+
+        layout.prop(active_layer, "enable_edge_mark", text="Draw Mark")
+        if expand and active_layer.enable_edge_mark:
+            c = layout.column(align=True)
+            c.prop(active_layer, "edge_mark_color", text="Color")
+            c.prop(active_layer, "thickness_edge_mark", slider=True)
+
+        layout.prop(active_layer, "enable_material_seperate", text="Draw Material")
+        if expand and active_layer.enable_material_seperate:
+            c = layout.column(align=True)
+            c.prop(active_layer, "material_color", text="Color")
+            c.prop(active_layer, "thickness_material", slider=True)
+
+        if lanpr.enable_intersections:
+            layout.prop(active_layer, "enable_intersection", text="Draw Intersection")
+            if expand and active_layer.enable_intersection:
+                c = layout.column(align=True)
+                c.prop(active_layer, "intersection_color", text="Color")
+                c.prop(active_layer, "thickness_intersection", slider=True)
         else:
-            row.prop(active_layer, "thickness", text="")
-            split = layout.split(factor=0.3)
-            col = split.column()
-            col.prop(active_layer, "enable_contour", text="Contour", toggle=True)
-            col.prop(active_layer, "enable_crease", text="Crease", toggle=True)
-            col.prop(active_layer, "enable_edge_mark", text="Mark", toggle=True)
-            col.prop(active_layer, "enable_material_seperate", text="Material", toggle=True)
-            col.prop(active_layer, "enable_intersection", text="Intersection", toggle=True)
-            col = split.column()
-            row = col.row(align = True)
-            row.enabled = active_layer.enable_contour
-            row.prop(active_layer, "contour_color", text="")
-            row.prop(active_layer, "thickness_contour", text="", slider=True)
-            row = col.row(align = True)
-            row.enabled = active_layer.enable_crease
-            row.prop(active_layer, "crease_color", text="")
-            row.prop(active_layer, "thickness_crease", text="", slider=True)
-            row = col.row(align = True)
-            row.enabled = active_layer.enable_edge_mark
-            row.prop(active_layer, "edge_mark_color", text="")
-            row.prop(active_layer, "thickness_edge_mark", text="", slider=True)
-            row = col.row(align = True)
-            row.enabled = active_layer.enable_material_seperate
-            row.prop(active_layer, "material_color", text="")
-            row.prop(active_layer, "thickness_material", text="", slider=True)
-            row = col.row(align = True)
-            row.enabled = (active_layer.enable_intersection and lanpr.enable_intersections)
-            row.prop(active_layer, "intersection_color", text="")
-            row.prop(active_layer, "thickness_intersection", text="", slider=True)
-
-            if mode == "DPIX" and active_layer.enable_intersection:
-                row = col.row(align = True)
-                row.prop(lanpr,"enable_intersections", toggle = True, text = "Enable")
-                if lanpr.enable_intersections:
-                    row.operator("scene.lanpr_calculate", text= "Recalculate")
-
-        if not lanpr.enable_intersections:
             layout.label(text= "Intersection calculation disabled.")
 
 class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
@@ -1151,7 +1145,7 @@ classes = (
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lanpr,
-    RENDER_PT_lanpr_line_types,
+    RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_line_components,
     RENDER_PT_lanpr_line_effects,
     RENDER_PT_lanpr_snake_sobel_parameters,
