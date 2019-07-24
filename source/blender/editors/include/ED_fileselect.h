@@ -50,6 +50,9 @@ typedef struct FileDetailsColumn {
   float width;
   /* The sort type to use when sorting by this column. */
   int sort_type; /* eFileSortType */
+
+  /* Alignment of column texts, header text is always left aligned */
+  int text_align; /* eFontStyle_Align */
 } FileDetailsColumn;
 
 typedef struct FileLayout {

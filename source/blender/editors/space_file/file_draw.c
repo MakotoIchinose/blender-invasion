@@ -811,7 +811,7 @@ static void draw_details_columns(const FileSelectParams *params,
 {
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
-  int sx = pos_x - layout->tile_border_x, sy = pos_y;
+  int sx = pos_x - layout->tile_border_x - (UI_UNIT_X * 0.1f), sy = pos_y;
 
   for (FileListColumns column_type = 0; column_type < COLUMN_MAX; column_type++) {
     const FileDetailsColumn *column = &layout->details_columns[column_type];
@@ -830,7 +830,7 @@ static void draw_details_columns(const FileSelectParams *params,
                        str,
                        column->width - 2 * DETAILS_COLUMN_PADDING,
                        layout->tile_h,
-                       UI_STYLE_TEXT_LEFT,
+                       column->text_align,
                        text_col);
     }
 

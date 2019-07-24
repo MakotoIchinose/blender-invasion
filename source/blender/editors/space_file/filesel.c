@@ -642,10 +642,13 @@ static void details_columns_init(const FileSelectParams *params, FileLayout *lay
 
   layout->details_columns[COLUMN_NAME].name = "Name";
   layout->details_columns[COLUMN_NAME].sort_type = FILE_SORT_ALPHA;
+  layout->details_columns[COLUMN_NAME].text_align = UI_STYLE_TEXT_LEFT;
   layout->details_columns[COLUMN_DATETIME].name = "Date Modified";
   layout->details_columns[COLUMN_DATETIME].sort_type = FILE_SORT_TIME;
+  layout->details_columns[COLUMN_DATETIME].text_align = UI_STYLE_TEXT_CENTER;
   layout->details_columns[COLUMN_SIZE].name = "Size";
   layout->details_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
+  layout->details_columns[COLUMN_SIZE].text_align = UI_STYLE_TEXT_RIGHT;
 }
 
 void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
