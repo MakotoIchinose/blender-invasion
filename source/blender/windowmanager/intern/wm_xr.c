@@ -213,6 +213,7 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
+  float scalemat[4][4], quat[4];
   float temp[4][4];
 
   perspective_m4_fov(r_proj_mat,
@@ -223,7 +224,14 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
                      clip_start,
                      clip_end);
 
-  ED_view3d_to_m4(temp, draw_view->pose.position, draw_view->pose.orientation_quat, 1.0f);
+  scale_m4_fl(scalemat, 1.0f);
+  invert_qt_qt_normalized(quat, draw_view->pose.orientation_quat);
+  quat_to_mat4(temp, quat);
+  translate_m4(temp,
+               -draw_view->pose.position[0],
+               -draw_view->pose.position[1],
+               -draw_view->pose.position[2]);
+
   if (scene->camera) {
     invert_m4_m4(scene->camera->imat, scene->camera->obmat);
     mul_m4_m4m4(r_view_mat, temp, scene->camera->imat);
