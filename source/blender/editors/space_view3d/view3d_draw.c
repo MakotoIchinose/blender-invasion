@@ -1657,8 +1657,6 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
     v3d.flag2 = V3D_HIDE_OVERLAYS;
   }
 
-  v3d.shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
-
   rv3d.persp = RV3D_PERSP;
   v3d.clip_start = clip_start;
   v3d.clip_end = clip_end;
