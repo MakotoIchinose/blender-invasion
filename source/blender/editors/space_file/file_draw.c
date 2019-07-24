@@ -415,7 +415,7 @@ static void file_draw_string(int sx,
   /* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict
    * (for buttons it works) */
   rect.xmin = sx;
-  rect.xmax = (int)(sx + ceil(width + 5.0f / UI_DPI_FAC));
+  rect.xmax = sx + round_fl_to_int(width);
   rect.ymin = sy - height;
   rect.ymax = sy;
 
@@ -704,41 +704,29 @@ static void draw_columnheader_columns(const FileSelectParams *params,
                                       const uchar text_col[4])
 {
   const float divider_pad = 0.2 * layout->columnheader_h;
-  int remaining_width = layout->tile_w;
-  int sx = 0, sy = 0;
-  int ofs_x;
+  int sx = v2d->cur.xmin, sy = v2d->cur.ymax;
 
-  /* To get x position matching item drawing. */
-  ED_fileselect_layout_tilepos(layout, 0, &ofs_x, &sy);
-  sx = ofs_x + layout->tile_w;
-  sy = v2d->cur.ymax;
-
-  for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
+  for (FileListColumns column_type = 0; column_type < COLUMN_MAX; column_type++) {
     if (!file_column_type_enabled(params, column_type)) {
       continue;
     }
     const FileDetailsColumn *column = &layout->details_columns[column_type];
-    const int width = (column_type == COLUMN_NAME) ? remaining_width :
-                                                     column->width + DETAILS_COLUMN_PADDING;
 
     /* Active sort type triangle */
     if (params->sort == column->sort_type) {
       float tri_color[4];
 
       rgba_uchar_to_float(tri_color, text_col);
-      UI_draw_icon_tri(sx - ofs_x - 0.15f * U.widget_unit,
-                       sy + (0.1f * U.widget_unit) - layout->columnheader_h / 2,
+      UI_draw_icon_tri(sx + column->width - (0.3f * U.widget_unit) - DETAILS_COLUMN_PADDING / 2.0f,
+                       sy + (0.1f * U.widget_unit) - (layout->columnheader_h / 2),
                        'v',
                        tri_color);
     }
 
-    sx -= width;
-    remaining_width -= width;
-
-    file_draw_string(sx + ofs_x,
+    file_draw_string(sx + DETAILS_COLUMN_PADDING,
                      sy - layout->tile_border_y,
                      column->name,
-                     width,
+                     column->width - 2 * DETAILS_COLUMN_PADDING,
                      layout->columnheader_h - layout->tile_border_y,
                      UI_STYLE_TEXT_LEFT,
                      text_col);
@@ -756,6 +744,8 @@ static void draw_columnheader_columns(const FileSelectParams *params,
       immEnd();
       immUnbindProgram();
     }
+
+    sx += column->width;
   }
 
   /* Vertical separator lines line */
@@ -817,32 +807,34 @@ static void draw_details_columns(const FileSelectParams *params,
                                  const FileDirEntry *file,
                                  const int pos_x,
                                  const int pos_y,
-                                 const eFontStyle_Align align,
                                  const uchar text_col[4])
 {
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const bool update_stat_strings = small_size != SMALL_SIZE_CHECK(layout->curr_size);
-  int sx = pos_x + layout->tile_w, sy = pos_y;
+  int sx = pos_x - layout->tile_border_x, sy = pos_y;
 
-  for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
+  for (FileListColumns column_type = 0; column_type < COLUMN_MAX; column_type++) {
+    const FileDetailsColumn *column = &layout->details_columns[column_type];
+
     /* Name column is not a detail column (should already be drawn), always skip here. */
     if ((column_type == COLUMN_NAME) || !file_column_type_enabled(params, column_type)) {
+      sx += column->width;
       continue;
     }
     const char *str = filelist_get_details_column_string(
         column_type, file, small_size, update_stat_strings);
-    const FileDetailsColumn *column = &layout->details_columns[column_type];
 
-    sx -= (int)column->width + DETAILS_COLUMN_PADDING;
     if (str) {
       file_draw_string(sx + DETAILS_COLUMN_PADDING,
                        sy - layout->tile_border_y,
                        str,
-                       column->width,
+                       column->width - 2 * DETAILS_COLUMN_PADDING,
                        layout->tile_h,
-                       align,
+                       UI_STYLE_TEXT_LEFT,
                        text_col);
     }
+
+    sx += column->width;
   }
 }
 
@@ -896,7 +888,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
   textwidth = (FILE_IMGDISPLAY == params->display) ?
                   layout->tile_w :
-                  (int)layout->details_columns[COLUMN_NAME].width;
+                  round_fl_to_int(layout->details_columns[COLUMN_NAME].width);
   textheight = (int)(layout->textheight * 3.0 / 2.0 + 0.5);
 
   align = (FILE_IMGDISPLAY == params->display) ? UI_STYLE_TEXT_CENTER : UI_STYLE_TEXT_LEFT;
@@ -937,10 +929,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
     char path[FILE_MAX_LIBEXTRA];
     int padx = 0.1f * UI_UNIT_X;
     int icon_ofs = 0;
-    int xmin = 0;
 
     ED_fileselect_layout_tilepos(layout, i, &sx, &sy);
-    xmin = sx;
     sx += (int)(v2d->tot.xmin + padx);
     sy = (int)(v2d->tot.ymax - sy);
 
@@ -1005,18 +995,9 @@ void file_draw_list(const bContext *C, ARegion *ar)
 
     if (file_selflag & FILE_SEL_EDITING) {
       uiBut *but;
-      short width;
-
-      if (params->display == FILE_SHORTDISPLAY) {
-        width = layout->tile_w - 2 * padx;
-      }
-      else if (params->display == FILE_LONGDISPLAY) {
-        width = layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING - 2 * padx;
-      }
-      else {
-        BLI_assert(params->display == FILE_IMGDISPLAY);
-        width = textwidth;
-      }
+      const short width = (params->display == FILE_IMGDISPLAY) ?
+                              textwidth :
+                              layout->details_columns[COLUMN_NAME].width - DETAILS_COLUMN_PADDING;
 
       but = uiDefBut(block,
                      UI_BTYPE_TEXT,
@@ -1040,18 +1021,21 @@ void file_draw_list(const bContext *C, ARegion *ar)
             sfile->files, file, FILE_SEL_REMOVE, FILE_SEL_EDITING, CHECK_ALL);
       }
     }
-
-    if (!(file_selflag & FILE_SEL_EDITING)) {
+    else {
       const int tpos = (FILE_IMGDISPLAY == params->display) ?
                            sy - layout->tile_h + layout->textheight :
                            sy - layout->tile_border_y;
-      file_draw_string(
-          sx + 1 + icon_ofs, tpos, file->name, (float)textwidth, textheight, align, text_col);
+      file_draw_string(sx + 1 + icon_ofs,
+                       tpos,
+                       file->name,
+                       (float)textwidth - 1 - icon_ofs - padx - layout->tile_border_x,
+                       textheight,
+                       align,
+                       text_col);
     }
 
     if (params->display != FILE_IMGDISPLAY) {
-      sx += (int)layout->details_columns[COLUMN_NAME].width + DETAILS_COLUMN_PADDING;
-      draw_details_columns(params, layout, file, xmin, sy, align, text_col);
+      draw_details_columns(params, layout, file, sx, sy, text_col);
     }
   }
 

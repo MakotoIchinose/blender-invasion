@@ -547,25 +547,24 @@ FileListColumns file_column_type_find_isect(const View2D *v2d,
       layout, (int)(v2d->tot.xmin + mx), (int)(v2d->tot.ymax - my));
   if (offset_tile > -1) {
     int tile_x, tile_y;
-    int remaining_width = layout->tile_w;
+    int pos_x = 0;
     int rel_x; /* x relative to the hovered tile */
 
     ED_fileselect_layout_tilepos(layout, offset_tile, &tile_x, &tile_y);
-    rel_x = mx - tile_x;
+    /* Column header drawing doesn't use left tile border, so subtract it. */
+    rel_x = mx - (tile_x - layout->tile_border_x);
 
-    for (FileListColumns column = COLUMN_MAX - 1; column >= 0; column--) {
+    for (FileListColumns column = 0; column < COLUMN_MAX; column++) {
       if (!file_column_type_enabled(params, column)) {
         continue;
       }
-      const int width = (column == COLUMN_NAME) ?
-                            remaining_width :
-                            layout->details_columns[column].width + DETAILS_COLUMN_PADDING;
+      const int width = layout->details_columns[column].width;
 
-      if ((rel_x > remaining_width - width) && (x < (remaining_width + layout->tile_border_x))) {
+      if (IN_RANGE(rel_x, pos_x, pos_x + width)) {
         return column;
       }
 
-      remaining_width -= width;
+      pos_x += width;
     }
   }
 
@@ -611,17 +610,30 @@ static void details_columns_widths(const FileSelectParams *params, FileLayout *l
 {
   FileDetailsColumn *columns = layout->details_columns;
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
-  const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING;
+  const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING * 2;
 
   for (int i = 0; i < COLUMN_MAX; ++i) {
     layout->details_columns[i].width = 0;
   }
 
-  columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   /* Biggest possible reasonable values... */
   columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" : "23-Dec-89 23:59") +
                                    pad;
-  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
+  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MB") + pad;
+  if (params->display == FILE_IMGDISPLAY) {
+    columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
+  }
+  /* Name column uses remaining width */
+  else {
+    int remwidth = layout->tile_w;
+    for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
+      if ((column_type == COLUMN_NAME) || !file_column_type_enabled(params, column_type)) {
+        continue;
+      }
+      remwidth -= columns[column_type].width;
+    }
+    columns[COLUMN_NAME].width = remwidth;
+  }
 }
 
 static void details_columns_init(const FileSelectParams *params, FileLayout *layout)
@@ -657,9 +669,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
   textheight = (int)file_font_pointsize();
   layout = sfile->layout;
   layout->textheight = textheight;
-
-  /* Init for all display types (could skip for IMGDISPLAY). */
-  details_columns_init(params, layout);
 
   if (params->display == FILE_IMGDISPLAY) {
     layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
@@ -700,6 +709,8 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->offset_top = layout->columnheader_h;
     rowcount = (int)(BLI_rctf_size_y(&v2d->cur) - layout->offset_top - 2 * layout->tile_border_y) /
                (layout->tile_h + 2 * layout->tile_border_y);
+    details_columns_init(params, layout);
+
     if ((int)rowcount / numfiles >= 1) {
       layout->rows = rowcount;
     }
@@ -725,6 +736,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     /* Padding by full scrollbar H is too much, can overlap tile border Y. */
     layout->rows = (layout->height - V2D_SCROLL_HEIGHT + layout->tile_border_y) /
                    (layout->tile_h + 2 * layout->tile_border_y);
+    details_columns_init(params, layout);
 
     maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
              (int)layout->details_columns[COLUMN_NAME].width + column_space +
