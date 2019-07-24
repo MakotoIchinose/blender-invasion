@@ -37,8 +37,7 @@ struct wmWindowManager;
 typedef enum FileListColumns {
   COLUMN_NONE = -1,
   COLUMN_NAME = 0,
-  COLUMN_DATE,
-  COLUMN_TIME,
+  COLUMN_DATETIME,
   COLUMN_SIZE,
 
   COLUMN_MAX

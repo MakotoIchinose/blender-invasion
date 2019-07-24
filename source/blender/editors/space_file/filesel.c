@@ -522,10 +522,8 @@ bool file_column_type_enabled(const FileSelectParams *params, FileListColumns co
     case COLUMN_NAME:
       /* Always enabled */
       return true;
-    case COLUMN_DATE:
-      return (params->details_flags & FILE_DETAILS_DATE) != 0;
-    case COLUMN_TIME:
-      return (params->details_flags & FILE_DETAILS_TIME) != 0;
+    case COLUMN_DATETIME:
+      return (params->details_flags & FILE_DETAILS_DATETIME) != 0;
     case COLUMN_SIZE:
       return (params->details_flags & FILE_DETAILS_SIZE) != 0;
     default:
@@ -621,8 +619,8 @@ static void details_columns_widths(const FileSelectParams *params, FileLayout *l
 
   columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   /* Biggest possible reasonable values... */
-  columns[COLUMN_DATE].width = file_string_width(small_size ? "23/08/89" : "23-Dec-89") + pad;
-  columns[COLUMN_TIME].width = file_string_width("23:59") + pad;
+  columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" : "23-Dec-89 23:59") +
+                                   pad;
   columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MiB") + pad;
 }
 
@@ -632,10 +630,8 @@ static void details_columns_init(const FileSelectParams *params, FileLayout *lay
 
   layout->details_columns[COLUMN_NAME].name = "Name";
   layout->details_columns[COLUMN_NAME].sort_type = FILE_SORT_ALPHA;
-  layout->details_columns[COLUMN_DATE].name = "Date";
-  layout->details_columns[COLUMN_DATE].sort_type = FILE_SORT_TIME;
-  layout->details_columns[COLUMN_TIME].name = "Time";
-  layout->details_columns[COLUMN_TIME].sort_type = FILE_SORT_NONE;
+  layout->details_columns[COLUMN_DATETIME].name = "Date Modified";
+  layout->details_columns[COLUMN_DATETIME].sort_type = FILE_SORT_TIME;
   layout->details_columns[COLUMN_SIZE].name = "Size";
   layout->details_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
 }
@@ -732,8 +728,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
 
     maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
              (int)layout->details_columns[COLUMN_NAME].width + column_space +
-             (int)layout->details_columns[COLUMN_DATE].width + column_space +
-             (int)layout->details_columns[COLUMN_TIME].width + column_space +
+             (int)layout->details_columns[COLUMN_DATETIME].width + column_space +
              (int)layout->details_columns[COLUMN_SIZE].width + column_space;
     layout->tile_w = maxlen;
     if (layout->rows > 0) {

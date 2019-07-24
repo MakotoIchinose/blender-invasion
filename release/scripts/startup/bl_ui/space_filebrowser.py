@@ -44,8 +44,7 @@ class FILEBROWSER_HT_header(Header):
 
             row = layout.row(align=True)
             row.prop(params, "show_details_size", text="Size")
-            row.prop(params, "show_details_date", text="Date")
-            row.prop(params, "show_details_time", text="Time")
+            row.prop(params, "show_details_datetime", text="Date")
 
         layout.separator_spacer()
 
@@ -115,8 +114,7 @@ class FILEBROWSER_PT_filter(Panel):
         layout.label(text="Show Details:")
         row = layout.row(align=True)
         row.prop(params, "show_details_size", text="Size")
-        row.prop(params, "show_details_date", text="Date")
-        row.prop(params, "show_details_time", text="Time")
+        row.prop(params, "show_details_datetime", text="Date")
 
         layout.separator()
 

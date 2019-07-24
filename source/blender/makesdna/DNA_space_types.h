@@ -748,8 +748,7 @@ enum eFileSortType {
 /* FileSelectParams.details_flags */
 enum eFileDetails {
   FILE_DETAILS_SIZE = (1 << 0),
-  FILE_DETAILS_DATE = (1 << 1),
-  FILE_DETAILS_TIME = (1 << 2)
+  FILE_DETAILS_DATETIME = (1 << 1),
 };
 
 /* these values need to be hardcoded in structs, dna does not recognize defines */
@@ -884,8 +883,7 @@ typedef struct FileDirEntryRevision {
   int64_t time;
   /* Temp caching of UI-generated strings... */
   char size_str[16];
-  char time_str[8];
-  char date_str[16];
+  char datetime_str[16 + 8];
 } FileDirEntryRevision;
 
 /* Container for a variant, only relevant in asset context.
