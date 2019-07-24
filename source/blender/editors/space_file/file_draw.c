@@ -610,6 +610,7 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 
 static void draw_background(FileLayout *layout, View2D *v2d)
 {
+  const int item_height = layout->tile_h + (2 * layout->tile_border_y);
   int i;
   int sy;
 
@@ -619,8 +620,10 @@ static void draw_background(FileLayout *layout, View2D *v2d)
 
   /* alternating flat shade background */
   for (i = 2; (i <= layout->rows + 1); i += 2) {
-    sy = (int)v2d->cur.ymax - layout->offset_top -
-         i * (layout->tile_h + 2 * layout->tile_border_y) - layout->tile_border_y;
+    sy = (int)v2d->cur.ymax - layout->offset_top - i * item_height - layout->tile_border_y;
+
+    /* Offsett pattern slightly to add scroll effect. */
+    sy += round_fl_to_int(item_height * (v2d->tot.ymax - v2d->cur.ymax) / item_height);
 
     immRectf(pos,
              v2d->cur.xmin,
