@@ -72,6 +72,13 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   /* Ignore user preference "USER_HEADER_BOTTOM" here (always show top for new types). */
   ar->alignment = RGN_ALIGN_TOP;
 
+  /* ui list region */
+  ar = MEM_callocN(sizeof(ARegion), "ui region for file");
+  BLI_addtail(&sfile->regionbase, ar);
+  ar->regiontype = RGN_TYPE_UI;
+  ar->alignment = RGN_ALIGN_TOP;
+  ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
+
   /* Tools region */
   ar = MEM_callocN(sizeof(ARegion), "tools region for file");
   BLI_addtail(&sfile->regionbase, ar);
@@ -84,11 +91,12 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
   ar->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
 
-  /* ui list region */
-  ar = MEM_callocN(sizeof(ARegion), "ui region for file");
+  /* Execute region */
+  ar = MEM_callocN(sizeof(ARegion), "execute region for file");
   BLI_addtail(&sfile->regionbase, ar);
-  ar->regiontype = RGN_TYPE_UI;
-  ar->alignment = RGN_ALIGN_TOP;
+  ar->regiontype = RGN_TYPE_EXECUTE;
+  ar->alignment = RGN_ALIGN_BOTTOM;
+  ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
   /* main region */
   ar = MEM_callocN(sizeof(ARegion), "main region for file");
@@ -217,7 +225,7 @@ static void file_refresh(const bContext *C, ScrArea *sa)
   }
   filelist_setdir(sfile->files, params->dir);
   filelist_setrecursion(sfile->files, params->recursion_level);
-  filelist_setsorting(sfile->files, params->sort);
+  filelist_setsorting(sfile->files, params->sort, params->flag & FILE_SORT_INVERT);
   filelist_setfilter_options(sfile->files,
                              (params->flag & FILE_FILTER) != 0,
                              (params->flag & FILE_HIDE_DOT) != 0,
@@ -406,6 +414,11 @@ static void file_main_region_draw(const bContext *C, ARegion *ar)
     v2d->keepofs &= ~V2D_LOCKOFS_Y;
     v2d->keepofs |= V2D_LOCKOFS_X;
   }
+  else if (params->display == FILE_VERTICALDISPLAY) {
+    v2d->scroll = V2D_SCROLL_RIGHT;
+    v2d->keepofs &= ~V2D_LOCKOFS_Y;
+    v2d->keepofs |= V2D_LOCKOFS_X;
+  }
   else {
     v2d->scroll = V2D_SCROLL_BOTTOM;
     v2d->keepofs &= ~V2D_LOCKOFS_X;
@@ -439,7 +452,9 @@ static void file_main_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  rcti view_rect;
+  ED_fileselect_layout_maskrect(sfile->layout, v2d, &view_rect);
+  scrollers = UI_view2d_scrollers_calc(v2d, &view_rect);
   UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
 }
@@ -452,6 +467,7 @@ static void file_operatortypes(void)
   WM_operatortype_append(FILE_OT_select_box);
   WM_operatortype_append(FILE_OT_select_bookmark);
   WM_operatortype_append(FILE_OT_highlight);
+  WM_operatortype_append(FILE_OT_sort_column_ui_context);
   WM_operatortype_append(FILE_OT_execute);
   WM_operatortype_append(FILE_OT_cancel);
   WM_operatortype_append(FILE_OT_parent);
@@ -538,7 +554,8 @@ static void file_ui_region_init(wmWindowManager *wm, ARegion *ar)
 {
   wmKeyMap *keymap;
 
-  UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_HEADER, ar->winx, ar->winy);
+  ED_region_panels_init(wm, ar);
+  ar->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
@@ -548,7 +565,8 @@ static void file_ui_region_init(wmWindowManager *wm, ARegion *ar)
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
-static void file_ui_region_draw(const bContext *C, ARegion *ar)
+#if 0
+static void file_ui_region_draw_ex(const bContext *C, ARegion *ar, bool is_execution_buts)
 {
   float col[3];
   /* clear */
@@ -563,9 +581,32 @@ static void file_ui_region_draw(const bContext *C, ARegion *ar)
   /* set view2d view matrix for scrolling (without scrollers) */
   UI_view2d_view_ortho(&ar->v2d);
 
-  file_draw_buttons(C, ar);
+
+  if (is_execution_buts) {
+    file_draw_execute_buttons(C, ar);
+  }
+  else {
+    file_draw_filepath_buttons(C, ar);
+  }
 
   UI_view2d_view_restore(C);
+}
+#endif
+
+static void file_ui_region_draw(const bContext *C, ARegion *ar)
+{
+  ED_region_panels(C, ar);
+}
+
+static void file_execution_region_init(wmWindowManager *wm, ARegion *ar)
+{
+  ED_region_panels_init(wm, ar);
+  ar->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
+}
+
+static void file_execution_region_draw(const bContext *C, ARegion *ar)
+{
+  ED_region_panels(C, ar);
 }
 
 static void file_ui_region_listener(wmWindow *UNUSED(win),
@@ -656,11 +697,20 @@ void ED_spacetype_file(void)
   /* regions: ui */
   art = MEM_callocN(sizeof(ARegionType), "spacetype file region");
   art->regionid = RGN_TYPE_UI;
-  art->prefsizey = 60;
+  art->flag = RGN_TYPE_FLAG_NO_CATEGORIES;
   art->keymapflag = ED_KEYMAP_UI;
   art->listener = file_ui_region_listener;
   art->init = file_ui_region_init;
   art->draw = file_ui_region_draw;
+  BLI_addhead(&st->regiontypes, art);
+
+  /* regions: execution */
+  art = MEM_callocN(sizeof(ARegionType), "spacetype file region");
+  art->regionid = RGN_TYPE_EXECUTE;
+  art->keymapflag = ED_KEYMAP_UI;
+  art->listener = file_ui_region_listener;
+  art->init = file_execution_region_init;
+  art->draw = file_execution_region_draw;
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: channels (directories) */

@@ -3535,5 +3535,29 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   {
     /* Versioning code until next subversion bump goes here. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_FILE) {
+            SpaceFile *sfile = (SpaceFile *)sl;
+            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ARegion *ar_ui = do_versions_find_region(regionbase, RGN_TYPE_UI);
+            ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
+
+            if (ar_ui && ar_header) {
+              /* Reinsert UI region so that it spawns entire area width */
+              BLI_remlink(regionbase, ar_ui);
+              BLI_insertlinkafter(regionbase, ar_header, ar_ui);
+
+              ar_ui->flag |= RGN_FLAG_DYNAMIC_SIZE;
+            }
+
+            if (sfile->params) {
+              sfile->params->details_flags |= FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME;
+            }
+          }
+        }
+      }
+    }
   }
 }

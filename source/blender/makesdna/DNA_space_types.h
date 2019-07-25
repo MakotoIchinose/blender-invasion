@@ -670,8 +670,10 @@ typedef struct FileSelectParams {
   /** Display mode flag. */
   short display;
   short display_previous;
+  /** Details toggles (file size, creation date, etc.) */
+  char details_flags;
   /** Filter when (flags & FILE_FILTER) is true. */
-  char _pad2[2];
+  char _pad2;
   int filter;
 
   /** Max number of levels in dirtree to show at once, 0 to disable recursion. */
@@ -729,8 +731,8 @@ typedef struct SpaceFile {
 /* FileSelectParams.display */
 enum eFileDisplayType {
   FILE_DEFAULTDISPLAY = 0,
-  FILE_SHORTDISPLAY = 1,
-  FILE_LONGDISPLAY = 2,
+  FILE_VERTICALDISPLAY = 1,
+  FILE_HORIZONTALDISPLAY = 2,
   FILE_IMGDISPLAY = 3,
 };
 
@@ -741,6 +743,12 @@ enum eFileSortType {
   FILE_SORT_EXTENSION = 2,
   FILE_SORT_TIME = 3,
   FILE_SORT_SIZE = 4,
+};
+
+/* FileSelectParams.details_flags */
+enum eFileDetails {
+  FILE_DETAILS_SIZE = (1 << 0),
+  FILE_DETAILS_DATETIME = (1 << 1),
 };
 
 /* these values need to be hardcoded in structs, dna does not recognize defines */
@@ -780,6 +788,7 @@ typedef enum eFileSel_Params_Flag {
   FILE_FILTER = (1 << 8),
   FILE_PARAMS_FLAG_UNUSED_9 = (1 << 9), /* cleared */
   FILE_GROUP_INSTANCE = (1 << 10),
+  FILE_SORT_INVERT = (1 << 11)
 } eFileSel_Params_Flag;
 
 /* sfile->params->rename_flag */
@@ -875,8 +884,7 @@ typedef struct FileDirEntryRevision {
   int64_t time;
   /* Temp caching of UI-generated strings... */
   char size_str[16];
-  char time_str[8];
-  char date_str[16];
+  char datetime_str[16 + 8];
 } FileDirEntryRevision;
 
 /* Container for a variant, only relevant in asset context.

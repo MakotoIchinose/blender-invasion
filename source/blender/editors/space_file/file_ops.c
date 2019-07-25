@@ -78,7 +78,12 @@ static FileSelection find_file_mouse_rect(SpaceFile *sfile, ARegion *ar, const r
 
   BLI_rctf_rcti_copy(&rect_region_fl, rect_region);
 
+  /* Okay, manipulating v2d rects here is hacky...  */
+  v2d->mask.ymax -= sfile->layout->offset_top;
+  v2d->cur.ymax -= sfile->layout->offset_top;
   UI_view2d_region_to_view_rctf(v2d, &rect_region_fl, &rect_view_fl);
+  v2d->mask.ymax += sfile->layout->offset_top;
+  v2d->cur.ymax += sfile->layout->offset_top;
 
   BLI_rcti_init(&rect_view,
                 (int)(v2d->tot.xmin + rect_view_fl.xmin),
@@ -262,8 +267,8 @@ static void file_ensure_inside_viewbounds(ARegion *ar, SpaceFile *sfile, const i
     cur->ymax = cur->ymin + ar->winy;
   }
   /* up */
-  else if (cur->ymax < rect.ymax) {
-    cur->ymax = rect.ymax + layout->tile_border_y;
+  else if ((cur->ymax - layout->offset_top) < rect.ymax) {
+    cur->ymax = rect.ymax + layout->tile_border_y + layout->offset_top;
     cur->ymin = cur->ymax - ar->winy;
   }
   /* left - also use if tile is wider than viewbounds so view is aligned to file name */
@@ -278,7 +283,7 @@ static void file_ensure_inside_viewbounds(ARegion *ar, SpaceFile *sfile, const i
   }
   else {
     BLI_assert(cur->xmin <= rect.xmin && cur->xmax >= rect.xmax && cur->ymin <= rect.ymin &&
-               cur->ymax >= rect.ymax);
+               (cur->ymax - layout->offset_top) >= rect.ymax);
     changed = false;
   }
 
@@ -384,7 +389,7 @@ static int file_box_select_modal(bContext *C, wmOperator *op, const wmEvent *eve
   if (result == OPERATOR_RUNNING_MODAL) {
     WM_operator_properties_border_to_rcti(op, &rect);
 
-    BLI_rcti_isect(&(ar->v2d.mask), &rect, &rect);
+    ED_fileselect_layout_isect_rect(sfile->layout, &ar->v2d, &rect, &rect);
 
     sel = file_selection_get(C, &rect, 0);
     if ((sel.first != params->sel_first) || (sel.last != params->sel_last)) {
@@ -440,7 +445,7 @@ static int file_box_select_exec(bContext *C, wmOperator *op)
     file_deselect_all(sfile, FILE_SEL_SELECTED);
   }
 
-  BLI_rcti_isect(&(ar->v2d.mask), &rect, &rect);
+  ED_fileselect_layout_isect_rect(sfile->layout, &ar->v2d, &rect, &rect);
 
   ret = file_select(C, &rect, select ? FILE_SEL_ADD : FILE_SEL_REMOVE, false, false);
 
@@ -493,7 +498,7 @@ static int file_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   rect.xmin = rect.xmax = event->mval[0];
   rect.ymin = rect.ymax = event->mval[1];
 
-  if (!BLI_rcti_isect_pt(&ar->v2d.mask, rect.xmin, rect.ymin)) {
+  if (!ED_fileselect_layout_is_inside_pt(sfile->layout, &ar->v2d, rect.xmin, rect.ymin)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1185,7 +1190,7 @@ int file_highlight_set(SpaceFile *sfile, ARegion *ar, int mx, int my)
   mx -= ar->winrct.xmin;
   my -= ar->winrct.ymin;
 
-  if (BLI_rcti_isect_pt(&ar->v2d.mask, mx, my)) {
+  if (ED_fileselect_layout_is_inside_pt(sfile->layout, v2d, mx, my)) {
     float fx, fy;
     int highlight_file;
 
@@ -1232,6 +1237,52 @@ void FILE_OT_highlight(struct wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = file_highlight_invoke;
   ot->poll = ED_operator_file_active;
+}
+
+static int file_column_sort_ui_context_invoke(bContext *C,
+                                              wmOperator *UNUSED(op),
+                                              const wmEvent *event)
+{
+  const ARegion *ar = CTX_wm_region(C);
+  SpaceFile *sfile = CTX_wm_space_file(C);
+
+  if (file_column_header_is_inside(&ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
+    const FileListColumns column_type = file_column_type_find_isect(
+        &ar->v2d, sfile->params, sfile->layout, event->mval[0]);
+
+    if (column_type != COLUMN_NONE) {
+      const FileDetailsColumn *column = &sfile->layout->details_columns[column_type];
+
+      if (column->sort_type != FILE_SORT_NONE) {
+        if (sfile->params->sort == column->sort_type) {
+          /* Already sorting by selected column -> toggle sort invert (three state logic). */
+          sfile->params->flag ^= FILE_SORT_INVERT;
+        }
+        else {
+          sfile->params->sort = column->sort_type;
+          sfile->params->flag &= ~FILE_SORT_INVERT;
+        }
+
+        WM_event_add_notifier(C, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
+      }
+    }
+  }
+
+  return OPERATOR_PASS_THROUGH;
+}
+
+void FILE_OT_sort_column_ui_context(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Sort from Column";
+  ot->description = "Change sorting to use column under cursor";
+  ot->idname = "FILE_OT_sort_column_ui_context";
+
+  /* api callbacks */
+  ot->invoke = file_column_sort_ui_context_invoke;
+  ot->poll = ED_operator_file_active;
+
+  ot->flag = OPTYPE_INTERNAL;
 }
 
 int file_cancel_exec(bContext *C, wmOperator *UNUSED(unused))

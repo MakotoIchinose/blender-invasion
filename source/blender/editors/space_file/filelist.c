@@ -329,6 +329,7 @@ enum {
   FL_IS_PENDING = 1 << 2,
   FL_NEED_SORTING = 1 << 3,
   FL_NEED_FILTERING = 1 << 4,
+  FL_SORT_INVERT = 1 << 5,
 };
 
 #define SPECIAL_IMG_SIZE 48
@@ -571,16 +572,34 @@ void filelist_sort(struct FileList *filelist)
         break;
     }
 
+    /* We could avoid this extra reversal by letting callbacks check for inverted sorting. Would
+     * make return values a bit cryptic though, and it's not like reversal is that expensive. */
+    if (filelist->flags & FL_SORT_INVERT) {
+      FileListInternEntry *current_entry = BLI_pophead(&filelist->filelist_intern.entries);
+      FileListInternEntry *parent_entry = BLI_pophead(&filelist->filelist_intern.entries);
+
+      BLI_listbase_reverse(&filelist->filelist_intern.entries);
+      /* Reinsert '..' item at the top */
+      BLI_assert(FILENAME_IS_CURRENT(current_entry->relpath));
+      BLI_assert(FILENAME_IS_PARENT(parent_entry->relpath));
+      BLI_addhead(&filelist->filelist_intern.entries, parent_entry);
+      BLI_addhead(&filelist->filelist_intern.entries, current_entry);
+    }
+
     filelist_filter_clear(filelist);
     filelist->flags &= ~FL_NEED_SORTING;
   }
 }
 
-void filelist_setsorting(struct FileList *filelist, const short sort)
+void filelist_setsorting(struct FileList *filelist, const short sort, bool invert_sort)
 {
-  if (filelist->sort != sort) {
+  const bool was_invert_sort = filelist->flags & FL_SORT_INVERT;
+
+  if ((filelist->sort != sort) || (was_invert_sort != invert_sort)) {
     filelist->sort = sort;
     filelist->flags |= FL_NEED_SORTING;
+    filelist->flags = invert_sort ? (filelist->flags | FL_SORT_INVERT) :
+                                    (filelist->flags & ~FL_SORT_INVERT);
   }
 }
 
