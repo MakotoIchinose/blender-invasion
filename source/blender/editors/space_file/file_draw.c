@@ -402,7 +402,7 @@ static void file_draw_string(int sx,
   rcti rect;
   char fname[FILE_MAXFILE];
 
-  if (string[0] == '\0') {
+  if (string[0] == '\0' || width < 1) {
     return;
   }
 
