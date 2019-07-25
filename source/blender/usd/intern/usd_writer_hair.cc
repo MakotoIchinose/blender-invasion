@@ -12,7 +12,6 @@ extern "C" {
 
 USDHairWriter::USDHairWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
-  printf("\033[39;1mHAIR writer\033[0m created at %s\n", ctx.usd_path.GetString().c_str());
 }
 
 void USDHairWriter::do_write(HierarchyContext &context)
@@ -24,10 +23,6 @@ void USDHairWriter::do_write(HierarchyContext &context)
   }
 
   pxr::UsdTimeCode timecode = get_export_time_code();
-
-  printf("\033[34;1mHAIR writer\033[0m writing %s %s\n",
-         context.object->id.name + 2,
-         psys->part->id.name + 2);
   pxr::UsdGeomBasisCurves curves = pxr::UsdGeomBasisCurves::Define(stage, usd_path_);
 
   // TODO: deal with (psys->part->flag & PART_HAIR_BSPLINE)

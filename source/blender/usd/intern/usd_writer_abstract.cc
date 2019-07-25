@@ -50,10 +50,6 @@ void USDAbstractWriter::write(HierarchyContext &context)
   }
   else {
     is_animated_ = export_params.export_animation && check_is_animated(context);
-    // printf("%sANIMATION\033[0m: %20s: %s\n",
-    //        is_animated_ ? "\033[32;1m" : "\033[31;1m",
-    //        context.export_path.c_str(),
-    //        is_animated_ ? "true" : "false");
   }
 
   do_write(context);

@@ -40,9 +40,6 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   Mesh *mesh = get_export_mesh(object_eval, needsfree);
 
   if (mesh == NULL) {
-    printf("USD-\033[31mSKIPPING\033[0m object %s  type=%d mesh = NULL\n",
-           object_eval->id.name,
-           object_eval->type);
     return;
   }
 
@@ -117,10 +114,6 @@ void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
-  // printf("USD-\033[32mexporting\033[0m mesh  %s → %s  mesh = %p\n",
-  //        mesh->id.name,
-  //        usd_path_.GetString().c_str(),
-  //        mesh);
 
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
   USDMeshData usd_mesh_data;
@@ -134,9 +127,6 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     }
     pxr::SdfPath ref_path(context.original_export_path);
     if (usd_mesh.GetPrim().GetReferences().AddInternalReference(ref_path)) {
-      // printf("USD ref \033[92mOK\033[0m %s → %s\n",
-      //        context.export_path.c_str(),
-      //        context.original_export_path.c_str());
       /* The material path will be of the form </_materials/{material name}>, which is outside the
       subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
       of its own subtree. It does work when we override the material with exactly the same path,

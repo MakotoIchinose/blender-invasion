@@ -70,9 +70,6 @@ USDExporterContext USDHierarchyIterator::create_usd_export_context(const Hierarc
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext *context)
 {
-  // printf(
-  //     "\033[32;1mCREATE\033[0m %s at %s\n", context->object->id.name,
-  //     context->export_path.c_str());
   return new USDTransformWriter(create_usd_export_context(context));
 }
 
@@ -102,9 +99,6 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_LATTICE:
     case OB_ARMATURE:
     case OB_GPENCIL:
-      // printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (no data writer)\n",
-      //        context->object->id.name,
-      //        context->object->type);
       return nullptr;
     case OB_TYPE_MAX:
       BLI_assert(!"OB_TYPE_MAX should not be used");
@@ -112,9 +106,6 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
   }
 
   if (!data_writer->is_supported(context->object)) {
-    // printf("USD-\033[34mXFORM-ONLY\033[0m object %s  type=%d (data writer rejects the data)\n",
-    //        context->object->id.name,
-    //        context->object->type);
     delete data_writer;
     return nullptr;
   }

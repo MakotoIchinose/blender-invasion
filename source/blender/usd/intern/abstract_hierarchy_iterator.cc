@@ -128,7 +128,6 @@ void AbstractHierarchyIterator::export_graph_construct()
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
-  // printf("====== Visiting objects:\n");
   DEG_OBJECT_ITER_BEGIN (depsgraph,
                          object,
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
@@ -192,13 +191,6 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   copy_m4_m4(context->matrix_world, object->obmat);
 
   export_graph[std::make_pair(export_parent, nullptr)].insert(context);
-
-  // std::string export_parent_name = export_parent ? get_object_name(export_parent) : "/";
-  // printf("    OB %30s %p (export-parent=%s; world x = %f)\n",
-  //        context->export_name.c_str(),
-  //        context->object,
-  //        export_parent_name.c_str(),
-  //        context->matrix_world[3][0]);
 }
 
 void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
@@ -244,16 +236,6 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   context->export_name = make_valid_name(get_object_name(context->object) + suffix_stream.str());
 
   export_graph[graph_index].insert(context);
-
-  // std::string export_parent_name = context->export_parent ?
-  //                                      get_object_name(context->export_parent) :
-  //                                      "/";
-  // printf("    DU %30s %p (export-parent=%s; duplicator = %s; world x = %f)\n",
-  //        context->export_name.c_str(),
-  //        context->object,
-  //        export_parent_name.c_str(),
-  //        duplicator->id.name + 2,
-  //        context->matrix_world[3][0]);
 }
 
 static bool prune_the_weak(const HierarchyContext *context,
@@ -365,10 +347,6 @@ void AbstractHierarchyIterator::determine_duplication_references(
         if (it == originals_export_paths.end()) {
           // The original was not found, so mark this instance as "original".
           std::string data_path = get_object_data_path(context);
-          // printf(
-          //     "%s\033[93mUSD issue\033[0m: %s is DATA instance of %p, but no original DATA path
-          //     " "is known\n", indent.c_str(), data_path.c_str(), orig_data_id);
-
           context->mark_as_not_instanced();
           originals_export_paths[orig_id] = context->export_path;
           originals_export_paths[orig_data_id] = data_path;

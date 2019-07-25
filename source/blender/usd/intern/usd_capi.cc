@@ -128,7 +128,6 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
           break;
         }
 
-        printf("\033[35;1mFRAME\033[0m %f\n", frame);
         // Update the scene for the next frame to render.
         scene->r.cfra = static_cast<int>(frame);
         scene->r.subframe = frame - scene->r.cfra;
