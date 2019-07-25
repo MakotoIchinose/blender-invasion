@@ -792,21 +792,9 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
 {
   BLI_assert(BM_vert_in_edge(e, v) == true);
 
-  /* find faces containing edge, should be only 2 */
-  BMFace *f;
-  BMIter fiter;
-  int face_i = 0;
-  BMFace *f1 = NULL, *f2 = NULL;
-  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, face_i) {
-    if (face_i == 0) {
-      f1 = f;
-    }
-    else {
-      f2 = f;
-    }
-    /* printf("face_i: %d\n", face_i); */
-  }
-
+  BMFace *f1, *f2;
+  cloth_remeshing_edge_face_pair(e, &f1, &f2);
+  /* There should be at least one face for that edge */
   if (!f1) {
     return NULL;
   }
@@ -1134,9 +1122,6 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
   vector<BMEdge *> bad_edges;
   cloth_remeshing_find_bad_edges(bm, sizing, bad_edges);
   printf("split edges tagged: %d\n", (int)bad_edges.size());
-  if (bad_edges.size() == 0 || bad_edges.size() == prev_num_bad_edges) {
-    return false;
-  }
   prev_num_bad_edges = bad_edges.size();
   Cloth *cloth = clmd->clothObject;
   cloth->verts = (ClothVertex *)MEM_reallocN(
@@ -1164,8 +1149,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
       }
     }
   }
-  bad_edges.clear();
-  return true;
+  return !bad_edges.empty();
 }
 
 static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2])
