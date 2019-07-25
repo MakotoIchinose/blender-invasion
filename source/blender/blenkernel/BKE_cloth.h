@@ -92,8 +92,7 @@ typedef struct Cloth {
   unsigned int mvert_num_prev;
   unsigned int tri_num;
   unsigned char old_solver_type; /* unused, only 1 solver here */
-  struct BMesh *bm;      /* Used for remeshing step, initialized and deleted then and there */
-  struct BMesh *bm_prev; /* Used for remeshing step, needed previous frame mesh data */
+  struct BMesh *bm; /* Used for remeshing step, initialized and deleted then and there */
   unsigned char pad2;
   short pad3;
   struct BVHTree *bvhtree;     /* collision tree for this cloth object */

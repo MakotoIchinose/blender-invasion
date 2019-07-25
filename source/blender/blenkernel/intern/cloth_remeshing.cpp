@@ -142,34 +142,34 @@ static void cloth_remeshing_init_bmesh(Object *ob,
                                        Mesh *mesh,
                                        ClothVertMap &cvm)
 {
-  if (clmd->sim_parms->remeshing_reset || !clmd->clothObject->bm_prev) {
+  if (clmd->sim_parms->remeshing_reset || !clmd->clothObject->bm) {
     cloth_to_mesh(ob, clmd, mesh);
 
     CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
-    if (clmd->clothObject->bm_prev) {
-      BM_mesh_free(clmd->clothObject->bm_prev);
-      clmd->clothObject->bm_prev = NULL;
+    if (clmd->clothObject->bm) {
+      BM_mesh_free(clmd->clothObject->bm);
+      clmd->clothObject->bm = NULL;
     }
     struct BMeshCreateParams bmesh_create_params;
     bmesh_create_params.use_toolflags = 0;
     struct BMeshFromMeshParams bmesh_from_mesh_params;
     bmesh_from_mesh_params.calc_face_normal = true;
     bmesh_from_mesh_params.cd_mask_extra = cddata_masks;
-    clmd->clothObject->bm_prev = BKE_mesh_to_bmesh_ex(
+    clmd->clothObject->bm = BKE_mesh_to_bmesh_ex(
         mesh, &bmesh_create_params, &bmesh_from_mesh_params);
     BMVert *v;
     BMIter viter;
     int i = 0;
-    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
       copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       cvm[v] = clmd->clothObject->verts[i];
     }
     /* TODO(Ish): delete the existing clmd->clothObject->verts because
      * it is duplicated into cvm */
 
-    BM_mesh_normals_update(clmd->clothObject->bm_prev);
+    BM_mesh_normals_update(clmd->clothObject->bm);
 
-    BM_mesh_triangulate(clmd->clothObject->bm_prev,
+    BM_mesh_triangulate(clmd->clothObject->bm,
                         MOD_TRIANGULATE_QUAD_SHORTEDGE,
                         MOD_TRIANGULATE_NGON_BEAUTY,
                         4,
@@ -177,18 +177,18 @@ static void cloth_remeshing_init_bmesh(Object *ob,
                         NULL,
                         NULL,
                         NULL);
-    printf("remeshing_reset has been set to true or bm_prev does not exist\n");
+    printf("remeshing_reset has been set to true or bm does not exist\n");
   }
   else {
     BMVert *v;
     BMIter viter;
     int i = 0;
-    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
-      copy_v3_v3(v->co, cvm[v].x);
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
+      copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
+      cvm[v] = clmd->clothObject->verts[i];
     }
   }
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
-  clmd->clothObject->bm = clmd->clothObject->bm_prev;
 
   if (clmd->clothObject->verts != NULL) {
     MEM_freeN(clmd->clothObject->verts);
@@ -280,9 +280,6 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob,
   }
 
   if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
-    clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
-    BM_mesh_free(clmd->clothObject->bm);
-    clmd->clothObject->bm = NULL;
     return mesh_result;
   }
 
@@ -369,9 +366,6 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob,
   clmd->clothObject->bvhselftree = bvhtree_build_from_cloth(clmd, clmd->coll_parms->selfepsilon);
 
   /**/
-  clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
-  BM_mesh_free(clmd->clothObject->bm);
-  clmd->clothObject->bm = NULL;
 
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
 
