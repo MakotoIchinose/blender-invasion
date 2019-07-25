@@ -719,6 +719,7 @@ static float cloth_remeshing_edge_size(BMesh *bm,
 
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, ClothSizing> &sizing)
 {
+#if 0
   float u1[2], u2[2];
   if (!edge->l) {
     return 0.0f;
@@ -726,6 +727,21 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, Cl
   cloth_remeshing_uv_of_vert_in_edge(bm, edge, edge->v1, u1);
   cloth_remeshing_uv_of_vert_in_edge(bm, edge, edge->v2, u2);
   return cloth_remeshing_edge_size(bm, edge->v1, edge->v2, u1, u2, sizing);
+#else
+  float uvs[4][2];
+  BMVert *v1 = cloth_remeshing_edge_vert(bm, edge, 0, 0, uvs[0]);
+  BMVert *v2 = cloth_remeshing_edge_vert(bm, edge, 0, 1, uvs[1]);
+  BMVert *v3 = cloth_remeshing_edge_vert(bm, edge, 1, 0, uvs[2]);
+  BMVert *v4 = cloth_remeshing_edge_vert(bm, edge, 1, 1, uvs[3]);
+  float m = cloth_remeshing_edge_size(bm, v1, v2, uvs[0], uvs[1], sizing) +
+            cloth_remeshing_edge_size(bm, v3, v4, uvs[2], uvs[3], sizing);
+  if (BM_edge_face_count(edge) == 2) {
+    return m * 0.5f;
+  }
+  else {
+    return m;
+  }
+#endif
 }
 
 static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
@@ -1859,7 +1875,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
   cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
 #endif
 
-#if 1
+#if 0
   int v_count = 0;
   BM_ITER_MESH (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH) {
     if (cloth_remeshing_vert_on_seam_or_boundary_test(clmd->clothObject->bm, v)) {
@@ -2529,7 +2545,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (false) {
+  if (true) {
     cloth_remeshing_static(clmd);
   }
   else {
