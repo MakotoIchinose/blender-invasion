@@ -43,13 +43,12 @@ pxr::UsdTimeCode USDAbstractWriter::get_export_time_code() const
 
 void USDAbstractWriter::write(HierarchyContext &context)
 {
-  if (frame_has_been_written_) {
-    if (!is_animated_) {
-      return;
-    }
-  }
-  else {
+  if (!frame_has_been_written_) {
     is_animated_ = export_params.export_animation && check_is_animated(context);
+  }
+  else if (!is_animated_) {
+    /* A frame has alrady been written, and without animation one frame is enough. */
+    return;
   }
 
   do_write(context);
