@@ -21,6 +21,11 @@ import bpy
 from bpy.types import Panel, Menu
 from rna_prop_ui import PropertyPanel
 
+from bl_ui.properties_animviz import (
+    MotionPathButtonsPanel,
+    MotionPathButtonsPanel_display,
+)
+
 
 class ArmatureButtonsPanel:
     bl_space_type = 'PROPERTIES'
@@ -67,7 +72,7 @@ class DATA_PT_skeleton(ArmatureButtonsPanel, Panel):
 
 
 class DATA_PT_display(ArmatureButtonsPanel, Panel):
-    bl_label = "Display"
+    bl_label = "Viewport Display"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -80,19 +85,23 @@ class DATA_PT_display(ArmatureButtonsPanel, Panel):
         layout.prop(arm, "display_type", text="Display As")
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=True)
-        flow.prop(arm, "show_names", text="Names")
-        flow.prop(arm, "show_axes", text="Axes")
-        flow.prop(arm, "show_bone_custom_shapes", text="Shapes")
-        flow.prop(arm, "show_group_colors", text="Group Colors")
+        col = flow.column()
+        col.prop(arm, "show_names", text="Names")
+        col = flow.column()
+        col.prop(arm, "show_axes", text="Axes")
+        col = flow.column()
+        col.prop(arm, "show_bone_custom_shapes", text="Shapes")
+        col = flow.column()
+        col.prop(arm, "show_group_colors", text="Group Colors")
         if ob:
-            flow.prop(ob, "show_in_front", text="In Front")
-        flow.prop(arm, "use_deform_delay", text="Delay Refresh")
+            col = flow.column()
+            col.prop(ob, "show_in_front", text="In Front")
 
 
-class DATA_MT_bone_group_specials(Menu):
+class DATA_MT_bone_group_context_menu(Menu):
     bl_label = "Bone Group Specials"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("pose.group_sort", icon='SORTALPHA')
@@ -118,13 +127,21 @@ class DATA_PT_bone_groups(ArmatureButtonsPanel, Panel):
         rows = 1
         if group:
             rows = 4
-        row.template_list("UI_UL_list", "bone_groups", pose, "bone_groups", pose.bone_groups, "active_index", rows=rows)
+        row.template_list(
+            "UI_UL_list",
+            "bone_groups",
+            pose,
+            "bone_groups",
+            pose.bone_groups,
+            "active_index",
+            rows=rows,
+        )
 
         col = row.column(align=True)
         col.active = (ob.proxy is None)
         col.operator("pose.group_add", icon='ADD', text="")
         col.operator("pose.group_remove", icon='REMOVE', text="")
-        col.menu("DATA_MT_bone_group_specials", icon='DOWNARROW_HLT', text="")
+        col.menu("DATA_MT_bone_group_context_menu", icon='DOWNARROW_HLT', text="")
         if group:
             col.separator()
             col.operator("pose.group_move", icon='TRIA_UP', text="").direction = 'UP'
@@ -257,12 +274,6 @@ class DATA_PT_iksolver_itasc(ArmatureButtonsPanel, Panel):
                 col.prop(itasc, "damping_epsilon", text="Damping Epsilon", slider=True)
 
 
-from .properties_animviz import (
-    MotionPathButtonsPanel,
-    MotionPathButtonsPanel_display,
-)
-
-
 class DATA_PT_motion_paths(MotionPathButtonsPanel, Panel):
     #bl_label = "Bones Motion Paths"
     bl_options = {'DEFAULT_CLOSED'}
@@ -317,12 +328,12 @@ class DATA_PT_custom_props_arm(ArmatureButtonsPanel, PropertyPanel, Panel):
 classes = (
     DATA_PT_context_arm,
     DATA_PT_skeleton,
-    DATA_PT_display,
-    DATA_MT_bone_group_specials,
+    DATA_MT_bone_group_context_menu,
     DATA_PT_bone_groups,
     DATA_PT_pose_library,
     DATA_PT_motion_paths,
     DATA_PT_motion_paths_display,
+    DATA_PT_display,
     DATA_PT_iksolver_itasc,
     DATA_PT_custom_props_arm,
 )

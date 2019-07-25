@@ -23,13 +23,11 @@
 #ifndef __INTERFACE_REGIONS_INTERN_H__
 #define __INTERFACE_REGIONS_INTERN_H__
 
-#define MENU_PADDING (int)(0.2f * UI_UNIT_Y)
-
 /* interface_region_menu_popup.c */
 uint ui_popup_menu_hash(const char *str);
 
 /* interface_regions_intern.h */
 ARegion *ui_region_temp_add(bScreen *sc);
-void     ui_region_temp_remove(struct bContext *C, bScreen *sc, ARegion *ar);
+void ui_region_temp_remove(struct bContext *C, bScreen *sc, ARegion *ar);
 
-#endif  /* __INTERFACE_REGIONS_INTERN_H__ */
+#endif /* __INTERFACE_REGIONS_INTERN_H__ */

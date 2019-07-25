@@ -116,7 +116,7 @@ def mesh_linked_triangles(mesh):
     while ok:
         ok = False
 
-        for i, t in enumerate(mesh.loop_triangles):
+        for t in mesh.loop_triangles:
             mapped_index = tri_mapping[t.index]
             mapped_group = tri_groups[mapped_index]
 
@@ -443,7 +443,6 @@ def triangle_random_points(num_points, loop_triangles):
     """
 
     from random import random
-    from mathutils.geometry import area_tri
 
     # For each triangle, generate the required number of random points
     sampled_points = [None] * (num_points * len(loop_triangles))

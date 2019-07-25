@@ -17,7 +17,6 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
-import bpy
 from bpy.types import Panel
 
 
@@ -31,11 +30,12 @@ class ShaderFxButtonsPanel:
 class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
     bl_label = "Effects"
 
-    @classmethod
-    def poll(cls, context):
-        return True
-        ob = context.object
-        return ob and ob.type == 'GPENCIL'
+    # Unused: always show for now.
+
+    # @classmethod
+    # def poll(cls, context):
+    #     ob = context.object
+    #     return ob and ob.type == 'GPENCIL'
 
     def draw(self, context):
         layout = self.layout

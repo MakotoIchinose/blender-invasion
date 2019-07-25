@@ -19,41 +19,43 @@
 #ifndef __COM_GLARETHRESHOLDOPERATION_H__
 #define __COM_GLARETHRESHOLDOPERATION_H__
 #include "COM_NodeOperation.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 
 class GlareThresholdOperation : public NodeOperation {
-private:
-	/**
-	 * \brief Cached reference to the inputProgram
-	 */
-	SocketReader *m_inputProgram;
+ private:
+  /**
+   * \brief Cached reference to the inputProgram
+   */
+  SocketReader *m_inputProgram;
 
-	/**
-	 * \brief settings of the glare node.
-	 */
-	NodeGlare *m_settings;
-public:
-	GlareThresholdOperation();
+  /**
+   * \brief settings of the glare node.
+   */
+  NodeGlare *m_settings;
 
-	/**
-	 * the inner loop of this program
-	 */
-	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
+ public:
+  GlareThresholdOperation();
 
-	/**
-	 * Initialize the execution
-	 */
-	void initExecution();
+  /**
+   * the inner loop of this program
+   */
+  void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
 
-	/**
-	 * Deinitialize the execution
-	 */
-	void deinitExecution();
+  /**
+   * Initialize the execution
+   */
+  void initExecution();
 
-	void setGlareSettings(NodeGlare *settings) {
-		this->m_settings = settings;
-	}
+  /**
+   * Deinitialize the execution
+   */
+  void deinitExecution();
 
-	void determineResolution(unsigned int resolution[2], unsigned int preferredResolution[2]);
+  void setGlareSettings(NodeGlare *settings)
+  {
+    this->m_settings = settings;
+  }
+
+  void determineResolution(unsigned int resolution[2], unsigned int preferredResolution[2]);
 };
 #endif

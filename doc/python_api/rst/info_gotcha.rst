@@ -102,16 +102,16 @@ To avoid expensive recalculations every time a property is modified,
 Blender defers making the actual calculations until they are needed.
 
 However, while the script runs you may want to access the updated values.
-In this case you need to call :class:`bpy.types.Scene.update` after modifying values, for example:
+In this case you need to call :class:`bpy.types.ViewLayer.update` after modifying values, for example:
 
 .. code-block:: python
 
    bpy.context.object.location = 1, 2, 3
-   bpy.context.scene.update()
+   bpy.context.view_layer.update()
 
 
 Now all dependent data (child objects, modifiers, drivers... etc)
-has been recalculated and is available to the script.
+has been recalculated and is available to the script within active view layer.
 
 
 Can I redraw during the script?
@@ -633,6 +633,7 @@ Here are some general hints to avoid running into these problems.
   fetch data from the context each time the script is activated.
 - Crashes may not happen every time, they may happen more on some configurations/operating-systems.
 - Be wary of recursive patterns, those are very efficient at hiding the issues described here.
+- See last sub-section about `Unfortunate Corner Cases`_ for some known breaking exceptions.
 
 .. note::
 
@@ -825,6 +826,17 @@ the next example will still crash.
    vertices = mesh.vertices
    bpy.data.meshes.remove(mesh)
    print(vertices)  # <- this may crash
+
+
+Unfortunate Corner Cases
+------------------------
+
+Besides all expected cases listed above, there are a few others that should not be
+an issue but, due to internal implementation details, currently are:
+
+- ``Object.hide_viewport``, ``Object.hide_select`` and ``Object.hide_render``:
+  Setting any of those booleans will trigger a rebuild of Collection caches, hence breaking
+  any current iteration over ``Collection.all_objects``.
 
 
 sys.exit

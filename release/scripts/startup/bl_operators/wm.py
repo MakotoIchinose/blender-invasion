@@ -69,6 +69,14 @@ rna_space_type_prop = EnumProperty(
     default='EMPTY',
 )
 
+# Note, this can be used for more operators,
+# currently not used for all "WM_OT_context_" operators.
+rna_module_prop = StringProperty(
+    name="Module",
+    description="Optionally override the context with a module",
+    maxlen=1024,
+)
+
 
 def context_path_validate(context, data_path):
     try:
@@ -325,16 +333,24 @@ class WM_OT_context_toggle(Operator):
     bl_options = {'UNDO', 'INTERNAL'}
 
     data_path: rna_path_prop
+    module: rna_module_prop
 
     def execute(self, context):
         data_path = self.data_path
 
-        if context_path_validate(context, data_path) is Ellipsis:
+        module = self.module
+        if not module:
+            base = context
+        else:
+            from importlib import import_module
+            base = import_module(self.module)
+
+        if context_path_validate(base, data_path) is Ellipsis:
             return {'PASS_THROUGH'}
 
-        exec("context.%s = not (context.%s)" % (data_path, data_path))
+        exec("base.%s = not (base.%s)" % (data_path, data_path))
 
-        return operator_path_undo_return(context, data_path)
+        return operator_path_undo_return(base, data_path)
 
 
 class WM_OT_context_toggle_enum(Operator):
@@ -656,10 +672,11 @@ class WM_OT_context_collection_boolean_set(Operator):
 
     type: EnumProperty(
         name="Type",
-        items=(('TOGGLE', "Toggle", ""),
-               ('ENABLE', "Enable", ""),
-               ('DISABLE', "Disable", ""),
-               ),
+        items=(
+            ('TOGGLE', "Toggle", ""),
+            ('ENABLE', "Enable", ""),
+            ('DISABLE', "Disable", ""),
+        ),
     )
 
     def execute(self, context):
@@ -823,7 +840,7 @@ class WM_OT_url_open(Operator):
         description="URL to open",
     )
 
-    def execute(self, context):
+    def execute(self, _context):
         import webbrowser
         webbrowser.open(self.url)
         return {'FINISHED'}
@@ -840,7 +857,7 @@ class WM_OT_path_open(Operator):
         options={'SKIP_SAVE'},
     )
 
-    def execute(self, context):
+    def execute(self, _context):
         import sys
         import os
         import subprocess
@@ -977,7 +994,7 @@ class WM_OT_doc_view_manual(Operator):
                 url = prefix + rna_ref
                 return url
 
-    def execute(self, context):
+    def execute(self, _context):
         rna_id = _wm_doc_get_id(self.doc_id, do_url=False)
         if rna_id is None:
             return {'PASS_THROUGH'}
@@ -1000,17 +1017,18 @@ class WM_OT_doc_view_manual(Operator):
 
 
 class WM_OT_doc_view(Operator):
-    """Load online reference docs"""
+    """Open online reference docs in a web browser"""
     bl_idname = "wm.doc_view"
     bl_label = "View Documentation"
 
     doc_id: doc_id
-    if bpy.app.version_cycle == "release":
-        _prefix = ("https://docs.blender.org/api/current")
+    if bpy.app.version_cycle in {"release", "rc"}:
+        _prefix = ("https://docs.blender.org/api/%d.%d%s" %
+                   (bpy.app.version[0], bpy.app.version[1], bpy.app.version_char))
     else:
-        _prefix = ("https://docs.blender.org/api/blender2.7")
+        _prefix = ("https://docs.blender.org/api/master")
 
-    def execute(self, context):
+    def execute(self, _context):
         url = _wm_doc_get_id(self.doc_id, do_url=True, url_prefix=self._prefix)
         if url is None:
             return {'PASS_THROUGH'}
@@ -1062,8 +1080,8 @@ rna_use_soft_limits = BoolProperty(
     name="Use Soft Limits",
 )
 
-rna_is_overridable_static = BoolProperty(
-    name="Is Statically Overridable",
+rna_is_overridable_library = BoolProperty(
+    name="Is Library Overridable",
     default=False,
 )
 
@@ -1081,7 +1099,7 @@ class WM_OT_properties_edit(Operator):
     min: rna_min
     max: rna_max
     use_soft_limits: rna_use_soft_limits
-    is_overridable_static: rna_is_overridable_static
+    is_overridable_library: rna_is_overridable_library
     soft_min: rna_min
     soft_max: rna_max
     description: StringProperty(
@@ -1124,7 +1142,6 @@ class WM_OT_properties_edit(Operator):
         )
 
         data_path = self.data_path
-        value = self.value
         prop = self.property
 
         prop_old = getattr(self, "_last_prop", [None])[0]
@@ -1150,7 +1167,7 @@ class WM_OT_properties_edit(Operator):
         # print(exec_str)
         exec(exec_str)
 
-        exec_str = "item.property_overridable_static_set('[\"%s\"]', %s)" % (prop, self.is_overridable_static)
+        exec_str = "item.property_overridable_library_set('[\"%s\"]', %s)" % (prop, self.is_overridable_library)
         exec(exec_str)
 
         rna_idprop_ui_prop_update(item, prop)
@@ -1213,7 +1230,7 @@ class WM_OT_properties_edit(Operator):
 
         return {'FINISHED'}
 
-    def invoke(self, context, event):
+    def invoke(self, context, _event):
         from rna_prop_ui import rna_idprop_ui_prop_get
 
         data_path = self.data_path
@@ -1227,8 +1244,8 @@ class WM_OT_properties_edit(Operator):
         item = eval("context.%s" % data_path)
 
         # retrieve overridable static
-        exec_str = "item.is_property_overridable_static('[\"%s\"]')" % (self.property)
-        self.is_overridable_static = bool(eval(exec_str))
+        exec_str = "item.is_property_overridable_library('[\"%s\"]')" % (self.property)
+        self.is_overridable_library = bool(eval(exec_str))
 
         # default default value
         prop_type = type(self.get_value_eval())
@@ -1261,7 +1278,7 @@ class WM_OT_properties_edit(Operator):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
 
-    def check(self, context):
+    def check(self, _context):
         cmp_props = self._cmp_props_get()
         changed = False
         if self._cmp_props != cmp_props:
@@ -1289,7 +1306,7 @@ class WM_OT_properties_edit(Operator):
 
         return changed
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         layout.prop(self, "property")
         layout.prop(self, "value")
@@ -1304,7 +1321,8 @@ class WM_OT_properties_edit(Operator):
 
         row = layout.row()
         row.prop(self, "use_soft_limits")
-        row.prop(self, "is_overridable_static")
+        if bpy.app.use_override_library:
+            row.prop(self, "is_overridable_library")
 
         row = layout.row(align=True)
         row.enabled = self.use_soft_limits
@@ -1322,8 +1340,7 @@ class WM_OT_properties_add(Operator):
 
     def execute(self, context):
         from rna_prop_ui import (
-            rna_idprop_ui_prop_get,
-            rna_idprop_ui_prop_update,
+            rna_idprop_ui_create,
         )
 
         data_path = self.data_path
@@ -1344,13 +1361,7 @@ class WM_OT_properties_add(Operator):
             *type(item).bl_rna.properties.keys(),
         })
 
-        item[prop] = 1.0
-        rna_idprop_ui_prop_update(item, prop)
-
-        # not essential, but without this we get [#31661]
-        prop_ui = rna_idprop_ui_prop_get(item, prop)
-        prop_ui["soft_min"] = prop_ui["min"] = 0.0
-        prop_ui["soft_max"] = prop_ui["max"] = 1.0
+        rna_idprop_ui_create(item, prop, default=1.0)
 
         return {'FINISHED'}
 
@@ -1406,12 +1417,12 @@ class WM_OT_sysinfo(Operator):
         options={'SKIP_SAVE'},
     )
 
-    def execute(self, context):
+    def execute(self, _context):
         import sys_info
         sys_info.write_sysinfo(self.filepath)
         return {'FINISHED'}
 
-    def invoke(self, context, event):
+    def invoke(self, context, _event):
         import os
 
         if not self.filepath:
@@ -1423,13 +1434,12 @@ class WM_OT_sysinfo(Operator):
         return {'RUNNING_MODAL'}
 
 
-
 class WM_OT_operator_cheat_sheet(Operator):
     """List all the Operators in a text-block, useful for scripting"""
     bl_idname = "wm.operator_cheat_sheet"
     bl_label = "Operator Cheat Sheet"
 
-    def execute(self, context):
+    def execute(self, _context):
         op_strings = []
         tot = 0
         for op_module_name in dir(bpy.ops):
@@ -1484,15 +1494,14 @@ class WM_OT_owner_disable(Operator):
         return {'FINISHED'}
 
 
-
-class WM_OT_tool_set_by_name(Operator):
+class WM_OT_tool_set_by_id(Operator):
     """Set the tool by name (for keymaps)"""
-    bl_idname = "wm.tool_set_by_name"
+    bl_idname = "wm.tool_set_by_id"
     bl_label = "Set Tool By Name"
 
     name: StringProperty(
-        name="Text",
-        description="Display name of the tool",
+        name="Identifier",
+        description="Identifier of the tool",
     )
     cycle: BoolProperty(
         name="Cycle",
@@ -1517,8 +1526,8 @@ class WM_OT_tool_set_by_name(Operator):
 
     def execute(self, context):
         from bl_ui.space_toolsystem_common import (
-            activate_by_name,
-            activate_by_name_or_cycle,
+            activate_by_id,
+            activate_by_id_or_cycle,
         )
 
         if self.properties.is_property_set("space_type"):
@@ -1526,12 +1535,62 @@ class WM_OT_tool_set_by_name(Operator):
         else:
             space_type = context.space_data.type
 
-        fn = activate_by_name_or_cycle if self.cycle else activate_by_name
+        fn = activate_by_id_or_cycle if self.cycle else activate_by_id
         if fn(context, space_type, self.name):
             return {'FINISHED'}
         else:
             self.report({'WARNING'}, f"Tool {self.name!r:s} not found for space {space_type!r:s}.")
             return {'CANCELLED'}
+
+
+class WM_OT_tool_set_by_index(Operator):
+    """Set the tool by index (for keymaps)"""
+    bl_idname = "wm.tool_set_by_index"
+    bl_label = "Set Tool By Index"
+    index: IntProperty(
+        name="Index in toolbar",
+        default=0,
+    )
+    cycle: BoolProperty(
+        name="Cycle",
+        description="Cycle through tools in this group",
+        default=False,
+        options={'SKIP_SAVE'},
+    )
+
+    expand: BoolProperty(
+        description="Include tool sub-groups",
+        default=True,
+    )
+
+    space_type: rna_space_type_prop
+
+    def execute(self, context):
+        from bl_ui.space_toolsystem_common import (
+            activate_by_id,
+            activate_by_id_or_cycle,
+            item_from_index,
+            item_from_flat_index,
+        )
+
+        if self.properties.is_property_set("space_type"):
+            space_type = self.space_type
+        else:
+            space_type = context.space_data.type
+
+        fn = item_from_flat_index if self.expand else item_from_index
+        item = fn(context, space_type, self.index)
+        if item is None:
+            # Don't report, since the number of tools may change.
+            return {'CANCELLED'}
+
+        # Same as: WM_OT_tool_set_by_id
+        fn = activate_by_id_or_cycle if self.cycle else activate_by_id
+        if fn(context, space_type, item.idname):
+            return {'FINISHED'}
+        else:
+            # Since we already have the tool, this can't happen.
+            raise Exception("Internal error setting tool")
 
 
 class WM_OT_toolbar(Operator):
@@ -1650,9 +1709,9 @@ class WM_MT_splash(Menu):
         row = layout.row()
 
         sub = row.row()
-        if bpy.types.WM_OT_copy_prev_settings.poll(context):
-            old_version = bpy.types.WM_OT_copy_prev_settings.previous_version()
-            sub.operator("wm.copy_prev_settings", text="Load %d.%d Settings" % old_version)
+        if bpy.types.PREFERENCES_OT_copy_prev.poll(context):
+            old_version = bpy.types.PREFERENCES_OT_copy_prev.previous_version()
+            sub.operator("preferences.copy_prev", text="Load %d.%d Settings" % old_version)
             sub.operator("wm.save_userpref", text="Save New Settings")
         else:
             sub.label()
@@ -1666,7 +1725,7 @@ class WM_MT_splash(Menu):
         # Draw setup screen if no preferences have been saved yet.
         import os
 
-        userconfig_path = bpy.utils.user_resource('CONFIG');
+        userconfig_path = bpy.utils.user_resource('CONFIG')
         userdef_path = os.path.join(userconfig_path, "userpref.blend")
 
         if not os.path.isfile(userdef_path):
@@ -1695,12 +1754,17 @@ class WM_MT_splash(Menu):
         if found_recent:
             col2_title.label(text="Recent Files")
         else:
+            if bpy.app.version_cycle in {'rc', 'release'}:
+                manual_version = '%d.%d' % bpy.app.version[:2]
+            else:
+                manual_version = 'dev'
+
             # Links if no recent files
             col2_title.label(text="Getting Started")
 
             col2.operator(
                 "wm.url_open", text="Manual", icon='URL'
-            ).url = "https://docs.blender.org/manual/en/dev/"
+            ).url = "https://docs.blender.org/manual/en/" + manual_version + "/"
             col2.operator(
                 "wm.url_open", text="Release Notes", icon='URL',
             ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
@@ -1722,20 +1786,12 @@ class WM_MT_splash(Menu):
         col1.operator("wm.recover_last_session", icon='RECOVER_LAST')
 
         col2 = split.column()
-        if found_recent:
-            col2.operator(
-                "wm.url_open", text="Release Notes", icon='URL',
-            ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-        else:
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-            col2.operator(
-                "wm.url_open", text="Donate", icon='URL'
-            ).url = "https://www.blender.org/foundation/donation-payment/"
+        col2.operator(
+            "wm.url_open", text="Release Notes", icon='URL',
+        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
+        col2.operator(
+            "wm.url_open", text="Development Fund", icon='FUND'
+        ).url = "https://fund.blender.org"
 
         layout.separator()
         layout.separator()
@@ -1748,16 +1804,18 @@ class WM_OT_drop_blend_file(Operator):
 
     filepath: StringProperty()
 
-    def invoke(self, context, event):
+    def invoke(self, context, _event):
         context.window_manager.popup_menu(self.draw_menu, title=bpy.path.basename(self.filepath), icon='QUESTION')
-        return {"FINISHED"}
+        return {'FINISHED'}
 
-    def draw_menu(self, menu, context):
+    def draw_menu(self, menu, _context):
         layout = menu.layout
 
         col = layout.column()
-        col.operator_context = 'EXEC_DEFAULT'
-        col.operator("wm.open_mainfile", text="Open", icon='FILE_FOLDER').filepath = self.filepath
+        col.operator_context = 'INVOKE_DEFAULT'
+        props = col.operator("wm.open_mainfile", text="Open", icon='FILE_FOLDER')
+        props.filepath = self.filepath
+        props.display_file_selector = False
 
         layout.separator()
         col = layout.column()
@@ -1799,7 +1857,8 @@ classes = (
     WM_OT_owner_disable,
     WM_OT_owner_enable,
     WM_OT_url_open,
-    WM_OT_tool_set_by_name,
+    WM_OT_tool_set_by_id,
+    WM_OT_tool_set_by_index,
     WM_OT_toolbar,
     WM_MT_splash,
 )

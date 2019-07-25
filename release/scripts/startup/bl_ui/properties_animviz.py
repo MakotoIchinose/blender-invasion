@@ -31,7 +31,7 @@ class MotionPathButtonsPanel:
     bl_label = "Motion Paths"
     # bl_options = {'DEFAULT_CLOSED'}
 
-    def draw_settings(self, context, avs, mpath, bones=False):
+    def draw_settings(self, _context, avs, mpath, bones=False):
         layout = self.layout
 
         mps = avs.motion_path
@@ -47,7 +47,6 @@ class MotionPathButtonsPanel:
                 row.operator("pose.paths_range_update", text="", icon='TIME')
             else:
                 row.operator("object.paths_range_update", text="", icon='TIME')
-
 
         if mps.type == 'CURRENT_FRAME':
             col = layout.column(align=True)
@@ -90,7 +89,7 @@ class MotionPathButtonsPanel_display:
     bl_region_type = 'WINDOW'
     bl_label = "Display"
 
-    def draw_settings(self, context, avs, mpath, bones=False):
+    def draw_settings(self, _context, avs, mpath, bones=False):
         layout = self.layout
 
         mps = avs.motion_path
