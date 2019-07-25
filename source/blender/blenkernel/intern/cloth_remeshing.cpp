@@ -1713,7 +1713,7 @@ static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
       }
     }
     if (already_exists) {
-      break;
+      continue;
     }
     active_faces.push_back(fix_active[i]);
   }
