@@ -1883,9 +1883,10 @@ static void cloth_remeshing_static(ClothModifierData *clmd)
 #endif
 }
 
-static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
-                                                                        Object *ob,
-                                                                        ClothModifierData *clmd);
+static void cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
+                                                  Object *ob,
+                                                  ClothModifierData *clmd,
+                                                  map<BMVert *, ClothSizing> &vert_sizing);
 
 static void cloth_remeshing_dynamic(Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd)
 {
@@ -1898,7 +1899,7 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph, Object *ob, ClothModif
   /**
    * Define sizing dynamicly
    */
-  sizing = cloth_remeshing_compute_vertex_sizing(depsgraph, ob, clmd);
+  cloth_remeshing_compute_vertex_sizing(depsgraph, ob, clmd, sizing);
 
   /**
    * Split edges
@@ -2514,14 +2515,14 @@ static ClothSizing cloth_remeshing_compute_vertex_sizing(BMesh *bm,
   return sizing;
 }
 
-static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
-                                                                        Object *ob,
-                                                                        ClothModifierData *clmd)
+static void cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
+                                                  Object *ob,
+                                                  ClothModifierData *clmd,
+                                                  map<BMVert *, ClothSizing> &vert_sizing)
 {
   Cloth *cloth = clmd->clothObject;
   BMesh *bm = cloth->bm;
   map<BMFace *, ClothSizing> face_sizing;
-  map<BMVert *, ClothSizing> vert_sizing;
 
   BMFace *f;
   BMIter fiter;
@@ -2534,15 +2535,13 @@ static map<BMVert *, ClothSizing> cloth_remeshing_compute_vertex_sizing(Depsgrap
   BM_ITER_MESH (v, &viter, bm, BM_VERTS_OF_MESH) {
     vert_sizing[v] = cloth_remeshing_compute_vertex_sizing(bm, v, face_sizing);
   }
-
-  return vert_sizing;
 }
 
 Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   cloth_remeshing_init_bmesh(ob, clmd, mesh);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd);
   }
   else {
@@ -2551,3 +2550,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 
   return cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
 }
+
+/* TODO(Ish): ClothSizing mapping cannot work because when the vector
+ * capacity changes, it reallocs thus breaking the pointer
+ * relationship that it has */
