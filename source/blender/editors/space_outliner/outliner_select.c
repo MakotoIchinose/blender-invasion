@@ -1345,7 +1345,7 @@ static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_child
   }
 }
 
-static bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
+bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
 {
   return (view_co_x > te->xs) && (view_co_x < te->xs + UI_UNIT_X);
 }
@@ -1408,9 +1408,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   /* Don't allow toggle on scene collection */
   else if ((TREESTORE(te)->type != TSE_VIEW_COLLECTION_BASE) &&
            outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
-    outliner_item_toggle_closed(te, extend);
-    changed = true;
-    rebuild_tree = true;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
     ViewLayer *view_layer = CTX_data_view_layer(C);

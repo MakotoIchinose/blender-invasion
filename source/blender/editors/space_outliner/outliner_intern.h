@@ -266,6 +266,8 @@ void outliner_object_mode_toggle(struct bContext *C,
 
 void outliner_element_activate(struct SpaceOutliner *soops, struct TreeStoreElem *tselem);
 
+bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x);
+
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_cb)(struct bContext *C,
                                       struct ReportList *,
