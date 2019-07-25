@@ -140,16 +140,17 @@ void OUTLINER_OT_highlight_update(wmOperatorType *ot)
 
 /* Toggle Open/Closed ------------------------------------------- */
 
-/* Open or close a tree element */
-static bool outliner_item_openclose(TreeElement *te, bool open_all)
+/* Open or close a tree element, optionally toggling all children recursively */
+static bool outliner_item_openclose(TreeElement *te, bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
   /* all below close/open? */
-  if (open_all) {
-    tselem->flag &= ~TSE_CLOSED;
-    outliner_flag_set(
-        &te->subtree, TSE_CLOSED, !outliner_flag_is_any_test(&te->subtree, TSE_CLOSED, 1));
+  if (toggle_all) {
+    const bool open = tselem->flag & TSE_CLOSED;
+
+    tselem->flag ^= TSE_CLOSED;
+    outliner_flag_set(&te->subtree, TSE_CLOSED, !open);
 
     return true;
   }
@@ -204,7 +205,7 @@ static int outliner_item_openclose_invoke(bContext *C, wmOperator *op, const wmE
   ARegion *ar = CTX_wm_region(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
 
-  const bool open_all = RNA_boolean_get(op->ptr, "all");
+  const bool toggle_all = RNA_boolean_get(op->ptr, "all");
 
   float view_mval[2];
   UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
@@ -212,7 +213,7 @@ static int outliner_item_openclose_invoke(bContext *C, wmOperator *op, const wmE
   TreeElement *te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
 
   if (te && outliner_item_is_co_within_close_toggle(te, view_mval[0])) {
-    outliner_item_openclose(te, open_all);
+    outliner_item_openclose(te, toggle_all);
     ED_region_tag_redraw(ar);
 
     /* Store the first clicked on element */
