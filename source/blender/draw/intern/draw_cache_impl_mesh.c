@@ -3018,7 +3018,7 @@ static void mesh_create_loop_edge_fac(MeshRenderData *rdata, GPUVertBuf *vbo)
         BM_ITER_ELEM (loop, &iter_loop, efa, BM_LOOPS_OF_FACE) {
           float ratio = mesh_loop_edge_factor_get(
               efa->no, loop->v->co, loop->v->no, loop->next->v->co);
-          vertbuf_raw_step(&wd_step, ratio * 255);
+          vertbuf_raw_step(&wd_step, ratio * 253 + 1);
         }
       }
       BLI_assert(GPU_vertbuf_raw_used(&wd_step) == loop_len);
@@ -4830,7 +4830,7 @@ static void uvedit_fill_buffer_data(MeshRenderData *rdata,
     /* Tag hidden faces */
     BM_elem_flag_set(efa, BM_ELEM_TAG, uvedit_face_visible_nolocal_ex(rdata->toolsettings, efa));
 
-    if (vbo_area && BM_elem_flag_test(efa, BM_ELEM_TAG)) {
+    if (vbo_area) {
       edit_uv_preprocess_stretch_area(
           efa, cd_loop_uv_offset, fidx++, &totarea, &totuvarea, faces_areas);
     }
