@@ -7,10 +7,13 @@
 
 extern "C" {
 #include "BLI_assert.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_anim.h"
+#include "BKE_customdata.h"
 #include "BKE_library.h"
 #include "BKE_material.h"
+#include "BKE_mesh.h"
 
 #include "DEG_depsgraph.h"
 
@@ -160,12 +163,14 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   }
 
   write_uv_maps(mesh, usd_mesh);
+  write_normals(mesh, usd_mesh);
 
   // TODO(Sybren): figure out what happens when the face groups change.
   if (frame_has_been_written_) {
     return;
   }
 
+  usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
   assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
 }
 
@@ -295,6 +300,50 @@ void USDGenericMeshWriter::assign_materials(
     pxr::UsdGeomSubset usd_face_subset = api.CreateMaterialBindSubset(material_name, face_indices);
     usd_material.Bind(usd_face_subset.GetPrim());
   }
+}
+
+void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh)
+{
+  pxr::UsdTimeCode timecode = get_export_time_code();
+  const float(*lnors)[3] = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
+
+  pxr::VtVec3fArray loop_normals;
+  loop_normals.reserve(mesh->totloop);
+
+  if (lnors != nullptr) {
+    /* Export custom loop normals. */
+    for (int loop_idx = 0, totloop = mesh->totloop; loop_idx < totloop; ++loop_idx) {
+      loop_normals.push_back(pxr::GfVec3f(lnors[loop_idx]));
+    }
+  }
+  else {
+    /* Compute the loop normals based on the 'smooth' flag. */
+    float normal[3];
+    MPoly *mpoly = mesh->mpoly;
+    const MVert *mvert = mesh->mvert;
+    for (int poly_idx = 0, totpoly = mesh->totpoly; poly_idx < totpoly; ++poly_idx, ++mpoly) {
+      MLoop *mloop = mesh->mloop + mpoly->loopstart;
+
+      if ((mpoly->flag & ME_SMOOTH) == 0) {
+        /* Flat shaded, use common normal for all verts. */
+        BKE_mesh_calc_poly_normal(mpoly, mloop, mvert, normal);
+        pxr::GfVec3f pxr_normal(normal);
+        for (int loop_idx = 0; loop_idx < mpoly->totloop; ++loop_idx) {
+          loop_normals.push_back(pxr_normal);
+        }
+      }
+      else {
+        /* Smooth shaded, use individual vert normals. */
+        for (int loop_idx = 0; loop_idx < mpoly->totloop; ++loop_idx, ++mloop) {
+          normal_short_to_float_v3(normal, mvert[mloop->v].no);
+          loop_normals.push_back(pxr::GfVec3f(normal));
+        }
+      }
+    }
+  }
+
+  usd_mesh.CreateNormalsAttr().Set(loop_normals, timecode);
+  usd_mesh.SetNormalsInterpolation(pxr::UsdGeomTokens->faceVarying);
 }
 
 USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx)
