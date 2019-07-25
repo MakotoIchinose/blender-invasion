@@ -99,8 +99,11 @@ void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_
       continue;
     }
 
-    // UV coordinates are stored in a Primvar on the Mesh, and can be referenced from materials.
-    pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(std::string("uv_") + layer->name));
+    /* UV coordinates are stored in a Primvar on the Mesh, and can be referenced from materials.
+     * The primvar name is the same as the UV Map name. This is to allow the standard name "st"
+     * for texture coordinates by naming the UV Map as such, without having to guess which UV Map
+     * is the "standard" one. */
+    pxr::TfToken primvar_name(pxr::TfMakeValidIdentifier(layer->name));
     pxr::UsdGeomPrimvar uv_coords_primvar = usd_mesh.CreatePrimvar(
         primvar_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
 
