@@ -722,7 +722,7 @@ static void draw_columnheader_columns(const FileSelectParams *params,
       rgba_uchar_to_float(tri_color, text_col);
       UI_draw_icon_tri(sx + column->width - (0.3f * U.widget_unit) - DETAILS_COLUMN_PADDING / 2.0f,
                        sy + (0.1f * U.widget_unit) - (layout->columnheader_h / 2),
-                       'v',
+                       (params->flag & FILE_SORT_INVERT) ? 't' : 'v',
                        tri_color);
     }
 
