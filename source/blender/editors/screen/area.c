@@ -1275,6 +1275,9 @@ static void region_rect_recursive(
   else if (ED_area_is_global(sa)) {
     prefsizey = ED_region_global_size_y();
   }
+  else if (ar->regiontype == RGN_TYPE_UI && sa->spacetype == SPACE_FILE) {
+    prefsizey = UI_UNIT_Y * 2 + (UI_UNIT_Y / 2);
+  }
   else {
     prefsizey = UI_DPI_FAC * (ar->sizey > 1 ? ar->sizey + 0.5f : ar->type->prefsizey);
   }
@@ -2422,10 +2425,6 @@ void ED_region_panels_layout_ex(const bContext *C,
   for (LinkNode *pt_link = panel_types_stack; pt_link; pt_link = pt_link->next) {
     PanelType *pt = pt_link->link;
     Panel *panel = UI_panel_find_by_type(&ar->panels, pt);
-
-    if (pt->flag & PNL_HIDDEN) {
-      continue;
-    }
 
     if (use_category_tabs && pt->category[0] && !STREQ(category, pt->category)) {
       if ((panel == NULL) || ((panel->flag & PNL_PIN) == 0)) {

@@ -261,17 +261,36 @@ unsigned int BLI_filelist_dir_contents(const char *dirname, struct direntry **r_
  */
 void BLI_filelist_entry_size_to_string(const struct stat *st,
                                        const uint64_t sz,
-                                       /* Used to change MB -> M, etc. - is that really useful? */
-                                       const bool UNUSED(compact),
+                                       const bool compact,
                                        char r_size[FILELIST_DIRENTRY_SIZE_LEN])
 {
+  double size;
+  const char *fmt;
+  const char *units[] = {"KiB", "MiB", "GiB", "TiB", NULL};
+  const char *units_compact[] = {"K", "M", "G", "T", NULL};
+  const char *unit = "B";
+
   /*
    * Seems st_size is signed 32-bit value in *nix and Windows.  This
    * will buy us some time until files get bigger than 4GB or until
    * everyone starts using __USE_FILE_OFFSET64 or equivalent.
    */
-  double size = (double)(st ? st->st_size : sz);
-  BLI_str_format_byte_unit(r_size, size, true);
+  size = (double)(st ? st->st_size : sz);
+
+  if (size > 1024.0) {
+    const char **u;
+    for (u = compact ? units_compact : units, size /= 1024.0; size > 1024.0 && *(u + 1);
+         u++, size /= 1024.0) {
+      /* pass */
+    }
+    fmt = size > 100.0 ? "%.0f %s" : (size > 10.0 ? "%.1f %s" : "%.2f %s");
+    unit = *u;
+  }
+  else {
+    fmt = "%.0f %s";
+  }
+
+  BLI_snprintf(r_size, sizeof(*r_size) * FILELIST_DIRENTRY_SIZE_LEN, fmt, size, unit);
 }
 
 /**

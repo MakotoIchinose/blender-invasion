@@ -179,8 +179,6 @@ typedef struct ARegionType {
   /* header type definitions */
   ListBase headertypes;
 
-  int flag;
-
   /* hardcoded constraints, smaller than these values region is not visible */
   int minsizex, minsizey;
   /* when new region opens (region prefsizex/y are zero then */
@@ -193,12 +191,6 @@ typedef struct ARegionType {
   /* call cursor function on each move event */
   short event_cursor;
 } ARegionType;
-
-/* ARegionType.flag */
-enum {
-  /** Never show category tabs in this region type. */
-  RGN_TYPE_FLAG_NO_CATEGORIES = (1 << 8),
-};
 
 /* panel types */
 

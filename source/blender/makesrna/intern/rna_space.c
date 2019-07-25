@@ -5142,16 +5142,16 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem file_display_items[] = {
-      {FILE_VERTICALDISPLAY,
-       "LIST_VERTICAL",
-       ICON_SHORTDISPLAY, // * Name of deprecated Short List*
-       "Vertical List",
-       "Display files as a vertical list"},
-      {FILE_HORIZONTALDISPLAY,
-       "LIST_HORIZONTAL",
-       ICON_LONGDISPLAY, // * Name of deprecated Long List*
-       "Horizontal List",
-       "Display files as a horizontal list"},
+      {FILE_SHORTDISPLAY,
+       "LIST_SHORT",
+       ICON_SHORTDISPLAY,
+       "Short List",
+       "Display files as short list"},
+      {FILE_LONGDISPLAY,
+       "LIST_LONG",
+       ICON_LONGDISPLAY,
+       "Long List",
+       "Display files as a detailed list"},
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -5276,10 +5276,7 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Title", "Title for the file browser");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  /* Use BYTESTRING rather than DIRPATH as subtype so UI code doesn't add OT_directory_browse
-   * button when displaying this prop in the file browser (it would just open a file browser). That
-   * should be the only effective difference between the two. */
-  prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_BYTESTRING);
+  prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_sdna(prop, NULL, "dir");
   RNA_def_property_ui_text(prop, "Directory", "Directory displayed in the file browser");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
@@ -5307,19 +5304,6 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Recursion", "Numbers of dirtree levels to show simultaneously");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
-  prop = RNA_def_property(srna, "show_details_size", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "details_flags", FILE_DETAILS_SIZE);
-  RNA_def_property_ui_text(prop, "File Size", "Draw a column listing the size of each file");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
-
-  prop = RNA_def_property(srna, "show_details_datetime", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "details_flags", FILE_DETAILS_DATETIME);
-  RNA_def_property_ui_text(
-      prop,
-      "File Modification Date",
-      "Draw a column listing the date and time of modification for each file");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
-
   prop = RNA_def_property(srna, "use_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", FILE_FILTER);
   RNA_def_property_ui_text(prop, "Filter Files", "Enable filtering of files");
@@ -5334,12 +5318,6 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "sort");
   RNA_def_property_enum_items(prop, rna_enum_file_sort_items);
   RNA_def_property_ui_text(prop, "Sort", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
-
-  prop = RNA_def_property(srna, "use_sort_invert", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", FILE_SORT_INVERT);
-  RNA_def_property_ui_text(
-      prop, "Sort Inverted", "Sort items descending, from highest value to lowest");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
   prop = RNA_def_property(srna, "use_filter_image", PROP_BOOLEAN, PROP_NONE);
