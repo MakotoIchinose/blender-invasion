@@ -78,7 +78,7 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
-#define COLLAPSE_EDGES_DEBUG 0
+#define COLLAPSE_EDGES_DEBUG 1
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
@@ -1328,7 +1328,7 @@ static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_
   int i = 0;
   *r_f1 = NULL;
   *r_f2 = NULL;
-  BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
+  BM_ITER_ELEM_INDEX (f, &fiter, e, BM_FACES_OF_EDGE, i) {
     if (i == 0) {
       *r_f1 = f;
     }
@@ -1423,6 +1423,14 @@ static bool cloth_remeshing_can_collapse_edge(
     BMVert *v2 = cloth_remeshing_edge_vert(bm, e, s, 1 - which, uv_v2);
 
     if (!v1 || (s == 1 && v1 == cloth_remeshing_edge_vert(bm, e, 0, which, NULL))) {
+#if COLLAPSE_EDGES_DEBUG
+      if (!v1) {
+        printf("continued at !v1\n");
+      }
+      else {
+        printf("(s == 1 && v1 == ......)\n");
+      }
+#endif
       continue;
     }
 
@@ -1430,6 +1438,9 @@ static bool cloth_remeshing_can_collapse_edge(
     BMIter fiter;
     BM_ITER_ELEM (f, &fiter, v1, BM_FACES_OF_VERT) {
       if (BM_vert_in_face(v2, f)) {
+#if COLLAPSE_EDGES_DEBUG
+        printf("continued at BM_vert_in_face(v2, f)\n");
+#endif
         continue;
       }
       BMVert *vs[3];
@@ -1455,27 +1466,27 @@ static bool cloth_remeshing_can_collapse_edge(
       float asp = cloth_remeshing_aspect_ratio(uvs[0], uvs[1], uvs[2]);
       if (a < 1e-6 || asp < clmd->sim_parms->aspect_min) {
 #if COLLAPSE_EDGES_DEBUG
-        printf("aspect %f < aspect_min\n", asp);
+        printf("a: %f < 1e-6 || aspect %f < aspect_min\n", a, asp);
 #endif
         return false;
       }
 
       float size;
-      for (int e = 0; e < 3; e++) {
-        if (vs[e] != v2) {
+      for (int ei = 0; ei < 3; ei++) {
+        if (vs[ei] != v2) {
           size = cloth_remeshing_edge_size(
-              bm, vs[NEXT(e)], vs[PREV(e)], uvs[NEXT(e)], uvs[PREV(e)], sizing);
+              bm, vs[NEXT(ei)], vs[PREV(ei)], uvs[NEXT(ei)], uvs[PREV(ei)], sizing);
           if (size > 1.0f - REMESHING_HYSTERESIS_PARAMETER) {
 #if COLLAPSE_EDGES_DEBUG
             printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size);
 #endif
             return false;
           }
+#if COLLAPSE_EDGES_DEBUG
+          printf("size: %f ", size);
+#endif
         }
       }
-#if COLLAPSE_EDGES_DEBUG
-      printf("size: %f ", size);
-#endif
     }
   }
   return true;
