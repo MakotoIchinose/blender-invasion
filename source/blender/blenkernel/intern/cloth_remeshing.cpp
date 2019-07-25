@@ -403,16 +403,11 @@ static pair<BMVert *, BMVert *> cloth_remeshing_edge_side_verts(BMEdge *e)
 static bool cloth_remeshing_should_flip(BMesh *bm, BMEdge *e, map<BMVert *, ClothSizing> &sizing)
 {
   BMVert *v1, *v2, *v3, *v4;
-  v1 = cloth_remeshing_edge_vert(bm, e, 0, 0, NULL);
-  v2 = cloth_remeshing_edge_vert(bm, e, 0, 1, NULL);
-  v3 = cloth_remeshing_edge_opposite_vert(bm, e, 0, NULL);
-  v4 = cloth_remeshing_edge_opposite_vert(bm, e, 1, NULL);
-
   float x[2], y[2], z[2], w[2];
-  cloth_remeshing_uv_of_vert(bm, v1, x);
-  cloth_remeshing_uv_of_vert(bm, v2, z);
-  cloth_remeshing_uv_of_vert(bm, v3, w);
-  cloth_remeshing_uv_of_vert(bm, v4, y);
+  v1 = cloth_remeshing_edge_vert(bm, e, 0, 0, x);
+  v2 = cloth_remeshing_edge_vert(bm, e, 0, 1, z);
+  v3 = cloth_remeshing_edge_opposite_vert(bm, e, 0, w);
+  v4 = cloth_remeshing_edge_opposite_vert(bm, e, 1, y);
 
   float m[2][2];
   /* TODO(Ish): need to fix this when sizing is improved */
@@ -692,8 +687,12 @@ static void cloth_remeshing_uv_of_vert(BMesh *bm, BMVert *v, float r_uv[2])
   copy_v2_v2(r_uv, luv->uv);
 }
 
+/* Ensure the edge also has at least one face associated with it so
+ * that e->l exists */
 static void cloth_remeshing_uv_of_vert_in_edge(BMesh *bm, BMEdge *e, BMVert *v, float r_uv[2])
 {
+  BLI_assert(e->l != NULL);
+
   BMLoop *l;
   e->l->v == v ? l = e->l : l = e->l->next;
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
@@ -704,14 +703,13 @@ static void cloth_remeshing_uv_of_vert_in_edge(BMesh *bm, BMEdge *e, BMVert *v, 
 static float cloth_remeshing_edge_size(BMesh *bm,
                                        BMVert *v1,
                                        BMVert *v2,
+                                       float uv1[2],
+                                       float uv2[2],
                                        map<BMVert *, ClothSizing> &sizing)
 {
-  if (!v1 || !v2) {
+  if (!v1 || !v2 || uv1 == NULL || uv2 == NULL) {
     return 0.0f;
   }
-  float uv1[2], uv2[2];
-  cloth_remeshing_uv_of_vert(bm, v1, uv1);
-  cloth_remeshing_uv_of_vert(bm, v2, uv2);
 
   float uv12[2];
   sub_v2_v2v2(uv12, uv1, uv2);
@@ -722,50 +720,12 @@ static float cloth_remeshing_edge_size(BMesh *bm,
 static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, map<BMVert *, ClothSizing> &sizing)
 {
   float u1[2], u2[2];
-  float u12[2];
-
-  /**
-   * Get UV Coordinates of v1 and v2
-   */
-  BMLoop *l;
-  BMLoop *l2;
-  MLoopUV *luv;
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
-
-  /* find edge_size only if edge has a loop (so it has a face attached) */
   if (!edge->l) {
-    /* TODO(Ish): Might want to mark such an edge as sewing edge, so it can be used when an edge
-     * connected to 2 sewing edges is split, new sewing edges can be added */
     return 0.0f;
   }
-
-  l = edge->l;
-  if (l->v == edge->v1) {
-    if (l->next->v == edge->v2) {
-      l2 = l->next;
-    }
-    else {
-      l2 = l->prev;
-    }
-  }
-  else {
-    if (l->next->v == edge->v1) {
-      l2 = l->next;
-    }
-    else {
-      l2 = l->prev;
-    }
-  }
-
-  luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-  copy_v2_v2(u1, luv->uv);
-  luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l2, cd_loop_uv_offset);
-  copy_v2_v2(u2, luv->uv);
-  copy_v2_v2(u12, u1);
-  sub_v2_v2(u12, u2);
-
-  return sqrtf((cloth_remeshing_norm2(u12, sizing[edge->v1]) +
-                (cloth_remeshing_norm2(u12, sizing[edge->v2])) * 0.5f));
+  cloth_remeshing_uv_of_vert_in_edge(bm, edge, edge->v1, u1);
+  cloth_remeshing_uv_of_vert_in_edge(bm, edge, edge->v2, u2);
+  return cloth_remeshing_edge_size(bm, edge->v1, edge->v2, u1, u2, sizing);
 }
 
 static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
@@ -1459,7 +1419,8 @@ static bool cloth_remeshing_can_collapse_edge(
 {
   for (int s = 0; s < 2; s++) {
     BMVert *v1 = cloth_remeshing_edge_vert(bm, e, s, which, NULL);
-    BMVert *v2 = cloth_remeshing_edge_vert(bm, e, s, 1 - which, NULL);
+    float uv_v2[2];
+    BMVert *v2 = cloth_remeshing_edge_vert(bm, e, s, 1 - which, uv_v2);
 
     if (!v1 || (s == 1 && v1 == cloth_remeshing_edge_vert(bm, e, 0, which, NULL))) {
       continue;
@@ -1473,24 +1434,25 @@ static bool cloth_remeshing_can_collapse_edge(
       }
       BMVert *vs[3];
       BM_face_as_array_vert_tri(f, vs);
+      float uvs[3][2];
+      cloth_remeshing_uv_of_vert_in_face(bm, f, vs[0], uvs[0]);
+      cloth_remeshing_uv_of_vert_in_face(bm, f, vs[1], uvs[1]);
+      cloth_remeshing_uv_of_vert_in_face(bm, f, vs[2], uvs[2]);
       /* Replace the v1 with v2 in vs */
       for (int i = 0; i < 3; i++) {
         if (vs[i] == v1) {
           vs[i] = v2;
+          copy_v2_v2(uvs[i], uv_v2);
         }
       }
 
       /* Aspect ratio part */
       /* TODO(Ish): get the uvs of vs */
-      float uv1[2], uv2[2], uv3[2];
-      cloth_remeshing_uv_of_vert(bm, vs[0], uv1);
-      cloth_remeshing_uv_of_vert(bm, vs[1], uv2);
-      cloth_remeshing_uv_of_vert(bm, vs[2], uv3);
       float uv_21[2], uv_31[2];
-      sub_v2_v2v2(uv_21, uv2, uv1);
-      sub_v2_v2v2(uv_31, uv3, uv1);
+      sub_v2_v2v2(uv_21, uvs[1], uvs[0]);
+      sub_v2_v2v2(uv_31, uvs[2], uvs[0]);
       float a = cloth_remeshing_wedge(uv_21, uv_31) * 0.5f;
-      float asp = cloth_remeshing_aspect_ratio(uv1, uv2, uv3);
+      float asp = cloth_remeshing_aspect_ratio(uvs[0], uvs[1], uvs[2]);
       if (a < 1e-6 || asp < clmd->sim_parms->aspect_min) {
 #if COLLAPSE_EDGES_DEBUG
         printf("aspect %f < aspect_min\n", asp);
@@ -1501,7 +1463,8 @@ static bool cloth_remeshing_can_collapse_edge(
       float size;
       for (int e = 0; e < 3; e++) {
         if (vs[e] != v2) {
-          size = cloth_remeshing_edge_size(bm, vs[NEXT(e)], vs[PREV(e)], sizing);
+          size = cloth_remeshing_edge_size(
+              bm, vs[NEXT(e)], vs[PREV(e)], uvs[NEXT(e)], uvs[PREV(e)], sizing);
           if (size > 1.0f - REMESHING_HYSTERESIS_PARAMETER) {
 #if COLLAPSE_EDGES_DEBUG
             printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size);
