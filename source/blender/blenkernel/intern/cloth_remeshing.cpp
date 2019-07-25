@@ -139,7 +139,7 @@ static ClothSizing cloth_remeshing_find_average_sizing(ClothSizing &size_01, Clo
 static void mul_m2_m2m2(float r[2][2], float a[2][2], float b[2][2]);
 static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which);
 static BMVert *cloth_remeshing_edge_vert(BMesh *bm, BMEdge *e, int side, int i, float r_uv[2]);
-static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side);
+static BMVert *cloth_remeshing_edge_opposite_vert(BMesh *bm, BMEdge *e, int side, float r_uv[2]);
 static void cloth_remeshing_uv_of_vert(BMesh *bm, BMVert *v, float r_uv[2]);
 static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_f2);
 static void cloth_remeshing_uv_of_vert_in_edge(BMesh *bm, BMEdge *e, BMVert *v, float r_uv[2]);
@@ -405,8 +405,8 @@ static bool cloth_remeshing_should_flip(BMesh *bm, BMEdge *e, map<BMVert *, Clot
   BMVert *v1, *v2, *v3, *v4;
   v1 = cloth_remeshing_edge_vert(bm, e, 0, 0, NULL);
   v2 = cloth_remeshing_edge_vert(bm, e, 0, 1, NULL);
-  v3 = cloth_remeshing_edge_opposite_vert(e, 0);
-  v4 = cloth_remeshing_edge_opposite_vert(e, 1);
+  v3 = cloth_remeshing_edge_opposite_vert(bm, e, 0, NULL);
+  v4 = cloth_remeshing_edge_opposite_vert(bm, e, 1, NULL);
 
   float x[2], y[2], z[2], w[2];
   cloth_remeshing_uv_of_vert(bm, v1, x);
@@ -1420,7 +1420,8 @@ static BMVert *cloth_remeshing_edge_vert(BMesh *bm, BMEdge *e, int side, int i, 
   return NULL;
 }
 
-static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side)
+/* r_uv is the uv of the BMVert that is returned */
+static BMVert *cloth_remeshing_edge_opposite_vert(BMesh *bm, BMEdge *e, int side, float r_uv[2])
 {
   /* BMFace *f; */
   /* BMIter fiter; */
@@ -1443,6 +1444,9 @@ static BMVert *cloth_remeshing_edge_opposite_vert(BMEdge *e, int side)
   BM_face_as_array_vert_tri(f, vs);
   for (int j = 0; j < 3; j++) {
     if (vs[j] == cloth_remeshing_edge_vert(e, side)) {
+      if (r_uv != NULL) {
+        cloth_remeshing_uv_of_vert_in_face(bm, f, vs[PREV(j)], r_uv);
+      }
       return vs[PREV(j)];
     }
   }
