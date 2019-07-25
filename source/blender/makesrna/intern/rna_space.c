@@ -5142,16 +5142,16 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem file_display_items[] = {
-      {FILE_SHORTDISPLAY,
-       "LIST_SHORT",
-       ICON_SHORTDISPLAY,
-       "Short List",
-       "Display files as short list"},
-      {FILE_LONGDISPLAY,
-       "LIST_LONG",
-       ICON_LONGDISPLAY,
-       "Long List",
-       "Display files as a detailed list"},
+      {FILE_VERTICALDISPLAY,
+       "LIST_VERTICAL",
+       ICON_SHORTDISPLAY, // * Name of deprecated Short List*
+       "Vertical List",
+       "Display files as a vertical list"},
+      {FILE_HORIZONTALDISPLAY,
+       "LIST_HORIZONTAL",
+       ICON_LONGDISPLAY, // * Name of deprecated Long List*
+       "Horizontal List",
+       "Display files as a horizontal list"},
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
       {0, NULL, 0, NULL, NULL},
   };

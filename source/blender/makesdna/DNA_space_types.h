@@ -731,8 +731,8 @@ typedef struct SpaceFile {
 /* FileSelectParams.display */
 enum eFileDisplayType {
   FILE_DEFAULTDISPLAY = 0,
-  FILE_SHORTDISPLAY = 1,
-  FILE_LONGDISPLAY = 2,
+  FILE_VERTICALDISPLAY = 1,
+  FILE_HORIZONTALDISPLAY = 2,
   FILE_IMGDISPLAY = 3,
 };
 

@@ -862,7 +862,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
   eFontStyle_Align align;
   bool do_drag;
   unsigned char text_col[4];
-  const bool draw_columnheader = (params->display == FILE_SHORTDISPLAY);
+  const bool draw_columnheader = (params->display == FILE_VERTICALDISPLAY);
   const float thumb_icon_aspect = sqrtf(64.0f / (float)(params->thumbnail_size));
 
   numfiles = filelist_files_ensure(files);
@@ -948,7 +948,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
         int colorid = (file_selflag & FILE_SEL_SELECTED) ? TH_HILITE : TH_BACK;
         int shade = (params->highlight_file == i) || (file_selflag & FILE_SEL_HIGHLIGHTED) ? 35 :
                                                                                              0;
-        const short width = ELEM(params->display, FILE_SHORTDISPLAY, FILE_LONGDISPLAY) ?
+        const short width = ELEM(params->display, FILE_VERTICALDISPLAY, FILE_HORIZONTALDISPLAY) ?
                                 layout->tile_w - (2 * padx) :
                                 layout->tile_w;
 

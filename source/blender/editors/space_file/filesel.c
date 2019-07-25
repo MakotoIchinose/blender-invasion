@@ -270,11 +270,11 @@ short ED_fileselect_set_params(SpaceFile *sfile)
             params->display = FILE_IMGDISPLAY;
           }
           else {
-            params->display = FILE_SHORTDISPLAY;
+            params->display = FILE_VERTICALDISPLAY;
           }
         }
         else {
-          params->display = FILE_SHORTDISPLAY;
+          params->display = FILE_VERTICALDISPLAY;
         }
       }
       else {
@@ -295,7 +295,7 @@ short ED_fileselect_set_params(SpaceFile *sfile)
     params->type = FILE_UNIX;
     params->flag |= FILE_HIDE_DOT;
     params->flag &= ~FILE_DIRSEL_ONLY;
-    params->display = FILE_SHORTDISPLAY;
+    params->display = FILE_VERTICALDISPLAY;
     params->display_previous = FILE_DEFAULTDISPLAY;
     params->sort = FILE_SORT_ALPHA;
     params->filter = 0;
@@ -697,7 +697,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                      layout->tile_border_y * 2 - layout->offset_top;
     layout->flag = FILE_LAYOUT_VER;
   }
-  else if (params->display == FILE_SHORTDISPLAY) {
+  else if (params->display == FILE_VERTICALDISPLAY) {
     int rowcount;
 
     layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
@@ -724,7 +724,7 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                      layout->tile_border_y * 2 + layout->offset_top;
     layout->flag = FILE_LAYOUT_VER;
   }
-  else if (params->display == FILE_LONGDISPLAY) {
+  else if (params->display == FILE_HORIZONTALDISPLAY) {
     int column_space = 0.6f * UI_UNIT_X;
     int column_icon_space = 0.2f * UI_UNIT_X;
 
