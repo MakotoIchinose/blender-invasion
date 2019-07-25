@@ -6,6 +6,8 @@
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
 extern "C" {
+#include "BLI_assert.h"
+
 #include "BKE_anim.h"
 #include "BKE_library.h"
 #include "BKE_material.h"
@@ -123,25 +125,27 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     // This object data is instanced, just reference the original instead of writing a copy.
     if (context.export_path == context.original_export_path) {
       printf("USD ref error: export path is reference path: %s\n", context.export_path.c_str());
-      throw "JEEKL";
-    }
-    pxr::SdfPath ref_path(context.original_export_path);
-    if (usd_mesh.GetPrim().GetReferences().AddInternalReference(ref_path)) {
-      /* The material path will be of the form </_materials/{material name}>, which is outside the
-      subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
-      of its own subtree. It does work when we override the material with exactly the same path,
-      though.*/
-      assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+      BLI_assert(!"USD reference error");
       return;
     }
-    /* See
-    https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
-     * for a description fo why referencing may fail. */
-    printf("USD Export warning: unable to add reference from %s to %s, not instancing object\n",
-           context.export_path.c_str(),
-           context.original_export_path.c_str());
-    throw "JE MOEDER";
+    pxr::SdfPath ref_path(context.original_export_path);
+    if (!usd_mesh.GetPrim().GetReferences().AddInternalReference(ref_path)) {
+      /* See this URL for a description fo why referencing may fail"
+       * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
+       */
+      printf("USD Export warning: unable to add reference from %s to %s, not instancing object\n",
+             context.export_path.c_str(),
+             context.original_export_path.c_str());
+      return;
+    }
+    /* The material path will be of the form </_materials/{material name}>, which is outside the
+    subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
+    of its own subtree. It does work when we override the material with exactly the same path,
+    though.*/
+    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+    return;
   }
+
   usd_mesh.CreatePointsAttr().Set(usd_mesh_data.points, timecode);
   usd_mesh.CreateFaceVertexCountsAttr().Set(usd_mesh_data.face_vertex_counts, timecode);
   usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_mesh_data.face_indices, timecode);
