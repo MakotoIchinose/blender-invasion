@@ -356,3 +356,9 @@ bool outliner_is_element_visible(const TreeElement *te)
 
   return true;
 }
+
+/* Find if x coordinate is over element disclosure toggle */
+bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
+{
+  return (view_co_x > te->xs) && (view_co_x < te->xs + UI_UNIT_X);
+}

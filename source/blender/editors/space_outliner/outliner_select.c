@@ -1331,25 +1331,6 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
   do_outliner_range_select_recursive(&soops->tree, active, cursor, &selecting);
 }
 
-static void outliner_item_toggle_closed(TreeElement *te, const bool toggle_children)
-{
-  TreeStoreElem *tselem = TREESTORE(te);
-  if (toggle_children) {
-    tselem->flag &= ~TSE_CLOSED;
-
-    const bool all_opened = !outliner_flag_is_any_test(&te->subtree, TSE_CLOSED, 1);
-    outliner_flag_set(&te->subtree, TSE_CLOSED, all_opened);
-  }
-  else {
-    tselem->flag ^= TSE_CLOSED;
-  }
-}
-
-bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
-{
-  return (view_co_x > te->xs) && (view_co_x < te->xs + UI_UNIT_X);
-}
-
 static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *soops,
                                                    const ARegion *ar,
                                                    float view_co_x)
