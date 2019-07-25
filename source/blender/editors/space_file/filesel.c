@@ -69,6 +69,8 @@
 #include "file_intern.h"
 #include "filelist.h"
 
+#define VERTLIST_MAJORCOLUMN_WIDTH (25 * UI_UNIT_X)
+
 FileSelectParams *ED_fileselect_get_params(struct SpaceFile *sfile)
 {
   if (!sfile->params) {
@@ -656,7 +658,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
   FileSelectParams *params = ED_fileselect_get_params(sfile);
   FileLayout *layout = NULL;
   View2D *v2d = &ar->v2d;
-  int maxlen = 0;
   int numfiles;
   int textheight;
 
@@ -725,9 +726,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->flag = FILE_LAYOUT_VER;
   }
   else if (params->display == FILE_HORIZONTALDISPLAY) {
-    int column_space = 0.6f * UI_UNIT_X;
-    int column_icon_space = 0.2f * UI_UNIT_X;
-
     layout->prv_w = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_X;
     layout->prv_h = ((float)params->thumbnail_size / 20.0f) * UI_UNIT_Y;
     layout->tile_border_x = 0.4f * UI_UNIT_X;
@@ -739,13 +737,9 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     /* Padding by full scrollbar H is too much, can overlap tile border Y. */
     layout->rows = (layout->height - V2D_SCROLL_HEIGHT + layout->tile_border_y) /
                    (layout->tile_h + 2 * layout->tile_border_y);
+    layout->tile_w = VERTLIST_MAJORCOLUMN_WIDTH;
     details_columns_init(params, layout);
 
-    maxlen = ICON_DEFAULT_WIDTH_SCALE + column_icon_space +
-             (int)layout->details_columns[COLUMN_NAME].width + column_space +
-             (int)layout->details_columns[COLUMN_DATETIME].width + column_space +
-             (int)layout->details_columns[COLUMN_SIZE].width + column_space;
-    layout->tile_w = maxlen;
     if (layout->rows > 0) {
       layout->columns = numfiles / layout->rows + 1;  // XXX dirty, modulo is zero
     }
