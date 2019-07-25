@@ -72,6 +72,13 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   /* Ignore user preference "USER_HEADER_BOTTOM" here (always show top for new types). */
   ar->alignment = RGN_ALIGN_TOP;
 
+  /* ui list region */
+  ar = MEM_callocN(sizeof(ARegion), "ui region for file");
+  BLI_addtail(&sfile->regionbase, ar);
+  ar->regiontype = RGN_TYPE_UI;
+  ar->alignment = RGN_ALIGN_TOP;
+  ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
+
   /* Tools region */
   ar = MEM_callocN(sizeof(ARegion), "tools region for file");
   BLI_addtail(&sfile->regionbase, ar);
@@ -83,13 +90,6 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   BLI_addtail(&sfile->regionbase, ar);
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
   ar->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
-
-  /* ui list region */
-  ar = MEM_callocN(sizeof(ARegion), "ui region for file");
-  BLI_addtail(&sfile->regionbase, ar);
-  ar->regiontype = RGN_TYPE_UI;
-  ar->alignment = RGN_ALIGN_TOP;
-  ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
   /* Execute region */
   ar = MEM_callocN(sizeof(ARegion), "execute region for file");
