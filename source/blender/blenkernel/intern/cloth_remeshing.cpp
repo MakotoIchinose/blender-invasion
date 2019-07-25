@@ -631,35 +631,38 @@ static vector<BMEdge *> cloth_remeshing_find_independent_edges(vector<BMEdge *> 
   return i_edges;
 }
 
-static void cloth_remeshing_flip_edges(BMesh *bm,
+static bool cloth_remeshing_flip_edges(BMesh *bm,
                                        map<BMVert *, ClothSizing> &sizing,
                                        vector<BMFace *> &active_faces)
 {
-  static int prev_num_flipable_edges = 0;
-  /* TODO(Ish): This loop might cause problems */
-  while (active_faces.size() != 0) {
-    vector<BMEdge *> flipable_edges = cloth_remeshing_find_edges_to_flip(bm, sizing, active_faces);
-    if (flipable_edges.size() == prev_num_flipable_edges) {
-      break;
-    }
-    prev_num_flipable_edges = flipable_edges.size();
-    vector<BMEdge *> independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
-
-    for (int i = 0; i < independent_edges.size(); i++) {
-      BMEdge *edge = independent_edges[i];
-      /* BM_EDGEROT_CHECK_SPLICE sets it up for BM_CREATE_NO_DOUBLE */
-      BMEdge *new_edge = BM_edge_rotate(bm, edge, true, BM_EDGEROT_CHECK_SPLICE);
-      BLI_assert(new_edge != NULL);
-      cloth_remeshing_update_active_faces(active_faces, bm, new_edge);
-    }
+  static int prev_num_independent_edges = 0;
+  vector<BMEdge *> flipable_edges = cloth_remeshing_find_edges_to_flip(bm, sizing, active_faces);
+  vector<BMEdge *> independent_edges = cloth_remeshing_find_independent_edges(flipable_edges);
+  if (independent_edges.size() == prev_num_independent_edges) {
+    return false;
   }
+  prev_num_independent_edges = independent_edges.size();
+  for (int i = 0; i < independent_edges.size(); i++) {
+    BMEdge *edge = independent_edges[i];
+    /* BM_EDGEROT_CHECK_SPLICE sets it up for BM_CREATE_NO_DOUBLE */
+    BMEdge *new_edge = BM_edge_rotate(bm, edge, true, BM_EDGEROT_CHECK_SPLICE);
+    BLI_assert(new_edge != NULL);
+    /* TODO(Ish): need to check if the normals are flipped by some
+     * kind of area check */
+    cloth_remeshing_update_active_faces(active_faces, bm, new_edge);
+  }
+  return true;
 }
 
 static bool cloth_remeshing_fix_mesh(BMesh *bm,
                                      map<BMVert *, ClothSizing> &sizing,
                                      vector<BMFace *> active_faces)
 {
-  cloth_remeshing_flip_edges(bm, sizing, active_faces);
+  for (int i = 0; i < bm->totvert * 3; i++) {
+    if (cloth_remeshing_flip_edges(bm, sizing, active_faces) == false) {
+      break;
+    }
+  }
   return true;
 }
 
@@ -796,7 +799,11 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   cloth_remeshing_edge_face_pair(e, &f1, &f2);
   /* There should be at least one face for that edge */
   if (!f1) {
-    return NULL;
+    if (!f2) {
+      return NULL;
+    }
+    f1 = f2;
+    f2 = NULL;
   }
 
   /* split the edge */
@@ -1122,6 +1129,9 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
   vector<BMEdge *> bad_edges;
   cloth_remeshing_find_bad_edges(bm, sizing, bad_edges);
   printf("split edges tagged: %d\n", (int)bad_edges.size());
+  if (prev_num_bad_edges == bad_edges.size()) {
+    return false;
+  }
   prev_num_bad_edges = bad_edges.size();
   Cloth *cloth = clmd->clothObject;
   cloth->verts = (ClothVertex *)MEM_reallocN(
@@ -1131,6 +1141,9 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
     e = bad_edges[i];
     BMEdge old_edge = *e;
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
+    if (!new_vert) {
+      printf("new_vert == NULL\n");
+    }
 
     cloth_remeshing_add_vertex_to_cloth(cloth, old_edge.v1, old_edge.v2, new_vert, sizing);
 
@@ -1454,11 +1467,11 @@ static bool cloth_remeshing_can_collapse_edge(
         if (vs[i] == v1) {
           vs[i] = v2;
           copy_v2_v2(uvs[i], uv_v2);
+          break;
         }
       }
 
       /* Aspect ratio part */
-      /* TODO(Ish): get the uvs of vs */
       float uv_21[2], uv_31[2];
       sub_v2_v2v2(uv_21, uvs[1], uvs[0]);
       sub_v2_v2v2(uv_31, uvs[2], uvs[0]);
