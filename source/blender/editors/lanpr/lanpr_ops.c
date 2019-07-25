@@ -399,7 +399,7 @@ void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot)
 void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot)
 {
   ot->name = "Enable All Line Types";
-  ot->description = "Enable All Line Types In This Line Layer.";
+  ot->description = "Enable All Line Types In This Line Layer";
   ot->idname = "SCENE_OT_lanpr_enable_all_line_types";
 
   ot->exec = lanpr_enable_all_line_types_exec;
@@ -2598,8 +2598,8 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
   return Result;
 }
 static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
-                                                                 LANPR_RenderTriangle *rt,
-                                                                 LANPR_BoundingArea *ba)
+                                                                    LANPR_RenderTriangle *rt,
+                                                                    LANPR_BoundingArea *ba)
 {
   tnsVector3d n, c = {0};
   tnsVector3d tl, tr;
@@ -3323,8 +3323,8 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
                                                    real *LRUB,
                                                    int Recursive);
 static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
-                                                                 LANPR_RenderTriangle *rt,
-                                                                 LANPR_BoundingArea *ba);
+                                                                    LANPR_RenderTriangle *rt,
+                                                                    LANPR_BoundingArea *ba);
 
 static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea *Root)
 {
@@ -4611,7 +4611,7 @@ void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot)
 void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot)
 {
   ot->name = "Update Strokes";
-  ot->description = "Update LANPR strokes for selected GPencil object.";
+  ot->description = "Update LANPR strokes for selected GPencil object";
   ot->idname = "OBJECT_OT_lanpr_update_gp_target";
 
   ot->poll = lanpr_active_is_gpencil_object;
