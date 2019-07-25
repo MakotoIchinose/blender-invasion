@@ -174,7 +174,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
 }
 
-static void get_vertices(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+static void get_vertices(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   usd_mesh_data.points.reserve(mesh->totvert);
 
@@ -184,7 +184,7 @@ static void get_vertices(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
   }
 }
 
-static void get_loops_polys(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   /* Only construct face groups (a.k.a. geometry subsets) when we need them for material
    * assignments. */
@@ -208,7 +208,7 @@ static void get_loops_polys(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
   }
 }
 
-static void get_creases(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+static void get_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   const float factor = 1.0f / 255.0f;
 
@@ -233,7 +233,7 @@ static void get_creases(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
   }
 }
 
-void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data)
+void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, USDMeshData &usd_mesh_data)
 {
   get_vertices(mesh, usd_mesh_data);
   get_loops_polys(mesh, usd_mesh_data);
