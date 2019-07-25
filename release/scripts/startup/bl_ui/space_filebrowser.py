@@ -405,7 +405,9 @@ class FILEBROWSER_PT_file_operation(Panel):
         sub = row.row()
         sub.ui_units_x = 5
         # TODO change to "Open Directory"/"Parent Directory" based on highlight.
-        sub.operator("FILE_OT_execute", text=params.title)
+        subsub = sub.row()
+        subsub.active_default = True
+        subsub.operator("FILE_OT_execute", text=params.title)
         sub.operator("FILE_OT_cancel", text="Cancel")
 
 
