@@ -31,6 +31,7 @@
 struct ClothModifierData;
 struct Mesh;
 struct Object;
+struct ClothSizing;
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,6 +41,27 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 
 #ifdef __cplusplus
 }
-#endif
 
+/**
+ *The definition of sizing used for remeshing
+ */
+
+/* TODO(Ish): figure out how to write a wrapper that can be used in c when ClothSizing is converted
+ * to a class */
+typedef struct ClothSizing {
+  float m[2][2];
+  ClothSizing()
+  {
+    zero_m2(m);
+  }
+  ClothSizing(float a[2][2])
+  {
+    copy_m2_m2(m, a);
+  }
+  ClothSizing &operator+=(const ClothSizing &size);
+  ClothSizing &operator/=(float value);
+  ClothSizing operator*(float value);
+} ClothSizing;
+
+#endif
 #endif

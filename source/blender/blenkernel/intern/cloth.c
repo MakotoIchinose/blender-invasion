@@ -570,6 +570,12 @@ void cloth_free_modifier(ClothModifierData *clmd)
 
     // Free the verts.
     if (cloth->verts != NULL) {
+      for (int i = 0; i < cloth->mvert_num; i++) {
+        if (cloth->verts[i].sizing != NULL) {
+          MEM_freeN(cloth->verts[i].sizing);
+          cloth->verts[i].sizing = NULL;
+        }
+      }
       MEM_freeN(cloth->verts);
     }
 
@@ -656,6 +662,12 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
 
     // Free the verts.
     if (cloth->verts != NULL) {
+      for (int i = 0; i < cloth->mvert_num; i++) {
+        if (cloth->verts[i].sizing != NULL) {
+          MEM_freeN(cloth->verts[i].sizing);
+          cloth->verts[i].sizing = NULL;
+        }
+      }
       MEM_freeN(cloth->verts);
     }
 
@@ -955,6 +967,7 @@ static int cloth_from_object(
 
     verts->impulse_count = 0;
     copy_v3_v3(verts->impulse, tnull);
+    verts->sizing = NULL;
   }
 
   // apply / set vertex groups

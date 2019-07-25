@@ -34,6 +34,7 @@ struct Mesh;
 struct Object;
 struct Scene;
 struct BVHTree;
+struct ClothSizing;
 
 #define DO_INLINE MALWAYS_INLINE
 
@@ -125,8 +126,9 @@ typedef struct ClothVertex {
   float struct_stiff;
   float bend_stiff;
   float shear_stiff;
-  int spring_count;    /* how many springs attached? */
-  float shrink_factor; /* how much to shrink this cloth */
+  int spring_count;           /* how many springs attached? */
+  float shrink_factor;        /* how much to shrink this cloth */
+  struct ClothSizing *sizing; /* Sizing during adaptive remeshing */
 } ClothVertex;
 
 /**

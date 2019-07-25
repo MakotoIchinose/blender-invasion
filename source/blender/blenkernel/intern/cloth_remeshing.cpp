@@ -78,29 +78,11 @@ using namespace std;
  * reference http://graphics.berkeley.edu/papers/Narain-AAR-2012-11/index.html
  ******************************************************************************/
 
+typedef map<BMVert *, ClothVertex> VertMap;
+
 #define COLLAPSE_EDGES_DEBUG 1
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
-
-/**
- *The definition of sizing used for remeshing
- */
-class ClothSizing {
- public:
-  /* TODO(Ish): Make "m" private */
-  float m[2][2];
-  ClothSizing()
-  {
-    zero_m2(m);
-  }
-  ClothSizing(float a[2][2])
-  {
-    copy_m2_m2(m, a);
-  }
-  ClothSizing &operator+=(const ClothSizing &size);
-  ClothSizing &operator/=(float value);
-  ClothSizing operator*(float value);
-};
 
 ClothSizing &ClothSizing::operator+=(const ClothSizing &size)
 {
@@ -716,6 +698,7 @@ static float cloth_remeshing_edge_size(BMesh *bm,
 
   float uv12[2];
   sub_v2_v2v2(uv12, uv1, uv2);
+
   return sqrtf(
       (cloth_remeshing_norm2(uv12, sizing[v1]) + cloth_remeshing_norm2(uv12, sizing[v2])) * 0.5f);
 }
