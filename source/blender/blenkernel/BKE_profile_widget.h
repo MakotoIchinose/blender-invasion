@@ -67,7 +67,7 @@ float profilewidget_distance_to_next_point(const struct ProfileWidget *prwdgt, i
 /* Need to find the total length of the curve to sample a portion of it */
 float profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
-void profilewidget_fill_segment_table(const struct ProfileWidget *prwdgt,
+void profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
                                       double *x_table_out,
                                       double *y_table_out);
 

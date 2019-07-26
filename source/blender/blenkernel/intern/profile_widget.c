@@ -45,7 +45,6 @@
 #define DEBUG_PRWDGT_TABLE 0
 #define DEBUG_PRWDGT_EVALUATE 0
 #define DEBUG_PRWDGT_REVERSE 0
-/* HANS-TODO: Remove debugging code */
 
 void profilewidget_set_defaults(ProfileWidget *prwdgt)
 {
@@ -84,6 +83,7 @@ struct ProfileWidget *profilewidget_add(int preset)
   return prwdgt;
 }
 
+/* HANS-TODO: Double free error here with the prwdgt->table */
 void profilewidget_free_data(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
@@ -167,7 +167,7 @@ bool profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 
   pts = MEM_mallocN((size_t)prwdgt->totpoint * sizeof(ProfilePoint), "path points");
 
-  /* well, lets keep the two outer points! */
+  /* Keep the two outer points */
   for (a = 0, b = 0; a < prwdgt->totpoint; a++) {
     if (&prwdgt->path[a] != point) {
       pts[b] = prwdgt->path[a];
@@ -309,17 +309,11 @@ void profilewidget_reverse(ProfileWidget *prwdgt)
   ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
                                       "path points");
   /* Mirror the new points across the y = x line */
-  for (int i = 1; i < prwdgt->totpoint - 1; i++) {
+  for (int i = 0; i < prwdgt->totpoint; i++) {
     new_pts[prwdgt->totpoint - i - 1].x = prwdgt->path[i].y;
     new_pts[prwdgt->totpoint - i - 1].y = prwdgt->path[i].x;
     new_pts[prwdgt->totpoint - i - 1].flag = prwdgt->path[i].flag;
   }
-  /* Set the location of the first and last points */
-  /* HANS-TODO: Bring this into the loop */
-  new_pts[0].x = 1.0;
-  new_pts[0].y = 0.0;
-  new_pts[prwdgt->totpoint - 1].x = 0.0;
-  new_pts[prwdgt->totpoint - 1].y = 1.0;
 
 #if DEBUG_PRWDGT_REVERSE
   printf("Locations before:\n");
@@ -375,6 +369,7 @@ void profilewidget_reset(ProfileWidget *prwdgt)
     case PROF_PRESET_SUPPORTS:
       prwdgt->path[0].x = 1.0;
       prwdgt->path[0].y = 0.0;
+      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
       prwdgt->path[1].x = 1.0;
       prwdgt->path[1].y = 0.5;
       for (int i = 1; i < 10; i++) {
@@ -385,6 +380,7 @@ void profilewidget_reset(ProfileWidget *prwdgt)
       prwdgt->path[10].y = 1.0;
       prwdgt->path[11].x = 0.0;
       prwdgt->path[11].y = 1.0;
+      prwdgt->path[11].flag = PROF_HANDLE_VECTOR;
       break;
     case PROF_PRESET_EXAMPLE1: /* HANS-TODO: Don't worry, this is just temporary */
       prwdgt->path[0].x = 1.0f;
@@ -442,7 +438,7 @@ void profilewidget_reset(ProfileWidget *prwdgt)
   }
 }
 
-/** Helper for profile_widget_create samples. Returns whether both handles that make up the edge
+/** Helper for 'profile_widget_create' samples. Returns whether both handles that make up the edge
  * are vector handles */
 static bool is_curved_edge(BezTriple * bezt, int i)
 {
@@ -450,6 +446,9 @@ static bool is_curved_edge(BezTriple * bezt, int i)
 }
 
 /** Used in the sample creation process. Reduced copy of #calchandleNurb_intern code in curve.c */
+/* HANS-TODO: Depending on the orientation of a profile the location of the bezier handles are
+ * different, which means there is some different dependence on X vs Y, but it should be direction
+ * agnostic */
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
 #define p2_handle1 ((p2)-3)
@@ -640,7 +639,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   int totedges = prwdgt->totpoint - 1;
   int totpoints = prwdgt->totpoint;
 
-  BLI_assert(n_segments >= totpoints);
+  BLI_assert(n_segments > 0);
 
   /* Create Bezier points for calculating the higher resolution path */
   bezt = MEM_callocN((size_t)totpoints * sizeof(BezTriple), "beztarr");
@@ -649,12 +648,14 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
     bezt[i].vec[1][1] = prwdgt->path[i].y;
     bezt[i].h1 = bezt[i].h2 = (prwdgt->path[i].flag & PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO_ANIM;
   }
+  /* Get handle positions for the bezier points */
   calchandle_profile(&bezt[0], NULL, &bezt[1]);
   for (i = 1; i < totpoints - 1; i++) {
     calchandle_profile(&bezt[i], &bezt[i - 1], &bezt[i + 1]);
   }
   calchandle_profile(&bezt[totpoints - 1], &bezt[totpoints - 2], NULL);
 
+  /* HANS-TODO: Figure out if this 'correction' to the end points' handles is actually helpful */
   if (prwdgt->totpoint > 2) {
     float hlen, nlen, vec[3];
 
@@ -675,7 +676,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
         sub_v3_v3v3(bezt[0].vec[0], bezt[0].vec[1], vec);
       }
     }
-    i = prwdgt->totpoint - 1;
+    i = totpoints - 1;
     if (bezt[i].h2 == HD_AUTO) {
 
       hlen = len_v3v3(bezt[i].vec[1], bezt[i].vec[0]); /* original handle length */
@@ -697,9 +698,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
 
   /* Sort a list of indexes by the curvature at each point*/
   i_curve_sorted = MEM_callocN((size_t)totedges * sizeof(int), "i curve sorted");
-  /* (Insertion sort for now. It's probably fast enough though) */
-  /* HANS-TODO: Test the sorting */
-  for (i = 0; i < totedges; i++) {
+  for (i = 0; i < totedges; i++) { /* Insertion sort for now */
     /* Place the new index (i) at the first spot where its edge has less curvature */
     for (i_insert = 0; i_insert < i; i_insert++) {
       if (!compare_curvature_bezt_edge_i(bezt, i, i_curve_sorted[i_insert])) {
@@ -712,49 +711,54 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   /* Assign sampled points to each edge. */
   n_points = MEM_callocN((size_t)totedges * sizeof(int),  "create samples numbers");
   int n_added = 0;
-  if (sample_straight_edges) {
-    /* Assign an even number to each edge if it’s possible, then add the remainder of sampled
-     * points starting with the most curved edges. */
-    n_common = n_segments / totedges;
-    n_left = n_segments % totedges;
+  if (n_segments >= totedges) {
+    if (sample_straight_edges) {
+      /* Assign an even number to each edge if it’s possible, then add the remainder of sampled
+       * points starting with the most curved edges. */
+      n_common = n_segments / totedges;
+      n_left = n_segments % totedges;
 
-    /* Assign the points that fill fit evenly to the edges */
-    if (n_common > 0) {
-      for (i = 0; i < totedges; i++) {
-        n_points[i] = n_common;
-        n_added += n_common;
-      }
-    }
-  }
-  else {
-    /* Count the number of curved edges */
-    n_curved_edges = 0;
-    for (i = 0; i < totedges; i++) {
-      if (is_curved_edge(bezt, i)) {
-        n_curved_edges++;
-      }
-    }
-    /* Just sample all of the edges if there are no curved edges */
-    if (n_curved_edges == 0) {
-      n_curved_edges = totedges;
-    }
-
-    /* Give all of the curved edges the same number of points and straight edges one point */
-    n_left = n_segments - (totedges - n_curved_edges); /* Left after one for each straight edge */
-    n_common = n_left / n_curved_edges; /* Number assigned to every curved edge */
-    if (n_common > 0) {
-      for (i = 0; i < totedges; i++) {
-        if (is_curved_edge(bezt, i)) {
-          n_points[i] += n_common;
+      /* Assign the points that fill fit evenly to the edges */
+      if (n_common > 0) {
+        for (i = 0; i < totedges; i++) {
+          n_points[i] = n_common;
           n_added += n_common;
         }
-        else {
-          n_points[i] = 1;
-          n_added++;
-        }
       }
     }
-    n_left -= n_common * n_curved_edges;
+    else {
+      /* Count the number of curved edges */
+      n_curved_edges = 0;
+      for (i = 0; i < totedges; i++) {
+        if (is_curved_edge(bezt, i)) {
+          n_curved_edges++;
+        }
+      }
+      /* Just sample all of the edges if there are no curved edges */
+      if (n_curved_edges == 0) {
+        n_curved_edges = totedges;
+      }
+
+      /* Give all of the curved edges the same number of points and straight edges one point */
+      n_left = n_segments - (totedges - n_curved_edges); /* After one for each straight edge */
+      n_common = n_left / n_curved_edges; /* Number assigned to every curved edge */
+      if (n_common > 0) {
+        for (i = 0; i < totedges; i++) {
+          if (is_curved_edge(bezt, i)) {
+            n_points[i] += n_common;
+            n_added += n_common;
+          }
+          else {
+            n_points[i] = 1;
+            n_added++;
+          }
+        }
+      }
+      n_left -= n_common * n_curved_edges;
+    }
+  } else {
+    /* Not enough segments to give one to each edge, so just give them to the most curved edges */
+    n_left = n_segments;
   }
   /* Assign the remainder of the points that couldn't be spread out evenly */
   BLI_assert(n_left < totedges);
@@ -762,7 +766,8 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
     n_points[i_curve_sorted[i]]++;
     n_added++;
   }
-  BLI_assert(n_added == n_segments);
+
+  BLI_assert(n_added == n_segments); /* HANS-TODO: Remove n_added check */
 
   /* Sample the points and add them to the locations table */
   for (i_segment = 0, i = 0; i < totedges; i++) {
@@ -835,9 +840,9 @@ static void profilewidget_make_table(ProfileWidget *prwdgt)
   prwdgt->table = new_table;
 }
 
-/** Creates the table of points with the sampled curves, this time for the samples used by the user. */
-/* HANS-TODO: Remove if it doesn't work */
-static void profilewidget_make_table_samples(ProfileWidget *prwdgt)
+/** Creates the table of points used for displaying a preview of the sampled segment locations on
+ * the widget itself */
+static void profilewidget_make_display_table(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH MAKE TABLE SAMPLES\n");
@@ -848,8 +853,12 @@ static void profilewidget_make_table_samples(ProfileWidget *prwdgt)
 
   /* Get locations of samples from the sampling function */
   n_samples = prwdgt->totsegments;
-  locations = MEM_callocN((size_t)n_samples * 2 * sizeof(float), "temp loc storage");
-  profilewidget_create_samples(prwdgt, locations, n_samples - 1, true);
+  if (n_samples <= 0) {
+    return;
+  }
+  locations = MEM_callocN((size_t)(n_samples + 1) * 2 * sizeof(float), "temp loc storage");
+  profilewidget_create_samples(prwdgt, locations, n_samples,
+                               prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
 
   /* Put the locations in the new table */
   new_table = MEM_callocN((size_t)n_samples * sizeof(ProfilePoint), "samples table");
@@ -882,7 +891,6 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
 #endif
 
   /* Clamp with the clipping rect in case something got past */
-  /* HANS-TODO: I thought this was done elsewhere too */
   if (prwdgt->flag & PROF_DO_CLIP) {
     /* Move points inside the clip rectangle */
     for (i = 0; i < prwdgt->totpoint; i++) {
@@ -932,25 +940,23 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
   /* Create the high resolution table for drawing and some evaluation functions */
   profilewidget_make_table(prwdgt);
 
-  /* Store a table of samples to display a preview of them in the widget */
-  /* HANS-TODO: Get this working or delete it. */
+  /* Store a table of samples to display a preview of where the segments are sampled */
   if (prwdgt->totsegments > 0) {
-    profilewidget_make_table_samples(prwdgt);
+    profilewidget_make_display_table(prwdgt);
   }
 }
 
-/** Refreshes the higher resolution table sampled from the input points. Needed before evaluation
- * functions that use the table */
+/** Refreshes the higher resolution table sampled from the input points. A call to this or
+ * profilewidget_changed is needed before evaluation functions that use the table. Also sets the
+ * number of segments used for the display preview of the locations of the sampled points. */
 void profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH INITIALIZE\n");
 #endif
-  BLI_assert(prwdgt);
-
   prwdgt->totsegments = nsegments;
 
-  /* Calculate the high resolution table for display and evaluation */
+  /* Calculate the higher resolution tables for display and evaluation */
   profilewidget_changed(prwdgt, false);
 }
 
@@ -995,9 +1001,9 @@ float profilewidget_total_length(const ProfileWidget *prwdgt)
  * an entire table at once for a speedup if all of the results are going to be used anyway.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
 /* HANS-TODO: Enable this for an "even length sampling" option (and debug it). */
-void profilewidget_fill_segment_table(const ProfileWidget *prwdgt,
-                                      double *x_table_out,
-                                      double *y_table_out)
+void profilewidget_create_samples_even_spacing(const ProfileWidget *prwdgt,
+                                               double *x_table_out,
+                                               double *y_table_out)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH FILL SEGMENT TABLE\n");
@@ -1012,7 +1018,7 @@ void profilewidget_fill_segment_table(const ProfileWidget *prwdgt,
   float f;
   int i_point = 0;
 
-  /* Travel along the path, recording locations of segments as we pass where they should be */
+  /* Travel along the path, recording the locations of segments as we pass them */
   for (int i = 0; i < prwdgt->totsegments; i++) {
     /* Travel over all of the points that could be inside this segment */
     while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {

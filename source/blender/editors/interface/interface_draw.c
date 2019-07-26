@@ -1785,6 +1785,9 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   immUnbindProgram();
 }
 
+/* HANS-TODO: There is an existing crash here with the immEnd assert that happens when clipping is
+ * on and the view is moved a ways below the center. This function always adds two fewer points
+ * than it tells the GP it will add. */
 static void ui_draw_but_curve_grid(
     uint pos, const rcti *rect, float zoomx, float zoomy, float offsx, float offsy, float step)
 {
@@ -2108,7 +2111,7 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
 #define DEBUG_PROFILE_DRAW 0
 #define DEBUG_PROFILE_DRAW_FILL 0
 
-/** Used to draw a profile widget. Similar to ui_draw_but_CURVE */
+/** Used to draw a profile widget. Somewhat similar to ui_draw_but_CURVE */
 void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
 #if DEBUG_PROFILE_DRAW
@@ -2208,7 +2211,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   float (*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
   for (i = 0; i < PROF_TABLE_SIZE; i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
-    table_coords[i][1] = pts[i].y; /* HANS-TODO: Do the transformation here to reuse it later */
+    table_coords[i][1] = pts[i].y;
   }
   if (add_left_tri && add_bottom_tri) {
     /* Add left side, bottom left corner, and bottom side points */
@@ -2234,14 +2237,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
   }
   else {
-    /* Don't bother adding any side points, they would be redundant anyway */
+    /* Just add the bottom corner point. Side points would be redundant anyway */
     table_coords[tot_points - 1][0] = 0.0f;
     table_coords[tot_points - 1][1] = 0.0f;
   }
 
-
-
-  /* Calculate the indices of the fill triangles */
+  /* Calculate the table point indices of the triangles for the profile's fill */
   uint (*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
   BLI_polyfill_calc(table_coords, tot_points, -1, tri_indices);
 
@@ -2272,7 +2273,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 #endif
 
   /* Draw the triangles for the profile fill */
-  immUniformColor3ubvAlpha((uchar *)wcol->item, 128);
+  immUniformColor3ubvAlpha((const uchar *)wcol->item, 128);
   GPU_blend(true);
   GPU_polygon_smooth(false);
   immBegin(GPU_PRIM_TRIS, 3 * tot_triangles);
@@ -2290,7 +2291,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Draw the profile's path so the edge stands out a bit */
   tot_points -= (add_left_tri + add_left_tri);
   GPU_line_width(1.0f);
-  immUniformColor3ubvAlpha((uchar *)wcol->item, 255);
+  immUniformColor3ubvAlpha((const uchar *)wcol->item, 255);
   GPU_line_smooth(true);
   immBegin(GPU_PRIM_LINE_STRIP, tot_points - 1);
   for (i = 0; i < tot_points - 1; i++) {
@@ -2310,7 +2311,6 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
 
   /* Calculate vertex colors based on text theme. */
-  /* HANS-TODO: Try this with differen themes, I could imagine this being confusing */
   float color_vert[4], color_vert_select[4];
   UI_GetThemeColor4fv(TH_TEXT_HI, color_vert);
   UI_GetThemeColor4fv(TH_TEXT, color_vert_select);
@@ -2327,7 +2327,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   tot_points = (uint)prwdgt->totpoint;
   GPU_line_smooth(false);
   GPU_blend(false);
-  GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
+  GPU_point_size(max_ff(3.0f, min_ff(UI_DPI_FAC / but->block->aspect * 5.0f, 5.0f)));
   immBegin(GPU_PRIM_POINTS, tot_points);
   for (i = 0; i < tot_points; i++) {
     fx = rect->xmin + zoomx * (pts[i].x - offsx);
@@ -2337,20 +2337,13 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
   immEnd();
 
-  /* Draw the sampled points in addition to the control points if they have been created
-   * HANS-TODO: Doesn't work yet, I don't think the bevel code has the same copy of the widget
-   * that is drawn
+  /* Draw the sampled points in addition to the control points if they have been created */
   pts = prwdgt->samples;
   tot_points = (uint)prwdgt->totsegments;
-  printf("(int)prwdgt->totsegments: %d\n", (int)prwdgt->totsegments);
-  printf("(uint)prwdgt->totsegments: %d\n", (uint)prwdgt->totsegments);
-  printf("prwdgt->totsegments: %d\n", prwdgt->totsegments);
-  printf("totsegments: %d\n", (int)tot_points);
   if (tot_points > 0) {
-    printf("DRAWING SAMPLE POINTS!!!\n");
-    GPU_point_size(max_ff(1.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
-    immBegin(GPU_PRIM_POINTS, tot_points - 1);
-    for (i = 0; i < tot_points - 1; i++) {
+    GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 3.0f, 3.0f)));
+    immBegin(GPU_PRIM_POINTS, tot_points);
+    for (i = 0; i < tot_points; i++) {
       fx = rect->xmin + zoomx * (pts[i].x - offsx);
       fy = rect->ymin + zoomy * (pts[i].y - offsy);
       immAttr4fv(col, color_vert);
@@ -2358,13 +2351,13 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     }
     immEnd();
   }
-  */
+
   immUnbindProgram();
 
   /* restore scissortest */
   GPU_scissor(scissor[0], scissor[1], scissor[2], scissor[3]);
 
-  /* outline */
+  /* Outline */
   format = immVertexFormat();
   pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);

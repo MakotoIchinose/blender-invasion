@@ -61,7 +61,7 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
-#define DEBUG_CUSTOM_PROFILE_PIPE 1
+#define DEBUG_CUSTOM_PROFILE_PIPE 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
 #define DEBUG_CUSTOM_PROFILE_CUTOFF 0
@@ -1447,7 +1447,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
  * non-beveled edges, but sometimes coa and cob are not on those edges.
  *
  * Currently just used in build boundary terminal edge */
-static void move_profile_plane(BoundVert *bndv, BMVert *bmv)
+static void move_profile_plane(BoundVert *bndv, BMVert *bmvert)
 {
   float d1[3], d2[3], no[3], no2[3], no3[3], dot2, dot3;
   Profile *pro = &bndv->profile;
@@ -1456,10 +1456,9 @@ static void move_profile_plane(BoundVert *bndv, BMVert *bmv)
   if (is_zero_v3(pro->proj_dir)) {
     return;
   }
-  /* HANS-TODO: Better variable names */
-  sub_v3_v3v3(d1, bmv->co, pro->start);
+  sub_v3_v3v3(d1, bmvert->co, pro->start);
   normalize_v3(d1);
-  sub_v3_v3v3(d2, bmv->co, pro->end);
+  sub_v3_v3v3(d2, bmvert->co, pro->end);
   normalize_v3(d2);
   cross_v3_v3v3(no, d1, d2);
   cross_v3_v3v3(no2, d1, pro->proj_dir);
@@ -1656,9 +1655,9 @@ static double superellipse_co(double x, float r, bool rbig)
  * In the latter case, we subsample the profile for seg_2, which will not necessarily
  * give equal spaced chords, but is in fact more what is desired by the cubic subdivision
  * method used to make the vmesh pattern. */
-static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n, float r_co[3])
+static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int nseg, float r_co[3])
 {
-  int d;
+  int subsample_spacing;
 
   if (bp->seg == 1) {
     if (i == 0) {
@@ -1670,15 +1669,15 @@ static void get_profile_point(BevelParams *bp, const Profile *pro, int i, int n,
   }
 
   else {
-    if (n == bp->seg) {
+    if (nseg == bp->seg) {
       BLI_assert(pro->prof_co != NULL);
       copy_v3_v3(r_co, pro->prof_co + 3 * i);
     }
     else {
-      BLI_assert(is_power_of_2_i(n) && n <= bp->pro_spacing.seg_2);
-      /* set d to spacing in prof_co_2 between subsamples */
-      d = bp->pro_spacing.seg_2 / n;
-      copy_v3_v3(r_co, pro->prof_co_2 + 3 * i * d);
+      BLI_assert(is_power_of_2_i(nseg) && nseg <= bp->pro_spacing.seg_2);
+      /* Find spacing between subsamples in prof_co_2 */
+      subsample_spacing = bp->pro_spacing.seg_2 / nseg;
+      copy_v3_v3(r_co, pro->prof_co_2 + 3 * i * subsample_spacing);
     }
   }
 }
@@ -2344,9 +2343,8 @@ static void build_boundary_vertex_only(BevelParams *bp, BevVert *bv, bool constr
  * The 'width adjust' part of build_boundary has been done already,
  * and \a efirst is the first beveled edge at vertex \a bv.
  */
-/* HANS-TODO: In the TRI_FAN fill case, check if the third point is planar with the other two
- * boundverts. If it is, then use ngon operation on the face instead of a TRI_FAN. When they
- * are planar the overlapping geometry used to fill the profile if it overlaps itself looks bad */
+/* HANS-TODO: Don't use the TRI_FAN mesh type for custom profiles because the overhangs can cause
+ * artifacts */
 static void build_boundary_terminal_edge(BevelParams *bp,
                                          BevVert *bv,
                                          EdgeHalf *efirst,
@@ -2475,8 +2473,6 @@ static void build_boundary_terminal_edge(BevelParams *bp,
 }
 
 /* Helper for build_boundary to handle special miters */
-/* HANS-TODO: I'll need to sample a non-custom profile too to build the connection between the
- * extra miter boundverts. Otherwise that connection is the same custom profile which is weird. */
 static void adjust_miter_coords(BevelParams *bp, BevVert *bv, EdgeHalf *emiter)
 {
   float co1[3], co2[3], co3[3], edge_dir[3], line_p[3];
@@ -3027,7 +3023,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
      * v1 and v2 don't necessarily have an order, so we need to check which is closer to bv */
     v1_dist_to_bv = fabsf(len_v3v3(start_edge->e->v1->co, (*r_bv)->v->co));
     v2_dist_to_bv = fabsf(len_v3v3(start_edge->e->v2->co, (*r_bv)->v->co));
-    if (v1_dist_to_bv < v2_dist_to_bv) { /* HANS-TODO: Helper function for this comparison? */
+    if (v1_dist_to_bv < v2_dist_to_bv) {
       sub_v3_v3v3(d_start, start_edge->e->v1->co, start_edge->e->v2->co);
     }
     else {
@@ -3096,35 +3092,19 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 #endif
     }
 
-    if (!next_edge) {
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      printf("(NULL - !next_edge)\n");
-#endif
-      return NULL;
-    }
-
     /* Only return a new Edge if one was found and if the choice of next edge was not too close */
     if ((float)fabs((double)(best_angle - second_best_angle)) < DEG2RADF(30.0f)) {
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      printf("[2nd angle:%0.2f](NULL - no angle choice)\n", (double)second_best_angle);
-#endif
       return NULL;
     }
     else {
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-      if (next_edge->is_bev) {
-        printf("(next_edge)\n");
-      } else {
-        printf("(NULL - !is_bev)\n");
-      }
-#endif
-      /* HANS-TODO: This check probably isn't needed */
-      return (next_edge->is_bev) ? next_edge : NULL; /* And only if the next edge is beveled */
+      BLI_assert(next_edge->is_bev);
+//      return (next_edge->is_bev) ? next_edge : NULL; /* And only if the next edge is beveled */
+      return next_edge;
     }
   }
 
   /* Case 2: The next EdgeHalf is the other side of the BMEdge.
-   * Because it's part of the same BMEdge, we know the other edge half will also be beveled */
+   * It's part of the same BMEdge, so we know the other EdgeHalf is also beveled */
   next_edge = find_other_end_edge_half(bp, start_edge, r_bv);
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
   printf("[away_bv]");
@@ -3136,6 +3116,7 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
 #endif
   return next_edge;
 }
+
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW
 static void debug_RPO_edge_draw_profile_orientation(BevelParams* bp, BMEdge* e) {
   float co[3];
@@ -3227,10 +3208,9 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
     edgehalf->visited_custom = true;
 
     /* Mark the correct BoundVert as the start of the newly visited profile
-     * The direction of the BoundVert along the path switches every time because their directions
-     * are relative to the BevVert they're connected to. So the right and left are BoundVerts
-     * would also switch every EdgeHalf, and all we need to do is switch which BoundVert I mark as
-     * the profile's start each time. */
+     * The BoundVert's side of the path should just switche every time because it is relative to
+     * the BevVert they're connected to and we switch off travelling into and out of a BevVert at
+     * every step. */
     edgehalf->rightv->is_profile_start = toward_bv;
     edgehalf->leftv->is_profile_start = !toward_bv;
 #if DEBUG_CUSTOM_PROFILE_ORIENTATION
@@ -3666,10 +3646,6 @@ static bool is_canon(VMesh *vm, int i, int j, int k)
 }
 
 /* Copy the vertex data to all of vm verts from canonical ones */
-/* HANS-QUESTION: Are these equivalences because of symmetry or because some vertices will overlap?
- * If they are because of symmetry I will have to disable these checks because the profile isn't
- * necessarily symmetrical. From reading notes it's looking like the canonical verts are the
- * un-transformed verts*/
 static void vmesh_copy_equiv_verts(VMesh *vm)
 {
   int n, ns, ns2, i, j, k;
@@ -3844,6 +3820,12 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 }
 
 /* Interpolate given vmesh to make one with target nseg border vertices on the profiles */
+/* HANS-TODO: This puts the center mesh vert at a slightly off location sometimes, which seems to
+ * be associated with the rest of that ring being shifted or connected slightly incorrectly to its
+ * neighbors */
+/* HANS-TODO: Figure out once and for all if the "frac" process is incorrect for custom profiles
+ * (even though it produces workable results). If it's incorrect than find a better solution. If
+ * it's a fine solution than document it better with comments. */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm_in, int nseg)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
@@ -3908,7 +3890,7 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm_in, int nseg)
     memcpy(prev_frac, frac, (size_t)(ns0 + 1) * sizeof(float));
     memcpy(prev_new_frac, new_frac, (size_t)(nseg + 1) * sizeof(float));
   }
-  if (!odd && !bp->use_custom_profile) {
+  if (!odd) {
     vmesh_center(vm_in, center);
     copy_v3_v3(mesh_vert(vm_out, 0, nseg2, nseg2)->co, center);
   }
@@ -4086,8 +4068,7 @@ static VMesh *cubic_subdiv(BevelParams *bp, VMesh *vm_in)
     copy_v3_v3(mesh_vert(vm_out, i, ns_in, ns_in)->co, co);
   }
 
-  /* Final step: sample the boundary vertices at even parameter spacing */
-  /* HANS-TODO: I may need to disable this? */
+  /* Final step: Copy the profile vertices to the VMesh's boundary */
   bndv = vm_out->boundstart;
   for (i = 0; i < n_boundary; i++) {
     inext = (i + 1) % n_boundary;
@@ -4258,7 +4239,6 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
 
   vmesh_copy_equiv_verts(vm0);
 
-  /* HANS-TODO: The "bulge" snap is probably in here, find it and take it out */
   vm1 = vm0;
   while (vm1->seg < nseg) {
     vm1 = cubic_subdiv(bp, vm1);
@@ -4272,12 +4252,7 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
   for (i = 0; i < 3; i++) {
     for (j = 0; j <= ns2; j++) {
       for (k = 0; k <= nseg; k++) {
-        if (!bp->use_custom_profile) {
-          snap_to_superellipsoid(mesh_vert(vm1, i, j, k)->co, r, false);
-        }
-        else {
-          /* HANS-TODO: Use custom analog */
-        }
+        snap_to_superellipsoid(mesh_vert(vm1, i, j, k)->co, r, false);
       }
     }
   }
@@ -4365,22 +4340,23 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 }
 
 /* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
-/* HANS-TODO: Disable uneeded stuff when in custom profiles mode */
+/* HANS-TODO: Decide whether to disable the process of using fullness to find the initial center
+ * point for the start mesh */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
   printf("ADJ VMESH\n");
 #endif
-  int n, ns, i;
+  int n_bndv, nseg, i;
   VMesh *vm0, *vm1;
-  float co[3], coa[3], cob[3], dir[3];
+  float boundverts_center[3], original_vertex[3], fullest[3], center_direction[3];
   BoundVert *bndv;
   MemArena *mem_arena = bp->mem_arena;
   float r, p, fullness;
   /* best fullness for circles, segs = 2,4,6,8,10 */
 #define CIRCLE_FULLNESS_SEGS 11
   static const float circle_fullness[CIRCLE_FULLNESS_SEGS] = {
-      0.0f,   /* nsegs ==1 */
+      0.0f,   /* nsegs == 1 */
       0.559f, /* 2 */
       0.642f, /* 3 */
       0.551f, /* 4 */
@@ -4393,38 +4369,38 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
       0.647f, /* 11 */
   };
 
-  n = bv->vmesh->count;
+  n_bndv = bv->vmesh->count;
 
   /* Same bevel as that of 3 edges of vert in a cube */
-  if (n == 3 && tri_corner_test(bp, bv) != -1 && bp->pro_super_r != PRO_SQUARE_IN_R) {
+  if (n_bndv == 3 && tri_corner_test(bp, bv) != -1 && bp->pro_super_r != PRO_SQUARE_IN_R) {
     return tri_corner_adj_vmesh(bp, bv);
   }
 
-  /* First construct an initial control mesh, with nseg==2 */
-  ns = bv->vmesh->seg;
-  vm0 = new_adj_vmesh(mem_arena, n, 2, bv->vmesh->boundstart);
+  /* First construct an initial control mesh, with nseg == 2 */
+  nseg = bv->vmesh->seg;
+  vm0 = new_adj_vmesh(mem_arena, n_bndv, 2, bv->vmesh->boundstart);
 
   bndv = vm0->boundstart;
-  zero_v3(co);
-  for (i = 0; i < n; i++) {
+  zero_v3(boundverts_center);
+  for (i = 0; i < n_bndv; i++) {
     /* Boundaries just divide input polygon edges into 2 even segments */
     copy_v3_v3(mesh_vert(vm0, i, 0, 0)->co, bndv->nv.co);
     get_profile_point(bp, &bndv->profile, 1, 2, mesh_vert(vm0, i, 0, 1)->co);
-    add_v3_v3(co, bndv->nv.co);
+    add_v3_v3(boundverts_center, bndv->nv.co);
     bndv = bndv->next;
   }
-  /* To place center vertex:
+
+  /* To place the center vertex:
    * coa is original vertex
    * co is centroid of boundary corners
    * cob is reflection of coa in across co.
-   * Calculate 'fullness' = fraction of way
+   * 'fullness' is the fraction of the way
    * from co to coa (if positive) or to cob (if negative).
    */
-
-  copy_v3_v3(coa, bv->v->co);
-  mul_v3_fl(co, 1.0f / (float)n);
-  sub_v3_v3v3(cob, co, coa);
-  add_v3_v3(cob, co);
+  copy_v3_v3(original_vertex, bv->v->co);
+  mul_v3_fl(boundverts_center, 1.0f / (float)n_bndv);
+  sub_v3_v3v3(fullest, boundverts_center, original_vertex);
+  add_v3_v3(fullest, boundverts_center);
 
   /* An offline optimization process found fullness that let to closest fit to sphere as
    * a function of r and ns (for case of cube corner) */
@@ -4434,32 +4410,34 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
     if (r == PRO_LINE_R) {
       fullness = 0.0f;
     }
-    else if (r == PRO_CIRCLE_R && ns > 0 && ns <= CIRCLE_FULLNESS_SEGS) {
-      fullness = circle_fullness[ns - 1];
+    else if (r == PRO_CIRCLE_R && nseg > 0 && nseg <= CIRCLE_FULLNESS_SEGS) {
+      fullness = circle_fullness[nseg - 1];
     }
     else {
       /* linear regression fit found best linear function, separately for even/odd segs */
-      if (ns % 2 == 0) {
-        fullness = 2.4506f * p - 0.00000300f * ns - 0.6266f;
+      if (nseg % 2 == 0) {
+        fullness = 2.4506f * p - 0.00000300f * nseg - 0.6266f;
       }
       else {
-        fullness = 2.3635f * p + 0.000152f * ns - 0.6060f;
+        fullness = 2.3635f * p + 0.000152f * nseg - 0.6060f;
       }
     }
-  } /* HANS-TODO: Disable more? */
-  sub_v3_v3v3(dir, coa, co);
-  if (len_squared_v3(dir) > BEVEL_EPSILON_SQ) {
-    madd_v3_v3fl(co, dir, fullness);
   }
-  copy_v3_v3(mesh_vert(vm0, 0, 1, 1)->co, co);
+  sub_v3_v3v3(center_direction, original_vertex, boundverts_center);
+  if (len_squared_v3(center_direction) > BEVEL_EPSILON_SQ) {
+    madd_v3_v3v3fl(mesh_vert(vm0, 0, 1, 1)->co, boundverts_center, center_direction, fullness);
+  }
+  else {
+    copy_v3_v3(mesh_vert(vm0, 0, 1, 1)->co, boundverts_center);
+  }
   vmesh_copy_equiv_verts(vm0);
 
   vm1 = vm0;
   do {
     vm1 = cubic_subdiv(bp, vm1);
-  } while (vm1->seg < ns);
-  if (vm1->seg != ns/* && !bp->use_custom_profile*/) {
-    vm1 = interp_vmesh(bp, vm1, ns);
+  } while (vm1->seg < nseg);
+  if (vm1->seg != nseg) {
+    vm1 = interp_vmesh(bp, vm1, nseg);
   }
   return vm1;
 }
@@ -4496,7 +4474,7 @@ static void snap_to_pipe_profile(BoundVert *vpipe, bool midline, float co[3])
     snap_to_superellipsoid(p, pro->super_r, midline);
 
     mul_v3_m4v3(snap, m, p);
-    copy_v3_v3(co, snap); /* HANS-TODO: Try just doing that in the previous line? */
+    copy_v3_v3(co, snap);
   }
   else {
     /* planar case: just snap to line va0--vb0 */
@@ -4534,6 +4512,20 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   ipipe1 = vpipe->index;
   ipipe2 = vpipe->next->next->index;
 
+#if DEBUG_CUSTOM_PROFILE_PIPE
+    /* Draw the locations of all the vertices before the "snapping" process */
+    for (i = 0; i < n_bndv; i++) {
+      for (j = 1; j <= half_ns; j++) {
+        for (k = 1; k <= ns; k++) {
+          if (!is_canon(vm, i, j, k)) {
+           continue;
+          }
+          DRW_debug_sphere(mesh_vert(vm, i, j, k)->co, 0.01f, green);
+        }
+      }
+    }
+#endif
+
   if (bp->use_custom_profile) {
 //    for (ipipe = 0; ipipe < 2; ipipe++) {
 //      /* Adjust the side of the first pipe profile first, then the other profile's side second */
@@ -4548,7 +4540,7 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
           }
           /* Get a new profile plane by moving the original's position to this ring */
           copy_v3_v3(new_profile_plane_co, mesh_vert(vm, i, j, k)->co);
-          copy_v3_v3(new_profile_plane_no, vpipe->profile.plane_no);
+          copy_v3_v3(new_profile_plane_no, vpipe->profile.proj_dir);
           plane_from_point_normal_v3(new_profile_plane, new_profile_plane_co,
                                      new_profile_plane_no);
 
@@ -4556,7 +4548,6 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
           /* Get this point's location by snapping the first profile's location to the new plane */
           closest_to_plane_v3(new_vert, new_profile_plane,
                               mesh_vert(vm, ipipe1, 0, k)->co);
-
           copy_v3_v3(mesh_vert(vm, i, j, k)->co, new_vert);
 #if DEBUG_CUSTOM_PROFILE_PIPE
           printf("i: %d, j: %d, k: %d\n", i, j, k);
@@ -4582,7 +4573,6 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 //              compare_v3v3(new_vert, bad_location3, BEVEL_EPSILON_BIG )) {
 //            printf("!! Bad location!\n");
 //          }
-          DRW_debug_sphere(new_profile_plane_co, 0.02f, green);
           madd_v3_v3v3fl(new_profile_normal_end, new_profile_plane_co, new_profile_plane_no,
                          0.1f);
           DRW_debug_line_v3v3(new_profile_plane_co, new_profile_normal_end, green);
@@ -4591,6 +4581,8 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
         }
       }
     }
+    // Does this help?
+    vmesh_copy_equiv_verts(vm);
   }
   else { /* non-custom profile */
     for (i = 0; i < n_bndv; i++) {
@@ -5011,7 +5003,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
   printf("BEVEL BUILD RINGS\n");
 #endif
-  int n, ns, ns2, odd, i, j, k, ring;
+  int n_bndv, ns, ns2, odd, i, j, k, ring;
   VMesh *vm1, *vm;
   BoundVert *v;
   BMVert *bmv1, *bmv2, *bmv3, *bmv4;
@@ -5021,11 +5013,11 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
   BoundVert *vpipe;
   int mat_nr = bp->mat_nr;
 
-  n = bv->vmesh->count;
+  n_bndv = bv->vmesh->count;
   ns = bv->vmesh->seg;
   ns2 = ns / 2;
   odd = ns % 2;
-  BLI_assert(n >= 3 && ns > 1);
+  BLI_assert(n_bndv >= 3 && ns > 1);
 
   /* Add support for profiles in vertex only in-plane bevels */
   if (bp->vertex_only) {
@@ -5041,7 +5033,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   vpipe = pipe_test(bv);
 
-  if (bp->pro_super_r == PRO_SQUARE_R && bv->selcount >= 3 && !odd) {
+  if (bp->pro_super_r == PRO_SQUARE_R && bv->selcount >= 3 && !odd && !bp->use_custom_profile) {
     vm1 = square_out_adj_vmesh(bp, bv);
   }
   else if (vpipe) {
@@ -5062,7 +5054,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   /* copy final vmesh into bv->vmesh, make BMVerts and BMFaces */
   vm = bv->vmesh;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n_bndv; i++) {
     for (j = 0; j <= ns2; j++) {
       for (k = 0; k <= ns; k++) {
         if (j == 0 && (k == 0 || k == ns)) {
@@ -5179,7 +5171,6 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   /* center ngon */
   if (odd) {
-    /* HANS-TODO: Needs update for custom profile case */
     build_center_ngon(bp, bm, bv, mat_nr);
   }
 }
@@ -5188,8 +5179,10 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
  * off each incoming edge's profile */
 /* HANS-TODO: When there are three beveled edges with a bottom face connecting two of them, the
  * sharp miter method doesn't interact correctly with the cutoff. In this case the profile planes
- * should actually be positioned differently, more like they are with the arc or patch miter
- * methods but without the grid fill */
+ * should actually be positioned differently, probably more like they are with the arc or patch
+ * miter methods but without the grid fill */
+/* HANS-TODO: When the profile is 0 for a non-custom profile this looks glitchy. It probably
+ * shouldn't build the cut-off faces in some special cases */
 static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -5212,10 +5205,11 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     i = bndv->index;
 
     /* Find the direction along the intersection of the two adjecent profile normals */
-    cross_v3_v3v3(down_direction, bndv->prev->profile.plane_no, bndv->profile.plane_no);
+    /* HANS-TODO: This cross product doesn't work for all situations */
+    cross_v3_v3v3(down_direction, bndv->profile.plane_no, bndv->prev->profile.plane_no);
 
     /* Move down that direction from the boundvert by the width of the bevel */
-    /* HANS-TODO: Use the adjusted offset for this vertex */
+    /* HANS-TODO: Use the transformed profile height for this vertex */
     madd_v3_v3v3fl(new_vert, bndv->nv.co, down_direction, bp->offset);
 
     /* Use this location for this profile's first corner vert and the last profile's second */
@@ -5234,9 +5228,8 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 #endif
 
   /* Disable the center face if the corner vertices share the same location */
-  /* HANS-TODO: There may be a better way to find this case */
   build_center_face = true;
-  if (n_bndv == 3) {
+  if (n_bndv == 3) { /* Vertices only collapse with a 3-way VMesh */
     build_center_face &=
         len_squared_v3v3(mesh_vert(bv->vmesh, 0, 1, 0)->co,
                          mesh_vert(bv->vmesh, 1, 1, 0)->co) > BEVEL_EPSILON;
@@ -5270,9 +5263,11 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   }
 
   /* Build the profile cutoff faces */
-  /* Extra one or two for corner vertices and one for last point along profile */
+  /* Extra one or two for corner vertices and one for last point along profile, or the size of the
+   * center face array if it's bigger. */
   face_bmverts = BLI_memarena_alloc(bp->mem_arena,
-                              (size_t)(bp->seg + 2 + build_center_face) * sizeof(BMVert *));
+                                    (size_t)(max_ii(bp->seg + 2 + build_center_face, n_bndv) *
+                                             sizeof(BMVert *)));
   bndv = bv->vmesh->boundstart;
   do {
     i = bndv->index;
@@ -5319,10 +5314,8 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     BLI_array_free(bmfaces);
   } while ((bndv = bndv->next) != bv->vmesh->boundstart);
 
-  /* Create the bottom face if it should be built */
+  /* Create the bottom face if it should be built, reusing previous face_bmverts allocation */
   if (build_center_face) {
-    /* HANS-TODO: Or just reuse previous allocation */
-    face_bmverts = BLI_memarena_alloc(bp->mem_arena, (size_t)n_bndv * sizeof(BMVert *));
     BLI_array_staticdeclare(bmedges, BM_DEFAULT_NGON_STACK_SIZE);
     BLI_array_staticdeclare(bmfaces, BM_DEFAULT_NGON_STACK_SIZE);
 
@@ -5580,8 +5573,6 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
   ns = vm->seg;
   ns2 = ns / 2;
 
-  /* HANS-TODO: Use different sizes for different vmesh types if I want to use this to store
-   * cutoff vmesh vertices*/
   vm->mesh = (NewVert *)BLI_memarena_alloc(mem_arena, n * (ns2 + 1) * (ns + 1) * sizeof(NewVert));
 
   /* special case: two beveled ends welded together */
@@ -5614,14 +5605,11 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       else { /* Get the last of the two BoundVerts */
         weld2 = bndv;
         move_weld_profile_planes(bv, weld1, weld2);
-        if (bp->use_custom_profile && !weld1->is_profile_start) {
-          SWAP(BoundVert *, weld1, weld2);
-        }
-        /* HANS-TODO: Just use the reverse param rather than swapping the two? */
-        calculate_profile(bp, weld1, false, false);
-        calculate_profile(bp, weld2, false, false);
-        /* HANS-TODO: Try calculating just one of the profiles and see if it can work. It would be
-         * a small speedup if it did */
+
+        calculate_profile(bp, weld1, !weld1->is_profile_start, false);
+        /* Leaving this commented for now, because this second calculation for the other weld
+         * profile shouldn't be necessary, but it could be depended on somewhere
+        calculate_profile(bp, weld2, !weld1->is_profile_start, false); */
       }
     }
   } while ((bndv = bndv->next) != vm->boundstart);
@@ -5638,10 +5626,9 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         !bndv->is_arc_start && !bndv->is_patch_start) {
       calculate_profile(bp, bndv, true, false);
     }
-    /* HANS-TODO: Try moving mesh_kind != M_ADJ check out here for a small optimization? */
-//    if (vm->mesh_kind != M_ADJ) {
+    if (vm->mesh_kind != M_ADJ) {
       for (k = 1; k < ns; k++) {
-        if (bndv->ebev && vm->mesh_kind != M_ADJ) {
+        if (bndv->ebev) {
           get_profile_point(bp, &bndv->profile, k, ns, co);
           copy_v3_v3(mesh_vert(vm, i, 0, k)->co, co); /* Get NewVert location from profile coord */
           if (!weld) {
@@ -5657,13 +5644,13 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
             /* This is done later with (possibly) better positions for the weld case */
           }
         }
-        else if (n == 2 && !bndv->ebev && vm->mesh_kind != M_ADJ) {
+        else if (n == 2 && !bndv->ebev) {
           /* case of one edge beveled and this is the v without ebev */
           /* want to copy the verts from other v, in reverse order */
           copy_mesh_vert(bv->vmesh, i, 0, k, 1 - i, 0, ns - k);
         }
       }
-//    }
+    }
   } while ((bndv = bndv->next) != vm->boundstart);
 
   /* Build the profile for the weld case (just a connection between the two boundverts) */
@@ -5698,7 +5685,6 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
   }
 #if DEBUG_CUSTOM_PROFILE_WELD
-  /* HANS-TODO: Get the locations for the profie that it calculates */
   if (weld && ns > 1) {
     printf("Weld1 profile coordinates:\n");
     for (k = 0; k < ns; k++) {
@@ -7394,15 +7380,7 @@ void BM_mesh_bevel(BMesh *bm,
   bp.prwdgt = prwdgt;
   bp.vmesh_method = vmesh_method;
 
-  if (bp.use_custom_profile) {
-    /* For now we need to sample the custom profile with at least as many segments as points */
-    if (bp.seg < bp.prwdgt->totpoint) {
-      bp.seg = bp.prwdgt->totpoint - 1;
-    }
-//    profilewidget_initialize(bp.prwdgt, (short)bp.seg + 1);
-  }
-
-  /* Disable the miters with the cutoff vertex mesh method, they aren't really useful anyway */
+  /* Disable the miters with the cutoff vertex mesh method, this combination isn't useful anyway */
   if (bp.vmesh_method == BEVEL_VMESH_CUTOFF) {
     bp.miter_inner = BEVEL_MITER_SHARP;
     bp.miter_outer = BEVEL_MITER_SHARP;
@@ -7421,7 +7399,7 @@ void BM_mesh_bevel(BMesh *bm,
     /* Get the 2D profile point locations from either the superellipse or the custom profile */
     set_profile_spacing(&bp, &bp.pro_spacing, bp.use_custom_profile);
 
-    /* Get separate non-custom locations for the miter profiles if they are needed */
+    /* Get separate non-custom profile samples for the miter profiles if they are needed */
     if (bp.use_custom_profile &&
         (bp.miter_inner != BEVEL_MITER_SHARP || bp.miter_outer != BEVEL_MITER_SHARP)) {
       set_profile_spacing(&bp, &bp.pro_spacing_miter, false);
@@ -7464,7 +7442,6 @@ void BM_mesh_bevel(BMesh *bm,
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
-          /* HANS-TODO: Check "already visited" here for possible speedup */
           regularize_profile_orientation(&bp, e);
         }
       }
@@ -7531,7 +7508,7 @@ void BM_mesh_bevel(BMesh *bm,
     }
 
     /* When called from operator (as opposed to modifier), bm->use_toolflags
-     * will be set, and we to transfer the oflags to BM_ELEM_TAGs */
+     * will be set, and we need to transfer the oflags to BM_ELEM_TAGs */
     if (bm->use_toolflags) {
       BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
         if (BMO_vert_flag_test(bm, v, VERT_OUT)) {
