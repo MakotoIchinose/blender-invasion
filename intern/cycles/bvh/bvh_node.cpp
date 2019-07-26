@@ -91,8 +91,12 @@ int BVHNode::getSubtreeSize(BVH_STAT stat) const
         cnt += 1;
       }
       return cnt;
-    case BVH_STAT_TIMELIMIT_NODE:
-      if(this->has_time_limits())
+    case BVH_STAT_4D_NODE_COUNT:
+      if(this->has_time_limited())
+        cnt = 1;
+      break;
+    case BVH_STAT_MOTION_BLURED_NODE_COUNT:
+      if(this->has_motion_blur())
         cnt = 1;
       break;
     default:

@@ -40,6 +40,12 @@
 #include "bvh.h"
 CCL_NAMESPACE_BEGIN
 
+#define BVH_NODE_SIZE_LEAF 1
+#define BVH_NODE_SIZE_BASE 4
+#define BVH_NODE_SIZE_4D 1
+#define BVH_NODE_SIZE_MOTION_BLUR 3
+#define BVH_NODE_SIZE_UNALIGNED 3
+
 class BVHEmbreeConverter
 {
 public:
@@ -57,7 +63,7 @@ private:
     std::deque<BVHNode*> handleLeaf(const embree::BVH4::NodeRef &node, const BoundBox &bb);
 
     template<typename Primitive>
-    BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb);
+    BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, ccl::BoundBox *t0bound = nullptr, ccl::BoundBox *deltaBound = nullptr);
 
     BVHNode* print_bvhInfo(RTCScene scene);
 

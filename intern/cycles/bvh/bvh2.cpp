@@ -76,8 +76,6 @@ void BVH2::pack_aligned_inner(const BVHStackEntry &e,
                     e1.node->bounds,
                     e0.encodeIdx(),
                     e1.encodeIdx(),
-                    make_float2(e0.node->time_from, e0.node->time_to),
-                    make_float2(e1.node->time_from, e1.node->time_to),
                     e0.node->visibility,
                     e1.node->visibility);
 }
@@ -87,8 +85,6 @@ void BVH2::pack_aligned_node(int idx,
                              const BoundBox &b1,
                              int c0,
                              int c1,
-                             float2 time0,
-                             float2 time1,
                              uint visibility0,
                              uint visibility1)
 {
@@ -96,19 +92,9 @@ void BVH2::pack_aligned_node(int idx,
   assert(c0 < 0 || c0 < pack.nodes.size());
   assert(c1 < 0 || c1 < pack.nodes.size());
 
-  if(time0.x > 0 || time0.y < 1)
-      visibility0 |= PATH_RAY_NODE_4D;
-  else
-      visibility0 &= ~PATH_RAY_NODE_4D;
-
-  if(time1.x > 0 || time1.y < 1)
-      visibility1 |= PATH_RAY_NODE_4D;
-  else
-      visibility1 &= ~PATH_RAY_NODE_4D;
-
   int4 data[BVH_NODE_SIZE] = {
       make_int4(
-          visibility0 & ~PATH_RAY_NODE_UNALIGNED, visibility1 & ~PATH_RAY_NODE_UNALIGNED, c0, c1),
+          visibility0 & ~PATH_RAY_NODE_CLEAR, visibility1 & ~PATH_RAY_NODE_CLEAR, c0, c1),
       make_int4(__float_as_int(b0.min.x),
                 __float_as_int(b1.min.x),
                 __float_as_int(b0.max.x),
@@ -121,10 +107,6 @@ void BVH2::pack_aligned_node(int idx,
                 __float_as_int(b1.min.z),
                 __float_as_int(b0.max.z),
                 __float_as_int(b1.max.z)),
-      make_int4(__float_as_int(time0.x),
-                __float_as_int(time1.x),
-                __float_as_int(time0.y),
-                __float_as_int(time1.y)),
   };
 
   memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE);
@@ -162,8 +144,8 @@ void BVH2::pack_unaligned_node(int idx,
   float4 data[BVH_UNALIGNED_NODE_SIZE];
   Transform space0 = BVHUnaligned::compute_node_transform(bounds0, aligned_space0);
   Transform space1 = BVHUnaligned::compute_node_transform(bounds1, aligned_space1);
-  data[0] = make_float4(__int_as_float(visibility0 | PATH_RAY_NODE_UNALIGNED),
-                        __int_as_float(visibility1 | PATH_RAY_NODE_UNALIGNED),
+  data[0] = make_float4(__int_as_float((visibility0 & ~PATH_RAY_NODE_CLEAR) | PATH_RAY_NODE_UNALIGNED),
+                        __int_as_float((visibility1 & ~PATH_RAY_NODE_CLEAR) | PATH_RAY_NODE_UNALIGNED),
                         __int_as_float(c0),
                         __int_as_float(c1));
 
@@ -303,8 +285,6 @@ void BVH2::refit_node(int idx, bool leaf, BoundBox &bbox, uint &visibility)
       pack_aligned_node(idx,
                         bbox0, bbox1,
                         c0, c1,
-                        make_float2(__int_as_float(data[4].x), __int_as_float(data[4].z)),
-                        make_float2(__int_as_float(data[4].y), __int_as_float(data[4].w)),
                         visibility0, visibility1);
     }
 

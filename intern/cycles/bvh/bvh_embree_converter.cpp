@@ -88,19 +88,24 @@ BVHNode *bvh_shrink(BVHNode *root) {
 
     // We have 2 node or more, we'll pack them into 2 nodes (to respect BVH2)
     node->num_children_ = 2;
-
     if(num_children == 2) {
         node->children[0] = children[0];
         node->children[1] = children[1];
         return node;
     }
 
-    node->children[0] = new InnerNode(merge(children[0]->bounds, children[1]->bounds), children[0], children[1]);
+    // node->children[0] = new InnerNode(merge(children[0]->bounds, children[1]->bounds), children[0], children[1]);
+    node->children[0] = new InnerNode(node->bounds, children[0], children[1]);
+    if(node->deltaBounds != nullptr) node->children[0]->deltaBounds = new BoundBox(*node->deltaBounds);
+
     if(num_children == 3) {
-        node->children[1] = node->children[2];
+        node->children[1] = children[2];
     } else {
-        node->children[1] = new InnerNode(merge(children[2]->bounds, children[3]->bounds), children[2], children[3]);
+        // node->children[1] = new InnerNode(merge(children[2]->bounds, children[3]->bounds), children[2], children[3]);
+        node->children[1] = new InnerNode(node->bounds, children[2], children[3]);
+        if(node->deltaBounds != nullptr) node->children[1]->deltaBounds = new BoundBox(*node->deltaBounds);
     }
+
     return node;
 }
 
@@ -126,15 +131,43 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::Triangle4i>(const em
 
             const int object_id = geom_id / 2;
             Object *obj = this->objects.at(object_id);
+            Mesh::Triangle tri = obj->mesh->get_triangle(prim_id);
 
             int prim_type = obj->mesh->has_motion_blur() ? PRIMITIVE_MOTION_TRIANGLE : PRIMITIVE_TRIANGLE;
 
             visibility |= obj->visibility;
             packPush(this->pack, this->packIdx++, object_id, prim_id, prim_type, obj->visibility, this->pack->prim_tri_verts.size());
+
+            /*
             pushVec(this->pack,
                     prims[i].getVertex(prims[i].v0, j, this->s),
                     prims[i].getVertex(prims[i].v1, j, this->s),
                     prims[i].getVertex(prims[i].v2, j, this->s));
+            */
+
+            this->pack->prim_tri_verts.push_back_slow(float3_to_float4(obj->mesh->verts[tri.v[0]]));
+            this->pack->prim_tri_verts.push_back_slow(float3_to_float4(obj->mesh->verts[tri.v[1]]));
+            this->pack->prim_tri_verts.push_back_slow(float3_to_float4(obj->mesh->verts[tri.v[2]]));
+
+            /*
+            std::cout << "Vertex " << prim_id << " "
+                      << prims[i].getVertex(prims[i].v0, j, this->s) << ", "
+                      << prims[i].getVertex(prims[i].v1, j, this->s) << ", "
+                      << prims[i].getVertex(prims[i].v2, j, this->s) << std::endl;
+
+            std::cout << "VERTEX " << prim_id << " "
+                      << "(" << obj->mesh->verts[tri.v[0]].x << ", " << obj->mesh->verts[tri.v[0]].y << ", " << obj->mesh->verts[tri.v[0]].z << "), "
+                      << "(" << obj->mesh->verts[tri.v[1]].x << ", " << obj->mesh->verts[tri.v[1]].y << ", " << obj->mesh->verts[tri.v[1]].z << "), "
+                      << "(" << obj->mesh->verts[tri.v[2]].x << ", " << obj->mesh->verts[tri.v[2]].y << ", " << obj->mesh->verts[tri.v[2]].z << ")" << std::endl;
+
+            std::cout << "Indices "
+                      << prims[i].v0[j] << ", "
+                      << prims[i].v1[j] << ", "
+                      << prims[i].v2[j] << " <=> "
+                      << tri.v[0] << ", "
+                      << tri.v[1] << ", "
+                      << tri.v[2] << std::endl;
+            */
         }
     }
 
@@ -208,7 +241,7 @@ std::deque<BVHNode*> BVHEmbreeConverter::handleLeaf<embree::InstancePrimitive>(c
 }
 
 template<typename Primitive>
-BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb) {
+BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, ccl::BoundBox *t0bound, ccl::BoundBox *deltaBound) {
     if(node.isLeaf()) {
         BVHNode *ret = nullptr;
         std::deque<BVHNode *> nodes = this->handleLeaf<Primitive>(node, bb);
@@ -237,74 +270,73 @@ BVHNode* BVHEmbreeConverter::nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::Bo
         }
 
         return ret;
-    } else {
-        InnerNode *ret = nullptr;
+    }
 
-        if(node.isAlignedNode()) {
-            embree::BVH4::AlignedNode *anode = node.alignedNode();
+    InnerNode *ret = nullptr;
+    int nb = 0;
+    BVHNode *children[4];
 
-            int nb = 0;
-            BVHNode *children[4];
-            for(uint i = 0; i < 4; i++) {
-                BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
-                if(child != nullptr)
-                    children[nb++] = child;
-            }
+    if(node.isAlignedNode()) {
+        embree::BVH4::AlignedNode *anode = node.alignedNode();
 
-            ret = new InnerNode(
-                        bb,
-                        children,
-                        nb);
-        } else if(node.isAlignedNodeMB()) {
-            embree::BVH4::AlignedNodeMB *anode = node.alignedNodeMB();
-
-            int nb = 0;
-            BVHNode *children[4];
-            for(uint i = 0; i < 4; i++) {
-                BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
-                if(child != nullptr) {
-                    children[nb++] = child;
-                }
-            }
-
-            ret = new InnerNode(
-                        bb,
-                        children,
-                        nb);
-        } else if (node.isUnalignedNode()) {
-            std::cout << "[EMBREE - BVH] Node type is unaligned" << std::endl;
-        } else if (node.isUnalignedNodeMB()) {
-            std::cout << "[EMBREE - BVH] Node type is unaligned MB" << std::endl;
-        } else if (node.isBarrier()) {
-            std::cout << "[EMBREE - BVH] Node type is barrier ??" << std::endl;
-        } else if (node.isQuantizedNode()) {
-            std::cout << "[EMBREE - BVH] Node type is Quantized node !" << std::endl;
-        } else if (node.isAlignedNodeMB4D()) {
-            // He is an aligned node MB
-            embree::BVH4::AlignedNodeMB4D *anode = node.alignedNodeMB4D();
-
-            int nb = 0;
-            BVHNode *children[4];
-            for(uint i = 0; i < 4; i++) {
-                BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
-                if(child != nullptr) {
-                    embree::BBox1f timeRange = anode->timeRange(i);
-                    child->time_from = timeRange.lower;
-                    child->time_to = timeRange.upper;
-                    children[nb++] = child;
-                }
-            }
-
-            ret = new InnerNode(
-                        bb,
-                        children,
-                        nb);
-        } else {
-            std::cout << "[EMBREE - BVH] Node type is unknown -> " << node.type() << std::endl;
+        for(uint i = 0; i < 4; i++) {
+            BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)));
+            if(child != nullptr)
+                children[nb++] = child;
         }
 
-        return ret;
+    } else if(node.isAlignedNodeMB()) {
+        embree::BVH4::AlignedNodeMB *anode = node.alignedNodeMB();
+
+        for(uint i = 0; i < 4; i++) {
+            BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)),
+                                                              new BoundBox(RTCBoundBoxToCCL(anode->bounds0(i))),
+                                                              new BoundBox(make_float3(anode->lower_dx[i], anode->lower_dy[i], anode->lower_dz[i]),
+                                                                           make_float3(anode->upper_dx[i], anode->upper_dy[i], anode->upper_dz[i])));
+
+            if(child != nullptr)
+                children[nb++] = child;
+        }
+    } else if (node.isUnalignedNode()) {
+        std::cout << "[EMBREE - BVH] Node type is unaligned" << std::endl;
+    } else if (node.isUnalignedNodeMB()) {
+        std::cout << "[EMBREE - BVH] Node type is unaligned MB" << std::endl;
+    } else if (node.isBarrier()) {
+        std::cout << "[EMBREE - BVH] Node type is barrier ??" << std::endl;
+    } else if (node.isQuantizedNode()) {
+        std::cout << "[EMBREE - BVH] Node type is Quantized node !" << std::endl;
+    } else if (node.isAlignedNodeMB4D()) {
+        // He is an aligned node MB
+        embree::BVH4::AlignedNodeMB4D *anode = node.alignedNodeMB4D();
+
+        for(uint i = 0; i < 4; i++) {
+            BVHNode *child = this->nodeEmbreeToCcl<Primitive>(anode->children[i], RTCBoundBoxToCCL(anode->bounds(i)),
+                                                              new BoundBox(RTCBoundBoxToCCL(anode->bounds0(i))),
+                                                              new BoundBox(make_float3(anode->lower_dx[i], anode->lower_dy[i], anode->lower_dz[i]),
+                                                                           make_float3(anode->upper_dx[i], anode->upper_dy[i], anode->upper_dz[i])));
+
+            if(child != nullptr) {
+                embree::BBox1f timeRange = anode->timeRange(i);
+                child->time_from = timeRange.lower;
+                child->time_to = timeRange.upper;
+
+                children[nb++] = child;
+            }
+        }
+    } else {
+        std::cout << "[EMBREE - BVH] Node type is unknown -> " << node.type() << std::endl;
     }
+
+    ret = new InnerNode(
+                bb,
+                children,
+                nb);
+
+    if(t0bound != nullptr && deltaBound != nullptr) {
+        ret->bounds = *t0bound;
+        ret->deltaBounds = deltaBound;
+    }
+    return ret;
 }
 
 BVHNode* BVHEmbreeConverter::getBVH4() {
@@ -368,19 +400,17 @@ BoundBox bvh_tighten(BVHNode *root) {
 
 BVHNode* BVHEmbreeConverter::getBVH2() {
     BVHNode *root = this->getBVH4();
-    std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
+    std::cout << root->getSubtreeSize(BVH_STAT_4D_NODE_COUNT) << " times nodes" << std::endl;
+    std::cout << root->getSubtreeSize(BVH_STAT_MOTION_BLURED_NODE_COUNT) << " MB nodes" << std::endl;
     std::cout << "BVH4 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     root = bvh_shrink(root);
-    std::cout << root->getSubtreeSize(BVH_STAT_TIMELIMIT_NODE) << " times nodes" << std::endl;
+    std::cout << root->getSubtreeSize(BVH_STAT_4D_NODE_COUNT) << " times nodes" << std::endl;
+    std::cout << root->getSubtreeSize(BVH_STAT_MOTION_BLURED_NODE_COUNT) << " MB nodes" << std::endl;
     std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
-    bvh_tighten(root);
-    std::cout << "BVH² SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
+    // bvh_tighten(root);
+
     return root;
 }
-
-#define BVH_NODE_SIZE (4+1)
-#define BVH_NODE_LEAF_SIZE 1
-#define BVH_UNALIGNED_NODE_SIZE 7
 
 
 
@@ -539,15 +569,15 @@ void BVHEmbreeConverter::pack_instances(size_t nodes_size, size_t leaf_nodes_siz
     if (bvh->pack.leaf_nodes.size()) {
       int4 *leaf_nodes_offset = &bvh->pack.leaf_nodes[0];
       size_t leaf_nodes_offset_size = bvh->pack.leaf_nodes.size();
-      for (size_t i = 0, j = 0; i < leaf_nodes_offset_size; i += BVH_NODE_LEAF_SIZE, j++) {
+      for (size_t i = 0, j = 0; i < leaf_nodes_offset_size; i += BVH_NODE_SIZE_LEAF, j++) {
         int4 data = leaf_nodes_offset[i];
         data.x += prim_offset;
         data.y += prim_offset;
         pack_leaf_nodes[pack_leaf_nodes_offset] = data;
-        for (int j = 1; j < BVH_NODE_LEAF_SIZE; ++j) {
+        for (int j = 1; j < BVH_NODE_SIZE_LEAF; ++j) {
           pack_leaf_nodes[pack_leaf_nodes_offset + j] = leaf_nodes_offset[i + j];
         }
-        pack_leaf_nodes_offset += BVH_NODE_LEAF_SIZE;
+        pack_leaf_nodes_offset += BVH_NODE_SIZE_LEAF;
       }
     }
 
@@ -556,18 +586,17 @@ void BVHEmbreeConverter::pack_instances(size_t nodes_size, size_t leaf_nodes_siz
       size_t bvh_nodes_size = bvh->pack.nodes.size();
 
       for (size_t i = 0, j = 0; i < bvh_nodes_size; j++) {
-        size_t nsize = (bvh_nodes[i].x & PATH_RAY_NODE_UNALIGNED) ? BVH_UNALIGNED_NODE_SIZE : BVH_NODE_SIZE;
+        size_t nsize = BVH_NODE_SIZE_BASE;
+        if (bvh_nodes[i].x & PATH_RAY_NODE_4D) nsize += BVH_NODE_SIZE_4D;
+        if (bvh_nodes[i].x & PATH_RAY_NODE_MB) nsize += BVH_NODE_SIZE_MOTION_BLUR;
+        if (bvh_nodes[i].x & PATH_RAY_NODE_UNALIGNED) nsize += BVH_NODE_SIZE_UNALIGNED;
 
         /* Modify offsets into arrays */
         int4 data = bvh_nodes[i];
-        int4 data1 = bvh_nodes[i - 1];
-          data.z += (data.z < 0) ? -noffset_leaf : noffset;
-          data.w += (data.w < 0) ? -noffset_leaf : noffset;
+        data.z += (data.z < 0) ? -noffset_leaf : noffset;
+        data.w += (data.w < 0) ? -noffset_leaf : noffset;
         pack_nodes[pack_nodes_offset] = data;
 
-        /* Usually this copies nothing, but we better
-         * be prepared for possible node size extension.
-         */
         memcpy(&pack_nodes[pack_nodes_offset + 1],
                &bvh_nodes[i + 1],
                sizeof(int4) * (nsize - 1));
@@ -584,8 +613,8 @@ void BVHEmbreeConverter::pack_instances(size_t nodes_size, size_t leaf_nodes_siz
 }
 
 void pack_leaf(const BVHStackEntry &e, const LeafNode *leaf, PackedBVH &pack) {
-    assert(e.idx + BVH_NODE_LEAF_SIZE <= pack.leaf_nodes.size());
-    float4 data[BVH_NODE_LEAF_SIZE];
+    assert(e.idx + BVH_NODE_SIZE_LEAF <= pack.leaf_nodes.size());
+    float4 data[BVH_NODE_SIZE_LEAF];
     memset(data, 0, sizeof(data));
     if (leaf->num_triangles() == 1 && pack.prim_index[leaf->lo] == -1) {
         /* object */
@@ -597,77 +626,111 @@ void pack_leaf(const BVHStackEntry &e, const LeafNode *leaf, PackedBVH &pack) {
         data[0].x = __int_as_float(leaf->lo);
         data[0].y = __int_as_float(leaf->hi);
     }
-    data[0].z = __uint_as_float(leaf->visibility);
-    if (leaf->num_triangles() != 0) {
-        data[0].w = __uint_as_float(pack.prim_type[leaf->lo]);
-    } else {
-        printf("A leaf can be empty\n");
-    }
 
-    memcpy(&pack.leaf_nodes[e.idx], data, sizeof(float4) * BVH_NODE_LEAF_SIZE);
+    data[0].z = __uint_as_float(leaf->visibility);
+    data[0].w = __uint_as_float(pack.prim_type[leaf->lo]);
+
+    memcpy(&pack.leaf_nodes[e.idx], data, sizeof(float4) * BVH_NODE_SIZE_LEAF);
 }
 
-void pack_aligned_node(int idx,
-                       const BoundBox &b0,
-                       const BoundBox &b1,
-                       int c0,
-                       int c1,
-                       float2 time0,
-                       float2 time1,
-                       uint visibility0,
-                       uint visibility1,
-                       PackedBVH &pack)
+void pack_base_node(int idx, const BVHStackEntry &c0, const BVHStackEntry &c1, uint visibilityFlag, PackedBVH &pack)
 {
-  assert(idx + BVH_NODE_SIZE <= pack.nodes.size());
-  assert(c0 < 0 || c0 < pack.nodes.size());
-  assert(c1 < 0 || c1 < pack.nodes.size());
+  assert(idx + BVH_NODE_SIZE_BASE <= pack.nodes.size());
 
-  if(time0.x > 0 || time0.y < 1)
-      visibility0 |= PATH_RAY_NODE_4D;
-  else
-      visibility0 &= ~PATH_RAY_NODE_4D;
+  // Clear visibility flags used for node type, and apply relevant ones
+  uint visibility0 = (c0.node->visibility & ~PATH_RAY_NODE_CLEAR) | visibilityFlag;
+  uint visibility1 = (c1.node->visibility & ~PATH_RAY_NODE_CLEAR) | visibilityFlag;
 
-  if(time1.x > 0 || time1.y < 1)
-      visibility1 |= PATH_RAY_NODE_4D;
-  else
-      visibility1 &= ~PATH_RAY_NODE_4D;
-
-  int4 data[BVH_NODE_SIZE] = {
-      make_int4(
-          visibility0 & ~PATH_RAY_NODE_UNALIGNED, visibility1 & ~PATH_RAY_NODE_UNALIGNED, c0, c1),
-      make_int4(__float_as_int(b0.min.x),
-                __float_as_int(b1.min.x),
-                __float_as_int(b0.max.x),
-                __float_as_int(b1.max.x)),
-      make_int4(__float_as_int(b0.min.y),
-                __float_as_int(b1.min.y),
-                __float_as_int(b0.max.y),
-                __float_as_int(b1.max.y)),
-      make_int4(__float_as_int(b0.min.z),
-                __float_as_int(b1.min.z),
-                __float_as_int(b0.max.z),
-                __float_as_int(b1.max.z)),
-      make_int4(__float_as_int(time0.x),
-                __float_as_int(time1.x),
-                __float_as_int(time0.y),
-                __float_as_int(time1.y)),
+  int4 data[BVH_NODE_SIZE_BASE] = {
+      make_int4(visibility0, visibility1, c0.encodeIdx(), c1.encodeIdx()),
+      make_int4(__float_as_int(c0.node->bounds.min.x),
+                __float_as_int(c1.node->bounds.min.x),
+                __float_as_int(c0.node->bounds.max.x),
+                __float_as_int(c1.node->bounds.max.x)),
+      make_int4(__float_as_int(c0.node->bounds.min.y),
+                __float_as_int(c1.node->bounds.min.y),
+                __float_as_int(c0.node->bounds.max.y),
+                __float_as_int(c1.node->bounds.max.y)),
+      make_int4(__float_as_int(c0.node->bounds.min.z),
+                __float_as_int(c1.node->bounds.min.z),
+                __float_as_int(c0.node->bounds.max.z),
+                __float_as_int(c1.node->bounds.max.z)),
   };
 
-  memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE);
+  memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE_BASE);
 }
 
+void pack_4D_node(const int idx, const BVHNode *c0, const BVHNode *c1, PackedBVH &pack)
+{
+  assert(idx + BVH_NODE_SIZE_4D <= pack.nodes.size());
+  assert(BVH_NODE_SIZE_4D == 1);
+
+  pack.nodes[idx] = make_int4(__float_as_int(c0->time_from),
+                              __float_as_int(c1->time_from),
+                              __float_as_int(c0->time_to),
+                              __float_as_int(c1->time_to));
+};
+
+void pack_MB_node(const int idx, const BoundBox *bb0, const BoundBox *bb1, PackedBVH &pack)
+{
+    assert(idx + BVH_NODE_SIZE_MOTION_BLUR <= pack.nodes.size());
+
+    if(bb0 == nullptr) bb0 = new BoundBox(make_float3(0));
+    if(bb1 == nullptr) bb1 = new BoundBox(make_float3(0));
+
+    int4 data[BVH_NODE_SIZE_MOTION_BLUR] = {
+        make_int4(__float_as_int(bb0->min.x),
+                  __float_as_int(bb1->min.x),
+                  __float_as_int(bb0->max.x),
+                  __float_as_int(bb1->max.x)),
+        make_int4(__float_as_int(bb0->min.y),
+                  __float_as_int(bb1->min.y),
+                  __float_as_int(bb0->max.y),
+                  __float_as_int(bb1->max.y)),
+        make_int4(__float_as_int(bb0->min.z),
+                  __float_as_int(bb1->min.z),
+                  __float_as_int(bb0->max.z),
+                  __float_as_int(bb1->max.z)),
+    };
+
+    memcpy(&pack.nodes[idx], data, sizeof(int4) * BVH_NODE_SIZE_MOTION_BLUR);
+}
+
+int getSize(const BVHNode *e) {
+    int                       size  = BVH_NODE_SIZE_BASE;
+    if(e->has_time_limited()) size += BVH_NODE_SIZE_4D;
+    if(e->has_motion_blur())  size += BVH_NODE_SIZE_MOTION_BLUR;
+    if(e->has_unaligned())    size += BVH_NODE_SIZE_UNALIGNED;
+    return size;
+}
 
 void pack_inner(const BVHStackEntry &e, const BVHStackEntry &c0, const BVHStackEntry &c1, PackedBVH &pack) {
-    pack_aligned_node(e.idx,
-                      c0.node->bounds,
-                      c1.node->bounds,
-                      c0.encodeIdx(),
-                      c1.encodeIdx(),
-                      make_float2(c0.node->time_from, c0.node->time_to),
-                      make_float2(c1.node->time_from, c1.node->time_to),
-                      c0.node->visibility,
-                      c1.node->visibility,
-                      pack);
+    uint visibility = 0;
+
+    if(e.node->has_time_limited())
+        visibility |= PATH_RAY_NODE_4D;
+
+    if(e.node->has_motion_blur())
+        visibility |= PATH_RAY_NODE_MB;
+
+    if(e.node->has_unaligned())
+        assert(!"Not yet supported ...");
+
+    int idx = e.idx;
+    pack_base_node(idx, c0, c1, visibility, pack);
+    idx += BVH_NODE_SIZE_BASE;
+
+    if(visibility & PATH_RAY_NODE_MB) {
+        pack_MB_node(idx, c0.node->deltaBounds, c1.node->deltaBounds, pack);
+        idx += BVH_NODE_SIZE_MOTION_BLUR;
+    }
+
+    if(visibility & PATH_RAY_NODE_4D) {
+        pack_4D_node(idx, c0.node, c1.node, pack);
+        idx += BVH_NODE_SIZE_4D;
+    }
+
+    assert(e.idx + getSize(e.node) == idx);
 }
 
 void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
@@ -697,30 +760,36 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
 
 
     BVHNode *root = this->getBVH2();
+
     std::cout << "BVH2 SAH is " << root->computeSubtreeSAHCost(this->params) << std::endl;
     const size_t num_nodes = root->getSubtreeSize(BVH_STAT_NODE_COUNT);
     const size_t num_leaf_nodes = root->getSubtreeSize(BVH_STAT_LEAF_COUNT);
     assert(num_leaf_nodes <= num_nodes);
     const size_t num_inner_nodes = num_nodes - num_leaf_nodes;
-    size_t node_size;
+    size_t node_size = num_inner_nodes * BVH_NODE_SIZE_BASE;
+
+    // Additional size for unaligned nodes
     if (params.use_unaligned_nodes) {
         const size_t num_unaligned_nodes = root->getSubtreeSize(BVH_STAT_UNALIGNED_INNER_COUNT);
-        node_size = (num_unaligned_nodes * BVH_UNALIGNED_NODE_SIZE) +
-                (num_inner_nodes - num_unaligned_nodes) * BVH_NODE_SIZE;
+        node_size = num_unaligned_nodes * BVH_NODE_SIZE_UNALIGNED;
     }
-    else {
-        node_size = num_inner_nodes * BVH_NODE_SIZE;
-    }
+
+    // Additional size for linear bound
+    node_size += root->getSubtreeSize(BVH_STAT_MOTION_BLURED_NODE_COUNT) * BVH_NODE_SIZE_MOTION_BLUR;
+
+    // Additional size for time limits
+    node_size += root->getSubtreeSize(BVH_STAT_4D_NODE_COUNT) * BVH_NODE_SIZE_4D;
+
     /* Resize arrays */
     pack.nodes.clear();
     pack.leaf_nodes.clear();
     /* For top level BVH, first merge existing BVH's so we know the offsets. */
     if (params.top_level) {
-        pack_instances(node_size, num_leaf_nodes * BVH_NODE_LEAF_SIZE, pack);
+        pack_instances(node_size, num_leaf_nodes * BVH_NODE_SIZE_LEAF, pack);
     }
     else {
         pack.nodes.resize(node_size);
-        pack.leaf_nodes.resize(num_leaf_nodes * BVH_NODE_LEAF_SIZE);
+        pack.leaf_nodes.resize(num_leaf_nodes * BVH_NODE_SIZE_LEAF);
     }
 
     int nextNodeIdx = 0, nextLeafNodeIdx = 0;
@@ -732,7 +801,7 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
     }
     else {
         stack.push_back(BVHStackEntry(root, nextNodeIdx));
-        nextNodeIdx += root->has_unaligned() ? BVH_UNALIGNED_NODE_SIZE : BVH_NODE_SIZE;
+        nextNodeIdx += getSize(root);
     }
 
     while (stack.size()) {
@@ -754,8 +823,7 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
                 }
                 else {
                     idx[i] = nextNodeIdx;
-                    nextNodeIdx += e.node->get_child(i)->has_unaligned() ? BVH_UNALIGNED_NODE_SIZE :
-                                                                           BVH_NODE_SIZE;
+                    nextNodeIdx += getSize(e.node->get_child(i));
                 }
             }
 

@@ -29,100 +29,73 @@ ccl_device_forceinline Transform bvh_unaligned_node_fetch_space(KernelGlobals *k
 }
 
 #if !defined(__KERNEL_SSE2__)
-ccl_device_forceinline int bvh_4D_aligned_node_intersect(KernelGlobals *kg,
-                                                         const float3 P,
-                                                         const float3 idir,
-                                                         const float t,
-                                                         const int node_addr,
-                                                         const uint visibility,
-                                                         const float rayTime,
-                                                         float dist[2])
-{
-
-  /* fetch node data */
-  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr + 0);
-  float4 node0 = kernel_tex_fetch(__bvh_nodes, node_addr + 1);
-  float4 node1 = kernel_tex_fetch(__bvh_nodes, node_addr + 2);
-  float4 node2 = kernel_tex_fetch(__bvh_nodes, node_addr + 3);
-
-  /* intersect ray against child nodes */
-  float c0lox = (node0.x - P.x) * idir.x;
-  float c0hix = (node0.z - P.x) * idir.x;
-  float c0loy = (node1.x - P.y) * idir.y;
-  float c0hiy = (node1.z - P.y) * idir.y;
-  float c0loz = (node2.x - P.z) * idir.z;
-  float c0hiz = (node2.z - P.z) * idir.z;
-  float c0min = max4(0.0f, min(c0lox, c0hix), min(c0loy, c0hiy), min(c0loz, c0hiz));
-  float c0max = min4(t, max(c0lox, c0hix), max(c0loy, c0hiy), max(c0loz, c0hiz));
-
-  float c1lox = (node0.y - P.x) * idir.x;
-  float c1hix = (node0.w - P.x) * idir.x;
-  float c1loy = (node1.y - P.y) * idir.y;
-  float c1hiy = (node1.w - P.y) * idir.y;
-  float c1loz = (node2.y - P.z) * idir.z;
-  float c1hiz = (node2.w - P.z) * idir.z;
-  float c1min = max4(0.0f, min(c1lox, c1hix), min(c1loy, c1hiy), min(c1loz, c1hiz));
-  float c1max = min4(t, max(c1lox, c1hix), max(c1loy, c1hiy), max(c1loz, c1hiz));
-
-  dist[0] = c0min;
-  dist[1] = c1min;
-
-  float4 timeLimits = kernel_tex_fetch(__bvh_nodes, node_addr + 4);
-  if(timeLimits.x > rayTime || timeLimits.z < rayTime)
-      c0max = -1.0f;
-
-  if(timeLimits.y > rayTime || timeLimits.w < rayTime)
-      c1max = -1.0f;
-
-#  ifdef __VISIBILITY_FLAG__
-  /* this visibility test gives a 5% performance hit, how to solve? */
-  return (((c0max >= c0min) && (__float_as_uint(cnodes.x) & visibility)) ? 1 : 0) |
-         (((c1max >= c1min) && (__float_as_uint(cnodes.y) & visibility)) ? 2 : 0);
-#  else
-  return ((c0max >= c0min) ? 1 : 0) | ((c1max >= c1min) ? 2 : 0);
-#  endif
-}
 
 ccl_device_forceinline int bvh_aligned_node_intersect(KernelGlobals *kg,
                                                       const float3 P,
                                                       const float3 idir,
                                                       const float t,
-                                                      const int node_addr,
+                                                      int node_addr,
                                                       const uint visibility,
-						      const float rayTime,
+                                                      const float rayTime,
                                                       float dist[2])
 {
   /* fetch node data */
-  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr + 0);
-  float4 node0 = kernel_tex_fetch(__bvh_nodes, node_addr + 1);
-  float4 node1 = kernel_tex_fetch(__bvh_nodes, node_addr + 2);
-  float4 node2 = kernel_tex_fetch(__bvh_nodes, node_addr + 3);
+  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr++);
+  float4 node0 = kernel_tex_fetch(__bvh_nodes, node_addr++);
+  float4 node1 = kernel_tex_fetch(__bvh_nodes, node_addr++);
+  float4 node2 = kernel_tex_fetch(__bvh_nodes, node_addr++);
 
-  if (__float_as_int(cnodes.x) & PATH_RAY_NODE_4D) {
-    return bvh_4D_aligned_node_intersect(kg, P, idir, t, node_addr, visibility, rayTime, dist);
+  float3 c0lo = make_float3(node0.x, node1.x, node2.x);
+  float3 c0hi = make_float3(node0.z, node1.z, node2.z);
+  float3 c1lo = make_float3(node0.y, node1.y, node2.y);
+  float3 c1hi = make_float3(node0.w, node1.w, node2.w);
+
+  if (__float_as_int(cnodes.x) & PATH_RAY_NODE_MB) {
+    float4 node3 = kernel_tex_fetch(__bvh_nodes, node_addr++);
+    float4 node4 = kernel_tex_fetch(__bvh_nodes, node_addr++);
+    float4 node5 = kernel_tex_fetch(__bvh_nodes, node_addr++);
+
+    float3 c0dlo = make_float3(node3.x, node4.x, node5.x);
+    float3 c0dhi = make_float3(node3.z, node4.z, node5.z);
+    float3 c1dlo = make_float3(node3.y, node4.y, node5.y);
+    float3 c1dhi = make_float3(node3.w, node4.w, node5.w);
+
+    c0lo += rayTime * c0dlo;
+    c0hi += rayTime * c0dhi;
+    c1lo += rayTime * c1dlo;
+    c1hi += rayTime * c1dhi;
   }
 
   /* intersect ray against child nodes */
-  float c0lox = (node0.x - P.x) * idir.x;
-  float c0hix = (node0.z - P.x) * idir.x;
-  float c0loy = (node1.x - P.y) * idir.y;
-  float c0hiy = (node1.z - P.y) * idir.y;
-  float c0loz = (node2.x - P.z) * idir.z;
-  float c0hiz = (node2.z - P.z) * idir.z;
+  float c0lox = (c0lo.x - P.x) * idir.x;
+  float c0hix = (c0hi.x - P.x) * idir.x;
+  float c0loy = (c0lo.y - P.y) * idir.y;
+  float c0hiy = (c0hi.y - P.y) * idir.y;
+  float c0loz = (c0lo.z - P.z) * idir.z;
+  float c0hiz = (c0hi.z - P.z) * idir.z;
   float c0min = max4(0.0f, min(c0lox, c0hix), min(c0loy, c0hiy), min(c0loz, c0hiz));
   float c0max = min4(t, max(c0lox, c0hix), max(c0loy, c0hiy), max(c0loz, c0hiz));
 
-  float c1lox = (node0.y - P.x) * idir.x;
-  float c1hix = (node0.w - P.x) * idir.x;
-  float c1loy = (node1.y - P.y) * idir.y;
-  float c1hiy = (node1.w - P.y) * idir.y;
-  float c1loz = (node2.y - P.z) * idir.z;
-  float c1hiz = (node2.w - P.z) * idir.z;
+  float c1lox = (c1lo.x - P.x) * idir.x;
+  float c1hix = (c1hi.x - P.x) * idir.x;
+  float c1loy = (c1lo.y - P.y) * idir.y;
+  float c1hiy = (c1hi.y - P.y) * idir.y;
+  float c1loz = (c1lo.z - P.z) * idir.z;
+  float c1hiz = (c1hi.z - P.z) * idir.z;
   float c1min = max4(0.0f, min(c1lox, c1hix), min(c1loy, c1hiy), min(c1loz, c1hiz));
   float c1max = min4(t, max(c1lox, c1hix), max(c1loy, c1hiy), max(c1loz, c1hiz));
 
   dist[0] = c0min;
   dist[1] = c1min;
+
+  if (__float_as_int(cnodes.x) & PATH_RAY_NODE_4D) {
+    float4 timeLimits = kernel_tex_fetch(__bvh_nodes, node_addr++);
+    if(timeLimits.x > rayTime || timeLimits.z < rayTime)
+      c0max = -1.0f;
+
+    if(timeLimits.y > rayTime || timeLimits.w < rayTime)
+      c1max = -1.0f;
+  }
 
 #  ifdef __VISIBILITY_FLAG__
   /* this visibility test gives a 5% performance hit, how to solve? */

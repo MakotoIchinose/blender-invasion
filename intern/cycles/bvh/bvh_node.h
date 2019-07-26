@@ -36,7 +36,8 @@ enum BVH_STAT {
   BVH_STAT_ALIGNED_LEAF_COUNT,
   BVH_STAT_UNALIGNED_LEAF_COUNT,
   BVH_STAT_DEPTH,
-  BVH_STAT_TIMELIMIT_NODE,
+  BVH_STAT_4D_NODE_COUNT,
+  BVH_STAT_MOTION_BLURED_NODE_COUNT,
 };
 
 class BVHParams;
@@ -46,6 +47,7 @@ class BVHNode {
   virtual ~BVHNode()
   {
     delete aligned_space;
+    delete deltaBounds;
   }
 
   virtual bool is_leaf() const = 0;
@@ -89,8 +91,38 @@ class BVHNode {
     return false;
   }
 
-  inline bool has_time_limits() const {
+  inline bool is_time_limited() const {
     return this->time_from > 0 || this->time_to < 1;
+  }
+
+  inline bool has_time_limited() const
+  {
+    if (is_leaf()) {
+      return false;
+    }
+    for (int i = 0; i < num_children(); ++i) {
+      if (get_child(i)->is_time_limited()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  inline bool is_motion_blur() const {
+    return this->deltaBounds != nullptr;
+  }
+
+  inline bool has_motion_blur() const
+  {
+    if (is_leaf()) {
+      return false;
+    }
+    for (int i = 0; i < num_children(); ++i) {
+      if (get_child(i)->is_motion_blur()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Subtree functions
@@ -115,6 +147,8 @@ class BVHNode {
    */
   Transform *aligned_space;
 
+  BoundBox *deltaBounds;
+
   float time_from, time_to;
 
  protected:
@@ -123,6 +157,7 @@ class BVHNode {
         visibility(0),
         is_unaligned(false),
         aligned_space(NULL),
+        deltaBounds(NULL),
         time_from(0.0f),
         time_to(1.0f)
   {
@@ -133,6 +168,7 @@ class BVHNode {
         visibility(other.visibility),
         is_unaligned(other.is_unaligned),
         aligned_space(NULL),
+        deltaBounds(NULL),
         time_from(other.time_from),
         time_to(other.time_to)
   {

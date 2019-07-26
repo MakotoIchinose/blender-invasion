@@ -34,7 +34,7 @@ class LeafNode;
 class Object;
 class Progress;
 
-#define BVH_NODE_SIZE (4+1)
+#define BVH_NODE_SIZE 4
 #define BVH_NODE_LEAF_SIZE 1
 #define BVH_UNALIGNED_NODE_SIZE 7
 
@@ -65,8 +65,6 @@ class BVH2 : public BVH {
                          const BoundBox &b1,
                          int c0,
                          int c1,
-                         float2 time0,
-                         float2 time1,
                          uint visibility0,
                          uint visibility1);
 
