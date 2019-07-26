@@ -175,6 +175,11 @@ bool outliner_item_openclose(TreeElement *te, bool toggle_all)
   return false;
 }
 
+typedef struct OpenCloseData {
+  TreeStoreElem *prev_tselem;
+  int x_location;
+} OpenCloseData;
+
 static int outliner_item_openclose_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *ar = CTX_wm_region(C);
@@ -185,22 +190,30 @@ static int outliner_item_openclose_modal(bContext *C, wmOperator *op, const wmEv
 
   if (event->type == MOUSEMOVE) {
     TreeElement *te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
-    TreeStoreElem *prev_tselem = (TreeStoreElem *)op->customdata;
-    TreeElement *prev_elem = outliner_find_tree_element(&soops->tree, prev_tselem);
+
+    OpenCloseData *data = (OpenCloseData *)op->customdata;
 
     /* Only openclose if mouse is not over the previously toggled element */
-    if (te && TREESTORE(te) != prev_tselem) {
+    if (te && TREESTORE(te) != data->prev_tselem) {
 
       /* Only toggle openclose on the same level as the first clicked element */
-      if (te->xs == prev_elem->xs) {
+      if (te->xs == data->x_location) {
         if (outliner_item_openclose(te, false)) {
           ED_region_tag_redraw(ar);
         }
-        op->customdata = TREESTORE(te);
       }
+    }
+
+    if (te) {
+      data->prev_tselem = TREESTORE(te);
+    }
+    else {
+      data->prev_tselem = NULL;
     }
   }
   else if (event->val == KM_RELEASE) {
+    MEM_freeN(op->customdata);
+
     return OPERATOR_FINISHED;
   }
 
@@ -223,13 +236,18 @@ static int outliner_item_openclose_invoke(bContext *C, wmOperator *op, const wmE
     outliner_item_openclose(te, toggle_all);
     ED_region_tag_redraw(ar);
 
-    /* Store the first clicked on element */
-    op->customdata = TREESTORE(te);
-
     /* Only toggle once for single click toggling */
     if (event->type == LEFTMOUSE) {
       return OPERATOR_FINISHED;
     }
+
+    /* Store last expanded tselem and x coordinate of disclosure triangle */
+    OpenCloseData *toggle_data = MEM_callocN(sizeof(OpenCloseData), "open_close_data");
+    toggle_data->prev_tselem = TREESTORE(te);
+    toggle_data->x_location = te->xs;
+
+    /* Store the first clicked on element */
+    op->customdata = toggle_data;
 
     WM_event_add_modal_handler(C, op);
     return OPERATOR_RUNNING_MODAL;
