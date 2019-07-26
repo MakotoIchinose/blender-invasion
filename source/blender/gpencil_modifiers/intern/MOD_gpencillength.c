@@ -66,11 +66,6 @@
 #include "MOD_gpencil_util.h"
 #include "MOD_gpencil_modifiertypes.h"
 
-static void initData(GpencilModifierData *md)
-{
-  LengthGpencilModifierData *gpmd = (LengthGpencilModifierData *)md;
-}
-
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 {
   BKE_gpencil_modifier_copyData_generic(md, target);
@@ -123,24 +118,15 @@ static void bakeModifier(Main *UNUSED(bmain),
 /* -------------------------------- */
 
 /* Generic "generateStrokes" callback */
-static void deformStroke(
-    GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDstroke *gps)
+static void deformStroke(GpencilModifierData *md,
+                         Depsgraph *depsgraph,
+                         Object *ob,
+                         bGPDlayer *gpl,
+                         bGPDframe *UNUSED(gpf),
+                         bGPDstroke *gps)
 {
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   applyLength(gps, lmd->length, lmd->percentage);
-}
-
-static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
-{
-  LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
-}
-
-static void foreachObjectLink(GpencilModifierData *md,
-                              Object *ob,
-                              ObjectWalkFunc walk,
-                              void *userData)
-{
-  LengthGpencilModifierData *mmd = (LengthGpencilModifierData *)md;
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Length = {
@@ -157,12 +143,12 @@ GpencilModifierTypeInfo modifierType_Gpencil_Length = {
     /* bakeModifier */ bakeModifier,
     /* remapTime */ NULL,
 
-    /* initData */ initData,
+    /* initData */ NULL,
     /* freeData */ NULL,
     /* isDisabled */ NULL,
-    /* updateDepsgraph */ updateDepsgraph,
+    /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
-    /* foreachObjectLink */ foreachObjectLink,
+    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* getDuplicationFactor */ NULL,

@@ -146,7 +146,6 @@ static void duplicateStroke(bGPDframe *gpf,
   bGPDstroke *new_gps;
   float stroke_normal[3];
   float minter[3];
-  float target1[3], target2[3];
   bGPDspoint *pt;
   float offset_factor;
   float thickness_factor;
@@ -297,19 +296,6 @@ static void generateStrokes(
   }
 }
 
-static void updateDepsgraph(GpencilModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
-{
-  MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
-}
-
-static void foreachObjectLink(GpencilModifierData *md,
-                              Object *ob,
-                              ObjectWalkFunc walk,
-                              void *userData)
-{
-  MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
-}
-
 GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
     /* name */ "Multiple Strokes",
     /* structName */ "MultiplyGpencilModifierData",
@@ -327,9 +313,9 @@ GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
     /* initData */ initData,
     /* freeData */ NULL,
     /* isDisabled */ NULL,
-    /* updateDepsgraph */ updateDepsgraph,
+    /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
-    /* foreachObjectLink */ foreachObjectLink,
+    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* getDuplicationFactor */ NULL,
