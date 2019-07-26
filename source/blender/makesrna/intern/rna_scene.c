@@ -7201,6 +7201,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
+  RNA_def_property_update(prop, NC_WINDOW, NULL);
 
   prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);

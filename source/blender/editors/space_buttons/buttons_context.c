@@ -604,7 +604,11 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       found = buttons_context_path_collection(path, window);
       break;
     case BCONTEXT_LANPR:
-      found = buttons_context_path_object(path);
+      if(scene && (scene->lanpr.enabled||!strcmp(scene->r.engine,"BLENDER_LANPR"))){
+        found = buttons_context_path_object(path);
+      }else{
+        found = 0;
+      }
       break;
     case BCONTEXT_TOOL:
       found = true;

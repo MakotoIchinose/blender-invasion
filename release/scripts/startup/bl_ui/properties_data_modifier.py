@@ -22,12 +22,6 @@ from bpy.types import Panel
 from bpy.app.translations import pgettext_iface as iface_
 from mathutils import Vector
 
-def is_unit_transformation(ob):
-    if ob.scale.xyz==Vector((1,1,1)) and ob.location.xyz==Vector((0,0,0)) and \
-        ob.rotation_euler.x == 0.0 and ob.rotation_euler.y == 0.0 and ob.rotation_euler.z == 0.0:
-        return True
-    return False
-
 class ModifierButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -1678,50 +1672,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
-    def FEATURE_LINE(self, layout, ob, md):
-        lanpr_enabled = bpy.context.scene.lanpr.enabled
-        modifier_useless = bpy.context.scene.render.engine!="BLENDER_LANPR" and not lanpr_enabled
-        layout.active = not modifier_useless
-        
-        if modifier_useless:
-            layout.label(text="LANPR is not enabled")
-
-        layout.label(text='Enable Types:')
-        row = layout.row(align=True)
-        row.prop(md,'enable_contour',toggle=True)
-        row.prop(md,'enable_crease',toggle=True)
-        row.prop(md,'enable_mark',toggle=True)
-        row.prop(md,'enable_material',toggle=True)
-        row.prop(md,'enable_intersection',toggle=True)
-        row.prop(md,'enable_modifier_mark',toggle=True)
-
-        row = layout.row(align=True)
-        row.prop(md,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
-        row.prop(md,'level_begin')
-        if md.use_multiple_levels:
-            row.prop(md,'level_end')
-
-        split = layout.split(factor=0.5)
-        col = split.column()
-        col.label(text="Object:")
-        col.prop(md, "target", text="")
-        col = split.column()
-        col.label(text="Vertex Group:")
-        col.label(text="Inoperative")
-
-        if not md.target:
-            layout.label(text="You have to specify a target GP Object")
+    def FEATURE_LINE(self, layout, _ob, _md):
+        if not (bpy.context.scene.render.engine == "BLENDER_LANPR" or bpy.context.scene.lanpr.enabled):
+            layout.label(text="LANPR is disabled.")
         else:
-            if not is_unit_transformation(md.target):
-                row = layout.row()
-                row.label(text = "Target GP has self transformations.")
-                row = layout.row()
-                row.operator("lanpr.reset_object_transfromations").obj=md.target.name
-            #remove this for now.
-            #layout.prop(md,'replace', text='Replace existing frames')
-            row = layout.row()
-            row.prop(md,'layer')
-            row.prop(md,'material')
+            layout.label(text="Settings are inside the LANPR tab.")
+        
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"

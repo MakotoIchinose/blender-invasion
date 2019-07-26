@@ -108,7 +108,7 @@ ModifierTypeInfo modifierType_FeatureLine = {
     /* structName */ "FeatureLineModifierData",
     /* structSize */ sizeof(FeatureLineModifierData),
     /* type */ eModifierTypeType_Constructive,
-    /* flags */ eModifierTypeFlag_AcceptsMesh,
+    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_Single,
     /* copyData */ copyData,
 
     /* deformVerts */ NULL,
