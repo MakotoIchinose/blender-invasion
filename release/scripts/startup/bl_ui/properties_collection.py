@@ -72,43 +72,40 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
 
     def draw(self,context):
         layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         collection = context.collection
         lanpr = collection.lanpr
         row = layout.row()
-        row.prop(lanpr,"usage",expand=True)
+        row.prop(lanpr,"usage")
         if lanpr.usage!='INCLUDE':
             layout.prop(lanpr,"force")
         else:
-            row = layout.row()
-            row.prop(lanpr,"target")
+            layout.prop(lanpr,"target")
             
             if lanpr.target:
 
                 if not is_unit_transformation(lanpr.target):
-                    row = layout.row()
-                    row.label(text = "Target GP has self transformations.")
-                    row = layout.row()
-                    row.operator("lanpr.reset_object_transfromations").obj=lanpr.target.name
+                    layout.label(text = "Target GP has self transformations.")
+                    layout.operator("lanpr.reset_object_transfromations").obj=lanpr.target.name
 
-                row = layout.row(align=True)
-                row.prop(lanpr,'enable_contour',toggle=True)
-                row.prop(lanpr,'enable_crease',toggle=True)
-                row.prop(lanpr,'enable_mark',toggle=True)
-                row.prop(lanpr,'enable_material',toggle=True)
-                row.prop(lanpr,'enable_intersection',toggle=True)
-
-                row = layout.row(align=True)
-                row.prop(lanpr,'use_multiple_levels', icon='GP_MULTIFRAME_EDITING', icon_only=True)
-                row.prop(lanpr,'level_begin')
+                layout.prop(lanpr,'use_multiple_levels', text="Multiple Levels")
+                
                 if lanpr.use_multiple_levels:
-                    row.prop(lanpr,'level_end')
+                    col = layout.column(align=True)
+                    col.prop(lanpr,'level_begin',text="Level Begin")
+                    col.prop(lanpr,'level_end',text="End")
+                else:
+                    layout.prop(lanpr,'level_begin',text="Level")
+
+                layout.prop(lanpr,'enable_contour')
+                layout.prop(lanpr,'enable_crease')
+                layout.prop(lanpr,'enable_mark')
+                layout.prop(lanpr,'enable_material')
+                layout.prop(lanpr,'enable_intersection')
                 
-                row = layout.row()
-                row.prop(lanpr,'replace', text='Replace existing frames')
-                
-                row = layout.row()
-                row.prop(lanpr,'layer')
-                row.prop(lanpr,'material')
+                layout.prop(lanpr,'layer')
+                layout.prop(lanpr,'material')
 
 
 classes = (
