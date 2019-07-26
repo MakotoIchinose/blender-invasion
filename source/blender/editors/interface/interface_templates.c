@@ -4531,7 +4531,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiBlock *block;
   uiBut *bt;
   int i, icon, path_width, path_height;
-  bool point_is_end;
+  bool point_last_or_first;
   rctf bounds;
 
   block = uiLayoutGetBlock(layout);
@@ -4602,7 +4602,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
     }
   }
   if (i == 0 || i == prwdgt->totpoint - 1) {
-    point_is_end = true;
+    point_last_or_first = true;
   }
 
   /* Selected point data */
@@ -4627,10 +4627,12 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
     /* Position */
     UI_block_funcN_set(block, profilewidget_buttons_update, MEM_dupallocN(cb), prwdgt);
-    /* HANS-TODO: These sliders shouldn't move the first or last point */
-    if (!point_is_end) {
-      uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
+    /* HANS-QUESTION: I haven't been able to find out how to just disable these buttons instead of
+     * not drawing them. */
+    if (!point_last_or_first) {
+      bt = uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
                 &point->x, bounds.xmin, bounds.xmax, 1, 5, "");
+
       uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
                 &point->y, bounds.ymin, bounds.ymax, 1, 5, "");
     }
@@ -4640,7 +4642,6 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
                       0.0, 0.0, TIP_("Delete points"));
     UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
 
-//    UI_block_emboss_set(block, UI_EMBOSS);
     UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
   }
 
