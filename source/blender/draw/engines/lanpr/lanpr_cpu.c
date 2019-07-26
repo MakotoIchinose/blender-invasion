@@ -245,8 +245,6 @@ void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_obj
         normal_object_direction[2] = ob->obmat[3][2];
       }
       return;
-    case LANPR_NORMAL_2D:
-      return;
   }
 }
 

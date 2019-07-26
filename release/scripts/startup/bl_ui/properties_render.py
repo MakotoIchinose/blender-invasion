@@ -937,8 +937,8 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        if active_layer:
-            layout.prop(active_layer,"normal_mode", text="Mode")
+        layout.prop(active_layer,"normal_mode", text="Mode")
+        if active_layer.normal_mode != "DISABLED":
             layout.prop(active_layer,"normal_control_object")
             layout.prop(active_layer,"normal_effect_inverse")
             col = layout.column(align=True)

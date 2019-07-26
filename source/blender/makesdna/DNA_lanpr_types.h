@@ -50,10 +50,10 @@ struct Collection;
 #define LANPR_USE_DIFFERENT_TAPER 0
 #define LANPR_USE_SAME_TAPER 1
 
+/* Only on/off switch for now, below not used */
 #define LANPR_NORMAL_DONT_CARE 0
 #define LANPR_NORMAL_DIRECTIONAL 1
 #define LANPR_NORMAL_POINT 2
-#define LANPR_NORMAL_2D 3
 
 #define LANPR_COMPONENT_MODE_ALL 0
 #define LANPR_COMPONENT_MODE_OBJECT 1
