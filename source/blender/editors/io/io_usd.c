@@ -34,6 +34,9 @@
 #  include "RNA_access.h"
 #  include "RNA_define.h"
 
+#  include "UI_interface.h"
+#  include "UI_resources.h"
+
 #  include "WM_api.h"
 #  include "WM_types.h"
 
@@ -102,12 +105,18 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
   const bool export_hair = RNA_boolean_get(op->ptr, "export_hair");
+  const bool export_uvmaps = RNA_boolean_get(op->ptr, "export_uvmaps");
+  const bool export_normals = RNA_boolean_get(op->ptr, "export_normals");
+  const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
   struct USDExportParams params = {
       export_animation,
       export_hair,
+      export_uvmaps,
+      export_normals,
+      export_materials,
       selected_objects_only,
       visible_objects_only,
       use_instancing,
@@ -119,6 +128,30 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
+static void wm_usd_export_draw(bContext *UNUSED(C), wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayout *col;
+  struct PointerRNA *ptr = op->ptr;
+
+  uiLayoutSetPropSep(layout, true);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, ptr, "selected_objects_only", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "visible_objects_only", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, ptr, "export_animation", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "export_hair", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "export_uvmaps", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "export_normals", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "export_materials", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "use_instancing", 0, NULL, ICON_NONE);
+
+  col = uiLayoutColumn(layout, true);
+  uiItemR(col, ptr, "evaluation_mode", 0, NULL, ICON_NONE);
+}
+
 void WM_OT_usd_export(struct wmOperatorType *ot)
 {
   ot->name = "Export USD";
@@ -128,6 +161,7 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
   ot->invoke = wm_usd_export_invoke;
   ot->exec = wm_usd_export_exec;
   ot->poll = WM_operator_winactive;
+  ot->ui = wm_usd_export_draw;
 
   WM_operator_properties_filesel(
       ot, 0, FILE_BLENDER, FILE_SAVE, WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
@@ -150,11 +184,29 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   "export_animation",
                   false,
                   "Export Animation",
-                  "When true, the render frame range is exported. When false, only the current "
+                  "When checked, the render frame range is exported. When false, only the current "
                   "frame is exported");
-
-  RNA_def_boolean(
-      ot->srna, "export_hair", false, "Export Hair", "When true, hair is exported as USD curves");
+  RNA_def_boolean(ot->srna,
+                  "export_hair",
+                  false,
+                  "Export Hair",
+                  "When checked, hair is exported as USD curves");
+  RNA_def_boolean(ot->srna,
+                  "export_uvmaps",
+                  true,
+                  "Export UV Maps",
+                  "When checked, all UV maps of exported meshes are included in the export");
+  RNA_def_boolean(ot->srna,
+                  "export_normals",
+                  true,
+                  "Export Normals",
+                  "When checked, normals of exported meshes are included in the export");
+  RNA_def_boolean(ot->srna,
+                  "export_materials",
+                  true,
+                  "Export Materials",
+                  "When checked, the viewport settings of materials are exported as USD preview "
+                  "materials, and material assignments are exported as geometry subsets");
 
   RNA_def_boolean(ot->srna,
                   "use_instancing",

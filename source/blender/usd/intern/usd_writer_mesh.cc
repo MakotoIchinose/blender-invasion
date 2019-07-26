@@ -151,7 +151,9 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
     of its own subtree. It does work when we override the material with exactly the same path,
     though.*/
-    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+    if (export_params.export_materials) {
+      assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+    }
     return;
   }
 
@@ -165,8 +167,12 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     usd_mesh.CreateCreaseSharpnessesAttr().Set(usd_mesh_data.crease_sharpnesses, timecode);
   }
 
-  write_uv_maps(mesh, usd_mesh);
-  write_normals(mesh, usd_mesh);
+  if (export_params.export_uvmaps) {
+    write_uv_maps(mesh, usd_mesh);
+  }
+  if (export_params.export_normals) {
+    write_normals(mesh, usd_mesh);
+  }
   write_surface_velocity(context.object, mesh, usd_mesh);
 
   // TODO(Sybren): figure out what happens when the face groups change.
@@ -175,7 +181,10 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   }
 
   usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
-  assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+
+  if (export_params.export_materials) {
+    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
+  }
 }
 
 static void get_vertices(const Mesh *mesh, USDMeshData &usd_mesh_data)
