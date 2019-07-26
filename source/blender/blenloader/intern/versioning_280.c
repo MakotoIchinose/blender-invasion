@@ -3532,8 +3532,12 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
+  }
 
-    /* HANS-TODO: Versioning for bevel modifier and test it */
+  {
+    /* Versioning code until next subversion bump goes here. */
+
+    /* Add custom profile widget to toolsettings for bevel tool */
     if (!DNA_struct_elem_find(
             fd->filesdna, "ToolSettings", "ProfileWidget", "prwdgt")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
@@ -3543,9 +3547,19 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-  }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
+    /* Add custom profile widget to bevel modifier */
+    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifier", "ProfileWidget", "prwdgt")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_Bevel) {
+            BevelModifierData *bmd = (BevelModifierData *)md;
+            if (!bmd->prwdgt) {
+              bmd->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+            }
+          }
+        }
+      }
+    }
   }
 }
