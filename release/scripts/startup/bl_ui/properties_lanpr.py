@@ -45,7 +45,7 @@ def is_unit_transformation(ob):
     return False
 
 class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
-    bl_label = "Object LANPR Settings"
+    bl_label = "Feature Line Modifier"
 
     @classmethod
     def poll(cls, context):
@@ -116,7 +116,26 @@ class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):
             layout.prop(md,'layer')
             layout.prop(md,'material')
 
+class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
+    bl_label = "Usage"
+
+    @classmethod
+    def poll(cls, context):
+        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
+
+    def draw(self, context):
+        layout=self.layout
+        lanpr = context.object.lanpr
+        if context.object.type == 'MESH':
+            layout.prop(lanpr,'usage')
+
+        if context.object.type == 'GPENCIL':
+            layout.prop(context.scene.lanpr,"gpencil_overwrite", text="Overwrite Frame")
+            layout.operator("object.lanpr_update_gp_target")
+
+
 classes = (
+    OBJECT_PT_lanpr,
     OBJECT_PT_lanpr_settings,
     OBJECT_PT_lanpr_modifier_target,
 )

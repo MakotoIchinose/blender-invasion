@@ -402,28 +402,6 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col = flow.column()
         col.prop(ob, "hide_select", text="Selectable", toggle=False, invert_checkbox=True)
 
-class OBJECT_PT_lanpr(ObjectButtonsPanel, Panel):
-    bl_label = "LANPR"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
-
-    def draw(self, context):
-        layout=self.layout
-        lanpr = context.object.lanpr
-        if context.object.type == 'MESH':
-            layout.label(text='Usage:')
-            row = layout.row()
-            row.prop(lanpr,'usage',expand=True)
-        #if context.object.type == 'MESH':
-        #    layout.operator("object.lanpr_update_gp_source")
-        if context.object.type == 'GPENCIL':
-            layout.prop(context.scene.lanpr,"gpencil_overwrite", text="Overwrite Frame", toggle=True)
-            layout.operator("object.lanpr_update_gp_target")
-        
-
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
     _context_path = "object"
@@ -444,7 +422,6 @@ classes = (
     OBJECT_PT_display,
     OBJECT_PT_display_bounds,
     OBJECT_PT_visibility,
-    OBJECT_PT_lanpr,
     OBJECT_PT_custom_props,
 )
 
