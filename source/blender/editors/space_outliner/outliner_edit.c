@@ -141,15 +141,22 @@ void OUTLINER_OT_highlight_update(wmOperatorType *ot)
 /* Toggle Open/Closed ------------------------------------------- */
 
 /* Open or close a tree element, optionally toggling all children recursively */
-static bool outliner_item_openclose(TreeElement *te, bool toggle_all)
+bool outliner_item_openclose(TreeElement *te, bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(te);
 
-  /* all below close/open? */
   if (toggle_all) {
-    const bool open = tselem->flag & TSE_CLOSED;
+    /* Open all children if this element is closed, or if any children are closed */
+    const bool open = (tselem->flag & TSE_CLOSED) ||
+                      (outliner_flag_is_any_test(&te->subtree, TSE_CLOSED, 1));
 
-    tselem->flag ^= TSE_CLOSED;
+    if (open) {
+      tselem->flag &= ~TSE_CLOSED;
+    }
+    else {
+      tselem->flag |= TSE_CLOSED;
+    }
+
     outliner_flag_set(&te->subtree, TSE_CLOSED, !open);
 
     return true;
