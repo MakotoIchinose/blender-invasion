@@ -212,10 +212,6 @@ struct bGPDframe *BKE_gpencil_layer_getframe(struct bGPDlayer *gpl,
 struct bGPDframe *BKE_gpencil_layer_find_frame(struct bGPDlayer *gpl, int cframe);
 bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
-struct bGPDlayer *BKE_gpencil_layer_get_index(struct bGPdata *gpd,
-                                              int index,
-                                              int first_if_not_found);
-
 struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
 void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
@@ -293,13 +289,15 @@ float BKE_gpencil_stroke_length(const struct bGPDstroke *gps, bool use_3d);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 
-bool BKE_gpencil_sample_stroke(struct bGPDstroke *gps, float dist);
-bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, float dist);
-bool BKE_gpencil_trim_stroke_points(struct bGPDstroke *gps, int index_from, int index_to);
-bool BKE_gpencil_shrink_stroke(struct bGPDstroke *gps, float dist);
+bool BKE_gpencil_sample_stroke(struct bGPDstroke *gps, const float dist);
+bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, const float dist);
+bool BKE_gpencil_trim_stroke_points(struct bGPDstroke *gps,
+                                    const int index_from,
+                                    const int index_to);
+bool BKE_gpencil_shrink_stroke(struct bGPDstroke *gps, const float dist);
 bool BKE_gpencil_split_stroke(struct bGPDframe *gpf,
                               struct bGPDstroke *gps,
-                              int before_index,
+                              const int before_index,
                               struct bGPDstroke **remaining_gps);
 bool BKE_gpencil_smooth_stroke(struct bGPDstroke *gps, int i, float inf);
 bool BKE_gpencil_smooth_stroke_strength(struct bGPDstroke *gps, int point_index, float influence);

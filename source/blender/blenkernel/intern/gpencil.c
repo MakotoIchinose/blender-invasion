@@ -988,31 +988,6 @@ bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
   return NULL;
 }
 
-bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not_found)
-{
-  bGPDlayer *gpl;
-  int i = 0;
-
-  /* error checking */
-  if (ELEM(NULL, gpd, gpd->layers.first)) {
-    return NULL;
-  }
-
-  /* loop over layers until found (assume only one active) */
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    if (i == index) {
-      return gpl;
-    }
-    i++;
-  }
-
-  /* no such layer */
-  if (first_if_not_found) {
-    return gpd->layers.first;
-  }
-  return NULL;
-}
-
 /* set the active gp-layer */
 void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
 {
@@ -1436,9 +1411,9 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 /* ************************************************** */
 
 static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
-                                   int count,
-                                   ListBase *result,
-                                   int *totweight)
+                                          int count,
+                                          ListBase *result,
+                                          int *totweight)
 {
   LinkData *ld;
   MDeformVert *dv;
@@ -1585,8 +1560,11 @@ static int stroke_march_next_point(const bGPDstroke *gps,
   }
 }
 
-static int stroke_march_next_point_no_interp(
-    const bGPDstroke *gps, const int index_next_pt, const float *current, const float dist, float *result)
+static int stroke_march_next_point_no_interp(const bGPDstroke *gps,
+                                             const int index_next_pt,
+                                             const float *current,
+                                             const float dist,
+                                             float *result)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
@@ -1632,10 +1610,7 @@ static int stroke_march_next_point_no_interp(
 
 static int stroke_march_count(const bGPDstroke *gps, const float dist)
 {
-  float remaining_till_next = 0.0f;
-  float remaining_march = dist;
   int point_count = 0;
-  float step_start[3];
   float point[3];
   int next_point_index = 1;
   bGPDspoint *pt = NULL;
