@@ -53,6 +53,7 @@
 
 #include "BLI_math.h"
 #include "BLI_callbacks.h"
+#include "BLI_string_utils.h"
 
 #include "bmesh.h"
 #include "bmesh_class.h"
@@ -107,6 +108,11 @@ static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
 
 /* Layer operations */
 
+static void lanpr_line_layer_unique_name(ListBase* list, LANPR_LineLayer* ll, const char *defname)
+{
+  BLI_uniquename(list,ll,defname,'.',offsetof(LANPR_LineLayer, name),sizeof(ll->name));
+}
+
 int ED_lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *lli;
@@ -125,6 +131,8 @@ int ED_lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
 LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
+
+  lanpr_line_layer_unique_name(&lanpr->line_layers,ll,"Layer");
 
   int max_occ = ED_lanpr_max_occlusion_in_line_layers(lanpr);
 

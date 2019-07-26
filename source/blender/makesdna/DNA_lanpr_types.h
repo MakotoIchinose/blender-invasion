@@ -92,10 +92,12 @@ typedef struct LANPR_LineLayer {
   struct LANPR_LineLayer *next, *prev;
 
   int type;
-
+  
   int use_multiple_levels;
   int qi_begin;
   int qi_end; /* these are for QI Range thing... just occlusion levels */
+
+  char name[64]; /* to be displayed on the list */
 
   LANPR_LineType contour;
   LANPR_LineType crease;

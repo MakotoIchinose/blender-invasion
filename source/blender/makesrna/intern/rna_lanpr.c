@@ -124,6 +124,9 @@ void RNA_def_lanpr(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "LANPR_LineLayer");
   RNA_def_struct_ui_text(srna, "Line Layer", "LANPR_LineLayer");
 
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Name", "Name of this layer");
+
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);
   RNA_def_property_enum_default(prop, LANPR_NORMAL_DONT_CARE);
