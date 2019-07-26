@@ -2423,10 +2423,8 @@ static void ui_but_paste_curvemapping(bContext *C, uiBut *but)
   }
 }
 
-/* HANS-TODO: Test these */
 static void ui_but_copy_profilewidget(uiBut *but)
 {
-  printf("UI BUT COPY PROFILEWIDGET\n");
   if (but->poin != NULL) {
     but_copypaste_profile_alive = true;
     profilewidget_free_data(&but_copypaste_profile);
@@ -2436,7 +2434,6 @@ static void ui_but_copy_profilewidget(uiBut *but)
 
 static void ui_but_paste_profilewidget(bContext *C, uiBut *but)
 {
-  printf("UI BUT PASTE PROFILEWIDGET\n");
   if (but_copypaste_profile_alive) {
     if (!but->poin) {
       but->poin = MEM_callocN(sizeof(ProfileWidget), "profilewidget");
@@ -6746,7 +6743,8 @@ static int ui_do_but_CURVE(
   return WM_UI_HANDLER_CONTINUE;
 }
 
-/* Same as ui_numedit_but_PROFILE with some smaller changes */
+/* Same as ui_numedit_but_CURVE with some smaller changes */
+/* HANS-TODO: Dragging control point doesn't update modifier */
 static bool ui_numedit_but_PROFILE(uiBlock *block,
                                    uiBut *but,
                                    uiHandleButtonData *data,
@@ -6792,7 +6790,6 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
     ProfilePoint *point_last = NULL;
     const float mval_factor = ui_mouse_scale_warp_factor(shift);
     bool moved_point = false; /* for ctrl grid, can't use orig coords because of sorting */
-    /* HANS-TODO: Well enable using original coords then? */
 
     fx *= mval_factor;
     fy *= mval_factor;
@@ -6865,6 +6862,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   return changed;
 }
 
+/* HANS-TODO: Add move (G) and delete (X) shortcuts for the widget if it's possible */
 static int ui_do_but_PROFILE(bContext *C,
                              uiBlock *block,
                              uiBut *but,

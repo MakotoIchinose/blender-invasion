@@ -3650,7 +3650,6 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "prwdgt");
   RNA_def_property_ui_text(prop, "Custom Profile Path", "The path for the custom profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
-  /* HANS-TODO: Maybe actually "rna_Modifier_dependency_update", we'll see */
 
   prop = RNA_def_property(srna, "vmesh_method", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "vmesh_method");

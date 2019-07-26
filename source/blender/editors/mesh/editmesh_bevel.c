@@ -892,13 +892,10 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   }
   uiItemR(layout, &ptr, "vmesh_method", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
-//  uiLayoutRow(layout, false); /* HANS-TODO: Need this? */
   if (RNA_boolean_get(&ptr, "use_custom_profile")) {
     uiTemplateProfileWidget(layout, &toolsettings_ptr, "prwdgt");
 
   }
-  /* HANS-TODO: Figure out why there's a double of the use_custom_profile prop at the end when it's
-   * enabled */
 }
 
 void MESH_OT_bevel(wmOperatorType *ot)

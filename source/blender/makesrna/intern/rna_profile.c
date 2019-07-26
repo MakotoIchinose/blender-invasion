@@ -32,7 +32,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-/* HANS-TODO: Update runtime */
 #ifdef RNA_RUNTIME
 
 #  include "RNA_access.h"
@@ -100,7 +99,6 @@ static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *re
   RNA_POINTER_INVALIDATE(point_ptr);
 }
 
-/* HANS-TODO: Can I use these arguments as return values too? */
 static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt, ReportList *reports,
                                         float length_portion, float *location)
 {
@@ -129,7 +127,6 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem prop_handle_type_items[] = {
-      {0, "AUTO", 0, "Auto Handle", ""}, /* HANS-TODO: Remove */
       {PROF_HANDLE_AUTO_ANIM, "AUTO_CLAMPED", 0, "Auto Clamped Handle", ""},
       {PROF_HANDLE_VECTOR, "VECTOR", 0, "Vector Handle", ""},
       {0, NULL, 0, NULL, NULL},
@@ -195,7 +192,8 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   /* HANS-STRETCH-GOAL: Give the presets icons! */
   static const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
       {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
-      {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on either side of the profile"},
+      {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops",
+       "Loops on either side of the profile"},
       {PROF_PRESET_EXAMPLE1, "EXAMPLE1", 0, "Molding Example", "An example use case"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -206,7 +204,6 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "preset");
   RNA_def_property_enum_items(prop, rna_enum_profilewidget_preset_items);
-//  RNA_def_property_enum_funcs(prop, NULL, "rna_Object_rotation_mode_set", NULL);
   RNA_def_property_ui_text(prop, "Preset", "");
 
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
@@ -224,9 +221,9 @@ static void rna_def_profilewidget(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "initialize", "rna_ProfileWidget_initialize");
   parm = RNA_def_int(func, "nsegments", 1, 1, 1000, "", "The number of segment values to"
-                     " initialize the arrays with", 1, 100);
+                     " initialize the visualization table with", 1, 100);
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  RNA_def_function_ui_description(func, "Initialize profile");
+  RNA_def_function_ui_description(func, "Set the number of display segments and fill tables");
 
   prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
@@ -234,19 +231,18 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Points", "");
   rna_def_profilewidget_points_api(brna, prop);
 
-  /* HANS-TODO: This needs to return a vector */
   func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_evaluate");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
-  parm = RNA_def_float(func, "length_portion", 0.0f, -FLT_MAX, FLT_MAX, "Length Portion",
-                       "Portion of the path's length to travel before evaluation", -FLT_MAX, FLT_MAX);
+  parm = RNA_def_float(func, "length_portion", 0.0f, 0.0f, 1.0f, "Length Portion",
+                       "Portion of the path's length to travel before evaluation", 0.0f, 1.0f);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_float_vector(func, "location", 2, NULL, -100, 100, "Location",
-                       "The location at that portion of the profile", -10, 10);
+  parm = RNA_def_float_vector(func, "location", 2, NULL, -100.0f, 100.0f, "Location",
+                       "The location at that portion of the profile", -100.0f, 100.0f);
   RNA_def_function_output(func, parm);
 
-  /* HANS-TODO: Maybe also add a function to return the whole set of samples. Although the return
-   * length of that function's vector would be variable */
+  /* HANS-TODO: Also add a function to return the whole set of samples. Although the return length
+   * of that function's vector would be variable */
 }
 
 void RNA_def_profile(BlenderRNA *brna)

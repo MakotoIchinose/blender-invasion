@@ -4316,24 +4316,10 @@ static void profilewidget_presets_dofunc(bContext *C, void *prwdgt_v, int event)
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  /* HANS-TODO: Could be condensed */
-  switch (event) {
-    case PROF_PRESET_LINE:
-      prwdgt->preset = PROF_PRESET_LINE;
-      profilewidget_reset(prwdgt);
-      profilewidget_changed(prwdgt, false);
-      break;
-    case PROF_PRESET_SUPPORTS:
-      prwdgt->preset = PROF_PRESET_SUPPORTS;
-      profilewidget_reset(prwdgt);
-      profilewidget_changed(prwdgt, false);
-      break;
-  case PROF_PRESET_EXAMPLE1:
-    prwdgt->preset = PROF_PRESET_EXAMPLE1;
-    profilewidget_reset(prwdgt);
-    profilewidget_changed(prwdgt, false);
-    break;
-  }
+  prwdgt->preset = event;
+  profilewidget_reset(prwdgt);
+  profilewidget_changed(prwdgt, false);
+
   ED_undo_push(C, "ProfileWidget tools");
   ED_region_tag_redraw(CTX_wm_region(C));
 }
@@ -4544,8 +4530,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayout *row, *sub;
   uiBlock *block;
   uiBut *bt;
-  int icon, path_width, path_height;
-  int i;
+  int i, icon, path_width, path_height;
+  bool point_is_end;
   rctf bounds;
 
   block = uiLayoutGetBlock(layout);
@@ -4555,10 +4541,14 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayoutRow(layout, false);
 
   /* Preset selector */
-  /* HANS-TODO: This isn't the proper way to do this, but it should work for now */
   bt = uiDefBlockBut(block, profilewidget_buttons_presets, prwdgt, "Preset", 0, 0,
                              UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
+
+  /* HANS-QUESTION: I'm guessing this is the newer way to do this. I'd be happy to switch
+   * everythingn here to this method, as it seems simpler, more elegant, and more linked to the RNA
+   * system anyway, but this doesn't redraw the widget */
+  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE);
 
   row = uiLayoutRow(layout, false);
 
@@ -4586,8 +4576,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
 
   /* Flip path */
-  /* HANS-TODO: Get a proper icon for this */
-  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_UV_SYNC_SELECT, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL,
+  bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_ARROW_LEFTRIGHT, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL,
                     0.0, 0.0, 0.0, 0.0, TIP_("Reverse Path"));
   UI_but_funcN_set(bt, profilewidget_buttons_reverse, MEM_dupallocN(cb), prwdgt);
 
@@ -4600,21 +4589,20 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   /* The path itself */
   path_width = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
   path_width = min_ii(path_width, (int)(16.0f * UI_UNIT_X));
-  /* HANS-TODO: Capping the width doesn't work, probably reassigned somwhere down the line */
-//  path_height = (8.0f * UI_UNIT_X);
   path_height = path_width;
   uiLayoutRow(layout, false);
   uiDefBut(block, UI_BTYPE_PROFILE, 0, "", 0, 0, (short)path_width, (short)path_height,
            prwdgt, 0.0f, 1.0f, -1, 0, "");
 
   /* Position sliders for (first) selected point */
-  if (prwdgt->path) { /* HANS-TODO: This check shouldn't be necessary */
-    for (i = 0; i < prwdgt->totpoint; i++) {
-      if (prwdgt->path[i].flag & PROF_SELECT) {
-        point = &prwdgt->path[i];
-        break;
-      }
+  for (i = 0; i < prwdgt->totpoint; i++) {
+    if (prwdgt->path[i].flag & PROF_SELECT) {
+      point = &prwdgt->path[i];
+      break;
     }
+  }
+  if (i == 0 || i == prwdgt->totpoint - 1) {
+    point_is_end = true;
   }
 
   /* Selected point data */
@@ -4639,17 +4627,20 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
     /* Position */
     UI_block_funcN_set(block, profilewidget_buttons_update, MEM_dupallocN(cb), prwdgt);
-    uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y, &point->x,
-              bounds.xmin, bounds.xmax, 1, 5, "");
-    uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y, &point->y,
-              bounds.ymin, bounds.ymax, 1, 5, "");
+    /* HANS-TODO: These sliders shouldn't move the first or last point */
+    if (!point_is_end) {
+      uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
+                &point->x, bounds.xmin, bounds.xmax, 1, 5, "");
+      uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
+                &point->y, bounds.ymin, bounds.ymax, 1, 5, "");
+    }
 
     /* Delete points */
     bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
                       0.0, 0.0, TIP_("Delete points"));
     UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
 
-    UI_block_emboss_set(block, UI_EMBOSS);
+//    UI_block_emboss_set(block, UI_EMBOSS);
     UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
   }
 
