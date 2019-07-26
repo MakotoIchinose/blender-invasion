@@ -70,11 +70,6 @@ typedef struct ClothSolverResult {
   float max_error, min_error, avg_error;
 } ClothSolverResult;
 
-typedef struct Edge_Pair {
-  float size;
-  struct BMEdge *edge;
-} Edge_Pair;
-
 /**
  * This structure describes a cloth object against which the
  * simulation can run.

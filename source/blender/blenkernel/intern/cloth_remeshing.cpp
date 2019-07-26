@@ -588,22 +588,16 @@ static float cloth_remeshing_edge_size(BMesh *bm, BMEdge *edge, ClothVertMap &cv
 #endif
 }
 
-static int cloth_remeshing_edge_pair_compare(const void *a, const void *b)
+typedef pair<float, BMEdge *> SizeEdgePair;
+
+static bool cloth_remeshing_size_edge_pair_compare(const SizeEdgePair &l, const SizeEdgePair &r)
 {
-  Edge_Pair *ea = (Edge_Pair *)a;
-  Edge_Pair *eb = (Edge_Pair *)b;
-  if (ea->size < eb->size) {
-    return 1;
-  }
-  if (ea->size > eb->size) {
-    return -1;
-  }
-  return 0;
+  return l.first > r.first;
 }
 
 static void cloth_remeshing_find_bad_edges(BMesh *bm, ClothVertMap &cvm, vector<BMEdge *> &r_edges)
 {
-  Edge_Pair *edge_pairs = (Edge_Pair *)MEM_mallocN(sizeof(Edge_Pair) * bm->totedge, "Edge Pairs");
+  vector<SizeEdgePair> edge_pairs;
 
   int tagged = 0;
   BMEdge *e;
@@ -611,20 +605,19 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm, ClothVertMap &cvm, vector<
   BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
     float size = cloth_remeshing_edge_size(bm, e, cvm);
     if (size > 1.0f) {
-      edge_pairs[tagged].size = size;
-      edge_pairs[tagged].edge = e;
+      edge_pairs.push_back(make_pair(size, e));
       tagged++;
     }
   }
 
   /* sort the list based on the size */
-  qsort(edge_pairs, tagged, sizeof(Edge_Pair), cloth_remeshing_edge_pair_compare);
+  sort(edge_pairs.begin(), edge_pairs.end(), cloth_remeshing_size_edge_pair_compare);
 
-  for (int i = 0; i < tagged; i++) {
-    r_edges.push_back(edge_pairs[i].edge);
+  for (int i = 0; i < edge_pairs.size(); i++) {
+    r_edges.push_back(edge_pairs[i].second);
   }
 
-  MEM_freeN(edge_pairs);
+  edge_pairs.clear();
 }
 
 static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
@@ -930,6 +923,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, ClothVertMap &c
   cloth_remeshing_find_bad_edges(bm, cvm, bad_edges);
   printf("split edges tagged: %d\n", (int)bad_edges.size());
   if (prev_num_bad_edges == bad_edges.size()) {
+    bad_edges.clear();
     return false;
   }
   prev_num_bad_edges = bad_edges.size();
@@ -960,7 +954,9 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, ClothVertMap &c
       }
     }
   }
-  return !bad_edges.empty();
+  bool r_value = !bad_edges.empty();
+  bad_edges.clear();
+  return r_value;
 }
 
 static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2])
