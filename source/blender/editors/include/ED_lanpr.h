@@ -154,26 +154,31 @@ typedef struct LANPR_RenderLine {
   struct LANPR_RenderVert *l, *r;
   struct LANPR_RenderTriangle *tl, *tr;
   ListBase segments;
-  /*  tnsEdge*       Edge;/* should be edge material */
-  /*  tnsRenderTriangle* testing;/* Should Be tRT** testing[NumOfThreads]	struct Materil */
-  /*  *MaterialRef; */
   char min_occ;
-  char flags; /*  also for line type determination on chainning */
+  
+  /**  Also for line type determination on chainning */
+  char flags; 
 
-  /*  still need this entry because culled lines will not add to object reln node */
+  /**  Still need this entry because culled lines will not add to object reln node */
   struct Object *object_ref;
 
-  int edge_idx; /*  for gpencil stroke modifier */
+  /**  For gpencil stroke modifier */
+  int edge_idx;
 } LANPR_RenderLine;
 
 typedef struct LANPR_RenderLineChain {
   struct LANPR_RenderLineChain *next, *prev;
   ListBase chain;
-  /*  int         SegmentCount;  /*  we count before draw cmd. */
-  float length; /*  calculated before draw cmd. */
-  char picked;  /*  used when re-connecting and gp stroke generation */
+
+   /**  Calculated before draw cmd. */
+  float length;
+
+  /**  Used when re-connecting and gp stroke generation */
+  char picked;
   char level;
-  int type; /* Chain now only contains one type of segments */
+
+  /** Chain now only contains one type of segments */
+  int type;
   struct Object *object_ref;
 } LANPR_RenderLineChain;
 
@@ -785,14 +790,6 @@ void tmat_make_rotation_z_matrix_44d(tnsMatrix44d m, real angle_rad);
 void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat);
 void tmat_clear_translation_44d(tnsMatrix44d mat);
 
-real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
-real tmat_length_3d(tnsVector3d l);
-void tmat_normalize_2d(tnsVector2d result, tnsVector2d l);
-void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
-void tmat_normalize_self_3d(tnsVector3d result);
-real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
-real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
-void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 
 int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
 long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);
