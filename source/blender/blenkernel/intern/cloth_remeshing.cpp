@@ -122,6 +122,7 @@ static BMVert *cloth_remeshing_edge_vert(BMesh *bm, BMEdge *e, int side, int i, 
 static BMVert *cloth_remeshing_edge_opposite_vert(BMesh *bm, BMEdge *e, int side, float r_uv[2]);
 static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_f2);
 static void cloth_remeshing_uv_of_vert_in_edge(BMesh *bm, BMEdge *e, BMVert *v, float r_uv[2]);
+static bool cloth_remeshing_edge_label_test(BMEdge *e);
 
 static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
@@ -160,7 +161,13 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
       copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       cvm[v] = clmd->clothObject->verts[i];
+      cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
     }
+    BMEdge *e;
+    BMIter eiter;
+    /* BM_ITER_MESH (e, &eiter, clmd->clothObject->bm, BM_EDGES_OF_MESH) { */
+    /*   BM_elem_flag_enable(e, BM_ELEM_TAG); */
+    /* } */
 
     BM_mesh_normals_update(clmd->clothObject->bm);
 
@@ -204,6 +211,8 @@ static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex 
   if ((v1->flags & CLOTH_VERT_FLAG_NOSELFCOLL) && (v2->flags & CLOTH_VERT_FLAG_NOSELFCOLL)) {
     new_vert.flags |= CLOTH_VERT_FLAG_NOSELFCOLL;
   }
+  /* We don't want the mean cloth vert to be preserved, only the
+   * starting vertices */
 
   add_v3_v3v3(new_vert.v, v1->v, v2->v);
   mul_v3_fl(new_vert.v, 0.5f);
@@ -423,6 +432,11 @@ static bool cloth_remeshing_vert_on_seam_or_boundary_test(BMesh *bm, BMVert *v)
   return false;
 }
 
+static bool cloth_remeshing_edge_label_test(BMEdge *e)
+{
+  return BM_elem_flag_test_bool(e, BM_ELEM_TAG);
+}
+
 static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
                                                            ClothVertMap &cvm,
                                                            vector<BMFace *> &active_faces)
@@ -441,6 +455,9 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
     if (cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
       continue;
     }
+    /* if (cloth_remeshing_edge_label_test(e)) { */
+    /*   continue; */
+    /* } */
     if (!cloth_remeshing_should_flip(bm, e, cvm)) {
       continue;
     }
@@ -631,6 +648,12 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   /* split the edge */
   BMEdge *new_edge;
   BMVert *new_v = BM_edge_split(bm, e, v, &new_edge, fac);
+  /* if (cloth_remeshing_edge_label_test(e)) { */
+  /*   BM_elem_flag_enable(new_edge, BM_ELEM_TAG); */
+  /* } */
+  /* else { */
+  /*   BM_elem_flag_disable(new_edge, BM_ELEM_TAG); */
+  /* } */
 
   BMVert *vert;
   BMIter viter;
@@ -1255,6 +1278,19 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
   return v2;
 }
 
+static bool cloth_remeshing_has_labeled_edges(BMVert *v)
+{
+  BMEdge *e;
+  BMIter eiter;
+
+  BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+    if (BM_elem_flag_test_bool(e, BM_ELEM_TAG)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
                                                  BMEdge *e,
                                                  int which,
@@ -1273,6 +1309,10 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
   /*   return NULL; */
   /* } */
 
+  if (cvm[v1].flags & CLOTH_VERT_FLAG_PRESERVE) {
+    return NULL;
+  }
+
   if (cloth_remeshing_vert_on_seam_or_boundary_test(bm, v1) &&
       !cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
 #if COLLAPSE_EDGES_DEBUG
@@ -1280,6 +1320,10 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
 #endif
     return NULL;
   }
+
+  /* if (cloth_remeshing_has_labeled_edges(v1) && !cloth_remeshing_edge_label_test(e)) { */
+  /*   return NULL; */
+  /* } */
 
   if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, which, cvm)) {
     return NULL;
@@ -1614,10 +1658,6 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
   sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
   cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
 #endif
-  printf("totvert: %d totedge: %d totface: %d\n",
-         clmd->clothObject->bm->totvert,
-         clmd->clothObject->bm->totedge,
-         clmd->clothObject->bm->totface);
 }
 
 static void cloth_remeshing_face_data(BMesh *bm, BMFace *f, float r_mat[2][2])
@@ -1939,7 +1979,7 @@ static void cloth_remeshing_find_closest_cb(void *userdata,
 static void cloth_remeshing_find_nearest_planes(BMesh *bm,
                                                 CollisionModifierData *collmd,
                                                 float dist_max,
-                                                map<BMVert *, ClothPlane> r_planes)
+                                                map<BMVert *, ClothPlane> &r_planes)
 {
   map<BMVert *, ClothPlane> &planes = r_planes;
   BMVert *v;
@@ -2057,7 +2097,7 @@ static void cloth_remeshing_obstacle_metric(
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 0.01f, planes);
+        cloth_remeshing_find_nearest_planes(bm, collmd, 10.0f, planes);
       }
       BKE_collision_objects_free(collobjs);
     }
@@ -2198,14 +2238,27 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
   ClothVertMap cvm;
   cloth_remeshing_init_bmesh(ob, clmd, mesh, cvm);
 
-  if (false) {
+  if (true) {
     cloth_remeshing_static(clmd, cvm);
   }
   else {
     cloth_remeshing_dynamic(depsgraph, ob, clmd, cvm);
   }
 
+  printf("totvert: %d totedge: %d totface: %d\n",
+         clmd->clothObject->bm->totvert,
+         clmd->clothObject->bm->totedge,
+         clmd->clothObject->bm->totface);
+
   Mesh *mesh_result = cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
+
+  printf("mesh: totvert: %d totedge: %d totface: %d\n",
+         mesh_result->totvert,
+         mesh_result->totedge,
+         mesh_result->totpoly);
+
   cvm.clear();
   return mesh_result;
 }
+
+/* TODO(Ish): update the BM_ELEM_TAG on the edges */

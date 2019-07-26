@@ -52,6 +52,7 @@ struct ClothSizing;
 typedef enum eClothVertexFlag {
   CLOTH_VERT_FLAG_PINNED = 1,
   CLOTH_VERT_FLAG_NOSELFCOLL = 2, /* vertex NOT used for self collisions */
+  CLOTH_VERT_FLAG_PRESERVE = 4,   /* vertex to preserve during remeshing */
 } eClothVertexFlag;
 
 typedef struct ClothHairData {
