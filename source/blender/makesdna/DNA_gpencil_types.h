@@ -95,6 +95,8 @@ typedef enum eGPDspoint_Flag {
   GP_SPOINT_TAG = (1 << 1),
   /* stroke point is temp tagged (for some editing operation) */
   GP_SPOINT_TEMP_TAG = (1 << 2),
+  /* stroke tag for feature point when resampling */
+  GP_SPOINT_TAG_FEATURE = (1 << 3),
 } eGPSPoint_Flag;
 
 /* ***************************************** */
@@ -297,6 +299,7 @@ typedef enum eGPDframe_Flag {
   GP_FRAME_PAINT = (1 << 0),
   /* for editing in Action Editor */
   GP_FRAME_SELECT = (1 << 1),
+  GP_FRAME_LANPR_CLEARED = (1 << 2),
 } eGPDframe_Flag;
 
 /* ***************************************** */
@@ -486,7 +489,6 @@ typedef struct bGPdata {
   ListBase layers;
   /** Settings for this data-block. */
   int flag;
-
   char _pad1[4];
 
   /* Palettes */

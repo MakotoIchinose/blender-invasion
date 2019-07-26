@@ -81,6 +81,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      ICON_MOD_SUBSURF,
      "Subdivide",
      "Subdivide stroke adding more control points"},
+    {eGpencilModifierType_Multiply,
+     "GP_MULTIPLY",
+     ICON_GP_MULTIFRAME_EDITING,
+     "MultiStroke",
+     "Produce multiple strokes along one stroke"},
     {0, "", 0, N_("Deform"), ""},
     {eGpencilModifierType_Armature,
      "GP_ARMATURE",
@@ -110,6 +115,11 @@ const EnumPropertyItem rna_enum_object_greasepencil_modifier_type_items[] = {
      "Thickness",
      "Change stroke thickness"},
     {eGpencilModifierType_Time, "GP_TIME", ICON_MOD_TIME, "Time Offset", "Offset keyframes"},
+    {eGpencilModifierType_Length,
+     "GP_LENGTH",
+     ICON_MOD_EDGESPLIT,
+     "Length",
+     "Extend or shrink strokes"},
     {0, "", 0, N_("Color"), ""},
     {eGpencilModifierType_Color,
      "GP_COLOR",
@@ -217,6 +227,10 @@ static StructRNA *rna_GpencilModifier_refine(struct PointerRNA *ptr)
       return &RNA_OffsetGpencilModifier;
     case eGpencilModifierType_Armature:
       return &RNA_ArmatureGpencilModifier;
+    case eGpencilModifierType_Length:
+      return &RNA_LengthGpencilModifier;
+    case eGpencilModifierType_Multiply:
+      return &RNA_MultiplyGpencilModifier;
       /* Default */
     case eGpencilModifierType_None:
     case NUM_GREASEPENCIL_MODIFIER_TYPES:
@@ -623,6 +637,11 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
        ICON_IPO_EASE_IN_OUT,
        "Adaptive",
        "Use a RDP algorithm to simplify"},
+      {GP_SIMPLIFY_SAMPLE,
+       "SAMPLE",
+       ICON_IPO_EASE_IN_OUT,
+       "Sample",
+       "Sample a curve using a fixed length"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -680,6 +699,13 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "step");
   RNA_def_property_range(prop, 1, 50);
   RNA_def_property_ui_text(prop, "Iterations", "Number of times to apply simplify");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Sample */
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
@@ -1704,6 +1730,90 @@ static void rna_def_modifier_gpencilarmature(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 }
 
+static void rna_def_modifier_gpencillength(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "LengthGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Length Modifier", "Stretch or shrink strokes");
+  RNA_def_struct_sdna(srna, "LengthGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_EDGESPLIT);
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -10.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "percentage", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -1.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Percentage", "Length based on the curve's original length");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+}
+
+static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "MultiplyGpencilModifier", "GpencilModifier");
+  RNA_def_struct_ui_text(srna, "Multiply Modifier", "Generate multiple strokes from one stroke");
+  RNA_def_struct_sdna(srna, "MultiplyGpencilModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_GP_MULTIFRAME_EDITING);
+
+  prop = RNA_def_property(srna, "enable_duplication", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_DUPLICATION);
+  RNA_def_property_ui_text(prop, "Duplication", "Enable stroke duplication");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "enable_angle_splitting", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_ANGLE_SPLITTING);
+  RNA_def_property_ui_text(prop, "Angle Splitting", "Enable angle splitting");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "enable_fading", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_FADING);
+  RNA_def_property_ui_text(prop, "Enable Fading", "Enable fading");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, M_PI);
+  RNA_def_property_ui_text(prop, "Angle", "Split angle for segments");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "duplications", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_text(prop, "Duplications", "How many copies of strokes be displayed");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, M_PI);
+  RNA_def_property_ui_text(prop, "Distance", "Distance of duplications.");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -1, 1, 0.1, 3);
+  RNA_def_property_ui_text(prop, "Offset", "Offset of duplications. -1 to 1: inner to outer");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_thickness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_float_default(prop, 0.5);
+  RNA_def_property_ui_text(prop, "Thickness", "Fade influence of stroke's thickness");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_opacity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_float_default(prop, 0.5);
+  RNA_def_property_ui_text(prop, "Opacity", "Fade influence of stroke's opacity");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fading_center", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_ui_text(prop, "Center", "Fade center");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+}
+
 void RNA_def_greasepencil_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1773,7 +1883,9 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   rna_def_modifier_gpencilbuild(brna);
   rna_def_modifier_gpencilopacity(brna);
   rna_def_modifier_gpencillattice(brna);
+  rna_def_modifier_gpencillength(brna);
   rna_def_modifier_gpencilmirror(brna);
+  rna_def_modifier_gpencilmultiply(brna);
   rna_def_modifier_gpencilhook(brna);
   rna_def_modifier_gpencilarmature(brna);
 }

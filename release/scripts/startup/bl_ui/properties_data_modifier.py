@@ -2222,7 +2222,38 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub = row.row(align=True)
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
+        
+    def GP_LENGTH(self, layout, ob, md):
+        sp = layout.split()
+        col = sp.column()
+        col.label(text="Absolute:")
+        col.prop(md, "length")
 
+        col = sp.column()
+        col.label(text="Relative:")
+        col.prop(md, "percentage")
+    
+    def GP_MULTIPLY(self, layout, ob, md):
+        sp = layout.split(factor = 0.5)
+
+        col = sp.column()
+        col.prop(md, "enable_duplication")
+        if md.enable_duplication:
+            col.prop(md,"duplications")
+            col.prop(md,"distance")
+            col.prop(md,"offset", slider=True)
+        
+            col.prop(md,"enable_fading")
+            if md.enable_fading:
+                col.prop(md, "fading_center")
+                c = col.column(align = True)
+                c.prop(md, "fading_thickness", slider=True)
+                c.prop(md, "fading_opacity", slider=True)
+
+        col = sp.column()
+        col.prop(md, "enable_angle_splitting")
+        if md.enable_angle_splitting:
+            col.prop(md,"split_angle")
 
 classes = (
     DATA_PT_modifiers,

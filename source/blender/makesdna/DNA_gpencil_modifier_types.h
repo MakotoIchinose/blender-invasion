@@ -48,7 +48,10 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Mirror = 14,
   eGpencilModifierType_Armature = 15,
   eGpencilModifierType_Time = 16,
-  NUM_GREASEPENCIL_MODIFIER_TYPES,
+  eGpencilModifierType_Sample = 17,
+  eGpencilModifierType_Length = 18,
+  eGpencilModifierType_Multiply = 19,
+  NUM_GREASEPENCIL_MODIFIER_TYPES
 } GpencilModifierType;
 
 typedef enum GpencilModifierMode {
@@ -515,7 +518,8 @@ typedef struct SimplifyGpencilModifierData {
   short step;
   /** Custom index for passes. */
   int layer_pass;
-  char _pad[4];
+  /* Sample length */
+  float length;
 } SimplifyGpencilModifierData;
 
 typedef enum eSimplifyGpencil_Flag {
@@ -529,6 +533,8 @@ typedef enum eSimplifyGpencil_Mode {
   GP_SIMPLIFY_FIXED = 0,
   /* Use RDP algorithm */
   GP_SIMPLIFY_ADAPTIVE = 1,
+  /* Sample the stroke using a fixed length */
+  GP_SIMPLIFY_SAMPLE = 2,
 } eSimplifyGpencil_Mode;
 
 typedef struct OffsetGpencilModifierData {
@@ -597,5 +603,44 @@ typedef struct ArmatureGpencilModifierData {
   char vgname[64];
 
 } ArmatureGpencilModifierData;
+
+typedef enum eStrokeGpencil_Flag { /* emm what are these for */
+                                   GP_STROKE_INVERT_LAYER = (1 << 0),
+                                   GP_STROKE_INVERT_PASS = (1 << 1),
+                                   GP_STROKE_KEEP_ONTOP = (1 << 2),
+                                   GP_STROKE_INVERT_LAYERPASS = (1 << 3),
+} eStrokeGpencil_Flag;
+
+/* XXX: all the length and similar parameters should have an image space behavior. */
+/* Need future investigations */
+
+typedef struct LengthGpencilModifierData {
+  GpencilModifierData modifier;
+  float length;
+  float percentage;
+} LengthGpencilModifierData;
+
+typedef struct MultiplyGpencilModifierData {
+  GpencilModifierData modifier;
+  int flags;
+
+  int duplications;
+  float distance;
+  float offset; /* -1:inner 0:middle 1:outer */
+
+  float fading_center;
+  float fading_thickness;
+  float fading_opacity;
+
+  float split_angle; /* in rad not deg */
+
+  /* char _pad[4]; */
+} MultiplyGpencilModifierData;
+
+typedef enum eMultiplyGpencil_Flag {
+  GP_MULTIPLY_ENABLE_DUPLICATION = (1 << 0),
+  GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),
+  GP_MULTIPLY_ENABLE_FADING = (1 << 2),
+} eMultiplyGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */
