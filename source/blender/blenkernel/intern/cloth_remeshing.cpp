@@ -386,7 +386,7 @@ static bool cloth_remeshing_should_flip(BMesh *bm, BMEdge *e, ClothVertMap &cvm)
 
 static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMesh *bm, BMEdge *e)
 {
-#if 1
+#if 0
   BMFace *f1, *f2;
   cloth_remeshing_edge_face_pair(e, &f1, &f2);
 
@@ -394,25 +394,11 @@ static bool cloth_remeshing_edge_on_seam_or_boundary_test(BMesh *bm, BMEdge *e)
          cloth_remeshing_edge_vert(bm, e, 0, 0, NULL) !=
              cloth_remeshing_edge_vert(bm, e, 1, 0, NULL);
 #else
-  BMFace *f, *f1, *f2;
-  BMIter fiter;
-  int i = 0;
-  BM_ITER_ELEM (f, &fiter, e, BM_FACES_OF_EDGE) {
-    if (i == 0) {
-      f1 = f;
-    }
-    else if (i == 1) {
-      f2 = f;
-    }
-    i++;
-  }
-
-  if (i < 2) {
-    return true;
-  }
+  BMFace *f1, *f2;
+  cloth_remeshing_edge_face_pair(e, &f1, &f2);
 
   if (!f1 || !f2) {
-    return false;
+    return true;
   }
   float uv_f1_v1[2], uv_f1_v2[2], uv_f2_v1[2], uv_f2_v2[2];
   cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_f1_v1);
@@ -1227,7 +1213,7 @@ static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e)
   BMFace *f1, *f2;
   cloth_remeshing_edge_face_pair(e, &f1, &f2);
   if (!f1 || !f2) {
-    return false;
+    return true;
   }
   float uv_f1_v1[2], uv_f1_v2[2], uv_f2_v1[2], uv_f2_v2[2];
   cloth_remeshing_uv_of_vert_in_face(bm, f1, e->v1, uv_f1_v1);
@@ -2212,7 +2198,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
   ClothVertMap cvm;
   cloth_remeshing_init_bmesh(ob, clmd, mesh, cvm);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd, cvm);
   }
   else {
