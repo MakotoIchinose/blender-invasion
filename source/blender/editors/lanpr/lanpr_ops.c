@@ -2722,10 +2722,6 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
   int crease_count = 0;
   int MaterialCount = 0;
 
-  rb->overall_progress = 20;
-  rb->calculation_status = TNS_CALCULATION_CONTOUR;
-  /*  nulThreadNotifyUsers("tns.render_buffer_list.calculation_status"); */
-
   if (c->type == CAM_ORTHO) {
     lanpr_compute_view_Vector(rb);
   }
@@ -2822,7 +2818,6 @@ static void lanpr_clear_render_state(LANPR_RenderBuffer *rb)
   rb->material_managed = 0;
   rb->crease_count = 0;
   rb->crease_managed = 0;
-  rb->calculation_status = TNS_CALCULATION_IDLE;
 }
 
 /* Buffer operations */
@@ -2845,7 +2840,6 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   rb->crease_managed = 0;
   rb->edge_mark_count = 0;
   rb->edge_mark_managed = 0;
-  rb->calculation_status = TNS_CALCULATION_IDLE;
 
   list_handle_empty(&rb->contours);
   list_handle_empty(&rb->intersection_lines);
@@ -3712,7 +3706,6 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
   /*  tnsglobal_TriangleIntersectionCount = 0; */
 
   /*  tnsset_RenderOverallProgress(rb, NUL_MH2); */
-  rb->calculation_status = TNS_CALCULATION_INTERSECTION;
   /*  nulThreadNotifyUsers("tns.render_buffer_list.calculation_status"); */
 
   for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->next) {

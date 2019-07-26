@@ -414,7 +414,7 @@ void list_move_down(ListBase *h, Link *li)
 
 LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp)
 {
-  LANPR_StaticMemPoolNode *smpn = MEM_callocN(NUL_MEMORY_POOL_128MB, "mempool");
+  LANPR_StaticMemPoolNode *smpn = MEM_callocN(LANPR_MEMORY_POOL_128MB, "mempool");
   smpn->used_byte = sizeof(LANPR_StaticMemPoolNode);
   BLI_addhead(&smp->pools, smpn);
   return smpn;
@@ -424,7 +424,7 @@ void *mem_static_aquire(LANPR_StaticMemPool *smp, int size)
   LANPR_StaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB) {
+  if (!smpn || (smpn->used_byte + size) > LANPR_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
   }
 
@@ -441,7 +441,7 @@ void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size)
 
   BLI_spin_lock(&smp->cs_mem);
 
-  if (!smpn || (smpn->used_byte + size) > NUL_MEMORY_POOL_128MB) {
+  if (!smpn || (smpn->used_byte + size) > LANPR_MEMORY_POOL_128MB) {
     smpn = mem_new_static_pool(smp);
   }
 

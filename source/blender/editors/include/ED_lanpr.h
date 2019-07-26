@@ -137,13 +137,15 @@ typedef struct LANPR_RenderVert {
   char edge_used; /*                       <|		          |> */
 } LANPR_RenderVert;
 
-#define LANPR_EDGE_FLAG_EDGE_MARK 1
-#define LANPR_EDGE_FLAG_CONTOUR 2
-#define LANPR_EDGE_FLAG_CREASE 4
-#define LANPR_EDGE_FLAG_MATERIAL 8
-#define LANPR_EDGE_FLAG_INTERSECTION 16
-#define LANPR_EDGE_FLAG_FLOATING 32 /*  floating edge, unimplemented yet */
-#define LANPR_EDGE_FLAG_CHAIN_PICKED 64
+typedef enum LANPR_EdgeFlag{
+  LANPR_EDGE_FLAG_EDGE_MARK = (1<<0),
+  LANPR_EDGE_FLAG_CONTOUR = (1<<1),
+  LANPR_EDGE_FLAG_CREASE = (1<<2),
+  LANPR_EDGE_FLAG_MATERIAL = (1<<3),
+  LANPR_EDGE_FLAG_INTERSECTION = (1<<4),
+  LANPR_EDGE_FLAG_FLOATING = (1<<5), /*  floating edge, unimplemented yet */
+  LANPR_EDGE_FLAG_CHAIN_PICKED = (1<<6),
+}LANPR_EdgeFlag;
 
 #define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
 
@@ -274,6 +276,7 @@ typedef struct LANPR_RenderBuffer {
   real crease_cos;
   int thread_count;
 
+  /* deprecated, need another report mechanism */
   real overall_progress;
   int calculation_status;
 
@@ -335,28 +338,21 @@ typedef struct LANPR_SharedResource {
 
 } LANPR_SharedResource;
 
-#define deg(r) r / M_PI * 180.0
-#define rad(d) d *M_PI / 180.0
-
 #define DBL_TRIANGLE_LIM 1e-8
 #define DBL_EDGE_LIM 1e-9
 
-#define NUL_MEMORY_POOL_1MB 1048576
-#define NUL_MEMORY_POOL_128MB 134217728
-#define NUL_MEMORY_POOL_256MB 268435456
-#define NUL_MEMORY_POOL_512MB 536870912
+#define LANPR_MEMORY_POOL_1MB 1048576
+#define LANPR_MEMORY_POOL_128MB 134217728
+#define LANPR_MEMORY_POOL_256MB 268435456
+#define LANPR_MEMORY_POOL_512MB 536870912
 
-#define LANPR_CULL_DISCARD 2
-#define LANPR_CULL_USED 1
+typedef enum LANPR_CullState{
+  LANPR_CULL_DONT_CARE = 0,
+  LANPR_CULL_USED = 1,
+  LANPR_CULL_DISCARD = 2,
+}LANPR_CullState;
 
 #define TNS_THREAD_LINE_COUNT 10000
-
-#define TNS_CALCULATION_IDLE 0
-#define TNS_CALCULATION_GEOMETRY 1
-#define TNS_CALCULATION_CONTOUR 2
-#define TNS_CALCULATION_INTERSECTION 3
-#define TNS_CALCULATION_OCCLUTION 4
-#define TNS_CALCULATION_FINISHED 100
 
 typedef struct LANPR_RenderTaskInfo {
   /*  thrd_t           ThreadHandle; */
