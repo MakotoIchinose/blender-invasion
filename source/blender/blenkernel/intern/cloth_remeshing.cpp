@@ -164,8 +164,6 @@ static void cloth_remeshing_init_bmesh(Object *ob,
       copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       cvm[v] = clmd->clothObject->verts[i];
     }
-    /* TODO(Ish): delete the existing clmd->clothObject->verts because
-     * it is duplicated into cvm */
 
     BM_mesh_normals_update(clmd->clothObject->bm);
 
@@ -190,6 +188,7 @@ static void cloth_remeshing_init_bmesh(Object *ob,
   }
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
 
+  /* free clmd->clothObject->verts, it is already duplicated into cvm */
   if (clmd->clothObject->verts != NULL) {
     MEM_freeN(clmd->clothObject->verts);
     clmd->clothObject->verts = NULL;
@@ -252,32 +251,15 @@ static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex 
   return new_vert;
 }
 
-static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob,
-                                                       ClothModifierData *clmd,
-                                                       ClothVertMap &cvm)
+static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifierData *clmd)
 {
   Mesh *mesh_result = NULL;
   Cloth *cloth = clmd->clothObject;
   CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
   mesh_result = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
-  /* Allocate our vertices since they were removed before the
-   * remeshing step */
-  const unsigned int mvert_num = mesh_result->totvert;
-  clmd->clothObject->mvert_num = mvert_num;
-  clmd->clothObject->verts = (ClothVertex *)MEM_callocN(
-      sizeof(ClothVertex) * clmd->clothObject->mvert_num, "clothVertex");
-  if (clmd->clothObject->verts == NULL) {
-    cloth_free_modifier(clmd);
-    modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject->verts");
-    printf("cloth_free_modifier clmd->clothObject->verts\n");
-    return NULL;
-  }
-  BMVert *v;
-  BMIter viter;
-  int v_index = 0;
-  BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, v_index) {
-    cloth->verts[v_index] = cvm[v];
-  }
+
+  /* No need to worry about cloth->verts, it has been updated during
+   * reindexing */
 
   if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
     return mesh_result;
@@ -1765,9 +1747,11 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
   return false;
 }
 
+/* Assign memory to cloth->verts since it was deallocated earlier and ensure indexing matches that
+ * of the bmesh */
 static void cloth_remeshing_reindex_cloth_vertices(Cloth *cloth, BMesh *bm, ClothVertMap &cvm)
 {
-  ClothVertex *new_verts = (ClothVertex *)MEM_mallocN(sizeof(ClothVertex) * cloth->mvert_num,
+  ClothVertex *new_verts = (ClothVertex *)MEM_mallocN(sizeof(ClothVertex) * cvm.size(),
                                                       "New ClothVertex Array");
   BMVert *v;
   BMIter viter;
@@ -1780,6 +1764,7 @@ static void cloth_remeshing_reindex_cloth_vertices(Cloth *cloth, BMesh *bm, Clot
     MEM_freeN(cloth->verts);
   }
   cloth->verts = new_verts;
+  cloth->mvert_num = cvm.size();
 }
 
 static void cloth_remeshing_delete_sizing(BMesh *bm, ClothVertMap &cvm)
@@ -2530,7 +2515,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
     cloth_remeshing_dynamic(depsgraph, ob, clmd, cvm);
   }
 
-  Mesh *mesh_result = cloth_remeshing_update_cloth_object_bmesh(ob, clmd, cvm);
+  Mesh *mesh_result = cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
   cvm.clear();
   return mesh_result;
 }
