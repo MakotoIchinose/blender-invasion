@@ -7307,28 +7307,28 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "taper_left_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 20.0f);
-  RNA_def_property_ui_text(prop, "Distance Left", "Left side taper distance");
+  RNA_def_property_ui_text(prop, "Left Distance", "Left side taper distance");
   RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_right_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 20.0f);
-  RNA_def_property_ui_text(prop, "Distance right", "Right side taper distance");
+  RNA_def_property_ui_text(prop, "Right Distance", "Right side taper distance");
   RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_left_strength", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Strength left", "Left side taper strength");
+  RNA_def_property_ui_text(prop, "Left Strength", "Left side taper strength");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_right_strength", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Strength right", "Right side taper strength");
+  RNA_def_property_ui_text(prop, "Right Strength", "Right side taper strength");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);

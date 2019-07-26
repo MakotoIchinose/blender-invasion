@@ -845,7 +845,7 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
             active_layer = lanpr.layers[0]
 
         if mode == "SOFTWARE":
-            layout.prop(active_layer, "use_multiple_levels")
+            layout.prop(active_layer, "use_multiple_levels", text="Multiple Levels")
             col = layout.column(align=True)
             col.prop(active_layer, "qi_begin", text='Level Start')
             if active_layer.use_multiple_levels:
@@ -943,10 +943,10 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
             layout.prop(active_layer,"normal_effect_inverse")
             col = layout.column(align=True)
             col.prop(active_layer,"normal_ramp_begin")
-            col.prop(active_layer,"normal_ramp_end")
+            col.prop(active_layer,"normal_ramp_end", text="End")
             col = layout.column(align=True)
             col.prop(active_layer,"normal_thickness_begin", slider=True)
-            col.prop(active_layer,"normal_thickness_end", slider=True)
+            col.prop(active_layer,"normal_thickness_end", slider=True, text="End")
 
 class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):
     bl_label = "Effects"
@@ -972,13 +972,13 @@ class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):
 
         col = layout.column(align = True)
         col.prop(lanpr, "crease_threshold")
-        col.prop(lanpr, "crease_fade_threshold")
+        col.prop(lanpr, "crease_fade_threshold", text="Fade")
         col = layout.column(align = True)
         col.prop(lanpr, "depth_width_influence")
-        col.prop(lanpr, "depth_width_curve")
+        col.prop(lanpr, "depth_width_curve", text="Curve")
         col = layout.column(align = True)
         col.prop(lanpr, "depth_alpha_influence")
-        col.prop(lanpr, "depth_alpha_curve")
+        col.prop(lanpr, "depth_alpha_curve", text="Curve")
 
 
 class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
@@ -1044,11 +1044,11 @@ class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
             col = split.column(align = True)
             col.label(text="Left:")
             col.prop(lanpr,"taper_left_distance")
-            col.prop(lanpr,"taper_left_strength")
+            col.prop(lanpr,"taper_left_strength", text="Strength")
             col = split.column(align = True)
             col.label(text="Right:")
             col.prop(lanpr,"taper_right_distance")
-            col.prop(lanpr,"taper_right_strength")
+            col.prop(lanpr,"taper_right_strength", text="Strength")
         else:
             split = layout.split()
             col = split.column(align = True)
