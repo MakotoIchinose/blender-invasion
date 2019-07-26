@@ -71,6 +71,8 @@ void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[])
   INIT_GP_TYPE(Offset);
   INIT_GP_TYPE(Armature);
   INIT_GP_TYPE(Time);
+  INIT_GP_TYPE(Length);
+  INIT_GP_TYPE(Multiply);
 #undef INIT_GP_TYPE
 }
 
