@@ -14,11 +14,14 @@ extern "C" {
 #include "BKE_library.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
+#include "BKE_modifier.h"
 
 #include "DEG_depsgraph.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_object_fluidsim_types.h"
 #include "DNA_particle_types.h"
 }
 
@@ -164,6 +167,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 
   write_uv_maps(mesh, usd_mesh);
   write_normals(mesh, usd_mesh);
+  write_surface_velocity(context.object, mesh, usd_mesh);
 
   // TODO(Sybren): figure out what happens when the face groups change.
   if (frame_has_been_written_) {
@@ -344,6 +348,48 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
 
   usd_mesh.CreateNormalsAttr().Set(loop_normals, timecode);
   usd_mesh.SetNormalsInterpolation(pxr::UsdGeomTokens->faceVarying);
+}
+
+void USDGenericMeshWriter::write_surface_velocity(Object *object,
+                                                  const Mesh *mesh,
+                                                  pxr::UsdGeomMesh usd_mesh)
+{
+  /* Only velocities from the fluid simulation are exported. This is the most important case,
+   * though, as the baked mesh changes topology all the time, and thus computing the velocities
+   * at import time in a post-processing step is hard. */
+  ModifierData *md = modifiers_findByType(object, eModifierType_Fluidsim);
+  if (md == nullptr) {
+    return;
+  }
+
+  /* Check that the fluid sim modifier is enabled and has useful data. */
+  const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  const ModifierMode required_mode = use_render ? eModifierMode_Render : eModifierMode_Realtime;
+  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  if (!modifier_isEnabled(scene, md, required_mode)) {
+    return;
+  }
+  FluidsimModifierData *fsmd = reinterpret_cast<FluidsimModifierData *>(md);
+  if (!fsmd->fss || fsmd->fss->type != OB_FLUIDSIM_DOMAIN) {
+    return;
+  }
+  FluidsimSettings *fss = fsmd->fss;
+  if (!fss->meshVelocities) {
+    return;
+  }
+
+  /* Export per-vertex velocity vectors. */
+  pxr::VtVec3fArray usd_velocities;
+  usd_velocities.reserve(mesh->totvert);
+
+  FluidVertexVelocity *mesh_velocities = fss->meshVelocities;
+  for (int vertex_idx = 0, totvert = mesh->totvert; vertex_idx < totvert;
+       ++vertex_idx, ++mesh_velocities) {
+    usd_velocities.push_back(pxr::GfVec3f(mesh_velocities->vel));
+  }
+
+  pxr::UsdTimeCode timecode = get_export_time_code();
+  usd_mesh.CreateVelocitiesAttr().Set(usd_velocities, timecode);
 }
 
 USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx)
