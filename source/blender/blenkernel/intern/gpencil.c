@@ -1435,7 +1435,7 @@ void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
 
 /* ************************************************** */
 
-void stroke_defvert_create_nr_list(MDeformVert *dv_list,
+static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
                                    int count,
                                    ListBase *result,
                                    int *totweight)
@@ -1491,7 +1491,7 @@ MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr
   return dst;
 }
 
-float stroke_defvert_get_nr_weight(MDeformVert *dv, int def_nr)
+static float stroke_defvert_get_nr_weight(MDeformVert *dv, int def_nr)
 {
   int i;
   for (i = 0; i < dv->totweight; i++) {
@@ -1502,7 +1502,7 @@ float stroke_defvert_get_nr_weight(MDeformVert *dv, int def_nr)
   return 0.0f;
 }
 
-void stroke_interpolate_deform_weights(
+static void stroke_interpolate_deform_weights(
     bGPDstroke *gps, int index_from, int index_to, float ratio, MDeformVert *vert)
 {
   MDeformVert *vl = &gps->dvert[index_from];
@@ -1516,10 +1516,10 @@ void stroke_interpolate_deform_weights(
   }
 }
 
-static int stroke_march_next_point(bGPDstroke *gps,
-                                   int next_point_index,
-                                   float *current,
-                                   float dist,
+static int stroke_march_next_point(const bGPDstroke *gps,
+                                   const int index_next_pt,
+                                   const float *current,
+                                   const float dist,
                                    float *result,
                                    float *pressure,
                                    float *strength,
@@ -1531,6 +1531,7 @@ static int stroke_march_next_point(bGPDstroke *gps,
   float remaining_march = dist;
   float step_start[3];
   float point[3];
+  int next_point_index = index_next_pt;
   bGPDspoint *pt = NULL;
 
   if (!(next_point_index < gps->totpoints)) {
@@ -1584,13 +1585,14 @@ static int stroke_march_next_point(bGPDstroke *gps,
   }
 }
 
-static int stroke_march_next_poin_no_interp(
-    bGPDstroke *gps, int next_point_index, float *current, float dist, float *result)
+static int stroke_march_next_point_no_interp(
+    const bGPDstroke *gps, const int index_next_pt, const float *current, const float dist, float *result)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
   float step_start[3];
   float point[3];
+  int next_point_index = index_next_pt;
   bGPDspoint *pt = NULL;
 
   if (!(next_point_index < gps->totpoints)) {
@@ -1628,8 +1630,7 @@ static int stroke_march_next_poin_no_interp(
   }
 }
 
-/* This is still problematic... */
-static int stroke_march_count(bGPDstroke *gps, float dist)
+static int stroke_march_count(const bGPDstroke *gps, const float dist)
 {
   float remaining_till_next = 0.0f;
   float remaining_march = dist;
@@ -1643,7 +1644,7 @@ static int stroke_march_count(bGPDstroke *gps, float dist)
   copy_v3_v3(point, &pt->x);
   point_count++;
 
-  while ((next_point_index = stroke_march_next_poin_no_interp(
+  while ((next_point_index = stroke_march_next_point_no_interp(
               gps, next_point_index, point, dist, point)) > -1) {
     point_count++;
     if (next_point_index == 0) {
@@ -1658,7 +1659,7 @@ static int stroke_march_count(bGPDstroke *gps, float dist)
  * \param gps: Stroke to sample
  * \param dist: Distance of one segment
  */
-bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
+bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist)
 {
   bGPDspoint *pt = gps->points;
   bGPDspoint *pt1 = NULL;
@@ -1755,7 +1756,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, float dist)
  * \param gps: Stroke to sample
  * \param dist: Distance of one segment
  */
-bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
+bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
   int i;
@@ -1805,7 +1806,7 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, float dist)
  * \param index_from: the index of the first point to be used in the trimmed result
  * \param index_to: the index of the last point to be used in the trimmed result
  */
-bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, int index_from, int index_to)
+bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, const int index_from, const int index_to)
 {
   bGPDspoint *pt = gps->points, *new_pt;
   MDeformVert *dv, *new_dv;
@@ -1857,7 +1858,7 @@ bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, int index_from, int index_t
 
 bool BKE_gpencil_split_stroke(bGPDframe *gpf,
                               bGPDstroke *gps,
-                              int before_index,
+                              const int before_index,
                               bGPDstroke **remaining_gps)
 {
   bGPDstroke *new_gps;
@@ -1912,7 +1913,7 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
  * \param gps: Stroke to shrink
  * \param dist: delta length
  */
-bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, float dist)
+bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
   int i;
