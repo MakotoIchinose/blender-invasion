@@ -134,7 +134,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_Length = {
     /* structName */ "LengthGpencilModifierData",
     /* structSize */ sizeof(LengthGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
-    /* flags */ 0,
+    /* flags */ eGpencilModifierTypeFlag_SupportsEditmode,
 
     /* copyData */ copyData,
 
