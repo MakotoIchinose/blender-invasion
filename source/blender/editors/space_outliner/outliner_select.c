@@ -1364,7 +1364,6 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
                                                  const int mval[2],
                                                  const bool extend,
                                                  const bool use_range,
-                                                 const bool recursive,
                                                  const bool deselect_all)
 {
   ARegion *ar = CTX_wm_region(C);
@@ -1413,7 +1412,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     else {
       outliner_item_select(soops, activate_te, extend, extend);
       do_outliner_item_activate_tree_element(
-          C, scene, view_layer, soops, activate_te, activate_tselem, extend, recursive);
+          C, scene, view_layer, soops, activate_te, activate_tselem, extend, false);
     }
 
     changed = true;
@@ -1441,10 +1440,8 @@ static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEv
 {
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   const bool use_range = RNA_boolean_get(op->ptr, "range");
-  const bool recursive = RNA_boolean_get(op->ptr, "recursive");
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
-  return outliner_item_do_activate_from_cursor(
-      C, event->mval, extend, use_range, recursive, deselect_all);
+  return outliner_item_do_activate_from_cursor(C, event->mval, extend, use_range, deselect_all);
 }
 
 void OUTLINER_OT_item_activate(wmOperatorType *ot)
@@ -1462,7 +1459,6 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
   prop = RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  RNA_def_boolean(ot->srna, "recursive", false, "Recursive", "Select Objects and their children");
   prop = RNA_def_boolean(ot->srna,
                          "deselect_all",
                          false,
