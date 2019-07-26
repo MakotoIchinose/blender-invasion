@@ -311,6 +311,7 @@ typedef struct PBVHVertexIter {
   int gx;
   int gy;
   int i;
+  int index;
 
   /* grid */
   struct CCGElem **grids;
@@ -381,6 +382,7 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node, PBVHVertexIter *vi, int mo
             continue; \
           vi.co = vi.mvert->co; \
           vi.no = vi.mvert->no; \
+          vi.index = vi.vert_indices[vi.i]; \
           if (vi.vmask) \
             vi.mask = &vi.vmask[vi.vert_indices[vi.gx]]; \
           if (vi.vcol) \
@@ -399,6 +401,7 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node, PBVHVertexIter *vi, int mo
             continue; \
           vi.co = vi.bm_vert->co; \
           vi.fno = vi.bm_vert->no; \
+          vi.index = BM_elem_index_get(vi.bm_vert); \
           vi.mask = BM_ELEM_CD_GET_VOID_P(vi.bm_vert, vi.cd_vert_mask_offset); \
         }
 

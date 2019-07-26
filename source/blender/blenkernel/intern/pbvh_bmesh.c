@@ -1550,6 +1550,7 @@ bool pbvh_bmesh_node_raycast(PBVHNode *node,
             if (len_squared_v3v3(location, v_tri[j]->co) <
                 len_squared_v3v3(location, output_data->nearest_vertex_co)) {
               copy_v3_v3(output_data->nearest_vertex_co, v_tri[j]->co);
+              output_data->active_vertex_mesh_index = BM_elem_index_get(v_tri[j]);
             }
           }
         }
