@@ -1091,11 +1091,11 @@ class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
         layout.prop(lanpr,"auto_update", text='Auto Update')
         layout.prop(lanpr,"gpencil_overwrite", text='Overwrite')
         if not lanpr.auto_update:
-            layout.operator("scene.lanpr_update_gp_strokes", icon='RENDER_STILL', text='Update GPencil Targets')
+            layout.operator("scene.lanpr_update_gp_strokes", icon='FILE_REFRESH', text='Update GPencil Targets')
         layout.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
-    bl_label = "Chaining Options"
+    bl_label = "Chaining"
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
@@ -1161,8 +1161,6 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
 
         if scene.render.engine=='BLENDER_LANPR':
             layout.prop(lanpr,"enable_chaining", text = "Chain lines")
-        else:
-            layout.label(text='Chain is enabled to generate GP strokes.')
 
 
 classes = (
@@ -1197,13 +1195,13 @@ classes = (
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_gpencil,
-    RENDER_PT_lanpr_options,
     RENDER_PT_lanpr_line_components,
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_line_gpu_effects,
     RENDER_PT_lanpr_snake_sobel_parameters,
     RENDER_PT_lanpr_snake_settings,
     RENDER_PT_lanpr_software_chain_styles,
+    RENDER_PT_lanpr_options,
     LANPR_UL_linesets,
 )
 
