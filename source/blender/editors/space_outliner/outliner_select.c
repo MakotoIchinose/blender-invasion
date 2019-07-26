@@ -1657,7 +1657,8 @@ static TreeElement *outliner_find_next_element(SpaceOutliner *soops, TreeElement
 static void do_outliner_select_walk(SpaceOutliner *soops,
                                     TreeElement *walk_element,
                                     const int direction,
-                                    const bool extend)
+                                    const bool extend,
+                                    const bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(walk_element);
 
@@ -1674,17 +1675,19 @@ static void do_outliner_select_walk(SpaceOutliner *soops,
       walk_element = outliner_find_next_element(soops, walk_element);
       break;
     case OUTLINER_SELECT_WALK_LEFT:
-      /* Close open element or jummp active to parent */
+      /* Close open element or walk to parent */
       if (TSELEM_OPEN(tselem, soops)) {
-        tselem->flag |= TSE_CLOSED;
+        outliner_item_openclose(walk_element, toggle_all);
       }
       else if (walk_element->parent) {
         walk_element = walk_element->parent;
       }
       break;
     case OUTLINER_SELECT_WALK_RIGHT:
-      if (!TSELEM_OPEN(tselem, soops) && walk_element->subtree.first) {
-        tselem->flag &= ~TSE_CLOSED;
+      if ((!TSELEM_OPEN(tselem, soops) ||
+           outliner_flag_is_any_test(&walk_element->subtree, TSE_CLOSED, 1)) &&
+          walk_element->subtree.first) {
+        outliner_item_openclose(walk_element, toggle_all);
       }
       break;
   }
@@ -1743,13 +1746,14 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   const int direction = RNA_enum_get(op->ptr, "direction");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool toggle_all = RNA_boolean_get(op->ptr, "toggle_all");
 
   bool changed;
   TreeElement *walk_element = find_walk_select_start_element(soops, &changed);
 
   /* If finding the starting walk select element did not move the element, proceed to walk */
   if (!changed) {
-    do_outliner_select_walk(soops, walk_element, direction, extend);
+    do_outliner_select_walk(soops, walk_element, direction, extend, toggle_all);
   }
   else {
     TREESTORE(walk_element)->flag |= TSE_SELECTED | TSE_WALK;
@@ -1792,6 +1796,9 @@ void OUTLINER_OT_select_walk(wmOperatorType *ot)
                       "Select element in this direction");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend selection on walk");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(
+      ot->srna, "toggle_all", false, "Toggle All", "Toggle open/close hierarchy");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
