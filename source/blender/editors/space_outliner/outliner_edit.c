@@ -1251,19 +1251,17 @@ static int outliner_open_back(TreeElement *te)
   return retval;
 }
 
-static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
+/* Return the active base, editbone or posebone from the outliner, or NULL if none exists */
+static TreeElement *outliner_show_active_get_element(bContext *C,
+                                                     SpaceOutliner *so,
+                                                     ViewLayer *view_layer)
 {
-  SpaceOutliner *so = CTX_wm_space_outliner(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  ARegion *ar = CTX_wm_region(C);
-  View2D *v2d = &ar->v2d;
-
   TreeElement *te;
 
   Object *obact = OBACT(view_layer);
 
   if (!obact) {
-    return OPERATOR_CANCELLED;
+    return NULL;
   }
 
   te = outliner_find_id(so, &so->tree, &obact->id);
@@ -1286,12 +1284,42 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
     }
   }
 
-  if (te) {
-    /* open up tree to active object/bone */
+  return te;
+}
+
+static void outliner_show_active(SpaceOutliner *so, ARegion *ar, TreeElement *te, ID *id)
+{
+  /* open up tree to active object/bone */
+  if (TREESTORE(te)->id == id) {
     if (outliner_open_back(te)) {
       outliner_set_coordinates(ar, so);
     }
+    return;
+  }
 
+  for (TreeElement *ten = te->subtree.first; ten; ten = ten->next) {
+    outliner_show_active(so, ar, ten, id);
+  }
+}
+
+static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  SpaceOutliner *so = CTX_wm_space_outliner(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  ARegion *ar = CTX_wm_region(C);
+  View2D *v2d = &ar->v2d;
+
+  TreeElement *te = outliner_show_active_get_element(C, so, view_layer);
+
+  if (te) {
+    ID *id = TREESTORE(te)->id;
+
+    /* Expand all elements in the outliner with matching ID */
+    for (TreeElement *ten = so->tree.first; ten; ten = ten->next) {
+      outliner_show_active(so, ar, ten, id);
+    }
+
+    /* Center view on first element found */
     int size_y = BLI_rcti_size_y(&v2d->mask) + 1;
     int y_min = MIN2(ar->v2d.tot.ymin, v2d->cur.ymin);
     int ytop = te->ys + size_y / 2;
@@ -1306,6 +1334,9 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     v2d->cur.ymax = ytop;
     v2d->cur.ymin = ytop - size_y;
+  }
+  else {
+    return OPERATOR_CANCELLED;
   }
 
   ED_region_tag_redraw_no_rebuild(ar);
