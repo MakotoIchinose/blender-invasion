@@ -1251,7 +1251,7 @@ static int outliner_open_back(TreeElement *te)
   return retval;
 }
 
-/* Return the active base, editbone or posebone from the outliner, or NULL if none exists */
+/* Return element representing the active base or bone in the outliner, or NULL if none exists */
 static TreeElement *outliner_show_active_get_element(bContext *C,
                                                      SpaceOutliner *so,
                                                      ViewLayer *view_layer)
@@ -1309,20 +1309,20 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
   ARegion *ar = CTX_wm_region(C);
   View2D *v2d = &ar->v2d;
 
-  TreeElement *te = outliner_show_active_get_element(C, so, view_layer);
+  TreeElement *active_element = outliner_show_active_get_element(C, so, view_layer);
 
-  if (te) {
-    ID *id = TREESTORE(te)->id;
+  if (active_element) {
+    ID *id = TREESTORE(active_element)->id;
 
     /* Expand all elements in the outliner with matching ID */
-    for (TreeElement *ten = so->tree.first; ten; ten = ten->next) {
-      outliner_show_active(so, ar, ten, id);
+    for (TreeElement *te = so->tree.first; te; te = te->next) {
+      outliner_show_active(so, ar, te, id);
     }
 
     /* Center view on first element found */
     int size_y = BLI_rcti_size_y(&v2d->mask) + 1;
     int y_min = MIN2(ar->v2d.tot.ymin, v2d->cur.ymin);
-    int ytop = te->ys + size_y / 2;
+    int ytop = active_element->ys + size_y / 2;
 
     /* make te->ys center of view  keeping element within scroll limits */
     if (ytop > 0) {
