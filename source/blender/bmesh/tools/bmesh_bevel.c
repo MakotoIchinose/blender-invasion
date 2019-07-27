@@ -139,21 +139,20 @@ typedef struct EdgeHalf {
 typedef struct Profile {
   /** Superellipse r parameter */
   float super_r;
+  /** Height for profile cutoff face sides */
+  float height;
   /** Start control point for profile */
-  /* HANS-QUESTION: How much would it be possible to change variable names? I think "coa" and "cob"
-   * would be much more intuitively named as "start" and "end," but notes would be out of date */
-  float start[3]; /* coa */
+  float start[3];
   /** Mid control point for profile */
-  float middle[3]; /* midco */
+  float middle[3];
   /** End control point for profile */
-  float end[3]; /* cob */
+  float end[3];
   /** Normal of plane to project to */
   float plane_no[3];
   /** Coordinate on plane to project to */
   float plane_co[3];
   /** Direction of projection line */
   float proj_dir[3];
-  int _pad;
   /** seg+1 profile coordinates (triples of floats) */
   float *prof_co;
   /** Like prof_co, but for seg power of 2 >= seg */
@@ -1693,7 +1692,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed, b
 {
   int i, k, ns;
   const double *xvals, *yvals;
-  float co[3], co2[3], p[3], m[4][4];
+  float co[3], co2[3], p[3], map[4][4], bottom_corner[3], top_corner[3];
   float *prof_co, *prof_co_k;
   float r;
   bool need_2, map_ok;
@@ -1721,7 +1720,19 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed, b
     map_ok = false;
   }
   else {
-    map_ok = make_unit_square_map(pro->start, pro->middle, pro->end, m);
+    map_ok = make_unit_square_map(pro->start, pro->middle, pro->end, map);
+  }
+  if (bp->vmesh_method == BEVEL_VMESH_CUTOFF && map_ok) {
+    /* Calculate the "height" of the profile by putting the (0,0) and (1,1) corners of the
+     * un-transformed profile throught the 2D->3D map and calculating the distance between them */
+    p[0] = 0.0f;
+    p[1] = 0.0f;
+    p[2] = 0.0f;
+    mul_v3_m4v3(bottom_corner, map, p);
+    p[0] = 1.0f;
+    p[1] = 1.0f;
+    mul_v3_m4v3(top_corner, map, p);
+    pro->height = len_v3v3(bottom_corner, top_corner);
   }
   /* The first iteration is the nseg case, the second is the seg_2 case (if it's needed) */
   for (i = 0; i < 2; i++) {
@@ -1761,7 +1772,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed, b
           }
           p[2] = 0.0f;
           /* Do the 2D->3D transformation of the profile coordinates */
-          mul_v3_m4v3(co, m, p);
+          mul_v3_m4v3(co, map, p);
         }
         else {
           interp_v3_v3v3(co, pro->start, pro->end, (float)k / (float)ns);
@@ -5192,6 +5203,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   int i;
   int n_bndv = bv->vmesh->count;
   BoundVert *bndv;
+  float length;
   float down_direction[3], new_vert[3];
   bool build_center_face;
   BMFace *repface;
@@ -5208,9 +5220,9 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     /* HANS-TODO: This cross product doesn't work for all situations */
     cross_v3_v3v3(down_direction, bndv->profile.plane_no, bndv->prev->profile.plane_no);
 
-    /* Move down that direction from the boundvert by the width of the bevel */
-    /* HANS-TODO: Use the transformed profile height for this vertex */
-    madd_v3_v3v3fl(new_vert, bndv->nv.co, down_direction, bp->offset);
+    /* Move down from the boundvert by average profile height from the two adjacent profiles */
+    length = (bndv->profile.height / sqrtf(2.0f) +  bndv->prev->profile.height / sqrtf(2.0f)) / 2;
+    madd_v3_v3v3fl(new_vert, bndv->nv.co, down_direction, length);
 
     /* Use this location for this profile's first corner vert and the last profile's second */
     copy_v3_v3(mesh_vert(bv->vmesh, i, 1, 0)->co, new_vert);
