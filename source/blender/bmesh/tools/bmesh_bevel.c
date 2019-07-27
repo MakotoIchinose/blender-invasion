@@ -3185,19 +3185,9 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
   printf("REGULARIZE PROFILE ORIENTATION\n");
 #endif
 
-  /* Start at the first EdgeHalf. Once the travelling is finished for that EdgeHalf,
-   * go to the next non-visited one and start the travel process from there. */
   start_bv = find_bevvert(bp, bme->v1);
   start_edgehalf = find_edge_half(start_bv, bme);
   if (!start_edgehalf->is_bev || start_edgehalf->visited_custom) {
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    if (!start_edgehalf->is_bev) {
-      printf("NOT BEVELED\n");
-    }
-    if (start_edgehalf->visited_custom) {
-      printf("ALREADY VISITED\n");
-    }
-#endif
     return;
   }
 
@@ -3206,67 +3196,38 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
   start_edgehalf->leftv->is_profile_start = true;
   start_edgehalf->visited_custom = true;
 
-  /* Travel the path in the direction of the BevVert the EdgeHalf is attached to */
-  edgehalf = start_edgehalf;
-  toward_bv = true;
-  bv = start_bv;
-  edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
-  while (edgehalf) {
-    /* Stop if this EdgeHalf was already visited and "visit" it if it hasn't been */
-    if (edgehalf->visited_custom) {
-      break;
-    }
-    edgehalf->visited_custom = true;
-
-    /* Mark the correct BoundVert as the start of the newly visited profile
-     * The BoundVert's side of the path should just switche every time because it is relative to
-     * the BevVert they're connected to and we switch off travelling into and out of a BevVert at
-     * every step. */
-    edgehalf->rightv->is_profile_start = toward_bv;
-    edgehalf->leftv->is_profile_start = !toward_bv;
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("[1st loop move]\n");
-#endif
-    /* The next jump will in the opposite direction relative to the BevVert */
-    toward_bv = !toward_bv;
-
+  /* First loop starts in the away from BevVert direction and the second starts toward it */
+  for (int i = 0; i < 2; i++) {
+    edgehalf = start_edgehalf;
+    bv = start_bv;
+    toward_bv = (i == 0);
     edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
-  }
+    while (edgehalf) {
+      /* Stop if this EdgeHalf was already visited and "visit" it if it hasn't been */
+      if (edgehalf->visited_custom) {
+        break;
+      }
+      edgehalf->visited_custom = true;
 
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-  printf("[1st loop stopped]\n");
-#endif
+      /* Mark the correct BoundVert as the start of the newly visited profile
+       * We switch off traveling into and out of a BevVert every time, so also switch the
+       * orientation every time. */
+      if (i == 0) {
+        edgehalf->rightv->is_profile_start = toward_bv;
+        edgehalf->leftv->is_profile_start = !toward_bv;
+      }
+      else {
+        /* The opposite side as the other direction because we're facing the other way. */
+        edgehalf->rightv->is_profile_start = !toward_bv;
+        edgehalf->leftv->is_profile_start = toward_bv;
+      }
 
-  /* HANS-TODO: Make this into a for loop instead of two separate while loops. The only thing that
-   * changes is the initial value of toward_bv anyway */
+      /* The next jump will in the opposite direction relative to the BevVert */
+      toward_bv = !toward_bv;
 
-  /* Now travel the path in the other direction, away from the BevVert */
-  edgehalf = start_edgehalf;
-  toward_bv = false;
-  bv = start_bv;
-  edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
-  while (edgehalf) {
-    /* Stop if this EdgeHalf was already visited and "visit" it if it hasn't been */
-    if (edgehalf->visited_custom) {
-      break;
+      edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
     }
-    edgehalf->visited_custom = true;
-
-    /* Mark the correct BoundVert as the start of the newly visited profile. It's the opposite side
-     * as when we were travelling the other direction because we're facing the other way. */
-    edgehalf->rightv->is_profile_start = !toward_bv;
-    edgehalf->leftv->is_profile_start = toward_bv;
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-    printf("[2nd loop move]\n");
-#endif
-    /* The next jump will in the opposite direction relative to the BevVert */
-    toward_bv = !toward_bv;
-
-    edgehalf = next_edgehalf_bev(bp, edgehalf, toward_bv, &bv);
   }
-#if DEBUG_CUSTOM_PROFILE_ORIENTATION
-  printf("[2nd loop stopped]\n");
-#endif
 }
 
 
@@ -5336,7 +5297,8 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
       /* Add verts from each cutoff face */
       face_bmverts[i] = mesh_vert(bv->vmesh, i, 1, 0)->v;
     }
-    /* HANS-TODO: get new rep face and interpolate materials */
+    /* HANS-TODO: Get a new repface for the center face and figure out if we actually need the
+     * faces and edges arrays. */
 //    BLI_array_append(bmfaces, repface);
     bev_create_ngon(bm, face_bmverts, n_bndv, bmfaces, NULL, bmedges, bp->mat_nr, true);
 
