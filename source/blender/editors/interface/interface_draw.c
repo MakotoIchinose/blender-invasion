@@ -2340,7 +2340,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Draw the sampled points in addition to the control points if they have been created */
   pts = prwdgt->samples;
   tot_points = (uint)prwdgt->totsegments;
-  if (tot_points > 0) {
+  if (tot_points > 0 && pts) {
     GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 3.0f, 3.0f)));
     immBegin(GPU_PRIM_POINTS, tot_points);
     for (i = 0; i < tot_points; i++) {
