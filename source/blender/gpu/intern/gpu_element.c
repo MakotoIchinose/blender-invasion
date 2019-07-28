@@ -167,6 +167,9 @@ void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = v1;
+  if (builder->index_len < elem) {
+    builder->index_len = elem;
+  }
 }
 
 void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2)
@@ -179,6 +182,9 @@ void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1
   uint idx = elem * 2;
   builder->data[idx++] = v1;
   builder->data[idx++] = v2;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
 }
 
 void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3)
@@ -193,6 +199,9 @@ void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1,
   builder->data[idx++] = v1;
   builder->data[idx++] = v2;
   builder->data[idx++] = v3;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
 }
 
 void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -200,6 +209,9 @@ void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = RESTART_INDEX;
+  if (builder->index_len < elem) {
+    builder->index_len = elem;
+  }
 }
 
 void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -209,6 +221,9 @@ void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
   uint idx = elem * 2;
   builder->data[idx++] = RESTART_INDEX;
   builder->data[idx++] = RESTART_INDEX;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
 }
 
 void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -219,6 +234,9 @@ void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem)
   builder->data[idx++] = RESTART_INDEX;
   builder->data[idx++] = RESTART_INDEX;
   builder->data[idx++] = RESTART_INDEX;
+  if (builder->index_len < idx) {
+    builder->index_len = idx;
+  }
 }
 
 GPUIndexBuf *GPU_indexbuf_create_subrange(GPUIndexBuf *elem_src, uint start, uint length)
