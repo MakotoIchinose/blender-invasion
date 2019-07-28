@@ -82,6 +82,46 @@ class FILEBROWSER_HT_header(Header):
             row.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
 
+class FILEBROWSER_PT_display(Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'UI'
+    bl_label = "Display"
+    bl_options = {'HIDDEN'}
+
+    @classmethod
+    def poll(cls, context):
+        # can be None when save/reload with a file selector open
+        return context.space_data.params is not None
+
+    def draw(self, context):
+        layout = self.layout
+
+        space = context.space_data
+        params = space.params
+        is_lib_browser = params.use_library_browsing
+
+        layout.label(text="Display As")
+        layout.column().prop(params, "display_type", expand=True)
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        if params.display_type == 'THUMBNAIL':
+            layout.prop(params, "display_size", text="Size")
+        else:
+            layout.prop(params, "show_details_size", text="Size")
+            layout.prop(params, "show_details_datetime", text="Date")
+
+        layout.prop(params, "recursion_level", text="Recursions")
+
+        layout.use_property_split = False
+        layout.separator()
+
+        layout.label(text="Sort By")
+        layout.column().prop(params, "sort_method", expand=True)
+        layout.prop(params, "use_sort_invert")
+
+
 class FILEBROWSER_PT_filter(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'UI'
@@ -99,26 +139,6 @@ class FILEBROWSER_PT_filter(Panel):
         space = context.space_data
         params = space.params
         is_lib_browser = params.use_library_browsing
-
-        layout.label(text="Display Type:")
-        layout.prop(params, "display_type", expand=True, text="")
-
-        layout.label(text="Sort By:")
-        layout.prop(params, "sort_method", expand=True, text="")
-        layout.prop(params, "use_sort_invert")
-
-        layout.separator()
-
-        layout.prop(params, "show_hidden")
-
-        layout.separator()
-
-        layout.label(text="Show Details:")
-        row = layout.row(align=True)
-        row.prop(params, "show_details_size", text="Size")
-        row.prop(params, "show_details_datetime", text="Date")
-
-        layout.separator()
 
         row = layout.row(align=True)
         row.prop(params, "use_filter", text="", toggle=0)
@@ -172,14 +192,7 @@ class FILEBROWSER_PT_filter(Panel):
 
                 col.separator()
 
-        col.prop(params, "filter_search", text="", icon='VIEWZOOM')
-
-        layout.separator()
-
-        layout.label(text="Display Size:")
-        layout.prop(params, "display_size", text="")
-        layout.label(text="Recursion Level:")
-        layout.prop(params, "recursion_level", text="")
+        layout.prop(params, "show_hidden")
 
 
 class FILEBROWSER_UL_dir(UIList):
@@ -364,21 +377,36 @@ class FILEBROWSER_PT_directory_path(Panel):
         subrow.operator("file.next", text="", icon='FORWARD')
         subrow.operator("file.parent", text="", icon='FILE_PARENT')
         subrow.operator("file.refresh", text="", icon='FILE_REFRESH')
+
+        row.operator("file.directory_new", icon='NEWFOLDER', text="")
+
         # TODO proper directory input text field
 
         subrow = row.row()
         subrow.prop(params, "directory", text="")
+        
+        subrow = row.row()
+        subrow.scale_x = 0.5
+        subrow.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
         # TODO down triangle only created for UI_LAYOUT_HEADER
-        if self.is_header_visible(context) is False:
-            row.popover(
-                panel="FILEBROWSER_PT_filter",
-                text="",
-                icon='FILTER',
-            )
 
-        subrow = row.row(align=True)
-        subrow.operator("file.directory_new", icon='NEWFOLDER', text="")
+        row.prop_with_popover(
+            params,
+            "display_type",
+            panel="FILEBROWSER_PT_display",
+            text="",
+            icon_only=True,
+        )
+
+        row.prop_with_popover(
+            params,
+            "display_type",
+            panel="FILEBROWSER_PT_filter",
+            text="",
+            icon='FILTER',
+            icon_only=True,
+        )
 
 
 class FILEBROWSER_PT_file_operation(Panel):
@@ -468,6 +496,7 @@ class FILEBROWSER_MT_context_menu(Menu):
 
 classes = (
     FILEBROWSER_HT_header,
+    FILEBROWSER_PT_display,
     FILEBROWSER_PT_filter,
     FILEBROWSER_UL_dir,
     FILEBROWSER_PT_bookmarks_volumes,

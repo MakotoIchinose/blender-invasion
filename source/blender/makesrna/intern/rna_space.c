@@ -418,19 +418,19 @@ const EnumPropertyItem rna_enum_file_sort_items[] = {
     {FILE_SORT_ALPHA,
      "FILE_SORT_ALPHA",
      ICON_SORTALPHA,
-     "Sort alphabetically",
+     "Alphabet",
      "Sort the file list alphabetically"},
     {FILE_SORT_EXTENSION,
      "FILE_SORT_EXTENSION",
      ICON_SORTBYEXT,
-     "Sort by extension",
+     "Kind",
      "Sort the file list by extension/type"},
     {FILE_SORT_TIME,
      "FILE_SORT_TIME",
      ICON_SORTTIME,
-     "Sort by time",
+     "Date",
      "Sort files by modification time"},
-    {FILE_SORT_SIZE, "FILE_SORT_SIZE", ICON_SORTSIZE, "Sort by size", "Sort files by size"},
+    {FILE_SORT_SIZE, "FILE_SORT_SIZE", ICON_SORTSIZE, "Size", "Sort files by size"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -5339,7 +5339,7 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_sort_invert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", FILE_SORT_INVERT);
   RNA_def_property_ui_text(
-      prop, "Sort Inverted", "Sort items descending, from highest value to lowest");
+      prop, "Reverse Sorting", "Sort items descending, from highest value to lowest");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
   prop = RNA_def_property(srna, "use_filter_image", PROP_BOOLEAN, PROP_NONE);
