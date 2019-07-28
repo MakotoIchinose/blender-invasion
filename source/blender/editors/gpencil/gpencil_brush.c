@@ -1476,6 +1476,8 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
 }
 
 /* Apply ----------------------------------------------- */
+
+/* Get angle of the segment relative to the original segment before any transformation */
 static float gpsculpt_transform_rot_get(GP_SpaceConversion *gsc,
                                         bGPDstroke *gps_derived,
                                         bGPDspoint *pt_derived,
@@ -1510,17 +1512,18 @@ static float gpsculpt_transform_rot_get(GP_SpaceConversion *gsc,
     }
   }
 
-  /* create vectors of the stroke segment */
-  float v1a_2d[2], v2a_2d[2], v1b_2d[2], v2b_2d[2];
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived->x, v1a_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig->x, v2a_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived_prev->x, v1b_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig_prev->x, v2b_2d);
+  /* create 2D vectors of the stroke segments */
+  float v_orig_a[2], v_orig_b[2], v_derived_a[2], v_derived_b[2];
 
-  sub_v2_v2(v1a_2d, v1b_2d);
-  sub_v2_v2(v2a_2d, v2b_2d);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig->x, v_orig_a);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig_prev->x, v_orig_b);
+  sub_v2_v2(v_orig_a, v_orig_b);
 
-  return angle_v2v2(v1a_2d, v2a_2d);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived->x, v_derived_a);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived_prev->x, v_derived_b);
+  sub_v2_v2(v_derived_a, v_derived_b);
+
+  return angle_v2v2(v_orig_a, v_derived_a);
 }
 
 /* Apply brush operation to points in this stroke */
