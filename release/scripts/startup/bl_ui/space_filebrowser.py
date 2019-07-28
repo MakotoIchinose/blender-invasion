@@ -432,6 +432,40 @@ class FILEBROWSER_MT_view(Menu):
         layout.menu("INFO_MT_area")
 
 
+class FILEBROWSER_MT_context_menu(Menu):
+    bl_label = "Files Context Menu"
+
+    def draw(self, context):
+        layout = self.layout
+        st = context.space_data
+        params = st.params
+
+        layout.operator("file.previous", text="Back")
+        layout.operator("file.next", text="Forward")
+        layout.operator("file.parent", text="Go to Parent")
+        layout.operator("file.refresh", text="Refresh")
+
+        layout.separator()
+
+        layout.operator("file.filenum", text="Increase Number", icon='ADD').increment = 1
+        layout.operator("file.filenum", text="Decrease Number", icon='REMOVE').increment = -1
+
+        layout.separator()
+
+        layout.operator("file.rename", text="Rename")
+        #layout.operator("file.delete")
+        layout.operator("file.directory_new", text="New Folder")
+        layout.operator("file.bookmark_add", text="Add Bookmark")
+
+        layout.separator()
+
+        layout.prop_menu_enum(params, "display_type")
+        if params.display_type == 'THUMBNAIL':
+            layout.prop_menu_enum(params, "display_size")
+        layout.prop_menu_enum(params, "recursion_level", text="Recursions")
+        layout.prop_menu_enum(params, "sort_method")
+
+
 classes = (
     FILEBROWSER_HT_header,
     FILEBROWSER_PT_filter,
@@ -445,6 +479,7 @@ classes = (
     FILEBROWSER_PT_directory_path,
     FILEBROWSER_PT_file_operation,
     FILEBROWSER_MT_view,
+    FILEBROWSER_MT_context_menu,
 )
 
 if __name__ == "__main__":  # only for live edit.
