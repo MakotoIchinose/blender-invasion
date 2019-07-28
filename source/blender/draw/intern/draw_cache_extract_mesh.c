@@ -92,6 +92,7 @@ typedef struct MeshRenderData {
   bool use_mapped;
   bool use_hide;
   bool use_subsurf_fdots;
+  bool use_final_mesh;
 
   const ToolSettings *toolsettings;
   /* HACK not supposed to be there but it's needed. */
@@ -425,18 +426,21 @@ BLI_INLINE eMRIterType mesh_extract_iter_type(const MeshExtract *ext)
 /** \name Extract Triangles Indices
  * \{ */
 
+typedef struct MeshExtract_Tri_Data {
+  GPUIndexBufBuilder elb;
+  int *tri_mat_start;
+  int *tri_mat_end;
+} MeshExtract_Tri_Data;
+
 static void *extract_tris_init(const MeshRenderData *mr, void *UNUSED(ibo))
 {
-  /* Start fresh. */
-  MEM_SAFE_FREE(mr->cache->tri_mat_end);
-  MEM_SAFE_FREE(mr->cache->tri_mat_start);
+  MeshExtract_Tri_Data *data = MEM_callocN(sizeof(*data), __func__);
 
-  /* HACK pass per mat triangle start and end outside the extract loop. */
   size_t mat_tri_idx_size = sizeof(int) * mr->mat_len;
-  mr->cache->tri_mat_start = MEM_callocN(mat_tri_idx_size, __func__);
-  mr->cache->tri_mat_end = MEM_callocN(mat_tri_idx_size, __func__);
+  data->tri_mat_start = MEM_callocN(mat_tri_idx_size, __func__);
+  data->tri_mat_end = MEM_callocN(mat_tri_idx_size, __func__);
 
-  int *mat_tri_len = mr->cache->tri_mat_start;
+  int *mat_tri_len = data->tri_mat_start;
   /* Count how many triangle for each material. */
   if (mr->extract_type == MR_EXTRACT_BMESH) {
     BMIter iter;
@@ -464,23 +468,23 @@ static void *extract_tris_init(const MeshRenderData *mr, void *UNUSED(ibo))
     ofs += tmp;
   }
 
-  int *mat_tri_end = mr->cache->tri_mat_end;
-  memcpy(mat_tri_end, mat_tri_len, mat_tri_idx_size);
+  memcpy(data->tri_mat_end, mat_tri_len, mat_tri_idx_size);
 
   int visible_tri_tot = ofs;
-  GPUIndexBufBuilder *elb = MEM_callocN(sizeof(*elb), __func__);
-  GPU_indexbuf_init(elb, GPU_PRIM_TRIS, visible_tri_tot, mr->loop_len);
-  return elb;
+  GPU_indexbuf_init(&data->elb, GPU_PRIM_TRIS, visible_tri_tot, mr->loop_len);
+
+  return data;
 }
 
-static void extract_tris_looptri_bmesh(const MeshRenderData *mr,
+static void extract_tris_looptri_bmesh(const MeshRenderData *UNUSED(mr),
                                        int UNUSED(t),
                                        BMLoop **elt,
-                                       void *elb)
+                                       void *_data)
 {
   if (!BM_elem_flag_test(elt[0]->f, BM_ELEM_HIDDEN)) {
-    int *mat_tri_ofs = mr->cache->tri_mat_end;
-    GPU_indexbuf_set_tri_verts(elb,
+    MeshExtract_Tri_Data *data = _data;
+    int *mat_tri_ofs = data->tri_mat_end;
+    GPU_indexbuf_set_tri_verts(&data->elb,
                                mat_tri_ofs[elt[0]->f->mat_nr]++,
                                BM_elem_index_get(elt[0]),
                                BM_elem_index_get(elt[1]),
@@ -491,20 +495,36 @@ static void extract_tris_looptri_bmesh(const MeshRenderData *mr,
 static void extract_tris_looptri_mesh(const MeshRenderData *mr,
                                       int UNUSED(t),
                                       const MLoopTri *mlt,
-                                      void *elb)
+                                      void *_data)
 {
   const MPoly *mpoly = &mr->mpoly[mlt->poly];
   if (!(mpoly->flag & ME_HIDE)) {
-    int *mat_tri_ofs = mr->cache->tri_mat_end;
+    MeshExtract_Tri_Data *data = _data;
+    int *mat_tri_ofs = data->tri_mat_end;
     GPU_indexbuf_set_tri_verts(
-        elb, mat_tri_ofs[mpoly->mat_nr]++, mlt->tri[0], mlt->tri[1], mlt->tri[2]);
+        &data->elb, mat_tri_ofs[mpoly->mat_nr]++, mlt->tri[0], mlt->tri[1], mlt->tri[2]);
   }
 }
 
-static void extract_tris_finish(const MeshRenderData *UNUSED(mr), void *ibo, void *elb)
+static void extract_tris_finish(const MeshRenderData *mr, void *ibo, void *_data)
 {
-  GPU_indexbuf_build_in_place(elb, ibo);
-  MEM_freeN(elb);
+  MeshExtract_Tri_Data *data = _data;
+  GPU_indexbuf_build_in_place(&data->elb, ibo);
+  /* HACK Create ibo subranges and assign them to each GPUBatch. */
+  if (mr->use_final_mesh && mr->cache->surface_per_mat && mr->cache->surface_per_mat[0]) {
+    BLI_assert(mr->cache->surface_per_mat[0]->elem == ibo);
+    for (int i = 0; i < mr->mat_len; ++i) {
+      /* Multiply by 3 because these are triangle indices. */
+      int start = data->tri_mat_start[i] * 3;
+      int len = data->tri_mat_end[i] * 3 - data->tri_mat_start[i] * 3;
+      GPUIndexBuf *sub_ibo = GPU_indexbuf_create_subrange(ibo, start, len);
+      /* WARNING: We modify the GPUBatch here! */
+      GPU_batch_elembuf_set(mr->cache->surface_per_mat[i], sub_ibo, true);
+    }
+  }
+  MEM_freeN(data->tri_mat_start);
+  MEM_freeN(data->tri_mat_end);
+  MEM_freeN(data);
 }
 
 const MeshExtract extract_tris = {extract_tris_init,
@@ -555,12 +575,10 @@ static void extract_lines_loop_mesh(const MeshRenderData *mr,
                                     const MPoly *mpoly,
                                     void *elb)
 {
-  if ((mr->extract_type == MR_EXTRACT_MAPPED) && (mr->e_origindex[mloop->e] == ORIGINDEX_NONE)) {
-    GPU_indexbuf_set_line_restart(elb, mloop->e);
-    return;
-  }
   const MEdge *medge = &mr->medge[mloop->e];
-  if (!(mr->use_hide && (medge->flag & ME_HIDE))) {
+  if (!((mr->use_hide && (medge->flag & ME_HIDE)) ||
+        ((mr->extract_type == MR_EXTRACT_MAPPED) &&
+         (mr->e_origindex[mloop->e] == ORIGINDEX_NONE)))) {
     int loopend = mpoly->totloop + mpoly->loopstart - 1;
     int other_loop = (l == loopend) ? mpoly->loopstart : (l + 1);
     GPU_indexbuf_set_line_verts(elb, mloop->e, l, other_loop);
@@ -572,10 +590,13 @@ static void extract_lines_loop_mesh(const MeshRenderData *mr,
 
 static void extract_lines_ledge_bmesh(const MeshRenderData *mr, int e, BMEdge *eed, void *elb)
 {
+  int ledge_idx = mr->edge_len + e;
   if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
     int l = mr->loop_len + e * 2;
-    int ledge_idx = mr->edge_len + e;
     GPU_indexbuf_set_line_verts(elb, ledge_idx, l, l + 1);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(elb, ledge_idx);
   }
   /* Don't render the edge twice. */
   GPU_indexbuf_set_line_restart(elb, BM_elem_index_get(eed));
@@ -588,14 +609,14 @@ static void extract_lines_ledge_mesh(const MeshRenderData *mr,
 {
   int ledge_idx = mr->edge_len + e;
   int edge_idx = mr->ledges[e];
-  if ((mr->extract_type == MR_EXTRACT_MAPPED) && (mr->e_origindex[edge_idx] == ORIGINDEX_NONE)) {
-    GPU_indexbuf_set_line_restart(elb, ledge_idx);
-    GPU_indexbuf_set_line_restart(elb, edge_idx);
-    return;
-  }
-  if (!(mr->use_hide && (medge->flag & ME_HIDE))) {
+  if (!((mr->use_hide && (medge->flag & ME_HIDE)) ||
+        ((mr->extract_type == MR_EXTRACT_MAPPED) &&
+         (mr->e_origindex[edge_idx] == ORIGINDEX_NONE)))) {
     int l = mr->loop_len + e * 2;
     GPU_indexbuf_set_line_verts(elb, ledge_idx, l, l + 1);
+  }
+  else {
+    GPU_indexbuf_set_line_restart(elb, ledge_idx);
   }
   /* Don't render the edge twice. */
   GPU_indexbuf_set_line_restart(elb, edge_idx);
@@ -603,16 +624,18 @@ static void extract_lines_ledge_mesh(const MeshRenderData *mr,
 
 static void extract_lines_finish(const MeshRenderData *mr, void *ibo, void *elb)
 {
-  if (mr->edge_loose_len > 0) {
-    mr->cache->edge_loose_start = mr->edge_len;
-    mr->cache->edge_loose_end = mr->edge_len + mr->edge_loose_len;
-  }
-  else {
-    mr->cache->edge_loose_start = 0;
-    mr->cache->edge_loose_end = 0;
-  }
   GPU_indexbuf_build_in_place(elb, ibo);
   MEM_freeN(elb);
+  /* HACK Create ibo subranges and assign them to GPUBatch. */
+  if (mr->use_final_mesh && mr->cache->batch.loose_edges) {
+    BLI_assert(mr->cache->batch.loose_edges->elem == ibo);
+    /* Multiply by 2 because these are edges indices. */
+    int start = mr->edge_len * 2;
+    int len = mr->edge_loose_len * 2;
+    GPUIndexBuf *sub_ibo = GPU_indexbuf_create_subrange(ibo, start, len);
+    /* WARNING: We modify the GPUBatch here! */
+    GPU_batch_elembuf_set(mr->cache->batch.loose_edges, sub_ibo, true);
+  }
 }
 
 const MeshExtract extract_lines = {extract_lines_init,
@@ -658,11 +681,9 @@ BLI_INLINE void vert_set_mesh(GPUIndexBufBuilder *elb,
                               int loop)
 {
   const MVert *mvert = &mr->mvert[vert_idx];
-  if ((mr->extract_type == MR_EXTRACT_MAPPED) && (mr->v_origindex[vert_idx] == ORIGINDEX_NONE)) {
-    GPU_indexbuf_set_point_restart(elb, vert_idx);
-    return;
-  }
-  if (!(mr->use_hide && (mvert->flag & ME_HIDE))) {
+  if (!((mr->use_hide && (mvert->flag & ME_HIDE)) ||
+        ((mr->extract_type == MR_EXTRACT_MAPPED) &&
+         (mr->v_origindex[vert_idx] == ORIGINDEX_NONE)))) {
     GPU_indexbuf_set_point_vert(elb, vert_idx, loop);
   }
   else {
@@ -3629,6 +3650,7 @@ void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
   mr->cache = cache; /* HACK */
   mr->use_hide = use_hide;
   mr->use_subsurf_fdots = use_subsurf_fdots;
+  mr->use_final_mesh = do_final;
 
 #ifdef DEBUG_TIME
   double rdata_end = PIL_check_seconds_timer();

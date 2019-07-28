@@ -201,10 +201,6 @@ typedef struct MeshBatchCache {
 
   GPUBatch **surface_per_mat;
 
-  /* HACK: Temp copy to init the subrange IBOs. */
-  int *tri_mat_start, *tri_mat_end;
-  int edge_loose_start, edge_loose_end;
-
   /* arrays of bool uniform names (and value) that will be use to
    * set srgb conversion for auto attributes.*/
   char *auto_layer_names;

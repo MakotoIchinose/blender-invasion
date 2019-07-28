@@ -610,9 +610,6 @@ static void mesh_batch_cache_clear(Mesh *me)
 
   mesh_batch_cache_discard_uvedit(cache);
 
-  MEM_SAFE_FREE(cache->tri_mat_end);
-  MEM_SAFE_FREE(cache->tri_mat_start);
-
   cache->batch_ready = 0;
 
   drw_mesh_weight_state_clear(&cache->weight_state);
@@ -1270,27 +1267,6 @@ void DRW_mesh_batch_cache_create_requested(
 
   mesh_buffer_cache_create_requested(
       cache, cache->final, me, true, use_subsurf_fdots, &cache->cd_used, ts, use_hide);
-
-  /* Init index buffer subranges. */
-  if (cache->surface_per_mat[0] && (cache->surface_per_mat[0]->elem == cache->final.ibo.tris)) {
-    BLI_assert(cache->tri_mat_start && cache->tri_mat_end);
-    for (int i = 0; i < cache->mat_len; ++i) {
-      /* Multiply by 3 because these are triangle indices. */
-      int start = cache->tri_mat_start[i] * 3;
-      int len = cache->tri_mat_end[i] * 3 - cache->tri_mat_start[i] * 3;
-      GPUIndexBuf *sub_ibo = GPU_indexbuf_create_subrange(cache->final.ibo.tris, start, len);
-      GPU_batch_elembuf_set(cache->surface_per_mat[i], sub_ibo, true);
-    }
-  }
-  if (cache->batch.loose_edges && (cache->batch.loose_edges->elem == cache->final.ibo.lines)) {
-    for (int i = 0; i < cache->mat_len; ++i) {
-      /* Multiply by 2 because these are triangle indices. */
-      int start = cache->edge_loose_start * 2;
-      int len = cache->edge_loose_end * 2 - cache->edge_loose_start * 2;
-      GPUIndexBuf *sub_ibo = GPU_indexbuf_create_subrange(cache->final.ibo.lines, start, len);
-      GPU_batch_elembuf_set(cache->batch.loose_edges, sub_ibo, true);
-    }
-  }
 
 #ifdef DEBUG
 check:
