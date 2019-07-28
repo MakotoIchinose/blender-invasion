@@ -35,51 +35,10 @@ class FILEBROWSER_HT_header(Header):
         layout.menu("FILEBROWSER_MT_view")
 
         # can be None when save/reload with a file selector open
-        if params:
-            is_lib_browser = params.use_library_browsing
-
-            layout.prop(params, "display_type", expand=True, text="")
-            layout.prop(params, "sort_method", expand=True, text="")
-            layout.prop(params, "use_sort_invert")
-            layout.prop(params, "show_hidden", text="", icon='FILE_HIDDEN')
-
-            row = layout.row(align=True)
-            row.prop(params, "show_details_size", text="Size")
-            row.prop(params, "show_details_datetime", text="Date")
 
         layout.separator_spacer()
 
         layout.template_running_jobs()
-
-        if params:
-            layout.prop(params, "use_filter", text="", icon='FILTER')
-
-            row = layout.row(align=True)
-            row.active = params.use_filter
-            row.prop(params, "use_filter_folder", text="")
-
-            if params.filter_glob:
-                # if st.active_operator and hasattr(st.active_operator, "filter_glob"):
-                #     row.prop(params, "filter_glob", text="")
-                row.label(text=params.filter_glob)
-            else:
-                row.prop(params, "use_filter_blender", text="")
-                row.prop(params, "use_filter_backup", text="")
-                row.prop(params, "use_filter_image", text="")
-                row.prop(params, "use_filter_movie", text="")
-                row.prop(params, "use_filter_script", text="")
-                row.prop(params, "use_filter_font", text="")
-                row.prop(params, "use_filter_sound", text="")
-                row.prop(params, "use_filter_text", text="")
-
-            if is_lib_browser:
-                row.prop(params, "use_filter_blendid", text="")
-                if params.use_filter_blendid:
-                    row.separator()
-                    row.prop(params, "filter_id_category", text="")
-
-            row.separator()
-            row.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
 
 class FILEBROWSER_PT_display(Panel):
@@ -432,7 +391,11 @@ class FILEBROWSER_PT_file_operation(Panel):
         sub.prop(params, "filename", text="")
         sub = row.row()
         sub.ui_units_x = 5
-        # TODO change to "Open Directory"/"Parent Directory" based on highlight.
+
+        # subsub = sub.row(align=True)
+        # subsub.operator("file.filenum", text="", icon='ADD').increment = 1
+        # subsub.operator("file.filenum", text="", icon='REMOVE').increment = -1
+
         subsub = sub.row()
         subsub.active_default = True
         subsub.operator("FILE_OT_execute", text=params.title)
@@ -447,7 +410,7 @@ class FILEBROWSER_MT_view(Menu):
         st = context.space_data
         params = st.params
 
-        layout.prop(st, "show_region_toolbar")
+        layout.prop(st, "show_region_toolbar", text="Source List")
         layout.prop(st, "show_region_ui", text="File Path")
 
         layout.separator()
