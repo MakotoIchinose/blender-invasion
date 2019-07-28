@@ -379,6 +379,8 @@ class FILEBROWSER_PT_file_operation(Panel):
         return context.space_data.active_operator
 
     def draw(self, context):
+        import sys
+
         layout = self.layout
         space = context.space_data
         params = space.params
@@ -396,10 +398,15 @@ class FILEBROWSER_PT_file_operation(Panel):
         # subsub.operator("file.filenum", text="", icon='ADD').increment = 1
         # subsub.operator("file.filenum", text="", icon='REMOVE').increment = -1
 
+
+        # organize buttons according to the OS standard
+        if sys.platform != "win":
+            sub.operator("FILE_OT_cancel", text="Cancel")
         subsub = sub.row()
         subsub.active_default = True
         subsub.operator("FILE_OT_execute", text=params.title)
-        sub.operator("FILE_OT_cancel", text="Cancel")
+        if sys.platform == "win":
+            sub.operator("FILE_OT_cancel", text="Cancel")
 
 
 class FILEBROWSER_MT_view(Menu):
