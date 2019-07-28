@@ -425,11 +425,7 @@ const EnumPropertyItem rna_enum_file_sort_items[] = {
      ICON_SORTBYEXT,
      "Kind",
      "Sort the file list by extension/type"},
-    {FILE_SORT_TIME,
-     "FILE_SORT_TIME",
-     ICON_SORTTIME,
-     "Date",
-     "Sort files by modification time"},
+    {FILE_SORT_TIME, "FILE_SORT_TIME", ICON_SORTTIME, "Date", "Sort files by modification time"},
     {FILE_SORT_SIZE, "FILE_SORT_SIZE", ICON_SORTSIZE, "Size", "Sort files by size"},
     {0, NULL, 0, NULL, NULL},
 };
@@ -5144,12 +5140,12 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   static const EnumPropertyItem file_display_items[] = {
       {FILE_VERTICALDISPLAY,
        "LIST_VERTICAL",
-       ICON_SHORTDISPLAY, // * Name of deprecated Short List*
+       ICON_LONGDISPLAY,
        "Vertical List",
        "Display files as a vertical list"},
       {FILE_HORIZONTALDISPLAY,
        "LIST_HORIZONTAL",
-       ICON_LONGDISPLAY, // * Name of deprecated Long List*
+       ICON_SHORTDISPLAY,
        "Horizontal List",
        "Display files as a horizontal list"},
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
