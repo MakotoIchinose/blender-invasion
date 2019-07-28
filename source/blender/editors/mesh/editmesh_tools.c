@@ -4593,7 +4593,8 @@ static int edbm_fill_grid_exec(bContext *C, wmOperator *op)
 
       /* Only reuse on redo because these settings need to match the current selection.
        * We never want to use them on other geometry, repeat last for eg, see: T60777. */
-      if ((op->flag & OP_IS_REPEAT_LAST) == 0 && RNA_property_is_set(op->ptr, prop_span)) {
+      if (((op->flag & OP_IS_INVOKE) || (op->flag & OP_IS_REPEAT_LAST) == 0) &&
+          RNA_property_is_set(op->ptr, prop_span)) {
         span = RNA_property_int_get(op->ptr, prop_span);
         span = min_ii(span, (clamp / 2) - 1);
         calc_span = false;
@@ -7418,7 +7419,7 @@ void MESH_OT_symmetry_snap(struct wmOperatorType *ot)
 #ifdef WITH_FREESTYLE
 
 /* -------------------------------------------------------------------- */
-/** \name Mark Edge (FreeStyle) Operator
+/** \name Mark Edge (Freestyle) Operator
  * \{ */
 
 static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
@@ -7498,7 +7499,7 @@ void MESH_OT_mark_freestyle_edge(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Mark Face (FreeStyle) Operator
+/** \name Mark Face (Freestyle) Operator
  * \{ */
 
 static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)

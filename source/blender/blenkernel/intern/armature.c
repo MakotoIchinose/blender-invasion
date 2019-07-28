@@ -239,6 +239,35 @@ bArmature *BKE_armature_copy(Main *bmain, const bArmature *arm)
   return arm_copy;
 }
 
+static void copy_bone_transform(Bone *bone_dst, const Bone *bone_src)
+{
+  bone_dst->roll = bone_src->roll;
+
+  copy_v3_v3(bone_dst->head, bone_src->head);
+  copy_v3_v3(bone_dst->tail, bone_src->tail);
+
+  copy_m3_m3(bone_dst->bone_mat, bone_src->bone_mat);
+
+  copy_v3_v3(bone_dst->arm_head, bone_src->arm_head);
+  copy_v3_v3(bone_dst->arm_tail, bone_src->arm_tail);
+
+  copy_m4_m4(bone_dst->arm_mat, bone_src->arm_mat);
+
+  bone_dst->arm_roll = bone_src->arm_roll;
+}
+
+void BKE_armature_copy_bone_transforms(bArmature *armature_dst, const bArmature *armature_src)
+{
+  Bone *bone_dst = armature_dst->bonebase.first;
+  const Bone *bone_src = armature_src->bonebase.first;
+  while (bone_dst != NULL) {
+    BLI_assert(bone_src != NULL);
+    copy_bone_transform(bone_dst, bone_src);
+    bone_dst = bone_dst->next;
+    bone_src = bone_src->next;
+  }
+}
+
 static Bone *get_named_bone_bonechildren(ListBase *lb, const char *name)
 {
   Bone *curBone, *rbone;
@@ -322,6 +351,24 @@ bool BKE_armature_bone_flag_test_recursive(const Bone *bone, int flag)
   else {
     return false;
   }
+}
+
+static void armature_refresh_layer_used_recursive(bArmature *arm, ListBase *bones)
+{
+  for (Bone *bone = bones->first; bone; bone = bone->next) {
+    arm->layer_used |= bone->layer;
+    armature_refresh_layer_used_recursive(arm, &bone->childbase);
+  }
+}
+
+/* Update the layers_used variable after bones are moved between layer
+ * NOTE: Used to be done in drawing code in 2.7, but that won't work with
+ *       Copy-on-Write, as drawing uses evaluated copies.
+ */
+void BKE_armature_refresh_layer_used(bArmature *arm)
+{
+  arm->layer_used = 0;
+  armature_refresh_layer_used_recursive(arm, &arm->bonebase);
 }
 
 /* Finds the best possible extension to the name on a particular axis. (For renaming, check for

@@ -1434,7 +1434,7 @@ static void proxy_endjob(void *pjv)
 
   if (pj->clip->source == MCLIP_SRC_MOVIE) {
     /* Timecode might have changed, so do a full reload to deal with this. */
-    BKE_movieclip_reload(pj->main, pj->clip);
+    DEG_id_tag_update(&pj->clip->id, ID_RECALC_SOURCE);
   }
   else {
     /* For image sequences we'll preserve original cache. */
@@ -1514,6 +1514,11 @@ static int mode_set_exec(bContext *C, wmOperator *op)
   int mode = RNA_enum_get(op->ptr, "mode");
 
   sc->mode = mode;
+
+  if (sc->mode == SC_MODE_MASKEDIT && sc->view != SC_VIEW_CLIP) {
+    /* Make sure we are in the right view for mask editing */
+    sc->view = SC_VIEW_CLIP;
+  }
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_CLIP, NULL);
 

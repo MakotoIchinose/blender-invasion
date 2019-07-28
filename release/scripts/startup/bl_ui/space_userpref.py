@@ -40,22 +40,9 @@ class USERPREF_HT_header(Header):
 
         row = layout.row()
         row.menu("USERPREF_MT_save_load", text="", icon='COLLAPSEMENU')
-        # Use '_is_startup' so once factory settings are loaded
-        # this display option will show, since it's confusing if disabling
-        # the option makes it dissapiers.
-        if prefs.use_preferences_save:
-            use_userpref_skip_save_on_exit = bpy.app.use_userpref_skip_save_on_exit
-            if use_userpref_skip_save_on_exit or getattr(USERPREF_HT_header, "_is_startup", False):
-                USERPREF_HT_header._is_startup = True
 
-                sub = row.row(align=True)
-                sub.alignment = 'LEFT'
-                props = sub.operator(
-                    "preferences.autosave_override_toggle",
-                    text="Skip Auto-Save",
-                    emboss=False,
-                    icon='CHECKBOX_HLT' if use_userpref_skip_save_on_exit else 'CHECKBOX_DEHLT',
-                )
+        if prefs.use_preferences_save and (not bpy.app.use_userpref_skip_save_on_exit):
+            pass
         else:
             sub = row.row(align=True)
             sub.active = prefs.is_dirty
@@ -103,13 +90,13 @@ class USERPREF_MT_save_load(Menu):
 
         layout.operator_context = 'EXEC_AREA'
         if prefs.use_preferences_save:
-            layout.operator("wm.save_userpref", text="Save Current State")
+            layout.operator("wm.save_userpref", text="Save Preferences")
         sub_revert = layout.column(align=True)
         sub_revert.active = prefs.is_dirty
-        sub_revert.operator("wm.read_userpref", text="Revert to Saved")
+        sub_revert.operator("wm.read_userpref", text="Revert to Saved Preferences")
 
         layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.read_factory_userpref", text="Load Factory Settings")
+        layout.operator("wm.read_factory_userpref", text="Load Factory Preferences")
 
 
 class USERPREF_PT_save_preferences(Panel):
@@ -1713,6 +1700,7 @@ class USERPREF_PT_addons(Panel):
     def draw(self, context):
         import os
         import addon_utils
+        from bl_ui_utils.bug_report_url import url_prefill_from_blender
 
         layout = self.layout
 
@@ -1892,7 +1880,7 @@ class USERPREF_PT_addons(Panel):
                                 "wm.url_open", text="Report a Bug", icon='URL',
                             ).url = info.get(
                                 "tracker_url",
-                                "https://developer.blender.org/maniphest/task/edit/form/2",
+                                url_prefill_from_blender(info),
                             )
                         if user_addon:
                             sub.operator(

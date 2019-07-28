@@ -109,8 +109,9 @@ static void set_operation_types(SpaceOutliner *soops,
         }
       }
       else {
-        int idcode = GS(tselem->id->name);
-        switch (idcode) {
+        const int idcode = (int)GS(tselem->id->name);
+        bool is_standard_id = false;
+        switch ((ID_Type)idcode) {
           case ID_SCE:
             *scenelevel = 1;
             break;
@@ -134,21 +135,47 @@ static void set_operation_types(SpaceOutliner *soops,
           case ID_KE:
           case ID_WO:
           case ID_AC:
-          case ID_NLA:
           case ID_TXT:
           case ID_GR:
           case ID_LS:
           case ID_LI:
-            if (*idlevel == 0) {
-              *idlevel = idcode;
-            }
-            else if (*idlevel != idcode) {
-              *idlevel = -1;
-            }
-            if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
-              *datalevel = 0;
-            }
+          case ID_VF:
+          case ID_NT:
+          case ID_BR:
+          case ID_PA:
+          case ID_GD:
+          case ID_MC:
+          case ID_MSK:
+          case ID_PAL:
+          case ID_PC:
+          case ID_CF:
+          case ID_WS:
+          case ID_LP:
+            is_standard_id = true;
             break;
+          case ID_WM:
+          case ID_SCR:
+            /* Those are ignored here. */
+            /* Note: while Screens should be manageable here, deleting a screen used by a workspace
+             * will cause crashes when trying to use that workspace, so for now let's play minimal,
+             * safe change. */
+            break;
+        }
+        if (idcode == ID_NLA) {
+          /* Fake one, not an actual ID type... */
+          is_standard_id = true;
+        }
+
+        if (is_standard_id) {
+          if (*idlevel == 0) {
+            *idlevel = idcode;
+          }
+          else if (*idlevel != idcode) {
+            *idlevel = -1;
+          }
+          if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
+            *datalevel = 0;
+          }
         }
       }
     }
@@ -721,6 +748,7 @@ static void clear_animdata_cb(int UNUSED(event),
                               void *UNUSED(arg))
 {
   BKE_animdata_free(tselem->id, true);
+  DEG_id_tag_update(tselem->id, ID_RECALC_ANIMATION);
 }
 
 static void unlinkact_animdata_cb(int UNUSED(event),
@@ -730,6 +758,7 @@ static void unlinkact_animdata_cb(int UNUSED(event),
 {
   /* just set action to NULL */
   BKE_animdata_set_action(NULL, tselem->id, NULL);
+  DEG_id_tag_update(tselem->id, ID_RECALC_ANIMATION);
 }
 
 static void cleardrivers_animdata_cb(int UNUSED(event),
@@ -741,6 +770,7 @@ static void cleardrivers_animdata_cb(int UNUSED(event),
 
   /* just free drivers - stored as a list of F-Curves */
   free_fcurves(&iat->adt->drivers);
+  DEG_id_tag_update(tselem->id, ID_RECALC_ANIMATION);
 }
 
 static void refreshdrivers_animdata_cb(int UNUSED(event),
@@ -1873,7 +1903,6 @@ static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
   eOutliner_AnimDataOps event;
-  short updateDeps = 0;
 
   /* check for invalid states */
   if (soops == NULL) {
@@ -1917,7 +1946,6 @@ static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
 
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, NULL);
       // ED_undo_push(C, "Refresh Drivers"); /* no undo needed - shouldn't have any impact? */
-      updateDeps = 1;
       break;
 
     case OUTLINER_ANIMOP_CLEAR_DRV:
@@ -1926,7 +1954,6 @@ static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
 
       WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, NULL);
       ED_undo_push(C, "Clear Drivers");
-      updateDeps = 1;
       break;
 
     default:  // invalid
@@ -1934,10 +1961,7 @@ static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
   }
 
   /* update dependencies */
-  if (updateDeps) {
-    /* rebuild depsgraph for the new deps */
-    DEG_relations_tag_update(CTX_data_main(C));
-  }
+  DEG_relations_tag_update(CTX_data_main(C));
 
   return OPERATOR_FINISHED;
 }
