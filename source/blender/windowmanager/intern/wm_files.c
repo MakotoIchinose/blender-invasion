@@ -2308,7 +2308,7 @@ static void wm_open_mainfile_ui(bContext *UNUSED(C), wmOperator *op)
 
 void WM_OT_open_mainfile(wmOperatorType *ot)
 {
-  ot->name = "Open Blender File";
+  ot->name = "Open";
   ot->idname = "WM_OT_open_mainfile";
   ot->description = "Open a Blender file";
 
@@ -2624,7 +2624,7 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  ot->name = "Save As Blender File";
+  ot->name = "Save As";
   ot->idname = "WM_OT_save_as_mainfile";
   ot->description = "Save the current file in the desired location";
 
