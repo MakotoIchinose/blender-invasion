@@ -159,7 +159,16 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     BMIter viter;
     int i = 0;
     BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
-      copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
+      if (!equals_v3v3(v->co, clmd->clothObject->verts[i].x)) {
+        printf("copying %f %f %f into %f %f %f\n",
+               clmd->clothObject->verts[i].x[0],
+               clmd->clothObject->verts[i].x[1],
+               clmd->clothObject->verts[i].x[2],
+               v->co[0],
+               v->co[1],
+               v->co[2]);
+        copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
+      }
       cvm[v] = clmd->clothObject->verts[i];
       cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
     }
@@ -211,7 +220,7 @@ static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex 
   if ((v1->flags & CLOTH_VERT_FLAG_NOSELFCOLL) && (v2->flags & CLOTH_VERT_FLAG_NOSELFCOLL)) {
     new_vert.flags |= CLOTH_VERT_FLAG_NOSELFCOLL;
   }
-  /* We don't want the mean cloth vert to be preserved, only the
+  /* We don't want the mean cloth vert to be preserved (CLOTH_VERT_FLAG_PRESERVE), only the
    * starting vertices */
 
   add_v3_v3v3(new_vert.v, v1->v, v2->v);
@@ -267,9 +276,10 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   /* No need to worry about cloth->verts, it has been updated during
    * reindexing */
 
-  if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
-    return mesh_result;
-  }
+  /* if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) { */
+  /*   printf("returning because mvert_num_prev == mvert_num"); */
+  /*   return mesh_result; */
+  /* } */
 
   // Free the springs.
   if (cloth->springs != NULL) {
@@ -2262,3 +2272,5 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 }
 
 /* TODO(Ish): update the BM_ELEM_TAG on the edges */
+/* TODO(Ish): the new vertices being are not part of the
+ * collision anymore */
