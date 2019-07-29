@@ -778,6 +778,90 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
   }
 }
 
+/* Merge by distance ------------------------------------- */
+
+/* Reduce a series of points when the distance is below a threshold.
+ * Special case for first and last points (both are keeped) for other points,
+ * the merge point is interpolated between points.
+ *
+ */
+void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
+                                       bGPDstroke *gps,
+                                       const float threshold,
+                                       const bool use_unselected)
+{
+  float tagged = false;
+
+  /* Use square distance to speed up loop */
+  const float th_square = threshold * threshold;
+
+  /* Need to have something to merge. */
+  if (gps->totpoints < 2) {
+    return;
+  }
+  int i = 0;
+  int step = 1;
+  while ((i < gps->totpoints - 1) && (i + step < gps->totpoints)) {
+    bGPDspoint *pt = &gps->points[i];
+    if (pt->flag & GP_SPOINT_TAG) {
+      i++;
+      step = 1;
+      continue;
+    }
+
+    bGPDspoint *pt_next = &gps->points[i + step];
+    /* Do not recalc tagged points. */
+    if (pt_next->flag & GP_SPOINT_TAG) {
+      step++;
+      continue;
+    }
+    /* Check if contiguous points are selected. */
+    if (!use_unselected) {
+      if (((pt->flag & GP_SPOINT_SELECT) == 0) || ((pt_next->flag & GP_SPOINT_SELECT) == 0)) {
+        i++;
+        step = 1;
+        continue;
+      }
+    }
+
+    float len_square = len_squared_v3v3(&pt->x, &pt_next->x);
+    if (len_square <= th_square) {
+      tagged = true;
+      /* Interpolated factor depends if extremes or mid points. By default mid point. */
+      float factor = 0.5f;
+      /* For first point use, 1st extreme. */
+      if (i == 0) {
+        factor = 0.0f;
+      }
+      /* For last point use, 2nd extreme. */
+      else if (i == gps->totpoints - 2) {
+        factor = 1.0f;
+      }
+      /* Move first point to interpolated point. */
+      interp_v3_v3v3(&pt->x, &pt->x, &pt_next->x, factor);
+
+      if (i != gps->totpoints - 1) {
+        /* Tag second point for delete. */
+        pt_next->flag |= GP_SPOINT_TAG;
+      }
+      else {
+        pt->flag |= GP_SPOINT_TAG;
+      }
+      /* Jump to next pair of points, keeping first point segment equals.*/
+      step++;
+    }
+    else {
+      /* Analyze next point. */
+      i++;
+      step = 1;
+    }
+  }
+  /* Dissolve tagged points */
+  if (tagged) {
+    BKE_gpencil_dissolve_points(gpf, gps, GP_SPOINT_TAG);
+  }
+}
+
 /* Copy frame but do not assign new memory */
 static void gpencil_copy_frame(Object *ob, bGPDframe *gpf, bGPDframe *derived_gpf)
 {
