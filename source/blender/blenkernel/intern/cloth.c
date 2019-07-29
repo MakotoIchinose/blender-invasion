@@ -563,6 +563,10 @@ void cloth_free_modifier(ClothModifierData *clmd)
       BM_mesh_free(cloth->bm);
       cloth->bm = NULL;
     }
+    if (cloth->bm_prev) {
+      BM_mesh_free(cloth->bm_prev);
+      cloth->bm_prev = NULL;
+    }
 
     // Free the verts.
     if (cloth->verts != NULL) {
@@ -648,6 +652,10 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
     if (cloth->bm) {
       BM_mesh_free(cloth->bm);
       cloth->bm = NULL;
+    }
+    if (cloth->bm_prev) {
+      BM_mesh_free(cloth->bm_prev);
+      cloth->bm_prev = NULL;
     }
 
     BPH_cloth_solver_free(clmd);
@@ -894,6 +902,7 @@ static int cloth_from_object(
     clmd->clothObject->old_solver_type = 255;
     clmd->clothObject->edgeset = NULL;
     clmd->clothObject->bm = NULL;
+    clmd->clothObject->bm_prev = NULL;
   }
   else if (!clmd->clothObject) {
     modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");

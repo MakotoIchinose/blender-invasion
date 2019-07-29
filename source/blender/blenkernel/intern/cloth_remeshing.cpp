@@ -140,25 +140,25 @@ static void cloth_remeshing_init_bmesh(Object *ob,
                                        Mesh *mesh,
                                        ClothVertMap &cvm)
 {
-  if (clmd->sim_parms->remeshing_reset || !clmd->clothObject->bm) {
+  if (clmd->sim_parms->remeshing_reset || !clmd->clothObject->bm_prev) {
     cloth_to_mesh(ob, clmd, mesh);
 
     CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
-    if (clmd->clothObject->bm) {
-      BM_mesh_free(clmd->clothObject->bm);
-      clmd->clothObject->bm = NULL;
+    if (clmd->clothObject->bm_prev) {
+      BM_mesh_free(clmd->clothObject->bm_prev);
+      clmd->clothObject->bm_prev = NULL;
     }
     struct BMeshCreateParams bmesh_create_params;
     bmesh_create_params.use_toolflags = 0;
     struct BMeshFromMeshParams bmesh_from_mesh_params;
     bmesh_from_mesh_params.calc_face_normal = true;
     bmesh_from_mesh_params.cd_mask_extra = cddata_masks;
-    clmd->clothObject->bm = BKE_mesh_to_bmesh_ex(
+    clmd->clothObject->bm_prev = BKE_mesh_to_bmesh_ex(
         mesh, &bmesh_create_params, &bmesh_from_mesh_params);
     BMVert *v;
     BMIter viter;
     int i = 0;
-    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
       if (!equals_v3v3(v->co, clmd->clothObject->verts[i].x)) {
         printf("copying %f %f %f into %f %f %f\n",
                clmd->clothObject->verts[i].x[0],
@@ -178,9 +178,9 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     /*   BM_elem_flag_enable(e, BM_ELEM_TAG); */
     /* } */
 
-    BM_mesh_normals_update(clmd->clothObject->bm);
+    BM_mesh_normals_update(clmd->clothObject->bm_prev);
 
-    BM_mesh_triangulate(clmd->clothObject->bm,
+    BM_mesh_triangulate(clmd->clothObject->bm_prev,
                         MOD_TRIANGULATE_QUAD_SHORTEDGE,
                         MOD_TRIANGULATE_NGON_BEAUTY,
                         4,
@@ -188,18 +188,19 @@ static void cloth_remeshing_init_bmesh(Object *ob,
                         NULL,
                         NULL,
                         NULL);
-    printf("remeshing_reset has been set to true or bm does not exist\n");
+    printf("remeshing_reset has been set to true or bm_prev does not exist\n");
   }
   else {
     BMVert *v;
     BMIter viter;
     int i = 0;
-    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH, i) {
+    BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
       copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       cvm[v] = clmd->clothObject->verts[i];
     }
   }
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
+  clmd->clothObject->bm = clmd->clothObject->bm_prev;
 
   /* free clmd->clothObject->verts, it is already duplicated into cvm */
   if (clmd->clothObject->verts != NULL) {
@@ -276,10 +277,13 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   /* No need to worry about cloth->verts, it has been updated during
    * reindexing */
 
-  /* if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) { */
-  /*   printf("returning because mvert_num_prev == mvert_num"); */
-  /*   return mesh_result; */
-  /* } */
+  if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
+    printf("returning because mvert_num_prev == mvert_num\n");
+    clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
+    BM_mesh_free(clmd->clothObject->bm);
+    clmd->clothObject->bm = NULL;
+    return mesh_result;
+  }
 
   // Free the springs.
   if (cloth->springs != NULL) {
@@ -366,6 +370,9 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
   /**/
 
   clmd->clothObject->mvert_num_prev = clmd->clothObject->mvert_num;
+  clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
+  BM_mesh_free(clmd->clothObject->bm);
+  clmd->clothObject->bm = NULL;
 
   return mesh_result;
 }
@@ -2272,5 +2279,3 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 }
 
 /* TODO(Ish): update the BM_ELEM_TAG on the edges */
-/* TODO(Ish): the new vertices being are not part of the
- * collision anymore */
