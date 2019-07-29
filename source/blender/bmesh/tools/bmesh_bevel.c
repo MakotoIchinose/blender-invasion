@@ -128,7 +128,7 @@ typedef struct EdgeHalf {
  *     (abs(x/a))^r + abs(y/b))^r = 1
  * r==2 => ellipse; r==1 => line; r < 1 => concave; r > 1 => bulging out.
  * Special cases: let r==0 mean straight-inward, and r==4 mean straight outward.
- * The profile is a path defined with control points coa, midco,
+ * The profile is a path defined with start, middle, and end control points
  * projected onto a plane (plane_no is normal, plane_co is a point on it)
  * via lines in a given direction (proj_dir).
  * After the parameters are all set, the actual profile points are calculated
@@ -215,13 +215,13 @@ typedef struct BoundVert {
 
 /* Mesh structure replacing a vertex */
 typedef struct VMesh {
-  /** allocated array - size and structure depends on kind */
+  /** Allocated array - size and structure depends on kind */
   NewVert *mesh;
-  /** start of boundary double-linked list */
+  /** Start of boundary double-linked list */
   BoundVert *boundstart;
-  /** number of vertices in the boundary */
+  /** Number of vertices in the boundary */
   int count;
-  /** common # of segments for segmented edges (same as bp->seg) */
+  /** Common # of segments for segmented edges (same as bp->seg) */
   int seg;
   /** The kind of mesh to build at the corner vertex meshes */
   enum {
@@ -229,7 +229,7 @@ typedef struct VMesh {
     M_POLY,    /* a simple polygon */
     M_ADJ,     /* "adjacent edges" mesh pattern */
     M_TRI_FAN, /* a simple polygon - fan filled */
-    M_CUTOFF,  /* A triangulated face at the end of each profile */
+    M_CUTOFF,  /* A triangulated face at the end of each vmesh profile */
   } mesh_kind;
 
   int _pad;
@@ -875,7 +875,7 @@ static void bev_merge_edge_uvs(BMesh *bm, BMEdge *bme, BMVert *v)
 }
 
 /* Calculate coordinates of a point a distance d from v on e->e and return it in slideco */
-static void slide_dist(EdgeHalf *e, BMVert *v, float d, float slideco[3])
+static void slide_dist(EdgeHalf *e, BMVert *v, float d, float r_slideco[3])
 {
   float dir[3], len;
 
@@ -884,8 +884,8 @@ static void slide_dist(EdgeHalf *e, BMVert *v, float d, float slideco[3])
   if (d > len) {
     d = len - (float)(50.0 * BEVEL_EPSILON_D);
   }
-  copy_v3_v3(slideco, v->co);
-  madd_v3_v3fl(slideco, dir, -d);
+  copy_v3_v3(r_slideco, v->co);
+  madd_v3_v3fl(r_slideco, dir, -d);
 }
 
 /* Is co not on the edge e? if not, return the closer end of e in ret_closer_v */
@@ -980,7 +980,7 @@ static bool point_between_edges(float co[3], BMVert *v, BMFace *f, EdgeHalf *e1,
 /*
  * Calculate the meeting point between the offset edges for e1 and e2, putting answer in meetco.
  * e1 and e2 share vertex v and face f (may be NULL) and viewed from the normal side of
- * the bevel vertex,  e1 precedes e2 in CCW order.
+ * the bevel vertex, e1 precedes e2 in CCW order.
  * Except: if edges_between is true, there are edges between e1 and e2 in CCW order so they
  * don't share a common face. We want the meeting point to be on an existing face so it
  * should be dropped onto one of the intermediate faces, if possible.
@@ -2354,12 +2354,10 @@ static void build_boundary_vertex_only(BevelParams *bp, BevVert *bv, bool constr
  * The 'width adjust' part of build_boundary has been done already,
  * and \a efirst is the first beveled edge at vertex \a bv.
  */
-/* HANS-TODO: Don't use the TRI_FAN mesh type for custom profiles because the overhangs can cause
- * artifacts */
 static void build_boundary_terminal_edge(BevelParams *bp,
                                          BevVert *bv,
                                          EdgeHalf *efirst,
-                                         bool construct)
+                                         const bool construct)
 {
   MemArena *mem_arena = bp->mem_arena;
   VMesh *vm = bv->vmesh;
@@ -2367,6 +2365,7 @@ static void build_boundary_terminal_edge(BevelParams *bp,
   EdgeHalf *e;
   const float *no;
   float co[3], d;
+  bool use_tri_fan;
 
   e = efirst;
   if (bv->edgecount == 2) {
@@ -2397,8 +2396,6 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       bndv = add_new_bound_vert(mem_arena, vm, co);
       bndv->efirst = bndv->elast = e->next;
       e->next->leftv = e->next->rightv = bndv;
-      /* could use M_POLY too, but tri-fan looks nicer)*/
-      vm->mesh_kind = M_TRI_FAN;
       set_bound_vert_seams(bv, bp->mark_seam, bp->mark_sharp);
     }
     else {
@@ -2435,6 +2432,12 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     }
     /* For the edges not adjacent to the beveled edge, slide the bevel amount along. */
     d = efirst->offset_l_spec;
+    if (bp->use_custom_profile) {
+      /* HANS-TODO: Even this doesn't give enough room to the profile when the adjacent edges
+       * aren't square so the profile is rotated sideways. There are already issues with this when
+       * the non-custom profile parameter is small though */
+      d *= sqrtf(2.0f); /* Need to go further down the edge to make room for full profile area */
+    }
     for (e = e->next; e->next != efirst; e = e->next) {
       slide_dist(e, bv->v, d, co);
       if (construct) {
@@ -2445,6 +2448,7 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       else {
         adjust_bound_vert(e->leftv, co);
       }
+
     }
   }
   calculate_vm_profiles(bp, bv, vm);
@@ -2456,6 +2460,7 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     move_profile_plane(bndv, bv->v);
     /* This step happens before profile orientation regularization, so don't reverse the profile */
     calculate_profile(bp, bndv, false, false);
+
   }
 
   if (construct) {
@@ -2465,7 +2470,18 @@ static void build_boundary_terminal_edge(BevelParams *bp,
       vm->mesh_kind = M_NONE;
     }
     else if (vm->count == 3) {
-      vm->mesh_kind = M_TRI_FAN;
+      use_tri_fan = true;
+      if (bp->use_custom_profile) {
+        /* Use M_POLY if the extra point is planar with the profile to prevent overhanging edges */
+        bndv = efirst->leftv;
+        float profile_plane[4];
+        plane_from_point_normal_v3(profile_plane, bndv->profile.plane_co, bndv->profile.plane_no);
+        bndv = efirst->rightv->next; /* The added boundvert placed along the non-adjacent edge */
+        if (dist_squared_to_plane_v3(bndv->nv.co, profile_plane) < BEVEL_EPSILON_BIG) {
+          use_tri_fan = false;
+        }
+      }
+      vm->mesh_kind = (use_tri_fan) ? M_TRI_FAN : M_POLY;
     }
     else {
       vm->mesh_kind = M_POLY;
@@ -2604,7 +2620,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
   BLI_assert(e->is_bev);
 
   if (bv->selcount == 1) {
-    /* special case: only one beveled edge in */
+    /* Special case: only one beveled edge in */
     build_boundary_terminal_edge(bp, bv, efirst, construct);
     return;
   }
