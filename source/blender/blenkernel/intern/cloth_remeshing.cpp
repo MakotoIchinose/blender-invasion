@@ -174,9 +174,9 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     }
     BMEdge *e;
     BMIter eiter;
-    /* BM_ITER_MESH (e, &eiter, clmd->clothObject->bm, BM_EDGES_OF_MESH) { */
-    /*   BM_elem_flag_enable(e, BM_ELEM_TAG); */
-    /* } */
+    BM_ITER_MESH (e, &eiter, clmd->clothObject->bm_prev, BM_EDGES_OF_MESH) {
+      BM_elem_flag_enable(e, BM_ELEM_TAG);
+    }
 
     BM_mesh_normals_update(clmd->clothObject->bm_prev);
 
@@ -472,9 +472,9 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
     if (cloth_remeshing_edge_on_seam_or_boundary_test(bm, e)) {
       continue;
     }
-    /* if (cloth_remeshing_edge_label_test(e)) { */
-    /*   continue; */
-    /* } */
+    if (cloth_remeshing_edge_label_test(e)) {
+      continue;
+    }
     if (!cloth_remeshing_should_flip(bm, e, cvm)) {
       continue;
     }
@@ -1338,9 +1338,9 @@ static BMVert *cloth_remeshing_try_edge_collapse(ClothModifierData *clmd,
     return NULL;
   }
 
-  /* if (cloth_remeshing_has_labeled_edges(v1) && !cloth_remeshing_edge_label_test(e)) { */
-  /*   return NULL; */
-  /* } */
+  if (cloth_remeshing_has_labeled_edges(v1) && !cloth_remeshing_edge_label_test(e)) {
+    return NULL;
+  }
 
   if (!cloth_remeshing_can_collapse_edge(clmd, bm, e, which, cvm)) {
     return NULL;
@@ -2255,7 +2255,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
   ClothVertMap cvm;
   cloth_remeshing_init_bmesh(ob, clmd, mesh, cvm);
 
-  if (true) {
+  if (false) {
     cloth_remeshing_static(clmd, cvm);
   }
   else {
@@ -2279,3 +2279,6 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 }
 
 /* TODO(Ish): update the BM_ELEM_TAG on the edges */
+/* TODO(Ish): the mesh randomly flips again, might be due to bringing
+ * back bm_prev, need to look into this heavily later, noticed again
+ * at commit 5035e4cb34cc2d60ec49c5009599af6eab864313 */
