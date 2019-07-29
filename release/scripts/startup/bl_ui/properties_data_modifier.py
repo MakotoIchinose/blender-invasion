@@ -2279,30 +2279,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub = row.row(align=True)
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
-    
-    def GP_STROKE(self, layout, ob, md):
-        gpd = ob.data
-
-        col = layout.column()
-        col.prop(md, "offset_object", text="Object")
-
-        col.prop(ob,"show_in_front", text='Overlay', expand=True)
-
-        col = layout.column()
-        col.separator()
-        col.label(text="Material:")
-        row = col.row(align=True)
-        row.prop(md, "pass_index", text="Pass")
-        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
-
-        col.label(text="Layer:")
-        row = col.row(align=True)
-        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
-        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
-        row = layout.row(align=True)
-        row.prop(md, "layer_pass", text="Pass")
-        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
-    
+        
     def GP_LENGTH(self, layout, ob, md):
         sp = layout.split()
         col = sp.column()
@@ -2334,10 +2311,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "enable_angle_splitting")
         if md.enable_angle_splitting:
             col.prop(md,"split_angle")
-
-
-        
-
 
 classes = (
     DATA_PT_modifiers,

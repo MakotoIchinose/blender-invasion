@@ -87,7 +87,6 @@
 typedef struct tGP_BrushEditData {
   /* Current editor/region/etc. */
   /* NOTE: This stuff is mainly needed to handle 3D view projection stuff... */
-  Depsgraph *depsgraph;
   struct Main *bmain;
   Scene *scene;
   Object *object;
@@ -1098,8 +1097,8 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 
   Object *ob = CTX_data_active_object(C);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
+  int cfra_eval = CFRA;
 
   bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
   bGPDstroke *gps;
@@ -1271,7 +1270,6 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
   gso = MEM_callocN(sizeof(tGP_BrushEditData), "tGP_BrushEditData");
   op->customdata = gso;
 
-  gso->depsgraph = CTX_data_depsgraph(C);
   gso->bmain = CTX_data_main(C);
   /* store state */
   gso->settings = gpsculpt_get_settings(scene);
@@ -1447,7 +1445,8 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
   bGPdata *gpd = gso->gpd;
 
   bGPDlayer *gpl;
-  int cfra_eval = (int)DEG_get_ctime(gso->depsgraph);
+  Scene *scene = gso->scene;
+  int cfra_eval = CFRA;
 
   /* only try to add a new frame if this is the first stroke, or the frame has changed */
   if ((gpd == NULL) || (cfra_eval == gso->cfra)) {
@@ -1477,6 +1476,8 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
 }
 
 /* Apply ----------------------------------------------- */
+
+/* Get angle of the segment relative to the original segment before any transformation */
 static float gpsculpt_transform_rot_get(GP_SpaceConversion *gsc,
                                         bGPDstroke *gps_derived,
                                         bGPDspoint *pt_derived,
@@ -1511,17 +1512,18 @@ static float gpsculpt_transform_rot_get(GP_SpaceConversion *gsc,
     }
   }
 
-  /* create vectors of the stroke segment */
-  float v1a_2d[2], v2a_2d[2], v1b_2d[2], v2b_2d[2];
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived->x, v1a_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig->x, v2a_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived_prev->x, v1b_2d);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig_prev->x, v2b_2d);
+  /* create 2D vectors of the stroke segments */
+  float v_orig_a[2], v_orig_b[2], v_derived_a[2], v_derived_b[2];
 
-  sub_v2_v2(v1a_2d, v1b_2d);
-  sub_v2_v2(v2a_2d, v2b_2d);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig->x, v_orig_a);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig_prev->x, v_orig_b);
+  sub_v2_v2(v_orig_a, v_orig_b);
 
-  return angle_v2v2(v1a_2d, v2a_2d);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived->x, v_derived_a);
+  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_derived_prev->x, v_derived_b);
+  sub_v2_v2(v_derived_a, v_derived_b);
+
+  return angle_v2v2(v_orig_a, v_derived_a);
 }
 
 /* Apply brush operation to points in this stroke */
