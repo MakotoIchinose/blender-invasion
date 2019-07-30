@@ -510,7 +510,7 @@ bool GHOST_XrSession::isRunning() const
     return false;
   }
   switch (m_oxr->session_state) {
-    case XR_SESSION_STATE_RUNNING:
+    case XR_SESSION_STATE_SYNCHRONIZED:
     case XR_SESSION_STATE_VISIBLE:
     case XR_SESSION_STATE_FOCUSED:
       return true;
