@@ -2147,6 +2147,11 @@ static void cloth_remeshing_obstacle_metric(
     }
   }
 
+  if (planes.empty()) {
+    zero_m2(r_mat);
+    printf("planes is empty, returning\n");
+    return;
+  }
   cloth_remeshing_obstacle_metric_calculation(bm, f, planes, r_mat);
 }
 
