@@ -208,7 +208,7 @@ void negate_m4(float R[4][4]);
 bool invert_m3_ex(float m[3][3], const float epsilon);
 bool invert_m3_m3_ex(float m1[3][3], const float m2[3][3], const float epsilon);
 
-bool invert_m2_m2(float r[2][2], float m[2][2]);
+bool invert_m2_m2(float r[2][2], float m[2][2], float epsilon);
 bool invert_m3(float R[3][3]);
 bool invert_m3_m3(float R[3][3], const float A[3][3]);
 bool invert_m4(float R[4][4]);

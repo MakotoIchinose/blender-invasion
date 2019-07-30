@@ -81,8 +81,19 @@ using namespace std;
 typedef map<BMVert *, ClothVertex> ClothVertMap;
 
 #define COLLAPSE_EDGES_DEBUG 0
+#define FACE_SIZING_DEBUG 0
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
+
+static void print_m2(float m[2][2])
+{
+  printf("{{%f, %f}, {%f, %f}}\n", m[0][0], m[0][1], m[1][0], m[1][1]);
+}
+
+static void print_v2(float v[2])
+{
+  printf("{%f, %f}\n", v[0], v[1]);
+}
 
 ClothSizing &ClothSizing::operator+=(const ClothSizing &size)
 {
@@ -628,6 +639,9 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm, ClothVertMap &cvm, vector<
   BMIter eiter;
   BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
     float size = cloth_remeshing_edge_size(bm, e, cvm);
+#if FACE_SIZING_DEBUG
+    printf("size: %f in %s\n", size, __func__);
+#endif
     if (size > 1.0f) {
       edge_pairs.push_back(make_pair(size, e));
       tagged++;
@@ -1777,6 +1791,14 @@ static void cloth_remeshing_compression_metric(float mat[2][2], float r_mat[2][2
   diag_m2_v2(diag_l, l);
   mul_m2_m2m2(temp_mat, q, diag_l);
   mul_m2_m2m2(r_mat, temp_mat, q_t);
+#if FACE_SIZING_DEBUG
+  printf("comp- l: ");
+  print_v2(l);
+  printf("comp- q: ");
+  print_m2(q);
+  printf("comp- diagl: ");
+  print_m2(diag_l);
+#endif
 }
 
 static float cloth_remeshing_dihedral_angle(BMVert *v1, BMVert *v2)
@@ -1892,7 +1914,9 @@ static void cloth_remeshing_derivative(
   float face_dm[2][2];
   float face_dm_inv[2][2];
   cloth_remeshing_face_data(bm, f, face_dm);
-  invert_m2_m2(face_dm_inv, face_dm);
+  if (invert_m2_m2(face_dm_inv, face_dm, 0.001f) == false) {
+    zero_m2(face_dm_inv);
+  }
   transpose_m2(face_dm_inv);
 
   mul_v2_m2v2(r_vec, face_dm_inv, temp_vec);
@@ -1910,7 +1934,10 @@ static void cloth_remeshing_derivative(
   float face_dm[2][2];
   float face_dm_inv[2][2];
   cloth_remeshing_face_data(bm, f, face_dm);
-  invert_m2_m2(face_dm_inv, face_dm);
+  if (invert_m2_m2(face_dm_inv, face_dm, 0.001f) == false) {
+    zero_m2(face_dm_inv);
+  }
+
   mul_m32_m32m22(r_mat, mat_t, face_dm_inv);
 }
 
@@ -2114,7 +2141,7 @@ static void cloth_remeshing_obstacle_metric(
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 10.0f, planes);
+        cloth_remeshing_find_nearest_planes(bm, collmd, 0.001f, planes);
       }
       BKE_collision_objects_free(collobjs);
     }
@@ -2183,12 +2210,24 @@ static ClothSizing cloth_remeshing_compute_face_sizing(
   add_m2_m2m2(m, m, dvel_temp);
   add_m2_m2m2(m, m, obs);
 
+#if FACE_SIZING_DEBUG
+  printf("curv_temp: ");
+  print_m2(curv_temp);
+  printf("comp_temp: ");
+  print_m2(comp_temp);
+  printf("dvel_temp: ");
+  print_m2(dvel_temp);
+  printf("m: ");
+  print_m2(m);
+#endif
+
   /* eigen decomposition on m */
   float l[2];    /* Eigen values */
   float q[2][2]; /* Eigen Matrix */
   cloth_remeshing_eigen_decomposition(m, q, l);
   for (int i = 0; i < 2; i++) {
-    l[i] = min(max(l[i], 1.0f / clmd->sim_parms->size_max), 1.0f / clmd->sim_parms->size_min);
+    l[i] = min(max(l[i], 1.0f / (clmd->sim_parms->size_max * clmd->sim_parms->size_max)),
+               1.0f / (clmd->sim_parms->size_min * clmd->sim_parms->size_min));
   }
   float lmax = max(l[0], l[1]);
   float lmin = lmax * clmd->sim_parms->aspect_min * clmd->sim_parms->aspect_min;
@@ -2207,6 +2246,13 @@ static ClothSizing cloth_remeshing_compute_face_sizing(
 
   mul_m2_m2m2(temp_result, q, diag_l);
   mul_m2_m2m2(result, temp_result, q_t);
+
+#if FACE_SIZING_DEBUG
+  printf("l: ");
+  print_v2(l);
+  printf("result: ");
+  print_m2(result);
+#endif
 
   return ClothSizing(result);
 }
