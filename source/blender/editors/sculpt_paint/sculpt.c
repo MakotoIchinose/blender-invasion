@@ -136,7 +136,7 @@ void sculpt_vertex_normal_get(SculptSession *ss, VertexHandle index, float no[3]
   }
 }
 
-float *sculpt_vertex_co_get(SculptSession *ss, int index)
+float *sculpt_vertex_co_get(SculptSession *ss, VertexHandle index)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -215,6 +215,28 @@ typedef struct SculptVertexNeighbourIter {
   int i;
 } SculptVertexNeighbourIter;
 
+#define SCULPT_VERTEX_NEIGHBOUR_MAX 3
+
+void sculpt_vertex_neighbour_add(SculptVertexNeighbourIter *iter, int neighbour_index)
+{
+  if (iter->count >= SCULPT_VERTEX_NEIGHBOUR_MAX) {
+    iter->neighbours = MEM_reallocN_id(iter->neighbours,
+                                       (iter->count + SCULPT_VERTEX_NEIGHBOUR_MAX) *
+                                           sizeof(VertexHandle),
+                                       "neighbour array");
+  }
+
+  for (int i = 0; i < iter->count; i++) {
+    if (iter->neighbours[i] == neighbour_index) {
+      return;
+    }
+  }
+
+  iter->neighbours[iter->count] = neighbour_index;
+  iter->count++;
+  return;
+}
+
 void sculpt_vertex_neighbours_get_bmesh(SculptSession *ss,
                                         VertexHandle index,
                                         SculptVertexNeighbourIter *iter)
@@ -222,41 +244,30 @@ void sculpt_vertex_neighbours_get_bmesh(SculptSession *ss,
   BMVert *v = BM_vert_at_index(ss->bm, index);
   BMIter liter;
   BMLoop *l;
-  GSet *n_set;
-  n_set = BLI_gset_new(BLI_ghashutil_uinthash, BLI_ghashutil_intcmp, "neighbour set");
+  iter->count = 0;
+  iter->neighbours = MEM_mallocN(SCULPT_VERTEX_NEIGHBOUR_MAX * sizeof(VertexHandle),
+                                 "neighbour array");
   int i = 0;
   BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
     const BMVert *adj_v[2] = {l->prev->v, l->next->v};
     for (i = 0; i < ARRAY_SIZE(adj_v); i++) {
       const BMVert *v_other = adj_v[i];
       if (BM_elem_index_get(v_other) != (int)index) {
-        BLI_gset_add(n_set, BM_elem_index_get(v_other));
+        sculpt_vertex_neighbour_add(iter, BM_elem_index_get(v_other));
       }
     }
   }
-
-  iter->count = BLI_gset_len(n_set);
-  iter->neighbours = MEM_mallocN(BLI_gset_len(n_set) * sizeof(int), "neighbour array");
-
-  int c_index = 0;
-  GSetIterator *gsi = BLI_gsetIterator_new(n_set);
-  for (BLI_gsetIterator_init(gsi, n_set); !BLI_gsetIterator_done(gsi);
-       BLI_gsetIterator_step(gsi)) {
-    iter->neighbours[c_index] = BLI_gsetIterator_getKey(gsi);
-    c_index++;
-  }
-  BLI_gsetIterator_free(gsi);
-  BLI_gset_free(n_set, NULL);
 }
 
 void sculpt_vertex_neighbours_get_faces(SculptSession *ss,
                                         VertexHandle index,
                                         SculptVertexNeighbourIter *iter)
 {
-  GSet *n_set;
   int i;
   MeshElemMap *vert_map = &ss->pmap[(int)index];
-  n_set = BLI_gset_new(BLI_ghashutil_uinthash, BLI_ghashutil_intcmp, "neighbour set");
+  iter->count = 0;
+  iter->neighbours = MEM_mallocN(SCULPT_VERTEX_NEIGHBOUR_MAX * sizeof(VertexHandle),
+                                 "neighbour array");
   for (i = 0; i < ss->pmap[(int)index].count; i++) {
     const MPoly *p = &ss->mpoly[vert_map->indices[i]];
     unsigned f_adj_v[2];
@@ -265,25 +276,12 @@ void sculpt_vertex_neighbours_get_faces(SculptSession *ss,
       for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
         if (vert_map->count != 2 || ss->pmap[f_adj_v[j]].count <= 2) {
           if (f_adj_v[j] != (int)index) {
-            BLI_gset_add(n_set, f_adj_v[j]);
+            sculpt_vertex_neighbour_add(iter, f_adj_v[j]);
           }
         }
       }
     }
   }
-
-  iter->count = BLI_gset_len(n_set);
-  iter->neighbours = MEM_mallocN(BLI_gset_len(n_set) * sizeof(int), "neighbour array");
-
-  int c_index = 0;
-  GSetIterator *gsi = BLI_gsetIterator_new(n_set);
-  for (BLI_gsetIterator_init(gsi, n_set); !BLI_gsetIterator_done(gsi);
-       BLI_gsetIterator_step(gsi)) {
-    iter->neighbours[c_index] = BLI_gsetIterator_getKey(gsi);
-    c_index++;
-  }
-  BLI_gsetIterator_free(gsi);
-  BLI_gset_free(n_set, NULL);
 }
 
 void sculpt_vertex_neighbours_get(SculptSession *ss,
