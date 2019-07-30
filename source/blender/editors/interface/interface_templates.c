@@ -4354,7 +4354,7 @@ static uiBlock *profilewidget_buttons_presets(bContext *C, ARegion *ar, void *pr
   return profilewidget_presets_func(C, ar, (ProfileWidget *)prwdgt_v);
 }
 
-/* only for profilewidget tools block */
+/* Only for profilewidget tools block */
 enum {
   UIPROFILE_FUNC_RESET,
   UIPROFILE_FUNC_RESET_VIEW,
@@ -4547,8 +4547,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
   /* HANS-QUESTION: I'm guessing this is the newer way to do this. I'd be happy to switch
    * everythingn here to this method, as it seems simpler, more elegant, and more linked to the RNA
-   * system anyway, but this doesn't redraw the widget */
-  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE);
+   * system anyway, but this doesn't redraw the widget
+  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE); */
 
   row = uiLayoutRow(layout, false);
 
@@ -4585,6 +4585,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, icon, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0, 0.0,
                     0.0, TIP_("Toggle Profile Clipping"));
   UI_but_funcN_set(bt, profilewidget_clipping_toggle, MEM_dupallocN(cb), prwdgt);
+
+  UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
 
   /* The path itself */
   path_width = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
@@ -4625,24 +4627,25 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
                       0.0, 0.0, 0.0, 0.0, TIP_("Set the point's handle type to sharp."));
     UI_but_funcN_set(bt, profilewidget_buttons_setcurved, MEM_dupallocN(cb), prwdgt);
 
-    /* Position */
+
     UI_block_funcN_set(block, profilewidget_buttons_update, MEM_dupallocN(cb), prwdgt);
-    /* HANS-QUESTION: I haven't been able to find out how to just disable these buttons instead of
+    /* HANS-QUESTION: I haven't been able to find out how to disable these buttons instead of
      * not drawing them. */
     if (!point_last_or_first) {
+
+      /* Position */
       bt = uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
                 &point->x, bounds.xmin, bounds.xmax, 1, 5, "");
 
       uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
                 &point->y, bounds.ymin, bounds.ymax, 1, 5, "");
+
+      /* Delete points */
+      bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
+                        0.0, 0.0, TIP_("Delete points"));
+      UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
     }
 
-    /* Delete points */
-    bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
-                      0.0, 0.0, TIP_("Delete points"));
-    UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
-
-    UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
   }
 
   uiItemR(layout, ptr, "sample_straight_edges", 0, NULL, ICON_NONE);

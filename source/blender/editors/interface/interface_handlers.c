@@ -6744,7 +6744,6 @@ static int ui_do_but_CURVE(
 }
 
 /* Same as ui_numedit_but_CURVE with some smaller changes */
-/* HANS-TODO: Dragging control point doesn't update modifier */
 static bool ui_numedit_but_PROFILE(uiBlock *block,
                                    uiBut *but,
                                    uiHandleButtonData *data,
