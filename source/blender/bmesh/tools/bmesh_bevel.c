@@ -61,7 +61,7 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
-#define DEBUG_CUSTOM_PROFILE_PIPE 0
+#define DEBUG_CUSTOM_PROFILE_PIPE 1
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
 #define DEBUG_CUSTOM_PROFILE_CUTOFF 0
@@ -2432,10 +2432,9 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     }
     /* For the edges not adjacent to the beveled edge, slide the bevel amount along. */
     d = efirst->offset_l_spec;
-    if (bp->use_custom_profile) {
+    if (bp->use_custom_profile || bp->profile < 0.25f) {
       /* HANS-TODO: Even this doesn't give enough room to the profile when the adjacent edges
-       * aren't square so the profile is rotated sideways. There are already issues with this when
-       * the non-custom profile parameter is small though */
+       * aren't square so the profile is rotated sideways. */
       d *= sqrtf(2.0f); /* Need to go further down the edge to make room for full profile area */
     }
     for (e = e->next; e->next != efirst; e = e->next) {
@@ -4328,8 +4327,6 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 }
 
 /* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
-/* HANS-TODO: Decide whether to disable the process of using fullness to find the initial center
- * point for the start mesh */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -4337,7 +4334,7 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 #endif
   int n_bndv, nseg, i;
   VMesh *vm0, *vm1;
-  float boundverts_center[3], original_vertex[3], fullest[3], center_direction[3];
+  float boundverts_center[3], original_vertex[3], negative_fullest[3], center_direction[3];
   BoundVert *bndv;
   MemArena *mem_arena = bp->mem_arena;
   float r, p, fullness;
@@ -4381,14 +4378,14 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
   /* To place the center vertex:
    * coa is original vertex
    * co is centroid of boundary corners
-   * cob is reflection of coa in across co.
-   * 'fullness' is the fraction of the way
-   * from co to coa (if positive) or to cob (if negative).
+   * 'negative_fullest' is the reflection of the original vertex across the boundverts' center.
+   * 'fullness' is the fraction of the way from the boundvert's centroid to to the
+   * original vertex(if positive) or to negative_fullest (if negative).
    */
   copy_v3_v3(original_vertex, bv->v->co);
   mul_v3_fl(boundverts_center, 1.0f / (float)n_bndv);
-  sub_v3_v3v3(fullest, boundverts_center, original_vertex);
-  add_v3_v3(fullest, boundverts_center);
+  sub_v3_v3v3(negative_fullest, boundverts_center, original_vertex);
+  add_v3_v3(negative_fullest, boundverts_center);
 
   /* An offline optimization process found fullness that let to closest fit to sphere as
    * a function of r and ns (for case of cube corner) */
@@ -4480,13 +4477,14 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   printf("PIPE ADJ VMESH\n");
   float green[4] = {0.0f, 1.0f, 0.0f, 1.0f};
   float blue[4] = {0.0f, 0.0f, 1.0f, 1.0f};
-  float new_profile_normal_end[3];
+  float red[4] = {1.0f, 0.0f, 0.0f, 1.0f};
+  float white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float *color;
 #endif
-  int ipipe, i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2;
+  int i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2;
   VMesh *vm;
   bool even, midline;
-//  Profile *pipe_profile;
-  float new_profile_plane_co[3], new_profile_plane_no[3], new_profile_plane[4], new_vert[3];
+  float *pipe1_profile_point, *pipe2_profile_point, f;
 
   /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile.
    * Try just using "new_adj_vmesh" in that case. */
@@ -4501,93 +4499,93 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   ipipe2 = vpipe->next->next->index;
 
 #if DEBUG_CUSTOM_PROFILE_PIPE
-    /* Draw the locations of all the vertices before the "snapping" process */
+    printf("ipipe1: %d\n", ipipe1);
+    printf("ipipe2: %d\n", ipipe2);
+#endif
+
+  for (i = 0; i < n_bndv; i++) {
+#if DEBUG_CUSTOM_PROFILE_PIPE
+    printf("i: %d\n", i);
+#endif
+    for (j = 1; j <= half_ns; j++) {
+      for (k = 0; k <= half_ns; k++) {
+        if (!is_canon(vm, i, j, k)) {
+          continue;
+        }
+        if (bp->use_custom_profile) {
+          /* Find the profile vertex that corresponds to this "row" from each pipe profile */
+          if (i == ipipe1) {
+            pipe1_profile_point = mesh_vert(vm, i, 0, k)->co;
+            pipe2_profile_point = mesh_vert(vm, ipipe2, 0, ns - k)->co;
+            f = (float)j / (float)ns;
+          }
+          else if (i == ipipe2) {
+            pipe1_profile_point = mesh_vert(vm, i, 0, k)->co;
+            pipe2_profile_point = mesh_vert(vm, ipipe1, 0, ns - k)->co;
+            f = (float)j / (float)ns;
+          }
+          else if (i == (ipipe1 + 1) % n_bndv) {
+            pipe1_profile_point = mesh_vert(vm, (i + 1) % n_bndv, 0, j)->co;
+            pipe2_profile_point = mesh_vert(vm, i - 1, 0, ns - j)->co;
+            f = (float)(ns - k) / (float)ns;
+          }
+          else {
+            pipe1_profile_point = mesh_vert(vm, (i + 1) % n_bndv, 0, j)->co;
+            pipe2_profile_point = mesh_vert(vm, i, j, 0)->co;
+            f = (float)(ns - k) / (float)ns;
+          }
+          /* Find which "column" this vertex is on to find interpolation factor */
+
+          /* Place the vertex by interpolatin between the two profile points by the factor */
+#if DEBUG_CUSTOM_PROFILE_PIPE
+          printf("f: %.3f\n", f);
+          printf("point 1: (%.3f, %.3f, %.3f)\n", pipe1_profile_point[0],
+                                                  pipe1_profile_point[1],
+                                                  pipe1_profile_point[2]);
+          printf("point 2: (%.3f, %.3f, %.3f)\n", pipe2_profile_point[0],
+                                                  pipe2_profile_point[1],
+                                                  pipe2_profile_point[2]);
+#endif
+          interp_v3_v3v3(mesh_vert(vm, i, j, k)->co, pipe1_profile_point, pipe2_profile_point, f);
+        }
+        else {
+          /* A tricky case is for the 'square' profiles and an even nseg: we want certain
+          * vertices to snap to the midline on the pipe, not just to one plane or the other. */
+          midline = even && k == half_ns &&
+              ((i == 0 && j == half_ns) || (i == ipipe1 || i == ipipe2));
+          snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
+        }
+      }
+    }
+  }
+#if DEBUG_CUSTOM_PROFILE_PIPE
+    /* Draw the locations of all the vertices after the "snapping" process */
     for (i = 0; i < n_bndv; i++) {
       for (j = 1; j <= half_ns; j++) {
         for (k = 1; k <= ns; k++) {
           if (!is_canon(vm, i, j, k)) {
            continue;
           }
-          DRW_debug_sphere(mesh_vert(vm, i, j, k)->co, 0.01f, green);
+          switch (i) {
+            case 0:
+              color = red;
+              break;
+            case 1:
+              color = green;
+              break;
+            case 2:
+              color = blue;
+              break;
+            case 3:
+              color = white;
+              break;
+          }
+
+          DRW_debug_sphere(mesh_vert(vm, i, j, k)->co, 0.01f, color);
         }
       }
     }
 #endif
-
-  if (bp->use_custom_profile) {
-//    for (ipipe = 0; ipipe < 2; ipipe++) {
-//      /* Adjust the side of the first pipe profile first, then the other profile's side second */
-//      i = (ipipe == 0) ? ipipe1 : ipipe2;
-//      for (j = 1; j <= half_ns; j++) {
-//        for (k = 0; k <= ns; k++) {
-    for (i = 0; i < n_bndv; i++) {
-      for (j = 1; j <= half_ns; j++) {
-       for (k = 1; k <= ns; k++) {
-         if (!is_canon(vm, i, j, k)) {
-           continue;
-          }
-          /* Get a new profile plane by moving the original's position to this ring */
-          copy_v3_v3(new_profile_plane_co, mesh_vert(vm, i, j, k)->co);
-          copy_v3_v3(new_profile_plane_no, vpipe->profile.proj_dir);
-          plane_from_point_normal_v3(new_profile_plane, new_profile_plane_co,
-                                     new_profile_plane_no);
-
-
-          /* Get this point's location by snapping the first profile's location to the new plane */
-          closest_to_plane_v3(new_vert, new_profile_plane,
-                              mesh_vert(vm, ipipe1, 0, k)->co);
-          copy_v3_v3(mesh_vert(vm, i, j, k)->co, new_vert);
-#if DEBUG_CUSTOM_PROFILE_PIPE
-          printf("i: %d, j: %d, k: %d\n", i, j, k);
-          printf("new_profile_plane_co: (%.3f, %.3f, %.3f)\n", new_profile_plane_co[0],
-                                                               new_profile_plane_co[1],
-                                                               new_profile_plane_co[2]);
-          printf("new_profile_plane_no: (%.3f, %.3f, %.3f)\n", new_profile_plane_no[0],
-                                                               new_profile_plane_no[1],
-                                                               new_profile_plane_no[2]);
-          printf("new vertex: (%.3f, %.3f, %.3f)\n", new_vert[0],
-                                                     new_vert[1],
-                                                     new_vert[2]);
-//          if (new_vert[0] > 1.0f || new_vert[0] < 0.0f ||
-//              new_vert[1] > 1.0f || new_vert[1] < -1.0f ||
-//              new_vert[0] > 1.0f || new_vert[0] < 0.0f) {
-//            printf("!! New vertex not in range for test bevel shape\n");
-//          }
-//          float bad_location1[3] = {0.970746f, 0.8f, 0.285874f};
-//          float bad_location2[3] = {0.970746f, 0.0f, 0.285874f};
-//          float bad_location3[3] = {0.750881f, -0.8f, 0.666078f};
-//          if (compare_v3v3(new_vert, bad_location1, BEVEL_EPSILON_BIG) ||
-//              compare_v3v3(new_vert, bad_location2, BEVEL_EPSILON_BIG) ||
-//              compare_v3v3(new_vert, bad_location3, BEVEL_EPSILON_BIG )) {
-//            printf("!! Bad location!\n");
-//          }
-          madd_v3_v3v3fl(new_profile_normal_end, new_profile_plane_co, new_profile_plane_no,
-                         0.1f);
-          DRW_debug_line_v3v3(new_profile_plane_co, new_profile_normal_end, green);
-          DRW_debug_sphere(new_vert, 0.01f, blue);
-#endif
-        }
-      }
-    }
-    // Does this help?
-    vmesh_copy_equiv_verts(vm);
-  }
-  else { /* non-custom profile */
-    for (i = 0; i < n_bndv; i++) {
-      for (j = 1; j <= half_ns; j++) {
-       for (k = 0; k <= half_ns; k++) {
-         if (!is_canon(vm, i, j, k)) {
-           continue;
-          }
-          /* A tricky case is for the 'square' profiles and an even nseg: we want certain vertices
-           * to snap to the midline on the pipe, not just to one plane or the other. */
-          midline = even && k == half_ns &&
-                    ((i == 0 && j == half_ns) || (i == ipipe1 || i == ipipe2));
-          snap_to_pipe_profile(vpipe, midline, mesh_vert(vm, i, j, k)->co);
-          }
-        }
-      }
-  }
   return vm;
 }
 
@@ -5170,7 +5168,9 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
  * should actually be positioned differently, probably more like they are with the arc or patch
  * miter methods but without the grid fill */
 /* HANS-TODO: When the profile is 0 for a non-custom profile this looks glitchy. It probably
- * shouldn't build the cut-off faces in some special cases */
+ * shouldn't build the cut-off faces in some special cases, but this looks like a more general
+ * issue with profile == 0 cases. */
+/* HANS-TODO: Don't use the cutoff vertex mesh method in the pipe case */
 static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -5659,8 +5659,8 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         }
         else {
           mid_v3_v3v3(co, va, vb);
-          /* HANS-QUESTION: Why would you do this? Wouldn't va and vb be at the same position?
-           * Because they're sampled in opposite directions from the opposing boundverts */
+          /* HANS-QUESTION: Wouldn't va and vb be at the same position? Because they're sampled in
+           * opposite directions from the opposing boundverts */
         }
       }
       else {
