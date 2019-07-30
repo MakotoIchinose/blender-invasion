@@ -327,7 +327,7 @@ static bool parent_drop_poll(bContext *C,
 }
 
 static void parent_drop_set_parents(
-    bContext *C, wmOperator *op, wmDragID *drag, Object *parent, short parent_type)
+    bContext *C, ReportList *reports, wmDragID *drag, Object *parent, short parent_type)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
@@ -351,12 +351,12 @@ static void parent_drop_set_parents(
 
       /* Do nothing to linked data */
       if (ID_IS_LINKED(object)) {
-        puts("Can't edit library linked object");
-        // BKE_report(op->reports, RPT_INFO, "Can't edit library linked object");
+        BKE_report(reports, RPT_INFO, "Can't edit library linked object");
         continue;
       }
 
-      if (ED_object_parent_set(NULL, C, scene, object, parent, parent_type, false, false, NULL)) {
+      if (ED_object_parent_set(
+              reports, C, scene, object, parent, parent_type, false, false, NULL)) {
         parent_set = true;
       }
     }
@@ -370,7 +370,6 @@ static void parent_drop_set_parents(
 }
 
 typedef struct ParentDropData {
-  wmOperator *op;
   Object *parent;
   ListBase *drag_items;
   short type;
@@ -381,7 +380,7 @@ static void parent_drop_menu_callback(bContext *C, void *data, int event)
   ParentDropData *drag_data = (ParentDropData *)data;
 
   wmDragID *drag = drag_data->drag_items->first;
-  parent_drop_set_parents(C, drag_data->op, drag, drag_data->parent, event);
+  parent_drop_set_parents(C, NULL, drag, drag_data->parent, event);
 
   BLI_freelistN(drag_data->drag_items);
   MEM_freeN(drag_data->drag_items);
@@ -592,10 +591,6 @@ static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if (ob == par) {
     return OPERATOR_CANCELLED;
   }
-  if (ID_IS_LINKED(ob)) {
-    BKE_report(op->reports, RPT_INFO, "Can't edit library linked object");
-    return OPERATOR_CANCELLED;
-  }
 
   if (event->custom != EVT_DATA_DRAGDROP) {
     return OPERATOR_CANCELLED;
@@ -605,11 +600,10 @@ static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   wmDrag *drag = lb->first;
 
   if (par->type != OB_ARMATURE && par->type != OB_CURVE && par->type != OB_LATTICE) {
-    parent_drop_set_parents(C, op, drag->ids.first, par, PAR_OBJECT);
+    parent_drop_set_parents(C, op->reports, drag->ids.first, par, PAR_OBJECT);
   }
   else {
     ParentDropData *data = MEM_callocN(sizeof(ParentDropData), "parent_drop_data");
-    data->op = op;
     data->parent = par;
     data->type = par->type;
 
