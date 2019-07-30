@@ -467,8 +467,6 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   int rect_w = BLI_rcti_size_x(rect) + 1;
   int rect_h = BLI_rcti_size_y(rect) + 1;
 
-  DRW_opengl_context_enable();
-
   if (dfbl->default_fb) {
     if (rect_w != viewport->size[0] || rect_h != viewport->size[1] ||
         U.ogl_multisamples != viewport->samples) {
@@ -553,7 +551,6 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))
 {
   GPU_framebuffer_restore();
-  DRW_opengl_context_disable();
 }
 
 GPUTexture *GPU_viewport_color_texture(GPUViewport *viewport)

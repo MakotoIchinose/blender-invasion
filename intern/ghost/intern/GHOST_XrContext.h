@@ -50,6 +50,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
 
   void startSession(const GHOST_XrSessionBeginInfo *begin_info) override;
   void endSession() override;
+  bool hasSession() const override;
   bool isSessionRunning() const override;
   void drawSessionViews(void *draw_customdata) override;
 

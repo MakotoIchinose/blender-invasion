@@ -998,10 +998,11 @@ void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContextHandle xr_context,
 void GHOST_XrDrawViewFunc(GHOST_XrContextHandle xr_context, GHOST_XrDrawViewFn draw_view_fn);
 
 /* sessions */
-int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
 void GHOST_XrSessionStart(GHOST_XrContextHandle xr_context,
                           const GHOST_XrSessionBeginInfo *begin_info);
 void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_context);
+int GHOST_XrHasSession(const GHOST_XrContextHandle xr_contexthandle);
+int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
 void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_context, void *customdata);
 
 /* events */

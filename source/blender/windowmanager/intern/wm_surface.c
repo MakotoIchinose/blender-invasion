@@ -52,6 +52,7 @@ void wm_surfaces_iter(bContext *C, void (*cb)(bContext *C, wmSurface *))
 
 void wm_surface_clear_drawable(void)
 {
+#if 0
   if (g_drawable) {
     BLF_batch_reset();
     gpu_batch_presets_reset();
@@ -59,6 +60,7 @@ void wm_surface_clear_drawable(void)
 
     g_drawable = NULL;
   }
+#endif
 }
 
 void wm_surface_set_drawable(wmSurface *surface, bool activate)
@@ -67,11 +69,11 @@ void wm_surface_set_drawable(wmSurface *surface, bool activate)
 
   g_drawable = surface;
   if (activate) {
-    GHOST_ActivateOpenGLContext(surface->ghost_ctx);
+    //    GHOST_ActivateOpenGLContext(surface->ghost_ctx);
   }
 
-  GPU_context_active_set(surface->gpu_ctx);
-  immActivate();
+  //  GPU_context_active_set(surface->gpu_ctx);
+  //  immActivate();
 }
 
 void wm_surface_make_drawable(wmSurface *surface)
@@ -97,9 +99,9 @@ void wm_surface_reset_drawable(void)
 
 void wm_surface_present(wmSurface *surface)
 {
-  GHOST_SwapContextBuffers(surface->ghost_ctx);
+  //  GHOST_SwapContextBuffers(surface->ghost_ctx);
   if (surface->secondary_ghost_ctx) {
-    GHOST_SwapContextBuffers(surface->secondary_ghost_ctx);
+    //    GHOST_SwapContextBuffers(surface->secondary_ghost_ctx);
   }
 }
 

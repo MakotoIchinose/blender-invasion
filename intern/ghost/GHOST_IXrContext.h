@@ -29,6 +29,7 @@ class GHOST_IXrContext {
 
   virtual void startSession(const GHOST_XrSessionBeginInfo *begin_info) = 0;
   virtual void endSession() = 0;
+  virtual bool hasSession() const = 0;
   virtual bool isSessionRunning() const = 0;
   virtual void drawSessionViews(void *draw_customdata) = 0;
 

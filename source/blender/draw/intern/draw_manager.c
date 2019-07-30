@@ -523,7 +523,7 @@ const float *DRW_viewport_pixelsize_get(void)
   return &DST.pixsize;
 }
 
-static void drw_viewport_cache_resize(void)
+void drw_viewport_cache_resize(void)
 {
   /* Release the memiter before clearing the mempools that references them */
   GPU_viewport_cache_release(DST.viewport);

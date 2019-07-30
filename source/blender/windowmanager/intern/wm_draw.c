@@ -48,6 +48,8 @@
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
 
+#include "DRW_engine.h"
+
 #include "GHOST_C-api.h"
 
 #include "ED_node.h"
@@ -395,6 +397,7 @@ static void wm_draw_region_bind(ARegion *ar, int view)
   }
 
   if (ar->draw_buffer->viewport[view]) {
+    DRW_opengl_context_enable();
     GPU_viewport_bind(ar->draw_buffer->viewport[view], &ar->winrct);
   }
   else {
@@ -419,6 +422,7 @@ static void wm_draw_region_unbind(ARegion *ar, int view)
 
   if (ar->draw_buffer->viewport[view]) {
     GPU_viewport_unbind(ar->draw_buffer->viewport[view]);
+    DRW_opengl_context_disable();
   }
   else {
     glDisable(GL_SCISSOR_TEST);
@@ -745,35 +749,25 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
 
 void wm_draw_upside_down(int sizex, int sizey)
 {
-  GPUVertFormat *format = immVertexFormat();
-  uint texcoord = GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_2D_IMAGE);
+  /* Don't use imm here, this is called from a separate thread with no imm available. */
 
   /* wmOrtho for the screen has this same offset */
   const float halfx = GLA_PIXEL_OFS / sizex;
-  const float halfy = GLA_PIXEL_OFS / sizex;
+  const float halfy = GLA_PIXEL_OFS / sizey;
 
-  immUniform1i("image", 0); /* texture is already bound to GL_TEXTURE0 unit */
+  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
+  GPU_shader_bind(shader);
 
-  immBegin(GPU_PRIM_TRI_FAN, 4);
+  glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
+  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_icon"),
+              halfx,
+              halfy,
+              1.0f + halfx,
+              1.0f + halfy);
+  glUniform4f(GPU_shader_get_uniform_ensure(shader, "rect_geom"), 0, sizey, sizex, 0);
+  glUniform4f(GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR), 1.0f, 1.0f, 1.0f, 1.0f);
 
-  immAttr2f(texcoord, halfx, 1.0f + halfy);
-  immVertex2f(pos, 0.0f, 0.0f);
-
-  immAttr2f(texcoord, 1.0f + halfx, 1.0f + halfy);
-  immVertex2f(pos, sizex, 0.0f);
-
-  immAttr2f(texcoord, 1.0f + halfx, halfy);
-  immVertex2f(pos, sizex, sizey);
-
-  immAttr2f(texcoord, halfx, halfy);
-  immVertex2f(pos, 0.0f, sizey);
-
-  immEnd();
-
-  immUnbindProgram();
+  GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
 }
 
 static void wm_draw_window_upside_down_onscreen(bContext *C, wmWindow *win)
@@ -887,15 +881,15 @@ static void wm_draw_window(bContext *C, wmWindow *win)
  */
 static void wm_draw_surface(bContext *C, wmSurface *surface)
 {
-  wm_window_clear_drawable(CTX_wm_manager(C));
-  wm_surface_make_drawable(surface);
+  // wm_window_clear_drawable(CTX_wm_manager(C));
+  // wm_surface_make_drawable(surface);
 
   surface->draw(C);
 
-  wm_surface_present(surface);
+  // wm_surface_present(surface);
 
   /* Avoid interference with window drawable */
-  wm_surface_clear_drawable();
+  // wm_surface_clear_drawable();
 }
 
 /****************** main update call **********************/
