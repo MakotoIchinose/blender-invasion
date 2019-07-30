@@ -22,6 +22,9 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
+#include "MEM_guardedalloc.h"
+
+#include "BLI_bitmap.h"
 #include "BLI_rect.h"
 
 #include "BKE_editmesh.h"
@@ -61,6 +64,8 @@ typedef struct SELECTID_PassList {
   struct DRWPass *select_id_face_pass;
   struct DRWPass *select_id_edge_pass;
   struct DRWPass *select_id_vert_pass;
+
+  struct DRWPass *visibility_vert_pass;
 } SELECTID_PassList;
 
 typedef struct SELECTID_Data {
@@ -75,6 +80,7 @@ typedef struct SELECTID_Shaders {
   /* Depth Pre Pass */
   struct GPUShader *select_id_flat;
   struct GPUShader *select_id_uniform;
+  struct GPUShader *select_id_bitmap;
 } SELECTID_Shaders;
 
 /* *********** STATIC *********** */
@@ -94,6 +100,8 @@ static struct {
 
     struct Depsgraph *depsgraph;
     short select_mode;
+
+    BLI_bitmap *vert_visibility_mask;
   } context;
 } e_data = {{{NULL}}}; /* Engine data */
 
@@ -102,6 +110,8 @@ typedef struct SELECTID_PrivateData {
   DRWShadingGroup *shgrp_face_flat;
   DRWShadingGroup *shgrp_edge;
   DRWShadingGroup *shgrp_vert;
+
+  DRWShadingGroup *shgrp_visibly_vert;
 
   DRWView *view_faces;
   DRWView *view_edges;
@@ -129,6 +139,8 @@ struct BaseOffset {
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_selection_id_3D_vert_glsl[];
 extern char datatoc_selection_id_frag_glsl[];
+extern char datatoc_selection_id_3D_bitmap_vert_glsl[];
+extern char datatoc_selection_id_bitmap_frag_glsl[];
 
 /* -------------------------------------------------------------------- */
 /** \name Selection Utilities
@@ -327,6 +339,7 @@ static void select_engine_init(void *vedata)
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
   }
+
   if (!sh_data->select_id_uniform) {
     const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
     sh_data->select_id_uniform = GPU_shader_create_from_arrays({
@@ -336,6 +349,19 @@ static void select_engine_init(void *vedata)
                                  NULL},
         .frag = (const char *[]){datatoc_selection_id_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, "#define UNIFORM_ID\n", NULL},
+    });
+  }
+
+  /* TODO: Create on demand */
+  if (!sh_data->select_id_bitmap) {
+    const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[sh_cfg];
+    sh_data->select_id_bitmap = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_selection_id_3D_bitmap_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_selection_id_bitmap_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
   }
 
@@ -379,11 +405,18 @@ static void select_cache_init(void *vedata)
 
     DRW_shgroup_uniform_float_copy(stl->g_data->shgrp_vert, "sizeVertex", G_draw.block.sizeVertex);
 
+    psl->visibility_vert_pass = DRW_pass_create("Vert Visibility Pass",
+                                                DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
+
+    stl->g_data->shgrp_visibly_vert = DRW_shgroup_create(sh_data->select_id_bitmap,
+                                                         psl->visibility_vert_pass);
+
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
       DRW_shgroup_state_enable(stl->g_data->shgrp_face_unif, DRW_STATE_CLIP_PLANES);
       DRW_shgroup_state_enable(stl->g_data->shgrp_face_flat, DRW_STATE_CLIP_PLANES);
       DRW_shgroup_state_enable(stl->g_data->shgrp_edge, DRW_STATE_CLIP_PLANES);
       DRW_shgroup_state_enable(stl->g_data->shgrp_vert, DRW_STATE_CLIP_PLANES);
+      DRW_shgroup_state_enable(stl->g_data->shgrp_visibly_vert, DRW_STATE_CLIP_PLANES);
     }
   }
 
@@ -417,6 +450,17 @@ static void select_cache_populate(void *vedata, Object *ob)
                         &base_ofs->edge,
                         &base_ofs->face);
 
+  if (true) {
+    SELECTID_StorageList *stl = ((SELECTID_Data *)vedata)->stl;
+    if (ob->type == OB_MESH && ob->mode & OB_MODE_EDIT) {
+      Mesh *me = ob->data;
+      struct GPUBatch *geom_verts = DRW_mesh_batch_cache_get_verts_with_select_id(me);
+      DRWShadingGroup *vert_shgrp = DRW_shgroup_create_sub(stl->g_data->shgrp_visibly_vert);
+      DRW_shgroup_uniform_int_copy(vert_shgrp, "offset", *(int *)&offset);
+      DRW_shgroup_call(vert_shgrp, geom_verts, ob);
+    }
+  }
+
   base_ofs->offset = offset;
   e_data.context.last_index_drawn = base_ofs->vert;
 }
@@ -443,6 +487,31 @@ static void select_draw_scene(void *vedata)
 
   DRW_view_set_active(stl->g_data->view_verts);
   DRW_draw_pass(psl->select_id_vert_pass);
+
+  if (true) {
+    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+    uint tot_index = DRW_select_context_elem_len();
+    DRW_shgroup_uniform_texture_ref(stl->g_data->shgrp_visibly_vert, "depthBuffer", &dtxl->depth);
+    DRW_shgroup_uniform_int_copy(stl->g_data->shgrp_visibly_vert, "tot_index", *(int *)&tot_index);
+
+    int num_blocks = _BITMAP_NUM_BLOCKS(tot_index);
+    GPUTexture *bitmap_tex = GPU_texture_create_1d(num_blocks, GPU_R32UI, NULL, NULL);
+    GPUFrameBuffer *bitmap_fb = GPU_framebuffer_create();
+    GPU_framebuffer_texture_attach(bitmap_fb, bitmap_tex, 0, 0);
+    BLI_assert(GPU_framebuffer_check_valid(bitmap_fb, NULL));
+
+    GPU_framebuffer_bind(bitmap_fb);
+    GPU_framebuffer_clear_color(bitmap_fb, (const float[4]){0.0f});
+
+    DRW_draw_pass(psl->visibility_vert_pass);
+
+    MEM_SAFE_FREE(e_data.context.vert_visibility_mask);
+    e_data.context.vert_visibility_mask = GPU_texture_read(bitmap_tex, GPU_DATA_UNSIGNED_INT, 0);
+    GPU_finish();
+
+    GPU_framebuffer_free(bitmap_fb);
+    GPU_texture_free(bitmap_tex);
+  }
 }
 
 static void select_engine_free(void)
@@ -451,11 +520,13 @@ static void select_engine_free(void)
     SELECTID_Shaders *sh_data = &e_data.sh_data[sh_data_index];
     DRW_SHADER_FREE_SAFE(sh_data->select_id_flat);
     DRW_SHADER_FREE_SAFE(sh_data->select_id_uniform);
+    DRW_SHADER_FREE_SAFE(sh_data->select_id_bitmap);
   }
 
   DRW_TEXTURE_FREE_SAFE(e_data.texture_u32);
   GPU_FRAMEBUFFER_FREE_SAFE(e_data.framebuffer_select_id);
   MEM_SAFE_FREE(e_data.context.base_array_index_offsets);
+  MEM_SAFE_FREE(e_data.context.vert_visibility_mask);
 }
 
 /** \} */
@@ -527,6 +598,11 @@ uint DRW_select_context_offset_for_object_elem(const uint base_index, char elem_
 uint DRW_select_context_elem_len(void)
 {
   return e_data.context.last_index_drawn;
+}
+
+BLI_bitmap *DRW_select_context_vert_visibility_mask(void)
+{
+  return e_data.context.vert_visibility_mask;
 }
 
 /* Read a block of pixels from the select frame buffer. */

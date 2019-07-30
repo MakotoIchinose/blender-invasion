@@ -365,7 +365,9 @@ data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_shadow_resolve_frag.glsl 
 data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_swirl_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_wave_frag.glsl SRC)
 
+data_to_c_simple(engines/select/shaders/selection_id_3D_bitmap_vert.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
+data_to_c_simple(engines/select/shaders/selection_id_bitmap_frag.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
 
