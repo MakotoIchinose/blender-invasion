@@ -82,6 +82,8 @@ typedef map<BMVert *, ClothVertex> ClothVertMap;
 
 #define COLLAPSE_EDGES_DEBUG 0
 #define FACE_SIZING_DEBUG 0
+#define FACE_SIZING_DEBUG_COMP 0
+#define FACE_SIZING_DEBUG_OBS 1
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
@@ -93,6 +95,16 @@ static void print_m2(float m[2][2])
 static void print_v2(float v[2])
 {
   printf("{%f, %f}\n", v[0], v[1]);
+}
+
+static float sqr_fl(float a)
+{
+  return a * a;
+}
+
+static float clamp(float a, float min_val, float max_val)
+{
+  return min(max(a, min_val), max_val);
 }
 
 ClothSizing &ClothSizing::operator+=(const ClothSizing &size)
@@ -1792,11 +1804,13 @@ static void cloth_remeshing_compression_metric(float mat[2][2], float r_mat[2][2
   mul_m2_m2m2(temp_mat, q, diag_l);
   mul_m2_m2m2(r_mat, temp_mat, q_t);
 #if FACE_SIZING_DEBUG
+#  if FACE_SIZING_DEBUG_COMP
   printf("comp- l: ");
   print_v2(l);
   printf("comp- q: ");
   print_m2(q);
   printf("comp- diagl: ");
+#  endif
   print_m2(diag_l);
 #endif
 }
@@ -2081,6 +2095,10 @@ static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
     ClothPlane plane = planes[v[i]];
 
     if (len_squared_v3(plane.no) == 0.0f) {
+#if FACE_SIZING_DEBUG_OBS
+      printf("continuing since len_squared_v3(plane.no) == 0.0f\n");
+      printf("plane.co: {%f %f %f}\n", plane.co[0], plane.co[1], plane.co[2]);
+#endif
       continue;
     }
 
@@ -2096,6 +2114,15 @@ static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
 
     float outer[2][2];
     cloth_remeshing_outer_m2_v2v2(outer, dh, dh);
+#if FACE_SIZING_DEBUG_OBS
+    printf("plane.co: {%f %f %f}\n", plane.co[0], plane.co[1], plane.co[2]);
+    printf("plane.no: {%f %f %f}\n", plane.no[0], plane.no[1], plane.no[2]);
+    printf("h: {%f %f %f}\n", h[0], h[1], h[2]);
+    printf("dh: ");
+    print_v2(dh);
+    printf("outer-dhdh: ");
+    print_m2(outer);
+#endif
     mul_m2_fl(outer, h[i] * h[i]);
     add_m2_m2m2(r_mat, r_mat, outer);
   }
@@ -2141,7 +2168,7 @@ static void cloth_remeshing_obstacle_metric(
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 0.001f, planes);
+        cloth_remeshing_find_nearest_planes(bm, collmd, 1.f, planes);
       }
       BKE_collision_objects_free(collobjs);
     }
@@ -2222,6 +2249,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(
   print_m2(comp_temp);
   printf("dvel_temp: ");
   print_m2(dvel_temp);
+  printf("obs: ");
+  print_m2(obs);
   printf("m: ");
   print_m2(m);
 #endif
@@ -2231,8 +2260,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(
   float q[2][2]; /* Eigen Matrix */
   cloth_remeshing_eigen_decomposition(m, q, l);
   for (int i = 0; i < 2; i++) {
-    l[i] = min(max(l[i], 1.0f / (clmd->sim_parms->size_max * clmd->sim_parms->size_max)),
-               1.0f / (clmd->sim_parms->size_min * clmd->sim_parms->size_min));
+    l[i] = clamp(
+        l[i], 1.0f / sqr_fl(clmd->sim_parms->size_max), 1.0f / sqr_fl(clmd->sim_parms->size_min));
   }
   float lmax = max(l[0], l[1]);
   float lmin = lmax * clmd->sim_parms->aspect_min * clmd->sim_parms->aspect_min;
