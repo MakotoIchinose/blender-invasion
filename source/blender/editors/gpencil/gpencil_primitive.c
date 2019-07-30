@@ -305,8 +305,8 @@ static void gpencil_primitive_allocate_memory(tGPDprimitive *tgpi)
 /* Helper: Create internal strokes primitives data */
 static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
+  int cfra = CFRA;
 
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
 
@@ -318,7 +318,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 
   /* create a new temporary frame */
   tgpi->gpf = MEM_callocN(sizeof(bGPDframe), "Temp bGPDframe");
-  tgpi->gpf->framenum = tgpi->cframe = cfra_eval;
+  tgpi->gpf->framenum = tgpi->cframe = cfra;
 
   /* create new temp stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke");
@@ -1096,10 +1096,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   bGPdata *gpd = CTX_data_gpencil_data(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Paint *paint = &ts->gp_paint->paint;
-
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
   /* create temporary operator data */
   tGPDprimitive *tgpi = MEM_callocN(sizeof(tGPDprimitive), "GPencil Primitive Data");
@@ -1122,7 +1119,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   tgpi->orign_type = RNA_enum_get(op->ptr, "type");
 
   /* set current frame number */
-  tgpi->cframe = cfra_eval;
+  tgpi->cframe = CFRA;
 
   /* set GP datablock */
   tgpi->gpd = gpd;

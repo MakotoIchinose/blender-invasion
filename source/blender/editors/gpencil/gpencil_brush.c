@@ -87,7 +87,6 @@
 typedef struct tGP_BrushEditData {
   /* Current editor/region/etc. */
   /* NOTE: This stuff is mainly needed to handle 3D view projection stuff... */
-  Depsgraph *depsgraph;
   struct Main *bmain;
   Scene *scene;
   Object *object;
@@ -1052,10 +1051,9 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
 
   Object *ob = CTX_data_active_object(C);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
 
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_NEW);
   bGPDstroke *gps;
 
   float delta[3];
@@ -1224,7 +1222,6 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
   gso = MEM_callocN(sizeof(tGP_BrushEditData), "tGP_BrushEditData");
   op->customdata = gso;
 
-  gso->depsgraph = CTX_data_depsgraph(C);
   gso->bmain = CTX_data_main(C);
   /* store state */
   gso->settings = gpsculpt_get_settings(scene);
@@ -1400,10 +1397,11 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
   bGPdata *gpd = gso->gpd;
 
   bGPDlayer *gpl;
-  int cfra_eval = (int)DEG_get_ctime(gso->depsgraph);
+  Scene *scene = gso->scene;
+  int cfra = CFRA;
 
   /* only try to add a new frame if this is the first stroke, or the frame has changed */
-  if ((gpd == NULL) || (cfra_eval == gso->cfra)) {
+  if ((gpd == NULL) || (cfra == gso->cfra)) {
     return;
   }
 
@@ -1419,14 +1417,14 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
        *   spent too much time editing the wrong frame.
        */
       // XXX: should this be allowed when framelock is enabled?
-      if (gpf->framenum != cfra_eval) {
-        BKE_gpencil_frame_addcopy(gpl, cfra_eval);
+      if (gpf->framenum != cfra) {
+        BKE_gpencil_frame_addcopy(gpl, cfra);
       }
     }
   }
 
   /* save off new current frame, so that next update works fine */
-  gso->cfra = cfra_eval;
+  gso->cfra = cfra;
 }
 
 /* Apply ----------------------------------------------- */
@@ -1478,7 +1476,7 @@ static bool gpsculpt_brush_do_stroke(tGP_BrushEditData *gso,
 
       /* Skip if neither one is selected
        * (and we are only allowed to edit/consider selected points) */
-      if (gso->settings->flag & GP_SCULPT_SETT_FLAG_SELECT_MASK) {
+      if ((gso->settings->flag & GP_SCULPT_SETT_FLAG_SELECT_MASK) && (!gso->is_weight_mode)) {
         if (!(pt1->flag & GP_SPOINT_SELECT) && !(pt2->flag & GP_SPOINT_SELECT)) {
           include_last = false;
           continue;
