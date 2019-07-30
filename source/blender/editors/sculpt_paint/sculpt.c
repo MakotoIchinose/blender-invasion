@@ -215,7 +215,7 @@ typedef struct SculptVertexNeighbourIter {
   int i;
 } SculptVertexNeighbourIter;
 
-#define SCULPT_VERTEX_NEIGHBOUR_MAX 3
+#define SCULPT_VERTEX_NEIGHBOUR_MAX 256
 
 void sculpt_vertex_neighbour_add(SculptVertexNeighbourIter *iter, int neighbour_index)
 {
