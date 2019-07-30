@@ -974,7 +974,7 @@ float determinant_m4_mat3_array(const float m[4][4])
 bool invert_m2_m2(float r[2][2], float m[2][2], float epsilon)
 {
   float det = determinant_m2(m[0][0], m[0][1], m[1][0], m[1][1]);
-  if (fabsf(det) > epsilon) {
+  if (fabsf(det) < epsilon) {
     return false;
   }
   r[0][0] = m[1][1];

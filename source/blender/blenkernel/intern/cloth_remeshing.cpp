@@ -84,6 +84,9 @@ typedef map<BMVert *, ClothVertex> ClothVertMap;
 #define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 1
+#define FACE_SIZING_DEBUG_SIZE 0
+
+#define INVERT_EPSILON 0.00001f
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
@@ -652,7 +655,9 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm, ClothVertMap &cvm, vector<
   BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
     float size = cloth_remeshing_edge_size(bm, e, cvm);
 #if FACE_SIZING_DEBUG
+#  if FACE_SIZING_DEBUG_SIZE
     printf("size: %f in %s\n", size, __func__);
+#  endif
 #endif
     if (size > 1.0f) {
       edge_pairs.push_back(make_pair(size, e));
@@ -1928,12 +1933,22 @@ static void cloth_remeshing_derivative(
   float face_dm[2][2];
   float face_dm_inv[2][2];
   cloth_remeshing_face_data(bm, f, face_dm);
-  if (invert_m2_m2(face_dm_inv, face_dm, 0.001f) == false) {
+  if (invert_m2_m2(face_dm_inv, face_dm, INVERT_EPSILON) == false) {
     zero_m2(face_dm_inv);
   }
   transpose_m2(face_dm_inv);
 
   mul_v2_m2v2(r_vec, face_dm_inv, temp_vec);
+#if FACE_SIZING_DEBUG_OBS
+  printf("face_dm: ");
+  print_m2(face_dm);
+  printf("face_dm_inv: ");
+  print_m2(face_dm_inv);
+  printf("temp_vec: ");
+  print_v2(temp_vec);
+  printf("r_vec: ");
+  print_v2(r_vec);
+#endif
 }
 
 static void cloth_remeshing_derivative(
@@ -1948,7 +1963,7 @@ static void cloth_remeshing_derivative(
   float face_dm[2][2];
   float face_dm_inv[2][2];
   cloth_remeshing_face_data(bm, f, face_dm);
-  if (invert_m2_m2(face_dm_inv, face_dm, 0.001f) == false) {
+  if (invert_m2_m2(face_dm_inv, face_dm, INVERT_EPSILON) == false) {
     zero_m2(face_dm_inv);
   }
 
