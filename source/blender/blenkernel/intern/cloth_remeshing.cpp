@@ -85,8 +85,9 @@ class ClothPlane {
   float no[3];
 };
 
+#define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
 #define COLLAPSE_EDGES_DEBUG 0
-#define FACE_SIZING_DEBUG 0
+#define FACE_SIZING_DEBUG 1
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
@@ -309,7 +310,7 @@ static Mesh *cloth_remeshing_update_cloth_object_bmesh(Object *ob, ClothModifier
    * reindexing */
 
   if (clmd->clothObject->mvert_num_prev == clmd->clothObject->mvert_num) {
-    printf("returning because mvert_num_prev == mvert_num\n");
+    /* printf("returning because mvert_num_prev == mvert_num\n"); */
     clmd->clothObject->bm_prev = BM_mesh_copy(clmd->clothObject->bm);
     BM_mesh_free(clmd->clothObject->bm);
     clmd->clothObject->bm = NULL;
@@ -987,7 +988,9 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd, ClothVertMap &c
   static int prev_num_bad_edges = 0;
   vector<BMEdge *> bad_edges;
   cloth_remeshing_find_bad_edges(bm, cvm, bad_edges);
+#if REMESHING_DATA_DEBUG
   printf("split edges tagged: %d\n", (int)bad_edges.size());
+#endif
   if (prev_num_bad_edges == bad_edges.size()) {
     bad_edges.clear();
     return false;
@@ -1606,7 +1609,9 @@ static void cloth_remeshing_static(ClothModifierData *clmd, ClothVertMap &cvm)
   while (cloth_remeshing_collapse_edges(clmd, cvm, active_faces, count)) {
     /* empty while */
   }
+#  if REMESHING_DATA_DEBUG
   printf("collapse edges count: %d\n", count);
+#  endif
 
 #endif
 
@@ -1689,7 +1694,9 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
   while (cloth_remeshing_collapse_edges(clmd, cvm, active_faces, count)) {
     /* empty while */
   }
+#  if REMESHING_DATA_DEBUG
   printf("collapse edges count: %d\n", count);
+#  endif
 
 #endif
 
@@ -1716,6 +1723,28 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
   char file_name[100];
   sprintf(file_name, "/tmp/objs/%03d.obj", file_no);
   cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
+#endif
+
+#if 0
+  BMVert *v;
+  BMIter viter;
+  int preserve_count = 0;
+  BM_ITER_MESH (v, &viter, clmd->clothObject->bm, BM_VERTS_OF_MESH) {
+    if (cvm[v].flags & CLOTH_VERT_FLAG_PRESERVE) {
+      preserve_count++;
+    }
+  }
+  printf("Preserve Count: %d\n", preserve_count);
+
+  BMEdge *e;
+  BMIter eiter;
+  int label_count = 0;
+  BM_ITER_MESH (e, &eiter, clmd->clothObject->bm, BM_EDGES_OF_MESH) {
+    if (cloth_remeshing_edge_label_test(e)) {
+      label_count++;
+    }
+  }
+  printf("Label Count: %d\n", label_count);
 #endif
 }
 
@@ -1826,8 +1855,8 @@ static void cloth_remeshing_compression_metric(float mat[2][2], float r_mat[2][2
   printf("comp- q: ");
   print_m2(q);
   printf("comp- diagl: ");
-#  endif
   print_m2(diag_l);
+#  endif
 #endif
 }
 
@@ -2202,7 +2231,7 @@ static void cloth_remeshing_obstacle_metric(BMesh *bm,
 {
   if (planes.empty()) {
     zero_m2(r_mat);
-    printf("planes is empty, returning\n");
+    /* printf("planes is empty, returning\n"); */
     return;
   }
   cloth_remeshing_obstacle_metric_calculation(bm, f, planes, r_mat);
@@ -2312,6 +2341,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
 #if FACE_SIZING_DEBUG
   printf("l: ");
   print_v2(l);
+  printf("q: ");
+  print_m2(q);
   printf("result: ");
   print_m2(result);
 #endif
