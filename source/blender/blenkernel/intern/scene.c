@@ -228,6 +228,32 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   MEM_freeN(toolsettings);
 }
 
+void BKE_lanpr_copy_data(const Scene *from, Scene *to)
+{
+  const SceneLANPR *lanpr = &from->lanpr;
+  LANPR_LineLayer *ll, *new_ll;
+  LANPR_LineLayerComponent *llc, *new_llc;
+
+  to->lanpr.line_layers.first = to->lanpr.line_layers.last=NULL;
+  memset(&to->lanpr.line_layers,0,sizeof(ListBase));
+
+  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
+    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
+    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
+    memset(&new_ll->components,0,sizeof(ListBase));
+    new_ll->next = new_ll->prev = NULL;
+    BLI_addtail(&to->lanpr.line_layers, new_ll);
+    for (llc = ll->components.first; llc; llc = llc->next) {
+      new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Copied Line Layer Component");
+      memcpy(new_llc, llc, sizeof(LANPR_LineLayerComponent));
+      new_llc->next = new_llc->prev = NULL;
+      BLI_addtail(&new_ll->components, new_llc);
+    }
+  }
+
+  /*  render_buffer now only accessible from lanpr_share */
+}
+
 /**
  * Only copy internal data of Scene ID from source
  * to already allocated/initialized destination.
@@ -339,7 +365,7 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 
   /* lanpr data */
 
-  ED_lanpr_copy_data(sce_src, sce_dst);
+   BKE_lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
@@ -476,6 +502,20 @@ void BKE_scene_make_local(Main *bmain, Scene *sce, const bool lib_local)
   BKE_id_make_local_generic(bmain, &sce->id, true, lib_local);
 }
 
+void BKE_lanpr_free_everything(Scene *s)
+{
+  SceneLANPR *lanpr = &s->lanpr;
+  LANPR_LineLayer *ll;
+  LANPR_LineLayerComponent *llc;
+
+  while ((ll = BLI_pophead(&lanpr->line_layers))!=NULL) {
+    while ((llc = BLI_pophead(&ll->components))!=NULL){
+      MEM_freeN(llc);
+    }
+    MEM_freeN(ll);
+  }
+}
+
 /** Free (or release) any data used by this scene (does not free the scene itself). */
 void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
 {
@@ -548,7 +588,7 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
     sce->eevee.light_cache = NULL;
   }
 
-  ED_lanpr_free_everything(sce);
+  BKE_lanpr_free_everything(sce);
 
   /* These are freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);

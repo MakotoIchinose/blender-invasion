@@ -56,10 +56,9 @@ extern const char *RE_engine_id_BLENDER_LANPR;
 
 void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb);
 
-void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *ll)
+static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *ll)
 {
   int Count = 0;
-  int level;
   float *v, *tv, *N, *tn;
   int i;
   int vertCount;
@@ -269,12 +268,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     lanpr_rebuild_all_command(lanpr);
   }
   else {
-    if (lanpr_during_render()) {
       printf(
           "LANPR Warning: To avoid resource duplication, viewport will not display when rendering "
           "is in progress\n");
       return; /*  don't draw viewport during render */
-    }
   }
 
   float clear_col[4] = {1.0f, 0.0f, 0.0f, 1.0f};

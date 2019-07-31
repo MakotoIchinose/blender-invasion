@@ -59,7 +59,6 @@
 
 #define LANPR_ENGINE "BLENDER_LANPR"
 
-#define M_PI 3.1415926535897932384626433832795
 #define deg(r) r / M_PI * 180.0
 #define rad(d) d *M_PI / 180.0
 
@@ -253,9 +252,5 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
                             int is_render);
 
 void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render);
-
-void lanpr_set_render_flag();
-void lanpr_clear_render_flag();
-int lanpr_during_render();
 
 #endif

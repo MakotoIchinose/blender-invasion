@@ -26,9 +26,7 @@
 
 #include <math.h>
 
-int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
-
-float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
+static float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
 {
   LANPR_RenderLineChainItem *rlci;
   int i = 0;
@@ -48,7 +46,7 @@ float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths
   return offset_accum;
 }
 
-int lanpr_get_gpu_line_type(LANPR_RenderLineChainItem *rlci)
+static int lanpr_get_gpu_line_type(LANPR_RenderLineChainItem *rlci)
 {
   switch (rlci->line_type) {
     case LANPR_EDGE_FLAG_CONTOUR:

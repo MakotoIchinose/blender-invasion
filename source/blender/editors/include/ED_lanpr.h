@@ -131,10 +131,11 @@ typedef struct LANPR_RenderVert {
   struct BMVert *v; /*  Used As r When Intersecting */
   struct LANPR_RenderLine *intersecting_line;
   struct LANPR_RenderLine *intersecting_line2;
-  struct LANPR_RenderTriangle *intersecting_with; /*    positive 1         Negative 0 */
-  /*  tnsRenderTriangle* IntersectingOnFace;       /*          <|               |> */
-  char positive;  /*                  l---->|----->r	l---->|----->r */
-  char edge_used; /*                       <|		          |> */
+  struct LANPR_RenderTriangle *intersecting_with; 
+  /*                 positive 1         Negative 0 */
+  /*                      <|              |> */
+  char positive;  /* l---->|----->r	l---->|----->r */
+  char edge_used; /*      <|		          |> */
 } LANPR_RenderVert;
 
 typedef enum LANPR_EdgeFlag{
@@ -337,10 +338,6 @@ typedef struct LANPR_SharedResource {
   int init_complete;
 
   SpinLock render_flag_lock;
-  int during_render; /*  get/set using access funcion which uses render_flag_lock to lock. */
-  /*  this prevents duplicate too much resource. (no render preview in viewport */
-  /*  while rendering) */
-
 } LANPR_SharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8
@@ -817,10 +814,8 @@ void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
 
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
-void ED_lanpr_copy_data(struct Scene *from, struct Scene *to);
-void ED_lanpr_free_everything(struct Scene *s);
 
-bool ED_lanpr_dpix_shader_error();
+bool ED_lanpr_dpix_shader_error(void);
 bool ED_lanpr_disable_edge_splits(struct Scene *s);
 
 int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
@@ -831,6 +826,23 @@ LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, rea
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
 
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
+
+
+struct wmOperatorType;
+
+/* Operator types */
+void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_add_line_component(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot);
+void SCENE_OT_lanpr_export_svg(struct wmOperatorType *ot);
 
 void ED_operatortypes_lanpr(void);
 

@@ -2783,8 +2783,6 @@ static int lanpr_get_max_occlusion_level(Depsgraph *dg)
   }
 }
 
-void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *ll);
-
 static int lanpr_get_render_triangle_size(LANPR_RenderBuffer *rb)
 {
   if (rb->thread_count == 0) {
@@ -4018,45 +4016,6 @@ bool ED_lanpr_dpix_shader_error()
 bool ED_lanpr_disable_edge_splits(Scene *s)
 {
   return (s->lanpr.enabled && s->lanpr.disable_edge_splits);
-}
-
-void ED_lanpr_copy_data(Scene *from, Scene *to)
-{
-  SceneLANPR *lanpr = &from->lanpr;
-  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared, *new_rb;
-  LANPR_LineLayer *ll, *new_ll;
-  LANPR_LineLayerComponent *llc, *new_llc;
-
-  list_handle_empty(&to->lanpr.line_layers);
-
-  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
-    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
-    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
-    list_handle_empty(&new_ll->components);
-    new_ll->next = new_ll->prev = NULL;
-    BLI_addtail(&to->lanpr.line_layers, new_ll);
-    for (llc = ll->components.first; llc; llc = llc->next) {
-      new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Copied Line Layer Component");
-      memcpy(new_llc, llc, sizeof(LANPR_LineLayerComponent));
-      new_llc->next = new_llc->prev = NULL;
-      BLI_addtail(&new_ll->components, new_llc);
-    }
-  }
-
-  /*  render_buffer now only accessible from lanpr_share */
-}
-
-void ED_lanpr_free_everything(Scene *s)
-{
-  SceneLANPR *lanpr = &s->lanpr;
-  LANPR_LineLayer *ll;
-  LANPR_LineLayerComponent *llc;
-
-  while (ll = BLI_pophead(&lanpr->line_layers)) {
-    while (llc = BLI_pophead(&ll->components))
-      MEM_freeN(llc);
-    MEM_freeN(ll);
-  }
 }
 
 /* GPencil bindings */

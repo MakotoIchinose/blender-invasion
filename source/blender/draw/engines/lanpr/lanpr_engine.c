@@ -556,29 +556,6 @@ void lanpr_batch_free(SceneLANPR *lanpr)
 {
 }
 
-/*  below are commented to prevent interface lock in some conditions. */
-/*  should look into it, */
-void lanpr_set_render_flag()
-{
-  /*  BLI_spin_lock(&lanpr_share.render_flag_lock); */
-  /*  lanpr_share.during_render = 1; */
-  /*  BLI_spin_unlock(&lanpr_share.render_flag_lock); */
-}
-void lanpr_clear_render_flag()
-{
-  /*  BLI_spin_lock(&lanpr_share.render_flag_lock); */
-  /*  lanpr_share.during_render = 0; */
-  /*  BLI_spin_unlock(&lanpr_share.render_flag_lock); */
-}
-int lanpr_during_render()
-{
-  int status;
-  BLI_spin_lock(&lanpr_share.render_flag_lock);
-  status = lanpr_share.during_render;
-  BLI_spin_unlock(&lanpr_share.render_flag_lock);
-  return status;
-}
-
 static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_render)
 {
   LANPR_PassList *psl = ((LANPR_Data *)vedata)->psl;
@@ -694,8 +671,6 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
 
-  lanpr_set_render_flag();
-
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
     if (!lanpr_share.render_buffer_shared) {
@@ -763,7 +738,6 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   /*  we don't need to free pass/buffer/texture in the engine's list */
   /*  lanpr_engine_free(); */
 
-  lanpr_clear_render_flag();
 }
 
 static void lanpr_view_update(void *vedata)
