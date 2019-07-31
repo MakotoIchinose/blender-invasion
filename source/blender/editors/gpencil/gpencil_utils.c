@@ -259,7 +259,7 @@ bGPdata *ED_gpencil_data_get_active_evaluated(const bContext *C)
   ID *screen_id = (ID *)CTX_wm_screen(C);
   ScrArea *sa = CTX_wm_area(C);
 
-  const Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   Object *ob = CTX_data_active_object(C);
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
@@ -548,7 +548,7 @@ void gp_point_conversion_init(bContext *C, GP_SpaceConversion *r_gsc)
   if (sa->spacetype == SPACE_VIEW3D) {
     wmWindow *win = CTX_wm_window(C);
     Scene *scene = CTX_data_scene(C);
-    struct Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    struct Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     View3D *v3d = (View3D *)CTX_wm_space_data(C);
     RegionView3D *rv3d = ar->regiondata;
 
@@ -560,8 +560,7 @@ void gp_point_conversion_init(bContext *C, GP_SpaceConversion *r_gsc)
 
     /* for camera view set the subrect */
     if (rv3d->persp == RV3D_CAMOB) {
-      ED_view3d_calc_camera_border(
-          scene, CTX_data_depsgraph(C), ar, v3d, rv3d, &r_gsc->subrect_data, true);
+      ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &r_gsc->subrect_data, true);
       r_gsc->subrect = &r_gsc->subrect_data;
     }
   }
@@ -929,7 +928,7 @@ void ED_gp_get_drawing_reference(
 void ED_gpencil_project_stroke_to_view(bContext *C, bGPDlayer *gpl, bGPDstroke *gps)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
   GP_SpaceConversion gsc = {NULL};
@@ -1740,7 +1739,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     }
 
     /* while drawing hide */
-    if ((gpd->runtime.sbuffer_size > 0) &&
+    if ((gpd->runtime.sbuffer_used > 0) &&
         ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) == 0) &&
         ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) == 0)) {
       return;
@@ -2524,4 +2523,38 @@ void ED_gpencil_select_toggle_all(bContext *C, int action)
     }
     CTX_DATA_END;
   }
+}
+
+/* Ensure the SBuffer (while drawing stroke) size is enough to save all points of the stroke */
+tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
+                                     short *buffer_size,
+                                     short *buffer_used,
+                                     const bool clear)
+{
+  tGPspoint *p = NULL;
+
+  /* By default a buffer is created with one block with a predefined number of free points,
+   * if the size is not enough, the cache is reallocated adding a new block of free points.
+   * This is done in order to keep cache small and improve speed. */
+  if (*buffer_used + 1 > *buffer_size) {
+    if ((*buffer_size == 0) || (buffer_array == NULL)) {
+      p = MEM_callocN(sizeof(struct tGPspoint) * GP_STROKE_BUFFER_CHUNK, "GPencil Sbuffer");
+      *buffer_size = GP_STROKE_BUFFER_CHUNK;
+    }
+    else {
+      *buffer_size += GP_STROKE_BUFFER_CHUNK;
+      p = MEM_recallocN(buffer_array, sizeof(struct tGPspoint) * *buffer_size);
+    }
+    buffer_array = p;
+  }
+
+  /* clear old data */
+  if (clear) {
+    *buffer_used = 0;
+    if (buffer_array != NULL) {
+      memset(buffer_array, 0, sizeof(tGPspoint) * *buffer_size);
+    }
+  }
+
+  return buffer_array;
 }
