@@ -72,7 +72,7 @@ static void initData(ModifierData *md)
   rmd->filter_width = 1;
   rmd->filter_bias = OPENVDB_LEVELSET_FIRST_BIAS;
   rmd->filter_type = OPENVDB_LEVELSET_FILTER_NONE;
-  rmd->filter_iterations = 1;
+  rmd->filter_offset_distance = 0.1f;
   rmd->flag |= MOD_REMESH_LIVE_REMESH;
   rmd->gradient_size = 50.0f;
   rmd->stiffness = 5.0f;
@@ -176,8 +176,11 @@ static Mesh *voxel_remesh(RemeshModifierData *rmd, Mesh *mesh, struct OpenVDBLev
     }
   }
 
-  OpenVDBLevelSet_filter(
-      level_set, rmd->filter_type, rmd->filter_width, rmd->filter_iterations, rmd->filter_bias);
+  OpenVDBLevelSet_filter(level_set,
+                         rmd->filter_type,
+                         rmd->filter_width,
+                         rmd->filter_offset_distance,
+                         rmd->filter_bias);
   target = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(
       level_set, rmd->isovalue, rmd->adaptivity, rmd->flag & MOD_REMESH_RELAX_TRIANGLES);
   OpenVDBLevelSet_free(level_set);

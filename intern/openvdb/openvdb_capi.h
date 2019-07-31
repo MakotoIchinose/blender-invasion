@@ -65,6 +65,7 @@ struct OpenVDBLevelSet;
 struct OpenVDBFloatGrid;
 struct OpenVDBIntGrid;
 struct OpenVDBVectorGrid;
+
 struct OpenVDBVolumeToMeshData {
   int tottriangles;
   int totquads;
@@ -88,8 +89,8 @@ struct OpenVDBRemeshData {
   int out_totfaces;
   int out_tottris;
   int filter_type;
-  int filter_bias;
-  int filter_width; /*parameter for gaussian, median, mean*/
+  enum OpenVDBLevelSet_FilterType filter_bias;
+  enum OpenVDBLevelSet_FilterBias filter_width; /* Parameter for gaussian, median, mean*/
 
   float voxel_size;
   float isovalue;
@@ -206,7 +207,7 @@ void OpenVDBLevelSet_volume_to_mesh(struct OpenVDBLevelSet *level_set,
 void OpenVDBLevelSet_filter(struct OpenVDBLevelSet *level_set,
                             OpenVDBLevelSet_FilterType filter_type,
                             int width,
-                            int iterations,
+                            float distance,
                             OpenVDBLevelSet_FilterBias bias);
 void OpenVDBLevelSet_CSG_operation(struct OpenVDBLevelSet *out,
                                    struct OpenVDBLevelSet *gridA,

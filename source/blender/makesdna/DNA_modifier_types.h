@@ -1581,7 +1581,7 @@ typedef struct RemeshModifierData {
   int filter_type;
   int filter_bias;
   int filter_width;
-  int filter_iterations;
+  float filter_offset_distance;
 
   /* volume csg */
   struct ListBase csg_operands;

@@ -4918,10 +4918,10 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Filter Width", "OpenVDB Levelset Filter Width");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "filter_iterations", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, "filter_iterations");
-  RNA_def_property_range(prop, 0, INT_MAX);
-  RNA_def_property_ui_text(prop, "Filter Iterations", "OpenVDB Levelset Filter Iterations");
+  prop = RNA_def_property(srna, "filter_offset_distance", PROP_FLOAT, PROP_UNSIGNED);
+  RNA_def_property_float_sdna(prop, NULL, "filter_offset_distance");
+  RNA_def_property_range(prop, 0, FLT_MAX);
+  RNA_def_property_ui_text(prop, "Filter Offset Distance", "OpenVDB Levelset Offset Distance");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);
