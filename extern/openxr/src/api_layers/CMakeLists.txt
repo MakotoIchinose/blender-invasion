@@ -94,7 +94,6 @@ endif()
 
 # Install explicit layers on Linux
 set(TARGET_NAMES
-    XrApiLayer_api_dump
     XrApiLayer_core_validation)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     foreach(TARGET_NAME ${TARGET_NAMES})
