@@ -21,7 +21,4 @@ void lanpr_generate_gpencil_from_chain(Depsgraph *depsgraph,
                                        struct Collection *col,
                                        int types);
 
-bool ED_lanpr_dpix_shader_error(void);
-bool ED_lanpr_disable_edge_splits(struct Scene *s);
-
 #endif

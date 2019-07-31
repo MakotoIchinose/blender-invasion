@@ -253,4 +253,6 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
 
 void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render);
 
+int lanpr_dpix_texture_size(SceneLANPR *lanpr);
+
 #endif

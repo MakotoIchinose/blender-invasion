@@ -815,6 +815,8 @@ int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int ins
 
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
+LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
+
 bool ED_lanpr_dpix_shader_error(void);
 bool ED_lanpr_disable_edge_splits(struct Scene *s);
 

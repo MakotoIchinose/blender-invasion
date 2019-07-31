@@ -52,13 +52,8 @@ void lanpr_init_atlas_inputs(void *ved)
   LANPR_Data *vedata = (LANPR_Data *)ved;
   LANPR_TextureList *txl = vedata->txl;
   LANPR_FramebufferList *fbl = vedata->fbl;
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  View3D *v3d = draw_ctx->v3d;
-  RegionView3D *rv3d = draw_ctx->rv3d;
-  Object *camera = (rv3d && rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
 
   int texture_size = lanpr_dpix_texture_size(lanpr);
@@ -133,12 +128,12 @@ void lanpr_init_atlas_inputs(void *ved)
     }
   }
 }
-void lanpr_destroy_atlas(void *ved)
+void lanpr_destroy_atlas(void *UNUSED(ved))
 {
   /*  no need to free things, no custom data. */
 }
 
-int lanpr_feed_atlas_data_obj(void *vedata,
+int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
                               float *AtlasPointsL,
                               float *AtlasPointsR,
                               float *AtlasFaceNormalL,
@@ -147,8 +142,6 @@ int lanpr_feed_atlas_data_obj(void *vedata,
                               Object *ob,
                               int begin_index)
 {
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-
   if (!DRW_object_is_renderable(ob)) {
     return begin_index;
   }
@@ -168,7 +161,7 @@ int lanpr_feed_atlas_data_obj(void *vedata,
   struct BMLoop *l1, *l2;
   FreestyleEdge *fe;
   int CanFindFreestyle = 0;
-  int vert_count = me->totvert, edge_count = me->totedge, face_count = me->totface;
+  int edge_count = me->totedge;
   int i, idx;
 
   int cache_total = lanpr_share.texture_size * lanpr_share.texture_size;
@@ -272,10 +265,6 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
                                              float *AtlasEdgeMask,
                                              int begin_index)
 {
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  LANPR_PrivateData *pd = stl->g_data;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   LinkData *lip;
   LANPR_RenderLine *rl;
@@ -326,14 +315,14 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
   return begin_index + i;
 }
 
-void lanpr_dpix_index_to_coord(int index, float *x, float *y)
+static void lanpr_dpix_index_to_coord(int index, float *x, float *y)
 {
   int texture_size = lanpr_share.texture_size;
   (*x) = tnsLinearItp(-1, 1, (float)(index % texture_size + 0.5) / (float)texture_size);
   (*y) = tnsLinearItp(-1, 1, (float)(index / texture_size + 0.5) / (float)texture_size);
 }
 
-void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
+static void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
 {
   int texture_size = lanpr_share.texture_size;
   (*x) = (float)(index % texture_size) + 0.5;
@@ -342,8 +331,6 @@ void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
 
 int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_index)
 {
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  LANPR_PrivateData *pd = stl->g_data;
   Mesh *me = ob->data;
   if (ob->type != OB_MESH) {
     return begin_index;
@@ -403,10 +390,6 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
 
 void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
 {
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  LANPR_PrivateData *pd = stl->g_data;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   float co[2];
   int i;
@@ -484,8 +467,6 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   }
   int texw = GPU_texture_width(txl->edge_intermediate),
       texh = GPU_texture_height(txl->edge_intermediate);
-  ;
-  int tsize = texw * texh;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);

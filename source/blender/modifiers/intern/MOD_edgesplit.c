@@ -129,6 +129,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *UNUSED(c
   return result;
 }
 
+bool ED_lanpr_disable_edge_splits(struct Scene *s);
+
 static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
 {
   int lanpr_found = 0;

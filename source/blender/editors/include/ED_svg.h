@@ -24,7 +24,13 @@
 #ifndef __ED_SVG_H__
 #define __ED_SVG_H__
 
-bool ED_svg_data_from_lanpr_chain(Text *ta,
+struct Text;
+struct LANPR_RenderBuffer;
+struct LANPR_LineLayer;
+struct bGPdata;
+struct bGPDlayer;
+
+bool ED_svg_data_from_lanpr_chain(struct Text *ta,
                                   struct LANPR_RenderBuffer *rb,
                                   struct LANPR_LineLayer *ll);
 bool ED_svg_data_from_gpencil(struct bGPdata *gpd,

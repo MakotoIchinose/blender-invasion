@@ -40,6 +40,8 @@
 #include "DNA_lanpr_types.h"
 #include "ED_lanpr.h"
 
+#include "ED_svg.h"
+
 #include "DEG_depsgraph.h"
 
 #include "MEM_guardedalloc.h"
