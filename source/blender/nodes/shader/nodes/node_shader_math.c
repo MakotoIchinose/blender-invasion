@@ -25,137 +25,11 @@
 
 /* **************** SCALAR MATH ******************** */
 static bNodeSocketTemplate sh_node_math_in[] = {
-    {SOCK_FLOAT, 1, N_("Value"), 0.5f, 0.5f, 0.5f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
-    {SOCK_FLOAT, 1, N_("Value"), 0.5f, 0.5f, 0.5f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
+    {SOCK_FLOAT, 1, N_("A"), 0.5f, 0.5f, 0.5f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
+    {SOCK_FLOAT, 1, N_("B"), 0.5f, 0.5f, 0.5f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
     {-1, 0, ""}};
 
-static bNodeSocketTemplate sh_node_math_out[] = {{SOCK_FLOAT, 0, N_("Value")}, {-1, 0, ""}};
-
-static void node_shader_exec_math(void *UNUSED(data),
-                                  int UNUSED(thread),
-                                  bNode *node,
-                                  bNodeExecData *UNUSED(execdata),
-                                  bNodeStack **in,
-                                  bNodeStack **out)
-{
-  float a, b, r = 0.0f;
-
-  nodestack_get_vec(&a, SOCK_FLOAT, in[0]);
-  nodestack_get_vec(&b, SOCK_FLOAT, in[1]);
-
-  switch (node->custom1) {
-    case NODE_MATH_ADD:
-      r = a + b;
-      break;
-    case NODE_MATH_SUB:
-      r = a - b;
-      break;
-    case NODE_MATH_MUL:
-      r = a * b;
-      break;
-    case NODE_MATH_DIVIDE: {
-      r = (b != 0.0f) ? a / b : 0.0f;
-      break;
-    }
-    case NODE_MATH_SIN: {
-      r = sinf(a);
-      break;
-    }
-    case NODE_MATH_COS: {
-      r = cosf(a);
-      break;
-    }
-    case NODE_MATH_TAN: {
-      r = tanf(a);
-      break;
-    }
-    case NODE_MATH_ASIN: {
-      r = (a <= 1.0f && a >= -1.0f) ? asinf(a) : 0.0f;
-      break;
-    }
-    case NODE_MATH_ACOS: {
-      r = (a <= 1.0f && a >= -1.0f) ? acosf(a) : 0.0f;
-      break;
-    }
-    case NODE_MATH_ATAN: {
-      r = atan(a);
-      break;
-    }
-    case NODE_MATH_LOG: {
-      r = (a > 0.0f && b > 0.0f) ? log(a) / log(b) : 0.0f;
-      break;
-    }
-    case NODE_MATH_MIN: {
-      r = (a < b) ? a : b;
-      break;
-    }
-    case NODE_MATH_MAX: {
-      r = (a > b) ? a : b;
-      break;
-    }
-    case NODE_MATH_ROUND: {
-      r = (a < 0.0f) ? (int)(a - 0.5f) : (int)(a + 0.5f);
-      break;
-    }
-    case NODE_MATH_LESS: {
-      r = (a < b) ? 1.0f : 0.0f;
-      break;
-    }
-    case NODE_MATH_GREATER: {
-      r = (a > b) ? 1.0f : 0.0f;
-      break;
-    }
-    case NODE_MATH_MOD: {
-      r = (b != 0.0f) ? fmod(a, b) : 0.0f;
-      break;
-    }
-    case NODE_MATH_ABS: {
-      r = fabsf(a);
-      break;
-    }
-    case NODE_MATH_ATAN2: {
-      r = atan2(a, b);
-      break;
-    }
-    case NODE_MATH_FLOOR: {
-      r = floorf(a);
-      break;
-    }
-    case NODE_MATH_CEIL: {
-      r = ceilf(a);
-      break;
-    }
-    case NODE_MATH_FRACT: {
-      r = a - floorf(a);
-      break;
-    }
-    case NODE_MATH_SQRT: {
-      r = (a > 0.0f) ? sqrt(a) : 0.0f;
-      break;
-    }
-    case NODE_MATH_POW: {
-      /* Only raise negative numbers by full integers */
-      if (a >= 0.0f) {
-        r = pow(a, b);
-      }
-      else {
-        float y_mod_1 = fabsf(fmodf(b, 1.0f));
-        /* If input value is not nearly an integer, fall back to zero, nicer than straight rounding
-         */
-        if (y_mod_1 > 0.999f || y_mod_1 < 0.001f) {
-          r = powf(a, floorf(b + 0.5f));
-        }
-        else {
-          r = 0.0f;
-        }
-      }
-      break;
-    }
-    default:
-      r = 0.0f;
-  }
-  out[0]->vec[0] = r;
-}
+static bNodeSocketTemplate sh_node_math_out[] = {{SOCK_FLOAT, 0, N_("Result")}, {-1, 0, ""}};
 
 static int gpu_shader_math(GPUMaterial *mat,
                            bNode *node,
@@ -165,44 +39,48 @@ static int gpu_shader_math(GPUMaterial *mat,
 {
   static const char *names[] = {
       [NODE_MATH_ADD] = "math_add",
-      [NODE_MATH_SUB] = "math_subtract",
-      [NODE_MATH_MUL] = "math_multiply",
+      [NODE_MATH_SUBTRACT] = "math_subtract",
+      [NODE_MATH_MULTIPLY] = "math_multiply",
       [NODE_MATH_DIVIDE] = "math_divide",
-      [NODE_MATH_SIN] = "math_sine",
-      [NODE_MATH_COS] = "math_cosine",
-      [NODE_MATH_TAN] = "math_tangent",
-      [NODE_MATH_ASIN] = "math_asin",
-      [NODE_MATH_ACOS] = "math_acos",
-      [NODE_MATH_ATAN] = "math_atan",
-      [NODE_MATH_POW] = "math_pow",
-      [NODE_MATH_LOG] = "math_log",
-      [NODE_MATH_MIN] = "math_min",
-      [NODE_MATH_MAX] = "math_max",
+
+      [NODE_MATH_POWER] = "math_power",
+      [NODE_MATH_LOGARITHM] = "math_logarithm",
+      [NODE_MATH_SQRT] = "math_sqrt",
+      [NODE_MATH_ABSOLUTE] = "math_absolute",
+
+      [NODE_MATH_MINIMUM] = "math_minimum",
+      [NODE_MATH_MAXIMUM] = "math_maximum",
+      [NODE_MATH_LESS_THAN] = "math_less_than",
+      [NODE_MATH_GREATER_THAN] = "math_greater_than",
+
       [NODE_MATH_ROUND] = "math_round",
-      [NODE_MATH_LESS] = "math_less_than",
-      [NODE_MATH_GREATER] = "math_greater_than",
-      [NODE_MATH_MOD] = "math_modulo",
-      [NODE_MATH_ABS] = "math_abs",
-      [NODE_MATH_ATAN2] = "math_atan2",
       [NODE_MATH_FLOOR] = "math_floor",
       [NODE_MATH_CEIL] = "math_ceil",
-      [NODE_MATH_FRACT] = "math_fract",
-      [NODE_MATH_SQRT] = "math_sqrt",
+      [NODE_MATH_FRACTION] = "math_fraction",
+      [NODE_MATH_MODULO] = "math_modulo",
+
+      [NODE_MATH_SINE] = "math_sine",
+      [NODE_MATH_COSINE] = "math_cosine",
+      [NODE_MATH_TANGENT] = "math_tangent",
+      [NODE_MATH_ARCSINE] = "math_arcsine",
+      [NODE_MATH_ARCCOSINE] = "math_arccosine",
+      [NODE_MATH_ARCTANGENT] = "math_arctangent",
+      [NODE_MATH_ARCTAN2] = "math_arctan2",
   };
 
   switch (node->custom1) {
-    case NODE_MATH_SIN:
-    case NODE_MATH_COS:
-    case NODE_MATH_TAN:
-    case NODE_MATH_ASIN:
-    case NODE_MATH_ACOS:
-    case NODE_MATH_ATAN:
-    case NODE_MATH_ROUND:
-    case NODE_MATH_ABS:
-    case NODE_MATH_FLOOR:
-    case NODE_MATH_FRACT:
+    case NODE_MATH_SQRT:
     case NODE_MATH_CEIL:
-    case NODE_MATH_SQRT: {
+    case NODE_MATH_SINE:
+    case NODE_MATH_ROUND:
+    case NODE_MATH_FLOOR:
+    case NODE_MATH_COSINE:
+    case NODE_MATH_ARCSINE:
+    case NODE_MATH_TANGENT:
+    case NODE_MATH_ABSOLUTE:
+    case NODE_MATH_FRACTION:
+    case NODE_MATH_ARCCOSINE:
+    case NODE_MATH_ARCTANGENT: {
       /* use only first item and terminator */
       GPUNodeStack tmp_in[2];
       memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
@@ -218,21 +96,21 @@ static int gpu_shader_math(GPUMaterial *mat,
 
 static void node_shader_update_math(bNodeTree *UNUSED(ntree), bNode *node)
 {
-  bNodeSocket *sock = BLI_findlink(&node->inputs, 1);
+  bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, "B");
 
   switch (node->custom1) {
-    case NODE_MATH_SIN:
-    case NODE_MATH_COS:
-    case NODE_MATH_TAN:
-    case NODE_MATH_ASIN:
-    case NODE_MATH_ACOS:
-    case NODE_MATH_ATAN:
-    case NODE_MATH_ROUND:
-    case NODE_MATH_ABS:
-    case NODE_MATH_FLOOR:
-    case NODE_MATH_FRACT:
-    case NODE_MATH_CEIL:
     case NODE_MATH_SQRT:
+    case NODE_MATH_CEIL:
+    case NODE_MATH_SINE:
+    case NODE_MATH_ROUND:
+    case NODE_MATH_FLOOR:
+    case NODE_MATH_COSINE:
+    case NODE_MATH_ARCSINE:
+    case NODE_MATH_TANGENT:
+    case NODE_MATH_ABSOLUTE:
+    case NODE_MATH_FRACTION:
+    case NODE_MATH_ARCCOSINE:
+    case NODE_MATH_ARCTANGENT:
       sock->flag |= SOCK_UNAVAIL;
       break;
     default:
@@ -247,8 +125,6 @@ void register_node_type_sh_math(void)
   sh_node_type_base(&ntype, SH_NODE_MATH, "Math", NODE_CLASS_CONVERTOR, 0);
   node_type_socket_templates(&ntype, sh_node_math_in, sh_node_math_out);
   node_type_label(&ntype, node_math_label);
-  node_type_storage(&ntype, "", NULL, NULL);
-  node_type_exec(&ntype, NULL, NULL, node_shader_exec_math);
   node_type_gpu(&ntype, gpu_shader_math);
   node_type_update(&ntype, node_shader_update_math);
 

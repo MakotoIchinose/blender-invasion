@@ -1306,9 +1306,9 @@ class MathNode : public ShaderNode {
   }
   void constant_fold(const ConstantFolder &folder);
 
-  float value1;
-  float value2;
-  NodeMath type;
+  float a;
+  float b;
+  NodeMathType type;
 };
 
 class NormalNode : public ShaderNode {

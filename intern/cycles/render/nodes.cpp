@@ -5637,32 +5637,36 @@ NODE_DEFINE(MathNode)
   type_enum.insert("subtract", NODE_MATH_SUBTRACT);
   type_enum.insert("multiply", NODE_MATH_MULTIPLY);
   type_enum.insert("divide", NODE_MATH_DIVIDE);
+
+  type_enum.insert("power", NODE_MATH_POWER);
+  type_enum.insert("logarithm", NODE_MATH_LOGARITHM);
+  type_enum.insert("sqrt", NODE_MATH_SQRT);
+  type_enum.insert("absolute", NODE_MATH_ABSOLUTE);
+
+  type_enum.insert("minimum", NODE_MATH_MINIMUM);
+  type_enum.insert("maximum", NODE_MATH_MAXIMUM);
+  type_enum.insert("less_than", NODE_MATH_LESS_THAN);
+  type_enum.insert("greater_than", NODE_MATH_GREATER_THAN);
+
+  type_enum.insert("round", NODE_MATH_ROUND);
+  type_enum.insert("floor", NODE_MATH_FLOOR);
+  type_enum.insert("ceil", NODE_MATH_CEIL);
+  type_enum.insert("fraction", NODE_MATH_FRACTION);
+  type_enum.insert("modulo", NODE_MATH_MODULO);
+
   type_enum.insert("sine", NODE_MATH_SINE);
   type_enum.insert("cosine", NODE_MATH_COSINE);
   type_enum.insert("tangent", NODE_MATH_TANGENT);
   type_enum.insert("arcsine", NODE_MATH_ARCSINE);
   type_enum.insert("arccosine", NODE_MATH_ARCCOSINE);
   type_enum.insert("arctangent", NODE_MATH_ARCTANGENT);
-  type_enum.insert("power", NODE_MATH_POWER);
-  type_enum.insert("logarithm", NODE_MATH_LOGARITHM);
-  type_enum.insert("minimum", NODE_MATH_MINIMUM);
-  type_enum.insert("maximum", NODE_MATH_MAXIMUM);
-  type_enum.insert("round", NODE_MATH_ROUND);
-  type_enum.insert("less_than", NODE_MATH_LESS_THAN);
-  type_enum.insert("greater_than", NODE_MATH_GREATER_THAN);
-  type_enum.insert("modulo", NODE_MATH_MODULO);
-  type_enum.insert("absolute", NODE_MATH_ABSOLUTE);
   type_enum.insert("arctan2", NODE_MATH_ARCTAN2);
-  type_enum.insert("floor", NODE_MATH_FLOOR);
-  type_enum.insert("ceil", NODE_MATH_CEIL);
-  type_enum.insert("fract", NODE_MATH_FRACT);
-  type_enum.insert("sqrt", NODE_MATH_SQRT);
   SOCKET_ENUM(type, "Type", type_enum, NODE_MATH_ADD);
 
-  SOCKET_IN_FLOAT(value1, "Value1", 0.0f);
-  SOCKET_IN_FLOAT(value2, "Value2", 0.0f);
+  SOCKET_IN_FLOAT(a, "A", 0.5f);
+  SOCKET_IN_FLOAT(b, "B", 0.5f);
 
-  SOCKET_OUT_FLOAT(value, "Value");
+  SOCKET_OUT_FLOAT(result, "Result");
 
   return type;
 }
@@ -5674,7 +5678,7 @@ MathNode::MathNode() : ShaderNode(node_type)
 void MathNode::constant_fold(const ConstantFolder &folder)
 {
   if (folder.all_inputs_constant()) {
-    folder.make_constant(svm_math(type, value1, value2));
+    folder.make_constant(svm_math(type, a, b));
   }
   else {
     folder.fold_math(type);
@@ -5683,13 +5687,12 @@ void MathNode::constant_fold(const ConstantFolder &folder)
 
 void MathNode::compile(SVMCompiler &compiler)
 {
-  ShaderInput *value1_in = input("Value1");
-  ShaderInput *value2_in = input("Value2");
-  ShaderOutput *value_out = output("Value");
+  ShaderInput *a_in = input("A");
+  ShaderInput *b_in = input("B");
+  ShaderOutput *result_out = output("Result");
 
-  compiler.add_node(
-      NODE_MATH, type, compiler.stack_assign(value1_in), compiler.stack_assign(value2_in));
-  compiler.add_node(NODE_MATH, compiler.stack_assign(value_out));
+  compiler.add_node(NODE_MATH, type, compiler.stack_assign(a_in), compiler.stack_assign(b_in));
+  compiler.add_node(NODE_MATH, compiler.stack_assign(result_out));
 }
 
 void MathNode::compile(OSLCompiler &compiler)

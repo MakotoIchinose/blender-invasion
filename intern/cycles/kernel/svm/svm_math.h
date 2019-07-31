@@ -21,15 +21,14 @@ CCL_NAMESPACE_BEGIN
 ccl_device void svm_node_math(KernelGlobals *kg,
                               ShaderData *sd,
                               float *stack,
-                              uint itype,
-                              uint f1_offset,
-                              uint f2_offset,
+                              uint type,
+                              uint a_offset,
+                              uint b_offset,
                               int *offset)
 {
-  NodeMath type = (NodeMath)itype;
-  float f1 = stack_load_float(stack, f1_offset);
-  float f2 = stack_load_float(stack, f2_offset);
-  float f = svm_math(type, f1, f2);
+  float a = stack_load_float(stack, a_offset);
+  float b = stack_load_float(stack, b_offset);
+  float f = svm_math((NodeMathType)type, a, b);
 
   uint4 node1 = read_node(kg, offset);
 

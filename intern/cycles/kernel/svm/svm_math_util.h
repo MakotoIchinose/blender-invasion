@@ -102,62 +102,86 @@ ccl_device void svm_vector_math(
   }
 }
 
-ccl_device float svm_math(NodeMath type, float Fac1, float Fac2)
+ccl_device float svm_math(NodeMathType type, float a, float b)
 {
-  float Fac;
-
-  if (type == NODE_MATH_ADD)
-    Fac = Fac1 + Fac2;
-  else if (type == NODE_MATH_SUBTRACT)
-    Fac = Fac1 - Fac2;
-  else if (type == NODE_MATH_MULTIPLY)
-    Fac = Fac1 * Fac2;
-  else if (type == NODE_MATH_DIVIDE)
-    Fac = safe_divide(Fac1, Fac2);
-  else if (type == NODE_MATH_SINE)
-    Fac = sinf(Fac1);
-  else if (type == NODE_MATH_COSINE)
-    Fac = cosf(Fac1);
-  else if (type == NODE_MATH_TANGENT)
-    Fac = tanf(Fac1);
-  else if (type == NODE_MATH_ARCSINE)
-    Fac = safe_asinf(Fac1);
-  else if (type == NODE_MATH_ARCCOSINE)
-    Fac = safe_acosf(Fac1);
-  else if (type == NODE_MATH_ARCTANGENT)
-    Fac = atanf(Fac1);
-  else if (type == NODE_MATH_POWER)
-    Fac = safe_powf(Fac1, Fac2);
-  else if (type == NODE_MATH_LOGARITHM)
-    Fac = safe_logf(Fac1, Fac2);
-  else if (type == NODE_MATH_MINIMUM)
-    Fac = fminf(Fac1, Fac2);
-  else if (type == NODE_MATH_MAXIMUM)
-    Fac = fmaxf(Fac1, Fac2);
-  else if (type == NODE_MATH_ROUND)
-    Fac = floorf(Fac1 + 0.5f);
-  else if (type == NODE_MATH_LESS_THAN)
-    Fac = Fac1 < Fac2;
-  else if (type == NODE_MATH_GREATER_THAN)
-    Fac = Fac1 > Fac2;
-  else if (type == NODE_MATH_MODULO)
-    Fac = safe_modulo(Fac1, Fac2);
-  else if (type == NODE_MATH_ABSOLUTE)
-    Fac = fabsf(Fac1);
-  else if (type == NODE_MATH_ARCTAN2)
-    Fac = atan2f(Fac1, Fac2);
-  else if (type == NODE_MATH_FLOOR)
-    Fac = floorf(Fac1);
-  else if (type == NODE_MATH_CEIL)
-    Fac = ceilf(Fac1);
-  else if (type == NODE_MATH_FRACT)
-    Fac = Fac1 - floorf(Fac1);
-  else if (type == NODE_MATH_SQRT)
-    Fac = safe_sqrtf(Fac1);
-  else
-    Fac = 0.0f;
-
-  return Fac;
+  float result;
+  switch (type) {
+    case NODE_MATH_ADD:
+      result = a + b;
+      break;
+    case NODE_MATH_SUBTRACT:
+      result = a - b;
+      break;
+    case NODE_MATH_MULTIPLY:
+      result = a * b;
+      break;
+    case NODE_MATH_DIVIDE:
+      result = safe_divide(a, b);
+      break;
+    case NODE_MATH_POWER:
+      result = safe_powf(a, b);
+      break;
+    case NODE_MATH_LOGARITHM:
+      result = safe_logf(a, b);
+      break;
+    case NODE_MATH_SQRT:
+      result = safe_sqrtf(a);
+      break;
+    case NODE_MATH_ABSOLUTE:
+      result = fabsf(a);
+      break;
+    case NODE_MATH_MINIMUM:
+      result = fminf(a, b);
+      break;
+    case NODE_MATH_MAXIMUM:
+      result = fmaxf(a, b);
+      break;
+    case NODE_MATH_LESS_THAN:
+      result = a < b;
+      break;
+    case NODE_MATH_GREATER_THAN:
+      result = a > b;
+      break;
+    case NODE_MATH_ROUND:
+      result = floorf(a + 0.5f);
+      break;
+    case NODE_MATH_FLOOR:
+      result = floorf(a);
+      break;
+    case NODE_MATH_CEIL:
+      result = ceilf(a);
+      break;
+    case NODE_MATH_FRACTION:
+      result = a - floorf(a);
+      break;
+    case NODE_MATH_MODULO:
+      result = safe_modulo(a, b);
+      break;
+    case NODE_MATH_SINE:
+      result = sinf(a);
+      break;
+    case NODE_MATH_COSINE:
+      result = cosf(a);
+      break;
+    case NODE_MATH_TANGENT:
+      result = tanf(a);
+      break;
+    case NODE_MATH_ARCSINE:
+      result = safe_asinf(a);
+      break;
+    case NODE_MATH_ARCCOSINE:
+      result = safe_acosf(a);
+      break;
+    case NODE_MATH_ARCTANGENT:
+      result = atanf(a);
+      break;
+    case NODE_MATH_ARCTAN2:
+      result = atan2f(a, b);
+      break;
+    default:
+      result = 0.0f;
+  }
+  return result;
 }
 
 /* Calculate color in range 800..12000 using an approximation

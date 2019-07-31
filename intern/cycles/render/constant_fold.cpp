@@ -301,58 +301,58 @@ void ConstantFolder::fold_mix(NodeMix type, bool clamp) const
   }
 }
 
-void ConstantFolder::fold_math(NodeMath type) const
+void ConstantFolder::fold_math(NodeMathType type) const
 {
-  ShaderInput *value1_in = node->input("Value1");
-  ShaderInput *value2_in = node->input("Value2");
+  ShaderInput *a_in = node->input("A");
+  ShaderInput *b_in = node->input("B");
 
   switch (type) {
     case NODE_MATH_ADD:
       /* X + 0 == 0 + X == X */
-      if (is_zero(value1_in)) {
-        try_bypass_or_make_constant(value2_in);
+      if (is_zero(a_in)) {
+        try_bypass_or_make_constant(b_in);
       }
-      else if (is_zero(value2_in)) {
-        try_bypass_or_make_constant(value1_in);
+      else if (is_zero(b_in)) {
+        try_bypass_or_make_constant(a_in);
       }
       break;
     case NODE_MATH_SUBTRACT:
       /* X - 0 == X */
-      if (is_zero(value2_in)) {
-        try_bypass_or_make_constant(value1_in);
+      if (is_zero(b_in)) {
+        try_bypass_or_make_constant(a_in);
       }
       break;
     case NODE_MATH_MULTIPLY:
       /* X * 1 == 1 * X == X */
-      if (is_one(value1_in)) {
-        try_bypass_or_make_constant(value2_in);
+      if (is_one(a_in)) {
+        try_bypass_or_make_constant(b_in);
       }
-      else if (is_one(value2_in)) {
-        try_bypass_or_make_constant(value1_in);
+      else if (is_one(b_in)) {
+        try_bypass_or_make_constant(a_in);
       }
       /* X * 0 == 0 * X == 0 */
-      else if (is_zero(value1_in) || is_zero(value2_in)) {
+      else if (is_zero(a_in) || is_zero(b_in)) {
         make_zero();
       }
       break;
     case NODE_MATH_DIVIDE:
       /* X / 1 == X */
-      if (is_one(value2_in)) {
-        try_bypass_or_make_constant(value1_in);
+      if (is_one(b_in)) {
+        try_bypass_or_make_constant(a_in);
       }
       /* 0 / X == 0 */
-      else if (is_zero(value1_in)) {
+      else if (is_zero(a_in)) {
         make_zero();
       }
       break;
     case NODE_MATH_POWER:
       /* 1 ^ X == X ^ 0 == 1 */
-      if (is_one(value1_in) || is_zero(value2_in)) {
+      if (is_one(a_in) || is_zero(b_in)) {
         make_one();
       }
       /* X ^ 1 == X */
-      else if (is_one(value2_in)) {
-        try_bypass_or_make_constant(value1_in);
+      else if (is_one(b_in)) {
+        try_bypass_or_make_constant(a_in);
       }
     default:
       break;

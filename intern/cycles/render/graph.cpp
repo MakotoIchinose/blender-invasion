@@ -1088,16 +1088,16 @@ void ShaderGraph::transform_multi_closure(ShaderNode *node, ShaderOutput *weight
       add(math_node);
 
       if (weight_in->link)
-        connect(weight_in->link, math_node->input("Value1"));
+        connect(weight_in->link, math_node->input("A"));
       else
-        math_node->value1 = weight_value;
+        math_node->a = weight_value;
 
       if (weight_out)
-        connect(weight_out, math_node->input("Value2"));
+        connect(weight_out, math_node->input("B"));
       else
-        math_node->value2 = 1.0f;
+        math_node->b = 1.0f;
 
-      weight_out = math_node->output("Value");
+      weight_out = math_node->output("Result");
       if (weight_in->link)
         disconnect(weight_in);
     }

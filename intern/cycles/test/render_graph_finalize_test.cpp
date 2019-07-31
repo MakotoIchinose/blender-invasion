@@ -971,9 +971,9 @@ TEST_F(RenderGraph, constant_fold_math)
   builder
       .add_node(ShaderNodeBuilder<MathNode>("Math")
                     .set(&MathNode::type, NODE_MATH_ADD)
-                    .set("Value1", 0.7f)
-                    .set("Value2", 0.9f))
-      .output_value("Math::Value");
+                    .set("A", 0.7f)
+                    .set("B", 0.9f))
+      .output_value("Math::Result");
 
   graph.finalize(scene);
 }
@@ -983,26 +983,24 @@ TEST_F(RenderGraph, constant_fold_math)
  * Includes 2 tests: constant on each side.
  */
 static void build_math_partial_test_graph(ShaderGraphBuilder &builder,
-                                          NodeMath type,
+                                          NodeMathType type,
                                           float constval)
 {
   builder
       .add_attribute("Attribute")
       /* constant on the left */
-      .add_node(ShaderNodeBuilder<MathNode>("Math_Cx")
-                    .set(&MathNode::type, type)
-                    .set("Value1", constval))
-      .add_connection("Attribute::Fac", "Math_Cx::Value2")
+      .add_node(
+          ShaderNodeBuilder<MathNode>("Math_Cx").set(&MathNode::type, type).set("A", constval))
+      .add_connection("Attribute::Fac", "Math_Cx::B")
       /* constant on the right */
-      .add_node(ShaderNodeBuilder<MathNode>("Math_xC")
-                    .set(&MathNode::type, type)
-                    .set("Value2", constval))
-      .add_connection("Attribute::Fac", "Math_xC::Value1")
+      .add_node(
+          ShaderNodeBuilder<MathNode>("Math_xC").set(&MathNode::type, type).set("B", constval))
+      .add_connection("Attribute::Fac", "Math_xC::A")
       /* output sum */
       .add_node(ShaderNodeBuilder<MathNode>("Out").set(&MathNode::type, NODE_MATH_ADD))
-      .add_connection("Math_Cx::Value", "Out::Value1")
-      .add_connection("Math_xC::Value", "Out::Value2")
-      .output_value("Out::Value");
+      .add_connection("Math_Cx::Result", "Out::A")
+      .add_connection("Math_xC::Result", "Out::B")
+      .output_value("Out::Result");
 }
 
 /*
@@ -1144,9 +1142,9 @@ TEST_F(RenderGraph, constant_fold_vector_math)
                     .set("Vector1", make_float3(1.3f, 0.5f, 0.7f))
                     .set("Vector2", make_float3(-1.7f, 0.5f, 0.7f)))
       .add_node(ShaderNodeBuilder<MathNode>("Math").set(&MathNode::type, NODE_MATH_ADD))
-      .add_connection("VectorMath::Vector", "Math::Value1")
-      .add_connection("VectorMath::Value", "Math::Value2")
-      .output_color("Math::Value");
+      .add_connection("VectorMath::Vector", "Math::A")
+      .add_connection("VectorMath::Value", "Math::B")
+      .output_color("Math::Result");
 
   graph.finalize(scene);
 }
@@ -1513,9 +1511,9 @@ TEST_F(RenderGraph, constant_fold_convert_color_float_color)
   builder.add_attribute("Attribute")
       .add_node(ShaderNodeBuilder<MathNode>("MathAdd")
                     .set(&MathNode::type, NODE_MATH_ADD)
-                    .set("Value2", 0.0f))
-      .add_connection("Attribute::Color", "MathAdd::Value1")
-      .output_color("MathAdd::Value");
+                    .set("B", 0.0f))
+      .add_connection("Attribute::Color", "MathAdd::A")
+      .output_color("MathAdd::Result");
 
   graph.finalize(scene);
 }
