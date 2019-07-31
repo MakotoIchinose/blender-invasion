@@ -1240,7 +1240,6 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C); /* only use active for copy merge */
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
   bGPDframe *gpf;
 
   eGP_PasteMode type = RNA_enum_get(op->ptr, "type");
@@ -1331,7 +1330,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
        *       we are obliged to add a new frame if one
        *       doesn't exist already
        */
-      gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+      gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_NEW);
       if (gpf) {
         /* Create new stroke */
         bGPDstroke *new_stroke = MEM_dupallocN(gps);
@@ -1411,7 +1410,6 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = CTX_data_gpencil_data(C);
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
   bGPDlayer *target_layer = NULL;
   ListBase strokes = {NULL, NULL};
   int layer_num = RNA_enum_get(op->ptr, "layer");
@@ -1484,7 +1482,7 @@ static int gp_move_to_layer_exec(bContext *C, wmOperator *op)
 
   /* Paste them all in one go */
   if (strokes.first) {
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(target_layer, cfra_eval, GP_GETFRAME_ADD_NEW);
+    bGPDframe *gpf = BKE_gpencil_layer_getframe(target_layer, CFRA, GP_GETFRAME_ADD_NEW);
 
     BLI_movelisttolist(&gpf->strokes, &strokes);
     BLI_assert((strokes.first == strokes.last) && (strokes.first == NULL));
@@ -1548,7 +1546,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
+  int cfra = CFRA;
 
   bGPDlayer *active_gpl = BKE_gpencil_layer_getactive(gpd);
 
@@ -1570,7 +1568,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
     }
 
     /* 1) Check for an existing frame on the current frame */
-    bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, cfra_eval);
+    bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, cfra);
     if (gpf) {
       /* Shunt all frames after (and including) the existing one later by 1-frame */
       for (; gpf; gpf = gpf->next) {
@@ -1579,7 +1577,7 @@ static int gp_blank_frame_add_exec(bContext *C, wmOperator *op)
     }
 
     /* 2) Now add a new frame, with nothing in it */
-    gpl->actframe = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+    gpl->actframe = BKE_gpencil_layer_getframe(gpl, cfra, GP_GETFRAME_ADD_NEW);
   }
   CTX_DATA_END;
 
@@ -1630,9 +1628,8 @@ static int gp_actframe_delete_exec(bContext *C, wmOperator *op)
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
 
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
 
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
+  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
 
   /* if there's no existing Grease-Pencil data there, add some */
   if (gpd == NULL) {
@@ -1684,13 +1681,12 @@ static int gp_actframe_delete_all_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
 
   bool success = false;
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     /* try to get the "active" frame - but only if it actually occurs on this frame */
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
 
     if (gpf == NULL) {
       continue;
@@ -1942,8 +1938,10 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
-                        dvert++;
                       }
+                    }
+                    if (gps->dvert != NULL) {
+                      dvert++;
                     }
                   }
                   break;
@@ -1972,8 +1970,10 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
-                        dvert++;
                       }
+                    }
+                    if (gps->dvert != NULL) {
+                      dvert++;
                     }
                   }
                   /* copy last segment */
@@ -2003,8 +2003,10 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
-                        dvert++;
                       }
+                    }
+                    if (gps->dvert != NULL) {
+                      dvert++;
                     }
                   }
                   break;
@@ -3368,20 +3370,15 @@ typedef enum eGP_ReprojectModes {
   /* Reprojected on 3D cursor orientation */
   GP_REPROJECT_CURSOR,
 } eGP_ReprojectModes;
-
 static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Scene *scene = CTX_data_scene(C);
-  Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   ARegion *ar = CTX_wm_region(C);
   RegionView3D *rv3d = ar->regiondata;
-  SnapObjectContext *sctx = NULL;
-  int oldframe = (int)DEG_get_ctime(depsgraph);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   GP_SpaceConversion gsc = {NULL};
   eGP_ReprojectModes mode = RNA_enum_get(op->ptr, "type");
@@ -3391,165 +3388,112 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
   /* init space conversion stuff */
   gp_point_conversion_init(C, &gsc);
 
-  int cfra_prv = INT_MIN;
-  /* init snap context for geometry projection */
-  sctx = ED_transform_snap_object_context_create_view3d(
-      bmain, scene, depsgraph, 0, ar, CTX_wm_view3d(C));
+  /* init autodist for geometry projection */
+  if (mode == GP_REPROJECT_SURFACE) {
+    view3d_region_operator_needs_opengl(CTX_wm_window(C), gsc.ar);
+    ED_view3d_autodist_init(depsgraph, gsc.ar, CTX_wm_view3d(C), 0);
+  }
+
+  // TODO: For deforming geometry workflow, create new frames?
 
   /* Go through each editable + selected stroke, adjusting each of its points one by one... */
-  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
-    float diff_mat[4][4];
-    float inverse_diff_mat[4][4];
-    /* calculate difference matrix object */
-    ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, diff_mat);
-    /* Compute inverse matrix for unapplying parenting once instead of doing per-point */
-    invert_m4_m4(inverse_diff_mat, diff_mat);
+  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+    if (gps->flag & GP_STROKE_SELECT) {
+      bGPDspoint *pt;
+      int i;
+      /* Adjust each point */
+      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+        float xy[2];
 
-    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
-      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        if (gpf == NULL) {
-          continue;
+        /* 3D to Screenspace */
+        /* Note: We can't use gp_point_to_xy() here because that uses ints for the screenspace
+         *       coordinates, resulting in lost precision, which in turn causes stairstepping
+         *       artifacts in the final points.
+         */
+        bGPDspoint pt2;
+        gp_point_to_parent_space(pt, gpstroke_iter.diff_mat, &pt2);
+        gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
+
+        /* Project stroke in one axis */
+        if (ELEM(mode,
+                 GP_REPROJECT_FRONT,
+                 GP_REPROJECT_SIDE,
+                 GP_REPROJECT_TOP,
+                 GP_REPROJECT_CURSOR)) {
+          if (mode != GP_REPROJECT_CURSOR) {
+            ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+          }
+          else {
+            copy_v3_v3(origin, scene->cursor.location);
+          }
+
+          int axis = 0;
+          switch (mode) {
+            case GP_REPROJECT_FRONT: {
+              axis = 1;
+              break;
+            }
+            case GP_REPROJECT_SIDE: {
+              axis = 0;
+              break;
+            }
+            case GP_REPROJECT_TOP: {
+              axis = 2;
+              break;
+            }
+            case GP_REPROJECT_CURSOR: {
+              axis = 3;
+              break;
+            }
+            default: {
+              axis = 1;
+              break;
+            }
+          }
+
+          ED_gp_project_point_to_plane(scene, ob, rv3d, origin, axis, &pt2);
+
+          copy_v3_v3(&pt->x, &pt2.x);
+
+          /* apply parent again */
+          gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
+        }
+        /* Project screenspace back to 3D space (from current perspective)
+         * so that all points have been treated the same way
+         */
+        else if (mode == GP_REPROJECT_VIEW) {
+          /* Planar - All on same plane parallel to the viewplane */
+          gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
+        }
+        else {
+          /* Geometry - Snap to surfaces of visible geometry */
+          /* XXX: There will be precision loss (possible stairstep artifacts)
+           * from this conversion to satisfy the API's */
+          const int screen_co[2] = {(int)xy[0], (int)xy[1]};
+
+          int depth_margin = 0;  // XXX: 4 for strokes, 0 for normal
+          float depth;
+
+          /* XXX: The proper procedure computes the depths into an array,
+           * to have smooth transitions when all else fails... */
+          if (ED_view3d_autodist_depth(gsc.ar, screen_co, depth_margin, &depth)) {
+            ED_view3d_autodist_simple(gsc.ar, screen_co, &pt->x, 0, &depth);
+          }
+          else {
+            /* Default to planar */
+            gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
+          }
         }
 
-        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-          /* skip strokes that are invalid for current view */
-          if (ED_gpencil_stroke_can_use(C, gps) == false) {
-            continue;
-          }
-          if ((gps->flag & GP_STROKE_SELECT) == 0) {
-            continue;
-          }
-
-          /* update frame to get the new location of objects */
-          if ((mode == GP_REPROJECT_SURFACE) && (cfra_prv != gpf->framenum)) {
-            cfra_prv = gpf->framenum;
-            CFRA = gpf->framenum;
-            BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-          }
-
-          bGPDspoint *pt;
-          int i;
-          /* Adjust each point */
-          for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-            float xy[2];
-
-            /* 3D to Screenspace */
-            /* Note: We can't use gp_point_to_xy() here because that uses ints for the
-             * screenspace coordinates, resulting in lost precision, which in turn causes
-             * stairstepping artifacts in the final points.
-             */
-            bGPDspoint pt2;
-            gp_point_to_parent_space(pt, diff_mat, &pt2);
-            gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
-
-            /* Project stroke in one axis */
-            if (ELEM(mode,
-                     GP_REPROJECT_FRONT,
-                     GP_REPROJECT_SIDE,
-                     GP_REPROJECT_TOP,
-                     GP_REPROJECT_CURSOR)) {
-              if (mode != GP_REPROJECT_CURSOR) {
-                ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
-              }
-              else {
-                copy_v3_v3(origin, scene->cursor.location);
-              }
-
-              int axis = 0;
-              switch (mode) {
-                case GP_REPROJECT_FRONT: {
-                  axis = 1;
-                  break;
-                }
-                case GP_REPROJECT_SIDE: {
-                  axis = 0;
-                  break;
-                }
-                case GP_REPROJECT_TOP: {
-                  axis = 2;
-                  break;
-                }
-                case GP_REPROJECT_CURSOR: {
-                  axis = 3;
-                  break;
-                }
-                default: {
-                  axis = 1;
-                  break;
-                }
-              }
-
-              ED_gp_project_point_to_plane(scene, ob, rv3d, origin, axis, &pt2);
-
-              copy_v3_v3(&pt->x, &pt2.x);
-
-              /* apply parent again */
-              gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
-            }
-            /* Project screenspace back to 3D space (from current perspective)
-             * so that all points have been treated the same way
-             */
-            else if (mode == GP_REPROJECT_VIEW) {
-              /* Planar - All on same plane parallel to the viewplane */
-              gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
-            }
-            else {
-              /* Geometry - Snap to surfaces of visible geometry */
-              float ray_start[3];
-              float ray_normal[3];
-              /* magic value for initial depth copied from the default
-               * value of Python's Scene.ray_cast function
-               */
-              float depth = 1.70141e+38f;
-              float location[3] = {0.0f, 0.0f, 0.0f};
-              float normal[3] = {0.0f, 0.0f, 0.0f};
-
-              ED_view3d_win_to_ray(ar, xy, &ray_start[0], &ray_normal[0]);
-              if (ED_transform_snap_object_project_ray(sctx,
-                                                       &(const struct SnapObjectParams){
-                                                           .snap_select = SNAP_ALL,
-                                                       },
-                                                       &ray_start[0],
-                                                       &ray_normal[0],
-                                                       &depth,
-                                                       &location[0],
-                                                       &normal[0])) {
-                copy_v3_v3(&pt->x, location);
-              }
-              else {
-                /* Default to planar */
-                gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
-              }
-            }
-
-            /* Unapply parent corrections */
-            if (!ELEM(mode, GP_REPROJECT_FRONT, GP_REPROJECT_SIDE, GP_REPROJECT_TOP)) {
-              mul_m4_v3(inverse_diff_mat, &pt->x);
-            }
-          }
-        }
-        /* if not multiedit, exit loop*/
-        if (!is_multiedit) {
-          break;
+        /* Unapply parent corrections */
+        if (!ELEM(mode, GP_REPROJECT_FRONT, GP_REPROJECT_SIDE, GP_REPROJECT_TOP)) {
+          mul_m4_v3(gpstroke_iter.inverse_diff_mat, &pt->x);
         }
       }
     }
   }
-  CTX_DATA_END;
+  GP_EDITABLE_STROKES_END(gpstroke_iter);
 
-  /* return frame state and DB to original state */
-  CFRA = oldframe;
-  BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-
-  if (sctx != NULL) {
-    ED_transform_snap_object_context_destroy(sctx);
-  }
-
-  /* update changed data */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
   return OPERATOR_FINISHED;

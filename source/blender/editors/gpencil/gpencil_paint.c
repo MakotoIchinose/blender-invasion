@@ -2073,7 +2073,6 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 {
   Scene *scene = p->scene;
   ToolSettings *ts = scene->toolsettings;
-  int cfra_eval = CFRA;
 
   /* get active layer (or add a new one if non-existent) */
   p->gpl = BKE_gpencil_layer_getactive(p->gpd);
@@ -2115,7 +2114,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
        *       -> If there are no strokes in that frame, don't add a new empty frame
        */
       if (gpl->actframe && gpl->actframe->strokes.first) {
-        gpl->actframe = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_COPY);
+        gpl->actframe = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_ADD_COPY);
         has_layer_to_erase = true;
       }
 
@@ -2153,7 +2152,7 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
       add_frame_mode = GP_GETFRAME_ADD_NEW;
     }
 
-    p->gpf = BKE_gpencil_layer_getframe(p->gpl, cfra_eval, add_frame_mode);
+    p->gpf = BKE_gpencil_layer_getframe(p->gpl, CFRA, add_frame_mode);
 
     if (p->gpf == NULL) {
       p->status = GP_STATUS_ERROR;
