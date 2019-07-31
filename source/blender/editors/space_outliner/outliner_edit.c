@@ -1325,7 +1325,7 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     /* Center view on first element found */
     int size_y = BLI_rcti_size_y(&v2d->mask) + 1;
-    int y_min = MIN2(ar->v2d.tot.ymin, v2d->cur.ymin);
+    int y_min = MIN2(v2d->tot.ymin, v2d->cur.ymin);
     int ytop = active_element->ys + size_y / 2;
 
     /* make te->ys center of view  keeping element within scroll limits */
