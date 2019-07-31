@@ -87,15 +87,21 @@ class ClothPlane {
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
 #define COLLAPSE_EDGES_DEBUG 0
-#define FACE_SIZING_DEBUG 1
-#define FACE_SIZING_DEBUG_COMP 1
+#define FACE_SIZING_DEBUG 0
+#define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
+#define SKIP_COMP_METRIC 1
 
 #define INVERT_EPSILON 0.00001f
 #define EIGEN_EPSILON 1e-3f
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
+
+static void print_m32(float m[3][2])
+{
+  printf("{{%f, %f}, {%f, %f}, {%f, %f}}\n", m[0][0], m[0][1], m[1][0], m[1][1], m[2][0], m[2][1]);
+}
 
 static void print_m2(float m[2][2])
 {
@@ -2013,11 +2019,24 @@ static void cloth_remeshing_derivative(
 static void cloth_remeshing_derivative(
     BMesh *bm, float m_01[3], float m_02[3], float m_03[3], BMFace *f, float r_mat[3][2])
 {
+#if 1
   float mat[2][3];
   sub_v3_v3v3(mat[0], m_02, m_01);
   sub_v3_v3v3(mat[1], m_03, m_01);
   float mat_t[3][2];
   transpose_m32_m23(mat_t, mat);
+#else
+  float mat_t[3][2];
+  float temp_v3[3];
+  sub_v3_v3v3(temp_v3, m_02, m_01);
+  mat_t[0][0] = temp_v3[0];
+  mat_t[1][0] = temp_v3[1];
+  mat_t[2][0] = temp_v3[2];
+  sub_v3_v3v3(temp_v3, m_03, m_01);
+  mat_t[0][1] = temp_v3[0];
+  mat_t[1][1] = temp_v3[1];
+  mat_t[2][1] = temp_v3[2];
+#endif
 
   float face_dm[2][2];
   float face_dm_inv[2][2];
@@ -2189,7 +2208,8 @@ static void cloth_remeshing_find_planes(Depsgraph *depsgraph,
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, clmd->coll_parms->epsilon, r_planes);
+        cloth_remeshing_find_nearest_planes(
+            bm, collmd, 10.0f * clmd->coll_parms->epsilon, r_planes);
       }
       BKE_collision_objects_free(collobjs);
     }
@@ -2212,6 +2232,7 @@ static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
 #if FACE_SIZING_DEBUG_OBS
       printf("continuing since len_squared_v3(plane.no) == 0.0f\n");
       printf("plane.co: {%f %f %f}\n", plane.co[0], plane.co[1], plane.co[2]);
+      printf("v[i]->co: {%f %f %f}\n", v[i]->co[0], v[i]->co[1], v[i]->co[2]);
 #endif
       continue;
     }
@@ -2250,7 +2271,9 @@ static void cloth_remeshing_obstacle_metric(BMesh *bm,
 {
   if (planes.empty()) {
     zero_m2(r_mat);
-    /* printf("planes is empty, returning\n"); */
+#if FACE_SIZING_DEBUG_OBS
+    printf("planes is empty, returning\n");
+#endif
     return;
   }
   cloth_remeshing_obstacle_metric_calculation(bm, f, planes, r_mat);
@@ -2292,6 +2315,14 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   float comp[2][2];
   float f_x_ft[2][2];
   mul_m2_m23m32(f_x_ft, sizing_f_t, sizing_f);
+#if FACE_SIZING_DEBUG
+#  if FACE_SIZING_DEBUG_COMP
+  printf("sizing_f: ");
+  print_m32(sizing_f);
+  printf("comp- input mat (f_x_ft): ");
+  print_m2(f_x_ft);
+#  endif
+#endif
   cloth_remeshing_compression_metric(f_x_ft, comp);
 
   float dvel[2][2];
@@ -2314,6 +2345,11 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
             1.0f / (clmd->sim_parms->refine_velocity * clmd->sim_parms->refine_velocity));
 
   /* Adding curv_temp, comp_temp, dvel_temp, obs */
+
+#if SKIP_COMP_METRIC
+  zero_m2(comp_temp);
+  mul_m2_fl(obs, 1.0f / sqr_fl(clmd->sim_parms->refine_compression));
+#endif
   add_m2_m2m2(m, curv_temp, comp_temp);
   add_m2_m2m2(m, m, dvel_temp);
   add_m2_m2m2(m, m, obs);
@@ -2329,6 +2365,15 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   print_m2(obs);
   printf("m: ");
   print_m2(m);
+#endif
+
+#if FACE_SIZING_DEBUG_OBS
+#  if FACE_SIZING_DEBUG
+#  else
+  printf("obs: ");
+  print_m2(obs);
+  printf("\n");
+#  endif
 #endif
 
   /* eigen decomposition on m */
@@ -2364,6 +2409,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   print_m2(q);
   printf("result: ");
   print_m2(result);
+  printf("\n");
 #endif
 
   return ClothSizing(result);
