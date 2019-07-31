@@ -61,7 +61,7 @@
 #define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
-#define DEBUG_CUSTOM_PROFILE_PIPE 1
+#define DEBUG_CUSTOM_PROFILE_PIPE 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION 0
 #define DEBUG_CUSTOM_PROFILE_ORIENTATION_DRAW DEBUG_CUSTOM_PROFILE_ORIENTATION | 0
 #define DEBUG_CUSTOM_PROFILE_CUTOFF 0
@@ -4389,7 +4389,10 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 
   /* An offline optimization process found fullness that let to closest fit to sphere as
    * a function of r and ns (for case of cube corner) */
-  if (!bp->use_custom_profile) {
+  if (bp->use_custom_profile) {
+    fullness = 0.0f;
+  }
+  else {
     r = bp->pro_super_r;
     p = bp->profile;
     if (r == PRO_LINE_R) {
@@ -4481,10 +4484,10 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   float white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   float *color;
 #endif
-  int i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2;
+  int i, j, k, n_bndv, ns, half_ns, ipipe1, ipipe2, ring;
   VMesh *vm;
   bool even, midline;
-  float *pipe1_profile_point, *pipe2_profile_point, f;
+  float *profile_point_pipe1, *profile_point_pipe2, f;
 
   /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile.
    * Try just using "new_adj_vmesh" in that case. */
@@ -4504,49 +4507,48 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
 #endif
 
   for (i = 0; i < n_bndv; i++) {
-#if DEBUG_CUSTOM_PROFILE_PIPE
-    printf("i: %d\n", i);
-#endif
     for (j = 1; j <= half_ns; j++) {
       for (k = 0; k <= half_ns; k++) {
         if (!is_canon(vm, i, j, k)) {
           continue;
         }
         if (bp->use_custom_profile) {
-          /* Find the profile vertex that corresponds to this "row" from each pipe profile */
-          if (i == ipipe1) {
-            pipe1_profile_point = mesh_vert(vm, i, 0, k)->co;
-            pipe2_profile_point = mesh_vert(vm, ipipe2, 0, ns - k)->co;
-            f = (float)j / (float)ns;
-          }
-          else if (i == ipipe2) {
-            pipe1_profile_point = mesh_vert(vm, i, 0, k)->co;
-            pipe2_profile_point = mesh_vert(vm, ipipe1, 0, ns - k)->co;
-            f = (float)j / (float)ns;
-          }
-          else if (i == (ipipe1 + 1) % n_bndv) {
-            pipe1_profile_point = mesh_vert(vm, (i + 1) % n_bndv, 0, j)->co;
-            pipe2_profile_point = mesh_vert(vm, i - 1, 0, ns - j)->co;
-            f = (float)(ns - k) / (float)ns;
+          /* Find both profile vertices that correspond to this point */
+          if (i == ipipe1 || i == ipipe2) {
+            if (n_bndv == 3 && i == ipipe1) {
+              /* This part of the vmesh is the triangular corner between the two pipe profiles */
+              ring = max_ii(j, k);
+              profile_point_pipe2 = mesh_vert(vm, i, 0, ring)->co;
+              profile_point_pipe1 = mesh_vert(vm, i, ring, 0)->co;
+              /* The ring index brings us closer to the other side, but */
+              f = ((k < j) ? min_ff(j, k) : ((2.0f * ring) - j)) / (2.0f * ring);
+            }
+            else {
+              /* This is part of either pipe profile boundvert area in the 4-way intersection */
+              profile_point_pipe1 = mesh_vert(vm, i, 0, k)->co;
+              profile_point_pipe2 = mesh_vert(vm, (i == ipipe1) ? ipipe2 : ipipe1, 0, ns - k)->co;
+              f = (float)j / (float)ns; /* The ring index brings us closer to the other side */
+            }
           }
           else {
-            pipe1_profile_point = mesh_vert(vm, (i + 1) % n_bndv, 0, j)->co;
-            pipe2_profile_point = mesh_vert(vm, i, j, 0)->co;
-            f = (float)(ns - k) / (float)ns;
+            /* The profile vertices are on both ends of each of the side profile's rings */
+            profile_point_pipe1 = mesh_vert(vm, i, j, 0)->co;
+            profile_point_pipe2 = mesh_vert(vm, i, j, ns)->co;
+            f = (float)k / (float)ns; /* Ring runs along the pipe, so segment is used here */
           }
-          /* Find which "column" this vertex is on to find interpolation factor */
 
-          /* Place the vertex by interpolatin between the two profile points by the factor */
+          /* Place the vertex by interpolatin between the two profile points using the factor */
+          interp_v3_v3v3(mesh_vert(vm, i, j, k)->co, profile_point_pipe1, profile_point_pipe2, f);
 #if DEBUG_CUSTOM_PROFILE_PIPE
+          printf("(%d, %d, %d)\n", i, j, k);
           printf("f: %.3f\n", f);
-          printf("point 1: (%.3f, %.3f, %.3f)\n", pipe1_profile_point[0],
-                                                  pipe1_profile_point[1],
-                                                  pipe1_profile_point[2]);
-          printf("point 2: (%.3f, %.3f, %.3f)\n", pipe2_profile_point[0],
-                                                  pipe2_profile_point[1],
-                                                  pipe2_profile_point[2]);
+          printf("point 1: (%.3f, %.3f, %.3f)\n", profile_point_pipe1[0],
+                                                  profile_point_pipe1[1],
+                                                  profile_point_pipe1[2]);
+          printf("point 2: (%.3f, %.3f, %.3f)\n", profile_point_pipe2[0],
+                                                  profile_point_pipe2[1],
+                                                  profile_point_pipe2[2]);
 #endif
-          interp_v3_v3v3(mesh_vert(vm, i, j, k)->co, pipe1_profile_point, pipe2_profile_point, f);
         }
         else {
           /* A tricky case is for the 'square' profiles and an even nseg: we want certain
@@ -4580,7 +4582,6 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
               color = white;
               break;
           }
-
           DRW_debug_sphere(mesh_vert(vm, i, j, k)->co, 0.01f, color);
         }
       }
