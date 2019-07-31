@@ -97,9 +97,7 @@
 
 /* Sculpt PBVH abstraction API */
 
-typedef int VertexHandle;
-
-VertexHandle sculpt_active_vertex_get(SculptSession *ss)
+int sculpt_active_vertex_get(SculptSession *ss)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -123,7 +121,7 @@ unsigned int sculpt_vertex_count_get(SculptSession *ss)
   }
 }
 
-void sculpt_vertex_normal_get(SculptSession *ss, VertexHandle index, float no[3])
+void sculpt_vertex_normal_get(SculptSession *ss, int index, float no[3])
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -136,7 +134,7 @@ void sculpt_vertex_normal_get(SculptSession *ss, VertexHandle index, float no[3]
   }
 }
 
-float *sculpt_vertex_co_get(SculptSession *ss, VertexHandle index)
+float *sculpt_vertex_co_get(SculptSession *ss, int index)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -162,7 +160,7 @@ void sculpt_vertex_co_set(SculptSession *ss, int index, float co[3])
   }
 }
 
-void sculpt_vertex_mask_set(SculptSession *ss, VertexHandle index, float mask)
+void sculpt_vertex_mask_set(SculptSession *ss, int index, float mask)
 {
   BMVert *v;
   float *mask_p;
@@ -208,45 +206,55 @@ void sculpt_vertex_tag_update(SculptSession *ss, int index)
   }
 }
 
+#define SCULPT_VERTEX_NEIGHBOUR_FIXED_CAPACITY 256
+
 typedef struct SculptVertexNeighbourIter {
-  VertexHandle *neighbours;
-  int count;
-  VertexHandle index;
+  int *neighbours;
+  int size;
+  int capacity;
+
+  int neighbours_fixed[SCULPT_VERTEX_NEIGHBOUR_FIXED_CAPACITY];
+
+  int index;
   int i;
 } SculptVertexNeighbourIter;
 
-#define SCULPT_VERTEX_NEIGHBOUR_MAX 256
-
-void sculpt_vertex_neighbour_add(SculptVertexNeighbourIter *iter, int neighbour_index)
+static void sculpt_vertex_neighbour_add(SculptVertexNeighbourIter *iter, int neighbour_index)
 {
-  if (iter->count >= SCULPT_VERTEX_NEIGHBOUR_MAX) {
-    iter->neighbours = MEM_reallocN_id(iter->neighbours,
-                                       (iter->count + SCULPT_VERTEX_NEIGHBOUR_MAX) *
-                                           sizeof(VertexHandle),
-                                       "neighbour array");
-  }
-
-  for (int i = 0; i < iter->count; i++) {
+  for (int i = 0; i < iter->size; i++) {
     if (iter->neighbours[i] == neighbour_index) {
       return;
     }
   }
 
-  iter->neighbours[iter->count] = neighbour_index;
-  iter->count++;
-  return;
+  if (iter->size >= iter->capacity) {
+    iter->capacity += SCULPT_VERTEX_NEIGHBOUR_FIXED_CAPACITY;
+
+    if (iter->neighbours == iter->neighbours_fixed) {
+      iter->neighbours = MEM_mallocN(iter->capacity * sizeof(int), "neighbour array");
+      memcpy(iter->neighbours, iter->neighbours_fixed, sizeof(int) * iter->size);
+    }
+    else {
+      iter->neighbours = MEM_reallocN_id(
+          iter->neighbours, iter->capacity * sizeof(int), "neighbour array");
+    }
+  }
+
+  iter->neighbours[iter->size] = neighbour_index;
+  iter->size++;
 }
 
 void sculpt_vertex_neighbours_get_bmesh(SculptSession *ss,
-                                        VertexHandle index,
+                                        int index,
                                         SculptVertexNeighbourIter *iter)
 {
   BMVert *v = BM_vert_at_index(ss->bm, index);
   BMIter liter;
   BMLoop *l;
-  iter->count = 0;
-  iter->neighbours = MEM_mallocN(SCULPT_VERTEX_NEIGHBOUR_MAX * sizeof(VertexHandle),
-                                 "neighbour array");
+  iter->size = 0;
+  iter->capacity = SCULPT_VERTEX_NEIGHBOUR_FIXED_CAPACITY;
+  iter->neighbours = iter->neighbours_fixed;
+
   int i = 0;
   BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
     const BMVert *adj_v[2] = {l->prev->v, l->next->v};
@@ -260,14 +268,14 @@ void sculpt_vertex_neighbours_get_bmesh(SculptSession *ss,
 }
 
 void sculpt_vertex_neighbours_get_faces(SculptSession *ss,
-                                        VertexHandle index,
+                                        int index,
                                         SculptVertexNeighbourIter *iter)
 {
   int i;
   MeshElemMap *vert_map = &ss->pmap[(int)index];
-  iter->count = 0;
-  iter->neighbours = MEM_mallocN(SCULPT_VERTEX_NEIGHBOUR_MAX * sizeof(VertexHandle),
-                                 "neighbour array");
+  iter->size = 0;
+  iter->capacity = SCULPT_VERTEX_NEIGHBOUR_FIXED_CAPACITY;
+  iter->neighbours = iter->neighbours_fixed;
   for (i = 0; i < ss->pmap[(int)index].count; i++) {
     const MPoly *p = &ss->mpoly[vert_map->indices[i]];
     unsigned f_adj_v[2];
@@ -284,9 +292,7 @@ void sculpt_vertex_neighbours_get_faces(SculptSession *ss,
   }
 }
 
-void sculpt_vertex_neighbours_get(SculptSession *ss,
-                                  VertexHandle index,
-                                  SculptVertexNeighbourIter *iter)
+void sculpt_vertex_neighbours_get(SculptSession *ss, int index, SculptVertexNeighbourIter *iter)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -302,13 +308,15 @@ void sculpt_vertex_neighbours_get(SculptSession *ss,
 
 #define sculpt_vertex_neighbours_iter_begin(ss, v_index, neighbour_iterator) \
   sculpt_vertex_neighbours_get(ss, v_index, &neighbour_iterator); \
-  for (neighbour_iterator.i = 0; neighbour_iterator.i < neighbour_iterator.count; \
+  for (neighbour_iterator.i = 0; neighbour_iterator.i < neighbour_iterator.size; \
        neighbour_iterator.i++) { \
     neighbour_iterator.index = ni.neighbours[ni.i];
 
 #define sculpt_vertex_neighbours_iter_end(neighbour_iterator) \
   } \
-  MEM_freeN(neighbour_iterator.neighbours);
+  if (neighbour_iterator.neighbours != neighbour_iterator.neighbours_fixed) { \
+    MEM_freeN(neighbour_iterator.neighbours); \
+  }
 
 /** \name Tool Capabilities
  *
@@ -9628,7 +9636,7 @@ int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *event)
 }
 
 typedef struct maskExmandVIT {
-  VertexHandle v;
+  int v;
   int it;
 } maskExmandVIT;
 
