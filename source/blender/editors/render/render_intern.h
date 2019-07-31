@@ -76,20 +76,6 @@ void SCENE_OT_freestyle_modifier_copy(struct wmOperatorType *ot);
 void SCENE_OT_freestyle_stroke_material_create(struct wmOperatorType *ot);
 #endif
 
-/* lanpr: lanpr_software_render.c */
-void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_add_line_component(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_export_svg(struct wmOperatorType *ot);
-
 void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
 void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
 

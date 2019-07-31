@@ -33,6 +33,7 @@ set(INC_SYS
 
 set(SRC
   lanpr_ops.c
+  lanpr_cpu.c
   lanpr_chain.c
   lanpr_util.c
 )

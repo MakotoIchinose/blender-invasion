@@ -832,4 +832,6 @@ LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb
 
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
+void ED_operatortypes_lanpr(void);
+
 #endif /* __ED_LANPR_H__ */
