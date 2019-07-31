@@ -267,7 +267,7 @@ void OUTLINER_OT_item_openclose(wmOperatorType *ot)
 
   ot->poll = ED_operator_outliner_active;
 
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Close or open all items");
+  RNA_def_boolean(ot->srna, "all", false, "All", "Close or open all items");
 }
 
 /* -------------------------------------------------------------------- */
@@ -1368,10 +1368,7 @@ static int outliner_scroll_page_exec(bContext *C, wmOperator *op)
   ARegion *ar = CTX_wm_region(C);
   int size_y = BLI_rcti_size_y(&ar->v2d.mask) + 1;
 
-  bool up = false;
-  if (RNA_boolean_get(op->ptr, "up")) {
-    up = true;
-  }
+  bool up = RNA_boolean_get(op->ptr, "up");
 
   /* Keep view within outliner tree bounds */
   int y_min = MIN2(ar->v2d.tot.ymin, ar->v2d.cur.ymin);
