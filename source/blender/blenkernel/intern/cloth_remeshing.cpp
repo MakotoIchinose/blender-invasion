@@ -87,12 +87,13 @@ class ClothPlane {
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
 #define COLLAPSE_EDGES_DEBUG 0
-#define FACE_SIZING_DEBUG 0
-#define FACE_SIZING_DEBUG_COMP 0
+#define FACE_SIZING_DEBUG 1
+#define FACE_SIZING_DEBUG_COMP 1
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
 
 #define INVERT_EPSILON 0.00001f
+#define EIGEN_EPSILON 1e-3f
 #define NEXT(x) ((x) < 2 ? (x) + 1 : (x)-2)
 #define PREV(x) ((x) > 0 ? (x)-1 : (x) + 2)
 
@@ -1796,15 +1797,32 @@ static void cloth_remeshing_eigen_decomposition(float mat[2][2], float r_mat[2][
   r_vec[1] = l2;
 
   float v0, v1, vn;
-  if (b) {
+  /* EIGEN_EPSILON is used due to floating point precision errors */
+  /* TODO(Ish): It might be possible to just use fabsf(b2) instead of
+   * fabsf(b), this would eliminate the need for the nested if */
+  if (fabsf(b) < EIGEN_EPSILON) {
     v0 = l1 - d;
     v1 = b;
     vn = sqrtf(v0 * v0 + b2);
+    if (fabsf(vn) < EIGEN_EPSILON) {
+      r_mat[0][0] = 0;
+      r_mat[1][0] = 1;
+      r_mat[0][1] = 1;
+      r_mat[1][1] = 0;
+      return;
+    }
     r_mat[0][0] = v0 / vn;
     r_mat[1][0] = v1 / vn;
 
     v0 = l2 - d;
     vn = sqrtf(v0 * v0 + b2);
+    if (fabsf(vn) < EIGEN_EPSILON) {
+      r_mat[0][0] = 0;
+      r_mat[1][0] = 1;
+      r_mat[0][1] = 1;
+      r_mat[1][1] = 0;
+      return;
+    }
     r_mat[0][1] = v0 / vn;
     r_mat[1][1] = v1 / vn;
   }
