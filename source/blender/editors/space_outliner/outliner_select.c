@@ -1690,11 +1690,11 @@ static TreeElement *outliner_walk_right(SpaceOutliner *soops,
   return walk_element;
 }
 
-static void do_outliner_select_walk(SpaceOutliner *soops,
-                                    TreeElement *walk_element,
-                                    const int direction,
-                                    const bool extend,
-                                    const bool toggle_all)
+static TreeElement *do_outliner_select_walk(SpaceOutliner *soops,
+                                            TreeElement *walk_element,
+                                            const int direction,
+                                            const bool extend,
+                                            const bool toggle_all)
 {
   TreeStoreElem *tselem = TREESTORE(walk_element);
 
@@ -1728,6 +1728,8 @@ static void do_outliner_select_walk(SpaceOutliner *soops,
   }
 
   tselem_new->flag |= TSE_SELECTED | TSE_WALK;
+
+  return walk_element;
 }
 
 /* Find walk select element, or set it if it does not exist.
@@ -1766,12 +1768,32 @@ static TreeElement *find_walk_select_start_element(SpaceOutliner *soops, bool *c
   return walk_element;
 }
 
+static void outliner_walk_scroll(ARegion *ar, TreeElement *te, short direction)
+{
+  int y_max = ar->v2d.cur.ymax - (UI_UNIT_Y * 2);
+  int y_min = ar->v2d.cur.ymin + UI_UNIT_Y;
+  int offset = UI_HEADER_OFFSET;
+  printf("ymax: %d, ymin: %d, te->ys: %d\n", y_max, y_min, te->ys);
+
+  int delta_y;
+  if (te->ys > y_max && direction == OUTLINER_SELECT_WALK_UP) {
+    delta_y = MAX2(y_max - te->ys, UI_UNIT_Y);
+    ar->v2d.cur.ymax += delta_y;
+    ar->v2d.cur.ymin += delta_y;
+  }
+  else if (te->ys < y_min && direction == OUTLINER_SELECT_WALK_DOWN) {
+    delta_y = MAX2((te->ys + UI_UNIT_Y), UI_UNIT_Y);
+    ar->v2d.cur.ymax -= delta_y;
+    ar->v2d.cur.ymin -= delta_y;
+  }
+}
+
 static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   ARegion *ar = CTX_wm_region(C);
 
-  const int direction = RNA_enum_get(op->ptr, "direction");
+  const short direction = RNA_enum_get(op->ptr, "direction");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   const bool toggle_all = RNA_boolean_get(op->ptr, "toggle_all");
 
@@ -1780,11 +1802,14 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
 
   /* If finding the starting walk select element did not move the element, proceed to walk */
   if (!changed) {
-    do_outliner_select_walk(soops, walk_element, direction, extend, toggle_all);
+    walk_element = do_outliner_select_walk(soops, walk_element, direction, extend, toggle_all);
   }
   else {
     TREESTORE(walk_element)->flag |= TSE_SELECTED | TSE_WALK;
   }
+
+  /* Scroll outliner to focus on walk element */
+  outliner_walk_scroll(ar, walk_element, direction);
 
   if (soops->flag & SO_SYNC_SELECTION) {
     outliner_select_sync(C, soops);
