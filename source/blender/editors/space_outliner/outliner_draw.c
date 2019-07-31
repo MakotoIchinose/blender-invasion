@@ -2618,7 +2618,8 @@ static void tselem_draw_icon(uiBlock *block,
                              float y,
                              TreeStoreElem *tselem,
                              TreeElement *te,
-                             float alpha)
+                             float alpha,
+                             const bool is_clickable)
 {
   TreeElementIcon data = tree_element_get_icon(tselem, te);
 
@@ -2627,7 +2628,7 @@ static void tselem_draw_icon(uiBlock *block,
   }
 
   /* Icon is covered by restrict buttons */
-  if (x >= xmax) {
+  if (!is_clickable || x >= xmax) {
     /* Reduce alpha to match icon buttons */
     alpha *= 0.8f;
 
@@ -2765,7 +2766,7 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
   if (tselem->flag & TSE_HIGHLIGHTED) {
     alpha_fac += 0.5;
   }
-  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac);
+  tselem_draw_icon(block, xmax, (float)*offsx, (float)ys, tselem, te, alpha_fac, false);
   te->xs = *offsx;
   te->ys = ys;
   te->xend = (short)*offsx + UI_UNIT_X;
@@ -3087,7 +3088,8 @@ static void outliner_draw_tree_element(bContext *C,
 
     /* datatype icon */
     if (!(ELEM(tselem->type, TSE_RNA_PROPERTY, TSE_RNA_ARRAY_ELEM, TSE_ID_BASE))) {
-      tselem_draw_icon(block, xmax, (float)startx + offsx, (float)*starty, tselem, te, alpha_fac);
+      tselem_draw_icon(
+          block, xmax, (float)startx + offsx, (float)*starty, tselem, te, alpha_fac, true);
       offsx += UI_UNIT_X + 4 * ufac;
     }
     else {
