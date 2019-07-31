@@ -79,6 +79,11 @@ using namespace std;
  ******************************************************************************/
 
 typedef map<BMVert *, ClothVertex> ClothVertMap;
+class ClothPlane {
+ public:
+  float co[3];
+  float no[3];
+};
 
 #define COLLAPSE_EDGES_DEBUG 0
 #define FACE_SIZING_DEBUG 0
@@ -1641,10 +1646,14 @@ static void cloth_remeshing_static(ClothModifierData *clmd, ClothVertMap &cvm)
 #endif
 }
 
-static void cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
-                                                  Object *ob,
-                                                  ClothModifierData *clmd,
+static void cloth_remeshing_compute_vertex_sizing(ClothModifierData *clmd,
+                                                  map<BMVert *, ClothPlane> &planes,
                                                   ClothVertMap &cvm);
+
+static void cloth_remeshing_find_planes(Depsgraph *depsgraph,
+                                        Object *ob,
+                                        ClothModifierData *clmd,
+                                        map<BMVert *, ClothPlane> &r_planes);
 
 static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
                                     Object *ob,
@@ -1654,7 +1663,9 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
   /**
    * Define sizing dynamicly
    */
-  cloth_remeshing_compute_vertex_sizing(depsgraph, ob, clmd, cvm);
+  map<BMVert *, ClothPlane> planes;
+  cloth_remeshing_find_planes(depsgraph, ob, clmd, planes);
+  cloth_remeshing_compute_vertex_sizing(clmd, planes, cvm);
 
   /**
    * Split edges
@@ -2005,12 +2016,6 @@ static void mul_m2_m23m32(float r[2][2], float a[2][3], float b[3][2])
   }
 }
 
-class ClothPlane {
- public:
-  float co[3];
-  float no[3];
-};
-
 /* Adapted from editmesh_bvh.c */
 struct FaceSearchUserData {
   MVert *mvert;
@@ -2097,6 +2102,52 @@ static void cloth_remeshing_find_nearest_planes(BMesh *bm,
   }
 }
 
+static void cloth_remeshing_find_planes(Depsgraph *depsgraph,
+                                        Object *ob,
+                                        ClothModifierData *clmd,
+                                        map<BMVert *, ClothPlane> &r_planes)
+{
+  /* Same as BPH_cloth_solve() to get the collision objects' bvh trees */
+  Cloth *cloth = clmd->clothObject;
+  BMesh *bm = cloth->bm;
+  BVHTree *cloth_bvh = cloth->bvhtree;
+  Object **collobjs = NULL;
+  unsigned int numcollobj = 0;
+
+  float step = 0.0f;
+  float dt = clmd->sim_parms->dt * clmd->sim_parms->timescale;
+
+  if ((clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_COLLOBJ) || cloth_bvh == NULL) {
+    return;
+  }
+
+  if (clmd->coll_parms->flags & CLOTH_COLLSETTINGS_FLAG_ENABLED) {
+    bvhtree_update_from_cloth(clmd, false, false);
+
+    collobjs = BKE_collision_objects_create(
+        depsgraph, ob, clmd->coll_parms->group, &numcollobj, eModifierType_Collision);
+
+    if (collobjs) {
+      for (int i = 0; i < numcollobj; i++) {
+        Object *collob = collobjs[i];
+        CollisionModifierData *collmd = (CollisionModifierData *)modifiers_findByType(
+            collob, eModifierType_Collision);
+
+        if (!collmd->bvhtree) {
+          continue;
+        }
+
+        /* Move object to position (step) in time. */
+        collision_move_object(collmd, step + dt, step);
+
+        /*Now, actual obstacle metric calculation */
+        cloth_remeshing_find_nearest_planes(bm, collmd, clmd->coll_parms->epsilon, r_planes);
+      }
+      BKE_collision_objects_free(collobjs);
+    }
+  }
+}
+
 static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
                                                         BMFace *f,
                                                         map<BMVert *, ClothPlane> &planes,
@@ -2144,51 +2195,11 @@ static void cloth_remeshing_obstacle_metric_calculation(BMesh *bm,
   mul_m2_fl(r_mat, 1.0f / 3.0f);
 }
 
-static void cloth_remeshing_obstacle_metric(
-    Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, BMFace *f, float r_mat[2][2])
+static void cloth_remeshing_obstacle_metric(BMesh *bm,
+                                            BMFace *f,
+                                            map<BMVert *, ClothPlane> &planes,
+                                            float r_mat[2][2])
 {
-  /* Same as BPH_cloth_solve() to get the collision objects' bvh trees */
-  Cloth *cloth = clmd->clothObject;
-  BMesh *bm = cloth->bm;
-  BVHTree *cloth_bvh = cloth->bvhtree;
-  Object **collobjs = NULL;
-  unsigned int numcollobj = 0;
-
-  float step = 0.0f;
-  float dt = clmd->sim_parms->dt * clmd->sim_parms->timescale;
-
-  if ((clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_COLLOBJ) || cloth_bvh == NULL) {
-    return;
-  }
-
-  map<BMVert *, ClothPlane> planes;
-
-  if (clmd->coll_parms->flags & CLOTH_COLLSETTINGS_FLAG_ENABLED) {
-    bvhtree_update_from_cloth(clmd, false, false);
-
-    collobjs = BKE_collision_objects_create(
-        depsgraph, ob, clmd->coll_parms->group, &numcollobj, eModifierType_Collision);
-
-    if (collobjs) {
-      for (int i = 0; i < numcollobj; i++) {
-        Object *collob = collobjs[i];
-        CollisionModifierData *collmd = (CollisionModifierData *)modifiers_findByType(
-            collob, eModifierType_Collision);
-
-        if (!collmd->bvhtree) {
-          continue;
-        }
-
-        /* Move object to position (step) in time. */
-        collision_move_object(collmd, step + dt, step);
-
-        /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 0.05f, planes);
-      }
-      BKE_collision_objects_free(collobjs);
-    }
-  }
-
   if (planes.empty()) {
     zero_m2(r_mat);
     printf("planes is empty, returning\n");
@@ -2197,8 +2208,10 @@ static void cloth_remeshing_obstacle_metric(
   cloth_remeshing_obstacle_metric_calculation(bm, f, planes, r_mat);
 }
 
-static ClothSizing cloth_remeshing_compute_face_sizing(
-    Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, BMFace *f, ClothVertMap &cvm)
+static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
+                                                       BMFace *f,
+                                                       map<BMVert *, ClothPlane> &planes,
+                                                       ClothVertMap &cvm)
 {
   /* get the cloth verts for the respective verts of the face f */
   Cloth *cloth = clmd->clothObject;
@@ -2237,7 +2250,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(
   mul_m2_m23m32(dvel, sizing_v_t, sizing_v);
 
   float obs[2][2];
-  cloth_remeshing_obstacle_metric(depsgraph, ob, clmd, f, obs);
+  cloth_remeshing_obstacle_metric(bm, f, planes, obs);
 
   float m[2][2];
   float curv_temp[2][2];
@@ -2320,9 +2333,8 @@ static ClothSizing cloth_remeshing_compute_vertex_sizing(BMesh *bm,
   return sizing;
 }
 
-static void cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
-                                                  Object *ob,
-                                                  ClothModifierData *clmd,
+static void cloth_remeshing_compute_vertex_sizing(ClothModifierData *clmd,
+                                                  map<BMVert *, ClothPlane> &planes,
                                                   ClothVertMap &cvm)
 {
   Cloth *cloth = clmd->clothObject;
@@ -2332,7 +2344,7 @@ static void cloth_remeshing_compute_vertex_sizing(Depsgraph *depsgraph,
   BMFace *f;
   BMIter fiter;
   BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
-    face_sizing[f] = cloth_remeshing_compute_face_sizing(depsgraph, ob, clmd, f, cvm);
+    face_sizing[f] = cloth_remeshing_compute_face_sizing(clmd, f, planes, cvm);
   }
 
   BMVert *v;
