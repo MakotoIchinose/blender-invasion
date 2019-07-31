@@ -87,7 +87,7 @@ class ClothPlane {
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
 #define COLLAPSE_EDGES_DEBUG 0
-#define FACE_SIZING_DEBUG 1
+#define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
@@ -191,6 +191,7 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     BMIter viter;
     int i = 0;
     BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
+      mul_m4_v3(ob->obmat, v->co);
       if (!equals_v3v3(v->co, clmd->clothObject->verts[i].x)) {
         printf("copying %f %f %f into %f %f %f\n",
                clmd->clothObject->verts[i].x[0],
