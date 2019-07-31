@@ -160,7 +160,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   if (!m_gpu_binding->checkVersionRequirements(
           m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
     std::ostringstream strstream;
-    strstream << "Available graphics context version does not meet the following requirements: %s"
+    strstream << "Available graphics context version does not meet the following requirements: "
               << requirement_str;
     THROW_XR(strstream.str().c_str());
   }

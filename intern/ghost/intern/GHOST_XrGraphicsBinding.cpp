@@ -73,7 +73,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     GHOST_ContextWGL *ctx_gl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
 #endif
     XrGraphicsRequirementsOpenGLKHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR};
-    const uint32_t gl_version = XR_MAKE_VERSION(
+    const XrVersion gl_version = XR_MAKE_VERSION(
         ctx_gl->m_contextMajorVersion, ctx_gl->m_contextMinorVersion, 0);
 
     xrGetOpenGLGraphicsRequirementsKHR(instance, system_id, &gpu_requirements);
@@ -87,7 +87,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
                 << XR_VERSION_MAJOR(gpu_requirements.maxApiVersionSupported) << "."
                 << XR_VERSION_MINOR(gpu_requirements.maxApiVersionSupported) << std::endl;
 
-      *r_requirement_info = std::move(strstream.str());
+      *r_requirement_info = strstream.str();
     }
 
     return (gl_version >= gpu_requirements.minApiVersionSupported) &&
