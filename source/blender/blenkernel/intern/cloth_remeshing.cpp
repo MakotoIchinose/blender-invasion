@@ -83,7 +83,7 @@ typedef map<BMVert *, ClothVertex> ClothVertMap;
 #define COLLAPSE_EDGES_DEBUG 0
 #define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
-#define FACE_SIZING_DEBUG_OBS 1
+#define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
 
 #define INVERT_EPSILON 0.00001f
@@ -1747,7 +1747,7 @@ static void cloth_remeshing_eigen_decomposition(float mat[2][2], float r_mat[2][
   float amd = a - d;
   float apd = a + d;
   float b2 = b * b;
-  float det = sqrtf(4 * b + amd * amd);
+  float det = sqrtf(4 * b2 + amd * amd);
   float l1 = 0.5 * (apd + det);
   float l2 = 0.5 * (apd - det);
 
@@ -2183,7 +2183,7 @@ static void cloth_remeshing_obstacle_metric(
         collision_move_object(collmd, step + dt, step);
 
         /*Now, actual obstacle metric calculation */
-        cloth_remeshing_find_nearest_planes(bm, collmd, 1.f, planes);
+        cloth_remeshing_find_nearest_planes(bm, collmd, 0.05f, planes);
       }
       BKE_collision_objects_free(collobjs);
     }
