@@ -383,7 +383,7 @@ void GHOST_XrSession::draw(void *draw_customdata)
 
   beginFrameDrawing();
 
-  if (isVisible()) {
+  if (m_draw_info->frame_state.shouldRender) {
     proj_layer = drawLayer(projection_layer_views, draw_customdata);
     layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
   }
@@ -469,6 +469,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
   XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
   uint32_t view_count;
 
+  viewloc_info.viewConfigurationType = m_oxr->view_type;
   viewloc_info.displayTime = m_draw_info->frame_state.predictedDisplayTime;
   viewloc_info.space = m_oxr->reference_space;
 
@@ -510,20 +511,8 @@ bool GHOST_XrSession::isRunning() const
     return false;
   }
   switch (m_oxr->session_state) {
+    case XR_SESSION_STATE_READY:
     case XR_SESSION_STATE_SYNCHRONIZED:
-    case XR_SESSION_STATE_VISIBLE:
-    case XR_SESSION_STATE_FOCUSED:
-      return true;
-    default:
-      return false;
-  }
-}
-bool GHOST_XrSession::isVisible() const
-{
-  if (m_oxr->session == XR_NULL_HANDLE) {
-    return false;
-  }
-  switch (m_oxr->session_state) {
     case XR_SESSION_STATE_VISIBLE:
     case XR_SESSION_STATE_FOCUSED:
       return true;

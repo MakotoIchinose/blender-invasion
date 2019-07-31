@@ -40,7 +40,6 @@ class GHOST_XrSession {
   eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);
 
   bool isRunning() const;
-  bool isVisible() const;
 
   void unbindGraphicsContext(); /* public so context can ensure it's unbound as needed. */
 
