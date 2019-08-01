@@ -3926,7 +3926,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   int intersections_only = (is_lanpr_engine && lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
 
-  result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph(C), intersections_only);
+  result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C), intersections_only);
 
   lanpr_rebuild_all_command(lanpr);
 
@@ -3991,7 +3991,7 @@ void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
   ot->poll = lanpr_render_buffer_found;
 
   /* flag */
-  ot->flag = OPTYPE_USE_EVAL_DATA;
+  /* ot->flag = OPTYPE_USE_EVAL_DATA; */
 
   /* properties */
   /* Should have: facing, layer, visibility, file split... */
@@ -4242,7 +4242,7 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph(C);
+  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
 
   lanpr_update_gp_strokes_actual(scene, dg);
 
@@ -4253,7 +4253,7 @@ static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *o
 static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph(C);
+  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
   SceneLANPR *lanpr = &scene->lanpr;
   int frame, current_frame = scene->r.cfra;
   int frame_begin = scene->r.sfra;
@@ -4279,7 +4279,7 @@ static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNU
 static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph(C);
+  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
   SceneLANPR *lanpr = &scene->lanpr;
   Object *gpo = CTX_data_active_object(C);
 
@@ -4305,7 +4305,7 @@ static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op
 static int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *dg = CTX_data_depsgraph(C);
+  Depsgraph *dg = CTX_data_depsgraph_pointer(C);
   SceneLANPR *lanpr = &scene->lanpr;
   Object *source_obj = CTX_data_active_object(C);
 
