@@ -2335,6 +2335,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   float curv_temp[2][2];
   float comp_temp[2][2];
   float dvel_temp[2][2];
+  float obs_temp[2][2];
   copy_m2_m2(curv_temp, curv);
   mul_m2_fl(curv_temp, 1.0f / (clmd->sim_parms->refine_angle * clmd->sim_parms->refine_angle));
   copy_m2_m2(comp_temp, comp);
@@ -2343,16 +2344,17 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   copy_m2_m2(dvel_temp, dvel);
   mul_m2_fl(dvel_temp,
             1.0f / (clmd->sim_parms->refine_velocity * clmd->sim_parms->refine_velocity));
+  copy_m2_m2(obs_temp, obs);
+  mul_m2_fl(obs_temp, 1.0f / sqr_fl(clmd->sim_parms->refine_obstacle));
 
   /* Adding curv_temp, comp_temp, dvel_temp, obs */
 
 #if SKIP_COMP_METRIC
   zero_m2(comp_temp);
-  mul_m2_fl(obs, 1.0f / sqr_fl(clmd->sim_parms->refine_compression));
 #endif
   add_m2_m2m2(m, curv_temp, comp_temp);
   add_m2_m2m2(m, m, dvel_temp);
-  add_m2_m2m2(m, m, obs);
+  add_m2_m2m2(m, m, obs_temp);
 
 #if FACE_SIZING_DEBUG
   printf("curv_temp: ");
@@ -2361,8 +2363,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   print_m2(comp_temp);
   printf("dvel_temp: ");
   print_m2(dvel_temp);
-  printf("obs: ");
-  print_m2(obs);
+  printf("obs_temp: ");
+  print_m2(obs_temp);
   printf("m: ");
   print_m2(m);
 #endif
@@ -2372,6 +2374,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
 #  else
   printf("obs: ");
   print_m2(obs);
+  printf("obs_temp: ");
+  print_m2(obs_temp);
   printf("\n");
 #  endif
 #endif

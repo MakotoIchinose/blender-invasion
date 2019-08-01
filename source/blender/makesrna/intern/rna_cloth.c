@@ -799,6 +799,12 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Remeshing Refine Velocity", "Remeshing refine velocity");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
 
+  prop = RNA_def_property(srna, "refine_obstacle", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "refine_obstacle");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Remeshing Refine Obstacle", "Remeshing refine obstacle");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
   prop = RNA_def_property(srna, "size_min", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "size_min");
   RNA_def_property_range(prop, 0.0f, 10.0f);

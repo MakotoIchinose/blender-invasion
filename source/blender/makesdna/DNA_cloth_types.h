@@ -153,9 +153,11 @@ typedef struct ClothSimSettings {
   float refine_angle;
   float refine_compression;
   float refine_velocity;
+  float refine_obstacle;
   float size_min;
   float size_max;
   float aspect_min;
+  char _pad1[4];
 } ClothSimSettings;
 
 typedef struct ClothCollSettings {

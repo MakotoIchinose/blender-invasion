@@ -333,6 +333,8 @@ class PHYSICS_PT_cloth_remeshing(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.prop(cloth, "refine_velocity", text="Refine Velocity")
         col = flow.column()
+        col.prop(cloth, "refine_obstacle", text="Refine Obstacle")
+        col = flow.column()
         col.prop(cloth, "size_min", text="Size Minimum")
         col = flow.column()
         col.prop(cloth, "size_max", text="Size Maximum")
