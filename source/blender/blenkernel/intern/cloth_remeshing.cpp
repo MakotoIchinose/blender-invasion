@@ -183,6 +183,12 @@ static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
   return cddata_masks;
 }
 
+static bool equals_v3v3(const float v1[3], const float v2[3], float epsilon)
+{
+  return (fabsf(v1[0] - v2[0]) < epsilon) && (fabsf(v1[1] - v2[1]) < epsilon) &&
+         (fabsf(v1[2] - v2[2]) < epsilon);
+}
+
 static void cloth_remeshing_init_bmesh(Object *ob,
                                        ClothModifierData *clmd,
                                        Mesh *mesh,
@@ -206,11 +212,11 @@ static void cloth_remeshing_init_bmesh(Object *ob,
     BMVert *v;
     BMIter viter;
     int i = 0;
-    const int cd_loop_uv_offset = CustomData_get_offset(&clmd->clothObject->bm_prev->ldata,
-                                                        CD_MLOOPUV);
+    /* const int cd_loop_uv_offset = CustomData_get_offset(&clmd->clothObject->bm_prev->ldata, */
+    /*                                                     CD_MLOOPUV); */
     BM_ITER_MESH_INDEX (v, &viter, clmd->clothObject->bm_prev, BM_VERTS_OF_MESH, i) {
       mul_m4_v3(ob->obmat, v->co);
-      if (!equals_v3v3(v->co, clmd->clothObject->verts[i].x)) {
+      if (!equals_v3v3(v->co, clmd->clothObject->verts[i].x, ALMOST_ZERO)) {
         printf("copying %f %f %f into %f %f %f\n",
                clmd->clothObject->verts[i].x[0],
                clmd->clothObject->verts[i].x[1],
@@ -221,16 +227,17 @@ static void cloth_remeshing_init_bmesh(Object *ob,
         copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       }
       cvm[v] = clmd->clothObject->verts[i];
-      if (cloth_remeshing_vert_on_seam_or_boundary_test(
-              clmd->clothObject->bm_prev, v, cd_loop_uv_offset)) {
-        cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
-      }
+      cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
+      /* if (cloth_remeshing_vert_on_seam_or_boundary_test( */
+      /*         clmd->clothObject->bm_prev, v, cd_loop_uv_offset)) { */
+      /*   cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE; */
+      /* } */
     }
     BMEdge *e;
     BMIter eiter;
     BM_ITER_MESH (e, &eiter, clmd->clothObject->bm_prev, BM_EDGES_OF_MESH) {
-      /* BM_elem_flag_enable(e, BM_ELEM_TAG); */
-      BM_elem_flag_disable(e, BM_ELEM_TAG);
+      BM_elem_flag_enable(e, BM_ELEM_TAG);
+      /* BM_elem_flag_disable(e, BM_ELEM_TAG); */
     }
 
     BM_mesh_normals_update(clmd->clothObject->bm_prev);
