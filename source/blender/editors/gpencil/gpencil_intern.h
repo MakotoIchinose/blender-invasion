@@ -378,8 +378,8 @@ typedef enum eGPencil_PaintModes {
   GP_PAINTMODE_SET_CP,
 } eGPencil_PaintModes;
 
-/* maximum sizes of gp-session buffer */
-#define GP_STROKE_BUFFER_MAX 5000
+/* chunk size for gp-session buffer (the total size is a multiple of this number) */
+#define GP_STROKE_BUFFER_CHUNK 2048
 
 /* stroke editing ----- */
 
@@ -599,7 +599,7 @@ struct GP_EditableStrokes_Iter {
 #define GP_EDITABLE_STROKES_BEGIN(gpstroke_iter, C, gpl, gps) \
   { \
     struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
-    Depsgraph *depsgraph_ = CTX_data_depsgraph(C); \
+    Depsgraph *depsgraph_ = CTX_data_ensure_evaluated_depsgraph(C); \
     Object *obact_ = CTX_data_active_object(C); \
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
