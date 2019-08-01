@@ -28,7 +28,6 @@
 #include <math.h>
 
 extern char datatoc_common_fullscreen_vert_glsl[];
-extern char datatoc_gpu_shader_3D_normal_smooth_color_vert_glsl[];
 extern char datatoc_lanpr_snake_multichannel_frag_glsl[];
 extern char datatoc_lanpr_snake_edge_frag_glsl[];
 extern char datatoc_lanpr_snake_image_peel_frag_glsl[];
@@ -57,8 +56,7 @@ static void lanpr_engine_init(void *ved)
     BLI_spin_init(&lanpr_share.render_flag_lock);
   }
 
-  /* SNAKE */
-
+#if 0 /* Deprecated: snake mode */
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->depth, GPU_DEPTH_COMPONENT32F, 8, 0);
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->color, GPU_RGBA32F, 8, 0);
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->normal, GPU_RGBA32F, 8, 0);
@@ -103,6 +101,7 @@ static void lanpr_engine_init(void *ved)
         datatoc_lanpr_snake_line_connection_frag_glsl,
         NULL);
   }
+#endif
 
   /* DPIX */
   lanpr_init_atlas_inputs(ved);
