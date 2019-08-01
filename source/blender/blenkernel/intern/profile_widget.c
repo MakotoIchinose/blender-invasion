@@ -274,7 +274,7 @@ ProfilePoint *profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 }
 
 /** Sets the handle type of the selected control points.
- * \param type: Either HD_VECT or HD_AUTO_ANIM
+ * \param type: Either HD_VECT or HD_AUTO
  * \note: Requiress profilewidget_changed call after. */
 void profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 {
@@ -283,12 +283,12 @@ void profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 #endif
   for (int i = 0; i < prwdgt->totpoint; i++) {
     if (prwdgt->path[i].flag & PROF_SELECT) {
-      prwdgt->path[i].flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO_ANIM);
+      prwdgt->path[i].flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO);
       if (type == HD_VECT) {
         prwdgt->path[i].flag |= PROF_HANDLE_VECTOR;
       }
-      else if (type == HD_AUTO_ANIM) {
-        prwdgt->path[i].flag |= PROF_HANDLE_AUTO_ANIM;
+      else if (type == HD_AUTO) {
+        prwdgt->path[i].flag |= PROF_HANDLE_AUTO;
       }
     }
   }
@@ -445,9 +445,6 @@ static bool is_curved_edge(BezTriple * bezt, int i)
 }
 
 /** Used in the sample creation process. Reduced copy of #calchandleNurb_intern code in curve.c */
-/* HANS-TODO: Depending on the orientation of a profile the location of the bezier handles are
- * different, which means there is some different dependence on X vs Y, but it should be direction
- * agnostic */
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
 #define p2_handle1 ((p2)-3)
@@ -498,7 +495,7 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
     len_b = 1.0f;
   }
 
-  if (ELEM(bezt->h1, HD_AUTO, HD_AUTO_ANIM) || ELEM(bezt->h2, HD_AUTO, HD_AUTO_ANIM)) { /* auto */
+  if (bezt->h1 == HD_AUTO || bezt->h2 == HD_AUTO) { /* auto */
     float tvec[2];
     tvec[0] = dvec_b[0] / len_b + dvec_a[0] / len_a;
     tvec[1] = dvec_b[1] / len_b + dvec_a[1] / len_a;
@@ -506,53 +503,13 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
     len = len_v2(tvec) * 2.5614f;
     if (len != 0.0f) {
 
-      if (ELEM(bezt->h1, HD_AUTO, HD_AUTO_ANIM)) {
+      if (bezt->h1 == HD_AUTO) {
         len_a /= len;
         madd_v2_v2v2fl(p2_handle1, p2, tvec, -len_a);
-
-        if ((bezt->h1 == HD_AUTO_ANIM) && next && prev) { /* keep horizontal if extrema */
-          const float ydiff1 = prev->vec[1][1] - bezt->vec[1][1];
-          const float ydiff2 = next->vec[1][1] - bezt->vec[1][1];
-          if ((ydiff1 <= 0.0f && ydiff2 <= 0.0f) || (ydiff1 >= 0.0f && ydiff2 >= 0.0f)) {
-            bezt->vec[0][1] = bezt->vec[1][1];
-          }
-          else { /* handles should not be beyond y coord of two others */
-            if (ydiff1 <= 0.0f) {
-              if (prev->vec[1][1] > bezt->vec[0][1]) {
-                bezt->vec[0][1] = prev->vec[1][1];
-              }
-            }
-            else {
-              if (prev->vec[1][1] < bezt->vec[0][1]) {
-                bezt->vec[0][1] = prev->vec[1][1];
-              }
-            }
-          }
-        }
       }
-      if (ELEM(bezt->h2, HD_AUTO, HD_AUTO_ANIM)) {
+      if (bezt->h2 == HD_AUTO) {
         len_b /= len;
         madd_v2_v2v2fl(p2_handle2, p2, tvec, len_b);
-
-        if ((bezt->h2 == HD_AUTO_ANIM) && next && prev) { /* keep horizontal if extrema */
-          const float ydiff1 = prev->vec[1][1] - bezt->vec[1][1];
-          const float ydiff2 = next->vec[1][1] - bezt->vec[1][1];
-          if ((ydiff1 <= 0.0f && ydiff2 <= 0.0f) || (ydiff1 >= 0.0f && ydiff2 >= 0.0f)) {
-            bezt->vec[2][1] = bezt->vec[1][1];
-          }
-          else { /* handles should not be beyond y coord of two others */
-            if (ydiff1 <= 0.0f) {
-              if (next->vec[1][1] < bezt->vec[2][1]) {
-                bezt->vec[2][1] = next->vec[1][1];
-              }
-            }
-            else {
-              if (next->vec[1][1] > bezt->vec[2][1]) {
-                bezt->vec[2][1] = next->vec[1][1];
-              }
-            }
-          }
-        }
       }
     }
   }
@@ -640,7 +597,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
   for (i = 0; i < totpoints; i++) {
     bezt[i].vec[1][0] = prwdgt->path[i].x;
     bezt[i].vec[1][1] = prwdgt->path[i].y;
-    bezt[i].h1 = bezt[i].h2 = (prwdgt->path[i].flag & PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO_ANIM;
+    bezt[i].h1 = bezt[i].h2 = (prwdgt->path[i].flag & PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
   }
   /* Get handle positions for the bezier points */
   calchandle_profile(&bezt[0], NULL, &bezt[1]);
@@ -648,47 +605,6 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
     calchandle_profile(&bezt[i], &bezt[i - 1], &bezt[i + 1]);
   }
   calchandle_profile(&bezt[totpoints - 1], &bezt[totpoints - 2], NULL);
-
-  /* HANS-TODO: Figure out if this 'correction' to the end points' handles is actually helpful */
-  if (prwdgt->totpoint > 2) {
-    float hlen, nlen, vec[3];
-
-    if (bezt[0].h2 == HD_AUTO) {
-
-      hlen = len_v3v3(bezt[0].vec[1], bezt[0].vec[2]); /* original handle length */
-      /* clip handle point */
-      copy_v3_v3(vec, bezt[1].vec[0]);
-      if (vec[0] < bezt[0].vec[1][0]) {
-        vec[0] = bezt[0].vec[1][0];
-      }
-
-      sub_v3_v3(vec, bezt[0].vec[1]);
-      nlen = len_v3(vec);
-      if (nlen > FLT_EPSILON) {
-        mul_v3_fl(vec, hlen / nlen);
-        add_v3_v3v3(bezt[0].vec[2], vec, bezt[0].vec[1]);
-        sub_v3_v3v3(bezt[0].vec[0], bezt[0].vec[1], vec);
-      }
-    }
-    i = totpoints - 1;
-    if (bezt[i].h2 == HD_AUTO) {
-
-      hlen = len_v3v3(bezt[i].vec[1], bezt[i].vec[0]); /* original handle length */
-      /* clip handle point */
-      copy_v3_v3(vec, bezt[i - 1].vec[2]);
-      if (vec[0] > bezt[i].vec[1][0]) {
-        vec[0] = bezt[i].vec[1][0];
-      }
-
-      sub_v3_v3(vec, bezt[i].vec[1]);
-      nlen = len_v3(vec);
-      if (nlen > FLT_EPSILON) {
-        mul_v3_fl(vec, hlen / nlen);
-        add_v3_v3v3(bezt[i].vec[0], vec, bezt[i].vec[1]);
-        sub_v3_v3v3(bezt[i].vec[2], bezt[i].vec[1], vec);
-      }
-    }
-  }
 
   /* Sort a list of indexes by the curvature at each point*/
   i_curve_sorted = MEM_callocN((size_t)totedges * sizeof(int), "i curve sorted");
