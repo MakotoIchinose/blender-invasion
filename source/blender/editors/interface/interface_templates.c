@@ -4531,7 +4531,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiBlock *block;
   uiBut *bt;
   int i, icon, path_width, path_height;
-  bool point_last_or_first;
+  bool point_last_or_first = false;
   rctf bounds;
 
   block = uiLayoutGetBlock(layout);
@@ -4618,6 +4618,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
     }
 
     uiLayoutRow(layout, true);
+    UI_block_funcN_set(block, profilewidget_buttons_update, MEM_dupallocN(cb), prwdgt);
 
     /* Sharp / Smooth */
     bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_LINCURVE, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL,
@@ -4627,25 +4628,26 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
                       0.0, 0.0, 0.0, 0.0, TIP_("Set the point's handle type to sharp."));
     UI_but_funcN_set(bt, profilewidget_buttons_setcurved, MEM_dupallocN(cb), prwdgt);
 
-
-    UI_block_funcN_set(block, profilewidget_buttons_update, MEM_dupallocN(cb), prwdgt);
-    /* HANS-QUESTION: I haven't been able to find out how to disable these buttons instead of
-     * not drawing them. */
-    if (!point_last_or_first) {
-
-      /* Position */
-      bt = uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
-                &point->x, bounds.xmin, bounds.xmax, 1, 5, "");
-
-      uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
-                &point->y, bounds.ymin, bounds.ymax, 1, 5, "");
-
-      /* Delete points */
-      bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
-                        0.0, 0.0, TIP_("Delete points"));
-      UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
+    /* Position */
+    bt = uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
+              &point->x, bounds.xmin, bounds.xmax, 1, 5, "");
+    if (point_last_or_first) {
+      UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
 
+    bt = uiDefButF(block, UI_BTYPE_NUM, 0, "Y:", 0, 1 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
+              &point->y, bounds.ymin, bounds.ymax, 1, 5, "");
+    if (point_last_or_first) {
+      UI_but_flag_enable(bt, UI_BUT_DISABLED);
+    }
+
+    /* Delete points */
+    bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_X, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0,
+                      0.0, 0.0, TIP_("Delete points"));
+    UI_but_funcN_set(bt, profilewidget_buttons_delete, MEM_dupallocN(cb), prwdgt);
+    if (point_last_or_first) {
+      UI_but_flag_enable(bt, UI_BUT_DISABLED);
+    }
   }
 
   uiItemR(layout, ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
