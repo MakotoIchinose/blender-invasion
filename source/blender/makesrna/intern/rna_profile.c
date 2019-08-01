@@ -127,7 +127,7 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem prop_handle_type_items[] = {
-      {PROF_HANDLE_AUTO_ANIM, "AUTO_CLAMPED", 0, "Auto Clamped Handle", ""},
+      {PROF_HANDLE_AUTO, "AUTO_CLAMPED", 0, "Auto Clamped Handle", ""},
       {PROF_HANDLE_VECTOR, "VECTOR", 0, "Vector Handle", ""},
       {0, NULL, 0, NULL, NULL},
   };
@@ -176,7 +176,7 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
   func = RNA_def_function(srna, "remove", "rna_ProfileWidget_remove_point");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Delete point from profile widget");
-  parm = RNA_def_pointer(func, "point", "ProfilePoint", "", "PointElement to remove");
+  parm = RNA_def_pointer(func, "point", "ProfilePoint", "", "Point to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }

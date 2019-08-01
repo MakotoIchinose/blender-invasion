@@ -44,7 +44,7 @@ typedef struct ProfilePoint {
 enum {
   PROF_SELECT = (1 << 0),
   PROF_HANDLE_VECTOR = (1 << 1),
-  PROF_HANDLE_AUTO_ANIM = (1 << 2),
+  PROF_HANDLE_AUTO = (1 << 2),
 };
 
 typedef struct ProfileWidget {
