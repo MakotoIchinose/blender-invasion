@@ -1325,19 +1325,10 @@ static int outliner_show_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     /* Center view on first element found */
     int size_y = BLI_rcti_size_y(&v2d->mask) + 1;
-    int y_min = MIN2(v2d->tot.ymin, v2d->cur.ymin);
-    int ytop = active_element->ys + size_y / 2;
+    int ytop = (active_element->ys + (size_y / 2));
+    int delta_y = ytop - v2d->cur.ymax;
 
-    /* make te->ys center of view  keeping element within scroll limits */
-    if (ytop > 0) {
-      ytop = 0;
-    }
-    else if ((ytop - size_y) < y_min) {
-      ytop += y_min - (ytop - size_y);
-    }
-
-    v2d->cur.ymax = ytop;
-    v2d->cur.ymin = ytop - size_y;
+    outliner_scroll_view(ar, delta_y);
   }
   else {
     return OPERATOR_CANCELLED;
@@ -1370,19 +1361,11 @@ static int outliner_scroll_page_exec(bContext *C, wmOperator *op)
 
   bool up = RNA_boolean_get(op->ptr, "up");
 
-  /* Keep view within outliner tree bounds */
-  int y_min = MIN2(ar->v2d.tot.ymin, ar->v2d.cur.ymin);
-  int dy;
-
-  if (up) {
-    dy = MIN2(size_y, -ar->v2d.cur.ymax);
-  }
-  else {
-    dy = -MIN2(size_y, ar->v2d.cur.ymin - y_min);
+  if (!up) {
+    size_y = -size_y;
   }
 
-  ar->v2d.cur.ymin += dy;
-  ar->v2d.cur.ymax += dy;
+  outliner_scroll_view(ar, size_y);
 
   ED_region_tag_redraw_no_rebuild(ar);
 
