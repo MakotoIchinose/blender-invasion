@@ -257,7 +257,7 @@ int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
   return begin_index + edge_count;
 }
 
-int lanpr_feed_atlas_data_intersection_cache(void *vedata,
+int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
                                              float *AtlasPointsL,
                                              float *AtlasPointsR,
                                              float *AtlasFaceNormalL,
@@ -329,7 +329,7 @@ static void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
   (*y) = (float)(index / texture_size) + 0.5;
 }
 
-int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_index)
+int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata), Object *ob, int begin_index)
 {
   Mesh *me = ob->data;
   if (ob->type != OB_MESH) {
@@ -388,7 +388,7 @@ int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_ind
   return begin_index + edge_count;
 }
 
-void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index)
+void lanpr_create_atlas_intersection_preview(void *UNUSED(vedata), int begin_index)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   float co[2];

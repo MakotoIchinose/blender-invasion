@@ -138,7 +138,7 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
   /*  later implement .... */
   /* } */
 }
-void lanpr_rebuild_all_command(SceneLANPR *lanpr)
+void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll;
   if (!lanpr || !lanpr_share.render_buffer_shared) {
@@ -160,59 +160,7 @@ void lanpr_rebuild_all_command(SceneLANPR *lanpr)
   DEG_id_tag_update(&lanpr_share.render_buffer_shared->scene->id, ID_RECALC_COPY_ON_WRITE);
 }
 
-void lanpr_viewport_draw_offline_result(LANPR_TextureList *txl,
-                                        LANPR_FramebufferList *fbl,
-                                        LANPR_PassList *psl,
-                                        LANPR_PrivateData *pd,
-                                        SceneLANPR *lanpr)
-{
-  float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  float clear_depth = 1.0f;
-  uint clear_stencil = 0xFF;
-  float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
-  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-
-  int texw = GPU_texture_width(dtxl->color), texh = GPU_texture_height(dtxl->color);
-  int tsize = texw * texh;
-
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
-  View3D *v3d = draw_ctx->v3d;
-  Object *camera;
-  if (v3d) {
-    RegionView3D *rv3d = draw_ctx->rv3d;
-    camera = (rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
-  }
-  else {
-    camera = scene->camera;
-  }
-
-  if (lanpr->use_world_background) {
-    copy_v3_v3(use_background_color, &scene->world->horr);
-    use_background_color[3] = 1;
-  }
-  else {
-    copy_v4_v4(use_background_color, lanpr->background_color);
-  }
-
-  GPU_framebuffer_bind(fbl->dpix_transform);
-  DRW_draw_pass(psl->dpix_transform_pass);
-
-  GPU_framebuffer_bind(fbl->dpix_preview);
-  eGPUFrameBufferBits clear_bits = GPU_COLOR_BIT;
-  GPU_framebuffer_clear(
-      fbl->dpix_preview, clear_bits, use_background_color, clear_depth, clear_stencil);
-  DRW_draw_pass(psl->dpix_preview_pass);
-
-  GPU_framebuffer_bind(dfbl->default_fb);
-  GPU_framebuffer_clear(
-      dfbl->default_fb, clear_bits, use_background_color, clear_depth, clear_stencil);
-  DRW_multisamples_resolve(txl->depth, txl->color, 1);
-}
-
-void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
+void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
   Object *ob;
   switch (ll->normal_mode) {
@@ -265,10 +213,9 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   static float camdx, camdy, camzoom;
 
   if (is_render) {
-    lanpr_rebuild_all_command(lanpr);
+    ED_lanpr_rebuild_all_command(lanpr);
   }
 
-  float clear_col[4] = {1.0f, 0.0f, 0.0f, 1.0f};
   float clear_depth = 1.0f;
   uint clear_stencil = 0xFF;
   eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
@@ -326,7 +273,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         rb->ChainShgrp = DRW_shgroup_create(lanpr_share.software_chaining_shader,
                                             psl->software_pass);
 
-        lanpr_calculate_normal_object_vector(ll, normal_object_direction);
+        ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
         DRW_shgroup_uniform_float(rb->ChainShgrp, "camdx", &camdx, 1);
         DRW_shgroup_uniform_float(rb->ChainShgrp, "camdy", &camdy, 1);
@@ -429,7 +376,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                                    DRW_STATE_DEPTH_LESS_EQUAL);
           ll->shgrp = DRW_shgroup_create(lanpr_share.software_shader, psl->software_pass);
 
-          lanpr_calculate_normal_object_vector(ll, normal_object_direction);
+          ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
           DRW_shgroup_uniform_float(ll->shgrp, "camdx", &camdx, 1);
           DRW_shgroup_uniform_float(ll->shgrp, "camdy", &camdy, 1);

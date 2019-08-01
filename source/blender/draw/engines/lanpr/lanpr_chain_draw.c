@@ -26,7 +26,7 @@
 
 #include <math.h>
 
-static float lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
+static float ED_lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
 {
   LANPR_RenderLineChainItem *rlci;
   int i = 0;
@@ -104,7 +104,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
 
-    total_length = lanpr_compute_chain_length_draw(rlc, lengths, i);
+    total_length = ED_lanpr_compute_chain_length_draw(rlc, lengths, i);
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
 

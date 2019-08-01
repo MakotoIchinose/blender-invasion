@@ -22,4 +22,8 @@ void ED_operatortypes_lanpr(void)
   WM_operatortype_append(SCENE_OT_lanpr_update_gp_strokes);
   WM_operatortype_append(SCENE_OT_lanpr_bake_gp_strokes);
   WM_operatortype_append(SCENE_OT_lanpr_export_svg);
+
+  WM_operatortype_append(OBJECT_OT_lanpr_update_gp_target);
+  /* Not working */
+  /* WM_operatortype_append(OBJECT_OT_lanpr_update_gp_source); */
 }

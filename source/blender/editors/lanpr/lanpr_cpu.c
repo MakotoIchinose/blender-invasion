@@ -71,10 +71,6 @@ extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 struct Object;
 
-/* External defines */
-
-void lanpr_rebuild_all_command(SceneLANPR *lanpr);
-
 /* Own functions */
 
 static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBuffer *rb,
@@ -278,12 +274,12 @@ static int lanpr_delete_line_component_exec(struct bContext *C, struct wmOperato
   return OPERATOR_FINISHED;
 }
 
-static int lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int ED_lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -345,7 +341,7 @@ static int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperat
 
   lanpr_enable_all_line_types_exec(C, op);
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   return OPERATOR_FINISHED;
 }
@@ -375,7 +371,7 @@ void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot)
   ot->description = "Refresh LANPR line layer drawing commands";
   ot->idname = "SCENE_OT_lanpr_rebuild_all_commands";
 
-  ot->exec = lanpr_rebuild_all_commands_exec;
+  ot->exec = ED_lanpr_rebuild_all_commands_exec;
 }
 void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot)
 {
@@ -700,7 +696,7 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
     nba = lanpr_get_next_bounding_area(nba, rl, x, y, k, PositiveX, PositiveY, &x, &y);
   }
 }
-static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict pool,
+static void lanpr_THREAD_calculate_line_occlusion(TaskPool *__restrict UNUSED(pool),
                                                   LANPR_RenderTaskInfo *rti,
                                                   int UNUSED(threadid))
 {
@@ -929,7 +925,6 @@ static LANPR_RenderElementLinkNode *lanpr_new_cull_point_space64(LANPR_RenderBuf
 
   return reln;
 }
-static void lanpr_calculate_render_triangle_normal(LANPR_RenderTriangle *rt);
 static void lanpr_assign_render_line_with_triangle(LANPR_RenderTriangle *rt)
 {
   if (!rt->rl[0]->tl) {
@@ -1859,15 +1854,6 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                  (num > is[order[1]] ? order[1] : (num > is[order[0]] ? order[0] : order[0]))); \
   }
 
-static void lanpr_get_interpolate_point2d(tnsVector2d l,
-                                          tnsVector2d r,
-                                          real Ratio,
-                                          tnsVector2d Result)
-{
-  Result[0] = tnsLinearItp(l[0], r[0], Ratio);
-  Result[1] = tnsLinearItp(l[1], r[1], Ratio);
-}
-
 static LANPR_RenderLine *lanpr_another_edge(LANPR_RenderTriangle *rt, LANPR_RenderVert *rv)
 {
   if (rt->v[0] == rv) {
@@ -1878,30 +1864,6 @@ static LANPR_RenderLine *lanpr_another_edge(LANPR_RenderTriangle *rt, LANPR_Rend
   }
   else if (rt->v[2] == rv) {
     return rt->rl[0];
-  }
-  return 0;
-}
-static int lanpr_share_edge(LANPR_RenderTriangle *rt, LANPR_RenderVert *rv, LANPR_RenderLine *rl)
-{
-  LANPR_RenderVert *another = rv == rl->l ? rl->r : rl->l;
-
-  if (rt->v[0] == rv) {
-    if (another == rt->v[1] || another == rt->v[2]) {
-      return 1;
-    }
-    return 0;
-  }
-  else if (rt->v[1] == rv) {
-    if (another == rt->v[0] || another == rt->v[2]) {
-      return 1;
-    }
-    return 0;
-  }
-  else if (rt->v[2] == rv) {
-    if (another == rt->v[0] || another == rt->v[1]) {
-      return 1;
-    }
-    return 0;
   }
   return 0;
 }
@@ -2485,49 +2447,6 @@ static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_Render
   }
 }
 
-static int lanpr_line_crosses_frame(tnsVector2d l, tnsVector2d r)
-{
-  real vx, vy;
-  real c1, c;
-
-  if ((-1 > MAX2(l[0], r[0])) || (1 < MIN2(l[0], r[0])) || (-1 > MAX2(l[1], r[1])) ||
-      (1 < MIN2(l[1], r[1]))) {
-    return 0;
-  }
-
-  vx = l[0] - r[0];
-  vy = l[1] - r[1];
-
-  c1 = vx * (-1 - l[1]) - vy * (-1 - l[0]);
-  c = c1;
-
-  c1 = vx * (-1 - l[1]) - vy * (1 - l[0]);
-  if (c1 * c <= 0) {
-    return 1;
-  }
-  else {
-    c = c1;
-  }
-
-  c1 = vx * (1 - l[1]) - vy * (-1 - l[0]);
-  if (c1 * c <= 0) {
-    return 1;
-  }
-  else {
-    c = c1;
-  }
-
-  c1 = vx * (1 - l[1]) - vy * (1 - l[0]);
-  if (c1 * c <= 0) {
-    return 1;
-  }
-  else {
-    c = c1;
-  }
-
-  return 0;
-}
-
 static void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb)
 {
   tnsVector3d Direction = {0, 0, 1};
@@ -2641,18 +2560,6 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
 
     /*  line count reserved for feature such as progress feedback */
   }
-}
-
-static void lanpr_clear_render_state(LANPR_RenderBuffer *rb)
-{
-  rb->contour_count = 0;
-  rb->contour_managed = 0;
-  rb->intersection_count = 0;
-  rb->intersection_managed = 0;
-  rb->material_line_count = 0;
-  rb->material_managed = 0;
-  rb->crease_count = 0;
-  rb->crease_managed = 0;
 }
 
 /* Buffer operations */
@@ -2875,7 +2782,7 @@ long lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
   }
   return Count;
 }
-void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *rb,
+void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
                                            ListBase *LineList,
                                            float *vertexArray,
                                            float *NormalArray,
@@ -3136,10 +3043,6 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
                                                    LANPR_RenderTriangle *rt,
                                                    real *LRUB,
                                                    int Recursive);
-static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_RenderBuffer *rb,
-                                                                    LANPR_RenderTriangle *rt,
-                                                                    LANPR_BoundingArea *ba);
-
 static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea *Root)
 {
   LANPR_BoundingArea *ba = mem_static_aquire(&rb->render_data_pool,
@@ -3928,7 +3831,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C), intersections_only);
 
-  lanpr_rebuild_all_command(lanpr);
+  ED_lanpr_rebuild_all_command(lanpr);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
@@ -4239,7 +4142,7 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 
   lanpr_clear_gp_lanpr_flags(dg, frame);
 }
-static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4254,8 +4157,7 @@ static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNU
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
-  SceneLANPR *lanpr = &scene->lanpr;
-  int frame, current_frame = scene->r.cfra;
+  int frame;
   int frame_begin = scene->r.sfra;
   int frame_end = scene->r.efra;
 
@@ -4276,11 +4178,10 @@ static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNU
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
-  SceneLANPR *lanpr = &scene->lanpr;
   Object *gpo = CTX_data_active_object(C);
 
   int frame = scene->r.cfra;
@@ -4302,11 +4203,10 @@ static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *op
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
-  SceneLANPR *lanpr = &scene->lanpr;
   Object *source_obj = CTX_data_active_object(C);
 
   int frame = scene->r.cfra;
@@ -4405,32 +4305,3 @@ void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
   }
 }
 
-/* Inspect below */
-static void lanpr_post_frame_updater(struct Main *UNUSED(_1), struct ID *scene, void *UNUSED(_3))
-{
-  Scene *s = (Scene *)scene;
-  if (s->lanpr.master_mode != LANPR_MASTER_MODE_SOFTWARE) {
-    return;
-  }
-  if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
-
-    /* No depsgraph reference here in the callback. Not working :? */
-  }
-}
-
-static bCallbackFuncStore lanpr_post_frame_callback = {
-    NULL,
-    NULL,                     /* next, prev */
-    lanpr_post_frame_updater, /* func */
-    NULL,                     /* arg */
-    0,                        /* alloc */
-};
-
-static int lanpr_post_frame_regisetered = 0;
-
-void ED_register_lanpr_post_frame()
-{
-  if (!lanpr_post_frame_regisetered) {
-    BLI_callback_add(&lanpr_post_frame_callback, BLI_CB_EVT_FRAME_CHANGE_POST);
-  }
-}

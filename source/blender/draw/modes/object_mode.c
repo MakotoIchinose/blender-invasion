@@ -3919,9 +3919,6 @@ static void OBJECT_draw_scene(void *vedata)
 
 static const DrawEngineDataSize OBJECT_data_size = DRW_VIEWPORT_DATA_SIZE(OBJECT_Data);
 
-struct LANPR_Data;
-void lanpr_id_update(struct LANPR_Data *vedata, ID *id);
-
 DrawEngineType draw_engine_object_type = {
     NULL,
     NULL,

@@ -39,8 +39,6 @@ void OBJECT_OT_material_slot_copy(struct wmOperatorType *ot);
 void OBJECT_OT_material_slot_move(struct wmOperatorType *ot);
 void OBJECT_OT_material_slot_remove_unused(struct wmOperatorType *ot);
 
-void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
-
 void MATERIAL_OT_new(struct wmOperatorType *ot);
 void TEXTURE_OT_new(struct wmOperatorType *ot);
 void WORLD_OT_new(struct wmOperatorType *ot);
@@ -76,9 +74,6 @@ void SCENE_OT_freestyle_modifier_move(struct wmOperatorType *ot);
 void SCENE_OT_freestyle_modifier_copy(struct wmOperatorType *ot);
 void SCENE_OT_freestyle_stroke_material_create(struct wmOperatorType *ot);
 #endif
-
-void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
-void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
 
 void TEXTURE_OT_slot_copy(struct wmOperatorType *ot);
 void TEXTURE_OT_slot_paste(struct wmOperatorType *ot);

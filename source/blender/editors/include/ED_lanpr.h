@@ -829,6 +829,13 @@ LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb
 
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
+struct SceneLANPR;
+
+void ED_lanpr_rebuild_all_command(struct SceneLANPR *lanpr);
+
+void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
+
+float ED_lanpr_compute_chain_length(LANPR_RenderLineChain *rlc);
 
 struct wmOperatorType;
 
@@ -845,6 +852,9 @@ void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_export_svg(struct wmOperatorType *ot);
+
+void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
+void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
 
 void ED_operatortypes_lanpr(void);
 

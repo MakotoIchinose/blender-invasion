@@ -46,23 +46,12 @@ extern char datatoc_gpu_shader_2D_smooth_color_frag_glsl[];
 
 LANPR_SharedResource lanpr_share;
 
-void lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
-
-void lanpr_rebuild_all_command(SceneLANPR *lanpr);
-
 static void lanpr_engine_init(void *ved)
 {
   lanpr_share.ved_viewport = ved;
   LANPR_Data *vedata = (LANPR_Data *)ved;
   LANPR_TextureList *txl = vedata->txl;
   LANPR_FramebufferList *fbl = vedata->fbl;
-  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
-  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
-  SceneLANPR *lanpr = &scene->lanpr;
-  View3D *v3d = draw_ctx->v3d;
 
   if (!lanpr_share.init_complete) {
     BLI_spin_init(&lanpr_share.render_flag_lock);
@@ -143,8 +132,6 @@ static void lanpr_engine_init(void *ved)
 
 static void lanpr_engine_free(void)
 {
-  void *ved = lanpr_share.ved_viewport;
-
   DRW_SHADER_FREE_SAFE(lanpr_share.multichannel_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.snake_connection_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.software_chaining_shader);
@@ -197,7 +184,6 @@ static void lanpr_cache_init(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
-  View3D *v3d = draw_ctx->v3d;
 
   int texture_size = lanpr_dpix_texture_size(lanpr);
   lanpr_share.texture_size = texture_size;
@@ -372,7 +358,7 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "z_far", &stl->g_data->dpix_zfar, 1);
 
-    lanpr_calculate_normal_object_vector(ll, normal_object_direction);
+    ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
     DRW_shgroup_uniform_int(stl->g_data->dpix_preview_shgrp, "normal_mode", &ll->normal_mode, 1);
     DRW_shgroup_uniform_int(
@@ -399,7 +385,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
 
       LANPR_BatchItem *dpbi;
-      while (dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) {
+      while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list))!=NULL) {
         GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
         GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
       }
@@ -437,7 +423,7 @@ static void lanpr_cache_init(void *vedata)
   }
 
   if (updated) {
-    lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+    ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
   }
 }
 
@@ -446,10 +432,9 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
   LANPR_PrivateData *pd = stl->g_data;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  View3D *v3d = draw_ctx->v3d;
+  const DRWContextState *draw_ctx = DRW_context_state_get();\
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
-  int usage, dpix_ok;
+  int usage = OBJECT_FEATURE_LINE_INHERENT, dpix_ok=0;
 
   if (!DRW_object_is_renderable(ob)) {
     return;
@@ -463,8 +448,8 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
-    if (dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
-                   !lanpr_share.dpix_shader_error)) {
+    if ((dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+                   !lanpr_share.dpix_shader_error))!=0) {
       usage = ED_lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
       if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
         return;
@@ -501,7 +486,6 @@ static void lanpr_cache_finish(void *vedata)
   LANPR_PrivateData *pd = stl->g_data;
   LANPR_TextureList *txl = ((LANPR_Data *)vedata)->txl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  View3D *v3d = draw_ctx->v3d;
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
   float mat[4][4];
   unit_m4(mat);
@@ -552,17 +536,12 @@ static void lanpr_cache_finish(void *vedata)
   }
 }
 
-void lanpr_batch_free(SceneLANPR *lanpr)
-{
-}
-
 static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_render)
 {
   LANPR_PassList *psl = ((LANPR_Data *)vedata)->psl;
   LANPR_TextureList *txl = ((LANPR_Data *)vedata)->txl;
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
   LANPR_FramebufferList *fbl = ((LANPR_Data *)vedata)->fbl;
-  LANPR_PrivateData *pd = stl->g_data;
 
   float clear_col[4] = {1.0f, 0.0f, 0.0f, 1.0f};
   float clear_depth = 1.0f;
@@ -575,7 +554,6 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
-  View3D *v3d = draw_ctx->v3d;
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && !lanpr_share.dpix_shader_error) {
     DRW_draw_pass(psl->color_pass);
@@ -598,9 +576,9 @@ static void lanpr_draw_scene(void *vedata)
   lanpr_draw_scene_exec(vedata, dfbl->default_fb, 0);
 }
 
-void LANPR_render_cache(void *vedata,
+static void lanpr_render_cache(void *vedata,
                         struct Object *ob,
-                        struct RenderEngine *engine,
+                        struct RenderEngine *UNUSED(engine),
                         struct Depsgraph *UNUSED(depsgraph))
 {
 
@@ -635,13 +613,9 @@ static void lanpr_render_matrices_init(RenderEngine *engine, Depsgraph *depsgrap
   DRW_view_set_active(view);
 }
 
-int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int instersections_only);
-
-extern DrawEngineType draw_engine_lanpr_type;
-
 static int LANPR_GLOBAL_update_tag;
 
-void lanpr_id_update(LANPR_Data *vedata, ID *id)
+static void lanpr_id_update(void *UNUSED(vedata), ID *id)
 {
   /*  if (vedata->engine_type != &draw_engine_lanpr_type) return; */
 
@@ -657,14 +631,11 @@ void lanpr_id_update(LANPR_Data *vedata, ID *id)
   }
 }
 
-static void lanpr_render_to_image(LANPR_Data *vedata,
+static void lanpr_render_to_image(void *vedata,
                                   RenderEngine *engine,
                                   struct RenderLayer *render_layer,
                                   const rcti *rect)
 {
-  LANPR_StorageList *stl = vedata->stl;
-  LANPR_TextureList *txl = vedata->txl;
-  LANPR_FramebufferList *fbl = vedata->fbl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   /*  int update_mark = DEG_id_type_any_updated(draw_ctx->depsgraph); */
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
@@ -703,7 +674,7 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
   lanpr_engine_init(vedata);
   lanpr_share.dpix_reloaded_deg = 1; /*  force dpix batch to re-create */
   lanpr_cache_init(vedata);
-  DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, LANPR_render_cache);
+  DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, lanpr_render_cache);
   lanpr_cache_finish(vedata);
 
   /* get ref for destroy data */
@@ -739,39 +710,10 @@ static void lanpr_render_to_image(LANPR_Data *vedata,
 
 }
 
-static void lanpr_view_update(void *vedata)
+static void lanpr_view_update(void *UNUSED(vedata))
 {
-  /*  LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl; */
-  /*  if (stl->g_data) { */
-  /* 	stl->g_data->view_updated = true; */
-  /* } */
-
-  /*  our update flag is in SceneLANPR. */
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr;
   lanpr_share.dpix_reloaded_deg = 1; /*  very bad solution, this will slow down animation. */
 }
-
-/* This reserve for depsgraph auto updates. */
-/*  static void lanpr_id_update(void *vedata, ID *id){ */
-/* 	const DRWContextState *draw_ctx = DRW_context_state_get(); */
-/*     SceneLANPR *lanpr = &DEG_get_evaluated_scene(draw_ctx->depsgraph)->lanpr; */
-/*  */
-/* 	/* look at eevee_engine.c */
-/* 	switch (GS(id->name)) { */
-/* 		case ID_OB: */
-/* 		    //seems doesn't need this one currently... */
-/* 			//eevee_id_object_update(vedata, (Object *)id); */
-/* 			lanpr->reloaded = 1; */
-/* 			break; */
-/* 		case ID_ME: */
-/* 		    lanpr->reloaded=1; */
-/* 			break; */
-/* 		default: */
-/* 			/* pass */
-/* 			break; */
-/* 	} */
-/* } */
 
 static const DrawEngineDataSize lanpr_data_size = DRW_VIEWPORT_DATA_SIZE(LANPR_Data);
 

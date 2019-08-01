@@ -18,26 +18,6 @@ void *lst_get_top(ListBase *Handle)
   return Handle->first;
 };
 
-int list_remove_segment(ListBase *Handle, Link *Begin, Link *End)
-{
-  if (!Begin->prev) {
-    Handle->first = End->next;
-  }
-  else {
-    ((Link *)Begin->prev)->next = End->next;
-  }
-
-  if (!End->next) {
-    Handle->last = Begin->prev;
-  }
-  else {
-    ((Link *)End->next)->prev = Begin->prev;
-  }
-
-  End->next = Begin->prev = 0;
-
-  return 1;
-};
 void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot)
 {
   if (!pivot) {
@@ -290,7 +270,6 @@ void list_remove_pointer(ListBase *h, void *data)
 }
 void list_clear_pointer(ListBase *h)
 {
-  LinkData *i;
   while (h && h->first) {
     list_pop_pointer(h);
   }
@@ -337,22 +316,6 @@ void *list_pop_pointer_no_free(ListBase *h)
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
-}
-
-void list_copy_handle(ListBase *target, ListBase *src)
-{
-  target->first = src->first;
-  target->last = src->last;
-};
-void list_clear_handle(ListBase *h)
-{
-  h->first = 0;
-  h->last = 0;
-}
-void list_clear_prev_next(Link *li)
-{
-  li->next = 0;
-  li->prev = 0;
 }
 
 void list_move_up(ListBase *h, Link *li)
@@ -458,7 +421,7 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
   LANPR_StaticMemPoolNode *smpn;
   void *ret = 0;
 
-  while (smpn = BLI_pophead(&smp->pools)) {
+  while ((smpn = BLI_pophead(&smp->pools))!=NULL) {
     MEM_freeN(smpn);
   }
 
@@ -806,7 +769,7 @@ void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat)
     }
 
     /*  if (UNLIKELY(tempmat[i][i] == 0.0f)) { */
-    /* 	return false;  /* No non-zero pivot  */
+    /* 	return false;  No non-zero pivot  */
     /* } */
 
     temp = (double)tempmat[i * 5];
@@ -863,73 +826,6 @@ void tmat_make_perspective_matrix_44d(
   mProjection[11] = -1.0f;
   mProjection[14] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
   mProjection[15] = 0.0f;
-}
-void tmat_make_z_tracking_matrix_44d(tnsMatrix44d mat,
-                                     tnsVector3d this,
-                                     tnsVector3d that,
-                                     tnsVector3d up)
-{
-  tnsVector4d fwd, l, t, rt;
-  fwd[3] = l[3] = t[3] = rt[3] = 1;
-  t[0] = up[0];
-  t[1] = up[1];
-  t[2] = up[2];
-  fwd[0] = that[0] - this[0];
-  fwd[1] = that[1] - this[1];
-  fwd[2] = that[2] - this[2];
-
-  tmat_load_identity_44d(mat);
-
-  tmat_vector_cross_3d(l, t, fwd);
-  tmat_vector_cross_3d(rt, fwd, l);
-
-  tmat_normalize_self_3d(l);
-  tmat_normalize_self_3d(rt);
-  tmat_normalize_self_3d(fwd);
-
-  mat[0] = l[0];
-  mat[1] = l[1];
-  mat[2] = l[2];
-
-  mat[4] = rt[0];
-  mat[5] = rt[1];
-  mat[6] = rt[2];
-
-  mat[8] = fwd[0];
-  mat[9] = fwd[1];
-  mat[10] = fwd[2];
-}
-void tmat_make_z_tracking_delta_matrix_44d(tnsMatrix44d mat, tnsVector3d delta, tnsVector3d up)
-{
-  tnsVector4d fwd, l, t, rt;
-  fwd[3] = l[3] = t[3] = rt[3] = 1;
-  t[0] = up[0];
-  t[1] = up[1];
-  t[2] = up[2];
-  fwd[0] = delta[0];
-  fwd[1] = delta[1];
-  fwd[2] = delta[2];
-
-  tmat_load_identity_44d(mat);
-
-  tmat_vector_cross_3d(l, t, fwd);
-  tmat_vector_cross_3d(rt, fwd, l);
-
-  tmat_normalize_self_3d(l);
-  tmat_normalize_self_3d(rt);
-  tmat_normalize_self_3d(fwd);
-
-  mat[0] = l[0];
-  mat[1] = l[1];
-  mat[2] = l[2];
-
-  mat[4] = rt[0];
-  mat[5] = rt[1];
-  mat[6] = rt[2];
-
-  mat[8] = fwd[0];
-  mat[9] = fwd[1];
-  mat[10] = fwd[2];
 }
 void tmat_make_ortho_matrix_44d(
     tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax)
