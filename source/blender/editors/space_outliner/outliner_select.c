@@ -1769,6 +1769,7 @@ static TreeElement *find_walk_select_start_element(SpaceOutliner *soops, bool *c
 }
 
 /* Scroll the outliner when the walk element reaches the top or bottom boundary */
+<<<<<<< HEAD
 static void outliner_walk_scroll(ARegion *ar, TreeElement *te)
 {
   /* Account for the header height */
@@ -1781,6 +1782,20 @@ static void outliner_walk_scroll(ARegion *ar, TreeElement *te)
   }
   else if (te->ys < y_min) {
     outliner_scroll_view(ar, -(y_min - te->ys));
+=======
+static void outliner_walk_scroll(ARegion *ar, TreeElement *te, short direction)
+{
+  /* Account for the header height and include a buffer on the borders */
+  int y_max = ar->v2d.cur.ymax - (UI_UNIT_Y * 2);
+  int y_min = ar->v2d.cur.ymin + UI_UNIT_Y;
+
+  /* Scroll if walked position is beyond the buffer */
+  if (te->ys > y_max && direction == OUTLINER_SELECT_WALK_UP) {
+    outliner_scroll_view(ar, UI_UNIT_Y);
+  }
+  else if (te->ys < y_min && direction == OUTLINER_SELECT_WALK_DOWN) {
+    outliner_scroll_view(ar, -UI_UNIT_Y);
+>>>>>>> 7213f1775cdc9139fe49b2574126494e92edf836
   }
 }
 
