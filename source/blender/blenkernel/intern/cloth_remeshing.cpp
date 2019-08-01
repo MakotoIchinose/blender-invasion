@@ -86,12 +86,13 @@ class ClothPlane {
 };
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
-#define COLLAPSE_EDGES_DEBUG 0
-#define FACE_SIZING_DEBUG 1
+#define COLLAPSE_EDGES_DEBUG 1
+#define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
 #define SKIP_COMP_METRIC 0
+#define EXPORT_MESH 0
 
 #define INVERT_EPSILON 0.00001f
 #define EIGEN_EPSILON 1e-3f
@@ -146,8 +147,12 @@ static bool cloth_remeshing_boundary_test(BMVert *v);
 static bool cloth_remeshing_boundary_test(BMEdge *e);
 static bool cloth_remeshing_edge_on_seam_test(BMesh *bm, BMEdge *e);
 static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v);
+static bool cloth_remeshing_vert_on_seam_or_boundary_test(BMesh *bm, BMVert *v);
 static void cloth_remeshing_uv_of_vert_in_face(BMesh *bm, BMFace *f, BMVert *v, float r_uv[2]);
 static float cloth_remeshing_wedge(float v_01[2], float v_02[2]);
+static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
+                                                vector<BMFace *> &remove_faces,
+                                                vector<BMFace *> &add_faces);
 static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
                                                 BMesh *bm,
                                                 BMVert *v);
@@ -210,12 +215,15 @@ static void cloth_remeshing_init_bmesh(Object *ob,
         copy_v3_v3(v->co, clmd->clothObject->verts[i].x);
       }
       cvm[v] = clmd->clothObject->verts[i];
-      cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
+      if (cloth_remeshing_vert_on_seam_or_boundary_test(clmd->clothObject->bm_prev, v)) {
+        cvm[v].flags |= CLOTH_VERT_FLAG_PRESERVE;
+      }
     }
     BMEdge *e;
     BMIter eiter;
     BM_ITER_MESH (e, &eiter, clmd->clothObject->bm_prev, BM_EDGES_OF_MESH) {
-      BM_elem_flag_enable(e, BM_ELEM_TAG);
+      /* BM_elem_flag_enable(e, BM_ELEM_TAG); */
+      BM_elem_flag_disable(e, BM_ELEM_TAG);
     }
 
     BM_mesh_normals_update(clmd->clothObject->bm_prev);
@@ -558,6 +566,12 @@ static bool cloth_remeshing_flip_edges(BMesh *bm,
   prev_num_independent_edges = independent_edges.size();
   for (int i = 0; i < independent_edges.size(); i++) {
     BMEdge *edge = independent_edges[i];
+    vector<BMFace *> remove_faces;
+    BMFace *f;
+    BMIter fiter;
+    BM_ITER_ELEM (f, &fiter, edge, BM_FACES_OF_EDGE) {
+      remove_faces.push_back(f);
+    }
     /* BM_EDGEROT_CHECK_SPLICE sets it up for BM_CREATE_NO_DOUBLE */
     BMEdge *new_edge = BM_edge_rotate(bm, edge, true, BM_EDGEROT_CHECK_SPLICE);
     /* TODO(Ish): all the edges part of independent_edges should be
@@ -567,7 +581,19 @@ static bool cloth_remeshing_flip_edges(BMesh *bm,
     /* BLI_assert(new_edge != NULL); */
     /* TODO(Ish): need to check if the normals are flipped by some
      * kind of area check */
+
+#if 0
     cloth_remeshing_update_active_faces(active_faces, bm, new_edge);
+#else
+    if (!new_edge) {
+      continue;
+    }
+    vector<BMFace *> add_faces;
+    BM_ITER_ELEM (f, &fiter, new_edge, BM_FACES_OF_EDGE) {
+      add_faces.push_back(f);
+    }
+    cloth_remeshing_update_active_faces(active_faces, remove_faces, add_faces);
+#endif
   }
   return true;
 }
@@ -1403,6 +1429,26 @@ static void cloth_remeshing_remove_face(vector<BMFace *> &faces, int index)
 }
 
 static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
+                                                vector<BMFace *> &remove_faces,
+                                                vector<BMFace *> &add_faces)
+{
+  vector<BMFace *> new_active_faces;
+
+  for (int i = 0; i < add_faces.size(); i++) {
+    new_active_faces.push_back(add_faces[i]);
+  }
+  for (int i = 0; i < active_faces.size(); i++) {
+    if (find(remove_faces.begin(), remove_faces.end(), active_faces[i]) != remove_faces.end()) {
+      continue;
+    }
+    new_active_faces.push_back(active_faces[i]);
+  }
+
+  active_faces.swap(new_active_faces);
+  new_active_faces.clear();
+}
+
+static void cloth_remeshing_update_active_faces(vector<BMFace *> &active_faces,
                                                 BMesh *bm,
                                                 BMEdge *e)
 {
@@ -1640,7 +1686,7 @@ static void cloth_remeshing_static(ClothModifierData *clmd, ClothVertMap &cvm)
   active_faces.clear();
 #endif
 
-#if 1
+#if EXPORT_MESH
   static int file_no = 0;
   file_no++;
   char file_name[100];
@@ -1725,7 +1771,7 @@ static void cloth_remeshing_dynamic(Depsgraph *depsgraph,
   active_faces.clear();
 #endif
 
-#if 1
+#if EXPORT_MESH
   static int file_no = 0;
   file_no++;
   char file_name[100];
