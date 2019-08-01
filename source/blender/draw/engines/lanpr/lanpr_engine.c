@@ -59,15 +59,6 @@ static void lanpr_engine_init(void *ved)
   }
 
 #if 0 /* Deprecated: snake mode */
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->depth, GPU_DEPTH_COMPONENT32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->color, GPU_RGBA32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->normal, GPU_RGBA32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->edge_intermediate, GPU_RGBA32F, 8, 0);
-
-  GPU_framebuffer_ensure_config(&fbl->edge_intermediate,
-                                {GPU_ATTACHMENT_TEXTURE(txl->depth),
-                                 GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
-
   GPU_framebuffer_ensure_config(&fbl->edge_thinning,
                                 {GPU_ATTACHMENT_LEAVE,
                                  GPU_ATTACHMENT_TEXTURE(txl->color)});
@@ -89,6 +80,11 @@ static void lanpr_engine_init(void *ved)
   }
 #endif
 
+  DRW_texture_ensure_fullscreen_2D_multisample(&txl->depth, GPU_DEPTH_COMPONENT32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2D_multisample(&txl->color, GPU_RGBA32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2D_multisample(&txl->normal, GPU_RGBA32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2D_multisample(&txl->edge_intermediate, GPU_RGBA32F, 8, 0);
+
   DRW_texture_ensure_fullscreen_2D_multisample(
       &txl->ms_resolve_depth, GPU_DEPTH_COMPONENT32F, 8, 0);
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->ms_resolve_color, GPU_RGBA32F, 8, 0);
@@ -97,6 +93,10 @@ static void lanpr_engine_init(void *ved)
                                 {GPU_ATTACHMENT_TEXTURE(txl->depth),
                                  GPU_ATTACHMENT_TEXTURE(txl->color),
                                  GPU_ATTACHMENT_TEXTURE(txl->normal)});
+
+  GPU_framebuffer_ensure_config(&fbl->edge_intermediate,
+                                {GPU_ATTACHMENT_TEXTURE(txl->depth),
+                                 GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
 
   if (!lanpr_share.multichannel_shader) {
     lanpr_share.multichannel_shader = DRW_shader_create(
