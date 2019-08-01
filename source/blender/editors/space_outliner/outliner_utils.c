@@ -24,6 +24,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_action_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_outliner_treehash.h"
@@ -361,4 +362,26 @@ bool outliner_is_element_visible(const TreeElement *te)
 bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
 {
   return (view_co_x > te->xs) && (view_co_x < te->xs + UI_UNIT_X);
+}
+
+/* Scroll view vertically  while keeping within total bounds */
+void outliner_scroll_view(ARegion *ar, int delta_y)
+{
+  int y_min = MIN2(ar->v2d.cur.ymin, ar->v2d.tot.ymin);
+
+  ar->v2d.cur.ymax += delta_y;
+  ar->v2d.cur.ymin += delta_y;
+
+  /* Adjust view if delta placed view outside total area */
+  int offset;
+  if (ar->v2d.cur.ymax > -UI_UNIT_Y) {
+    offset = ar->v2d.cur.ymax;
+    ar->v2d.cur.ymax -= offset;
+    ar->v2d.cur.ymin -= offset;
+  }
+  else if (ar->v2d.cur.ymin < y_min) {
+    offset = y_min - ar->v2d.cur.ymin;
+    ar->v2d.cur.ymax += offset;
+    ar->v2d.cur.ymin += offset;
+  }
 }

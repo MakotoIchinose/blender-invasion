@@ -481,6 +481,7 @@ bool outliner_tree_traverse(const SpaceOutliner *soops,
 float outliner_restrict_columns_width(const struct SpaceOutliner *soops);
 TreeElement *outliner_find_element_with_flag(const ListBase *lb, short flag);
 bool outliner_is_element_visible(const TreeElement *te);
+void outliner_scroll_view(struct ARegion *ar, int delta_y);
 
 /* outliner_sync.c ---------------------------------------------- */
 
