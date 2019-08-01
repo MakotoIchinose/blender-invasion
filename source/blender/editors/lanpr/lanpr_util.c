@@ -578,14 +578,12 @@ void tmat_apply_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d 
 }
 void tmat_apply_normal_transform_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v)
 {
-  real w;
   result[0] = mat[0] * v[0] + mat[4] * v[1] + mat[8] * v[2] + mat[12] * 1;
   result[1] = mat[1] * v[0] + mat[5] * v[1] + mat[9] * v[2] + mat[13] * 1;
   result[2] = mat[2] * v[0] + mat[6] * v[1] + mat[10] * v[2] + mat[14] * 1;
 }
 void tmat_apply_normal_transform_43df(tnsVector3d result, tnsMatrix44d mat, tnsVector3f v)
 {
-  real w;
   result[0] = mat[0] * v[0] + mat[4] * v[1] + mat[8] * v[2] + mat[12] * 1;
   result[1] = mat[1] * v[0] + mat[5] * v[1] + mat[9] * v[2] + mat[13] * 1;
   result[2] = mat[2] * v[0] + mat[6] * v[1] + mat[10] * v[2] + mat[14] * 1;
@@ -599,7 +597,6 @@ void tmat_apply_transform_44d(tnsVector4d result, tnsMatrix44d mat, tnsVector4d 
 }
 void tmat_apply_transform_43dfND(tnsVector4d result, tnsMatrix44d mat, tnsVector3f v)
 {
-  real w;
   result[0] = mat[0] * v[0] + mat[4] * v[1] + mat[8] * v[2] + mat[12] * 1;
   result[1] = mat[1] * v[0] + mat[5] * v[1] + mat[9] * v[2] + mat[13] * 1;
   result[2] = mat[2] * v[0] + mat[6] * v[1] + mat[10] * v[2] + mat[14] * 1;
@@ -610,7 +607,7 @@ void tmat_apply_transform_43df(tnsVector4d result, tnsMatrix44d mat, tnsVector3f
   result[0] = mat[0] * v[0] + mat[4] * v[1] + mat[8] * v[2] + mat[12] * 1;
   result[1] = mat[1] * v[0] + mat[5] * v[1] + mat[9] * v[2] + mat[13] * 1;
   result[2] = mat[2] * v[0] + mat[6] * v[1] + mat[10] * v[2] + mat[14] * 1;
-  real w = mat[3] * v[0] + mat[7] * v[1] + mat[11] * v[2] + mat[15] * 1;
+  /* real w = mat[3] * v[0] + mat[7] * v[1] + mat[11] * v[2] + mat[15] * 1; */
   /*  result[0] /= w; */
   /*  result[1] /= w; */
   /*  result[2] /= w; */
@@ -643,58 +640,9 @@ void tmat_clear_translation_44d(tnsMatrix44d mat)
   mat[11] = 0;
 }
 
-void tmat_extract_xyz_euler_44d(tnsMatrix44d mat, real *x_result, real *y_result, real *z_result)
-{
-  real xRot, yRot, zRot;
-
-  if (mat[2] < 1) {
-    if (mat[2] > -1) {
-      yRot = asin(mat[2]);
-      xRot = atan2(-mat[6], mat[10]);
-      zRot = atan2(-mat[1], mat[0]);
-    }
-    else {
-      yRot = -M_PI / 2;
-      xRot = -atan2(-mat[4], mat[5]);
-      zRot = 0;
-    }
-  }
-  else {
-    yRot = M_PI / 2;
-    xRot = atan2(-mat[4], mat[5]);
-    zRot = 0;
-  }
-
-  (*x_result) = -xRot;
-  (*y_result) = -yRot;
-  (*z_result) = -zRot;
-}
-void tmat_extract_location_44d(tnsMatrix44d mat, real *x_result, real *y_result, real *z_result)
-{
-  *x_result = mat[12];
-  *y_result = mat[13];
-  *z_result = mat[14];
-}
-void tmat_extract_uniform_scale_44d(tnsMatrix44d mat, real *result)
-{
-  tnsVector3d v = {mat[0], mat[1], mat[2]};
-  *result = tmat_length_3d(v);
-}
-
 #define L(row, col) l[(col << 2) + row]
 #define R(row, col) r[(col << 2) + row]
 #define P(row, col) result[(col << 2) + row]
-
-void tmat_print_matrix_44d(tnsMatrix44d l)
-{
-  int i, j;
-  for (i = 0; i < 4; i++) {
-    for (j = 0; j < 4; j++) {
-      printf("%.5f ", L(i, j));
-    }
-    printf("\n");
-  }
-}
 
 void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out)
 {
@@ -714,11 +662,6 @@ void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out)
   out[13] = obmat[3][1];
   out[14] = obmat[3][2];
   out[15] = obmat[3][3];
-}
-
-void tmat_copy_matrix_44d(tnsMatrix44d from, tnsMatrix44d to)
-{
-  memcpy(to, from, sizeof(tnsMatrix44d));
 }
 void tmat_multiply_44d(tnsMatrix44d result, tnsMatrix44d l, tnsMatrix44d r)
 {
@@ -741,7 +684,7 @@ void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat)
 
   tmat_load_identity_44d(inverse);
 
-  tmat_copy_matrix_44d(mat, tempmat);
+  memcpy(tempmat, mat, sizeof(tnsMatrix44d));
 
   for (i = 0; i < 4; i++) {
     /* Look for row with max pivot */

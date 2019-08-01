@@ -1695,7 +1695,7 @@ static void lanpr_make_render_geometry_buffers_object(
       tMatVectorAccum3d(rt->gc, rt->v[2]->fbcoord);
       tMatVectorMultiSelf3d(rt->gc, 1.0f / 3.0f);
       tmat_apply_normal_transform_43df(rt->gn, Normal, f->no);
-      tmat_normalize_self_3d(rt->gn);
+      normalize_v3_d(rt->gn);
       lanpr_assign_render_line_with_triangle(rt);
       /*  m = tnsGetIndexedMaterial(rb->scene, f->material_id); */
       /*  if(m) m->Previewv_count += (f->triangle_count*3); */

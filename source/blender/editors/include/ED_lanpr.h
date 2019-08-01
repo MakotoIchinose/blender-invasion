@@ -752,6 +752,7 @@ real tmat_dist_2dv(tnsVector2d l, tnsVector2d r);
 
 real tmat_length_3d(tnsVector3d l);
 real tmat_length_2d(tnsVector3d l);
+void tmat_normalize_2d(tnsVector2d result, tnsVector2d l);
 void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
 void tmat_normalize_3f(tnsVector3f result, tnsVector3f l);
 void tmat_normalize_self_3d(tnsVector3d result);
@@ -759,6 +760,7 @@ real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
 real tmat_dot_3df(tnsVector3d l, tnsVector3f r, int normalize);
 real tmat_dot_2d(tnsVector2d l, tnsVector2d r, int normalize);
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
+void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);
 void tmat_apply_rotation_33d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
 void tmat_apply_rotation_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v);
