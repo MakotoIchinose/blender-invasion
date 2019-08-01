@@ -54,8 +54,6 @@
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 
-void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb);
-
 static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_LineLayer *ll)
 {
   int Count = 0;

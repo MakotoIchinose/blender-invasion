@@ -255,4 +255,6 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
 int lanpr_dpix_texture_size(SceneLANPR *lanpr);
 
+void lanpr_chain_generate_draw_command(struct LANPR_RenderBuffer *rb);
+
 #endif
