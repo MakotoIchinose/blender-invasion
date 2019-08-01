@@ -7028,7 +7028,6 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
   int seg, seg_2;
   float *temp_locs = NULL;
 
-
   /* Sample the input number of segments */
   seg = bp->seg;
   seg_2 = power_of_2_max_i(bp->seg);
@@ -7038,8 +7037,8 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
     pro_spacing->yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
     if (custom) {
-      temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2 + 1)) * sizeof(float));
-      profilewidget_create_samples(bp->prwdgt, temp_locs, seg + 1,
+      temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2)) * sizeof(float));
+      profilewidget_create_samples(bp->prwdgt, temp_locs, seg,
                                    bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
       for (int i = 0; i < seg + 1; i++) {
         pro_spacing->xvals[i] = (double)temp_locs[2 * i + 1];

@@ -83,7 +83,6 @@ struct ProfileWidget *profilewidget_add(int preset)
   return prwdgt;
 }
 
-/* HANS-TODO: Double free error here with the prwdgt->table */
 void profilewidget_free_data(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
@@ -572,7 +571,6 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
  * curvature of the edge after each of them in the table. Works by comparing the angle between the
  * handles that make up the edge: the secong handle of the first point and the first handle
  * of the second. */
-/* HANS-TODO: This doesn't work so well, so maybe just assign the remainders to the longest edges */
 static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, const int i_b)
 {
   float handle_angle_a, handle_angle_b;
@@ -617,10 +615,6 @@ static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, c
  *        number of points used to define the profile (prwdgt->totpoint).
  * \param sample_straight_edges: Whether to sample points between vector handle control points. If
           this is true and there are only vector edges the straight edges will still be sampled. */
-/* HANS-TODO: The last segment is always a little too long. And in the non-sample_straight_edges
- * case the second to last point can sometimes be forgotten for the sampling. */
-/* HANS-TODO: Enable proper sampling with fewer segments than points, probably using older sampling
- * algorithms */
 void profilewidget_create_samples(const ProfileWidget *prwdgt,
                                   float *locations,
                                   int n_segments,
@@ -767,7 +761,7 @@ void profilewidget_create_samples(const ProfileWidget *prwdgt,
     n_added++;
   }
 
-  BLI_assert(n_added == n_segments); /* HANS-TODO: Remove n_added check */
+  BLI_assert(n_added == n_segments); /* n_added is just used for this assert, could remove */
 
   /* Sample the points and add them to the locations table */
   for (i_segment = 0, i = 0; i < totedges; i++) {
