@@ -91,7 +91,7 @@ class ClothPlane {
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
 #define FACE_SIZING_DEBUG_SIZE 0
-#define SKIP_COMP_METRIC 1
+#define SKIP_COMP_METRIC 0
 
 #define INVERT_EPSILON 0.00001f
 #define EIGEN_EPSILON 1e-3f
@@ -1805,17 +1805,17 @@ static void cloth_remeshing_eigen_decomposition(float mat[2][2], float r_mat[2][
     v1 = b;
     vn = sqrtf(v0 * v0 + b2);
     r_mat[0][0] = v0 / vn;
-    r_mat[1][0] = v1 / vn;
+    r_mat[0][1] = v1 / vn;
 
     v0 = l2 - d;
     vn = sqrtf(v0 * v0 + b2);
-    r_mat[0][1] = v0 / vn;
+    r_mat[1][0] = v0 / vn;
     r_mat[1][1] = v1 / vn;
   }
   else {
     r_mat[0][0] = 0;
-    r_mat[1][0] = 1;
     r_mat[0][1] = 1;
+    r_mat[1][0] = 1;
     r_mat[1][1] = 0;
   }
 }
@@ -1845,8 +1845,8 @@ static void cloth_remeshing_compression_metric(float mat[2][2], float r_mat[2][2
   float temp_mat[2][2];
   float diag_l[2][2];
   diag_m2_v2(diag_l, l);
-  mul_m2_m2m2(temp_mat, q, diag_l);
-  mul_m2_m2m2(r_mat, temp_mat, q_t);
+  mul_m2_m2m2(temp_mat, q_t, diag_l);
+  mul_m2_m2m2(r_mat, temp_mat, q);
 #if FACE_SIZING_DEBUG
 #  if FACE_SIZING_DEBUG_COMP
   printf("comp- l: ");
@@ -1942,11 +1942,32 @@ static void transpose_m32_m23(float r_mat[3][2], float mat[2][3])
   r_mat[2][1] = mat[1][2];
 }
 
+static void zero_m23(float r[2][3])
+{
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 3; j++) {
+      r[i][j] = 0.0f;
+    }
+  }
+}
+
 static void zero_m32(float r[3][2])
 {
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 2; j++) {
       r[i][j] = 0.0f;
+    }
+  }
+}
+
+static void mul_m23_m22m23(float r[2][3], float a[2][2], float b[2][3])
+{
+  zero_m23(r);
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 3; j++) {
+      for (int k = 0; k < 2; k++) {
+        r[i][j] += a[i][k] * b[k][j];
+      }
     }
   }
 }
@@ -1991,26 +2012,11 @@ static void cloth_remeshing_derivative(
 }
 
 static void cloth_remeshing_derivative(
-    BMesh *bm, float m_01[3], float m_02[3], float m_03[3], BMFace *f, float r_mat[3][2])
+    BMesh *bm, float m_01[3], float m_02[3], float m_03[3], BMFace *f, float r_mat[2][3])
 {
-#if 1
   float mat[2][3];
   sub_v3_v3v3(mat[0], m_02, m_01);
   sub_v3_v3v3(mat[1], m_03, m_01);
-  float mat_t[3][2];
-  transpose_m32_m23(mat_t, mat);
-#else
-  float mat_t[3][2];
-  float temp_v3[3];
-  sub_v3_v3v3(temp_v3, m_02, m_01);
-  mat_t[0][0] = temp_v3[0];
-  mat_t[1][0] = temp_v3[1];
-  mat_t[2][0] = temp_v3[2];
-  sub_v3_v3v3(temp_v3, m_03, m_01);
-  mat_t[0][1] = temp_v3[0];
-  mat_t[1][1] = temp_v3[1];
-  mat_t[2][1] = temp_v3[2];
-#endif
 
   float face_dm[2][2];
   float face_dm_inv[2][2];
@@ -2019,7 +2025,8 @@ static void cloth_remeshing_derivative(
     zero_m2(face_dm_inv);
   }
 
-  mul_m32_m32m22(r_mat, mat_t, face_dm_inv);
+  /* mul_m32_m32m22(r_mat, mat_t, face_dm_inv); */
+  mul_m23_m22m23(r_mat, face_dm_inv, mat);
 }
 
 static void transpose_m23_m32(float r_mat[2][3], float mat[3][2])
@@ -2270,25 +2277,26 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
 
   float sizing_s[2][2];
   cloth_remeshing_curvature(bm, f, sizing_s);
-  float sizing_f[3][2];
+  float sizing_f[2][3];
   cloth_remeshing_derivative(bm, cv[0]->x, cv[1]->x, cv[2]->x, f, sizing_f);
-  float sizing_v[3][2];
+  float sizing_v[2][3];
   cloth_remeshing_derivative(bm, cv[0]->v, cv[1]->v, cv[2]->v, f, sizing_v);
 
   float sizing_s_t[2][2];
   copy_m2_m2(sizing_s_t, sizing_s);
   transpose_m2(sizing_s_t);
-  float sizing_f_t[2][3];
-  transpose_m23_m32(sizing_f_t, sizing_f);
-  float sizing_v_t[2][3];
-  transpose_m23_m32(sizing_v_t, sizing_v);
+  float sizing_f_t[3][2];
+  transpose_m32_m23(sizing_f_t, sizing_f);
+  float sizing_v_t[3][2];
+  transpose_m32_m23(sizing_v_t, sizing_v);
 
   float curv[2][2];
-  mul_m2_m2m2(curv, sizing_s_t, sizing_s);
+  /* mul_m2_m2m2(curv, sizing_s_t, sizing_s); */
+  mul_m2_m2m2(curv, sizing_s, sizing_s_t);
 
   float comp[2][2];
   float f_x_ft[2][2];
-  mul_m2_m23m32(f_x_ft, sizing_f_t, sizing_f);
+  mul_m2_m23m32(f_x_ft, sizing_f, sizing_f_t);
 #if FACE_SIZING_DEBUG
 #  if FACE_SIZING_DEBUG_COMP
   printf("sizing_f: ");
@@ -2300,7 +2308,7 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   cloth_remeshing_compression_metric(f_x_ft, comp);
 
   float dvel[2][2];
-  mul_m2_m23m32(dvel, sizing_v_t, sizing_v);
+  mul_m2_m23m32(dvel, sizing_v, sizing_v_t);
 
   float obs[2][2];
   cloth_remeshing_obstacle_metric(bm, f, planes, obs);
@@ -2377,8 +2385,8 @@ static ClothSizing cloth_remeshing_compute_face_sizing(ClothModifierData *clmd,
   copy_m2_m2(q_t, q);
   transpose_m2(q_t);
 
-  mul_m2_m2m2(temp_result, q, diag_l);
-  mul_m2_m2m2(result, temp_result, q_t);
+  mul_m2_m2m2(temp_result, q_t, diag_l);
+  mul_m2_m2m2(result, temp_result, q);
 
 #if FACE_SIZING_DEBUG
   printf("l: ");
