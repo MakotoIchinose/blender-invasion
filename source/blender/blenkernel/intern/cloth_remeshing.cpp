@@ -86,7 +86,7 @@ class ClothPlane {
 };
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
-#define COLLAPSE_EDGES_DEBUG 0
+#define COLLAPSE_EDGES_DEBUG 1
 #define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
@@ -1123,12 +1123,17 @@ static float cloth_remeshing_area(float u1[2], float u2[2], float u3[2])
 
 static float cloth_remeshing_perimeter(float u1[2], float u2[2], float u3[2])
 {
-  return len_v2(u1) + len_v2(u2) + len_v2(u3);
+  float u21[2], u31[2], u23[2];
+  sub_v2_v2v2(u21, u2, u1);
+  sub_v2_v2v2(u31, u3, u1);
+  sub_v2_v2v2(u23, u2, u3);
+  return len_v2(u21) + len_v2(u31) + len_v2(u23);
 }
 
 static float cloth_remeshing_aspect_ratio(float u1[2], float u2[2], float u3[2])
 {
-  return 12.0f * SQRT3 * cloth_remeshing_area(u1, u2, u3) * cloth_remeshing_perimeter(u1, u2, u3);
+  return 12.0f * SQRT3 * cloth_remeshing_area(u1, u2, u3) /
+         sqr_fl(cloth_remeshing_perimeter(u1, u2, u3));
 }
 
 static BMVert *cloth_remeshing_edge_vert(BMEdge *e, int which)
@@ -1291,7 +1296,7 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
       float asp = cloth_remeshing_aspect_ratio(uvs[0], uvs[1], uvs[2]);
       if (a < 1e-6 || asp < clmd->sim_parms->aspect_min) {
 #if COLLAPSE_EDGES_DEBUG
-        printf("a: %f < 1e-6 || aspect %f < aspect_min\n", a, asp);
+        printf("a: %f < 1e-6 || aspect %f < aspect_min, returning\n\n", a, asp);
 #endif
         return false;
       }
@@ -1303,7 +1308,7 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
               vs[NEXT(ei)], vs[PREV(ei)], uvs[NEXT(ei)], uvs[PREV(ei)], cvm);
           if (size > 1.0f - REMESHING_HYSTERESIS_PARAMETER) {
 #if COLLAPSE_EDGES_DEBUG
-            printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER\n", size);
+            printf("size %f > 1.0f - REMESHING_HYSTERESIS_PARAMETER, returning\n\n", size);
 #endif
             return false;
           }
@@ -1314,6 +1319,7 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
       }
     }
   }
+  printf("sucessfully collapsed\n");
   return true;
 }
 
@@ -1585,6 +1591,12 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 {
   for (int i = 0; i < active_faces.size(); i++) {
     BMFace *f = active_faces[i];
+    /* TODO(Ish): its a hack, while updating faces, it should have
+     * taken care of this stuff */
+    if (f->head.htype != BM_FACE) {
+      cloth_remeshing_remove_face(active_faces, i--);
+      continue;
+    }
     BMEdge *e;
     BMIter eiter;
     BM_ITER_ELEM (e, &eiter, f, BM_EDGES_OF_FACE) {
