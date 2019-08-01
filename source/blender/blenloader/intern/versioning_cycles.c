@@ -408,6 +408,48 @@ static void update_math_socket_names_and_identifiers(bNodeTree *ntree)
   }
 }
 
+/* The B input of the Math node is no longer used for single-operand operators.
+ * Previously, if the B input was linked and the A input was not, the B input
+ * was used as the input of the operator. To correct this, we move the link
+ * from B to A if B is linked and A is not.
+ */
+static void update_single_operand_math_operators(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_MATH) {
+      switch (node->custom1) {
+        case NODE_MATH_SINE:
+        case NODE_MATH_CEIL:
+        case NODE_MATH_SQRT:
+        case NODE_MATH_ROUND:
+        case NODE_MATH_FLOOR:
+        case NODE_MATH_COSINE:
+        case NODE_MATH_TANGENT:
+        case NODE_MATH_ARCSINE:
+        case NODE_MATH_FRACTION:
+        case NODE_MATH_ABSOLUTE:
+        case NODE_MATH_ARCCOSINE:
+        case NODE_MATH_ARCTANGENT: {
+          bNodeSocket *sockA = nodeFindSocket(node, SOCK_IN, "A");
+          bNodeSocket *sockB = nodeFindSocket(node, SOCK_IN, "B");
+          if (!sockA->link && sockB->link) {
+            nodeAddLink(ntree, sockB->link->fromnode, sockB->link->fromsock, node, sockA);
+            nodeRemLink(ntree, sockB->link);
+            need_update = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -558,5 +600,15 @@ void do_versions_after_linking_cycles(Main *bmain)
         camera->dof.flag &= ~CAM_DOF_ENABLED;
       }
     }
+  }
+
+  if (1) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_SHADER) {
+        continue;
+      }
+      update_single_operand_math_operators(ntree);
+    }
+    FOREACH_NODETREE_END;
   }
 }
