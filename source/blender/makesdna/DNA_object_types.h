@@ -182,7 +182,7 @@ typedef struct Object_Runtime {
   /** Runtime grease pencil derived data created by modifiers */
   struct bGPDframe *derived_frames;
 
-  void *_pad2; /* Padding is here for win32s unconventional stuct alignment rules. */
+  void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;
 
 typedef struct ObjectLANPR {

@@ -1765,7 +1765,7 @@ static bool gpsculpt_brush_do_frame(
 static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obact = gso->object;
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
   bGPdata *gpd = gso->gpd;

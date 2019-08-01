@@ -37,6 +37,7 @@ void OBJECT_OT_material_slot_select(struct wmOperatorType *ot);
 void OBJECT_OT_material_slot_deselect(struct wmOperatorType *ot);
 void OBJECT_OT_material_slot_copy(struct wmOperatorType *ot);
 void OBJECT_OT_material_slot_move(struct wmOperatorType *ot);
+void OBJECT_OT_material_slot_remove_unused(struct wmOperatorType *ot);
 
 void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
 
