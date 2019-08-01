@@ -440,7 +440,7 @@ static void *wm_xr_session_drawthread_main(void *data)
 
   /* Sort of the session's main loop. */
   while (GHOST_XrHasSession(wm->xr_context)) {
-    if (!GHOST_XrSessionIsRunning(wm->xr_context)) {
+    if (!GHOST_XrSessionShouldRunDrawLoop(wm->xr_context)) {
       continue;
     }
 
@@ -474,7 +474,7 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 {
   GHOST_XrContextHandle xr_context = xr_context_ptr;
 
-  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
+  if (xr_context && GHOST_XrHasSession(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
   }
   else {

@@ -193,16 +193,13 @@ void GHOST_XrSession::end()
 GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
     const XrEventDataSessionStateChanged *lifecycle)
 {
-  m_oxr->session_state = lifecycle->state;
-
   /* Runtime may send events for apparently destroyed session. Our handle should be NULL then. */
   assert((m_oxr->session == XR_NULL_HANDLE) || (m_oxr->session == lifecycle->session));
 
   switch (lifecycle->state) {
     case XR_SESSION_STATE_READY: {
-      XrSessionBeginInfo begin_info{};
+      XrSessionBeginInfo begin_info{XR_TYPE_SESSION_BEGIN_INFO};
 
-      begin_info.type = XR_TYPE_SESSION_BEGIN_INFO;
       begin_info.primaryViewConfigurationType = m_oxr->view_type;
       CHECK_XR(xrBeginSession(m_oxr->session, &begin_info),
                "Failed to cleanly begin the VR session.");
@@ -217,6 +214,10 @@ GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
     default:
       break;
   }
+
+  /* GHOST session state is managed through this. Set last so on parallel execution of GHOST_Xr
+   * calls, state changes only take effect once previous operations in this functions are done. */
+  m_oxr->session_state = lifecycle->state;
 
   return SESSION_KEEP_ALIVE;
 }
@@ -320,7 +321,6 @@ void GHOST_XrSession::beginFrameDrawing()
   XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
   XrFrameState frame_state{XR_TYPE_FRAME_STATE};
 
-  // TODO Blocking call. Does this intefer with other drawing?
   CHECK_XR(xrWaitFrame(m_oxr->session, &wait_info, &frame_state),
            "Failed to synchronize frame rates between Blender and the device.");
 
@@ -380,6 +380,8 @@ void GHOST_XrSession::draw(void *draw_customdata)
       projection_layer_views;  // Keep alive until xrEndFrame() call!
   XrCompositionLayerProjection proj_layer;
   std::vector<XrCompositionLayerBaseHeader *> layers;
+
+  assert(shouldRunDrawLoop());
 
   beginFrameDrawing();
 
@@ -505,7 +507,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
  *
  * \{ */
 
-bool GHOST_XrSession::isRunning() const
+bool GHOST_XrSession::shouldRunDrawLoop() const
 {
   if (m_oxr->session == XR_NULL_HANDLE) {
     return false;

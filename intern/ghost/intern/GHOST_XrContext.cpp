@@ -446,9 +446,9 @@ bool GHOST_XrContext::hasSession() const
   return m_session != nullptr;
 }
 
-bool GHOST_XrContext::isSessionRunning() const
+bool GHOST_XrContext::shouldRunSessionDrawLoop() const
 {
-  return m_session && m_session->isRunning();
+  return m_session && m_session->shouldRunDrawLoop();
 }
 
 void GHOST_XrContext::drawSessionViews(void *draw_customdata)

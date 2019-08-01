@@ -1002,7 +1002,7 @@ void GHOST_XrSessionStart(GHOST_XrContextHandle xr_context,
                           const GHOST_XrSessionBeginInfo *begin_info);
 void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_context);
 int GHOST_XrHasSession(const GHOST_XrContextHandle xr_contexthandle);
-int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
+int GHOST_XrSessionShouldRunDrawLoop(const GHOST_XrContextHandle xr_context);
 void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_context, void *customdata);
 
 /* events */
