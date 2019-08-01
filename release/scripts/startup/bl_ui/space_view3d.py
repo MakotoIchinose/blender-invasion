@@ -2687,7 +2687,7 @@ class VIEW3D_MT_brush(Menu):
             sculpt_tool = brush.sculpt_tool
 
             layout.separator()
-            layout.operator_menu_enum("brush.curve_preset", "shape", text="Curve Preset")
+            layout.prop_menu_enum(brush, "curve_preset")
             layout.separator()
 
             if sculpt_tool != 'GRAB':
@@ -2746,7 +2746,7 @@ class VIEW3D_MT_hook(Menu):
         layout.operator("object.hook_add_selob").use_bone = False
         layout.operator("object.hook_add_selob", text="Hook to Selected Object Bone").use_bone = True
 
-        if [mod.type == 'HOOK' for mod in context.active_object.modifiers]:
+        if any([mod.type == 'HOOK' for mod in context.active_object.modifiers]):
             layout.separator()
 
             layout.operator_menu_enum("object.hook_assign", "modifier")
@@ -5884,7 +5884,7 @@ class VIEW3D_PT_snapping(Panel):
 
         layout = self.layout
         col = layout.column()
-        col.label(text="Snapping")
+        col.label(text="Snap to")
         col.prop(tool_settings, "snap_elements", expand=True)
 
         col.separator()
@@ -5892,7 +5892,7 @@ class VIEW3D_PT_snapping(Panel):
             col.prop(tool_settings, "use_snap_grid_absolute")
 
         if snap_elements != {'INCREMENT'}:
-            col.label(text="Target")
+            col.label(text="Snap with")
             row = col.row(align=True)
             row.prop(tool_settings, "snap_target", expand=True)
 

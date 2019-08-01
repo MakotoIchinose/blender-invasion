@@ -2826,12 +2826,12 @@ bool isect_ray_ray_v3(const float ray_origin_a[3],
   sub_v3_v3v3(c, n, t);
 
   if (r_lambda_a != NULL) {
-    cross_v3_v3v3(cray, c, ray_direction_a);
+    cross_v3_v3v3(cray, c, ray_direction_b);
     *r_lambda_a = dot_v3v3(cray, n) / nlen;
   }
 
   if (r_lambda_b != NULL) {
-    cross_v3_v3v3(cray, c, ray_direction_b);
+    cross_v3_v3v3(cray, c, ray_direction_a);
     *r_lambda_b = dot_v3v3(cray, n) / nlen;
   }
 
@@ -4914,7 +4914,7 @@ void vcloud_estimate_transform_v3(const int list_size,
     unit_m3(lscale);
   }
   /* do com for both clouds */
-  if (pos && rpos && (list_size > 0)) { /* paranoya check */
+  if (pos && rpos && (list_size > 0)) { /* paranoia check */
     /* do com for both clouds */
     for (a = 0; a < list_size; a++) {
       if (weight) {

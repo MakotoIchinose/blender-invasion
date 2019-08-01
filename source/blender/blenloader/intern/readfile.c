@@ -2419,7 +2419,7 @@ static void IDP_DirectLinkIDPArray(IDProperty *prop, int switch_endian, FileData
   array = (IDProperty *)prop->data.pointer;
 
   /* note!, idp-arrays didn't exist in 2.4x, so the pointer will be cleared
-   * theres not really anything we can do to correct this, at least don't crash */
+   * there's not really anything we can do to correct this, at least don't crash */
   if (array == NULL) {
     prop->len = 0;
     prop->totallen = 0;
@@ -6220,6 +6220,7 @@ static void direct_link_collection(FileData *fd, Collection *collection)
   collection->preview = direct_link_preview_image(fd, collection->preview);
 
   collection->flag &= ~COLLECTION_HAS_OBJECT_CACHE;
+  collection->tag = 0;
   BLI_listbase_clear(&collection->object_cache);
   BLI_listbase_clear(&collection->parents);
 
@@ -6412,12 +6413,22 @@ static void lib_link_scene(FileData *fd, Main *main)
       sce->set = newlibadr(fd, sce->id.lib, sce->set);
       sce->gpd = newlibadr_us(fd, sce->id.lib, sce->gpd);
 
-      link_paint(fd, sce, &sce->toolsettings->sculpt->paint);
-      link_paint(fd, sce, &sce->toolsettings->vpaint->paint);
-      link_paint(fd, sce, &sce->toolsettings->wpaint->paint);
       link_paint(fd, sce, &sce->toolsettings->imapaint.paint);
-      link_paint(fd, sce, &sce->toolsettings->uvsculpt->paint);
-      link_paint(fd, sce, &sce->toolsettings->gp_paint->paint);
+      if (sce->toolsettings->sculpt) {
+        link_paint(fd, sce, &sce->toolsettings->sculpt->paint);
+      }
+      if (sce->toolsettings->vpaint) {
+        link_paint(fd, sce, &sce->toolsettings->vpaint->paint);
+      }
+      if (sce->toolsettings->wpaint) {
+        link_paint(fd, sce, &sce->toolsettings->wpaint->paint);
+      }
+      if (sce->toolsettings->uvsculpt) {
+        link_paint(fd, sce, &sce->toolsettings->uvsculpt->paint);
+      }
+      if (sce->toolsettings->gp_paint) {
+        link_paint(fd, sce, &sce->toolsettings->gp_paint->paint);
+      }
 
       if (sce->toolsettings->sculpt) {
         sce->toolsettings->sculpt->gravity_object = newlibadr(
@@ -7038,6 +7049,7 @@ static void direct_link_gpencil(FileData *fd, bGPdata *gpd)
 
   /* init stroke buffer */
   gpd->runtime.sbuffer = NULL;
+  gpd->runtime.sbuffer_used = 0;
   gpd->runtime.sbuffer_size = 0;
   gpd->runtime.tot_cp_points = 0;
 
@@ -7125,7 +7137,7 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
   link_list(fd, &ar->ui_previews);
 
   if (spacetype == SPACE_EMPTY) {
-    /* unkown space type, don't leak regiondata */
+    /* unknown space type, don't leak regiondata */
     ar->regiondata = NULL;
   }
   else if (ar->flag & RGN_FLAG_TEMP_REGIONDATA) {
@@ -9137,7 +9149,18 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
   id->icon_id = 0;
   id->newid = NULL; /* Needed because .blend may have been saved with crap value here... */
   id->orig_id = NULL;
-  id->recalc = 0;
+
+  /* NOTE: It is important to not clear the recalc flags for undo/redo.
+   * Preserving recalc flags on redo/undo is the only way to make dependency graph detect
+   * that animation is to be evaluated on undo/redo. If this is not enforced by the recalc
+   * flags dependency graph does not do animation update to avoid loss of unkeyed changes.,
+   * which conflicts with undo/redo of changes to animation data itself.
+   *
+   * But for regular file load we clear the flag, since the flags might have been changed sinde
+   * the version the file has been saved with. */
+  if (!fd->memfile) {
+    id->recalc = 0;
+  }
 
   /* this case cannot be direct_linked: it's just the ID part */
   if (bhead->code == ID_LINK_PLACEHOLDER) {

@@ -3112,7 +3112,7 @@ typedef struct CacheEditrPathsIterData {
 
 static void psys_cache_edit_paths_iter(void *__restrict iter_data_v,
                                        const int iter,
-                                       const ParallelRangeTLS *__restrict UNUSED(tls))
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   CacheEditrPathsIterData *iter_data = (CacheEditrPathsIterData *)iter_data_v;
   PTCacheEdit *edit = iter_data->edit;
@@ -3334,7 +3334,7 @@ void psys_cache_edit_paths(Depsgraph *depsgraph,
     iter_data.nosel_col[2] = (float)edit->nosel_col[2] / 255.0f;
   }
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, psys_cache_edit_paths_iter, &settings);
@@ -4259,7 +4259,7 @@ static void get_child_modifier_parameters(ParticleSettings *part,
         ctx->mesh, cpa_from, cpa_num, cpa_fuv, ctx->vg_twist);
   }
 }
-/* get's hair (or keyed) particles state at the "path time" specified in state->time */
+/* gets hair (or keyed) particles state at the "path time" specified in state->time */
 void psys_get_particle_on_path(ParticleSimulationData *sim,
                                int p,
                                ParticleKey *state,

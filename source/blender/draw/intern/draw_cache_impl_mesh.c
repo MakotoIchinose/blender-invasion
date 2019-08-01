@@ -3229,7 +3229,7 @@ static void mesh_create_loop_orco(MeshRenderData *rdata, GPUVertBuf *vbo)
 
   /* FIXME(fclem): We use the last component as a way to differentiate from generic vertex attribs.
    * This is a substential waste of Vram and should be done another way. Unfortunately,
-   * at the time of writting, I did not found any other "non disruptive" alternative. */
+   * at the time of writing, I did not found any other "non disruptive" alternative. */
   uint attr_id = GPU_vertformat_attr_add(&format, "orco", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   GPU_vertbuf_init_with_format(vbo, &format);
@@ -3715,7 +3715,7 @@ static void mesh_create_edges_adjacency_lines(MeshRenderData *rdata,
       }
     }
   }
-  /* Create edges for remaning non manifold edges. */
+  /* Create edges for remaining non manifold edges. */
   EdgeHashIterator *ehi;
   for (ehi = BLI_edgehashIterator_new(eh); BLI_edgehashIterator_isDone(ehi) == false;
        BLI_edgehashIterator_step(ehi)) {
@@ -4830,7 +4830,7 @@ static void uvedit_fill_buffer_data(MeshRenderData *rdata,
     /* Tag hidden faces */
     BM_elem_flag_set(efa, BM_ELEM_TAG, uvedit_face_visible_nolocal_ex(rdata->toolsettings, efa));
 
-    if (vbo_area && BM_elem_flag_test(efa, BM_ELEM_TAG)) {
+    if (vbo_area) {
       edit_uv_preprocess_stretch_area(
           efa, cd_loop_uv_offset, fidx++, &totarea, &totuvarea, faces_areas);
     }
