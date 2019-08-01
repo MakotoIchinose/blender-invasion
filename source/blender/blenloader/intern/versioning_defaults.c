@@ -36,93 +36,20 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_appdir.h"
-#include "BKE_brush.h"
-#include "BKE_colorband.h"
 #include "BKE_colortools.h"
-#include "BKE_idprop.h"
-#include "BKE_keyconfig.h"
 #include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
-#include "BKE_paint.h"
 #include "BKE_screen.h"
-#include "BKE_studiolight.h"
 #include "BKE_workspace.h"
 #include "BKE_profile_widget.h"
 
 #include "BLO_readfile.h"
-
-/**
- * Override values in in-memory startup.blend, avoids re-saving for small changes.
- */
-void BLO_update_defaults_userpref_blend(void)
-{
-  /* default so DPI is detected automatically */
-  U.dpi = 0;
-  U.ui_scale = 1.0f;
-
-#ifdef WITH_PYTHON_SECURITY
-  /* use alternative setting for security nuts
-   * otherwise we'd need to patch the binary blob - startup.blend.c */
-  U.flag |= USER_SCRIPT_AUTOEXEC_DISABLE;
-#else
-  U.flag &= ~USER_SCRIPT_AUTOEXEC_DISABLE;
-#endif
-
-  /* Transform tweak with single click and drag. */
-  U.flag |= USER_RELEASECONFIRM;
-
-  U.flag &= ~(USER_DEVELOPER_UI | USER_TOOLTIPS_PYTHON);
-
-  /* Clear addon preferences. */
-  for (bAddon *addon = U.addons.first, *addon_next; addon != NULL; addon = addon_next) {
-    addon_next = addon->next;
-
-    if (addon->prop) {
-      IDP_FreeProperty(addon->prop);
-      addon->prop = NULL;
-    }
-  }
-
-  /* Ignore the theme saved in the blend file,
-   * instead use the theme from 'userdef_default_theme.c' */
-  {
-    bTheme *theme = U.themes.first;
-    memcpy(theme, &U_theme_default, sizeof(bTheme));
-  }
-
-  /* Leave temp directory empty, will then get appropriate value per OS. */
-  U.tempdir[0] = '\0';
-
-  /* System-specific fonts directory. */
-  BKE_appdir_font_folder_default(U.fontdir);
-
-  /* Only enable tooltips translation by default,
-   * without actually enabling translation itself, for now. */
-  U.transopts = USER_TR_TOOLTIPS;
-  U.memcachelimit = min_ii(BLI_system_memory_max_in_megabytes_int() / 2, 4096);
-
-  /* Auto perspective. */
-  U.uiflag |= USER_AUTOPERSP;
-
-  /* Init weight paint range. */
-  BKE_colorband_init(&U.coba_weight, true);
-
-  /* Default visible section. */
-  U.userpref = USER_SECTION_INTERFACE;
-
-  /* Default to left click select. */
-  BKE_keyconfig_pref_set_select_mouse(&U, 0, true);
-
-  /* Increase a little for new scrubbing area. */
-  U.v2d_min_gridsize = 45;
-
-  /* Default studio light. */
-  BKE_studiolight_default(U.light_param, U.light_ambient);
-}
 
 /**
  * Rename if the ID doesn't exist.
@@ -358,6 +285,20 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
                    &gp_primitive_curve->clipr,
                    CURVE_PRESET_BELL,
                    CURVEMAP_SLOPE_POSITIVE);
+  }
+
+  /* Correct default startup UV's. */
+  Mesh *me = BLI_findstring(&bmain->meshes, "Cube", offsetof(ID, name) + 2);
+  if (me && (me->totloop == 24) && (me->mloopuv != NULL)) {
+    const float uv_values[24][2] = {
+        {0.625, 0.50}, {0.875, 0.50}, {0.875, 0.75}, {0.625, 0.75}, {0.375, 0.75}, {0.625, 0.75},
+        {0.625, 1.00}, {0.375, 1.00}, {0.375, 0.00}, {0.625, 0.00}, {0.625, 0.25}, {0.375, 0.25},
+        {0.125, 0.50}, {0.375, 0.50}, {0.375, 0.75}, {0.125, 0.75}, {0.375, 0.50}, {0.625, 0.50},
+        {0.625, 0.75}, {0.375, 0.75}, {0.375, 0.25}, {0.625, 0.25}, {0.625, 0.50}, {0.375, 0.50},
+    };
+    for (int i = 0; i < ARRAY_SIZE(uv_values); i++) {
+      copy_v2_v2(me->mloopuv[i].uv, uv_values[i]);
+    }
   }
 
   /* Make sure that the profile widget is initialized */

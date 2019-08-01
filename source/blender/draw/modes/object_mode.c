@@ -1242,7 +1242,7 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
       unit_m4(win_m4_scale);
       unit_m4(win_m4_translate);
       unit_m4(scale_m4);
-      axis_angle_to_mat4_single(rot_m4, 'Z', bgpic->rotation);
+      axis_angle_to_mat4_single(rot_m4, 'Z', -bgpic->rotation);
       unit_m4(translate_m4);
 
       const float *size = DRW_viewport_size_get();
@@ -1256,7 +1256,7 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
 
       if (!DRW_state_is_image_render()) {
         rctf render_border;
-        ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &render_border, true);
+        ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &render_border, false);
         camera_width = render_border.xmax - render_border.xmin;
         camera_height = render_border.ymax - render_border.ymin;
         camera_aspect = camera_width / camera_height;
@@ -1311,9 +1311,9 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
       scale_m4[0][0] = scale_x;
       scale_m4[1][1] = scale_y;
 
-      // translate
-      translate_m4[3][0] = bgpic->offset[0];
-      translate_m4[3][1] = bgpic->offset[1];
+      /* Translate, using coordinates that aren't squashed by the aspect. */
+      translate_m4[3][0] = bgpic->offset[0] * 2.0f * max_ff(1.0f, 1.0f / camera_aspect);
+      translate_m4[3][1] = bgpic->offset[1] * 2.0f * max_ff(1.0f, camera_aspect);
 
       mul_m4_series(bg_data->transform_mat,
                     win_m4_translate,
@@ -2862,7 +2862,7 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
 
       DRWCallBuffer *buf = buffer_theme_id_to_probe_cube_outline_shgrp(
           stl, theme_id, ob->base_flag);
-      /* TODO remove or change the drawing of the cube probes. Theses line draws nothing on purpose
+      /* TODO remove or change the drawing of the cube probes. This line draws nothing on purpose
        * to keep the call ids correct. */
       zero_m4(probe_cube_mat);
       DRW_buffer_add_entry(buf, call_id, &draw_size, probe_cube_mat);

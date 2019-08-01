@@ -411,7 +411,7 @@ void MESH_OT_unsubdivide(wmOperatorType *ot)
       ot->srna, "iterations", 2, 1, 1000, "Iterations", "Number of times to unsubdivide", 1, 100);
 }
 
-void EDBM_project_snap_verts(bContext *C, ARegion *ar, BMEditMesh *em)
+void EDBM_project_snap_verts(bContext *C, Depsgraph *depsgraph, ARegion *ar, BMEditMesh *em)
 {
   Main *bmain = CTX_data_main(C);
   Object *obedit = em->ob;
@@ -421,7 +421,7 @@ void EDBM_project_snap_verts(bContext *C, ARegion *ar, BMEditMesh *em)
   ED_view3d_init_mats_rv3d(obedit, ar->regiondata);
 
   struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create_view3d(
-      bmain, CTX_data_scene(C), CTX_data_depsgraph(C), 0, ar, CTX_wm_view3d(C));
+      bmain, CTX_data_scene(C), depsgraph, 0, ar, CTX_wm_view3d(C));
 
   BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
     if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
@@ -4593,7 +4593,8 @@ static int edbm_fill_grid_exec(bContext *C, wmOperator *op)
 
       /* Only reuse on redo because these settings need to match the current selection.
        * We never want to use them on other geometry, repeat last for eg, see: T60777. */
-      if ((op->flag & OP_IS_REPEAT_LAST) == 0 && RNA_property_is_set(op->ptr, prop_span)) {
+      if (((op->flag & OP_IS_INVOKE) || (op->flag & OP_IS_REPEAT_LAST) == 0) &&
+          RNA_property_is_set(op->ptr, prop_span)) {
         span = RNA_property_int_get(op->ptr, prop_span);
         span = min_ii(span, (clamp / 2) - 1);
         calc_span = false;
@@ -8615,7 +8616,7 @@ static int edbm_normals_tools_exec(bContext *C, wmOperator *op)
 
     switch (mode) {
       case EDBM_CLNOR_TOOLS_COPY:
-        if (bm->totfacesel == 0 || bm->totvertsel == 0) {
+        if (bm->totfacesel == 0 && bm->totvertsel == 0) {
           BM_loop_normal_editdata_array_free(lnors_ed_arr);
           continue;
         }
