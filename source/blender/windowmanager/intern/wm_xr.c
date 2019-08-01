@@ -180,7 +180,8 @@ static void wm_xr_session_free_data(wmSurface *surface)
   g_xr_surface = NULL;
 }
 
-static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int gpu_binding_type)
+static wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm),
+                                               unsigned int gpu_binding_type)
 {
   if (g_xr_surface) {
     BLI_assert(false);

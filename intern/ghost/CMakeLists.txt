@@ -372,7 +372,7 @@ if(WITH_OPENXR)
 
   if(OPENXR_USE_BUNDLED_SRC)
     if(WIN32)
-      set(OPENXR_LOADER_NAME openxr_loader-0_90)
+      set(OPENXR_LOADER_NAME openxr_loader-1_0)
     else()
       set(OPENXR_LOADER_NAME openxr_loader)
     endif()

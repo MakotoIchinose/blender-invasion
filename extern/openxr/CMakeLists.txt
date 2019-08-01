@@ -1,50 +1,71 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
+# Copyright (c) 2017-2019 The Khronos Group Inc.
 #
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
-# All rights reserved.
-# ***** END GPL LICENSE BLOCK *****
+# Author:
+#
 
-set(MAJOR 0)
-set(MINOR 90)
+# Note: This is the top-level CMake file for the OpenXR project.
+# It should contain only definitions that are applicable to the
+# entire project and includes for the sub-directories.
 
-include(xr_platform_defines)
+cmake_minimum_required(VERSION 3.0)
+project(OPENXR)
 
-include(CheckFunctionExists)
-CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
-CHECK_FUNCTION_EXISTS(__secure_getenv HAVE___SECURE_GETENV)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/common_cmake_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/common_cmake_config.h)
+#find_package(PythonInterp 3)
 
-set(OPENXR_SDK_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/include CACHE INTERNAL "")
+# Enable IDE GUI folders.  "Helper targets" that don't have interesting source code should set their FOLDER property to this
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake predefined targets")
+set(LOADER_FOLDER "Loader")
+set(HELPER_FOLDER "Helpers")
+set(CODEGEN_FOLDER "Generated")
+set(TESTS_FOLDER "Tests")
+set(API_LAYERS_FOLDER "Layers")
+set(SAMPLES_FOLDER "Samples")
 
-add_custom_target(
-  generate_openxr_header
-  DEPENDS
-    ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform_defines.h
-    ${OPENXR_SDK_INCLUDES}/openxr/openxr.h
-    ${OPENXR_SDK_INCLUDES}/openxr/openxr_platform.h
-    ${CMAKE_CURRENT_BINARY_DIR}
-)
+option(BUILD_FORCE_GENERATION "Force re-generation of files even in the presence of pre-generated copies, replacing those copies." OFF)
 
-add_custom_target(
-  xr_global_generated_files
-  DEPENDS
-    xr_generated_dispatch_table.h
-    xr_generated_dispatch_table.c
-    xr_generated_utilities.h
-    xr_generated_utilities.c
-)
+if(BUILD_FORCE_GENERATION AND NOT PYTHON_EXECUTABLE)
+    message(FATAL_ERROR "BUILD_FORCE_GENERATION requires Python")
+endif()
 
-add_subdirectory(loader)
+set(OPENXR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_subdirectory(include)
+add_subdirectory(src)
+
+# uninstall target
+if(NOT TARGET uninstall)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cmake/cmake_uninstall.cmake.in"
+                   "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+                   IMMEDIATE
+                   @ONLY)
+    add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+    set_target_properties(uninstall PROPERTIES FOLDER ${HELPER_FOLDER})
+endif()
+
+find_program(BASH_COMMAND NAMES bash)
+if(BASH_COMMAND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/specification/Makefile")
+    option(BUILD_SPECIFICATION "Run './makeAllExts all' in the specification directory as part of the build - intended for one-step checking of spec changes" OFF)
+    if(BUILD_SPECIFICATION)
+        add_custom_target(spec-all ALL
+            ${BASH_COMMAND} ./makeAllExts all
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/specification"
+            VERBATIM
+            COMMENT "Running './makeAllExts all' in the specification directory"
+            USES_TERMINAL)
+    endif()
+endif()
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION share/doc/openxr)
