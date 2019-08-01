@@ -6917,7 +6917,7 @@ static int ui_do_but_PROFILE(bContext *C,
         dist_min_sq = SQUARE(U.dpi_fac * 8.0f);
 
         /* loop through the curve segment table and find what's near the mouse. */
-        for (i = 1; i <= PROF_TABLE_SIZE; i++) {
+        for (i = 1; i <= PROF_N_TABLE(prwdgt->totpoint); i++) {
           copy_v2_v2(f_xy_prev, f_xy);
           BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[i].x);
 

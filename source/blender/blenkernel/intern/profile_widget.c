@@ -227,7 +227,8 @@ ProfilePoint *profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
   printf("PROFILEPATH INSERT\n");
 #endif
 
-  if (prwdgt->totpoint == PROF_TABLE_SIZE - 1) {
+  /* Don't add more control points  than the maximum size of the higher resolution table */
+  if (prwdgt->totpoint == PROF_TABLE_MAX - 1) {
     return NULL;
   }
 
@@ -732,7 +733,7 @@ static void profilewidget_make_table(ProfileWidget *prwdgt)
   int i, n_samples;
 
   /* Get locations of samples from the sampling function */
-  n_samples = PROF_TABLE_SIZE;
+  n_samples = PROF_N_TABLE(prwdgt->totpoint);
   locations = MEM_callocN((size_t)n_samples * 2 * sizeof(float), "temp loc storage");
   profilewidget_create_samples(prwdgt, locations, n_samples - 1, false);
 
@@ -897,7 +898,7 @@ float profilewidget_total_length(const ProfileWidget *prwdgt)
   float loc1[2], loc2[2];
   float total_length = 0;
 
-  for (int i = 0; i < PROF_TABLE_SIZE; i++) {
+  for (int i = 0; i < PROF_N_TABLE(prwdgt->totpoint); i++) {
     loc1[0] = prwdgt->table[i].x;
     loc1[1] = prwdgt->table[i].y;
     loc2[0] = prwdgt->table[i].x;
@@ -970,7 +971,7 @@ void profilewidget_evaluate_portion(const ProfileWidget *prwdgt,
   float length_travelled = 0.0f;
   while (length_travelled < requested_length) {
     /* Check if we reached the last point before the final one */
-    if (i == PROF_TABLE_SIZE - 2) {
+    if (i == PROF_N_TABLE(prwdgt->totpoint) - 2) {
       break;
     }
     float new_length = profilewidget_distance_to_next_point(prwdgt, i);

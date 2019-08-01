@@ -26,11 +26,10 @@
 
 #include "DNA_vec_types.h"
 
-#define PROF_TABLE_SIZE 256
-/* HANS-TODO: Switch to variable table size based on resolution and number of points, mostly for a
- * speedup in the drawing and evaluation code if it's needed */
-//#define PROF_N_TABLE(n_pts) min_ff(512, (((n_pts) - 1) * PROF_RESOL)) /* n_pts is prwdgt->totpoint */
-//#define PROF_RESOL 16
+/** Number of points in high resolution table is dynamic up to the maximum */
+#define PROF_TABLE_MAX 512
+#define PROF_RESOL 16 /* Number of table points per control point */
+#define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts) - 1) * PROF_RESOL)) /* n_pts is prwdgt->totpoint */
 
 typedef struct ProfilePoint {
   /** Location of the point */

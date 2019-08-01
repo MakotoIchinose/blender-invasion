@@ -2209,12 +2209,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
   bool add_left_tri = prwdgt->view_rect.xmin < 0.0f;
   bool add_bottom_tri = prwdgt->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)PROF_TABLE_SIZE + 1 + add_left_tri + add_bottom_tri;
+  uint tot_points = (uint)PROF_N_TABLE(prwdgt->totpoint) + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
   float (*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < PROF_TABLE_SIZE; i++) { /* Only add the points from the table here */
+  for (i = 0; i < (uint)PROF_N_TABLE(prwdgt->totpoint); i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
   }
