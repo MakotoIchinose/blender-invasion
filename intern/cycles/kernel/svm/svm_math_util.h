@@ -104,84 +104,58 @@ ccl_device void svm_vector_math(
 
 ccl_device float svm_math(NodeMathType type, float a, float b)
 {
-  float result;
   switch (type) {
     case NODE_MATH_ADD:
-      result = a + b;
-      break;
+      return a + b;
     case NODE_MATH_SUBTRACT:
-      result = a - b;
-      break;
+      return a - b;
     case NODE_MATH_MULTIPLY:
-      result = a * b;
-      break;
+      return a * b;
     case NODE_MATH_DIVIDE:
-      result = safe_divide(a, b);
-      break;
+      return safe_divide(a, b);
     case NODE_MATH_POWER:
-      result = safe_powf(a, b);
-      break;
+      return safe_powf(a, b);
     case NODE_MATH_LOGARITHM:
-      result = safe_logf(a, b);
-      break;
+      return safe_logf(a, b);
     case NODE_MATH_SQRT:
-      result = safe_sqrtf(a);
-      break;
+      return safe_sqrtf(a);
     case NODE_MATH_ABSOLUTE:
-      result = fabsf(a);
-      break;
+      return fabsf(a);
     case NODE_MATH_MINIMUM:
-      result = fminf(a, b);
-      break;
+      return fminf(a, b);
     case NODE_MATH_MAXIMUM:
-      result = fmaxf(a, b);
-      break;
+      return fmaxf(a, b);
     case NODE_MATH_LESS_THAN:
-      result = a < b;
-      break;
+      return a < b;
     case NODE_MATH_GREATER_THAN:
-      result = a > b;
-      break;
+      return a > b;
     case NODE_MATH_ROUND:
-      result = floorf(a + 0.5f);
-      break;
+      return floorf(a + 0.5f);
     case NODE_MATH_FLOOR:
-      result = floorf(a);
-      break;
+      return floorf(a);
     case NODE_MATH_CEIL:
-      result = ceilf(a);
-      break;
+      return ceilf(a);
     case NODE_MATH_FRACTION:
-      result = a - floorf(a);
-      break;
+      return a - floorf(a);
     case NODE_MATH_MODULO:
-      result = safe_modulo(a, b);
-      break;
+      return safe_modulo(a, b);
     case NODE_MATH_SINE:
-      result = sinf(a);
-      break;
+      return sinf(a);
     case NODE_MATH_COSINE:
-      result = cosf(a);
-      break;
+      return cosf(a);
     case NODE_MATH_TANGENT:
-      result = tanf(a);
-      break;
+      return tanf(a);
     case NODE_MATH_ARCSINE:
-      result = safe_asinf(a);
-      break;
+      return safe_asinf(a);
     case NODE_MATH_ARCCOSINE:
-      result = safe_acosf(a);
-      break;
+      return safe_acosf(a);
     case NODE_MATH_ARCTANGENT:
-      result = atanf(a);
-      break;
+      return atanf(a);
     case NODE_MATH_ARCTAN2:
-      result = atan2f(a, b);
-      break;
+      return atan2f(a, b);
     default:
-      result = 0.0f;
+      return 0.0f;
   }
-  return result;
 }
 
 /* Calculate color in range 800..12000 using an approximation
