@@ -1716,7 +1716,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed, b
     }
   }
   r = pro->super_r;
-  if (r == PRO_LINE_R) {
+  if (!bp->use_custom_profile && r == PRO_LINE_R) {
     map_ok = false;
   }
   else {
@@ -4985,7 +4985,7 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
  * Given that the boundary is built and the boundary BMVerts have been made,
  * calculate the positions of the interior mesh points for the M_ADJ pattern,
  * using cubic subdivision, then make the BMVerts and the new faces. */
-static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
+static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv, BoundVert *vpipe)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
   printf("BEVEL BUILD RINGS\n");
@@ -4997,7 +4997,6 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
   BMFace *f, *f2, *r_f;
   BMEdge *bme, *bme1, *bme2, *bme3;
   EdgeHalf *e;
-  BoundVert *vpipe;
   int mat_nr = bp->mat_nr;
 
   n_bndv = bv->vmesh->count;
@@ -5017,8 +5016,6 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
       v = v->next;
     } while (v != bv->vmesh->boundstart);
   }
-
-  vpipe = pipe_test(bv);
 
   if (bp->pro_super_r == PRO_SQUARE_R && bv->selcount >= 3 && !odd && !bp->use_custom_profile) {
     vm1 = square_out_adj_vmesh(bp, bv);
@@ -5171,7 +5168,6 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv)
 /* HANS-TODO: When the profile is 0 for a non-custom profile this looks glitchy. It probably
  * shouldn't build the cut-off faces in some special cases, but this looks like a more general
  * issue with profile == 0 cases. */
-/* HANS-TODO: Don't use the cutoff vertex mesh method in the pipe case */
 static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -5556,7 +5552,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
 #endif
   MemArena *mem_arena = bp->mem_arena;
   VMesh *vm = bv->vmesh;
-  BoundVert *bndv, *weld1, *weld2;
+  BoundVert *bndv, *weld1, *weld2, *vpipe;
   int n, ns, ns2, i, k, weld;
   float *va, *vb, co[3];
 
@@ -5580,7 +5576,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
 #endif
   weld1 = weld2 = NULL; /* will hold two BoundVerts involved in weld */
 
-  /* make (i, 0, 0) mesh verts for all i */
+  /* make (i, 0, 0) mesh verts for all i (boundverts)*/
   bndv = vm->boundstart;
   do {
     i = bndv->index;
@@ -5691,6 +5687,16 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
   }
 #endif
+
+  /* Make sure the pipe case ADJ mesh is used for both the "Grid Fill" (ADJ) and cutoff options */
+  if (vm->count == 3 || vm->count == 4) {
+    /* Overhead of running pipe_test again is avoided by passing the result to bevel_build_rings */
+    vpipe = pipe_test(bv);
+    if (vpipe) {
+      vm->mesh_kind = M_ADJ;
+    }
+  }
+
   /* HANS-QUESTION: Maybe it would make sense to make the weld case a mesh_kind option. It would
    * simplify this function a fair amount and help with consistency. */
   switch (vm->mesh_kind) {
@@ -5703,7 +5709,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
       bevel_build_poly(bp, bm, bv);
       break;
     case M_ADJ:
-      bevel_build_rings(bp, bm, bv);
+      bevel_build_rings(bp, bm, bv, vpipe);
       break;
     case M_TRI_FAN:
       bevel_build_trifan(bp, bm, bv);
