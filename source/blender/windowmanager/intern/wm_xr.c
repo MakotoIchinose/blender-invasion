@@ -164,7 +164,8 @@ static void wm_xr_session_free_data(wmSurface *surface)
   g_xr_surface = NULL;
 }
 
-static wmSurface *wm_xr_session_surface_create(wmWindowManager *wm, unsigned int gpu_binding_type)
+static wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm),
+                                               unsigned int gpu_binding_type)
 {
   if (g_xr_surface) {
     BLI_assert(false);
@@ -308,7 +309,7 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   BKE_screen_view3d_shading_init(&shading);
   shading.flag |= V3D_SHADING_WORLD_ORIENTATION;
   shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
-  ED_view3d_draw_offscreen_simple(CTX_data_depsgraph(C),
+  ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   CTX_data_scene(C),
                                   &shading,
                                   OB_SOLID,
