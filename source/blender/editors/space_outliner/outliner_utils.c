@@ -27,9 +27,12 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
+#include "BKE_context.h"
 #include "BKE_outliner_treehash.h"
+#include "BKE_layer.h"
 
 #include "ED_armature.h"
+#include "ED_outliner.h"
 
 #include "UI_interface.h"
 #include "UI_view2d.h"
@@ -364,7 +367,7 @@ bool outliner_item_is_co_within_close_toggle(TreeElement *te, float view_co_x)
   return (view_co_x > te->xs) && (view_co_x < te->xs + UI_UNIT_X);
 }
 
-/* Scroll view vertically  while keeping within total bounds */
+/* Scroll view vertically while keeping within total bounds */
 void outliner_scroll_view(ARegion *ar, int delta_y)
 {
   int y_min = MIN2(ar->v2d.cur.ymin, ar->v2d.tot.ymin);
@@ -384,4 +387,28 @@ void outliner_scroll_view(ARegion *ar, int delta_y)
     ar->v2d.cur.ymax += offset;
     ar->v2d.cur.ymin += offset;
   }
+}
+
+/* Get base of object under cursor. Used for eyedropper tool */
+Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
+{
+  ARegion *ar = CTX_wm_region(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+  TreeElement *te;
+  Base *base = NULL;
+  float view_mval[2];
+
+  UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
+
+  te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+  if (te) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0) {
+      Object *ob = (Object *)tselem->id;
+      base = (te->directdata) ? (Base *)te->directdata : BKE_view_layer_base_find(view_layer, ob);
+    }
+  }
+
+  return base;
 }
