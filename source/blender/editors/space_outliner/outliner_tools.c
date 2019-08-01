@@ -478,6 +478,9 @@ void OUTLINER_OT_scene_operation(wmOperatorType *ot)
 }
 /* ******************************************** */
 
+/* Stores the parent and a child element of a merged iconrow icon for
+ * the merged select popup menu. The subtree of the parent is searched and
+ * the child is needed to only show elements of the same type in the popup. */
 typedef struct MergedSearchData {
   TreeElement *parent_element;
   TreeElement *select_element;

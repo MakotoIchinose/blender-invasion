@@ -3636,7 +3636,7 @@ void draw_outliner(const bContext *C)
 
   /* Sync selection state from view layer or clean outliner if needed */
   if (!ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS) &&
-      soops->flag & SO_SYNC_SELECTION) {
+      soops->flag & SO_SYNC_SELECT) {
     outliner_sync_selection(C, soops);
   }
   else {

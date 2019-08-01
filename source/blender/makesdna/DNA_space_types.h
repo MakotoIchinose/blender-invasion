@@ -263,7 +263,7 @@ typedef enum eSpaceOutliner_Flag {
   SO_FLAG_UNUSED_1 = (1 << 2), /* cleared */
   SO_HIDE_KEYINGSETINFO = (1 << 3),
   SO_SKIP_SORT_ALPHA = (1 << 4),
-  SO_SYNC_SELECTION = (1 << 5),
+  SO_SYNC_SELECT = (1 << 5),
   SO_IS_DIRTY = (1 << 6),
 } eSpaceOutliner_Flag;
 

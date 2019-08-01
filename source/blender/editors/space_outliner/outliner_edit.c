@@ -1175,7 +1175,7 @@ static int outliner_select_all_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  if (soops->flag & SO_SYNC_SELECTION) {
+  if (soops->flag & SO_SYNC_SELECT) {
     outliner_select_sync(C, soops);
   }
 

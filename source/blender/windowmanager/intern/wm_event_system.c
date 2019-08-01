@@ -419,8 +419,6 @@ void wm_event_do_notifiers(bContext *C)
 
     CTX_wm_window_set(C, win);
 
-    ViewLayer *view_layer = CTX_data_view_layer(C);
-
     for (note = wm->queue.first; note; note = next) {
       next = note->next;
 
@@ -485,6 +483,7 @@ void wm_event_do_notifiers(bContext *C)
         }
       }
       if (ELEM(note->category, NC_SCENE, NC_OBJECT, NC_GEOM, NC_WM)) {
+        ViewLayer *view_layer = CTX_data_view_layer(C);
         ED_info_stats_clear(view_layer);
         WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO, NULL);
       }

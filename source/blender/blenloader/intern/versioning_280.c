@@ -3538,7 +3538,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
           if (space->spacetype == SPACE_OUTLINER) {
             SpaceOutliner *soutliner = (SpaceOutliner *)space;
-            soutliner->flag |= SO_IS_DIRTY | SO_SYNC_SELECTION;
+            soutliner->flag |= SO_IS_DIRTY | SO_SYNC_SELECT;
           }
         }
       }

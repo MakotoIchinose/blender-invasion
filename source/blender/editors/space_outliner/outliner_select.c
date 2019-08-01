@@ -1160,7 +1160,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
   else if (tselem->type == TSE_POSE_BASE) {
     /* Support pose mode toggle, keeping the active object as is. */
   }
-  else if (soops->flag & SO_SYNC_SELECTION) {
+  else if (soops->flag & SO_SYNC_SELECT) {
     /* Only activate when synced selection is enabled */
     tree_element_set_active_object(C,
                                    scene,
@@ -1239,7 +1239,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
       tree_element_active(C, scene, view_layer, soops, te, OL_SETSEL_NORMAL, false);
     }
   }
-  else if (soops->flag & SO_SYNC_SELECTION) {
+  else if (soops->flag & SO_SYNC_SELECT) {
     tree_element_type_active(C,
                              scene,
                              view_layer,
@@ -1427,7 +1427,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     }
     ED_undo_push(C, "Outliner selection change");
 
-    if (soops->flag & SO_SYNC_SELECTION) {
+    if (soops->flag & SO_SYNC_SELECT) {
       outliner_select_sync(C, soops);
     }
   }
@@ -1439,7 +1439,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool extend = RNA_boolean_get(op->ptr, "extend");
-  const bool use_range = RNA_boolean_get(op->ptr, "range");
+  const bool use_range = RNA_boolean_get(op->ptr, "extend_range");
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
   return outliner_item_do_activate_from_cursor(C, event->mval, extend, use_range, deselect_all);
 }
@@ -1456,7 +1456,8 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
 
   PropertyRNA *prop;
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection for activation");
-  prop = RNA_def_boolean(ot->srna, "range", false, "Range", "Select a range from active element");
+  prop = RNA_def_boolean(
+      ot->srna, "extend_range", false, "Extend Range", "Select a range from active element");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna,
@@ -1516,7 +1517,7 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   ED_region_tag_redraw(ar);
 
-  if (soops->flag & SO_SYNC_SELECTION) {
+  if (soops->flag & SO_SYNC_SELECT) {
     outliner_select_sync(C, soops);
   }
 
@@ -1807,7 +1808,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
   /* Scroll outliner to focus on walk element */
   outliner_walk_scroll(ar, walk_element);
 
-  if (soops->flag & SO_SYNC_SELECTION) {
+  if (soops->flag & SO_SYNC_SELECT) {
     outliner_select_sync(C, soops);
   }
   ED_region_tag_redraw(ar);

@@ -158,7 +158,7 @@ static void datadropper_id_sample_pt(bContext *C, DataDropper *ddr, int mx, int 
   ddr->name[0] = '\0';
 
   if (sa) {
-    if (sa->spacetype == SPACE_VIEW3D || sa->spacetype == SPACE_OUTLINER) {
+    if (ELEM(sa->spacetype, SPACE_VIEW3D, SPACE_OUTLINER)) {
       ARegion *ar = BKE_area_find_region_xy(sa, RGN_TYPE_WINDOW, mx, my);
       if (ar) {
         const int mval[2] = {mx - ar->winrct.xmin, my - ar->winrct.ymin};

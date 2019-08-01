@@ -706,7 +706,7 @@ def km_outliner(params):
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
          {"properties": [("extend", True), ("deselect_all", not params.legacy)]}),
         ("outliner.item_activate", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
-         {"properties": [("extend", False), ("range", True), ("deselect_all", not params.legacy)]}),
+         {"properties": [("extend", False), ("extend_range", True), ("deselect_all", not params.legacy)]}),
         ("outliner.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("outliner.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, {"properties": [("tweak", True)]}),
         ("outliner.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY', "shift": True},

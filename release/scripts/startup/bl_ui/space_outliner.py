@@ -48,7 +48,7 @@ class OUTLINER_HT_header(Header):
 
         if display_mode == 'SEQUENCE':
             row = layout.row(align=True)
-            row.prop(space, "use_sync_selection", text="")
+            row.prop(space, "use_sync_select", text="")
 
         row = layout.row(align=True)
         if display_mode in {'SCENES', 'VIEW_LAYER'}:
@@ -308,7 +308,7 @@ class OUTLINER_PT_filter(Panel):
         display_mode = space.display_mode
 
         row = layout.row(align=True)
-        row.prop(space, "use_sync_selection", text="Sync Selection")
+        row.prop(space, "use_sync_select", text="Sync Selection")
         layout.separator()
 
         if display_mode == 'VIEW_LAYER':
