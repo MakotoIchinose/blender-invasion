@@ -531,11 +531,11 @@ static bool set_attribute_float4(float4 f[3], TypeDesc type, bool derivatives, v
     return true;
   }
   else if (type == TypeDesc::TypeFloat) {
-    fval[0] = average(f[0]);
+    fval[0] = average_float4(f[0]);
 
     if (derivatives) {
-      fval[1] = average(f[1]);
-      fval[2] = average(f[2]);
+      fval[1] = average_float4(f[1]);
+      fval[2] = average_float4(f[2]);
     }
     return true;
   }

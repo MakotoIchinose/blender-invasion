@@ -72,7 +72,7 @@ ccl_device void svm_node_attr(KernelGlobals *kg, ShaderData *sd, float *stack, u
   else if (desc.type == NODE_ATTR_RGBA) {
     float4 f = primitive_attribute_float4(kg, sd, desc, NULL, NULL);
     if (type == NODE_ATTR_FLOAT) {
-      stack_store_float(stack, out_offset, average(f));
+      stack_store_float(stack, out_offset, average_float4(f));
     }
     else {
       stack_store_float3(stack, out_offset, float4_to_float3(f));
@@ -126,7 +126,7 @@ ccl_device_noinline
     float4 dx;
     float4 f = primitive_attribute_float4(kg, sd, desc, &dx, NULL);
     if (type == NODE_ATTR_FLOAT) {
-      stack_store_float(stack, out_offset, average(f + dx));
+      stack_store_float(stack, out_offset, average_float4(f + dx));
     }
     else {
       stack_store_float3(stack, out_offset, float4_to_float3(f + dx));
@@ -181,7 +181,7 @@ ccl_device_noinline
     float4 dy;
     float4 f = primitive_attribute_float4(kg, sd, desc, NULL, &dy);
     if (type == NODE_ATTR_FLOAT) {
-      stack_store_float(stack, out_offset, average(f + dy));
+      stack_store_float(stack, out_offset, average_float4(f + dy));
     }
     else {
       stack_store_float3(stack, out_offset, float4_to_float3(f + dy));

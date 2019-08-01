@@ -54,7 +54,6 @@ ccl_device_inline float4 sqrt(const float4 &a);
 ccl_device_inline float4 sqr(const float4 &a);
 ccl_device_inline float4 cross(const float4 &a, const float4 &b);
 ccl_device_inline bool is_zero(const float4 &a);
-ccl_device_inline float average(const float4 &a);
 ccl_device_inline float len(const float4 &a);
 ccl_device_inline float4 normalize(const float4 &a);
 ccl_device_inline float4 safe_normalize(const float4 &a);
@@ -66,6 +65,7 @@ ccl_device_inline float4 fabs(const float4 &a);
 ccl_device_inline float4 floor(const float4 &a);
 #endif /* !__KERNEL_OPENCL__*/
 
+ccl_device_inline float average_float4(const float4 a);
 ccl_device_inline float4 safe_divide_float4_float(const float4 a, const float b);
 
 #ifdef __KERNEL_SSE__
@@ -296,11 +296,6 @@ ccl_device_inline float4 reduce_add(const float4 &a)
 #  endif
 }
 
-ccl_device_inline float average(const float4 &a)
-{
-  return reduce_add(a).x * 0.25f;
-}
-
 ccl_device_inline float len(const float4 &a)
 {
   return sqrtf(dot(a, a));
@@ -364,6 +359,11 @@ ccl_device_inline float4 floor(const float4 &a)
 }
 
 #endif /* !__KERNEL_OPENCL__*/
+
+ccl_device_inline float average_float4(const float4 a)
+{
+  return (a.x + a.y + a.z + a.w) * 0.25f;
+}
 
 ccl_device_inline float4 safe_divide_float4_float(const float4 a, const float b)
 {
