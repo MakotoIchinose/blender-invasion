@@ -28,6 +28,8 @@
 #include <math.h>
 
 extern char datatoc_common_fullscreen_vert_glsl[];
+extern char datatoc_gpu_shader_3D_smooth_color_vert_glsl[];
+extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 extern char datatoc_lanpr_snake_multichannel_frag_glsl[];
 extern char datatoc_lanpr_snake_edge_frag_glsl[];
 extern char datatoc_lanpr_snake_image_peel_frag_glsl[];
@@ -62,15 +64,6 @@ static void lanpr_engine_init(void *ved)
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->normal, GPU_RGBA32F, 8, 0);
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->edge_intermediate, GPU_RGBA32F, 8, 0);
 
-  DRW_texture_ensure_fullscreen_2D_multisample(
-      &txl->ms_resolve_depth, GPU_DEPTH_COMPONENT32F, 8, 0);
-  DRW_texture_ensure_fullscreen_2D_multisample(&txl->ms_resolve_color, GPU_RGBA32F, 8, 0);
-
-  GPU_framebuffer_ensure_config(&fbl->passes,
-                                {GPU_ATTACHMENT_TEXTURE(txl->depth),
-                                 GPU_ATTACHMENT_TEXTURE(txl->color),
-                                 GPU_ATTACHMENT_TEXTURE(txl->normal)});
-
   GPU_framebuffer_ensure_config(&fbl->edge_intermediate,
                                 {GPU_ATTACHMENT_TEXTURE(txl->depth),
                                  GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
@@ -79,13 +72,6 @@ static void lanpr_engine_init(void *ved)
                                 {GPU_ATTACHMENT_LEAVE,
                                  GPU_ATTACHMENT_TEXTURE(txl->color)});
 
-  if (!lanpr_share.multichannel_shader) {
-    lanpr_share.multichannel_shader = DRW_shader_create(
-        datatoc_gpu_shader_3D_normal_smooth_color_vert_glsl,
-        NULL,
-        datatoc_lanpr_snake_multichannel_frag_glsl,
-        NULL);
-  }
   if (!lanpr_share.edge_detect_shader) {
     lanpr_share.edge_detect_shader = DRW_shader_create(
         datatoc_common_fullscreen_vert_glsl, NULL, datatoc_lanpr_snake_edge_frag_glsl, NULL);
@@ -102,6 +88,23 @@ static void lanpr_engine_init(void *ved)
         NULL);
   }
 #endif
+
+  DRW_texture_ensure_fullscreen_2D_multisample(
+      &txl->ms_resolve_depth, GPU_DEPTH_COMPONENT32F, 8, 0);
+  DRW_texture_ensure_fullscreen_2D_multisample(&txl->ms_resolve_color, GPU_RGBA32F, 8, 0);
+
+  GPU_framebuffer_ensure_config(&fbl->passes,
+                                {GPU_ATTACHMENT_TEXTURE(txl->depth),
+                                 GPU_ATTACHMENT_TEXTURE(txl->color),
+                                 GPU_ATTACHMENT_TEXTURE(txl->normal)});
+
+  if (!lanpr_share.multichannel_shader) {
+    lanpr_share.multichannel_shader = DRW_shader_create(
+        datatoc_gpu_shader_3D_smooth_color_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
+        NULL);
+  }
 
   /* DPIX */
   lanpr_init_atlas_inputs(ved);
