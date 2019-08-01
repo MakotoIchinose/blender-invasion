@@ -128,7 +128,7 @@ set(SRC
   engines/gpencil/gpencil_shader_fx.c
 	engines/lanpr/lanpr_dpix.c
 	engines/lanpr/lanpr_engine.c
-	engines/lanpr/lanpr_snake.c
+	# engines/lanpr/lanpr_snake.c  deprecated for now.
 	engines/lanpr/lanpr_cpu.c
   engines/lanpr/lanpr_chain_draw.c
   engines/select/select_engine.c

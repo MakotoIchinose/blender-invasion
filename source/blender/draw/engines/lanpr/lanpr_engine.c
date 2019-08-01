@@ -559,10 +559,12 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     DRW_draw_pass(psl->color_pass);
     lanpr_dpix_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
+  /* Deprecated
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SNAKE) {
     DRW_draw_pass(psl->color_pass);
     lanpr_snake_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
+  */
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
     /*  should isolate these into a seperate function. */
     lanpr_software_draw_scene(vedata, dfb, is_render);
