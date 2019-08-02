@@ -316,8 +316,7 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   BKE_scene_graph_evaluated_ensure(g_depsgraph, CTX_data_main(C));
 
-  DRW_opengl_render_context_enable(g_xr_surface->ghost_ctx);
-  DRW_gawain_render_context_enable(g_xr_surface->gpu_ctx);
+  DRW_render_context_draw_begin();
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     // TODO disable correctly.
@@ -375,10 +374,10 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   GPU_matrix_pop_projection();
   GPU_matrix_pop();
+
   GPU_viewport_unbind(viewport);
 
-  DRW_gawain_render_context_disable(g_xr_surface->gpu_ctx);
-  DRW_opengl_render_context_disable(g_xr_surface->ghost_ctx);
+  DRW_render_context_draw_end();
 
   return g_xr_surface->ghost_ctx;
 }
@@ -445,6 +444,9 @@ static void *wm_xr_session_drawthread_main(void *data)
       GHOST_GetContextDefaultOpenGLFramebuffer(g_xr_surface->ghost_ctx));
   WM_opengl_context_release(g_xr_surface->ghost_ctx);
 
+  DRW_opengl_render_context_enable_ex(g_xr_surface->ghost_ctx);
+  DRW_gawain_render_context_enable(g_xr_surface->gpu_ctx);
+
   /* Sort of the session's main loop. */
   while (GHOST_XrHasSession(wm->xr_context)) {
     if (!GHOST_XrSessionShouldRunDrawLoop(wm->xr_context)) {
@@ -453,6 +455,9 @@ static void *wm_xr_session_drawthread_main(void *data)
 
     GHOST_XrSessionDrawViews(wm->xr_context, C);
   }
+
+  DRW_gawain_render_context_disable(g_xr_surface->gpu_ctx);
+  DRW_opengl_render_context_disable_ex(g_xr_surface->ghost_ctx);
 
   return NULL;
 }

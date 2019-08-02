@@ -3020,20 +3020,40 @@ void *DRW_gpu_context_get(void)
   return DST.gpu_context;
 }
 
-void DRW_opengl_render_context_enable(void *re_gl_context)
+void DRW_opengl_render_context_enable_ex(void *re_gl_context)
 {
   /* If thread is main you should use DRW_opengl_context_enable(). */
   BLI_assert(!BLI_thread_is_main());
 
-  /* TODO get rid of the blocking. Only here because of the static global DST. */
-  BLI_ticket_mutex_lock(DST.gl_context_mutex);
   WM_opengl_context_activate(re_gl_context);
 }
+void DRW_opengl_render_context_enable(void *re_gl_context)
+{
+  DRW_opengl_render_context_enable_ex(re_gl_context);
+  DRW_render_context_draw_begin();
+}
 
-void DRW_opengl_render_context_disable(void *re_gl_context)
+void DRW_opengl_render_context_disable_ex(void *re_gl_context)
 {
   GPU_flush();
   WM_opengl_context_release(re_gl_context);
+}
+void DRW_opengl_render_context_disable(void *re_gl_context)
+{
+  DRW_opengl_render_context_disable_ex(re_gl_context);
+  DRW_render_context_draw_end();
+}
+
+void DRW_render_context_draw_begin()
+{
+  BLI_assert(!BLI_thread_is_main());
+  /* TODO get rid of the blocking. */
+  BLI_ticket_mutex_lock(DST.gl_context_mutex);
+}
+
+void DRW_render_context_draw_end()
+{
+  //  GPU_flush();
   /* TODO get rid of the blocking. */
   BLI_ticket_mutex_unlock(DST.gl_context_mutex);
 }

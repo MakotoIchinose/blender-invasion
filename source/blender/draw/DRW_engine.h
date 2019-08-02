@@ -171,8 +171,12 @@ void DRW_cache_free_old_batches(struct Main *bmain);
 void DRW_opengl_context_enable_ex(bool restore);
 void DRW_opengl_context_disable_ex(bool restore);
 
+void DRW_opengl_render_context_enable_ex(void *re_gl_context);
 void DRW_opengl_render_context_enable(void *re_gl_context);
+void DRW_opengl_render_context_disable_ex(void *re_gl_context);
 void DRW_opengl_render_context_disable(void *re_gl_context);
+void DRW_render_context_draw_begin();
+void DRW_render_context_draw_end();
 void DRW_gawain_render_context_enable(void *re_gpu_context);
 void DRW_gawain_render_context_disable(void *re_gpu_context);
 
@@ -182,9 +186,7 @@ struct DrawDataList *DRW_drawdatalist_from_id(struct ID *id);
 void DRW_drawdata_free(struct ID *id);
 
 /* select_engine.c */
-void DRW_select_context_create(struct Base **bases,
-                               const uint bases_len,
-                               short select_mode);
+void DRW_select_context_create(struct Base **bases, const uint bases_len, short select_mode);
 bool DRW_select_elem_get(const uint sel_id, uint *r_elem, uint *r_base_index, char *r_elem_type);
 uint DRW_select_context_offset_for_object_elem(const uint base_index, char elem_type);
 uint DRW_select_context_elem_len(void);
