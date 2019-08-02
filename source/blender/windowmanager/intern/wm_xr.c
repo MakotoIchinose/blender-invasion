@@ -351,15 +351,10 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
                                   offscreen,
                                   viewport);
 
-  GPU_framebuffer_restore();
-
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
 
   wm_draw_offscreen_texture_parameters(offscreen);
-  GPU_depth_test(false);
 
-  GPU_matrix_push();
-  GPU_matrix_push_projection();
   wmViewport(&rect);
 
   if (g_xr_surface->secondary_ghost_ctx &&
@@ -371,9 +366,6 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   else {
     GPU_viewport_draw_to_screen(viewport, &rect);
   }
-
-  GPU_matrix_pop_projection();
-  GPU_matrix_pop();
 
   GPU_viewport_unbind(viewport);
 
