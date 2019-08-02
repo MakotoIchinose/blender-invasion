@@ -6861,7 +6861,6 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   return changed;
 }
 
-/* HANS-TODO: Add move (G) and delete (X) shortcuts for the widget if it's possible */
 static int ui_do_but_PROFILE(bContext *C,
                              uiBlock *block,
                              uiBut *but,
@@ -6869,18 +6868,37 @@ static int ui_do_but_PROFILE(bContext *C,
                              const wmEvent *event)
 {
   int mx, my, i;
-  bool changed = false;
 
   mx = event->x;
   my = event->y;
   ui_window_to_block(data->region, block, &mx, &my);
 
+  /* Move selected control points (hardcoded keymap) */
+  if (event->type == GKEY && event->val == KM_RELEASE) {
+    data->dragstartx = mx;
+    data->dragstarty = my;
+    data->draglastx = mx;
+    data->draglasty = my;
+    button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
+    return WM_UI_HANDLER_BREAK;
+  }
+
+  ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
+
+  /* Delete selected control points (hardcoded keymap) */
+  if (event->type == XKEY && event->val == KM_RELEASE) {
+    profilewidget_remove(prwdgt, PROF_SELECT);
+    profilewidget_changed(prwdgt, false);
+    ED_region_tag_redraw(data->region);
+    return WM_UI_HANDLER_BREAK;
+  }
+
+  /* Selecting, adding, and starting point movements */
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
     if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
-      ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
       ProfilePoint *pts; /* Path or table */
       const float m_xy[2] = {mx, my};
-      float dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius */
+      float dist_min_sq;
       int i_selected = -1;
 
       if (event->ctrl) {
@@ -6889,10 +6907,10 @@ static int ui_do_but_PROFILE(bContext *C,
 
         profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
         profilewidget_changed(prwdgt, false);
-        changed = true;
       }
 
-      /* check for selecting of a point */
+      /* Check for selecting of a point by finding closest point in radius */
+      dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius for selecting points */
       pts = prwdgt->path; /* ctrl adds point, new malloc */
       for (i = 0; i < prwdgt->totpoint; i++) {
         float f_xy[2];
@@ -6904,19 +6922,15 @@ static int ui_do_but_PROFILE(bContext *C,
         }
       }
 
+      /* Add a point if the click was close to the path but not a control point */
       if (i_selected == -1) {
         float f_xy[2], f_xy_prev[2];
-
-        /* if the click didn't select anything, check if it's clicked on the
-         * curve itself, and if so, add a point */
         pts = prwdgt->table;
-
         BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[0].x);
 
-        /* with 160px height 8px should translate to the old 0.05 coefficient at no zoom */
-        dist_min_sq = SQUARE(U.dpi_fac * 8.0f);
+        dist_min_sq = SQUARE(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point */
 
-        /* loop through the curve segment table and find what's near the mouse. */
+        /* Loop through the path's high resolution table and find what's near the click. */
         for (i = 1; i <= PROF_N_TABLE(prwdgt->totpoint); i++) {
           copy_v2_v2(f_xy_prev, f_xy);
           BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[i].x);
@@ -6927,12 +6941,10 @@ static int ui_do_but_PROFILE(bContext *C,
             ProfilePoint *new_pt = profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
             profilewidget_changed(prwdgt, false);
 
-            changed = true;
-
-            /* reset cmp back to the curve points again rather than drawing segments */
+            /* reset pts back to the control points */
             pts = prwdgt->path;
 
-            /* find newly added point and make it 'sel' */
+            /* Get the index of the newly added point */
             for (i = 0; i < prwdgt->totpoint; i++) {
               if (&pts[i] == new_pt) {
                 i_selected = i;
@@ -6943,8 +6955,8 @@ static int ui_do_but_PROFILE(bContext *C,
         }
       }
 
+      /* Change the flag for the point(s) if one was selected */
       if (i_selected != -1) {
-        /* ok, we move a point */
         /* deselect all if this one is deselect. except if we hold shift */
         if (!event->shift) {
           for (i = 0; i < prwdgt->totpoint; i++) {
@@ -6963,19 +6975,19 @@ static int ui_do_but_PROFILE(bContext *C,
 
       data->dragsel = i_selected;
 
-      data->dragstartx = event->x;
-      data->dragstarty = event->y;
-      data->draglastx = event->x;
-      data->draglasty = event->y;
+      data->dragstartx = mx;
+      data->dragstarty = my;
+      data->draglastx = mx;
+      data->draglasty = my;
 
       button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
       return WM_UI_HANDLER_BREAK;
     }
   }
-  else if (data->state == BUTTON_STATE_NUM_EDITING) {
+  else if (data->state == BUTTON_STATE_NUM_EDITING) { /* Do control point movement */
     if (event->type == MOUSEMOVE) {
-      if (event->x != data->draglastx || event->y != data->draglasty) {
-        if (ui_numedit_but_PROFILE(block, but, data, event->x, event->y, event->ctrl != 0,
+      if (mx != data->draglastx || my != data->draglasty) {
+        if (ui_numedit_but_PROFILE(block, but, data, mx, my, event->ctrl != 0,
                                    event->shift != 0)) {
           ui_numedit_apply(C, block, but, data);
         }
@@ -6983,7 +6995,6 @@ static int ui_do_but_PROFILE(bContext *C,
     }
     else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
       if (data->dragsel != -1) {
-        ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
         ProfilePoint *pts = prwdgt->path;
 
         if (data->dragchange == false) {
@@ -7003,9 +7014,6 @@ static int ui_do_but_PROFILE(bContext *C,
     }
     return WM_UI_HANDLER_BREAK;
   }
-
-  /* UNUSED but keep for now */
-  (void)changed;
 
   return WM_UI_HANDLER_CONTINUE;
 }
