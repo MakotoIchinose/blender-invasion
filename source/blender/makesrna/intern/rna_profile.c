@@ -75,7 +75,8 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
   profilewidget_changed(prwdgt, false);
 }
 
-static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value) {
+static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value)
+{
   ProfileWidget *prwdgt = (ProfileWidget *)ptr->data;
 
   if (value) {
@@ -88,7 +89,9 @@ static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value) {
   profilewidget_changed(prwdgt, false);
 }
 
-static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *reports, PointerRNA *point_ptr)
+static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt,
+                                           ReportList *reports,
+                                           PointerRNA *point_ptr)
 {
   ProfilePoint *point = point_ptr->data;
   if (profilewidget_remove_point(prwdgt, point) == false) {
@@ -99,14 +102,23 @@ static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt, ReportList *re
   RNA_POINTER_INVALIDATE(point_ptr);
 }
 
-static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt, ReportList *reports,
-                                        float length_portion, float *location)
+static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt,
+                                       ReportList *reports,
+                                       float length_portion,
+                                       float *location)
 {
   if (!prwdgt->table) {
     BKE_report(reports, RPT_ERROR,"ProfileWidget table not initialized, call initialize()");
   }
   profilewidget_evaluate_portion(prwdgt, length_portion, &location[0], &location[1]);
+}
 
+static void rna_ProfileWidget_sample_segments(struct ProfileWidget *prwdgt,
+                                              int segments,
+                                              float *samples)
+{
+  profilewidget_create_samples(prwdgt, samples, segments,
+                               prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
 }
 
 static void rna_ProfileWidget_initialize(struct ProfileWidget *prwdgt, int nsegments)
@@ -189,7 +201,6 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  /* HANS-STRETCH-GOAL: Give the presets icons! */
   static const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
       {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
       {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops",
@@ -233,16 +244,26 @@ static void rna_def_profilewidget(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_evaluate");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  RNA_def_function_ui_description(func, "Evaluate the position of the indexed ProfilePoint");
+  RNA_def_function_ui_description(func, "Evaluate the at the given portion of the path length");
   parm = RNA_def_float(func, "length_portion", 0.0f, 0.0f, 1.0f, "Length Portion",
-                       "Portion of the path's length to travel before evaluation", 0.0f, 1.0f);
+                       "Portion of the path length to travel before evaluation", 0.0f, 1.0f);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_float_vector(func, "location", 2, NULL, -100.0f, 100.0f, "Location",
-                       "The location at that portion of the profile", -100.0f, 100.0f);
+                              "The location at the given portion of the profile", -100.0f, 100.0f);
   RNA_def_function_output(func, parm);
 
-  /* HANS-TODO: Also add a function to return the whole set of samples. Although the return length
-   * of that function's vector would be variable */
+  /* 16 samples maximum now because the largest possible return array size is 32 */
+  func = RNA_def_function(srna, "sample_segments", "rna_ProfileWidget_sample_segments");
+  RNA_def_function_ui_description(func, "Sample the given number of segments from the profile");
+  parm = RNA_def_int(func, "segments", 1, 1, 16, "Length Portion",
+                     "How many segments to sample from the control points", 1, 16);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  /* Ideally the return array would be dynamically sized based on the input */
+  parm = RNA_def_float_vector(func, "samples", 2 * 16, NULL, -100.0f, 100.0f,
+                              "Samples", "The sampled locations on the profile's path", -100.0f,
+                              100.0f);
+  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
+  RNA_def_function_output(func, parm);
 }
 
 void RNA_def_profile(BlenderRNA *brna)
