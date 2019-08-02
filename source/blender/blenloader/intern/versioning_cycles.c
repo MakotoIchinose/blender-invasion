@@ -484,6 +484,26 @@ static void update_math_clamp_option(bNodeTree *ntree)
   }
 }
 
+/* The names of the sockets of the Vector Math node were changed. So we have to
+ * update them here. The sockets' identifiers needs to be updated as well since
+ * they are autmatically generated from the name.
+ */
+static void update_vector_math_socket_names_and_identifiers(bNodeTree *ntree)
+{
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      bNodeSocket *sockA = node->inputs.first;
+      bNodeSocket *sockB = sockA->next;
+
+      strcpy(sockA->name, "A");
+      strcpy(sockB->name, "B");
+
+      strcpy(sockA->identifier, "A");
+      strcpy(sockB->identifier, "B");
+    }
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -523,6 +543,7 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
         continue;
       }
       update_math_socket_names_and_identifiers(ntree);
+      update_vector_math_socket_names_and_identifiers(ntree);
     }
     FOREACH_NODETREE_END;
   }
