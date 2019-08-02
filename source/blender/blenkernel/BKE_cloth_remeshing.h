@@ -37,7 +37,11 @@ struct ClothSizing;
 extern "C" {
 #endif
 
-Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, Mesh *mesh);
+struct Mesh *cloth_remeshing_step(struct Depsgraph *depsgraph,
+                                  struct Object *ob,
+                                  struct ClothModifierData *clmd,
+                                  struct Mesh *mesh);
+CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void);
 
 #ifdef __cplusplus
 }

@@ -86,6 +86,8 @@ struct Scene;
 struct SmokeModifierData;
 struct SoftBody;
 struct ViewLayer;
+struct Mesh;
+struct Depsgraph;
 
 struct OpenVDBReader;
 struct OpenVDBWriter;

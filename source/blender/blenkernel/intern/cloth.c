@@ -397,6 +397,8 @@ static Mesh *do_step_cloth(
 Mesh *clothModifier_do(
     ClothModifierData *clmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *mesh)
 {
+  clmd->depsgraph = depsgraph;
+  clmd->ob = ob;
   Mesh *mesh_result = NULL;
   BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_result, LIB_ID_COPY_LOCALIZE);
 #if USE_CLOTH_CACHE

@@ -86,7 +86,7 @@ class ClothPlane {
 };
 
 #define REMESHING_DATA_DEBUG 0 /* split and collapse edge count */
-#define COLLAPSE_EDGES_DEBUG 1
+#define COLLAPSE_EDGES_DEBUG 0
 #define FACE_SIZING_DEBUG 0
 #define FACE_SIZING_DEBUG_COMP 0
 #define FACE_SIZING_DEBUG_OBS 0
@@ -172,7 +172,7 @@ static void cloth_remeshing_edge_face_pair(BMEdge *e, BMFace **r_f1, BMFace **r_
 static void cloth_remeshing_uv_of_vert_in_edge(BMesh *bm, BMEdge *e, BMVert *v, float r_uv[2]);
 static bool cloth_remeshing_edge_label_test(BMEdge *e);
 
-static CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
+CustomData_MeshMasks cloth_remeshing_get_cd_mesh_masks(void)
 {
   CustomData_MeshMasks cddata_masks;
 

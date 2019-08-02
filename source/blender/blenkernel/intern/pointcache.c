@@ -54,6 +54,7 @@
 #include "BKE_appdir.h"
 #include "BKE_anim.h"
 #include "BKE_cloth.h"
+#include "BKE_cloth_remeshing.h"
 #include "BKE_collection.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_global.h"
@@ -66,6 +67,7 @@
 #include "BKE_scene.h"
 #include "BKE_smoke.h"
 #include "BKE_softbody.h"
+#include "BKE_mesh.h"
 
 #include "BIK_api.h"
 
@@ -536,6 +538,13 @@ static void ptcache_cloth_read(
     PTCACHE_DATA_TO(data, BPHYS_DATA_VELOCITY, 0, vert->v);
     PTCACHE_DATA_TO(data, BPHYS_DATA_XCONST, 0, vert->xconst);
   }
+  /* TODO(Ish): add the remeshing step here, so that the mesh has been updated with the correct
+   * number of vertices for the next frame */
+  Object *ob = clmd->ob;
+  struct Depsgraph *depsgraph = clmd->depsgraph;
+  CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
+  struct Mesh *mesh = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
+  cloth_remeshing_step(depsgraph, ob, clmd, mesh);
 }
 static void ptcache_cloth_interpolate(
     int index, void *cloth_v, void **data, float cfra, float cfra1, float cfra2, float *old_data)

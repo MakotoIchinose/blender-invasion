@@ -728,6 +728,8 @@ typedef struct ClothModifierData {
   /** Definition is in DNA_object_force_types.h. */
   struct PointCache *point_cache;
   struct ListBase ptcaches;
+  struct Depsgraph *depsgraph;
+  struct Object *ob;
 
   /* XXX nasty hack, remove once hair can be separated from cloth modifier data */
   struct ClothHairData *hairdata;
