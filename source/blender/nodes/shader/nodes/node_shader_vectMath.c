@@ -33,86 +33,6 @@ static bNodeSocketTemplate sh_node_vect_math_in[] = {
 static bNodeSocketTemplate sh_node_vect_math_out[] = {
     {SOCK_VECTOR, 0, N_("Vector")}, {SOCK_FLOAT, 0, N_("Value")}, {-1, 0, ""}};
 
-static void node_shader_exec_vect_math(void *UNUSED(data),
-                                       int UNUSED(thread),
-                                       bNode *node,
-                                       bNodeExecData *UNUSED(execdata),
-                                       bNodeStack **in,
-                                       bNodeStack **out)
-{
-  float vec1[3], vec2[3], fac;
-
-  nodestack_get_vec(vec1, SOCK_VECTOR, in[0]);
-  nodestack_get_vec(vec2, SOCK_VECTOR, in[1]);
-  nodestack_get_vec(&fac, SOCK_FLOAT, in[2]);
-
-  switch (node->custom1) {
-    case NODE_VECTOR_MATH_ADD:
-      add_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_SUBTRACT:
-      sub_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_MULTIPLY:
-      mul_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_DIVIDE:
-      div_v3_v3v3_safe(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_CROSS_PRODUCT:
-      cross_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_PROJECT:
-      project_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_REFLECT:
-      reflect_v3_v3v3(out[0]->vec, vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_AVERAGE:
-      add_v3_v3v3(out[0]->vec, vec1, vec2);
-      normalize_v3(out[0]->vec);
-      break;
-    case NODE_VECTOR_MATH_DOT_PRODUCT:
-      out[0]->vec[0] = dot_v3v3(vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_DISTANCE:
-      out[0]->vec[0] = len_v3v3(vec1, vec2);
-      break;
-    case NODE_VECTOR_MATH_LENGTH:
-      out[0]->vec[0] = len_v3(vec1);
-      break;
-    case NODE_VECTOR_MATH_SCALE:
-      mul_v3_v3fl(out[0]->vec, vec1, fac);
-      break;
-    case NODE_VECTOR_MATH_NORMALIZE:
-      normalize_v3_v3(out[0]->vec, vec1);
-      break;
-    case NODE_VECTOR_MATH_SNAP:
-      out[0]->vec[0] = (vec2[0] != 0.0f) ? floorf(vec1[0] / vec2[0]) * vec2[0] : 0.0f;
-      out[0]->vec[1] = (vec2[1] != 0.0f) ? floorf(vec1[1] / vec2[1]) * vec2[1] : 0.0f;
-      out[0]->vec[2] = (vec2[2] != 0.0f) ? floorf(vec1[2] / vec2[2]) * vec2[2] : 0.0f;
-      break;
-    case NODE_VECTOR_MATH_MOD:
-      out[0]->vec[0] = (vec2[0] != 0.0f) ? fmod(vec1[0], vec2[0]) : 0.0f;
-      out[0]->vec[1] = (vec2[0] != 0.0f) ? fmod(vec1[1], vec2[1]) : 0.0f;
-      out[0]->vec[2] = (vec2[0] != 0.0f) ? fmod(vec1[2], vec2[2]) : 0.0f;
-      break;
-    case NODE_VECTOR_MATH_ABS:
-      abs_v3_v3(out[0]->vec, vec1);
-      break;
-    case NODE_VECTOR_MATH_MIN:
-      out[0]->vec[0] = fmin(vec1[0], vec2[0]);
-      out[0]->vec[1] = fmin(vec1[1], vec2[1]);
-      out[0]->vec[2] = fmin(vec1[2], vec2[2]);
-      break;
-    case NODE_VECTOR_MATH_MAX:
-      out[0]->vec[0] = fmax(vec1[0], vec2[0]);
-      out[0]->vec[1] = fmax(vec1[1], vec2[1]);
-      out[0]->vec[2] = fmax(vec1[2], vec2[2]);
-      break;
-  }
-}
-
 static int gpu_shader_vect_math(GPUMaterial *mat,
                                 bNode *node,
                                 bNodeExecData *UNUSED(execdata),
@@ -202,8 +122,6 @@ void register_node_type_sh_vect_math(void)
   sh_node_type_base(&ntype, SH_NODE_VECT_MATH, "Vector Math", NODE_CLASS_CONVERTOR, 0);
   node_type_socket_templates(&ntype, sh_node_vect_math_in, sh_node_vect_math_out);
   node_type_label(&ntype, node_vect_math_label);
-  node_type_storage(&ntype, "", NULL, NULL);
-  node_type_exec(&ntype, NULL, NULL, node_shader_exec_vect_math);
   node_type_gpu(&ntype, gpu_shader_vect_math);
   node_type_update(&ntype, node_shader_update_vec_math);
 
