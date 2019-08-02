@@ -450,6 +450,40 @@ static void update_single_operand_math_operators(bNodeTree *ntree)
   }
 }
 
+/* The clamp option of the Math node was removed. To correct this, we add a
+ * Clamp node if the clamp option was enabled.
+ */
+static void update_math_clamp_option(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_MATH && node->custom2) {
+      bNode *clampNode = nodeAddStaticNode(NULL, ntree, SH_NODE_CLAMP);
+      clampNode->locx = node->locx + node->width + 20.0f;
+      clampNode->locy = node->locy;
+
+      bNodeSocket *sockMathResult = nodeFindSocket(node, SOCK_OUT, "Result");
+      bNodeSocket *sockClampValue = nodeFindSocket(clampNode, SOCK_IN, "Value");
+      bNodeSocket *sockClampResult = nodeFindSocket(clampNode, SOCK_OUT, "Value");
+
+      /* Iterate backwards from end so we don't encounter newly added links. */
+      for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+        if (link->fromsock == sockMathResult) {
+          nodeAddLink(ntree, clampNode, sockClampResult, link->tonode, link->tosock);
+          nodeRemLink(ntree, link);
+        }
+      }
+      nodeAddLink(ntree, node, sockMathResult, clampNode, sockClampValue);
+      need_update = true;
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -608,6 +642,7 @@ void do_versions_after_linking_cycles(Main *bmain)
         continue;
       }
       update_single_operand_math_operators(ntree);
+      update_math_clamp_option(ntree);
     }
     FOREACH_NODETREE_END;
   }
