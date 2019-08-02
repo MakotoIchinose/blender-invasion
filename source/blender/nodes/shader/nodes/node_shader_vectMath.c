@@ -41,9 +41,9 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
 {
   static const char *names[] = {
       [NODE_VECTOR_MATH_ADD] = "vec_math_add",
-      [NODE_VECTOR_MATH_SUBTRACT] = "vec_math_sub",
-      [NODE_VECTOR_MATH_MULTIPLY] = "vec_math_mul",
-      [NODE_VECTOR_MATH_DIVIDE] = "vec_math_div",
+      [NODE_VECTOR_MATH_SUBTRACT] = "vec_math_subtract",
+      [NODE_VECTOR_MATH_MULTIPLY] = "vec_math_multiply",
+      [NODE_VECTOR_MATH_DIVIDE] = "vec_math_divide",
 
       [NODE_VECTOR_MATH_CROSS_PRODUCT] = "vec_math_cross",
       [NODE_VECTOR_MATH_PROJECT] = "vec_math_project",
@@ -57,16 +57,16 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
       [NODE_VECTOR_MATH_NORMALIZE] = "vec_math_normalize",
 
       [NODE_VECTOR_MATH_SNAP] = "vec_math_snap",
-      [NODE_VECTOR_MATH_MOD] = "vec_math_mod",
-      [NODE_VECTOR_MATH_ABS] = "vec_math_abs",
-      [NODE_VECTOR_MATH_MIN] = "vec_math_min",
-      [NODE_VECTOR_MATH_MAX] = "vec_math_max",
+      [NODE_VECTOR_MATH_MODULO] = "vec_math_modulo",
+      [NODE_VECTOR_MATH_ABSOLUTE] = "vec_math_absolute",
+      [NODE_VECTOR_MATH_MINIMUM] = "vec_math_minimum",
+      [NODE_VECTOR_MATH_MAXIMUM] = "vec_math_maximum",
   };
 
   switch (node->custom1) {
     case NODE_VECTOR_MATH_LENGTH:
     case NODE_VECTOR_MATH_NORMALIZE:
-    case NODE_VECTOR_MATH_ABS: {
+    case NODE_VECTOR_MATH_ABSOLUTE: {
       GPUNodeStack tmp_in[2];
       memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
       memcpy(&tmp_in[1], &in[3], sizeof(GPUNodeStack));
@@ -98,7 +98,7 @@ static void node_shader_update_vec_math(bNodeTree *UNUSED(ntree), bNode *node)
 
   nodeSetSocketAvailability(sockB,
                             !ELEM(node->custom1,
-                                  NODE_VECTOR_MATH_ABS,
+                                  NODE_VECTOR_MATH_ABSOLUTE,
                                   NODE_VECTOR_MATH_SCALE,
                                   NODE_VECTOR_MATH_LENGTH,
                                   NODE_VECTOR_MATH_NORMALIZE));

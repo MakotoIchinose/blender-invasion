@@ -5725,10 +5725,10 @@ NODE_DEFINE(VectorMathNode)
   type_enum.insert("normalize", NODE_VECTOR_MATH_NORMALIZE);
 
   type_enum.insert("snap", NODE_VECTOR_MATH_SNAP);
-  type_enum.insert("modulo", NODE_VECTOR_MATH_MOD);
-  type_enum.insert("absolute", NODE_VECTOR_MATH_ABS);
-  type_enum.insert("minimum", NODE_VECTOR_MATH_MIN);
-  type_enum.insert("maximum", NODE_VECTOR_MATH_MAX);
+  type_enum.insert("modulo", NODE_VECTOR_MATH_MODULO);
+  type_enum.insert("absolute", NODE_VECTOR_MATH_ABSOLUTE);
+  type_enum.insert("minimum", NODE_VECTOR_MATH_MINIMUM);
+  type_enum.insert("maximum", NODE_VECTOR_MATH_MAXIMUM);
 
   SOCKET_ENUM(type, "Type", type_enum, NODE_VECTOR_MATH_ADD);
 

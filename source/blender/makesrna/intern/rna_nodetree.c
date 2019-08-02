@@ -169,10 +169,10 @@ const EnumPropertyItem rna_enum_node_vec_math_items[] = {
     {NODE_VECTOR_MATH_NORMALIZE, "NORMALIZE", 0, "Normalize", ""},
     {0, "", ICON_NONE, NULL, NULL},
     {NODE_VECTOR_MATH_SNAP, "SNAP", 0, "Snap", "Entrywise floor"},
-    {NODE_VECTOR_MATH_MOD, "MODULO", 0, "Modulo", "Entrywise modulo"},
-    {NODE_VECTOR_MATH_ABS, "ABSOLUTE", 0, "Absolute", "Entrywise absolute"},
-    {NODE_VECTOR_MATH_MIN, "MINIMUM", 0, "Minimum", "Entrywise minimum"},
-    {NODE_VECTOR_MATH_MAX, "MAXIMUM", 0, "Maximum", "Entrywise maximum"},
+    {NODE_VECTOR_MATH_MODULO, "MODULO", 0, "Modulo", "Entrywise modulo"},
+    {NODE_VECTOR_MATH_ABSOLUTE, "ABSOLUTE", 0, "Absolute", "Entrywise absolute"},
+    {NODE_VECTOR_MATH_MINIMUM, "MINIMUM", 0, "Minimum", "Entrywise minimum"},
+    {NODE_VECTOR_MATH_MAXIMUM, "MAXIMUM", 0, "Maximum", "Entrywise maximum"},
     {0, NULL, 0, NULL, NULL},
 };
 

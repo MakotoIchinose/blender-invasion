@@ -78,21 +78,21 @@ ccl_device void svm_vector_math(
                             floorf(safe_divide(Vector1.z, Vector2.z)) * Vector2.z);
       *Fac = 0.0f;
       break;
-    case NODE_VECTOR_MATH_MOD:
+    case NODE_VECTOR_MATH_MODULO:
       *Vector = make_float3(safe_modulo(Vector1.x, Vector2.x),
                             safe_modulo(Vector1.y, Vector2.y),
                             safe_modulo(Vector1.z, Vector2.z));
       *Fac = 0.0f;
       break;
-    case NODE_VECTOR_MATH_ABS:
+    case NODE_VECTOR_MATH_ABSOLUTE:
       *Vector = fabs(Vector1);
       *Fac = 0.0f;
       break;
-    case NODE_VECTOR_MATH_MIN:
+    case NODE_VECTOR_MATH_MINIMUM:
       *Vector = min(Vector1, Vector2);
       *Fac = 0.0f;
       break;
-    case NODE_VECTOR_MATH_MAX:
+    case NODE_VECTOR_MATH_MAXIMUM:
       *Vector = max(Vector1, Vector2);
       *Fac = 0.0f;
       break;

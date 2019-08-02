@@ -485,19 +485,19 @@ void vec_math_add(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
   outval = 0.0;
 }
 
-void vec_math_sub(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_subtract(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = v1 - v2;
   outval = 0.0;
 }
 
-void vec_math_mul(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_multiply(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = v1 * v2;
   outval = 0.0;
 }
 
-void vec_math_div(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_divide(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = safe_divide(v1, v2);
   outval = 0.0;
@@ -566,25 +566,25 @@ void vec_math_snap(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
   outval = 0.0;
 }
 
-void vec_math_mod(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_modulo(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = mod(v1, v2);
   outval = 0.0;
 }
 
-void vec_math_abs(vec3 v, out vec3 outvec, out float outval)
+void vec_math_absolute(vec3 v, out vec3 outvec, out float outval)
 {
   outvec = abs(v);
   outval = 0.0;
 }
 
-void vec_math_min(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_minimum(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = min(v1, v2);
   outval = 0.0;
 }
 
-void vec_math_max(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_maximum(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
 {
   outvec = max(v1, v2);
   outval = 0.0;

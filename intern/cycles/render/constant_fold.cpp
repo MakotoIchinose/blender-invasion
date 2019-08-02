@@ -410,7 +410,7 @@ void ConstantFolder::fold_vector_math(NodeVectorMath type) const
       }
       break;
     case NODE_VECTOR_MATH_LENGTH:
-    case NODE_VECTOR_MATH_ABS:
+    case NODE_VECTOR_MATH_ABSOLUTE:
       if (is_zero(vector1_in)) {
         make_zero();
       }
