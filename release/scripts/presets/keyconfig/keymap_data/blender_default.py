@@ -2424,8 +2424,20 @@ def km_sequencerpreview(params):
         ("sequencer.view_all_preview", {"type": 'HOME', "value": 'PRESS'}, None),
         ("sequencer.view_all_preview", {"type": 'NDOF_BUTTON_FIT', "value": 'PRESS'}, None),
         ("sequencer.view_ghost_border", {"type": 'O', "value": 'PRESS'}, None),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_8', "value": 'PRESS', "ctrl": True},
+         {"properties": [("ratio", 8.0)]}),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_4', "value": 'PRESS', "ctrl": True},
+         {"properties": [("ratio", 4.0)]}),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_2', "value": 'PRESS', "ctrl": True},
+         {"properties": [("ratio", 2.0)]}),
         ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_1', "value": 'PRESS'},
          {"properties": [("ratio", 1.0)]}),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_2', "value": 'PRESS'},
+         {"properties": [("ratio", 0.5)]}),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_4', "value": 'PRESS'},
+         {"properties": [("ratio", 0.25)]}),
+        ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_8', "value": 'PRESS'},
+         {"properties": [("ratio", 0.125)]}),
         ("sequencer.sample", {"type": params.action_mouse, "value": 'PRESS'}, None),
     ])
 
@@ -3004,7 +3016,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         # Context menu
         op_menu("VIEW3D_MT_gpencil_edit_context_menu", params.context_menu_event),
         # Separate
-        op_menu("GPENCIL_MT_separate", {"type": 'P', "value": 'PRESS'}),
+        ("gpencil.stroke_separate", {"type": 'P', "value": 'PRESS'}, None),
         # Split and joint strokes
         ("gpencil.stroke_split", {"type": 'V', "value": 'PRESS'}, None),
         ("gpencil.stroke_join", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
