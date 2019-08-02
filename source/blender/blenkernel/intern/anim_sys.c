@@ -330,7 +330,7 @@ AnimData *BKE_animdata_copy(Main *bmain, AnimData *adt, const int flag)
 /**
  * \param flag: Control ID pointers management,
  * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_library.h
- * \return true is succesfully copied.
+ * \return true is successfully copied.
  */
 bool BKE_animdata_copy_id(Main *bmain, ID *id_to, ID *id_from, const int flag)
 {
@@ -3940,7 +3940,7 @@ void BKE_animsys_evaluate_all_animation(Main *main,
    * - this is like EVAL_ANIM_IDS, but this handles the case "embedded nodetrees"
    *   (i.e. scene/material/texture->nodetree) which we need a special exception
    *   for, otherwise they'd get skipped
-   * - ntp = "node tree parent" = data-block where node tree stuff resides
+   * - 'ntp' stands for "node tree parent" = data-block where node tree stuff resides
    */
 #define EVAL_ANIM_NODETREE_IDS(first, NtId_Type, aflag) \
   for (id = first; id; id = id->next) { \

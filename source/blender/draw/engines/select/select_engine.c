@@ -29,8 +29,6 @@
 #include "GPU_shader.h"
 #include "GPU_select.h"
 
-#include "DEG_depsgraph.h"
-
 #include "UI_resources.h"
 
 #include "DRW_engine.h"
@@ -55,7 +53,6 @@ static struct {
     /** Total number of items `base_array_index_offsets[bases_len - 1].vert`. */
     uint last_index_drawn;
 
-    struct Depsgraph *depsgraph;
     short select_mode;
   } context;
 } e_data = {{{NULL}}}; /* Engine data */
@@ -87,10 +84,12 @@ static void draw_select_framebuffer_select_id_setup(void)
     e_data.texture_u32 = NULL;
   }
 
+  /* Make sure the depth texture is attached.
+   * It may disappear when loading another Blender session. */
+  GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, dtxl->depth, 0, 0);
+
   if (e_data.texture_u32 == NULL) {
     e_data.texture_u32 = GPU_texture_create_2d(size[0], size[1], GPU_R32UI, NULL, NULL);
-
-    GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, dtxl->depth, 0, 0);
     GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, e_data.texture_u32, 0, 0);
     GPU_framebuffer_check_valid(e_data.framebuffer_select_id, NULL);
   }
@@ -192,8 +191,7 @@ static void select_cache_populate(void *vedata, Object *ob)
   short select_mode = e_data.context.select_mode;
 
   if (select_mode == -1) {
-    ToolSettings *ts = draw_ctx->scene->toolsettings;
-    select_mode = ts->selectmode;
+    select_mode = select_id_get_object_select_mode(draw_ctx->scene, ob);
   }
 
   struct BaseOffset *base_ofs =
@@ -360,12 +358,8 @@ void DRW_framebuffer_select_id_read(const rcti *rect, uint *r_buf)
   }
 }
 
-void DRW_select_context_create(Depsgraph *depsgraph,
-                               Base **UNUSED(bases),
-                               const uint bases_len,
-                               short select_mode)
+void DRW_select_context_create(Base **UNUSED(bases), const uint bases_len, short select_mode)
 {
-  e_data.context.depsgraph = depsgraph;
   e_data.context.select_mode = select_mode;
   e_data.context.bases_len = bases_len;
 
