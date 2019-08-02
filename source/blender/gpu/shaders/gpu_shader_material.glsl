@@ -479,120 +479,102 @@ void map_range(
   }
 }
 
-void vec_math_add(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_add(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = v1 + v2;
-  outval = 0.0;
+  outvec = a + b;
 }
 
-void vec_math_subtract(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_subtract(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = v1 - v2;
-  outval = 0.0;
+  outvec = a - b;
 }
 
-void vec_math_multiply(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_multiply(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = v1 * v2;
-  outval = 0.0;
+  outvec = a * b;
 }
 
-void vec_math_divide(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_divide(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = safe_divide(v1, v2);
-  outval = 0.0;
+  outvec = safe_divide(a, b);
 }
 
-void vec_math_cross(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_cross(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = cross(v1, v2);
-  outval = 0.0;
+  outvec = cross(a, b);
 }
 
-void vec_math_project(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_project(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  float lenSquared = dot(v2, v2);
-  outvec = (lenSquared != 0.0) ? (dot(v1, v2) / lenSquared) * v2 : vec3(0.0);
-  outval = 0.0;
+  float lenSquared = dot(b, b);
+  outvec = (lenSquared != 0.0) ? (dot(a, b) / lenSquared) * b : vec3(0.0);
 }
 
-void vec_math_reflect(vec3 i, vec3 n, out vec3 outvec, out float outval)
+void vec_math_reflect(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = reflect(i, normalize(n));
-  outval = 0.0;
+  outvec = reflect(a, normalize(b));
 }
 
-void vec_math_average(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_average(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = normalize(v1 + v2);
-  outval = 0.0;
+  outvec = normalize(a + b);
 }
 
-void vec_math_dot(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_dot(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = vec3(0.0);
-  outval = dot(v1, v2);
+  outval = dot(a, b);
 }
 
-void vec_math_distance(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_distance(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = vec3(0.0);
-  outval = distance(v1, v2);
+  outval = distance(a, b);
 }
 
-void vec_math_length(vec3 v, out vec3 outvec, out float outval)
+void vec_math_length(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = vec3(0.0);
-  outval = length(v);
+  outval = length(a);
 }
 
-void vec_math_scale(vec3 v, vec3 temp, float scale, out vec3 outvec, out float outval)
+void vec_math_scale(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = v * scale;
-  outval = 0.0;
+  outvec = a * scale;
 }
 
-void vec_math_normalize(vec3 v, out vec3 outvec, out float outval)
+void vec_math_normalize(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = normalize(v);
-  outval = 0.0;
+  outvec = normalize(a);
 }
 
-void vec_math_snap(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_snap(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec.x = (v2.x != 0.0) ? floor(v1.x / v2.x) * v2.x : 0.0;
-  outvec.y = (v2.y != 0.0) ? floor(v1.y / v2.y) * v2.y : 0.0;
-  outvec.z = (v2.z != 0.0) ? floor(v1.z / v2.z) * v2.z : 0.0;
-  outval = 0.0;
+  outvec.x = (b.x != 0.0) ? floor(a.x / b.x) * b.x : 0.0;
+  outvec.y = (b.y != 0.0) ? floor(a.y / b.y) * b.y : 0.0;
+  outvec.z = (b.z != 0.0) ? floor(a.z / b.z) * b.z : 0.0;
 }
 
-void vec_math_modulo(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_modulo(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = mod(v1, v2);
-  outval = 0.0;
+  outvec = mod(a, b);
 }
 
-void vec_math_absolute(vec3 v, out vec3 outvec, out float outval)
+void vec_math_absolute(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = abs(v);
-  outval = 0.0;
+  outvec = abs(a);
 }
 
-void vec_math_minimum(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_minimum(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = min(v1, v2);
-  outval = 0.0;
+  outvec = min(a, b);
 }
 
-void vec_math_maximum(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vec_math_maximum(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = max(v1, v2);
-  outval = 0.0;
+  outvec = max(a, b);
 }
 
-void vec_math_mix(float strength, vec3 v1, vec3 v2, out vec3 outvec)
+void vec_math_mix(float strength, vec3 a, vec3 b, out vec3 outvec)
 {
-  outvec = strength * v1 + (1 - strength) * v2;
+  outvec = strength * a + (1 - strength) * b;
 }
 
 void vec_math_negate(vec3 v, out vec3 outv)

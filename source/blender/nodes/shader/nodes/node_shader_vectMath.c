@@ -63,28 +63,7 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
       [NODE_VECTOR_MATH_MAXIMUM] = "vec_math_maximum",
   };
 
-  switch (node->custom1) {
-    case NODE_VECTOR_MATH_LENGTH:
-    case NODE_VECTOR_MATH_NORMALIZE:
-    case NODE_VECTOR_MATH_ABSOLUTE: {
-      GPUNodeStack tmp_in[2];
-      memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
-      memcpy(&tmp_in[1], &in[3], sizeof(GPUNodeStack));
-      GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
-      break;
-    }
-    case NODE_VECTOR_MATH_SCALE: {
-      GPU_stack_link(mat, node, names[node->custom1], in, out);
-      break;
-    }
-    default: {
-      GPUNodeStack tmp_in[3];
-      memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
-      memcpy(&tmp_in[1], &in[1], sizeof(GPUNodeStack));
-      memcpy(&tmp_in[2], &in[3], sizeof(GPUNodeStack));
-      GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
-    }
-  }
+  GPU_stack_link(mat, node, names[node->custom1], in, out);
   return true;
 }
 
