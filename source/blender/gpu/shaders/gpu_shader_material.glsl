@@ -554,7 +554,9 @@ void vec_math_snap(vec3 a, vec3 b, float scale, out vec3 outvec, out float outva
 
 void vec_math_modulo(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
-  outvec = mod(a, b);
+  math_modulo(a.x, b.x, outvec.x);
+  math_modulo(a.y, b.y, outvec.y);
+  math_modulo(a.z, b.z, outvec.z);
 }
 
 void vec_math_absolute(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
