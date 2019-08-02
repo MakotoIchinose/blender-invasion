@@ -5779,8 +5779,8 @@ void VectorMathNode::compile(SVMCompiler &compiler)
       NODE_VECTOR_MATH, type, compiler.stack_assign(a_in), compiler.stack_assign(b_in));
   compiler.add_node(NODE_VECTOR_MATH,
                     scale_stack,
-                    compiler.stack_assign(value_out),
-                    compiler.stack_assign(vector_out));
+                    compiler.stack_assign_if_linked(value_out),
+                    compiler.stack_assign_if_linked(vector_out));
 }
 
 void VectorMathNode::compile(OSLCompiler &compiler)
