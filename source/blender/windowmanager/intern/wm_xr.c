@@ -22,6 +22,7 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_screen.h"
 
 #include "BLI_math_geom.h"
@@ -313,12 +314,10 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   wm_xr_draw_matrices_create(CTX_data_scene(C), draw_view, clip_start, clip_end, viewmat, winmat);
 
+  BKE_scene_graph_evaluated_ensure(g_depsgraph, CTX_data_main(C));
+
   DRW_opengl_render_context_enable(g_xr_surface->ghost_ctx);
   DRW_gawain_render_context_enable(g_xr_surface->gpu_ctx);
-
-  DEG_graph_relations_update(
-      g_depsgraph, CTX_data_main(C), CTX_data_scene(C), CTX_data_view_layer(C));
-  DEG_evaluate_on_refresh(g_depsgraph);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     // TODO disable correctly.
@@ -420,18 +419,26 @@ static void wm_xr_session_gpu_binding_context_destroy(
   wm_window_reset_drawable();
 }
 
+static Depsgraph *wm_xr_session_depsgraph_create(Main *bmain, Scene *scene, ViewLayer *viewlayer)
+{
+  Depsgraph *deg = DEG_graph_new(scene, viewlayer, DAG_EVAL_VIEWPORT);
+
+  DEG_debug_name_set(deg, "VR SESSION");
+  DEG_graph_build_from_view_layer(deg, bmain, scene, viewlayer);
+  BKE_scene_graph_evaluated_ensure(deg, bmain);
+  /* XXX Why do we have to call this? Depsgraph should handle. */
+  BKE_scene_base_flag_to_objects(DEG_get_evaluated_view_layer(deg));
+
+  return deg;
+}
+
 static void *wm_xr_session_drawthread_main(void *data)
 {
   bContext *C = data;
   wmWindowManager *wm = CTX_wm_manager(C);
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
 
-  g_depsgraph = DEG_graph_new(scene, CTX_data_view_layer(C), DAG_EVAL_VIEWPORT);
-  DEG_debug_name_set(g_depsgraph, "VR SESSION");
-  DEG_graph_build_from_view_layer(g_depsgraph, bmain, scene, CTX_data_view_layer(C));
-  //  DEG_evaluate_on_framechange(bmain, g_depsgraph, CFRA);
-  DEG_graph_tag_relations_update(g_depsgraph);
+  g_depsgraph = wm_xr_session_depsgraph_create(
+      CTX_data_main(C), CTX_data_scene(C), CTX_data_view_layer(C));
 
   WM_opengl_context_activate(g_xr_surface->ghost_ctx);
   g_xr_surface->gpu_ctx = GPU_context_create(
