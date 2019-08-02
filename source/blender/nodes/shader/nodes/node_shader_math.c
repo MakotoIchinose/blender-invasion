@@ -68,29 +68,7 @@ static int gpu_shader_math(GPUMaterial *mat,
       [NODE_MATH_ARCTAN2] = "math_arctan2",
   };
 
-  switch (node->custom1) {
-    case NODE_MATH_SQRT:
-    case NODE_MATH_CEIL:
-    case NODE_MATH_SINE:
-    case NODE_MATH_ROUND:
-    case NODE_MATH_FLOOR:
-    case NODE_MATH_COSINE:
-    case NODE_MATH_ARCSINE:
-    case NODE_MATH_TANGENT:
-    case NODE_MATH_ABSOLUTE:
-    case NODE_MATH_FRACTION:
-    case NODE_MATH_ARCCOSINE:
-    case NODE_MATH_ARCTANGENT: {
-      /* use only first item and terminator */
-      GPUNodeStack tmp_in[2];
-      memcpy(&tmp_in[0], &in[0], sizeof(GPUNodeStack));
-      memcpy(&tmp_in[1], &in[2], sizeof(GPUNodeStack));
-      GPU_stack_link(mat, node, names[node->custom1], tmp_in, out);
-      break;
-    }
-    default:
-      GPU_stack_link(mat, node, names[node->custom1], in, out);
-  }
+  GPU_stack_link(mat, node, names[node->custom1], in, out);
   return 1;
 }
 
@@ -98,24 +76,20 @@ static void node_shader_update_math(bNodeTree *UNUSED(ntree), bNode *node)
 {
   bNodeSocket *sock = nodeFindSocket(node, SOCK_IN, "B");
 
-  switch (node->custom1) {
-    case NODE_MATH_SQRT:
-    case NODE_MATH_CEIL:
-    case NODE_MATH_SINE:
-    case NODE_MATH_ROUND:
-    case NODE_MATH_FLOOR:
-    case NODE_MATH_COSINE:
-    case NODE_MATH_ARCSINE:
-    case NODE_MATH_TANGENT:
-    case NODE_MATH_ABSOLUTE:
-    case NODE_MATH_FRACTION:
-    case NODE_MATH_ARCCOSINE:
-    case NODE_MATH_ARCTANGENT:
-      sock->flag |= SOCK_UNAVAIL;
-      break;
-    default:
-      sock->flag &= ~SOCK_UNAVAIL;
-  }
+  nodeSetSocketAvailability(sock,
+                            !ELEM(node->custom1,
+                                  NODE_MATH_SQRT,
+                                  NODE_MATH_CEIL,
+                                  NODE_MATH_SINE,
+                                  NODE_MATH_ROUND,
+                                  NODE_MATH_FLOOR,
+                                  NODE_MATH_COSINE,
+                                  NODE_MATH_ARCSINE,
+                                  NODE_MATH_TANGENT,
+                                  NODE_MATH_ABSOLUTE,
+                                  NODE_MATH_FRACTION,
+                                  NODE_MATH_ARCCOSINE,
+                                  NODE_MATH_ARCTANGENT));
 }
 
 void register_node_type_sh_math(void)

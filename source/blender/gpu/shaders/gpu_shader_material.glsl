@@ -368,12 +368,12 @@ void math_logarithm(float a, float b, out float result)
   result = (a > 0.0 && b > 0.0) ? log2(a) / log2(b) : 0.0;
 }
 
-void math_sqrt(float a, out float result)
+void math_sqrt(float a, float b, out float result)
 {
   result = (a > 0.0) ? sqrt(a) : 0.0;
 }
 
-void math_absolute(float a, out float result)
+void math_absolute(float a, float b, out float result)
 {
   result = abs(a);
 }
@@ -398,22 +398,22 @@ void math_greater_than(float a, float b, out float result)
   result = (a > b) ? 1.0 : 0.0;
 }
 
-void math_round(float a, out float result)
+void math_round(float a, float b, out float result)
 {
   result = floor(a + 0.5);
 }
 
-void math_floor(float a, out float result)
+void math_floor(float a, float b, out float result)
 {
   result = floor(a);
 }
 
-void math_ceil(float a, out float result)
+void math_ceil(float a, float b, out float result)
 {
   result = ceil(a);
 }
 
-void math_fraction(float a, out float result)
+void math_fraction(float a, float b, out float result)
 {
   result = a - floor(a);
 }
@@ -428,32 +428,32 @@ void math_modulo(float a, float b, out float result)
   result = (a > 0.0) ? result : result - b;
 }
 
-void math_sine(float a, out float result)
+void math_sine(float a, float b, out float result)
 {
   result = sin(a);
 }
 
-void math_cosine(float a, out float result)
+void math_cosine(float a, float b, out float result)
 {
   result = cos(a);
 }
 
-void math_tangent(float a, out float result)
+void math_tangent(float a, float b, out float result)
 {
   result = tan(a);
 }
 
-void math_arcsine(float a, out float result)
+void math_arcsine(float a, float b, out float result)
 {
   result = (a <= 1.0 && a >= -1.0) ? asin(a) : 0.0;
 }
 
-void math_arccosine(float a, out float result)
+void math_arccosine(float a, float b, out float result)
 {
   result = (a <= 1.0 && a >= -1.0) ? acos(a) : 0.0;
 }
 
-void math_arctangent(float a, out float result)
+void math_arctangent(float a, float b, out float result)
 {
   result = atan(a);
 }

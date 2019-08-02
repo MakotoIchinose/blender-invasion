@@ -77,9 +77,9 @@ static void node_shader_update_vec_math(bNodeTree *UNUSED(ntree), bNode *node)
 
   nodeSetSocketAvailability(sockB,
                             !ELEM(node->custom1,
-                                  NODE_VECTOR_MATH_ABSOLUTE,
                                   NODE_VECTOR_MATH_SCALE,
                                   NODE_VECTOR_MATH_LENGTH,
+                                  NODE_VECTOR_MATH_ABSOLUTE,
                                   NODE_VECTOR_MATH_NORMALIZE));
   nodeSetSocketAvailability(sockScale, node->custom1 == NODE_VECTOR_MATH_SCALE);
   nodeSetSocketAvailability(sockVector,
