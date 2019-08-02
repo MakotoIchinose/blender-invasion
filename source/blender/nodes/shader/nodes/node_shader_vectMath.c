@@ -25,9 +25,9 @@
 
 /* **************** VECTOR MATH ******************** */
 static bNodeSocketTemplate sh_node_vect_math_in[] = {
-    {SOCK_VECTOR, 1, N_("Vector"), 0.0f, 0.0f, 0.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
-    {SOCK_VECTOR, 1, N_("Vector"), 0.0f, 0.0f, 0.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
-    {SOCK_FLOAT, 1, N_("Factor"), 1.0f, 1.0f, 1.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
+    {SOCK_VECTOR, 1, N_("A"), 0.0f, 0.0f, 0.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
+    {SOCK_VECTOR, 1, N_("B"), 0.0f, 0.0f, 0.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
+    {SOCK_FLOAT, 1, N_("Scale"), 1.0f, 1.0f, 1.0f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
     {-1, 0, ""}};
 
 static bNodeSocketTemplate sh_node_vect_math_out[] = {
@@ -170,50 +170,29 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
 
 static void node_shader_update_vec_math(bNodeTree *UNUSED(ntree), bNode *node)
 {
-  bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 1);
-  bNodeSocket *inFacSock = BLI_findlink(&node->inputs, 2);
+  bNodeSocket *sockB = nodeFindSocket(node, SOCK_IN, "B");
+  bNodeSocket *sockScale = nodeFindSocket(node, SOCK_IN, "Scale");
 
-  bNodeSocket *outVecSock = BLI_findlink(&node->outputs, 0);
-  bNodeSocket *outValSock = BLI_findlink(&node->outputs, 1);
+  bNodeSocket *sockVector = nodeFindSocket(node, SOCK_OUT, "Vector");
+  bNodeSocket *sockValue = nodeFindSocket(node, SOCK_OUT, "Value");
 
-  switch (node->custom1) {
-    case NODE_VECTOR_MATH_DOT_PRODUCT:
-    case NODE_VECTOR_MATH_DISTANCE:
-      inVecSock->flag &= ~SOCK_UNAVAIL;
-      inFacSock->flag |= SOCK_UNAVAIL;
-
-      outValSock->flag &= ~SOCK_UNAVAIL;
-      outVecSock->flag |= SOCK_UNAVAIL;
-      break;
-    case NODE_VECTOR_MATH_LENGTH:
-      inVecSock->flag |= SOCK_UNAVAIL;
-      inFacSock->flag |= SOCK_UNAVAIL;
-
-      outValSock->flag &= ~SOCK_UNAVAIL;
-      outVecSock->flag |= SOCK_UNAVAIL;
-      break;
-    case NODE_VECTOR_MATH_NORMALIZE:
-    case NODE_VECTOR_MATH_ABS:
-      inVecSock->flag |= SOCK_UNAVAIL;
-      inFacSock->flag |= SOCK_UNAVAIL;
-
-      outValSock->flag |= SOCK_UNAVAIL;
-      outVecSock->flag &= ~SOCK_UNAVAIL;
-      break;
-    case NODE_VECTOR_MATH_SCALE:
-      inVecSock->flag |= SOCK_UNAVAIL;
-      inFacSock->flag &= ~SOCK_UNAVAIL;
-
-      outValSock->flag |= SOCK_UNAVAIL;
-      outVecSock->flag &= ~SOCK_UNAVAIL;
-      break;
-    default:
-      inVecSock->flag &= ~SOCK_UNAVAIL;
-      inFacSock->flag |= SOCK_UNAVAIL;
-
-      outValSock->flag |= SOCK_UNAVAIL;
-      outVecSock->flag &= ~SOCK_UNAVAIL;
-  }
+  nodeSetSocketAvailability(sockB,
+                            !ELEM(node->custom1,
+                                  NODE_VECTOR_MATH_ABS,
+                                  NODE_VECTOR_MATH_SCALE,
+                                  NODE_VECTOR_MATH_LENGTH,
+                                  NODE_VECTOR_MATH_NORMALIZE));
+  nodeSetSocketAvailability(sockScale, node->custom1 == NODE_VECTOR_MATH_SCALE);
+  nodeSetSocketAvailability(sockVector,
+                            !ELEM(node->custom1,
+                                  NODE_VECTOR_MATH_LENGTH,
+                                  NODE_VECTOR_MATH_DISTANCE,
+                                  NODE_VECTOR_MATH_DOT_PRODUCT));
+  nodeSetSocketAvailability(sockValue,
+                            ELEM(node->custom1,
+                                 NODE_VECTOR_MATH_LENGTH,
+                                 NODE_VECTOR_MATH_DISTANCE,
+                                 NODE_VECTOR_MATH_DOT_PRODUCT));
 }
 
 void register_node_type_sh_vect_math(void)
