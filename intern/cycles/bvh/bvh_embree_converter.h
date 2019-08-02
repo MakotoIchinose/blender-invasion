@@ -23,18 +23,8 @@
 #include <stack>
 
 #include "render/object.h"
+#include <embree3/rtcore_builder.h>
 
-#define TASKING_INTERNAL
-#define RTC_NAMESPACE_BEGIN
-#define RTC_NAMESPACE_OPEN
-#define RTC_NAMESPACE_END
-
-#include "embree/kernels/common/scene.h"
-#include "embree/kernels/bvh/bvh.h"
-#include "embree/kernels/geometry/trianglev.h"
-#include "embree/kernels/geometry/trianglei.h"
-#include "embree/kernels/geometry/instance.h"
-#include "embree/kernels/geometry/curveNi.h"
 #include "bvh_node.h"
 
 #include "bvh.h"
@@ -54,17 +44,11 @@ public:
     BVHNode *getBVH2();
     void fillPack(PackedBVH &pack, vector<Object *> objects);
 private:
-    embree::Scene *s;
+    RTCScene s;
     std::vector<Object *> objects;
     const BVHParams &params;
 
 private:
-    template<typename Primitive>
-    std::deque<BVHNode*> handleLeaf(const embree::BVH4::NodeRef &node, const BoundBox &bb);
-
-    template<typename Primitive>
-    BVHNode* nodeEmbreeToCcl(embree::BVH4::NodeRef node, ccl::BoundBox bb, ccl::BoundBox *t0bound = nullptr, ccl::BoundBox *deltaBound = nullptr);
-
     BVHNode* print_bvhInfo(RTCScene scene);
 
     void pack_instances(size_t nodes_size, size_t leaf_nodes_size, PackedBVH &pack);
