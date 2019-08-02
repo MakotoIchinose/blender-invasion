@@ -5729,12 +5729,11 @@ NODE_DEFINE(VectorMathNode)
   type_enum.insert("absolute", NODE_VECTOR_MATH_ABSOLUTE);
   type_enum.insert("minimum", NODE_VECTOR_MATH_MINIMUM);
   type_enum.insert("maximum", NODE_VECTOR_MATH_MAXIMUM);
-
   SOCKET_ENUM(type, "Type", type_enum, NODE_VECTOR_MATH_ADD);
 
-  SOCKET_IN_VECTOR(vector1, "Vector1", make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_VECTOR(vector2, "Vector2", make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_FLOAT(factor, "Factor", 1.0f);
+  SOCKET_IN_VECTOR(a, "A", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_VECTOR(b, "B", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
 
   SOCKET_OUT_FLOAT(value, "Value");
   SOCKET_OUT_VECTOR(vector, "Vector");
@@ -5752,8 +5751,7 @@ void VectorMathNode::constant_fold(const ConstantFolder &folder)
   float3 vector;
 
   if (folder.all_inputs_constant()) {
-    svm_vector_math(&value, &vector, type, vector1, vector2, factor);
-
+    svm_vector_math(&value, &vector, type, a, b, scale);
     if (folder.output == output("Value")) {
       folder.make_constant(value);
     }
@@ -5768,21 +5766,19 @@ void VectorMathNode::constant_fold(const ConstantFolder &folder)
 
 void VectorMathNode::compile(SVMCompiler &compiler)
 {
-  ShaderInput *vector1_in = input("Vector1");
-  ShaderInput *vector2_in = input("Vector2");
-  ShaderInput *factor_in = input("Factor");
+  ShaderInput *a_in = input("A");
+  ShaderInput *b_in = input("B");
+  ShaderInput *scale_in = input("Scale");
 
   ShaderOutput *value_out = output("Value");
   ShaderOutput *vector_out = output("Vector");
 
-  int fac_stack = compiler.stack_assign(factor_in);
+  int scale_stack = compiler.stack_assign(scale_in);
 
+  compiler.add_node(
+      NODE_VECTOR_MATH, type, compiler.stack_assign(a_in), compiler.stack_assign(b_in));
   compiler.add_node(NODE_VECTOR_MATH,
-                    type,
-                    compiler.stack_assign(vector1_in),
-                    compiler.stack_assign(vector2_in));
-  compiler.add_node(NODE_VECTOR_MATH,
-                    fac_stack,
+                    scale_stack,
                     compiler.stack_assign(value_out),
                     compiler.stack_assign(vector_out));
 }

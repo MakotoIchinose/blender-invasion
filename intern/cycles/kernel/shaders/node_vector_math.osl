@@ -42,64 +42,67 @@ vector snap(vector a, vector b)
 }
 
 shader node_vector_math(string type = "add",
-                        vector Vector1 = vector(0.0, 0.0, 0.0),
-                        vector Vector2 = vector(0.0, 0.0, 0.0),
-                        float Factor = 1.0,
+                        vector A = vector(0.0, 0.0, 0.0),
+                        vector B = vector(0.0, 0.0, 0.0),
+                        float Scale = 1.0,
                         output float Value = 0.0,
                         output vector Vector = vector(0.0, 0.0, 0.0))
 {
   if (type == "add") {
-    Vector = Vector1 + Vector2;
+    Vector = A + B;
   }
   else if (type == "subtract") {
-    Vector = Vector1 - Vector2;
+    Vector = A - B;
   }
   else if (type == "multiply") {
-    Vector = Vector1 * Vector2;
+    Vector = A * B;
   }
   else if (type == "divide") {
-    Vector = safe_divide(Vector1, Vector2);
+    Vector = safe_divide(A, B);
   }
   else if (type == "cross_product") {
-    Vector = cross(Vector1, Vector2);
+    Vector = cross(A, B);
   }
   else if (type == "project") {
-    Vector = project(Vector1, Vector2);
+    Vector = project(A, B);
   }
   else if (type == "reflect") {
-    Vector = reflect(Vector1, Vector2);
+    Vector = reflect(A, B);
   }
   else if (type == "average") {
-    Vector = normalize(Vector1 + Vector2);
+    Vector = normalize(A + B);
   }
   else if (type == "dot_product") {
-    Value = dot(Vector1, Vector2);
+    Value = dot(A, B);
   }
   else if (type == "distance") {
-    Value = distance(Vector1, Vector2);
+    Value = distance(A, B);
   }
   else if (type == "length") {
-    Value = length(Vector1);
+    Value = length(A);
   }
   else if (type == "scale") {
-    Vector = Vector1 * Factor;
+    Vector = A * Scale;
   }
   else if (type == "normalize") {
-    Vector = normalize(Vector1);
+    Vector = normalize(A);
   }
   else if (type == "snap") {
-    Vector = snap(Vector1, Vector2);
+    Vector = snap(A, B);
   }
   else if (type == "modulo") {
-    Vector = mod(Vector1, Vector2);
+    Vector = mod(A, B);
   }
   else if (type == "absolute") {
-    Vector = abs(Vector1);
+    Vector = abs(A);
   }
   else if (type == "minimum") {
-    Vector = min(Vector1, Vector2);
+    Vector = min(A, B);
   }
   else if (type == "maximum") {
-    Vector = max(Vector1, Vector2);
+    Vector = max(A, B);
+  }
+  else {
+    warning("%s", "Unknown vector math operator!");
   }
 }

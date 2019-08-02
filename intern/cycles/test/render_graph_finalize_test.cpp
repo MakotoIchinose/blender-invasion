@@ -1154,7 +1154,7 @@ TEST_F(RenderGraph, constant_fold_vector_math)
  * Includes 2 tests: constant on each side.
  */
 static void build_vecmath_partial_test_graph(ShaderGraphBuilder &builder,
-                                             NodeVectorMath type,
+                                             NodeVectorMathType type,
                                              float3 constval)
 {
   builder
@@ -1162,18 +1162,18 @@ static void build_vecmath_partial_test_graph(ShaderGraphBuilder &builder,
       /* constant on the left */
       .add_node(ShaderNodeBuilder<VectorMathNode>("Math_Cx")
                     .set(&VectorMathNode::type, type)
-                    .set("Vector1", constval))
-      .add_connection("Attribute::Vector", "Math_Cx::Vector2")
+                    .set("A", constval))
+      .add_connection("Attribute::Vector", "Math_Cx::B")
       /* constant on the right */
       .add_node(ShaderNodeBuilder<VectorMathNode>("Math_xC")
                     .set(&VectorMathNode::type, type)
-                    .set("Vector2", constval))
-      .add_connection("Attribute::Vector", "Math_xC::Vector1")
+                    .set("B", constval))
+      .add_connection("Attribute::Vector", "Math_xC::A")
       /* output sum */
       .add_node(ShaderNodeBuilder<VectorMathNode>("Out").set(&VectorMathNode::type,
                                                              NODE_VECTOR_MATH_ADD))
-      .add_connection("Math_Cx::Vector", "Out::Vector1")
-      .add_connection("Math_xC::Vector", "Out::Vector2")
+      .add_connection("Math_Cx::Vector", "Out::A")
+      .add_connection("Math_xC::Vector", "Out::B")
       .output_color("Out::Vector");
 }
 

@@ -38,21 +38,19 @@ ccl_device void svm_node_math(KernelGlobals *kg,
 ccl_device void svm_node_vector_math(KernelGlobals *kg,
                                      ShaderData *sd,
                                      float *stack,
-                                     uint itype,
-                                     uint v1_offset,
-                                     uint v2_offset,
+                                     uint type,
+                                     uint a_offset,
+                                     uint b_offset,
                                      int *offset)
 {
   uint4 node1 = read_node(kg, offset);
+  float3 a = stack_load_float3(stack, a_offset);
+  float3 b = stack_load_float3(stack, b_offset);
+  float scale = stack_load_float(stack, node1.y);
 
-  NodeVectorMath type = (NodeVectorMath)itype;
-  float3 v1 = stack_load_float3(stack, v1_offset);
-  float3 v2 = stack_load_float3(stack, v2_offset);
-  float fac = stack_load_float(stack, node1.y);
   float f;
   float3 v;
-
-  svm_vector_math(&f, &v, type, v1, v2, fac);
+  svm_vector_math(&f, &v, (NodeVectorMathType)type, a, b, scale);
 
   if (stack_valid(node1.z))
     stack_store_float(stack, node1.z, f);

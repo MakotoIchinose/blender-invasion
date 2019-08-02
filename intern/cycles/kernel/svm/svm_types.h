@@ -278,7 +278,7 @@ typedef enum NodeMathType {
   NODE_MATH_SQRT,
 } NodeMathType;
 
-typedef enum NodeVectorMath {
+typedef enum NodeVectorMathType {
   NODE_VECTOR_MATH_ADD,
   NODE_VECTOR_MATH_SUBTRACT,
   NODE_VECTOR_MATH_AVERAGE,
@@ -301,7 +301,7 @@ typedef enum NodeVectorMath {
   NODE_VECTOR_MATH_ABSOLUTE,
   NODE_VECTOR_MATH_MINIMUM,
   NODE_VECTOR_MATH_MAXIMUM,
-} NodeVectorMath;
+} NodeVectorMathType;
 
 typedef enum NodeMappingType {
   NODE_MAPPING_TYPE_POINT,

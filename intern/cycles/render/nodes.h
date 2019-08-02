@@ -1332,10 +1332,10 @@ class VectorMathNode : public ShaderNode {
   }
   void constant_fold(const ConstantFolder &folder);
 
-  float3 vector1;
-  float3 vector2;
-  float factor;
-  NodeVectorMath type;
+  float3 a;
+  float3 b;
+  float scale;
+  NodeVectorMathType type;
 };
 
 class VectorTransformNode : public ShaderNode {
