@@ -44,6 +44,8 @@
 #include "BLO_readfile.h"
 #include "readfile.h"
 
+#define IS_SOCKET_IN_USE(sock) (sock->flag & SOCK_IN_USE)
+
 static float *cycles_node_socket_float_value(bNodeSocket *socket)
 {
   bNodeSocketValueFloat *socket_data = socket->default_value;
@@ -53,6 +55,12 @@ static float *cycles_node_socket_float_value(bNodeSocket *socket)
 static float *cycles_node_socket_rgba_value(bNodeSocket *socket)
 {
   bNodeSocketValueRGBA *socket_data = socket->default_value;
+  return socket_data->value;
+}
+
+static float *cycles_node_socket_vector_value(bNodeSocket *socket)
+{
+  bNodeSocketValueVector *socket_data = socket->default_value;
   return socket_data->value;
 }
 
@@ -504,6 +512,69 @@ static void update_vector_math_socket_names_and_identifiers(bNodeTree *ntree)
   }
 }
 
+/* The Value output of the Vector Math node is no longer available in the Add
+ * and Subtract operators. Previously, this Value output was computed from the
+ * Vector output V as follows:
+ *
+ *   Value = (abs(V.x) + abs(V.y) + abs(V.z)) / 3
+ *
+ * Or more compactly using vector operators:
+ *
+ *   Value = dot(abs(V), (1 / 3, 1 / 3, 1 / 3))
+ *
+ * To correct this, if the Value output was used, we are going to compute
+ * it using the second equation by adding an absolute and a dot node, then
+ * connect them appropriately.
+ */
+static void update_vector_add_and_subtract_operators(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
+      if (IS_SOCKET_IN_USE(sockOutValue) &&
+          ELEM(node->custom1, NODE_VECTOR_MATH_ADD, NODE_VECTOR_MATH_SUBTRACT)) {
+
+        bNode *absNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        absNode->custom1 = NODE_VECTOR_MATH_ABSOLUTE;
+        absNode->locx = node->locx + node->width + 20.0f;
+        absNode->locy = node->locy;
+
+        bNode *dotNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        dotNode->custom1 = NODE_VECTOR_MATH_DOT_PRODUCT;
+        dotNode->locx = absNode->locx + absNode->width + 20.0f;
+        dotNode->locy = absNode->locy;
+        bNodeSocket *sockDotB = nodeFindSocket(dotNode, SOCK_IN, "B");
+        bNodeSocket *sockDotOutValue = nodeFindSocket(dotNode, SOCK_OUT, "Value");
+        copy_v3_fl(cycles_node_socket_vector_value(sockDotB), 1 / 3.0f);
+
+        /* Iterate backwards from end so we don't encounter newly added links. */
+        for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+          if (link->fromsock == sockOutValue) {
+            nodeAddLink(ntree, dotNode, sockDotOutValue, link->tonode, link->tosock);
+            nodeRemLink(ntree, link);
+          }
+        }
+
+        bNodeSocket *sockAbsA = nodeFindSocket(absNode, SOCK_IN, "A");
+        bNodeSocket *sockDotA = nodeFindSocket(dotNode, SOCK_IN, "A");
+        bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
+        bNodeSocket *sockAbsOutVector = nodeFindSocket(absNode, SOCK_OUT, "Vector");
+
+        nodeAddLink(ntree, node, sockOutVector, absNode, sockAbsA);
+        nodeAddLink(ntree, absNode, sockAbsOutVector, dotNode, sockDotA);
+
+        need_update = true;
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -664,6 +735,7 @@ void do_versions_after_linking_cycles(Main *bmain)
       }
       update_single_operand_math_operators(ntree);
       update_math_clamp_option(ntree);
+      update_vector_add_and_subtract_operators(ntree);
     }
     FOREACH_NODETREE_END;
   }
