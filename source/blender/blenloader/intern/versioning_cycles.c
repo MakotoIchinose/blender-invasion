@@ -578,6 +578,44 @@ static void update_vector_add_and_subtract_operators(bNodeTree *ntree)
   }
 }
 
+/* The Vector output of the Vector Math node is no longer available in the Dot
+ * Product operator. Previously, this Vector was always zero initialized. To
+ * correct this, we zero out any socket the Vector Output was connected to.
+ */
+static void update_vector_dot_product_operator(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
+      if (socket_is_used(sockOutVector) && node->custom1 == NODE_VECTOR_MATH_DOT_PRODUCT) {
+        for (bNodeLink *link = ntree->links.first; link; link = link->next) {
+          if (link->fromsock == sockOutVector) {
+            switch (link->tosock->type) {
+              case SOCK_FLOAT:
+                *cycles_node_socket_float_value(link->tosock) = 0.0f;
+                break;
+              case SOCK_VECTOR:
+                copy_v3_fl(cycles_node_socket_vector_value(link->tosock), 0.0f);
+                break;
+              case SOCK_RGBA:
+                copy_v4_fl(cycles_node_socket_rgba_value(link->tosock), 0.0f);
+                break;
+            }
+            nodeRemLink(ntree, link);
+          }
+        }
+        need_update = true;
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -733,12 +771,12 @@ void do_versions_after_linking_cycles(Main *bmain)
 
   if (1) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type != NTREE_SHADER) {
-        continue;
+      if (ntree->type == NTREE_SHADER) {
+        update_single_operand_math_operators(ntree);
+        update_math_clamp_option(ntree);
+        update_vector_add_and_subtract_operators(ntree);
+        update_vector_dot_product_operator(ntree);
       }
-      update_single_operand_math_operators(ntree);
-      update_math_clamp_option(ntree);
-      update_vector_add_and_subtract_operators(ntree);
     }
     FOREACH_NODETREE_END;
   }
