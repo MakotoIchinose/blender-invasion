@@ -494,9 +494,7 @@ static LayerCollection *collection_from_index(ListBase *lb, const int number, in
 }
 
 /**
- * Return true if the elements in a collection are visible
- * Used to set active collection after excluding or restricting
- * collection visiblility
+ * Determine if a collection is hidden, viewport visibility restricted, or excluded
  */
 static bool layer_collection_hidden(ViewLayer *view_layer, LayerCollection *lc)
 {
@@ -569,8 +567,9 @@ LayerCollection *BKE_layer_collection_activate_parent(ViewLayer *view_layer, Lay
     lc = NULL;
   }
 
+  /* Don't activate excluded or hidden collections to prevent creating objects in a hidden
+   * collection from the UI */
   if (lc && layer_collection_hidden(view_layer, lc)) {
-    /* Don't activate excluded collections. */
     return BKE_layer_collection_activate_parent(view_layer, lc);
   }
 
