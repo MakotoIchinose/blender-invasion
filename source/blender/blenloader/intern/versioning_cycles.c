@@ -683,6 +683,53 @@ static void update_vector_cross_product_operator(bNodeTree *ntree)
   }
 }
 
+/* The Value output of the Vector Math node is no longer available in the
+ * Normalize operator. This Value output was equal to the length of the
+ * the input vector A. To correct this, we either add a Length node or
+ * convert the Normalize node into a Length node, depending on if the
+ * Vector output is needed.
+ */
+static void update_vector_normalize_operators(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
+      if (node->custom1 == NODE_VECTOR_MATH_NORMALIZE && socket_is_used(sockOutValue)) {
+        bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
+        if (socket_is_used(sockOutVector)) {
+          bNode *lengthNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          lengthNode->custom1 = NODE_VECTOR_MATH_LENGTH;
+          lengthNode->locx = node->locx + node->width + 20.0f;
+          lengthNode->locy = node->locy;
+          bNodeSocket *sockLengthValue = nodeFindSocket(lengthNode, SOCK_OUT, "Value");
+
+          /* Iterate backwards from end so we don't encounter newly added links. */
+          for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+            if (link->fromsock == sockOutValue) {
+              nodeAddLink(ntree, lengthNode, sockLengthValue, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+          bNodeLink *link = nodeFindSocket(node, SOCK_IN, "A")->link;
+          bNodeSocket *sockLengthA = nodeFindSocket(lengthNode, SOCK_IN, "A");
+          nodeAddLink(ntree, link->fromnode, link->fromsock, lengthNode, sockLengthA);
+
+          need_update = true;
+        }
+        else {
+          node->custom1 = NODE_VECTOR_MATH_LENGTH;
+        }
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -844,6 +891,7 @@ void do_versions_after_linking_cycles(Main *bmain)
         update_vector_add_and_subtract_operators(ntree);
         update_vector_dot_product_operator(ntree);
         update_vector_cross_product_operator(ntree);
+        update_vector_normalize_operators(ntree);
       }
     }
     FOREACH_NODETREE_END;
