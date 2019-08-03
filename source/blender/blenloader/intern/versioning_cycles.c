@@ -44,7 +44,10 @@
 #include "BLO_readfile.h"
 #include "readfile.h"
 
-#define IS_SOCKET_IN_USE(sock) (sock->flag & SOCK_IN_USE)
+static bool socket_is_used(bNodeSocket *sock)
+{
+  return sock->flag & SOCK_IN_USE;
+}
 
 static float *cycles_node_socket_float_value(bNodeSocket *socket)
 {
@@ -533,7 +536,7 @@ static void update_vector_add_and_subtract_operators(bNodeTree *ntree)
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
     if (node->type == SH_NODE_VECTOR_MATH) {
       bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
-      if (IS_SOCKET_IN_USE(sockOutValue) &&
+      if (socket_is_used(sockOutValue) &&
           ELEM(node->custom1, NODE_VECTOR_MATH_ADD, NODE_VECTOR_MATH_SUBTRACT)) {
 
         bNode *absNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
