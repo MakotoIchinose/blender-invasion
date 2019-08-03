@@ -4783,6 +4783,23 @@ class VIEW3D_MT_proportional_editing_falloff_pie(Menu):
         pie.prop(tool_settings, "proportional_edit_falloff", expand=True)
 
 
+class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
+    bl_label = "Mask edit"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        pie.operator("object.paint_mask_extract")
+        pie.operator("sculpt.mask_expand")
+        pie.operator("paint.mask_flood_fill", text='Invert Mask').mode = 'INVERT'
+        pie.operator("paint.mask_flood_fill", text='Clear Mask').mode = 'VALUE'
+        pie.operator("sculpt.mask_filter", text='Blur Mask').type = 'BLUR'
+        pie.operator("sculpt.mask_filter", text='Grow Mask').type = 'GROW'
+        pie.operator("sculpt.mask_filter", text='Sharpen Mask').type = 'SHARPEN'
+        pie.operator("sculpt.mask_filter", text='Shrink Mask').type = 'SHRINK'
+
+
 # ********** Panel **********
 
 
@@ -6641,6 +6658,7 @@ classes = (
     VIEW3D_MT_snap_pie,
     VIEW3D_MT_orientations_pie,
     VIEW3D_MT_proportional_editing_falloff_pie,
+    VIEW3D_MT_sculpt_mask_edit_pie,
     VIEW3D_PT_active_tool,
     VIEW3D_PT_active_tool_duplicate,
     VIEW3D_PT_view3d_properties,
