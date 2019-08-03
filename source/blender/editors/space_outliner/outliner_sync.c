@@ -54,9 +54,9 @@ static void outliners_mark_dirty(const bContext *C)
   Main *bmain = CTX_data_main(C);
   for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
     for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
-        if (space->spacetype == SPACE_OUTLINER) {
-          SpaceOutliner *soutliner = (SpaceOutliner *)space;
+      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+        if (sl->spacetype == SPACE_OUTLINER) {
+          SpaceOutliner *soutliner = (SpaceOutliner *)sl;
 
           /* Mark selection state as dirty */
           soutliner->flag |= SO_IS_DIRTY;
@@ -190,7 +190,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
       Bone *bone = pchan->bone;
 
       if (pchan == pchan_active) {
-        tselem->flag |= TSE_ACTIVE | TSE_WALK;
+        tselem->flag |= TSE_ACTIVE | TSE_ACTIVE_WALK;
       }
 
       if (bone->flag & BONE_SELECTED) {
