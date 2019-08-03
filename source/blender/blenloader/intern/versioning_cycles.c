@@ -730,6 +730,75 @@ static void update_vector_normalize_operators(bNodeTree *ntree)
   }
 }
 
+/* The Average operator is no longer available in the Vector Math node.
+ * The Vector output was equal to the normalized sum of inputs vectors while
+ * the Value output was equal to the length of the sum of input vectors.
+ * To correct this, we convert the node into an Add node and add a length
+ * or a normalize node if needed.
+ */
+static void update_vector_average_operator(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      if (node->custom1 == NODE_VECTOR_MATH_AVERAGE) {
+        node->custom1 = NODE_VECTOR_MATH_ADD;
+        bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
+        if (socket_is_used(sockOutVector)) {
+          bNode *normalizeNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          normalizeNode->custom1 = NODE_VECTOR_MATH_NORMALIZE;
+          normalizeNode->locx = node->locx + node->width + 20.0f;
+          normalizeNode->locy = node->locy;
+          bNodeSocket *sockNormalizeOut = nodeFindSocket(normalizeNode, SOCK_OUT, "Vector");
+
+          /* Iterate backwards from end so we don't encounter newly added links. */
+          for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+            if (link->fromsock == sockOutVector) {
+              nodeAddLink(ntree, normalizeNode, sockNormalizeOut, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+          bNodeSocket *sockNormalizeA = nodeFindSocket(normalizeNode, SOCK_IN, "A");
+          nodeAddLink(ntree, node, sockOutVector, normalizeNode, sockNormalizeA);
+
+          need_update = true;
+        }
+
+        bNodeSocket *sockOutValue = nodeFindSocket(node, SOCK_OUT, "Value");
+        if (socket_is_used(sockOutValue)) {
+          bNode *lengthNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+          lengthNode->custom1 = NODE_VECTOR_MATH_LENGTH;
+          lengthNode->locx = node->locx + node->width + 20.0f;
+          if (socket_is_used(sockOutVector)) {
+            lengthNode->locy = node->locy - lengthNode->height - 20.0f;
+          }
+          else {
+            lengthNode->locy = node->locy;
+          }
+          bNodeSocket *sockLengthOut = nodeFindSocket(lengthNode, SOCK_OUT, "Value");
+
+          /* Iterate backwards from end so we don't encounter newly added links. */
+          for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+            if (link->fromsock == sockOutValue) {
+              nodeAddLink(ntree, lengthNode, sockLengthOut, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+          bNodeSocket *sockLengthA = nodeFindSocket(lengthNode, SOCK_IN, "A");
+          nodeAddLink(ntree, node, sockOutVector, lengthNode, sockLengthA);
+
+          need_update = true;
+        }
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -888,10 +957,12 @@ void do_versions_after_linking_cycles(Main *bmain)
       if (ntree->type == NTREE_SHADER) {
         update_single_operand_math_operators(ntree);
         update_math_clamp_option(ntree);
+
         update_vector_add_and_subtract_operators(ntree);
         update_vector_dot_product_operator(ntree);
         update_vector_cross_product_operator(ntree);
         update_vector_normalize_operators(ntree);
+        update_vector_average_operator(ntree);
       }
     }
     FOREACH_NODETREE_END;
