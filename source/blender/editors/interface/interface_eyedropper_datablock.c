@@ -68,7 +68,7 @@ typedef struct DataDropper {
 
   ID *init_id; /* for resetting on cancel */
 
-  ScrArea *area_current;
+  ScrArea *cursor_area; /* Area under the cursor */
   ARegionType *art;
   void *draw_handle_pixel;
   char name[200];
@@ -105,7 +105,7 @@ static int datadropper_init(bContext *C, wmOperator *op)
 
   ddr->is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
 
-  ddr->area_current = CTX_wm_area(C);
+  ddr->cursor_area = CTX_wm_area(C);
   ddr->art = art;
   ddr->draw_handle_pixel = ED_region_draw_cb_activate(
       art, datadropper_draw_cb, ddr, REGION_DRAW_POST_PIXEL);
@@ -252,18 +252,18 @@ static void datadropper_set_draw_callback_region(bContext *C,
 
   if (sa) {
     /* If spacetype changed */
-    if (sa->spacetype != ddr->area_current->spacetype) {
+    if (sa->spacetype != ddr->cursor_area->spacetype) {
       /* Remove old callback */
       ED_region_draw_cb_exit(ddr->art, ddr->draw_handle_pixel);
 
       /* Redraw old area */
-      ARegion *ar = BKE_area_find_region_type(ddr->area_current, RGN_TYPE_WINDOW);
+      ARegion *ar = BKE_area_find_region_type(ddr->cursor_area, RGN_TYPE_WINDOW);
       ED_region_tag_redraw(ar);
 
       /* Set draw callback in new region */
       ARegionType *art = BKE_regiontype_from_id(sa->type, RGN_TYPE_WINDOW);
 
-      ddr->area_current = sa;
+      ddr->cursor_area = sa;
       ddr->art = art;
       ddr->draw_handle_pixel = ED_region_draw_cb_activate(
           art, datadropper_draw_cb, ddr, REGION_DRAW_POST_PIXEL);
