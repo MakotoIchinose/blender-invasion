@@ -87,6 +87,9 @@ shader node_vector_math(string type = "add",
   else if (type == "snap") {
     Vector = snap(A, B);
   }
+  else if (type == "floor") {
+    Vector = floor(A);
+  }
   else if (type == "modulo") {
     Vector = mod(A, B);
   }

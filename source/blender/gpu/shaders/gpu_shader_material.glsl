@@ -547,6 +547,11 @@ void vec_math_snap(vec3 a, vec3 b, float scale, out vec3 outvec, out float outva
   outvec.z = (b.z != 0.0) ? floor(a.z / b.z) * b.z : 0.0;
 }
 
+void vec_math_floor(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
+{
+  outvec = floor(a);
+}
+
 void vec_math_modulo(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
   math_modulo(a.x, b.x, outvec.x);
