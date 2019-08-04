@@ -471,10 +471,13 @@ Mesh *clothModifier_do(
   bool can_simulate = (framenr == clmd->clothObject->last_frame + 1) &&
                       !(cache->flag & PTCACHE_BAKED);
 
+  clmd->mesh = mesh_result;
   cache_result = BKE_ptcache_read(&pid, (float)framenr + scene->r.subframe, can_simulate);
 
   if (cache_result == PTCACHE_READ_EXACT || cache_result == PTCACHE_READ_INTERPOLATED ||
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
+    /* TODO(Ish): Need to update mesh_result to be the new mesh that was generated while reading
+     * the cache */
     BKE_cloth_solver_set_positions(clmd);
     cloth_to_mesh(ob, clmd, mesh_result);
 
@@ -487,7 +490,6 @@ Mesh *clothModifier_do(
 #endif
     clmd->clothObject->last_frame = framenr;
 #if USE_CLOTH_CACHE
-
     return mesh_result;
   }
   else if (cache_result == PTCACHE_READ_OLD) {
@@ -556,6 +558,9 @@ void cloth_free_modifier(ClothModifierData *clmd)
   if (!clmd) {
     return;
   }
+  clmd->depsgraph = NULL;
+  clmd->ob = NULL;
+  clmd->mesh = NULL;
 
   cloth = clmd->clothObject;
 
@@ -644,6 +649,10 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
   if (!clmd) {
     return;
   }
+
+  clmd->depsgraph = NULL;
+  clmd->ob = NULL;
+  clmd->mesh = NULL;
 
   cloth = clmd->clothObject;
 

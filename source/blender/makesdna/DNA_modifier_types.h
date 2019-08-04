@@ -730,6 +730,7 @@ typedef struct ClothModifierData {
   struct ListBase ptcaches;
   struct Depsgraph *depsgraph;
   struct Object *ob;
+  struct Mesh *mesh;
 
   /* XXX nasty hack, remove once hair can be separated from cloth modifier data */
   struct ClothHairData *hairdata;

@@ -31,7 +31,7 @@
 #include "DNA_key_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
-#define USE_CLOTH_CACHE 0
+#define USE_CLOTH_CACHE 1
 #if USE_CLOTH_CACHE
 #else
 #  include "DNA_object_force_types.h"

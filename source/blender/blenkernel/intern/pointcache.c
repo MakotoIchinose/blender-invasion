@@ -41,6 +41,8 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_smoke_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_cloth_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -48,6 +50,8 @@
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
+
+#include "DEG_depsgraph.h"
 
 #include "PIL_time.h"
 
@@ -541,9 +545,14 @@ static void ptcache_cloth_read(
   /* TODO(Ish): add the remeshing step here, so that the mesh has been updated with the correct
    * number of vertices for the next frame */
   Object *ob = clmd->ob;
-  struct Depsgraph *depsgraph = clmd->depsgraph;
-  CustomData_MeshMasks cddata_masks = cloth_remeshing_get_cd_mesh_masks();
-  struct Mesh *mesh = BKE_mesh_from_bmesh_for_eval_nomain(clmd->clothObject->bm, &cddata_masks);
+  Depsgraph *depsgraph = clmd->depsgraph;
+  Mesh *mesh = clmd->mesh;
+  printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
+         __func__,
+         mesh->totvert,
+         mesh->totedge,
+         mesh->totpoly);
+  clmd->sim_parms->remeshing_reset = 1;
   cloth_remeshing_step(depsgraph, ob, clmd, mesh);
 }
 static void ptcache_cloth_interpolate(
@@ -2943,7 +2952,14 @@ static int ptcache_read(PTCacheID *pid, int cfra)
       int pid_totpoint = pid->totpoint(pid->calldata, cfra);
 
       if (totpoint != pid_totpoint) {
-        pid->error(pid->calldata, "Number of points in cache does not match mesh");
+        /* TODO(Ish): need to run the remeshing step before this check */
+        char *em;
+        sprintf(em,
+                "%s memory_cache_totpoint: %d pid_totpoint: %d",
+                "Number of points in cache does not match mesh",
+                totpoint,
+                pid_totpoint);
+        pid->error(pid->calldata, em);
         totpoint = MIN2(totpoint, pid_totpoint);
       }
     }
