@@ -552,6 +552,11 @@ void vec_math_floor(vec3 a, vec3 b, float scale, out vec3 outvec, out float outv
   outvec = floor(a);
 }
 
+void vec_math_ceil(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
+{
+  outvec = ceil(a);
+}
+
 void vec_math_modulo(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
   math_modulo(a.x, b.x, outvec.x);

@@ -64,6 +64,9 @@ ccl_device void svm_vector_math(
     case NODE_VECTOR_MATH_FLOOR:
       *vector = floor(a);
       break;
+    case NODE_VECTOR_MATH_CEIL:
+      *vector = ceil(a);
+      break;
     case NODE_VECTOR_MATH_MODULO:
       *vector = make_float3(safe_modulo(a.x, b.x), safe_modulo(a.y, b.y), safe_modulo(a.z, b.z));
       break;

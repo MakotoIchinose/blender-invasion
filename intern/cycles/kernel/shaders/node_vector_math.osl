@@ -90,6 +90,9 @@ shader node_vector_math(string type = "add",
   else if (type == "floor") {
     Vector = floor(A);
   }
+  else if (type == "ceil") {
+    Vector = ceil(A);
+  }
   else if (type == "modulo") {
     Vector = mod(A, B);
   }
