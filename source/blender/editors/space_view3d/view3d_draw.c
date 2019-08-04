@@ -774,7 +774,6 @@ static void drawrenderborder(ARegion *ar, View3D *v3d)
 
 void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool alphaoverride)
 {
-  struct bThemeState theme_state;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   RegionView3D *rv3d = ar->regiondata;
 
@@ -786,10 +785,6 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
 
   /* not that nice but means we wont zoom into billboards */
   U.glalphaclip = alphaoverride ? 0.5f : glalphaclip;
-
-  /* Tools may request depth outside of regular drawing code. */
-  UI_Theme_Store(&theme_state);
-  UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   ED_view3d_draw_setup_view(NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
 
@@ -826,8 +821,6 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
 
   U.glalphaclip = glalphaclip;
   v3d->flag = flag;
-
-  UI_Theme_Restore(&theme_state);
 }
 
 /* ******************** other elements ***************** */
@@ -1563,10 +1556,6 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   ar->winrct.xmax = winx;
   ar->winrct.ymax = winy;
 
-  struct bThemeState theme_state;
-  UI_Theme_Store(&theme_state);
-  UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
-
   /* set flags */
   G.f |= G_FLAG_RENDER_VIEWPORT;
 
@@ -1600,8 +1589,6 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 
   GPU_matrix_pop_projection();
   GPU_matrix_pop();
-
-  UI_Theme_Restore(&theme_state);
 
   G.f &= ~G_FLAG_RENDER_VIEWPORT;
 }

@@ -984,7 +984,6 @@ int view3d_opengl_select(ViewContext *vc,
                          eV3DSelectMode select_mode,
                          eV3DSelectObjectFilter select_filter)
 {
-  struct bThemeState theme_state;
   Depsgraph *depsgraph = vc->depsgraph;
   Scene *scene = vc->scene;
   View3D *v3d = vc->v3d;
@@ -1069,10 +1068,6 @@ int view3d_opengl_select(ViewContext *vc,
     case VIEW3D_SELECT_FILTER_NOP:
       break;
   }
-
-  /* Tools may request depth outside of regular drawing code. */
-  UI_Theme_Store(&theme_state);
-  UI_SetTheme(SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   /* Re-use cache (rect must be smaller then the cached)
    * other context is assumed to be unchanged */
@@ -1175,8 +1170,6 @@ finally:
   if (hits < 0) {
     printf("Too many objects in select buffer\n"); /* XXX make error message */
   }
-
-  UI_Theme_Restore(&theme_state);
 
   return hits;
 }
