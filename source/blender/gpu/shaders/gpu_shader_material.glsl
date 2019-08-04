@@ -564,6 +564,11 @@ void vec_math_modulo(vec3 a, vec3 b, float scale, out vec3 outvec, out float out
   math_modulo(a.z, b.z, outvec.z);
 }
 
+void vec_math_fraction(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
+{
+  outvec = fract(a);
+}
+
 void vec_math_absolute(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
   outvec = abs(a);

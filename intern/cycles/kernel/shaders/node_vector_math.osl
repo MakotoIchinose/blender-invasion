@@ -96,6 +96,9 @@ shader node_vector_math(string type = "add",
   else if (type == "modulo") {
     Vector = mod(A, B);
   }
+  else if (type == "fraction") {
+    Vector = A - floor(A);
+  }
   else if (type == "absolute") {
     Vector = abs(A);
   }

@@ -59,6 +59,7 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
       [NODE_VECTOR_MATH_FLOOR] = "vec_math_floor",
       [NODE_VECTOR_MATH_CEIL] = "vec_math_ceil",
       [NODE_VECTOR_MATH_MODULO] = "vec_math_modulo",
+      [NODE_VECTOR_MATH_FRACTION] = "vec_math_fraction",
       [NODE_VECTOR_MATH_ABSOLUTE] = "vec_math_absolute",
       [NODE_VECTOR_MATH_MINIMUM] = "vec_math_minimum",
       [NODE_VECTOR_MATH_MAXIMUM] = "vec_math_maximum",
@@ -83,6 +84,7 @@ static void node_shader_update_vec_math(bNodeTree *UNUSED(ntree), bNode *node)
                                   NODE_VECTOR_MATH_FLOOR,
                                   NODE_VECTOR_MATH_LENGTH,
                                   NODE_VECTOR_MATH_ABSOLUTE,
+                                  NODE_VECTOR_MATH_FRACTION,
                                   NODE_VECTOR_MATH_NORMALIZE));
   nodeSetSocketAvailability(sockScale, node->custom1 == NODE_VECTOR_MATH_SCALE);
   nodeSetSocketAvailability(sockVector,
