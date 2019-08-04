@@ -48,9 +48,8 @@ static int gpu_shader_vect_math(GPUMaterial *mat,
       [NODE_VECTOR_MATH_CROSS_PRODUCT] = "vec_math_cross",
       [NODE_VECTOR_MATH_PROJECT] = "vec_math_project",
       [NODE_VECTOR_MATH_REFLECT] = "vec_math_reflect",
-      [NODE_VECTOR_MATH_AVERAGE] = "vec_math_average",
-
       [NODE_VECTOR_MATH_DOT_PRODUCT] = "vec_math_dot",
+
       [NODE_VECTOR_MATH_DISTANCE] = "vec_math_distance",
       [NODE_VECTOR_MATH_LENGTH] = "vec_math_length",
       [NODE_VECTOR_MATH_SCALE] = "vec_math_scale",

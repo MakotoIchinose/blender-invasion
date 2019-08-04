@@ -515,11 +515,6 @@ void vec_math_reflect(vec3 a, vec3 b, float scale, out vec3 outvec, out float ou
   outvec = reflect(a, normalize(b));
 }
 
-void vec_math_average(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
-{
-  outvec = normalize(a + b);
-}
-
 void vec_math_dot(vec3 a, vec3 b, float scale, out vec3 outvec, out float outval)
 {
   outval = dot(a, b);

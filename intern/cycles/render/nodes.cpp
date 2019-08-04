@@ -5716,9 +5716,8 @@ NODE_DEFINE(VectorMathNode)
   type_enum.insert("cross_product", NODE_VECTOR_MATH_CROSS_PRODUCT);
   type_enum.insert("project", NODE_VECTOR_MATH_PROJECT);
   type_enum.insert("reflect", NODE_VECTOR_MATH_REFLECT);
-  type_enum.insert("average", NODE_VECTOR_MATH_AVERAGE);
-
   type_enum.insert("dot_product", NODE_VECTOR_MATH_DOT_PRODUCT);
+
   type_enum.insert("distance", NODE_VECTOR_MATH_DISTANCE);
   type_enum.insert("length", NODE_VECTOR_MATH_LENGTH);
   type_enum.insert("scale", NODE_VECTOR_MATH_SCALE);

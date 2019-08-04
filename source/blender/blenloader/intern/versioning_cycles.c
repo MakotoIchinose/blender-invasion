@@ -731,6 +731,38 @@ static void update_vector_normalize_operators(bNodeTree *ntree)
 }
 
 /* The Average operator is no longer available in the Vector Math node.
+ * This altered the order of operators in the vector math type enum.
+ * To fix this, we remap the enum values according to the following rules:
+ *
+ * NODE_VECTOR_MATH_DOT_PRODUCT : 3 -> 7
+ * NODE_VECTOR_MATH_NORMALIZE   : 5 -> 11
+ *
+ * Additionally, NODE_VECTOR_MATH_AVERAGE is assigned a value of -1 to be
+ * identified later in the versioning code:
+ *
+ * NODE_VECTOR_MATH_AVERAGE : 2 -> -1
+ *
+ */
+static void update_vector_math_operators_enum_mapping(bNodeTree *ntree)
+{
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_VECTOR_MATH) {
+      switch (node->custom1) {
+        case 2:
+          node->custom1 = -1;
+          break;
+        case 3:
+          node->custom1 = 7;
+          break;
+        case 5:
+          node->custom1 = 11;
+          break;
+      }
+    }
+  }
+}
+
+/* The Average operator is no longer available in the Vector Math node.
  * The Vector output was equal to the normalized sum of inputs vectors while
  * the Value output was equal to the length of the sum of input vectors.
  * To correct this, we convert the node into an Add node and add a length
@@ -742,7 +774,8 @@ static void update_vector_average_operator(bNodeTree *ntree)
 
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
     if (node->type == SH_NODE_VECTOR_MATH) {
-      if (node->custom1 == NODE_VECTOR_MATH_AVERAGE) {
+      /* See update_vector_math_operators_enum_mapping for the -1. */
+      if (node->custom1 == -1) {
         node->custom1 = NODE_VECTOR_MATH_ADD;
         bNodeSocket *sockOutVector = nodeFindSocket(node, SOCK_OUT, "Vector");
         if (socket_is_used(sockOutVector)) {
@@ -839,6 +872,7 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
       }
       update_math_socket_names_and_identifiers(ntree);
       update_vector_math_socket_names_and_identifiers(ntree);
+      update_vector_math_operators_enum_mapping(ntree);
     }
     FOREACH_NODETREE_END;
   }

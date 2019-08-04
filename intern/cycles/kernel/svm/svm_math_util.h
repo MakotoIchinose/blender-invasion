@@ -41,9 +41,6 @@ ccl_device void svm_vector_math(
     case NODE_VECTOR_MATH_REFLECT:
       *vector = reflect(a, b);
       break;
-    case NODE_VECTOR_MATH_AVERAGE:
-      *vector = safe_normalize(a + b);
-      break;
     case NODE_VECTOR_MATH_DOT_PRODUCT:
       *value = dot(a, b);
       break;

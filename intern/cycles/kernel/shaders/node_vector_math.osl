@@ -69,9 +69,6 @@ shader node_vector_math(string type = "add",
   else if (type == "reflect") {
     Vector = reflect(A, B);
   }
-  else if (type == "average") {
-    Vector = normalize(A + B);
-  }
   else if (type == "dot_product") {
     Value = dot(A, B);
   }
