@@ -71,7 +71,7 @@ extern struct DrawEngineType draw_engine_lanpr_type;
 typedef struct LANPR_RenderBuffer LANPR_RenderBuffer;
 
 typedef struct LANPR_PassList {
-  /* Snake */
+  /* Image filtering */
   struct DRWPass *depth_pass;
   struct DRWPass *color_pass;
   struct DRWPass *normal_pass;
@@ -79,7 +79,7 @@ typedef struct LANPR_PassList {
   struct DRWPass *edge_thinning;
   struct DRWPass *snake_pass;
 
-  /* DPIX */
+  /* GPU */
   struct DRWPass *dpix_transform_pass;
   struct DRWPass *dpix_preview_pass;
 
@@ -90,16 +90,16 @@ typedef struct LANPR_PassList {
 
 typedef struct LANPR_FramebufferList {
 
-  /* Snake */
+  /* CPU */
   struct GPUFrameBuffer *passes;
   struct GPUFrameBuffer *edge_intermediate;
   struct GPUFrameBuffer *edge_thinning;
 
-  /* DPIX */
+  /* GPU */
   struct GPUFrameBuffer *dpix_transform;
   struct GPUFrameBuffer *dpix_preview;
 
-  /* Software */
+  /* Image filtering */
   struct GPUFrameBuffer *software_ms;
 
 } LANPR_FramebufferList;
@@ -111,18 +111,21 @@ typedef struct LANPR_TextureList {
   struct GPUTexture *depth;
   struct GPUTexture *edge_intermediate;
 
-  struct GPUTexture *dpix_in_pl;        /* point l */
-  struct GPUTexture *dpix_in_pr;        /* point r */
-  struct GPUTexture *dpix_in_nl;        /* normal l */
-  struct GPUTexture *dpix_in_nr;        /* normal r */
-  struct GPUTexture *dpix_in_edge_mask; /* RGBA, r:Material, G: Freestyle Edge Mark, BA:Reserved
-                                           for future usage */
+  struct GPUTexture *dpix_in_pl;        
+  struct GPUTexture *dpix_in_pr;
+  struct GPUTexture *dpix_in_nl;
+  struct GPUTexture *dpix_in_nr;
+
+  /** RGBA texture format,
+   * R:Material, G: Freestyle Edge Mark,
+   * BA:Reserved for future usages */
+  struct GPUTexture *dpix_in_edge_mask; 
 
   struct GPUTexture *dpix_out_pl;
   struct GPUTexture *dpix_out_pr;
   struct GPUTexture *dpix_out_length;
 
-  /* multisample resolve */
+  /** Multisample resolve */
   struct GPUTexture *ms_resolve_depth;
   struct GPUTexture *ms_resolve_color;
 
@@ -139,7 +142,7 @@ typedef struct LANPR_PrivateData {
 
   DRWShadingGroup *debug_shgrp;
 
-  /*  snake */
+  /* Image filtering */
 
   float normal_clamp;
   float normal_strength;
@@ -149,18 +152,21 @@ typedef struct LANPR_PrivateData {
   float zfar;
   float znear;
 
-  int stage; /*  thinning */
+  /** Thinning stage */
+  int stage; 
 
   float *line_result;
   unsigned char *line_result_8bit;
-  int width, height; /*  if not match recreate buffer. */
+  
+  /** If not match then recreate buffer. */
+  int width, height; 
   void **sample_table;
 
   ListBase pending_samples;
   ListBase erased_samples;
   ListBase line_strips;
 
-  /*  dpix data */
+  /* dpix data */
 
   void *atlas_pl;
   void *atlas_pr;
@@ -180,7 +186,7 @@ typedef struct LANPR_PrivateData {
   float dpix_znear;
   float dpix_zfar;
 
-  /*  drawing */
+  /* drawing */
 
   unsigned v_buf;
   unsigned i_buf;
@@ -210,8 +216,6 @@ typedef struct LANPR_Data {
 } LANPR_Data;
 
 /*  functions */
-
-/*  dpix */
 
 void lanpr_init_atlas_inputs(void *ved);
 void lanpr_destroy_atlas(void *ved);

@@ -25,7 +25,6 @@
 #define __ED_LANPR_H__
 
 #include <string.h>
-/* #include "lanpr_all.h" */
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
@@ -62,7 +61,7 @@ typedef int tnsVector2i[2];
 typedef struct LANPR_StaticMemPoolNode {
   Link item;
   int used_byte;
-  /*   <----------- User Mem Start Here */
+  /* User memory starts here */
 } LANPR_StaticMemPoolNode;
 
 typedef struct LANPR_StaticMemPool {
@@ -74,7 +73,8 @@ typedef struct LANPR_StaticMemPool {
 typedef struct LANPR_TextureSample {
   struct LANPR_TextureSample *next, *prev;
   int X, Y;
-  float Z; /*  for future usage */
+  /** For future usage */
+  float Z; 
 } LANPR_TextureSample;
 
 typedef struct LANPR_LineStripPoint {
@@ -99,12 +99,13 @@ typedef struct LANPR_RenderTriangle {
   short material_id;
   ListBase intersecting_verts;
   char cull_status;
-  struct LANPR_RenderTriangle *testing; /*  Should Be tRT** testing[NumOfThreads] */
+  /**  Should be testing** , Use testing[NumOfThreads] to access. */
+  struct LANPR_RenderTriangle *testing;
 } LANPR_RenderTriangle;
 
 typedef struct LANPR_RenderTriangleThread {
   struct LANPR_RenderTriangle base;
-  struct LANPR_RenderLine *testing[127]; /*  max thread support; */
+  struct LANPR_RenderLine *testing[127];
 } LANPR_RenderTriangleThread;
 
 typedef struct LANPR_RenderElementLinkNode {
@@ -117,10 +118,14 @@ typedef struct LANPR_RenderElementLinkNode {
 
 typedef struct LANPR_RenderLineSegment {
   struct LANPR_RenderLineSegment *next, *prev;
-  real at;                  /*  at==0: left    at==1: right  (this is in 2D projected space) */
-  real at_global;           /*  to reconstruct 3d stroke     (XXX: implement global space?) */
-  u8bit occlusion;          /*  after "at" point */
-  short material_mask_mark; /*  e.g. to determine lines beind a glass window material. */
+  /** at==0: left  at==1: right  (this is in 2D projected space) */
+  real at;       
+  /** This is used to reconstruct 3d stroke  (TODO: implement global space?) */           
+  real at_global;           
+  /** Occlusion level after "at" point */
+  u8bit occlusion;          
+  /** For determining lines beind a glass window material. (TODO: implement this) */
+  short material_mask_mark; 
 } LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
@@ -128,14 +133,20 @@ typedef struct LANPR_RenderVert {
   real gloc[4];
   real fbcoord[4];
   int fbcoordi[2];
-  struct BMVert *v; /*  Used As r When Intersecting */
+  /**  Used as "r" when intersecting */
+  struct BMVert *v; 
   struct LANPR_RenderLine *intersecting_line;
   struct LANPR_RenderLine *intersecting_line2;
-  struct LANPR_RenderTriangle *intersecting_with; 
-  /*                 positive 1         Negative 0 */
-  /*                      <|              |> */
-  char positive;  /* l---->|----->r	l---->|----->r */
-  char edge_used; /*      <|		          |> */
+  struct LANPR_RenderTriangle *intersecting_with;
+
+  /** positive 1     Negative 0
+   *      <|              |>
+   * l---->|----->r	l---->|----->r
+   *      <|		          |>
+   * this means dot(r-l,face_normal)<0 then 1 otherwise 0
+  */
+  char positive;  
+  char edge_used; 
 } LANPR_RenderVert;
 
 typedef enum LANPR_EdgeFlag{
@@ -144,7 +155,8 @@ typedef enum LANPR_EdgeFlag{
   LANPR_EDGE_FLAG_CREASE = (1<<2),
   LANPR_EDGE_FLAG_MATERIAL = (1<<3),
   LANPR_EDGE_FLAG_INTERSECTION = (1<<4),
-  LANPR_EDGE_FLAG_FLOATING = (1<<5), /*  floating edge, unimplemented yet */
+  /**  floating edge, unimplemented yet */
+  LANPR_EDGE_FLAG_FLOATING = (1<<5), 
   LANPR_EDGE_FLAG_CHAIN_PICKED = (1<<6),
 }LANPR_EdgeFlag;
 
@@ -171,7 +183,7 @@ typedef struct LANPR_RenderLineChain {
   struct LANPR_RenderLineChain *next, *prev;
   ListBase chain;
 
-   /**  Calculated before draw cmd. */
+  /**  Calculated before draw cmd. */
   float length;
 
   /**  Used when re-connecting and gp stroke generation */
@@ -185,11 +197,13 @@ typedef struct LANPR_RenderLineChain {
 
 typedef struct LANPR_RenderLineChainItem {
   struct LANPR_RenderLineChainItem *next, *prev;
-  float pos[3];  /*  need z value for fading */
-  float gpos[3]; /*  for restore position to 3d space */
+  /** Need z value for fading */
+  float pos[3];
+  /** For restoring position to 3d space */
+  float gpos[3]; 
   float normal[3];
-  char line_type; /*       style of [1]       style of [2] */
-  char occlusion; /*  [1]--------------->[2]---------------->[3]--.... */
+  char line_type;
+  char occlusion;
 } LANPR_RenderLineChainItem;
 
 typedef struct LANPR_ChainRegisterEntry {
@@ -197,13 +211,17 @@ typedef struct LANPR_ChainRegisterEntry {
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
   char picked;
-  char is_left; /*  left/right mark. Because we revert list in chaining and we need the flag. */
+  
+  /** left/right mark.
+   * Because we revert list in chaining so we need the flag. */
+  char is_left; 
 } LANPR_ChainRegisterEntry;
 
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
 
-  int is_copied; /*  for render. */
+  /** For render. */
+  int is_copied; 
 
   int w, h;
   int tile_size_w, tile_size_h;
@@ -228,12 +246,12 @@ typedef struct LANPR_RenderBuffer {
   struct GPUBatch *DPIXIntersectionTransformBatch;
   struct GPUBatch *DPIXIntersectionBatch;
 
-  /* use own-implemented one */
+  /** Use the one comes with LANPR. */
   LANPR_StaticMemPool render_data_pool;
 
   struct Material *material_pointers[2048];
 
-  /*  render status */
+  /*  Render status */
 
   int cached_for_frame;
 
@@ -282,7 +300,7 @@ typedef struct LANPR_RenderBuffer {
   real crease_cos;
   int thread_count;
 
-  /* deprecated, need another report mechanism */
+  /** Deprecated, need another report mechanism */
   real overall_progress;
   int calculation_status;
 
@@ -313,13 +331,13 @@ typedef struct LANPR_SharedResource {
   struct BLI_mempool *mp_line_strip_point;
   struct BLI_mempool *mp_batch_list;
 
-  /* Snake */
+  /* Image filtering */
   struct GPUShader *multichannel_shader;
   struct GPUShader *edge_detect_shader;
   struct GPUShader *edge_thinning_shader;
   struct GPUShader *snake_connection_shader;
 
-  /* DPIX */
+  /* GPU */
   struct GPUShader *dpix_transform_shader;
   struct GPUShader *dpix_preview_shader;
   int dpix_shader_error;
@@ -328,7 +346,7 @@ typedef struct LANPR_SharedResource {
   int dpix_reloaded;
   int dpix_reloaded_deg;
 
-  /* Software */
+  /* CPU */
   struct GPUShader *software_shader;
   struct GPUShader *software_chaining_shader;
 
@@ -357,8 +375,6 @@ typedef enum LANPR_CullState{
 #define TNS_THREAD_LINE_COUNT 10000
 
 typedef struct LANPR_RenderTaskInfo {
-  /*  thrd_t           ThreadHandle; */
-
   int thread_id;
 
   LinkData *contour;
@@ -382,7 +398,8 @@ typedef struct LANPR_BoundingArea {
   real l, r, u, b;
   real cx, cy;
 
-  struct LANPR_BoundingArea *child; /*  1,2,3,4 quadrant */
+  /** 1,2,3,4 quadrant */
+  struct LANPR_BoundingArea *child;
 
   ListBase lp;
   ListBase rp;
@@ -393,7 +410,8 @@ typedef struct LANPR_BoundingArea {
   ListBase linked_triangles;
   ListBase linked_lines;
 
-  ListBase linked_chains; /*  reserved for image space reduction && multithread chainning */
+  /** Reserved for image space reduction && multithread chainning */
+  ListBase linked_chains;
 } LANPR_BoundingArea;
 
 #define TNS_COMMAND_LINE 0
