@@ -4792,12 +4792,22 @@ class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
 
         pie.operator("object.paint_mask_extract")
         pie.operator("sculpt.mask_expand")
-        pie.operator("paint.mask_flood_fill", text='Invert Mask').mode = 'INVERT'
-        pie.operator("paint.mask_flood_fill", text='Clear Mask').mode = 'VALUE'
-        pie.operator("sculpt.mask_filter", text='Blur Mask').type = 'BLUR'
-        pie.operator("sculpt.mask_filter", text='Grow Mask').type = 'GROW'
-        pie.operator("sculpt.mask_filter", text='Sharpen Mask').type = 'SHARPEN'
-        pie.operator("sculpt.mask_filter", text='Shrink Mask').type = 'SHRINK'
+        op = pie.operator("paint.mask_flood_fill", text='Invert Mask')
+        op.mode = 'INVERT'
+        op = pie.operator("paint.mask_flood_fill", text='Clear Mask')
+        op.mode = 'VALUE'
+        op = pie.operator("sculpt.mask_filter", text='Blur Mask')
+        op.type = 'BLUR'
+        op.auto_iteration_count = True;
+        op = pie.operator("sculpt.mask_filter", text='Grow Mask')
+        op.type = 'GROW'
+        op.auto_iteration_count = True;
+        op = pie.operator("sculpt.mask_filter", text='Sharpen Mask')
+        op.type = 'SHARPEN'
+        op.auto_iteration_count = True;
+        op = pie.operator("sculpt.mask_filter", text='Shrink Mask')
+        op.type = 'SHRINK'
+        op.auto_iteration_count = True;
 
 
 # ********** Panel **********

@@ -8714,6 +8714,10 @@ static int sculpt_mask_filter_invoke(bContext *C, wmOperator *op)
     sculpt_undo_push_node(ob, nodes[i], SCULPT_UNDO_MASK);
   }
 
+  if (RNA_boolean_get(op->ptr, "auto_iteration_count")) {
+    iterations = (sculpt_vertex_count_get(ss) / 50000.0f) + 1;
+  }
+
   if (mode == MASK_FILTER_DIRTY) {
     iterations = 1;
   }
@@ -8808,6 +8812,7 @@ void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "type", prop_mask_filter_types, MASK_FILTER_BLUR, "Type", "");
   ot->prop = RNA_def_int(ot->srna, "iterations", 1, 1, 100, "Iterations", "", 1, 50);
   ot->prop = RNA_def_boolean(ot->srna, "dirty_only", false, "Dirty Only", "");
+  ot->prop = RNA_def_boolean(ot->srna, "auto_iteration_count", false, "Auto iteration count", "");
 }
 
 static void do_color_fill_task_cb(void *__restrict userdata,
