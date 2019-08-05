@@ -732,6 +732,9 @@ typedef struct ClothModifierData {
   struct Object *ob;
   struct Mesh *mesh;
 
+  int flags;
+  char _pad[4];
+
   /* XXX nasty hack, remove once hair can be separated from cloth modifier data */
   struct ClothHairData *hairdata;
   /* grid geometry values of hair continuum */
@@ -742,6 +745,11 @@ typedef struct ClothModifierData {
 
   struct ClothSolverResult *solver_result;
 } ClothModifierData;
+
+enum {
+  /* Flag to check if previous frame was read from cache */
+  MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE = (1 << 0),
+};
 
 typedef struct CollisionModifierData {
   ModifierData modifier;

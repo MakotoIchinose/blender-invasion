@@ -473,9 +473,11 @@ Mesh *clothModifier_do(
 
   /* TODO(Ish): clmd->mesh = mesh_result should be done only on the first frame of reading the
    * cache */
-  if (clmd->clothObject->flags & CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+  if (clmd->flags & MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+    printf("\nPrevious read from cache\n");
   }
   else {
+    printf("\nPrevious frame was simulated\n");
     clmd->mesh = mesh_result;
   }
   cache_result = BKE_ptcache_read(&pid, (float)framenr + scene->r.subframe, can_simulate);
@@ -484,11 +486,12 @@ Mesh *clothModifier_do(
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
     /* TODO(Ish): Need to update mesh_result to be the new mesh that was generated while reading
      * the cache */
+    printf("cache_result: %d\n", cache_result);
     mesh_result = clmd->mesh;
     BKE_cloth_solver_set_positions(clmd);
     cloth_to_mesh(ob, clmd, mesh_result);
 
-    clmd->clothObject->flags |= CLOTH_FLAG_PREV_FRAME_READ_CACHE;
+    clmd->flags |= MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE;
 
     BKE_ptcache_validate(cache, framenr);
 
@@ -512,6 +515,8 @@ Mesh *clothModifier_do(
 #endif
     return mesh_result;
   }
+
+  clmd->flags &= ~MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE;
 
 #if USE_CLOTH_CACHE
   /* if on second frame, write cache for first frame */
@@ -924,7 +929,6 @@ static int cloth_from_object(
     clmd->clothObject->edgeset = NULL;
     clmd->clothObject->bm = NULL;
     clmd->clothObject->bm_prev = NULL;
-    clmd->clothObject->flags = 0;
   }
   else if (!clmd->clothObject) {
     modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");

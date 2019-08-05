@@ -2568,17 +2568,17 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
     cloth_remeshing_dynamic(depsgraph, ob, clmd, cvm, cd_loop_uv_offset);
   }
 
-  printf("totvert: %d totedge: %d totface: %d\n",
-         clmd->clothObject->bm->totvert,
-         clmd->clothObject->bm->totedge,
-         clmd->clothObject->bm->totface);
+  /* printf("totvert: %d totedge: %d totface: %d\n", */
+  /*        clmd->clothObject->bm->totvert, */
+  /*        clmd->clothObject->bm->totedge, */
+  /*        clmd->clothObject->bm->totface); */
 
   Mesh *mesh_result = cloth_remeshing_update_cloth_object_bmesh(ob, clmd);
 
-  printf("mesh: totvert: %d totedge: %d totface: %d\n",
-         mesh_result->totvert,
-         mesh_result->totedge,
-         mesh_result->totpoly);
+  /* printf("mesh: totvert: %d totedge: %d totface: %d\n", */
+  /*        mesh_result->totvert, */
+  /*        mesh_result->totedge, */
+  /*        mesh_result->totpoly); */
 
   cvm.clear();
   return mesh_result;

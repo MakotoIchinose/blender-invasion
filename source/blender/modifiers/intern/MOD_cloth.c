@@ -67,6 +67,7 @@ static void initData(ModifierData *md)
   clmd->coll_parms = MEM_callocN(sizeof(ClothCollSettings), "cloth coll parms");
 #if USE_CLOTH_CACHE
   clmd->point_cache = BKE_ptcache_add(&clmd->ptcaches);
+  clmd->flags = 0;
 #endif
 
 /* check for alloc failing */

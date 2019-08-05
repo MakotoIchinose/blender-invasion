@@ -2959,15 +2959,23 @@ static int ptcache_read(PTCacheID *pid, int cfra)
                mesh->totvert,
                mesh->totedge,
                mesh->totpoly);
-        if (clmd->clothObject->flags & CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+#if 0
+        if (clmd->flags & MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+        }
+        else {
           clmd->sim_parms->remeshing_reset = 1;
         }
+#else
+        printf("reset: %d\n", clmd->sim_parms->reset);
+        printf("remeshing_reset: %d\n", clmd->sim_parms->remeshing_reset);
+        clmd->sim_parms->remeshing_reset = 1;
+#endif
         Mesh *mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, mesh);
         if (clmd->mesh && mesh_result) {
           BKE_mesh_free(clmd->mesh);
           clmd->mesh = mesh_result;
           mesh = clmd->mesh;
-          printf("mesh in %s has totvert: %d totedge: %d totface %d\n\n",
+          printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
                  __func__,
                  mesh->totvert,
                  mesh->totedge,
@@ -2976,14 +2984,17 @@ static int ptcache_read(PTCacheID *pid, int cfra)
       }
       int pid_totpoint = pid->totpoint(pid->calldata, cfra);
       if (totpoint != pid_totpoint) {
-        /* TODO(Ish): need to run the remeshing step before this check */
-        char *em;
+#if 0
+        char *em = NULL;
         sprintf(em,
                 "%s memory_cache_totpoint: %d pid_totpoint: %d",
                 "Number of points in cache does not match mesh",
                 totpoint,
                 pid_totpoint);
         pid->error(pid->calldata, em);
+#else
+        pid->error(pid->calldata, "Number of points in cache does not match mesh");
+#endif
         totpoint = MIN2(totpoint, pid_totpoint);
       }
     }
