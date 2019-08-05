@@ -351,6 +351,8 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
                                   offscreen,
                                   viewport);
 
+  GPU_framebuffer_restore();
+
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
 
   wm_draw_offscreen_texture_parameters(offscreen);
