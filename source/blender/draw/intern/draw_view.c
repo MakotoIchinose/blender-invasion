@@ -84,7 +84,7 @@ void DRW_draw_background(bool do_alpha_checker)
 
     GPU_depth_test(true);
   }
-  else if (UI_GetThemeValue(TH_SHOW_BACK_GRAD)) {
+  else if (DRW_theme_value_get_i(TH_SHOW_BACK_GRAD)) {
     float m[4][4];
     unit_m4(m);
 
@@ -103,8 +103,8 @@ void DRW_draw_background(bool do_alpha_checker)
 
     immBindBuiltinProgram(GPU_SHADER_2D_SMOOTH_COLOR_DITHER);
 
-    UI_GetThemeColor3ubv(TH_BACK_GRAD, col_lo);
-    UI_GetThemeColor3ubv(TH_BACK, col_hi);
+    DRW_theme_color_get_3ubv(TH_BACK_GRAD, col_lo);
+    DRW_theme_color_get_3ubv(TH_BACK, col_hi);
 
     immBegin(GPU_PRIM_TRI_FAN, 4);
     immAttr3ubv(color, col_lo);

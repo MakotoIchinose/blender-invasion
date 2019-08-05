@@ -593,16 +593,16 @@ GPUBatch *gpencil_get_buffer_ctrlpoint_geom(bGPdata *gpd)
     float color[4];
     float position[3];
     if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_CUSTOM) {
-      UI_GetThemeColor4fv(TH_GIZMO_PRIMARY, color);
+      DRW_theme_color_get_4fv(TH_GIZMO_PRIMARY, color);
       copy_v3_v3(position, ts->gp_sculpt.guide.location);
     }
     else if (ts->gp_sculpt.guide.reference_point == GP_GUIDE_REF_OBJECT &&
              ts->gp_sculpt.guide.reference_object != NULL) {
-      UI_GetThemeColor4fv(TH_GIZMO_SECONDARY, color);
+      DRW_theme_color_get_4fv(TH_GIZMO_SECONDARY, color);
       copy_v3_v3(position, ts->gp_sculpt.guide.reference_object->loc);
     }
     else {
-      UI_GetThemeColor4fv(TH_REDALERT, color);
+      DRW_theme_color_get_4fv(TH_REDALERT, color);
       copy_v3_v3(position, scene->cursor.location);
     }
     GPU_vertbuf_attr_set(vbo, pos_id, idx, position);
@@ -714,7 +714,7 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
    *   they stand out more.
    * - We use the theme setting for size of the unselected verts
    */
-  float bsize = UI_GetThemeValuef(TH_GP_VERTEX_SIZE);
+  float bsize = DRW_theme_value_get_f(TH_GP_VERTEX_SIZE);
   float vsize;
   if ((int)bsize > 8) {
     vsize = 10.0f;
@@ -726,11 +726,11 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
 
   /* for now, we assume that the base color of the points is not too close to the real color */
   float selectColor[4];
-  UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, selectColor);
+  DRW_theme_color_get_3fv(TH_GP_VERTEX_SELECT, selectColor);
   selectColor[3] = alpha;
 
   float unselectColor[4];
-  UI_GetThemeColor3fv(TH_GP_VERTEX, unselectColor);
+  DRW_theme_color_get_3fv(TH_GP_VERTEX, unselectColor);
   unselectColor[3] = alpha;
 
   if (be->vbo == NULL) {
@@ -813,7 +813,7 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
   }
 
   float selectColor[4];
-  UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, selectColor);
+  DRW_theme_color_get_3fv(TH_GP_VERTEX_SELECT, selectColor);
   selectColor[3] = alpha;
   float linecolor[4];
   copy_v4_v4(linecolor, gpd->line_color);

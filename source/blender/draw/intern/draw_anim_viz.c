@@ -238,8 +238,8 @@ static void MPATH_cache_motion_path(MPATH_PassList *psl,
   if ((avs->path_viewflag & (MOTIONPATH_VIEW_FNUMS)) || (show_kf_no && show_keyframes)) {
     int i;
     uchar col[4], col_kf[4];
-    UI_GetThemeColor3ubv(TH_TEXT_HI, col);
-    UI_GetThemeColor3ubv(TH_VERTEX_SELECT, col_kf);
+    DRW_theme_color_get_3ubv(TH_TEXT_HI, col);
+    DRW_theme_color_get_3ubv(TH_VERTEX_SELECT, col_kf);
     col[3] = col_kf[3] = 255;
 
     bMotionPathVert *mpv;

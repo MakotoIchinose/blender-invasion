@@ -142,7 +142,7 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
       stl->g_data->light_cache = stl->lookdev_lightcache;
 
       static float background_color[4];
-      UI_GetThemeColor4fv(TH_BACK, background_color);
+      DRW_theme_color_get_4fv(TH_BACK, background_color);
       /* XXX: Really quick conversion to avoid washed out background.
        * Needs to be addressed properly (color managed using ocio). */
       srgb_to_linearrgb_v4(background_color, background_color);

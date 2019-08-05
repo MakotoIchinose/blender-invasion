@@ -1117,7 +1117,7 @@ void GPENCIL_draw_scene(void *ved)
 
         /* active select flag and selection color */
         if (!is_render) {
-          UI_GetThemeColorShadeAlpha4fv(
+          DRW_theme_color_shade_alpha_get_4fv(
               (ob == draw_ctx->obact) ? TH_ACTIVE : TH_SELECT, 0, -40, stl->storage->select_color);
         }
         stl->storage->do_select_outline = ((overlay) && (ob->base_flag & BASE_SELECTED) &&

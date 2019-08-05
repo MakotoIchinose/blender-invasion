@@ -712,23 +712,23 @@ static bool set_pchan_color(short colCode,
       }
       else {
         if ((boneflag & BONE_DRAW_ACTIVE) && (boneflag & BONE_SELECTED)) {
-          UI_GetThemeColor4fv(TH_BONE_POSE_ACTIVE, fcolor);
+          DRW_theme_color_get_4fv(TH_BONE_POSE_ACTIVE, fcolor);
         }
         else if (boneflag & BONE_DRAW_ACTIVE) {
-          UI_GetThemeColorBlendShade4fv(TH_WIRE, TH_BONE_POSE, 0.15f, 0, fcolor);
+          DRW_theme_color_blend_shade_get_4fv(TH_WIRE, TH_BONE_POSE, 0.15f, 0, fcolor);
         }
         else if (boneflag & BONE_SELECTED) {
-          UI_GetThemeColor4fv(TH_BONE_POSE, fcolor);
+          DRW_theme_color_get_4fv(TH_BONE_POSE, fcolor);
         }
         else {
-          UI_GetThemeColor4fv(TH_WIRE, fcolor);
+          DRW_theme_color_get_4fv(TH_WIRE, fcolor);
         }
       }
 
       return true;
     }
     case PCHAN_COLOR_SOLID: {
-      UI_GetThemeColor4fv(TH_BONE_SOLID, fcolor);
+      DRW_theme_color_get_4fv(TH_BONE_SOLID, fcolor);
 
       if (bcolor) {
         float solid_bcolor[3];
@@ -781,13 +781,13 @@ static bool set_pchan_color(short colCode,
       }
       else {
         if (boneflag & BONE_DRAW_ACTIVE) {
-          UI_GetThemeColorShade4fv(TH_BONE_POSE, 40, fcolor);
+          DRW_theme_color_shade_get_4fv(TH_BONE_POSE, 40, fcolor);
         }
         else if (boneflag & BONE_SELECTED) {
-          UI_GetThemeColor4fv(TH_BONE_POSE, fcolor);
+          DRW_theme_color_get_4fv(TH_BONE_POSE, fcolor);
         }
         else {
-          UI_GetThemeColor4fv(TH_BONE_SOLID, fcolor);
+          DRW_theme_color_get_4fv(TH_BONE_SOLID, fcolor);
         }
       }
 
@@ -814,13 +814,13 @@ static bool set_pchan_color(short colCode,
       }
       else {
         if (boneflag & BONE_DRAW_ACTIVE) {
-          UI_GetThemeColorShade4fv(TH_BONE_POSE, 10, fcolor);
+          DRW_theme_color_shade_get_4fv(TH_BONE_POSE, 10, fcolor);
         }
         else if (boneflag & BONE_SELECTED) {
-          UI_GetThemeColorShade4fv(TH_BONE_POSE, -30, fcolor);
+          DRW_theme_color_shade_get_4fv(TH_BONE_POSE, -30, fcolor);
         }
         else {
-          UI_GetThemeColorShade4fv(TH_BONE_SOLID, -30, fcolor);
+          DRW_theme_color_shade_get_4fv(TH_BONE_SOLID, -30, fcolor);
         }
       }
       break;
@@ -842,7 +842,7 @@ static bool set_pchan_color(short colCode,
           rgba_char_args_set((char *)cp, 0, 255, 120, 255);
         }
         else if (constflag) {
-          UI_GetThemeColor4ubv(TH_BONE_POSE, cp);
+          DRW_theme_color_get_4ubv(TH_BONE_POSE, cp);
         } /* PCHAN_HAS_ACTION */
 
         rgb_uchar_to_float(fcolor, cp);
@@ -854,7 +854,7 @@ static bool set_pchan_color(short colCode,
           fcolor[3] = 204.f / 255.f;
         }
         else {
-          UI_GetThemeColorShade4fv(TH_BACK, -30, fcolor);
+          DRW_theme_color_shade_get_4fv(TH_BACK, -30, fcolor);
         }
       }
 
@@ -882,22 +882,22 @@ static void update_color(const Object *ob, const float const_color[4])
 
 #define NO_ALPHA(c) (((c)[3] = 1.0f), (c))
 
-  UI_GetThemeColor3fv(TH_SELECT, NO_ALPHA(g_theme.select_color));
-  UI_GetThemeColorShade3fv(TH_EDGE_SELECT, 60, NO_ALPHA(g_theme.edge_select_color));
-  UI_GetThemeColorShade3fv(TH_EDGE_SELECT, -20, NO_ALPHA(g_theme.bone_select_color));
-  UI_GetThemeColor3fv(TH_WIRE, NO_ALPHA(g_theme.wire_color));
-  UI_GetThemeColor3fv(TH_WIRE_EDIT, NO_ALPHA(g_theme.wire_edit_color));
-  UI_GetThemeColor3fv(TH_BONE_SOLID, NO_ALPHA(g_theme.bone_solid_color));
-  UI_GetThemeColorBlendShade3fv(
+  DRW_theme_color_get_3fv(TH_SELECT, NO_ALPHA(g_theme.select_color));
+  DRW_theme_color_shade_get_3fv(TH_EDGE_SELECT, 60, NO_ALPHA(g_theme.edge_select_color));
+  DRW_theme_color_shade_get_3fv(TH_EDGE_SELECT, -20, NO_ALPHA(g_theme.bone_select_color));
+  DRW_theme_color_get_3fv(TH_WIRE, NO_ALPHA(g_theme.wire_color));
+  DRW_theme_color_get_3fv(TH_WIRE_EDIT, NO_ALPHA(g_theme.wire_edit_color));
+  DRW_theme_color_get_3fv(TH_BONE_SOLID, NO_ALPHA(g_theme.bone_solid_color));
+  DRW_theme_color_blend_shade_get_3fv(
       TH_WIRE_EDIT, TH_EDGE_SELECT, 0.15f, 0, NO_ALPHA(g_theme.bone_active_unselect_color));
-  UI_GetThemeColor3fv(TH_BONE_POSE, NO_ALPHA(g_theme.bone_pose_color));
-  UI_GetThemeColor3fv(TH_BONE_POSE_ACTIVE, NO_ALPHA(g_theme.bone_pose_active_color));
-  UI_GetThemeColorBlendShade3fv(
+  DRW_theme_color_get_3fv(TH_BONE_POSE, NO_ALPHA(g_theme.bone_pose_color));
+  DRW_theme_color_get_3fv(TH_BONE_POSE_ACTIVE, NO_ALPHA(g_theme.bone_pose_active_color));
+  DRW_theme_color_blend_shade_get_3fv(
       TH_WIRE, TH_BONE_POSE, 0.15f, 0, NO_ALPHA(g_theme.bone_pose_active_unselect_color));
-  UI_GetThemeColor3fv(TH_TEXT_HI, NO_ALPHA(g_theme.text_hi_color));
-  UI_GetThemeColor3fv(TH_TEXT, NO_ALPHA(g_theme.text_color));
-  UI_GetThemeColor3fv(TH_VERTEX_SELECT, NO_ALPHA(g_theme.vertex_select_color));
-  UI_GetThemeColor3fv(TH_VERTEX, NO_ALPHA(g_theme.vertex_color));
+  DRW_theme_color_get_3fv(TH_TEXT_HI, NO_ALPHA(g_theme.text_hi_color));
+  DRW_theme_color_get_3fv(TH_TEXT, NO_ALPHA(g_theme.text_color));
+  DRW_theme_color_get_3fv(TH_VERTEX_SELECT, NO_ALPHA(g_theme.vertex_select_color));
+  DRW_theme_color_get_3fv(TH_VERTEX, NO_ALPHA(g_theme.vertex_color));
 
 #undef NO_ALPHA
 }
@@ -1948,7 +1948,7 @@ static void draw_armature_edit(Object *ob)
         /* Draw names of bone */
         if (show_text && (arm->flag & ARM_DRAWNAMES)) {
           uchar color[4];
-          UI_GetThemeColor4ubv((eBone->flag & BONE_SELECTED) ? TH_TEXT_HI : TH_TEXT, color);
+          DRW_theme_color_get_4ubv((eBone->flag & BONE_SELECTED) ? TH_TEXT_HI : TH_TEXT, color);
 
           float vec[3];
           mid_v3_v3v3(vec, eBone->head, eBone->tail);
@@ -2094,7 +2094,7 @@ static void draw_armature_pose(Object *ob, const float const_color[4])
         /* Draw names of bone */
         if (show_text && (arm->flag & ARM_DRAWNAMES)) {
           uchar color[4];
-          UI_GetThemeColor4ubv(
+          DRW_theme_color_get_4ubv(
               (arm->flag & ARM_POSEMODE) && (bone->flag & BONE_SELECTED) ? TH_TEXT_HI : TH_TEXT,
               color);
           float vec[3];
