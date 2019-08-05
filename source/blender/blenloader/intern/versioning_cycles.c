@@ -39,6 +39,8 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "IMB_colormanagement.h"
 
 #include "BLO_readfile.h"
@@ -845,6 +847,106 @@ static void update_mapping_output_name_and_identifier(bNodeTree *ntree)
   }
 }
 
+/* The Mapping node has been rewritten to support dynamic inputs. Previously,
+ * the transformation information was stored in a TexMapping struct in the
+ * node->storage member of bNode. Currently, the transformation information
+ * is stored in input sockets. To correct this, we transfer the information
+ * from the TexMapping struct to the input sockets.
+ *
+ * Additionally, the Minimum and Maximum properties are no longer available
+ * in the node. To correct this, a Vector Minimum and/or a Vector Maximum
+ * nodes are added if needed.
+ *
+ * Finally, the TexMapping struct is freed and node->storage is set to NULL.
+ */
+static void update_mapping_inputs_and_properties(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_MAPPING) {
+      TexMapping *mapping = (TexMapping *)node->storage;
+      node->custom1 = mapping->type;
+      node->width = 140.0f;
+
+      bNodeSocket *sockLocation = nodeFindSocket(node, SOCK_IN, "Location");
+      copy_v3_v3(cycles_node_socket_vector_value(sockLocation), mapping->loc);
+      bNodeSocket *sockRotation = nodeFindSocket(node, SOCK_IN, "Rotation");
+      copy_v3_v3(cycles_node_socket_vector_value(sockRotation), mapping->rot);
+      bNodeSocket *sockScale = nodeFindSocket(node, SOCK_IN, "Scale");
+      copy_v3_v3(cycles_node_socket_vector_value(sockScale), mapping->size);
+
+      bNode *maximumNode = NULL;
+      if (mapping->flag & TEXMAP_CLIP_MAX) {
+        maximumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        maximumNode->custom1 = NODE_VECTOR_MATH_MAXIMUM;
+        if (mapping->flag & TEXMAP_CLIP_MIN) {
+          maximumNode->locx = node->locx + (node->width + 20.0f) * 2.0f;
+        }
+        else {
+          maximumNode->locx = node->locx + node->width + 20.0f;
+        }
+        maximumNode->locy = node->locy;
+        bNodeSocket *sockMaximumB = nodeFindSocket(maximumNode, SOCK_IN, "B");
+        copy_v3_v3(cycles_node_socket_vector_value(sockMaximumB), mapping->max);
+        bNodeSocket *sockMappingResult = nodeFindSocket(node, SOCK_OUT, "Result");
+
+        /* Iterate backwards from end so we don't encounter newly added links. */
+        for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+          if (link->fromsock == sockMappingResult) {
+            bNodeSocket *sockMaximumResult = nodeFindSocket(maximumNode, SOCK_OUT, "Vector");
+            nodeAddLink(ntree, maximumNode, sockMaximumResult, link->tonode, link->tosock);
+            nodeRemLink(ntree, link);
+          }
+        }
+        if (!(mapping->flag & TEXMAP_CLIP_MIN)) {
+          bNodeSocket *sockMaximumA = nodeFindSocket(maximumNode, SOCK_IN, "A");
+          nodeAddLink(ntree, node, sockMappingResult, maximumNode, sockMaximumA);
+        }
+
+        need_update = true;
+      }
+
+      if (mapping->flag & TEXMAP_CLIP_MIN) {
+        bNode *minimumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
+        minimumNode->custom1 = NODE_VECTOR_MATH_MINIMUM;
+        minimumNode->locx = node->locx + node->width + 20.0f;
+        minimumNode->locy = node->locy;
+        bNodeSocket *sockMinimumB = nodeFindSocket(minimumNode, SOCK_IN, "B");
+        copy_v3_v3(cycles_node_socket_vector_value(sockMinimumB), mapping->min);
+
+        bNodeSocket *sockMinimumResult = nodeFindSocket(minimumNode, SOCK_OUT, "Vector");
+        bNodeSocket *sockMappingResult = nodeFindSocket(node, SOCK_OUT, "Result");
+
+        if (maximumNode) {
+          bNodeSocket *sockMaximumA = nodeFindSocket(maximumNode, SOCK_IN, "A");
+          nodeAddLink(ntree, minimumNode, sockMinimumResult, maximumNode, sockMaximumA);
+        }
+        else {
+          /* Iterate backwards from end so we don't encounter newly added links. */
+          for (bNodeLink *link = ntree->links.last; link; link = link->prev) {
+            if (link->fromsock == sockMappingResult) {
+              nodeAddLink(ntree, minimumNode, sockMinimumResult, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+        }
+        bNodeSocket *sockMinimumA = nodeFindSocket(minimumNode, SOCK_IN, "A");
+        nodeAddLink(ntree, node, sockMappingResult, minimumNode, sockMinimumA);
+
+        need_update = true;
+      }
+
+      MEM_freeN(node->storage);
+      node->storage = NULL;
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -1012,6 +1114,8 @@ void do_versions_after_linking_cycles(Main *bmain)
         update_vector_math_cross_product_operator(ntree);
         update_vector_math_normalize_operator(ntree);
         update_vector_math_average_operator(ntree);
+
+        update_mapping_inputs_and_properties(ntree);
       }
     }
     FOREACH_NODETREE_END;
