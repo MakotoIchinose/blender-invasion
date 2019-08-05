@@ -46,7 +46,8 @@ typedef enum LANPR_TaperSettings {
 } LANPR_TaperSettings;
 
 typedef enum LANPR_NomalEffect {
-  LANPR_NORMAL_DONT_CARE = 0,
+  /* Shouldn't have access to zero value. */
+  /* Enable/disable is another flag. */
   LANPR_NORMAL_DIRECTIONAL = 1,
   LANPR_NORMAL_POINT = 2,
 } LANPR_NomalEffect;
@@ -112,8 +113,12 @@ typedef struct LANPR_LineLayer {
 
   int use_same_style;
 
-  int normal_mode;
-  int normal_effect_inverse;
+  int  _pad1;
+  char _pad2;
+
+  char normal_enabled;
+  char normal_mode;
+  char normal_effect_inverse;
   float normal_ramp_begin;
   float normal_ramp_end;
   float normal_thickness_begin;
@@ -122,7 +127,7 @@ typedef struct LANPR_LineLayer {
 
   /** For component evaluation */
   int logic_mode; 
-  int _pad2;
+  int _pad3;
 
   ListBase components;
 

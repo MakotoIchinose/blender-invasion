@@ -62,11 +62,6 @@ void RNA_def_lanpr(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem rna_enum_lanpr_normal_mode[] = {
-      {LANPR_NORMAL_DONT_CARE,
-       "DISABLED",
-       0,
-       "Disabled",
-       "Normal value does not affect line style"},
       {LANPR_NORMAL_DIRECTIONAL,
        "DIRECTIONAL",
        0,
@@ -127,40 +122,42 @@ void RNA_def_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Name of this layer");
 
+  prop = RNA_def_property(srna,"normal_enabled",PROP_BOOLEAN,PROP_NONE);
+  RNA_def_property_ui_text(prop, "Enabled", "Enable normal controlled line weight");
+
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);
-  RNA_def_property_enum_default(prop, LANPR_NORMAL_DONT_CARE);
-  RNA_def_property_ui_text(prop, "Normal", "Normal Controlled Style");
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);\
+  RNA_def_property_ui_text(prop, "Normal", "Normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_effect_inverse", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Inverse", "Inverse Normal Thickness");
+  RNA_def_property_ui_text(prop, "Inverse", "Inverse normal effect");
 
   prop = RNA_def_property(
       srna, "normal_ramp_begin", PROP_FLOAT, PROP_FACTOR); /* begin is least strength */
   RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_ui_text(prop, "Ramp Begin", "Normal Ramp Begin Value");
+  RNA_def_property_ui_text(prop, "Ramp Begin", "Normal ramp begin value");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
 
   prop = RNA_def_property(srna, "normal_ramp_end", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Ramp End", "Normal Ramp End Value");
+  RNA_def_property_ui_text(prop, "Ramp End", "Normal ramp end value");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
 
   prop = RNA_def_property(
       srna, "normal_thickness_begin", PROP_FLOAT, PROP_NONE); /* begin is least strength */
   RNA_def_property_float_default(prop, 0.2f);
-  RNA_def_property_ui_text(prop, "Thickness Begin", "Normal Thickness Begin Value");
+  RNA_def_property_ui_text(prop, "Thickness Begin", "Normal thickness begin value");
   RNA_def_property_ui_range(prop, 0.0f, 5.0f, 0.05, 2);
 
   prop = RNA_def_property(srna, "normal_thickness_end", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 1.5f);
-  RNA_def_property_ui_text(prop, "Thickness End", "Normal Thickness End Value");
+  RNA_def_property_ui_text(prop, "Thickness End", "Normal thickness end value");
   RNA_def_property_ui_range(prop, 0.0f, 5.0f, 0.05, 2);
 
   prop = RNA_def_property(srna, "normal_control_object", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Object", "Normal Style Control Object");
+  RNA_def_property_ui_text(prop, "Object", "Normal style control object");
 
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, true);

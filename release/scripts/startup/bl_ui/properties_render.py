@@ -897,10 +897,9 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
         active_layer = lanpr.layers.active_layer
         return scene.render.engine=="BLENDER_LANPR" and active_layer and lanpr.master_mode == "SOFTWARE"
 
-    # sub panel doesn't support this?
-    #def draw_header(self, context):
-        #active_layer = lanpr.layers.active_layer
-        #self.layout.prop(context.scene.lanpr, "enabled", text="")
+    def draw_header(self, context):
+        active_layer = context.scene.lanpr.layers.active_layer
+        self.layout.prop(active_layer, "normal_enabled", text="")   
 
     def draw(self, context):
         scene = context.scene

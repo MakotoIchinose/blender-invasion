@@ -150,6 +150,8 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->normal_ramp_begin = 0.0f;
   ll->normal_ramp_end = 1.0f;
 
+  ll->normal_mode = LANPR_NORMAL_DIRECTIONAL;
+
   lanpr->active_layer = ll;
   BLI_addtail(&lanpr->line_layers, ll);
 

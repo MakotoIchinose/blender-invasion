@@ -161,9 +161,10 @@ void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
 void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
   Object *ob;
+  if(!ll->normal_enabled){
+    return;
+  }
   switch (ll->normal_mode) {
-    case LANPR_NORMAL_DONT_CARE:
-      return;
     case LANPR_NORMAL_DIRECTIONAL:
       if (!(ob = ll->normal_control_object)) {
         normal_object_direction[0] = 0;
@@ -217,6 +218,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   float clear_depth = 1.0f;
   uint clear_stencil = 0xFF;
   eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
+  static int zero_value = 0;
 
   if (lanpr->use_world_background) {
     copy_v3_v3(use_background_color, &scene->world->horr);
@@ -327,7 +329,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_int(
             rb->ChainShgrp, "enable_intersection", &ll->intersection.enabled, 1);
 
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "normal_mode", &ll->normal_mode, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "normal_mode", ll->normal_enabled?&ll->normal_mode:&zero_value, 1);
         DRW_shgroup_uniform_int(
             rb->ChainShgrp, "normal_effect_inverse", &ll->normal_effect_inverse, 1);
         DRW_shgroup_uniform_float(rb->ChainShgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
@@ -427,7 +429,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
           DRW_shgroup_uniform_vec4(ll->shgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);
           DRW_shgroup_uniform_vec4(ll->shgrp, "output_viewport", stl->g_data->output_viewport, 1);
 
-          DRW_shgroup_uniform_int(ll->shgrp, "normal_mode", &ll->normal_mode, 1);
+          DRW_shgroup_uniform_int(ll->shgrp, "normal_mode", ll->normal_enabled?&ll->normal_mode:&zero_value, 1);
           DRW_shgroup_uniform_int(
               ll->shgrp, "normal_effect_inverse", &ll->normal_effect_inverse, 1);
           DRW_shgroup_uniform_float(ll->shgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
