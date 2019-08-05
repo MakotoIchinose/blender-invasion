@@ -474,7 +474,7 @@ static void update_math_clamp_option(bNodeTree *ntree)
 
       bNodeSocket *sockMathResult = nodeFindSocket(node, SOCK_OUT, "Result");
       bNodeSocket *sockClampValue = nodeFindSocket(clampNode, SOCK_IN, "Value");
-      bNodeSocket *sockClampResult = nodeFindSocket(clampNode, SOCK_OUT, "Value");
+      bNodeSocket *sockClampResult = nodeFindSocket(clampNode, SOCK_OUT, "Result");
 
       /* Iterate backwards from end so we don't encounter newly added links. */
       for (bNodeLink *link = ntree->links.last; link; link = link->prev) {

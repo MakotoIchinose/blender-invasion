@@ -31,27 +31,9 @@ static bNodeSocketTemplate sh_node_clamp_in[] = {
     {-1, 0, ""},
 };
 static bNodeSocketTemplate sh_node_clamp_out[] = {
-    {SOCK_FLOAT, 0, N_("Value")},
+    {SOCK_FLOAT, 0, N_("Result")},
     {-1, 0, ""},
 };
-
-static void node_shader_exec_clamp(void *UNUSED(data),
-                                   int UNUSED(thread),
-                                   bNode *UNUSED(node),
-                                   bNodeExecData *UNUSED(execdata),
-                                   bNodeStack **in,
-                                   bNodeStack **out)
-{
-  float value, min, max;
-
-  nodestack_get_vec(&value, SOCK_FLOAT, in[0]);
-  nodestack_get_vec(&min, SOCK_FLOAT, in[1]);
-  nodestack_get_vec(&max, SOCK_FLOAT, in[2]);
-
-  CLAMP(value, min, max);
-
-  out[0]->vec[0] = value;
-}
 
 static int gpu_shader_clamp(GPUMaterial *mat,
                             bNode *node,
@@ -59,7 +41,7 @@ static int gpu_shader_clamp(GPUMaterial *mat,
                             GPUNodeStack *in,
                             GPUNodeStack *out)
 {
-  GPU_stack_link(mat, node, "clamp_val", in, out);
+  GPU_stack_link(mat, node, "clamp_value", in, out);
   return 1;
 }
 
@@ -69,7 +51,6 @@ void register_node_type_sh_clamp(void)
 
   sh_node_type_base(&ntype, SH_NODE_CLAMP, "Clamp", NODE_CLASS_CONVERTOR, 0);
   node_type_socket_templates(&ntype, sh_node_clamp_in, sh_node_clamp_out);
-  node_type_exec(&ntype, NULL, NULL, node_shader_exec_clamp);
   node_type_gpu(&ntype, gpu_shader_clamp);
 
   nodeRegisterType(&ntype);

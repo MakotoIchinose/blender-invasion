@@ -1294,7 +1294,7 @@ class ClampNode : public ShaderNode {
   {
     return NODE_GROUP_LEVEL_3;
   }
-  float valueIn, min, max;
+  float value, min, max;
 };
 
 class MathNode : public ShaderNode {
