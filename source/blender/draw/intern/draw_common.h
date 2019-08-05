@@ -219,6 +219,19 @@ struct GPUShader *volume_velocity_shader_get(bool use_needle);
 
 struct DRWView *DRW_view_create_with_zoffset(const RegionView3D *rv3d, float offset);
 
+int DRW_theme_value_get_i(int colorid);
+float DRW_theme_value_get_f(int colorid);
+void DRW_theme_color_get_4fv(int colorid, float r_col[4]);
+void DRW_theme_color_get_4ubv(int colorid, uchar r_col[4]);
+void DRW_theme_color_get_3fv(int colorid, float r_col[3]);
+void DRW_theme_color_get_3ubv(int colorid, uchar r_col[3]);
+void DRW_theme_color_shade_get_4fv(int colorid, int offset, float r_col[4]);
+void DRW_theme_color_shade_alpha_get_4fv(int colorid, int offset, int alphaoffset, float r_col[4]);
+void DRW_theme_color_shade_get_3fv(int colorid, int offset, float r_col[3]);
+void DRW_theme_color_blend_shade_get_4fv(
+    int colorid1, int colorid2, float fac, int offset, float r_col[4]);
+void DRW_theme_color_blend_shade_get_3fv(
+    int colorid1, int colorid2, float fac, int offset, float r_col[3]);
 int DRW_object_wire_theme_get(struct Object *ob, struct ViewLayer *view_layer, float **r_color);
 float *DRW_color_background_blend_get(int theme_id);
 

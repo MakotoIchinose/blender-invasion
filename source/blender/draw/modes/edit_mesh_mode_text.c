@@ -37,6 +37,9 @@
 
 #include "UI_resources.h"
 
+#include "DRW_render.h"
+
+#include "draw_common.h"
 #include "draw_manager_text.h"
 
 #include "edit_mesh_mode_intern.h" /* own include */
@@ -100,7 +103,7 @@ void DRW_edit_mesh_mode_text_measure_stats(ARegion *ar,
   if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_EDGE_LEN) {
     BMEdge *eed;
 
-    UI_GetThemeColor3ubv(TH_DRAWEXTRA_EDGELEN, col);
+    DRW_theme_color_get_3ubv(TH_DRAWEXTRA_EDGELEN, col);
 
     BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
       /* draw selected edges, or edges next to selected verts while dragging */
@@ -152,7 +155,7 @@ void DRW_edit_mesh_mode_text_measure_stats(ARegion *ar,
     const bool is_rad = (unit->system_rotation == USER_UNIT_ROT_RADIANS);
     BMEdge *eed;
 
-    UI_GetThemeColor3ubv(TH_DRAWEXTRA_EDGEANG, col);
+    DRW_theme_color_get_3ubv(TH_DRAWEXTRA_EDGEANG, col);
 
     BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
       BMLoop *l_a, *l_b;
@@ -215,7 +218,7 @@ void DRW_edit_mesh_mode_text_measure_stats(ARegion *ar,
     /* would be nice to use BM_face_calc_area, but that is for 2d faces
      * so instead add up tessellation triangle areas */
 
-    UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEAREA, col);
+    DRW_theme_color_get_3ubv(TH_DRAWEXTRA_FACEAREA, col);
 
     int i, n, numtri;
     BMFace *f = NULL;
@@ -270,7 +273,7 @@ void DRW_edit_mesh_mode_text_measure_stats(ARegion *ar,
     BMFace *efa;
     const bool is_rad = (unit->system_rotation == USER_UNIT_ROT_RADIANS);
 
-    UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
+    DRW_theme_color_get_3ubv(TH_DRAWEXTRA_FACEANG, col);
 
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
       const bool is_face_sel = BM_elem_flag_test_bool(efa, BM_ELEM_SELECT);
@@ -325,7 +328,7 @@ void DRW_edit_mesh_mode_text_measure_stats(ARegion *ar,
     int i;
 
     /* For now, reuse an appropriate theme color */
-    UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
+    DRW_theme_color_get_3ubv(TH_DRAWEXTRA_FACEANG, col);
 
     if (em->selectmode & SCE_SELECT_VERTEX) {
       BMVert *v;

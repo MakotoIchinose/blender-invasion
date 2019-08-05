@@ -3951,7 +3951,7 @@ GPUBatch *DRW_cache_cursor_get(bool crosshair_lines)
 
     if (crosshair_lines) {
       uchar crosshair_color[3];
-      UI_GetThemeColor3ubv(TH_VIEW_OVERLAY, crosshair_color);
+      DRW_theme_color_get_3ubv(TH_VIEW_OVERLAY, crosshair_color);
 
       GPU_indexbuf_add_primitive_restart(&elb);
 

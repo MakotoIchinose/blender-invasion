@@ -92,9 +92,9 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     copy_v3_v3(wd->background_color_high, v3d->shading.background_color);
   }
   else if (v3d) {
-    UI_GetThemeColor3fv(UI_GetThemeValue(TH_SHOW_BACK_GRAD) ? TH_BACK_GRAD : TH_BACK,
-                        wd->background_color_low);
-    UI_GetThemeColor3fv(TH_BACK, wd->background_color_high);
+    DRW_theme_color_get_3fv(DRW_theme_value_get_i(TH_SHOW_BACK_GRAD) ? TH_BACK_GRAD : TH_BACK,
+                            wd->background_color_low);
+    DRW_theme_color_get_3fv(TH_BACK, wd->background_color_high);
 
     /* XXX: Really quick conversion to avoid washed out background.
      * Needs to be addressed properly (color managed using ocio). */
@@ -125,7 +125,7 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     RegionView3D *rv3d = draw_ctx->rv3d;
     if (rv3d->rflag & RV3D_CLIPPING) {
       wpd->world_clip_planes = rv3d->clip;
-      UI_GetThemeColor4fv(TH_V3D_CLIPPING_BORDER, wpd->world_clip_planes_color);
+      DRW_theme_color_get_4fv(TH_V3D_CLIPPING_BORDER, wpd->world_clip_planes_color);
       if (wpd->use_color_management) {
         srgb_to_linearrgb_v3_v3(wpd->world_clip_planes_color, wpd->world_clip_planes_color);
       }

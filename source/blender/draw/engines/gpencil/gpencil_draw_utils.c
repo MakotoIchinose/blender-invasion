@@ -285,7 +285,7 @@ static void set_wireframe_color(Object *ob,
     /* if fill and wire, use background color */
     if ((is_fill) && (stl->shgroups[id].shading_type[0] == OB_WIRE)) {
       if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_THEME) {
-        UI_GetThemeColor4fv(TH_BACK, stl->shgroups[id].wire_color);
+        DRW_theme_color_get_4fv(TH_BACK, stl->shgroups[id].wire_color);
         stl->shgroups[id].wire_color[3] = 1.0f;
       }
       else if (v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD) {
@@ -307,7 +307,7 @@ static void set_wireframe_color(Object *ob,
     switch (type) {
       case V3D_SHADING_SINGLE_COLOR: {
         if (stl->shgroups[id].shading_type[0] == OB_WIRE) {
-          UI_GetThemeColor4fv(TH_WIRE, color);
+          DRW_theme_color_get_4fv(TH_WIRE, color);
         }
         else {
           copy_v3_v3(color, v3d->shading.single_color);

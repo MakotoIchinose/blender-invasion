@@ -1366,7 +1366,7 @@ static void OBJECT_cache_init(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OBJECT_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
 
-  const float outline_width = UI_GetThemeValuef(TH_OUTLINE_WIDTH);
+  const float outline_width = DRW_theme_value_get_f(TH_OUTLINE_WIDTH);
   const bool do_outline_expand = (U.pixelsize > 1.0) || (outline_width > 2.0f);
   const bool do_large_expand = ((U.pixelsize > 1.0) && (outline_width > 2.0f)) ||
                                (outline_width > 4.0f);
@@ -1817,7 +1817,7 @@ static void OBJECT_cache_init(void *vedata)
     psl->ob_center = DRW_pass_create("Obj Center Pass", state);
 
     outlineWidth = 1.0f * U.pixelsize;
-    size = UI_GetThemeValuef(TH_OBCENTER_DIA) * U.pixelsize + outlineWidth;
+    size = DRW_theme_value_get_f(TH_OBCENTER_DIA) * U.pixelsize + outlineWidth;
 
     GPUShader *sh = GPU_shader_get_builtin_shader_with_config(
         GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA, draw_ctx->sh_cfg);
@@ -2244,10 +2244,10 @@ static void camera_view3d_reconstruction(OBJECT_ShadingGroupList *sgl,
   uchar text_color_selected[4], text_color_unselected[4];
   float bundle_color_unselected[4], bundle_color_solid[4];
 
-  UI_GetThemeColor4ubv(TH_SELECT, text_color_selected);
-  UI_GetThemeColor4ubv(TH_TEXT, text_color_unselected);
-  UI_GetThemeColor4fv(TH_WIRE, bundle_color_unselected);
-  UI_GetThemeColor4fv(TH_BUNDLE_SOLID, bundle_color_solid);
+  DRW_theme_color_get_4ubv(TH_SELECT, text_color_selected);
+  DRW_theme_color_get_4ubv(TH_TEXT, text_color_unselected);
+  DRW_theme_color_get_4fv(TH_WIRE, bundle_color_unselected);
+  DRW_theme_color_get_4fv(TH_BUNDLE_SOLID, bundle_color_solid);
 
   float camera_mat[4][4];
   BKE_tracking_get_camera_object_matrix(scene, ob, camera_mat);
@@ -2349,7 +2349,7 @@ static void camera_view3d_reconstruction(OBJECT_ShadingGroupList *sgl,
 
       if (reconstruction->camnr) {
         static float camera_path_color[4];
-        UI_GetThemeColor4fv(TH_CAMERA_PATH, camera_path_color);
+        DRW_theme_color_get_4fv(TH_CAMERA_PATH, camera_path_color);
 
         GPUBatch *geom = batch_camera_path_get(&sgl->camera_path, reconstruction);
         GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_UNIFORM_COLOR);
@@ -3178,7 +3178,7 @@ static void DRW_shgroup_texture_space(OBJECT_ShadingGroupList *sgl, Object *ob, 
   mul_m4_m4m4(tmp, ob->obmat, tmp);
 
   float color[4];
-  UI_GetThemeColor4fv(theme_id, color);
+  DRW_theme_color_get_4fv(theme_id, color);
 
   DRW_buffer_add_entry(sgl->texspace, color, &one, tmp);
 }
@@ -3208,7 +3208,7 @@ static void DRW_shgroup_bounds(OBJECT_ShadingGroupList *sgl, Object *ob, int the
     BKE_boundbox_init_from_minmax(bb, min, max);
   }
 
-  UI_GetThemeColor4fv(theme_id, color);
+  DRW_theme_color_get_4fv(theme_id, color);
   BKE_boundbox_calc_center_aabb(bb, center);
   BKE_boundbox_calc_size_aabb(bb, size);
 
@@ -3712,7 +3712,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
       struct DRWTextStore *dt = DRW_text_cache_ensure();
 
       uchar color[4];
-      UI_GetThemeColor4ubv(theme_id, color);
+      DRW_theme_color_get_4ubv(theme_id, color);
 
       DRW_text_cache_add(dt,
                          ob->obmat[3],
