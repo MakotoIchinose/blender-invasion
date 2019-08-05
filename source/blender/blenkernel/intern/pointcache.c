@@ -544,16 +544,16 @@ static void ptcache_cloth_read(
   }
   /* TODO(Ish): add the remeshing step here, so that the mesh has been updated with the correct
    * number of vertices for the next frame */
-  Object *ob = clmd->ob;
-  Depsgraph *depsgraph = clmd->depsgraph;
-  Mesh *mesh = clmd->mesh;
-  printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
-         __func__,
-         mesh->totvert,
-         mesh->totedge,
-         mesh->totpoly);
-  clmd->sim_parms->remeshing_reset = 1;
-  cloth_remeshing_step(depsgraph, ob, clmd, mesh);
+  /* Object *ob = clmd->ob; */
+  /* Depsgraph *depsgraph = clmd->depsgraph; */
+  /* Mesh *mesh = clmd->mesh; */
+  /* printf("mesh in %s has totvert: %d totedge: %d totface %d\n", */
+  /*        __func__, */
+  /*        mesh->totvert, */
+  /*        mesh->totedge, */
+  /*        mesh->totpoly); */
+  /* clmd->sim_parms->remeshing_reset = 1; */
+  /* cloth_remeshing_step(depsgraph, ob, clmd, mesh); */
 }
 static void ptcache_cloth_interpolate(
     int index, void *cloth_v, void **data, float cfra, float cfra1, float cfra2, float *old_data)
@@ -2949,8 +2949,32 @@ static int ptcache_read(PTCacheID *pid, int cfra)
     int totpoint = pm->totpoint;
 
     if ((pid->data_types & (1 << BPHYS_DATA_INDEX)) == 0) {
+      if (pid->type == PTCACHE_TYPE_CLOTH) {
+        ClothModifierData *clmd = pid->calldata;
+        Object *ob = clmd->ob;
+        Depsgraph *depsgraph = clmd->depsgraph;
+        Mesh *mesh = clmd->mesh;
+        printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
+               __func__,
+               mesh->totvert,
+               mesh->totedge,
+               mesh->totpoly);
+        if (clmd->clothObject->flags & CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+          clmd->sim_parms->remeshing_reset = 1;
+        }
+        Mesh *mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, mesh);
+        if (clmd->mesh && mesh_result) {
+          BKE_mesh_free(clmd->mesh);
+          clmd->mesh = mesh_result;
+          mesh = clmd->mesh;
+          printf("mesh in %s has totvert: %d totedge: %d totface %d\n\n",
+                 __func__,
+                 mesh->totvert,
+                 mesh->totedge,
+                 mesh->totpoly);
+        }
+      }
       int pid_totpoint = pid->totpoint(pid->calldata, cfra);
-
       if (totpoint != pid_totpoint) {
         /* TODO(Ish): need to run the remeshing step before this check */
         char *em;

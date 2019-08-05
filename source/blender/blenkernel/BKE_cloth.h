@@ -48,6 +48,11 @@ struct ClothSizing;
 /* Toggle Cloth Cache */
 #define USE_CLOTH_CACHE 1
 
+typedef enum eClothFlag {
+  /* Flag to check if previous frame was read from cache */
+  CLOTH_FLAG_PREV_FRAME_READ_CACHE = (1 << 0),
+} eClothFlag;
+
 /* Bits to or into the ClothVertex.flags. */
 typedef enum eClothVertexFlag {
   CLOTH_VERT_FLAG_PINNED = 1,
@@ -98,6 +103,7 @@ typedef struct Cloth {
   struct Implicit_Data *implicit; /* our implicit solver connects to this pointer */
   struct EdgeSet *edgeset;        /* used for selfcollisions */
   int last_frame;
+  int flags;
 } Cloth;
 
 /**

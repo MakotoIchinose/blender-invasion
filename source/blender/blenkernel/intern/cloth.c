@@ -471,15 +471,24 @@ Mesh *clothModifier_do(
   bool can_simulate = (framenr == clmd->clothObject->last_frame + 1) &&
                       !(cache->flag & PTCACHE_BAKED);
 
-  clmd->mesh = mesh_result;
+  /* TODO(Ish): clmd->mesh = mesh_result should be done only on the first frame of reading the
+   * cache */
+  if (clmd->clothObject->flags & CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+  }
+  else {
+    clmd->mesh = mesh_result;
+  }
   cache_result = BKE_ptcache_read(&pid, (float)framenr + scene->r.subframe, can_simulate);
 
   if (cache_result == PTCACHE_READ_EXACT || cache_result == PTCACHE_READ_INTERPOLATED ||
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
     /* TODO(Ish): Need to update mesh_result to be the new mesh that was generated while reading
      * the cache */
+    mesh_result = clmd->mesh;
     BKE_cloth_solver_set_positions(clmd);
     cloth_to_mesh(ob, clmd, mesh_result);
+
+    clmd->clothObject->flags |= CLOTH_FLAG_PREV_FRAME_READ_CACHE;
 
     BKE_ptcache_validate(cache, framenr);
 
@@ -915,6 +924,7 @@ static int cloth_from_object(
     clmd->clothObject->edgeset = NULL;
     clmd->clothObject->bm = NULL;
     clmd->clothObject->bm_prev = NULL;
+    clmd->clothObject->flags = 0;
   }
   else if (!clmd->clothObject) {
     modifier_setError(&(clmd->modifier), "Out of memory on allocating clmd->clothObject");
