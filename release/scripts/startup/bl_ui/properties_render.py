@@ -1168,7 +1168,7 @@ classes = (
     RENDER_PT_lanpr,
     RENDER_PT_lanpr_layer_settings,
     RENDER_PT_lanpr_gpencil,
-    RENDER_PT_lanpr_line_components,
+    #RENDER_PT_lanpr_line_components, # Deprecated
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_line_gpu_effects,
     RENDER_PT_lanpr_snake_sobel_parameters,
