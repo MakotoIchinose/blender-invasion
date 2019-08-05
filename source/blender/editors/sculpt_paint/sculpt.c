@@ -318,6 +318,19 @@ void sculpt_vertex_neighbours_get(SculptSession *ss, int index, SculptVertexNeig
     MEM_freeN(neighbour_iterator.neighbours); \
   }
 
+/* Utils */
+void sculpt_vertex_mask_clamp(SculptSession *ss, int index, float min, float max)
+{
+  if (sculpt_vertex_mask_get(ss, index) > max) {
+    sculpt_vertex_mask_set(ss, index, max);
+    return;
+  }
+  if (sculpt_vertex_mask_get(ss, index) < min) {
+    sculpt_vertex_mask_set(ss, index, min);
+    return;
+  }
+}
+
 /** \name Tool Capabilities
  *
  * Avoid duplicate checks, internal logic only,
@@ -1901,31 +1914,26 @@ static float neighbor_average_mask(SculptSession *ss, unsigned vert)
 
 static float neighbor_dirty_mask(SculptSession *ss, const int vert)
 {
-  const MeshElemMap *vert_map = &ss->pmap[vert];
-  const MVert *mvert = ss->mvert;
-
-  int i = 0;
   int total = 0;
   float avg[3];
   zero_v3(avg);
-  for (i = 0; i < vert_map->count; i++) {
-    const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-    unsigned f_adj_v[2];
-    if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
-      int j;
-      for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-        float normalized[3];
-        sub_v3_v3v3(normalized, mvert[f_adj_v[j]].co, mvert[vert].co);
-        normalize_v3(normalized);
-        add_v3_v3(avg, normalized);
-        total++;
-      }
-    }
+
+  SculptVertexNeighbourIter ni;
+  sculpt_vertex_neighbours_iter_begin(ss, vert, ni)
+  {
+    float normalized[3];
+    sub_v3_v3v3(normalized, sculpt_vertex_co_get(ss, ni.index), sculpt_vertex_co_get(ss, vert));
+    normalize_v3(normalized);
+    add_v3_v3(avg, normalized);
+    total++;
   }
-  if (total > 0) {
+  sculpt_vertex_neighbours_iter_end(ni)
+
+      if (total > 0)
+  {
     mul_v3_fl(avg, 1.0f / total);
     float normal[3];
-    normal_short_to_float_v3(normal, mvert[vert].no);
+    sculpt_vertex_normal_get(ss, vert, normal);
     float dot = dot_v3v3(avg, normal);
     float ang = acos(dot);
     if (ang < DEG2RAD(0)) {
@@ -1934,54 +1942,6 @@ static float neighbor_dirty_mask(SculptSession *ss, const int vert)
     return ang;
   }
   return 0;
-}
-
-static float neighbor_min_mask(SculptSession *ss, const int vert, float *prev_mask)
-{
-  const MeshElemMap *vert_map = &ss->pmap[vert];
-  const float *vmask = prev_mask;
-
-  int i = 0;
-  float min = 1.0f;
-  for (i = 0; i < vert_map->count; i++) {
-    const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-    unsigned f_adj_v[2];
-
-    if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
-      int j;
-      for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-        float vmask_f = vmask[f_adj_v[j]];
-        if (vmask_f < min) {
-          min = vmask_f;
-        }
-      }
-    }
-  }
-  return min;
-}
-
-static float neighbor_max_mask(SculptSession *ss, const int vert, float *prev_mask)
-{
-  const MeshElemMap *vert_map = &ss->pmap[vert];
-  const float *vmask = prev_mask;
-
-  int i = 0;
-  float max = 0.0f;
-  for (i = 0; i < vert_map->count; i++) {
-    const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-    unsigned f_adj_v[2];
-
-    if (poly_get_adj_loops_from_vert(p, ss->mloop, vert, f_adj_v) != -1) {
-      int j;
-      for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-        float vmask_f = vmask[f_adj_v[j]];
-        if (vmask_f > max) {
-          max = vmask_f;
-        }
-      }
-    }
-  }
-  return max;
 }
 
 static void neighbor_average_color(SculptSession *ss, float avg[3], unsigned vert)
@@ -8635,7 +8595,8 @@ static void mask_filter_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     float val;
-    float contrast, delta, gain, offset;
+    float contrast, delta, gain, offset, max, min;
+    SculptVertexNeighbourIter ni;
     switch (mode) {
       case MASK_FILTER_BLUR:
         if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
@@ -8664,40 +8625,46 @@ static void mask_filter_task_cb(void *__restrict userdata,
         CLAMP(*vd.mask, 0.0f, 1.0f);
         break;
       case MASK_FILTER_GROW:
-        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
-          val = neighbor_max_mask(ss, vd.vert_indices[vd.i], data->prev_mask);
-          *vd.mask = val;
-          CLAMP(*vd.mask, 0.0f, 1.0f);
+        max = 0.0f;
+        sculpt_vertex_neighbours_iter_begin(ss, vd.index, ni)
+        {
+          float vmask_f = data->prev_mask[ni.index];
+          if (vmask_f > max) {
+            max = vmask_f;
+          }
         }
+        sculpt_vertex_neighbours_iter_end(ni) *vd.mask = max;
+        CLAMP(*vd.mask, 0.0f, 1.0f);
         break;
       case MASK_FILTER_SHRINK:
-        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
-          val = neighbor_min_mask(ss, vd.vert_indices[vd.i], data->prev_mask);
-          *vd.mask = val;
-          CLAMP(*vd.mask, 0.0f, 1.0f);
+        min = 1.0f;
+        sculpt_vertex_neighbours_iter_begin(ss, vd.index, ni)
+        {
+          float vmask_f = data->prev_mask[ni.index];
+          if (vmask_f < min) {
+            min = vmask_f;
+          }
         }
+        sculpt_vertex_neighbours_iter_end(ni) *vd.mask = min;
+        CLAMP(*vd.mask, 0.0f, 1.0f);
         break;
       case MASK_FILTER_DIRTY:
-        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
-          val = neighbor_dirty_mask(ss, vd.vert_indices[vd.i]);
-          data->prev_mask[vd.vert_indices[vd.i]] = val;
-        }
+        val = neighbor_dirty_mask(ss, vd.index);
+        data->prev_mask[vd.index] = val;
         break;
       case MASK_FILTER_CONTRAST:
-        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
-          contrast = 0.1;
-          delta = contrast / 2.0f;
-          gain = 1.0f - delta * 2.0f;
-          if (contrast > 0) {
-            gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
-            offset = gain * (-delta);
-          }
-          else {
-            delta *= -1;
-            offset = gain * (delta);
-          }
-          *vd.mask = gain * (*vd.mask) + offset;
+        contrast = 0.1f;
+        delta = contrast / 2.0f;
+        gain = 1.0f - delta * 2.0f;
+        if (contrast > 0) {
+          gain = 1.0f / ((gain != 0.0f) ? gain : FLT_EPSILON);
+          offset = gain * (-delta);
         }
+        else {
+          delta *= -1;
+          offset = gain * (delta);
+        }
+        *vd.mask = gain * (*vd.mask) + offset;
         break;
     }
     if (vd.mvert)
@@ -8706,14 +8673,11 @@ static void mask_filter_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 
   BKE_pbvh_node_mark_redraw(node);
-  if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS)
-    BKE_pbvh_node_mark_normals_update(node);
 }
 
-static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
+static int sculpt_mask_filter_invoke(bContext *C, wmOperator *op)
 {
   ARegion *ar = CTX_wm_region(C);
-  struct Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -8728,8 +8692,14 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  if (BKE_pbvh_type(pbvh) == PBVH_BMESH) {
+    BM_mesh_elem_table_init(ss->bm, BM_VERT);
+    BM_mesh_elem_index_ensure(ss->bm, BM_VERT);
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES && !ob->sculpt->pmap) {
+
+  if (!ob->sculpt->pmap) {
     return OPERATOR_CANCELLED;
   }
 
@@ -8750,7 +8720,10 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   for (int i = 0; i < iterations; i++) {
     if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK, MASK_FILTER_DIRTY)) {
-      prev_mask = MEM_dupallocN(ss->vmask);
+      prev_mask = MEM_mallocN(sculpt_vertex_count_get(ss) * sizeof(float), "prevmask");
+      for (int j = 0; j < sculpt_vertex_count_get(ss); j++) {
+        prev_mask[j] = sculpt_vertex_mask_get(ss, j);
+      }
     }
 
     SculptThreadedTaskData data = {
@@ -8767,14 +8740,15 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
     BLI_task_parallel_range(0, totnode, &data, mask_filter_task_cb, &settings);
 
-    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK))
+    if (ELEM(mode, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
       MEM_freeN(prev_mask);
+    }
   }
 
   if (mode == MASK_FILTER_DIRTY) {
     float min = FLT_MAX;
     float max = FLT_MIN;
-    for (int i = 0; i < ss->totvert; i++) {
+    for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
       float val = prev_mask[i];
       if (val < min) {
         min = val;
@@ -8793,20 +8767,22 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     }
 
     bool dirty_only = RNA_boolean_get(op->ptr, "dirty_only");
-    for (int i = 0; i < ss->totvert; i++) {
-      ss->vmask[i] += 1 - ((prev_mask[i] - min) * range);
+    for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
+      sculpt_vertex_mask_set(
+          ss, i, sculpt_vertex_mask_get(ss, i) + (1 - ((prev_mask[i] - min) * range)));
       if (dirty_only) {
-        ss->vmask[i] = fmin(ss->vmask[i], 0.5) * 2.0f;
+        sculpt_vertex_mask_set(ss, i, fmin(sculpt_vertex_mask_get(ss, i), 0.5f) * 2.0f);
       }
-      CLAMP(ss->vmask[i], 0.0f, 1.0f);
+      sculpt_vertex_mask_clamp(ss, i, 0.0f, 1.0f);
     }
     MEM_freeN(prev_mask);
   }
 
   sculpt_undo_push_end();
 
-  if (nodes)
+  if (nodes) {
     MEM_freeN(nodes);
+  }
 
   ED_region_tag_redraw(ar);
 
@@ -8823,7 +8799,7 @@ void SCULPT_OT_mask_filter(struct wmOperatorType *ot)
   ot->description = "Applies a filter to modify the current mask";
 
   /* api callbacks */
-  ot->exec = sculpt_mask_filter_exec;
+  ot->invoke = sculpt_mask_filter_invoke;
   ot->poll = sculpt_mode_poll;
 
   ot->flag = OPTYPE_REGISTER;
