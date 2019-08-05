@@ -55,7 +55,6 @@ static struct GPUTexture *DRW_create_weight_colorramp_texture(void);
 void DRW_globals_update(void)
 {
   GlobalsUboStorage *gb = &G_draw.block;
-  float tmp[4];
 
   DRW_theme_color_get_4fv(TH_WIRE, gb->colorWire);
   DRW_theme_color_get_4fv(TH_WIRE_EDIT, gb->colorWireEdit);
@@ -129,7 +128,6 @@ void DRW_globals_update(void)
   DRW_theme_color_get_4fv(TH_CFRAME, gb->colorCurrentFrame);
 
   /* Grid */
-  DRW_theme_color_get_4fv(TH_GRID, tmp);
   DRW_theme_color_shade_get_4fv(TH_GRID, 10, gb->colorGrid);
   /* emphasise division lines lighter instead of darker, if background is darker than grid */
   DRW_theme_color_shade_get_4fv(
