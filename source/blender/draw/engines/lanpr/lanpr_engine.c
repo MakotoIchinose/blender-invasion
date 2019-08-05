@@ -725,18 +725,16 @@ DrawEngineType draw_engine_lanpr_type = {
     NULL,
     NULL,
     N_("LANPR"),
-    &lanpr_data_size, /*  why should we have the "&" ? */
+    &lanpr_data_size,
     &lanpr_engine_init,
     &lanpr_engine_free,
     &lanpr_cache_init,
     &lanpr_cache_populate,
     &lanpr_cache_finish,
     NULL,              /*  draw background */
-    &lanpr_draw_scene, /*  draw scene, looks like that not much difference except a camera overlay
-                        */
-                       /*  image. */
+    &lanpr_draw_scene, /*  draw scene */
     &lanpr_view_update,
-    &lanpr_id_update, /* &lanpr_id_update, wait till I figure out how to do this. */
+    &lanpr_id_update,
     &lanpr_render_to_image,
 };
 
@@ -749,7 +747,7 @@ RenderEngineType DRW_engine_viewport_lanpr_type = {
     NULL,                 /*  update */
     &DRW_render_to_image, /*  render to img */
     NULL,                 /*  bake */
-    NULL, /*  doesn't seem to be what I thought it was... &lanpr_view_update,// view update */
+    NULL, /*  view update */
     NULL, /*  render to view */
     NULL, /*  update in script */
     NULL, /*  update in render pass */

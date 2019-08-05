@@ -95,9 +95,10 @@ typedef struct LANPR_LineLayer {
 
   int use_multiple_levels;
   int qi_begin;
-  int qi_end; /* these are for QI Range thing... just occlusion levels */
+  int qi_end;
 
-  char name[64]; /* to be displayed on the list */
+  /** To be displayed on the list */
+  char name[64]; 
 
   LANPR_LineType contour;
   LANPR_LineType crease;
@@ -119,13 +120,12 @@ typedef struct LANPR_LineLayer {
   float normal_thickness_end;
   struct Object *normal_control_object;
 
-  int logic_mode; /* for component evaluation */
+  /** For component evaluation */
+  int logic_mode; 
   int _pad2;
 
   ListBase components;
 
-  // still need legacy mode
-  // should use runtime pointer
   struct DRWShadingGroup *shgrp;
   struct GPUBatch *batch;
 
