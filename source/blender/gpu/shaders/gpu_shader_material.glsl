@@ -2778,7 +2778,7 @@ void node_tex_image_cubic_ex(
 
 #if 1 /* Optimized version using 4 filtered tap. */
   vec2 s0 = w0 + w1;
-  vec2 sx = w2 + w3;
+  vec2 s1 = w2 + w3;
 
   vec2 f0 = w1 / (w0 + w1);
   vec2 f1 = w3 / (w2 + w3);
@@ -2793,9 +2793,9 @@ void node_tex_image_cubic_ex(
   final_co /= tex_size.xyxy;
 
   color = safe_color(textureLod(ima, final_co.xy, 0.0)) * s0.x * s0.y;
-  color += safe_color(textureLod(ima, final_co.zy, 0.0)) * sx.x * s0.y;
-  color += safe_color(textureLod(ima, final_co.xw, 0.0)) * s0.x * sx.y;
-  color += safe_color(textureLod(ima, final_co.zw, 0.0)) * sx.x * sx.y;
+  color += safe_color(textureLod(ima, final_co.zy, 0.0)) * s1.x * s0.y;
+  color += safe_color(textureLod(ima, final_co.xw, 0.0)) * s0.x * s1.y;
+  color += safe_color(textureLod(ima, final_co.zw, 0.0)) * s1.x * s1.y;
 
 #else /* Reference bruteforce 16 tap. */
   color = texelFetch(ima, ivec2(tc + vec2(-1.0, -1.0)), 0) * w0.x * w0.y;
