@@ -19,9 +19,9 @@
 #define LANPR_OTHER_RV(rl, rv) ((rv) == (rl)->l ? (rl)->r : (rl)->l)
 
 static LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
-                                                  LANPR_RenderVert *rv,
-                                                  LANPR_RenderVert **new_rv,
-                                                  int match_flag)
+                                                         LANPR_RenderVert *rv,
+                                                         LANPR_RenderVert **new_rv,
+                                                         int match_flag)
 {
   LinkData *lip;
   LANPR_RenderLine *nrl;
@@ -76,15 +76,15 @@ static LANPR_RenderLineChain *lanpr_create_render_line_chain(LANPR_RenderBuffer 
 }
 
 static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_RenderBuffer *rb,
-                                                                LANPR_RenderLineChain *rlc,
-                                                                float x,
-                                                                float y,
-                                                                float gx,
-                                                                float gy,
-                                                                float gz,
-                                                                float *normal,
-                                                                char type,
-                                                                int level)
+                                                                       LANPR_RenderLineChain *rlc,
+                                                                       float x,
+                                                                       float y,
+                                                                       float gx,
+                                                                       float gy,
+                                                                       float gz,
+                                                                       float *normal,
+                                                                       char type,
+                                                                       int level)
 {
   LANPR_RenderLineChainItem *rlci;
   rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
@@ -105,15 +105,15 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
 }
 
 static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_RenderBuffer *rb,
-                                                              LANPR_RenderLineChain *rlc,
-                                                              float x,
-                                                              float y,
-                                                              float gx,
-                                                              float gy,
-                                                              float gz,
-                                                              float *normal,
-                                                              char type,
-                                                              int level)
+                                                                     LANPR_RenderLineChain *rlc,
+                                                                     float x,
+                                                                     float y,
+                                                                     float gx,
+                                                                     float gy,
+                                                                     float gz,
+                                                                     float *normal,
+                                                                     char type,
+                                                                     int level)
 {
   LANPR_RenderLineChainItem *rlci;
   rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineChainItem));
@@ -135,9 +135,9 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
 
 /*  refer to http://karthaus.nl/rdp/ for description */
 static void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
-                                              LANPR_RenderLineChainItem *from,
-                                              LANPR_RenderLineChainItem *to,
-                                              float dist_threshold)
+                                                     LANPR_RenderLineChainItem *from,
+                                                     LANPR_RenderLineChainItem *to,
+                                                     float dist_threshold)
 {
   LANPR_RenderLineChainItem *rlci, *next_rlci;
   float max_dist = 0;
@@ -401,8 +401,8 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 }
 
 static LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBuffer *rb,
-                                                           LANPR_BoundingArea *root,
-                                                           LANPR_RenderLineChainItem *rlci)
+                                                                  LANPR_BoundingArea *root,
+                                                                  LANPR_RenderLineChainItem *rlci)
 {
   if (!root->child) {
     return root;
@@ -429,7 +429,7 @@ static LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBu
   return NULL;
 }
 static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer *rb,
-                                                      LANPR_RenderLineChainItem *rlci)
+                                                             LANPR_RenderLineChainItem *rlci)
 {
   LANPR_BoundingArea *root = ED_lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
   if (!root) {
@@ -444,9 +444,9 @@ static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer 
  * will */
 /*       cover typical threshold values. */
 static void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb,
-                                                   LANPR_BoundingArea *root,
-                                                   LANPR_RenderLineChain *rlc,
-                                                   LANPR_RenderLineChainItem *rlci)
+                                                          LANPR_BoundingArea *root,
+                                                          LANPR_RenderLineChain *rlc,
+                                                          LANPR_RenderLineChainItem *rlci)
 {
   if (!root->child) {
     LANPR_ChainRegisterEntry *cre = list_append_pointer_static_sized(
@@ -481,7 +481,8 @@ static void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb
   }
 }
 
-static void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb, LANPR_RenderLineChain *rlc)
+static void lanpr_link_chain_with_bounding_areas(LANPR_RenderBuffer *rb,
+                                                 LANPR_RenderLineChain *rlc)
 {
   LANPR_RenderLineChainItem *pl = rlc->chain.first;
   LANPR_RenderLineChainItem *pr = rlc->chain.last;
@@ -507,7 +508,7 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 
   rb->chains.last = rb->chains.first = NULL;
 
-  while ((rlc = BLI_pophead(&swap))!=NULL) {
+  while ((rlc = BLI_pophead(&swap)) != NULL) {
     rlc->next = rlc->prev = NULL;
     BLI_addtail(&rb->chains, rlc);
     LANPR_RenderLineChainItem *first_rlci = (LANPR_RenderLineChainItem *)rlc->chain.first;
@@ -549,10 +550,10 @@ void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb)
 
 /*  note: segment type (crease/material/contour...) is ambiguous after this. */
 static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
-                              LANPR_RenderLineChain *onto,
-                              LANPR_RenderLineChain *sub,
-                              int reverse_1,
-                              int reverse_2)
+                                     LANPR_RenderLineChain *onto,
+                                     LANPR_RenderLineChain *sub,
+                                     int reverse_1,
+                                     int reverse_2)
 {
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
@@ -600,7 +601,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
 
   rb->chains.last = rb->chains.first = NULL;
 
-  while ((rlc = BLI_pophead(&swap))!=NULL) {
+  while ((rlc = BLI_pophead(&swap)) != NULL) {
     rlc->next = rlc->prev = NULL;
     BLI_addtail(&rb->chains, rlc);
     if (rlc->picked) {
@@ -612,7 +613,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
     occlusion = ((LANPR_RenderLineChainItem *)rlc->chain.first)->occlusion;
 
     rlci = rlc->chain.last;
-    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci))!=NULL) {
+    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
       dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
                                  rb->scene->lanpr.chaining_image_threshold;
       closest_cre = NULL;
@@ -659,7 +660,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
     }
 
     rlci = rlc->chain.first;
-    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci))!=NULL) {
+    while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
       dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
                                  rb->scene->lanpr.chaining_image_threshold;
       closest_cre = NULL;

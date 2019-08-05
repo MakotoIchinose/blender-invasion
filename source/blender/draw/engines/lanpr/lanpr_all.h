@@ -111,7 +111,7 @@ typedef struct LANPR_TextureList {
   struct GPUTexture *depth;
   struct GPUTexture *edge_intermediate;
 
-  struct GPUTexture *dpix_in_pl;        
+  struct GPUTexture *dpix_in_pl;
   struct GPUTexture *dpix_in_pr;
   struct GPUTexture *dpix_in_nl;
   struct GPUTexture *dpix_in_nr;
@@ -119,7 +119,7 @@ typedef struct LANPR_TextureList {
   /** RGBA texture format,
    * R:Material, G: Freestyle Edge Mark,
    * BA:Reserved for future usages */
-  struct GPUTexture *dpix_in_edge_mask; 
+  struct GPUTexture *dpix_in_edge_mask;
 
   struct GPUTexture *dpix_out_pl;
   struct GPUTexture *dpix_out_pr;
@@ -153,13 +153,13 @@ typedef struct LANPR_PrivateData {
   float znear;
 
   /** Thinning stage */
-  int stage; 
+  int stage;
 
   float *line_result;
   unsigned char *line_result_8bit;
-  
+
   /** If not match then recreate buffer. */
-  int width, height; 
+  int width, height;
   void **sample_table;
 
   ListBase pending_samples;

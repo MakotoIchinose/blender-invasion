@@ -31,7 +31,6 @@
 // for freestyle edge mark.
 #include "DNA_meshdata_types.h"
 
-
 #include "BLI_math.h"
 #include "BLI_linklist.h"
 

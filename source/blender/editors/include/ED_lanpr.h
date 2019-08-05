@@ -74,7 +74,7 @@ typedef struct LANPR_TextureSample {
   struct LANPR_TextureSample *next, *prev;
   int X, Y;
   /** For future usage */
-  float Z; 
+  float Z;
 } LANPR_TextureSample;
 
 typedef struct LANPR_LineStripPoint {
@@ -119,13 +119,13 @@ typedef struct LANPR_RenderElementLinkNode {
 typedef struct LANPR_RenderLineSegment {
   struct LANPR_RenderLineSegment *next, *prev;
   /** at==0: left  at==1: right  (this is in 2D projected space) */
-  real at;       
-  /** This is used to reconstruct 3d stroke  (TODO: implement global space?) */           
-  real at_global;           
+  real at;
+  /** This is used to reconstruct 3d stroke  (TODO: implement global space?) */
+  real at_global;
   /** Occlusion level after "at" point */
-  u8bit occlusion;          
+  u8bit occlusion;
   /** For determining lines beind a glass window material. (TODO: implement this) */
-  short material_mask_mark; 
+  short material_mask_mark;
 } LANPR_RenderLineSegment;
 
 typedef struct LANPR_RenderVert {
@@ -134,7 +134,7 @@ typedef struct LANPR_RenderVert {
   real fbcoord[4];
   int fbcoordi[2];
   /**  Used as "r" when intersecting */
-  struct BMVert *v; 
+  struct BMVert *v;
   struct LANPR_RenderLine *intersecting_line;
   struct LANPR_RenderLine *intersecting_line2;
   struct LANPR_RenderTriangle *intersecting_with;
@@ -144,21 +144,21 @@ typedef struct LANPR_RenderVert {
    * l---->|----->r	l---->|----->r
    *      <|		          |>
    * this means dot(r-l,face_normal)<0 then 1 otherwise 0
-  */
-  char positive;  
-  char edge_used; 
+   */
+  char positive;
+  char edge_used;
 } LANPR_RenderVert;
 
-typedef enum LANPR_EdgeFlag{
-  LANPR_EDGE_FLAG_EDGE_MARK = (1<<0),
-  LANPR_EDGE_FLAG_CONTOUR = (1<<1),
-  LANPR_EDGE_FLAG_CREASE = (1<<2),
-  LANPR_EDGE_FLAG_MATERIAL = (1<<3),
-  LANPR_EDGE_FLAG_INTERSECTION = (1<<4),
+typedef enum LANPR_EdgeFlag {
+  LANPR_EDGE_FLAG_EDGE_MARK = (1 << 0),
+  LANPR_EDGE_FLAG_CONTOUR = (1 << 1),
+  LANPR_EDGE_FLAG_CREASE = (1 << 2),
+  LANPR_EDGE_FLAG_MATERIAL = (1 << 3),
+  LANPR_EDGE_FLAG_INTERSECTION = (1 << 4),
   /**  floating edge, unimplemented yet */
-  LANPR_EDGE_FLAG_FLOATING = (1<<5), 
-  LANPR_EDGE_FLAG_CHAIN_PICKED = (1<<6),
-}LANPR_EdgeFlag;
+  LANPR_EDGE_FLAG_FLOATING = (1 << 5),
+  LANPR_EDGE_FLAG_CHAIN_PICKED = (1 << 6),
+} LANPR_EdgeFlag;
 
 #define LANPR_EDGE_FLAG_ALL_TYPE 0x3f
 
@@ -168,9 +168,9 @@ typedef struct LANPR_RenderLine {
   struct LANPR_RenderTriangle *tl, *tr;
   ListBase segments;
   char min_occ;
-  
+
   /**  Also for line type determination on chainning */
-  char flags; 
+  char flags;
 
   /**  Still need this entry because culled lines will not add to object reln node */
   struct Object *object_ref;
@@ -200,7 +200,7 @@ typedef struct LANPR_RenderLineChainItem {
   /** Need z value for fading */
   float pos[3];
   /** For restoring position to 3d space */
-  float gpos[3]; 
+  float gpos[3];
   float normal[3];
   char line_type;
   char occlusion;
@@ -211,17 +211,17 @@ typedef struct LANPR_ChainRegisterEntry {
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
   char picked;
-  
+
   /** left/right mark.
    * Because we revert list in chaining so we need the flag. */
-  char is_left; 
+  char is_left;
 } LANPR_ChainRegisterEntry;
 
 typedef struct LANPR_RenderBuffer {
   struct LANPR_RenderBuffer *prev, *next;
 
   /** For render. */
-  int is_copied; 
+  int is_copied;
 
   int w, h;
   int tile_size_w, tile_size_h;
@@ -366,11 +366,11 @@ typedef struct LANPR_SharedResource {
 #define LANPR_MEMORY_POOL_256MB 268435456
 #define LANPR_MEMORY_POOL_512MB 536870912
 
-typedef enum LANPR_CullState{
+typedef enum LANPR_CullState {
   LANPR_CULL_DONT_CARE = 0,
   LANPR_CULL_USED = 1,
   LANPR_CULL_DISCARD = 2,
-}LANPR_CullState;
+} LANPR_CullState;
 
 #define TNS_THREAD_LINE_COUNT 10000
 
@@ -806,7 +806,6 @@ void tmat_make_rotation_y_matrix_44d(tnsMatrix44d m, real angle_rad);
 void tmat_make_rotation_z_matrix_44d(tnsMatrix44d m, real angle_rad);
 void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat);
 void tmat_clear_translation_44d(tnsMatrix44d mat);
-
 
 int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll);
 long lanpr_count_leveled_edge_segment_count(ListBase *LineList, LANPR_LineLayer *ll);

@@ -76,11 +76,11 @@ void main()
   }
 
   /* gradient */
-   if (gradient_f < 1.0) {
+  if (gradient_f < 1.0) {
     float dist = abs(mTexCoord.y - 0.5) * 2.0;
     float decay = dist * (1.0 - gradient_f) * fragColor.a;
     fragColor.a = clamp(fragColor.a - decay, 0.0, 1.0);
-   }
+  }
 
   if (fragColor.a < 0.0035) {
     discard;

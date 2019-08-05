@@ -421,7 +421,7 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
   LANPR_StaticMemPoolNode *smpn;
   void *ret = 0;
 
-  while ((smpn = BLI_pophead(&smp->pools))!=NULL) {
+  while ((smpn = BLI_pophead(&smp->pools)) != NULL) {
     MEM_freeN(smpn);
   }
 

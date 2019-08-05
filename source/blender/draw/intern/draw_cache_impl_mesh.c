@@ -721,7 +721,6 @@ static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
 
       rdata->cd.offset.freestyle_edge = CustomData_get_offset(&bm->edata, CD_LANPR_EDGE);
       rdata->cd.offset.freestyle_face = CustomData_get_offset(&bm->pdata, CD_LANPR_FACE);
-
     }
     if (types & (MR_DATATYPE_DVERT)) {
       bm_ensure_types |= BM_VERT;

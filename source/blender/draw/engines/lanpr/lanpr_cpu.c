@@ -307,7 +307,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                   1);
         DRW_shgroup_uniform_float(rb->ChainShgrp,
                                   "thickness_material",
-                                  ll->use_same_style ? &unit_thickness : &ll->material_separate.thickness,
+                                  ll->use_same_style ? &unit_thickness :
+                                                       &ll->material_separate.thickness,
                                   1);
         DRW_shgroup_uniform_float(rb->ChainShgrp,
                                   "thickness_edge_mark",
@@ -384,8 +385,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
               ll->shgrp, "contour_color", ll->use_same_style ? ll->color : ll->contour.color, 1);
           DRW_shgroup_uniform_vec4(
               ll->shgrp, "crease_color", ll->use_same_style ? ll->color : ll->crease.color, 1);
-          DRW_shgroup_uniform_vec4(
-              ll->shgrp, "material_color", ll->use_same_style ? ll->color : ll->material_separate.color, 1);
+          DRW_shgroup_uniform_vec4(ll->shgrp,
+                                   "material_color",
+                                   ll->use_same_style ? ll->color : ll->material_separate.color,
+                                   1);
           DRW_shgroup_uniform_vec4(ll->shgrp,
                                    "edge_mark_color",
                                    ll->use_same_style ? ll->color : ll->edge_mark.color,

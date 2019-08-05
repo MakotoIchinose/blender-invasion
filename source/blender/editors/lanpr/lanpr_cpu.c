@@ -106,9 +106,9 @@ static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
 
 /* Layer operations */
 
-static void lanpr_line_layer_unique_name(ListBase* list, LANPR_LineLayer* ll, const char *defname)
+static void lanpr_line_layer_unique_name(ListBase *list, LANPR_LineLayer *ll, const char *defname)
 {
-  BLI_uniquename(list,ll,defname,'.',offsetof(LANPR_LineLayer, name),sizeof(ll->name));
+  BLI_uniquename(list, ll, defname, '.', offsetof(LANPR_LineLayer, name), sizeof(ll->name));
 }
 
 int ED_lanpr_max_occlusion_in_line_layers(SceneLANPR *lanpr)
@@ -130,7 +130,7 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
 {
   LANPR_LineLayer *ll = MEM_callocN(sizeof(LANPR_LineLayer), "Line Layer");
 
-  lanpr_line_layer_unique_name(&lanpr->line_layers,ll,"Layer");
+  lanpr_line_layer_unique_name(&lanpr->line_layers, ll, "Layer");
 
   int max_occ = ED_lanpr_max_occlusion_in_line_layers(lanpr);
 
@@ -749,7 +749,11 @@ static void lanpr_THREAD_calculate_line_occlusion_begin(LANPR_RenderBuffer *rb)
 
   for (i = 0; i < thread_count; i++) {
     rti[i].thread_id = i;
-    BLI_task_pool_push(tp, (TaskRunFunction)lanpr_THREAD_calculate_line_occlusion, &rti[i], 0, TASK_PRIORITY_HIGH);
+    BLI_task_pool_push(tp,
+                       (TaskRunFunction)lanpr_THREAD_calculate_line_occlusion,
+                       &rti[i],
+                       0,
+                       TASK_PRIORITY_HIGH);
   }
   BLI_task_pool_work_and_wait(tp);
   BLI_task_pool_free(tp);
@@ -1533,8 +1537,12 @@ static void lanpr_perspective_division(LANPR_RenderBuffer *rb)
   }
 }
 
-static void lanpr_transform_render_vert(
-    BMVert *v, int index, LANPR_RenderVert *RvBuf, real *MvMat, real *MvPMat, Camera *UNUSED(camera))
+static void lanpr_transform_render_vert(BMVert *v,
+                                        int index,
+                                        LANPR_RenderVert *RvBuf,
+                                        real *MvMat,
+                                        real *MvPMat,
+                                        Camera *UNUSED(camera))
 { /*  real HeightMultiply, real clipsta, real clipend) { */
   LANPR_RenderVert *rv = &RvBuf[index];
   /*  rv->v = v; */
@@ -2834,7 +2842,7 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
       N += 6;
 
       CLAMP(rls->at, 0, 1);
-      if ((irls = rls->next)!=NULL) {
+      if ((irls = rls->next) != NULL) {
         CLAMP(irls->at, 0, 1);
       }
 
@@ -3081,7 +3089,7 @@ static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea
 
   lanpr_connect_new_bounding_areas(rb, Root);
 
-  while ((rt = list_pop_pointer_no_free(&Root->linked_triangles))!=NULL) {
+  while ((rt = list_pop_pointer_no_free(&Root->linked_triangles)) != NULL) {
     LANPR_BoundingArea *cba = Root->child;
     real b[4];
     b[0] = MIN3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]);
@@ -3402,7 +3410,7 @@ static LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_Boundin
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y)
 {
   LANPR_BoundingArea *ba;
-  if ((ba = ED_lanpr_get_point_bounding_area(rb, x, y))!=NULL) {
+  if ((ba = ED_lanpr_get_point_bounding_area(rb, x, y)) != NULL) {
     return lanpr_get_point_bounding_area_recursive(ba, x, y);
   }
   return NULL;
@@ -3829,7 +3837,8 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   int intersections_only = (is_lanpr_engine && lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
 
-  result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C), intersections_only);
+  result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C),
+                                                   intersections_only);
 
   ED_lanpr_rebuild_all_command(lanpr);
 
@@ -3837,7 +3846,8 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   return result;
 }
-static void lanpr_compute_feature_lines_cancel(struct bContext *UNUSED(C), struct wmOperator *UNUSED(op))
+static void lanpr_compute_feature_lines_cancel(struct bContext *UNUSED(C),
+                                               struct wmOperator *UNUSED(op))
 {
   return;
 }
@@ -3882,7 +3892,7 @@ static bool lanpr_render_buffer_found(struct bContext *UNUSED(C))
 
 void SCENE_OT_lanpr_export_svg(wmOperatorType *ot)
 {
-  PropertyRNA *UNUSED(prop);/* Preserved */
+  PropertyRNA *UNUSED(prop); /* Preserved */
 
   /* identifiers */
   ot->name = "Export LANPR to SVG";
@@ -4304,4 +4314,3 @@ void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
     }
   }
 }
-

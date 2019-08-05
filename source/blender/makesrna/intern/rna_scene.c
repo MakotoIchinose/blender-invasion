@@ -7152,7 +7152,8 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "CPU", "Software edge calculation"},
       {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
       /* Temporally remove image filter mode. */
-      /* {LANPR_MASTER_MODE_SNAKE, "SNAKE", 0, "Edge Detection", "Edge detection filter and tracing"}, */
+      /* {LANPR_MASTER_MODE_SNAKE, "SNAKE", 0, "Edge Detection", "Edge detection filter and
+         tracing"}, */
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem rna_enum_lanpr_enable_post_processing[] = {

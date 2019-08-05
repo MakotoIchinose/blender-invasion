@@ -94,9 +94,9 @@ static void lanpr_engine_init(void *ved)
                                  GPU_ATTACHMENT_TEXTURE(txl->color),
                                  GPU_ATTACHMENT_TEXTURE(txl->normal)});
 
-  GPU_framebuffer_ensure_config(&fbl->edge_intermediate,
-                                {GPU_ATTACHMENT_TEXTURE(txl->depth),
-                                 GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
+  GPU_framebuffer_ensure_config(
+      &fbl->edge_intermediate,
+      {GPU_ATTACHMENT_TEXTURE(txl->depth), GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
 
   if (!lanpr_share.multichannel_shader) {
     lanpr_share.multichannel_shader = DRW_shader_create(
@@ -345,7 +345,8 @@ static void lanpr_cache_init(void *vedata)
                               1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_material",
-                              ll->use_same_style ? &unit_thickness : &ll->material_separate.thickness,
+                              ll->use_same_style ? &unit_thickness :
+                                                   &ll->material_separate.thickness,
                               1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
                               "line_thickness_edge_mark",
@@ -387,7 +388,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
 
       LANPR_BatchItem *dpbi;
-      while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list))!=NULL) {
+      while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) != NULL) {
         GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
         GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
       }
@@ -434,9 +435,9 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
 
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
   LANPR_PrivateData *pd = stl->g_data;
-  const DRWContextState *draw_ctx = DRW_context_state_get();\
+  const DRWContextState *draw_ctx = DRW_context_state_get();
   SceneLANPR *lanpr = &draw_ctx->scene->lanpr;
-  int usage = OBJECT_FEATURE_LINE_INHERENT, dpix_ok=0;
+  int usage = OBJECT_FEATURE_LINE_INHERENT, dpix_ok = 0;
 
   if (!DRW_object_is_renderable(ob)) {
     return;
@@ -451,7 +452,7 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
     if ((dpix_ok = (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
-                   !lanpr_share.dpix_shader_error))!=0) {
+                    !lanpr_share.dpix_shader_error)) != 0) {
       usage = ED_lanpr_object_collection_usage_check(draw_ctx->scene->master_collection, ob);
       if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
         return;
@@ -581,9 +582,9 @@ static void lanpr_draw_scene(void *vedata)
 }
 
 static void lanpr_render_cache(void *vedata,
-                        struct Object *ob,
-                        struct RenderEngine *UNUSED(engine),
-                        struct Depsgraph *UNUSED(depsgraph))
+                               struct Object *ob,
+                               struct RenderEngine *UNUSED(engine),
+                               struct Depsgraph *UNUSED(depsgraph))
 {
 
   lanpr_cache_populate(vedata, ob);
@@ -671,9 +672,9 @@ static void lanpr_render_to_image(void *vedata,
   DRW_texture_ensure_fullscreen_2d(&dtxl->depth, GPU_DEPTH_COMPONENT32F, 0);
   DRW_texture_ensure_fullscreen_2d(&dtxl->color, GPU_RGBA32F, 0);
 
-  GPU_framebuffer_ensure_config(&dfbl->default_fb,
-                                {GPU_ATTACHMENT_TEXTURE(dtxl->depth),
-                                 GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+  GPU_framebuffer_ensure_config(
+      &dfbl->default_fb,
+      {GPU_ATTACHMENT_TEXTURE(dtxl->depth), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
 
   lanpr_engine_init(vedata);
   lanpr_share.dpix_reloaded_deg = 1; /*  force dpix batch to re-create */
@@ -711,7 +712,6 @@ static void lanpr_render_to_image(void *vedata,
 
   /*  we don't need to free pass/buffer/texture in the engine's list */
   /*  lanpr_engine_free(); */
-
 }
 
 static void lanpr_view_update(void *UNUSED(vedata))

@@ -234,13 +234,13 @@ void BKE_lanpr_copy_data(const Scene *from, Scene *to)
   LANPR_LineLayer *ll, *new_ll;
   LANPR_LineLayerComponent *llc, *new_llc;
 
-  to->lanpr.line_layers.first = to->lanpr.line_layers.last=NULL;
-  memset(&to->lanpr.line_layers,0,sizeof(ListBase));
+  to->lanpr.line_layers.first = to->lanpr.line_layers.last = NULL;
+  memset(&to->lanpr.line_layers, 0, sizeof(ListBase));
 
   for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
     new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
     memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
-    memset(&new_ll->components,0,sizeof(ListBase));
+    memset(&new_ll->components, 0, sizeof(ListBase));
     new_ll->next = new_ll->prev = NULL;
     BLI_addtail(&to->lanpr.line_layers, new_ll);
     for (llc = ll->components.first; llc; llc = llc->next) {
@@ -365,7 +365,7 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
 
   /* lanpr data */
 
-   BKE_lanpr_copy_data(sce_src, sce_dst);
+  BKE_lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
@@ -508,8 +508,8 @@ void BKE_lanpr_free_everything(Scene *s)
   LANPR_LineLayer *ll;
   LANPR_LineLayerComponent *llc;
 
-  while ((ll = BLI_pophead(&lanpr->line_layers))!=NULL) {
-    while ((llc = BLI_pophead(&ll->components))!=NULL){
+  while ((ll = BLI_pophead(&lanpr->line_layers)) != NULL) {
+    while ((llc = BLI_pophead(&ll->components)) != NULL) {
       MEM_freeN(llc);
     }
     MEM_freeN(ll);

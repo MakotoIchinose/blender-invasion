@@ -26,7 +26,9 @@
 
 #include <math.h>
 
-static float ED_lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc, float *lengths, int begin_index)
+static float ED_lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc,
+                                                float *lengths,
+                                                int begin_index)
 {
   LANPR_RenderLineChainItem *rlci;
   int i = 0;
