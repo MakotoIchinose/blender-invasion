@@ -398,7 +398,7 @@ static void light_emission_unify(Light *light, const char *engine)
 
 /* The names of the sockets of the Math node were changed. So we have to update
  * them here. The sockets' identifiers needs to be updated as well since they
- * are autmatically generated from the name.
+ * are autmatically generated from the names.
  */
 static void update_math_socket_names_and_identifiers(bNodeTree *ntree)
 {
@@ -424,33 +424,31 @@ static void update_math_socket_names_and_identifiers(bNodeTree *ntree)
  * was used as the input of the operator. To correct this, we move the link
  * from B to A if B is linked and A is not.
  */
-static void update_single_operand_math_operators(bNodeTree *ntree)
+static void update_math_single_operand_operators(bNodeTree *ntree)
 {
   bool need_update = false;
 
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
     if (node->type == SH_NODE_MATH) {
-      switch (node->custom1) {
-        case NODE_MATH_SINE:
-        case NODE_MATH_CEIL:
-        case NODE_MATH_SQRT:
-        case NODE_MATH_ROUND:
-        case NODE_MATH_FLOOR:
-        case NODE_MATH_COSINE:
-        case NODE_MATH_TANGENT:
-        case NODE_MATH_ARCSINE:
-        case NODE_MATH_FRACTION:
-        case NODE_MATH_ABSOLUTE:
-        case NODE_MATH_ARCCOSINE:
-        case NODE_MATH_ARCTANGENT: {
-          bNodeSocket *sockA = nodeFindSocket(node, SOCK_IN, "A");
-          bNodeSocket *sockB = nodeFindSocket(node, SOCK_IN, "B");
-          if (!sockA->link && sockB->link) {
-            nodeAddLink(ntree, sockB->link->fromnode, sockB->link->fromsock, node, sockA);
-            nodeRemLink(ntree, sockB->link);
-            need_update = true;
-          }
-          break;
+      if (ELEM(node->custom1,
+               NODE_MATH_SQRT,
+               NODE_MATH_CEIL,
+               NODE_MATH_SINE,
+               NODE_MATH_ROUND,
+               NODE_MATH_FLOOR,
+               NODE_MATH_COSINE,
+               NODE_MATH_ARCSINE,
+               NODE_MATH_TANGENT,
+               NODE_MATH_ABSOLUTE,
+               NODE_MATH_FRACTION,
+               NODE_MATH_ARCCOSINE,
+               NODE_MATH_ARCTANGENT)) {
+        bNodeSocket *sockA = nodeFindSocket(node, SOCK_IN, "A");
+        bNodeSocket *sockB = nodeFindSocket(node, SOCK_IN, "B");
+        if (!sockA->link && sockB->link) {
+          nodeAddLink(ntree, sockB->link->fromnode, sockB->link->fromsock, node, sockA);
+          nodeRemLink(ntree, sockB->link);
+          need_update = true;
         }
       }
     }
@@ -497,7 +495,7 @@ static void update_math_clamp_option(bNodeTree *ntree)
 
 /* The names of the sockets of the Vector Math node were changed. So we have to
  * update them here. The sockets' identifiers needs to be updated as well since
- * they are autmatically generated from the name.
+ * they are autmatically generated from the names.
  */
 static void update_vector_math_socket_names_and_identifiers(bNodeTree *ntree)
 {
@@ -529,7 +527,7 @@ static void update_vector_math_socket_names_and_identifiers(bNodeTree *ntree)
  * it using the second equation by adding an absolute and a dot node, then
  * connect them appropriately.
  */
-static void update_vector_add_and_subtract_operators(bNodeTree *ntree)
+static void update_vector_math_add_and_subtract_operators(bNodeTree *ntree)
 {
   bool need_update = false;
 
@@ -582,7 +580,7 @@ static void update_vector_add_and_subtract_operators(bNodeTree *ntree)
  * Product operator. Previously, this Vector was always zero initialized. To
  * correct this, we zero out any socket the Vector Output was connected to.
  */
-static void update_vector_dot_product_operator(bNodeTree *ntree)
+static void update_vector_math_dot_product_operator(bNodeTree *ntree)
 {
   bool need_update = false;
 
@@ -619,9 +617,9 @@ static void update_vector_dot_product_operator(bNodeTree *ntree)
 /* Previously, the Vector output of the cross product operator was normalized.
  * To correct this, a Normalize node is added to normalize the output if used.
  * Moreover, the Value output was removed. This Value was equal to the length
- * of the cross product. To correct this, a Length node is added.
+ * of the cross product. To correct this, a Length node is added if needed.
  */
-static void update_vector_cross_product_operator(bNodeTree *ntree)
+static void update_vector_math_cross_product_operator(bNodeTree *ntree)
 {
   bool need_update = false;
 
@@ -689,7 +687,7 @@ static void update_vector_cross_product_operator(bNodeTree *ntree)
  * convert the Normalize node into a Length node, depending on if the
  * Vector output is needed.
  */
-static void update_vector_normalize_operators(bNodeTree *ntree)
+static void update_vector_math_normalize_operator(bNodeTree *ntree)
 {
   bool need_update = false;
 
@@ -768,7 +766,7 @@ static void update_vector_math_operators_enum_mapping(bNodeTree *ntree)
  * To correct this, we convert the node into an Add node and add a length
  * or a normalize node if needed.
  */
-static void update_vector_average_operator(bNodeTree *ntree)
+static void update_vector_math_average_operator(bNodeTree *ntree)
 {
   bool need_update = false;
 
@@ -867,12 +865,12 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
 
   if (1) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type != NTREE_SHADER) {
-        continue;
+      if (ntree->type == NTREE_SHADER) {
+        update_math_socket_names_and_identifiers(ntree);
+
+        update_vector_math_socket_names_and_identifiers(ntree);
+        update_vector_math_operators_enum_mapping(ntree);
       }
-      update_math_socket_names_and_identifiers(ntree);
-      update_vector_math_socket_names_and_identifiers(ntree);
-      update_vector_math_operators_enum_mapping(ntree);
     }
     FOREACH_NODETREE_END;
   }
@@ -989,14 +987,14 @@ void do_versions_after_linking_cycles(Main *bmain)
   if (1) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type == NTREE_SHADER) {
-        update_single_operand_math_operators(ntree);
+        update_math_single_operand_operators(ntree);
         update_math_clamp_option(ntree);
 
-        update_vector_add_and_subtract_operators(ntree);
-        update_vector_dot_product_operator(ntree);
-        update_vector_cross_product_operator(ntree);
-        update_vector_normalize_operators(ntree);
-        update_vector_average_operator(ntree);
+        update_vector_math_add_and_subtract_operators(ntree);
+        update_vector_math_dot_product_operator(ntree);
+        update_vector_math_cross_product_operator(ntree);
+        update_vector_math_normalize_operator(ntree);
+        update_vector_math_average_operator(ntree);
       }
     }
     FOREACH_NODETREE_END;
