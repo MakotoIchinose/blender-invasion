@@ -299,6 +299,7 @@ void sculpt_pbvh_calc_area_normal(const struct Brush *brush,
 
 typedef struct FilterCache {
   float (*orco)[3];
+  float (*orno)[3];
   struct MVertCol *orvcol;
 
   float *random_factor;

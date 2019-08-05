@@ -7934,10 +7934,13 @@ static void filter_cache_init_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     int vi = vd.index;
+    float normal[3];
     if (*vd.mask < 1.0f) {
       data->node_mask[i] = 1;
     }
     copy_v3_v3(ss->filter_cache->orco[vi], sculpt_vertex_co_get(ss, vi));
+    sculpt_vertex_normal_get(ss, vi, normal);
+    copy_v3_v3(ss->filter_cache->orno[vi], normal);
     if (data->filter_type && vi < MESH_FILTER_RANDOM_MOD) {
       data->random_disp[vi % MESH_FILTER_RANDOM_MOD] = (float)rand() / (float)(RAND_MAX);
     }
@@ -7963,6 +7966,7 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd, bool init_random, b
 
   ss->filter_cache = MEM_callocN(sizeof(FilterCache), "filter cache");
   ss->filter_cache->orco = MEM_mallocN(3 * sculpt_vertex_count_get(ss) * sizeof(float), "orco");
+  ss->filter_cache->orno = MEM_mallocN(3 * sculpt_vertex_count_get(ss) * sizeof(float), "orco");
   if (init_random) {
     ss->filter_cache->random_factor = MEM_mallocN(MESH_FILTER_RANDOM_MOD * sizeof(float),
                                                   "random_disp");
@@ -8043,6 +8047,9 @@ static void sculpt_filter_cache_free(SculptSession *ss)
   if (ss->filter_cache->orco) {
     MEM_freeN(ss->filter_cache->orco);
   }
+  if (ss->filter_cache->orno) {
+    MEM_freeN(ss->filter_cache->orno);
+  }
   if (ss->filter_cache->nodes) {
     MEM_freeN(ss->filter_cache->nodes);
   }
@@ -8092,41 +8099,51 @@ static void mesh_filter_task_cb(void *__restrict userdata,
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
-    float orig_co[3], val[3], avg[3], normal[3], disp[3], disp2[3], transform[3][3];
+    float orig_co[3], val[3], avg[3], normal[3], disp[3], disp2[3], transform[3][3], final_pos[3];
     float fade = vd.mask ? *vd.mask : 1.0f;
     fade = 1 - fade;
     fade *= data->filter_strength;
-    copy_v3_v3(orig_co, ss->filter_cache->orco[vd.vert_indices[vd.i]]);
+    copy_v3_v3(orig_co, ss->filter_cache->orco[vd.index]);
     switch (mode) {
       case MESH_FILTER_SMOOTH:
         CLAMP(fade, -1.0f, 1.0f);
-        neighbor_average(ss, avg, vd.vert_indices[vd.i]);
+        if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+          neighbor_average(ss, avg, vd.index);
+        }
+        else if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+          bmesh_neighbor_average(avg, vd.bm_vert);
+        }
         sub_v3_v3v3(val, avg, orig_co);
         madd_v3_v3v3fl(val, orig_co, val, fade);
         sub_v3_v3v3(disp, val, orig_co);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
       case MESH_FILTER_RELAX:
         relax_vertex(disp, vd, ss, true);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
       case MESH_FILTER_INFLATE:
-        normal_short_to_float_v3(normal, vd.no);
+        copy_v3_v3(normal, ss->filter_cache->orno[vd.index]);
         mul_v3_v3fl(disp, normal, fade);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
       case MESH_FILTER_GROW:
         sub_v3_v3v3(disp, orig_co, data->ob->loc);
         normalize_v3(disp);
         mul_v3_fl(disp, fade);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
       case MESH_FILTER_SCALE:
         unit_m3(transform);
         scale_m3_fl(transform, 1 + fade);
         copy_v3_v3(val, orig_co);
         mul_m3_v3(transform, val);
         sub_v3_v3v3(disp, val, orig_co);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
       case MESH_FILTER_SPHERE:
         sub_v3_v3v3(disp, orig_co, data->ob->loc);
@@ -8150,14 +8167,15 @@ static void mesh_filter_task_cb(void *__restrict userdata,
         sub_v3_v3v3(disp2, val, orig_co);
 
         mid_v3_v3v3(disp, disp, disp2);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
       case MESH_FILTER_RANDOM:
-        normal_short_to_float_v3(normal, vd.no);
-        mul_v3_fl(normal,
-                  data->random_disp[vd.vert_indices[vd.i] % MESH_FILTER_RANDOM_MOD] - 0.5f);
+        copy_v3_v3(normal, ss->filter_cache->orno[vd.index]);
+        mul_v3_fl(normal, data->random_disp[vd.index % MESH_FILTER_RANDOM_MOD] - 0.5f);
         mul_v3_v3fl(disp, normal, fade);
-        add_v3_v3v3(ss->mvert[vd.vert_indices[vd.i]].co, orig_co, disp);
+        add_v3_v3v3(final_pos, orig_co, disp);
+        sculpt_vertex_co_set(ss, vd.index, final_pos);
         break;
     }
     if (vd.mvert)
@@ -8166,6 +8184,7 @@ static void mesh_filter_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 
   BKE_pbvh_node_mark_redraw(node);
+  BKE_pbvh_node_mark_normals_update(node);
 }
 
 int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -8174,6 +8193,7 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   View3D *v3d = CTX_wm_view3d(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   int mode = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
 
@@ -8182,6 +8202,11 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   if (!ss->pbvh) {
     return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+    BM_mesh_elem_index_ensure(BKE_pbvh_get_bmesh(ss->pbvh), BM_VERT);
+    BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
   }
 
   if (!BKE_sculptsession_use_pbvh_draw(ob, v3d)) {
@@ -8217,8 +8242,8 @@ int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
   BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, mesh_filter_task_cb, &settings);
 
   if (mode == MESH_FILTER_RELAX) {
-    for (int i = 0; i < ss->totvert; i++) {
-      copy_v3_v3(ss->filter_cache->orco[i], ss->mvert[i].co);
+    for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
+      copy_v3_v3(ss->filter_cache->orco[i], sculpt_vertex_co_get(ss, i));
     }
   }
 
@@ -8247,11 +8272,17 @@ int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   int mode = RNA_enum_get(op->ptr, "type");
+  SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
 
-  /* Disable for multires and dyntopo for now */
-  if (BKE_pbvh_type(pbvh) != PBVH_FACES) {
+  /* Disable for multires  for now */
+  if (BKE_pbvh_type(pbvh) == PBVH_GRIDS) {
     return OPERATOR_CANCELLED;
+  }
+
+  if (BKE_pbvh_type(pbvh) == PBVH_BMESH) {
+    BM_mesh_elem_table_init(ss->bm, BM_VERT);
+    BM_mesh_elem_index_ensure(ss->bm, BM_VERT);
   }
 
   bool needs_pmap = (mode == MESH_FILTER_SMOOTH) || (mode == MESH_FILTER_RELAX);
@@ -9258,6 +9289,7 @@ static void sculpt_transform_task_cb(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 
   BKE_pbvh_node_mark_redraw(node);
+  BKE_pbvh_node_mark_normals_update(node);
   BKE_pbvh_node_mark_update(node);
 }
 
