@@ -25,6 +25,8 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
+#include "DNA_space_types.h"
+
 #include "UI_resources.h"
 
 #include "BKE_object.h"
@@ -53,37 +55,51 @@ static struct GPUTexture *DRW_create_weight_colorramp_texture(void);
 void DRW_globals_update(void)
 {
   GlobalsUboStorage *gb = &G_draw.block;
+  float tmp1[4], tmp2[4];
 
-  UI_GetThemeColor4fv(TH_WIRE, gb->colorWire);
-  UI_GetThemeColor4fv(TH_WIRE_EDIT, gb->colorWireEdit);
-  UI_GetThemeColor4fv(TH_ACTIVE, gb->colorActive);
-  UI_GetThemeColor4fv(TH_SELECT, gb->colorSelect);
+  /* Explicitly access values of SPACE_VIEW3D here, don't use UI_SetTheme() to change global -
+   * thread-unsafe - theme state. */
+
+#define DRW_GetThemeValuef(_id) UI_GetThemeValueTypef(_id, SPACE_VIEW3D)
+#define DRW_GetThemeColor4fv(_id, _col) UI_GetThemeColorType4fv(_id, SPACE_VIEW3D, _col)
+#define DRW_GetThemeColorBlendShade4fv(_id1, _id2, _col, _fac, _ofs) \
+  DRW_GetThemeColor4fv(_id1, tmp1); \
+  DRW_GetThemeColor4fv(_id2, tmp2); \
+  UI_GetColorPtrBlendShade4fv(tmp1, tmp2, _col, _fac, _ofs)
+#define DRW_GetThemeColorShadeAlpha4fv(_id, _col, _ofs, _alphaofs) \
+  DRW_GetThemeColor4fv(_id, _col); \
+  UI_GetColorPtrShadeAlpha4fv(_col, _col, _ofs, _alphaofs)
+
+  DRW_GetThemeColor4fv(TH_WIRE, gb->colorWire);
+  DRW_GetThemeColor4fv(TH_WIRE_EDIT, gb->colorWireEdit);
+  DRW_GetThemeColor4fv(TH_ACTIVE, gb->colorActive);
+  DRW_GetThemeColor4fv(TH_SELECT, gb->colorSelect);
   UI_COLOR_RGBA_FROM_U8(0x88, 0xFF, 0xFF, 155, gb->colorLibrarySelect);
   UI_COLOR_RGBA_FROM_U8(0x55, 0xCC, 0xCC, 155, gb->colorLibrary);
-  UI_GetThemeColor4fv(TH_TRANSFORM, gb->colorTransform);
-  UI_GetThemeColor4fv(TH_LIGHT, gb->colorLight);
-  UI_GetThemeColor4fv(TH_SPEAKER, gb->colorSpeaker);
-  UI_GetThemeColor4fv(TH_CAMERA, gb->colorCamera);
-  UI_GetThemeColor4fv(TH_EMPTY, gb->colorEmpty);
-  UI_GetThemeColor4fv(TH_VERTEX, gb->colorVertex);
-  UI_GetThemeColor4fv(TH_VERTEX_SELECT, gb->colorVertexSelect);
-  UI_GetThemeColor4fv(TH_VERTEX_UNREFERENCED, gb->colorVertexUnreferenced);
+  DRW_GetThemeColor4fv(TH_TRANSFORM, gb->colorTransform);
+  DRW_GetThemeColor4fv(TH_LIGHT, gb->colorLight);
+  DRW_GetThemeColor4fv(TH_SPEAKER, gb->colorSpeaker);
+  DRW_GetThemeColor4fv(TH_CAMERA, gb->colorCamera);
+  DRW_GetThemeColor4fv(TH_EMPTY, gb->colorEmpty);
+  DRW_GetThemeColor4fv(TH_VERTEX, gb->colorVertex);
+  DRW_GetThemeColor4fv(TH_VERTEX_SELECT, gb->colorVertexSelect);
+  DRW_GetThemeColor4fv(TH_VERTEX_UNREFERENCED, gb->colorVertexUnreferenced);
   UI_COLOR_RGBA_FROM_U8(0xB0, 0x00, 0xB0, 0xFF, gb->colorVertexMissingData);
-  UI_GetThemeColor4fv(TH_EDITMESH_ACTIVE, gb->colorEditMeshActive);
-  UI_GetThemeColor4fv(TH_EDGE_SELECT, gb->colorEdgeSelect);
+  DRW_GetThemeColor4fv(TH_EDITMESH_ACTIVE, gb->colorEditMeshActive);
+  DRW_GetThemeColor4fv(TH_EDGE_SELECT, gb->colorEdgeSelect);
 
-  UI_GetThemeColor4fv(TH_EDGE_SEAM, gb->colorEdgeSeam);
-  UI_GetThemeColor4fv(TH_EDGE_SHARP, gb->colorEdgeSharp);
-  UI_GetThemeColor4fv(TH_EDGE_CREASE, gb->colorEdgeCrease);
-  UI_GetThemeColor4fv(TH_EDGE_BEVEL, gb->colorEdgeBWeight);
-  UI_GetThemeColor4fv(TH_EDGE_FACESEL, gb->colorEdgeFaceSelect);
-  UI_GetThemeColor4fv(TH_FACE, gb->colorFace);
-  UI_GetThemeColor4fv(TH_FACE_SELECT, gb->colorFaceSelect);
-  UI_GetThemeColor4fv(TH_NORMAL, gb->colorNormal);
-  UI_GetThemeColor4fv(TH_VNORMAL, gb->colorVNormal);
-  UI_GetThemeColor4fv(TH_LNORMAL, gb->colorLNormal);
-  UI_GetThemeColor4fv(TH_FACE_DOT, gb->colorFaceDot);
-  UI_GetThemeColor4fv(TH_BACK, gb->colorBackground);
+  DRW_GetThemeColor4fv(TH_EDGE_SEAM, gb->colorEdgeSeam);
+  DRW_GetThemeColor4fv(TH_EDGE_SHARP, gb->colorEdgeSharp);
+  DRW_GetThemeColor4fv(TH_EDGE_CREASE, gb->colorEdgeCrease);
+  DRW_GetThemeColor4fv(TH_EDGE_BEVEL, gb->colorEdgeBWeight);
+  DRW_GetThemeColor4fv(TH_EDGE_FACESEL, gb->colorEdgeFaceSelect);
+  DRW_GetThemeColor4fv(TH_FACE, gb->colorFace);
+  DRW_GetThemeColor4fv(TH_FACE_SELECT, gb->colorFaceSelect);
+  DRW_GetThemeColor4fv(TH_NORMAL, gb->colorNormal);
+  DRW_GetThemeColor4fv(TH_VNORMAL, gb->colorVNormal);
+  DRW_GetThemeColor4fv(TH_LNORMAL, gb->colorLNormal);
+  DRW_GetThemeColor4fv(TH_FACE_DOT, gb->colorFaceDot);
+  DRW_GetThemeColor4fv(TH_BACK, gb->colorBackground);
 
   /* Custom median color to slightly affect the edit mesh colors. */
   interp_v4_v4v4(gb->colorEditMeshMiddle, gb->colorVertexSelect, gb->colorWireEdit, 0.35f);
@@ -105,53 +121,55 @@ void DRW_globals_update(void)
 #endif
 
   /* Curve */
-  UI_GetThemeColor4fv(TH_HANDLE_FREE, gb->colorHandleFree);
-  UI_GetThemeColor4fv(TH_HANDLE_AUTO, gb->colorHandleAuto);
-  UI_GetThemeColor4fv(TH_HANDLE_VECT, gb->colorHandleVect);
-  UI_GetThemeColor4fv(TH_HANDLE_ALIGN, gb->colorHandleAlign);
-  UI_GetThemeColor4fv(TH_HANDLE_AUTOCLAMP, gb->colorHandleAutoclamp);
-  UI_GetThemeColor4fv(TH_HANDLE_SEL_FREE, gb->colorHandleSelFree);
-  UI_GetThemeColor4fv(TH_HANDLE_SEL_AUTO, gb->colorHandleSelAuto);
-  UI_GetThemeColor4fv(TH_HANDLE_SEL_VECT, gb->colorHandleSelVect);
-  UI_GetThemeColor4fv(TH_HANDLE_SEL_ALIGN, gb->colorHandleSelAlign);
-  UI_GetThemeColor4fv(TH_HANDLE_SEL_AUTOCLAMP, gb->colorHandleSelAutoclamp);
-  UI_GetThemeColor4fv(TH_NURB_ULINE, gb->colorNurbUline);
-  UI_GetThemeColor4fv(TH_NURB_VLINE, gb->colorNurbVline);
-  UI_GetThemeColor4fv(TH_NURB_SEL_ULINE, gb->colorNurbSelUline);
-  UI_GetThemeColor4fv(TH_NURB_SEL_VLINE, gb->colorNurbSelVline);
-  UI_GetThemeColor4fv(TH_ACTIVE_SPLINE, gb->colorActiveSpline);
+  DRW_GetThemeColor4fv(TH_HANDLE_FREE, gb->colorHandleFree);
+  DRW_GetThemeColor4fv(TH_HANDLE_AUTO, gb->colorHandleAuto);
+  DRW_GetThemeColor4fv(TH_HANDLE_VECT, gb->colorHandleVect);
+  DRW_GetThemeColor4fv(TH_HANDLE_ALIGN, gb->colorHandleAlign);
+  DRW_GetThemeColor4fv(TH_HANDLE_AUTOCLAMP, gb->colorHandleAutoclamp);
+  DRW_GetThemeColor4fv(TH_HANDLE_SEL_FREE, gb->colorHandleSelFree);
+  DRW_GetThemeColor4fv(TH_HANDLE_SEL_AUTO, gb->colorHandleSelAuto);
+  DRW_GetThemeColor4fv(TH_HANDLE_SEL_VECT, gb->colorHandleSelVect);
+  DRW_GetThemeColor4fv(TH_HANDLE_SEL_ALIGN, gb->colorHandleSelAlign);
+  DRW_GetThemeColor4fv(TH_HANDLE_SEL_AUTOCLAMP, gb->colorHandleSelAutoclamp);
+  DRW_GetThemeColor4fv(TH_NURB_ULINE, gb->colorNurbUline);
+  DRW_GetThemeColor4fv(TH_NURB_VLINE, gb->colorNurbVline);
+  DRW_GetThemeColor4fv(TH_NURB_SEL_ULINE, gb->colorNurbSelUline);
+  DRW_GetThemeColor4fv(TH_NURB_SEL_VLINE, gb->colorNurbSelVline);
+  DRW_GetThemeColor4fv(TH_ACTIVE_SPLINE, gb->colorActiveSpline);
 
-  UI_GetThemeColor4fv(TH_BONE_POSE, gb->colorBonePose);
+  DRW_GetThemeColor4fv(TH_BONE_POSE, gb->colorBonePose);
 
-  UI_GetThemeColor4fv(TH_CFRAME, gb->colorCurrentFrame);
+  DRW_GetThemeColor4fv(TH_CFRAME, gb->colorCurrentFrame);
 
   /* Grid */
-  UI_GetThemeColorShade4fv(TH_GRID, 10, gb->colorGrid);
+  DRW_GetThemeColor4fv(TH_GRID, tmp1);
+  UI_GetColorPtrShadeAlpha4fv(tmp1, gb->colorGrid, 10, 0);
   /* emphasise division lines lighter instead of darker, if background is darker than grid */
-  UI_GetThemeColorShade4fv(
-      TH_GRID,
+  UI_GetColorPtrShadeAlpha4fv(
+      tmp1,
+      gb->colorGridEmphasise,
       (gb->colorGrid[0] + gb->colorGrid[1] + gb->colorGrid[2] + 0.12f >
        gb->colorBackground[0] + gb->colorBackground[1] + gb->colorBackground[2]) ?
           20 :
           -10,
-      gb->colorGridEmphasise);
+      0);
   /* Grid Axis */
-  UI_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_X, 0.5f, -10, gb->colorGridAxisX);
-  UI_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_Y, 0.5f, -10, gb->colorGridAxisY);
-  UI_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_Z, 0.5f, -10, gb->colorGridAxisZ);
+  DRW_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_X, gb->colorGridAxisX, 0.5f, -10);
+  DRW_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_Y, gb->colorGridAxisY, 0.5f, -10);
+  DRW_GetThemeColorBlendShade4fv(TH_GRID, TH_AXIS_Z, gb->colorGridAxisZ, 0.5f, -10);
 
-  UI_GetThemeColorShadeAlpha4fv(TH_TRANSFORM, 0, -80, gb->colorDeselect);
-  UI_GetThemeColorShadeAlpha4fv(TH_WIRE, 0, -30, gb->colorOutline);
-  UI_GetThemeColorShadeAlpha4fv(TH_LIGHT, 0, 255, gb->colorLightNoAlpha);
+  DRW_GetThemeColorShadeAlpha4fv(TH_TRANSFORM, gb->colorDeselect, 0, -80);
+  DRW_GetThemeColorShadeAlpha4fv(TH_WIRE, gb->colorOutline, 0, -30);
+  DRW_GetThemeColorShadeAlpha4fv(TH_LIGHT, gb->colorLightNoAlpha, 0, 255);
 
-  gb->sizeLightCenter = (UI_GetThemeValuef(TH_OBCENTER_DIA) + 1.5f) * U.pixelsize;
+  gb->sizeLightCenter = (DRW_GetThemeValuef(TH_OBCENTER_DIA) + 1.5f) * U.pixelsize;
   gb->sizeLightCircle = U.pixelsize * 9.0f;
   gb->sizeLightCircleShadow = gb->sizeLightCircle + U.pixelsize * 3.0f;
 
   /* M_SQRT2 to be at least the same size of the old square */
   gb->sizeVertex = U.pixelsize *
-                   (max_ff(1.0f, UI_GetThemeValuef(TH_VERTEX_SIZE) * (float)M_SQRT2 / 2.0f));
-  gb->sizeFaceDot = U.pixelsize * UI_GetThemeValuef(TH_FACEDOT_SIZE);
+                   (max_ff(1.0f, DRW_GetThemeValuef(TH_VERTEX_SIZE) * (float)M_SQRT2 / 2.0f));
+  gb->sizeFaceDot = U.pixelsize * DRW_GetThemeValuef(TH_FACEDOT_SIZE);
   gb->sizeEdge = U.pixelsize * (1.0f / 2.0f); /* TODO Theme */
   gb->sizeEdgeFix = U.pixelsize * (0.5f + 2.0f * (2.0f * (gb->sizeEdge * (float)M_SQRT1_2)));
 
@@ -208,6 +226,11 @@ void DRW_globals_update(void)
 
     G_draw.weight_ramp = DRW_create_weight_colorramp_texture();
   }
+
+#undef DRW_GetThemeValuef
+#undef DRW_GetThemeColor4fv
+#undef DRW_GetThemeColorBlendShade4fv
+#undef DRW_GetThemeColorShadeAlpha4fv
 }
 
 /* ********************************* SHGROUP ************************************* */

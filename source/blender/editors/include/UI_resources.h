@@ -394,12 +394,18 @@ bool UI_GetIconThemeColor4ubv(int colorid, unsigned char col[4]);
 // shade a 3 byte color (same as UI_GetColorPtrBlendShade3ubv with 0.0 factor)
 void UI_GetColorPtrShade3ubv(const unsigned char cp1[3], unsigned char col[3], int offset);
 
+void UI_GetColorPtrShadeAlpha4fv(const float cp[4], float col[4], int offset, int alphaoffset);
+
 // get a 3 byte color, blended and shaded between two other char color pointers
 void UI_GetColorPtrBlendShade3ubv(const unsigned char cp1[3],
                                   const unsigned char cp2[3],
                                   unsigned char col[3],
                                   float fac,
                                   int offset);
+
+// get a 3 byte color, blended and shaded between two other char color pointers
+void UI_GetColorPtrBlendShade4fv(
+    const float cp1[4], const float cp2[4], float col[4], float fac, int offset);
 
 // sets the font color
 // (for anything fancy use UI_GetThemeColor[Fancy] then BLF_color)

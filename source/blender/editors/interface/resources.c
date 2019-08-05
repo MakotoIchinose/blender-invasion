@@ -1420,6 +1420,28 @@ void UI_GetColorPtrShade3ubv(const uchar cp[3], uchar col[3], int offset)
   col[2] = b;
 }
 
+void UI_GetColorPtrShadeAlpha4fv(const float cp[4], float col[4], int offset, int alphaoffset)
+{
+  const float ofs = offset / 255.0f;
+  const float alphaofs = alphaoffset / 255.0f;
+  float r, g, b, a;
+
+  r = ofs + cp[0];
+  g = ofs + cp[1];
+  b = ofs + cp[2];
+  a = alphaofs + cp[3];
+
+  CLAMP(r, 0.0f, 1.0f);
+  CLAMP(g, 0.0f, 1.0f);
+  CLAMP(b, 0.0f, 1.0f);
+  CLAMP(a, 0.0f, 1.0f);
+
+  col[0] = r;
+  col[1] = g;
+  col[2] = b;
+  col[3] = a;
+}
+
 /* get a 3 byte color, blended and shaded between two other char color pointers */
 void UI_GetColorPtrBlendShade3ubv(
     const uchar cp1[3], const uchar cp2[3], uchar col[3], float fac, int offset)
@@ -1438,6 +1460,30 @@ void UI_GetColorPtrBlendShade3ubv(
   col[0] = r;
   col[1] = g;
   col[2] = b;
+}
+
+void UI_GetColorPtrBlendShade4fv(
+    const float cp1[4], const float cp2[4], float col[4], float fac, int offset)
+{
+  const float ofs = (float)offset / 255.0f;
+  float r, g, b, a;
+
+  CLAMP(fac, 0.0f, 1.0f);
+
+  r = ofs + (1.0f - fac) * cp1[0] + fac * cp2[0];
+  g = ofs + (1.0f - fac) * cp1[1] + fac * cp2[1];
+  b = ofs + (1.0f - fac) * cp1[2] + fac * cp2[2];
+  a = ofs + (1.0f - fac) * cp1[3] + fac * cp2[3];
+
+  CLAMP(r, 0.0f, 1.0f);
+  CLAMP(g, 0.0f, 1.0f);
+  CLAMP(b, 0.0f, 1.0f);
+  CLAMP(a, 0.0f, 1.0f);
+
+  col[0] = r;
+  col[1] = g;
+  col[2] = b;
+  col[3] = a;
 }
 
 void UI_ThemeClearColor(int colorid)
