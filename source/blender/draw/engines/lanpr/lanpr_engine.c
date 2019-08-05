@@ -738,18 +738,17 @@ DrawEngineType draw_engine_lanpr_type = {
     &lanpr_render_to_image,
 };
 
-RenderEngineType DRW_engine_viewport_lanpr_type = {
-    NULL,
-    NULL,
-    LANPR_ENGINE,
-    N_("LANPR"),
-    RE_INTERNAL,
-    NULL,                 /*  update */
-    &DRW_render_to_image, /*  render to img */
-    NULL,                 /*  bake */
-    NULL, /*  view update */
-    NULL, /*  render to view */
-    NULL, /*  update in script */
-    NULL, /*  update in render pass */
-    &draw_engine_lanpr_type,
-    {NULL, NULL, NULL}};
+RenderEngineType DRW_engine_viewport_lanpr_type = {NULL,
+                                                   NULL,
+                                                   LANPR_ENGINE,
+                                                   N_("LANPR"),
+                                                   RE_INTERNAL,
+                                                   NULL,                 /*  update */
+                                                   &DRW_render_to_image, /*  render to img */
+                                                   NULL,                 /*  bake */
+                                                   NULL,                 /*  view update */
+                                                   NULL,                 /*  render to view */
+                                                   NULL,                 /*  update in script */
+                                                   NULL, /*  update in render pass */
+                                                   &draw_engine_lanpr_type,
+                                                   {NULL, NULL, NULL}};

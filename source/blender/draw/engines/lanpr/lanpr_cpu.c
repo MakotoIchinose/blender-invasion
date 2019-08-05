@@ -161,7 +161,7 @@ void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
 void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
 {
   Object *ob;
-  if(!ll->normal_enabled){
+  if (!ll->normal_enabled) {
     return;
   }
   switch (ll->normal_mode) {
@@ -329,7 +329,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_int(
             rb->ChainShgrp, "enable_intersection", &ll->intersection.enabled, 1);
 
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "normal_mode", ll->normal_enabled?&ll->normal_mode:&zero_value, 1);
+        DRW_shgroup_uniform_int(
+            rb->ChainShgrp, "normal_mode", ll->normal_enabled ? &ll->normal_mode : &zero_value, 1);
         DRW_shgroup_uniform_int(
             rb->ChainShgrp, "normal_effect_inverse", &ll->normal_effect_inverse, 1);
         DRW_shgroup_uniform_float(rb->ChainShgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
@@ -429,7 +430,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
           DRW_shgroup_uniform_vec4(ll->shgrp, "preview_viewport", stl->g_data->dpix_viewport, 1);
           DRW_shgroup_uniform_vec4(ll->shgrp, "output_viewport", stl->g_data->output_viewport, 1);
 
-          DRW_shgroup_uniform_int(ll->shgrp, "normal_mode", ll->normal_enabled?&ll->normal_mode:&zero_value, 1);
+          DRW_shgroup_uniform_int(
+              ll->shgrp, "normal_mode", ll->normal_enabled ? &ll->normal_mode : &zero_value, 1);
           DRW_shgroup_uniform_int(
               ll->shgrp, "normal_effect_inverse", &ll->normal_effect_inverse, 1);
           DRW_shgroup_uniform_float(ll->shgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);

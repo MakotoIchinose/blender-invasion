@@ -122,11 +122,11 @@ void RNA_def_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Name of this layer");
 
-  prop = RNA_def_property(srna,"normal_enabled",PROP_BOOLEAN,PROP_NONE);
+  prop = RNA_def_property(srna, "normal_enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Enabled", "Enable normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);\
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_normal_mode);
   RNA_def_property_ui_text(prop, "Normal", "Normal controlled line weight");
 
   prop = RNA_def_property(srna, "normal_effect_inverse", PROP_BOOLEAN, PROP_NONE);

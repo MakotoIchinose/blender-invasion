@@ -3063,7 +3063,7 @@ static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea
   LANPR_BoundingArea *ba = mem_static_aquire(&rb->render_data_pool,
                                              sizeof(LANPR_BoundingArea) * 4);
   LANPR_RenderTriangle *rt;
-  LANPR_RenderLine* rl;
+  LANPR_RenderLine *rl;
 
   ba[0].l = Root->cx;
   ba[0].r = Root->r;
@@ -3119,7 +3119,7 @@ static void lanpr_split_bounding_area(LANPR_RenderBuffer *rb, LANPR_BoundingArea
   }
 
   while ((rl = list_pop_pointer_no_free(&Root->linked_lines)) != NULL) {
-    lanpr_link_line_with_bounding_area(rb,Root,rl);
+    lanpr_link_line_with_bounding_area(rb, Root, rl);
   }
 
   rb->bounding_area_count += 3;

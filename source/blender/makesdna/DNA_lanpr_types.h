@@ -99,7 +99,7 @@ typedef struct LANPR_LineLayer {
   int qi_end;
 
   /** To be displayed on the list */
-  char name[64]; 
+  char name[64];
 
   LANPR_LineType contour;
   LANPR_LineType crease;
@@ -113,7 +113,7 @@ typedef struct LANPR_LineLayer {
 
   int use_same_style;
 
-  int  _pad1;
+  int _pad1;
   char _pad2;
 
   char normal_enabled;
@@ -126,7 +126,7 @@ typedef struct LANPR_LineLayer {
   struct Object *normal_control_object;
 
   /** For component evaluation */
-  int logic_mode; 
+  int logic_mode;
   int _pad3;
 
   ListBase components;
