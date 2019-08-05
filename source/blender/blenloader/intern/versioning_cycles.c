@@ -830,6 +830,21 @@ static void update_vector_math_average_operator(bNodeTree *ntree)
   }
 }
 
+/* The name of the output socket of the Mapping node was changed. So we have to
+ * update it here. The socket's identifier needs to be updated as well since it
+ * is autmatically generated from the name.
+ */
+static void update_mapping_output_name_and_identifier(bNodeTree *ntree)
+{
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_MAPPING) {
+      bNodeSocket *sockResult = node->outputs.first;
+      strcpy(sockResult->name, "Result");
+      strcpy(sockResult->identifier, "Result");
+    }
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -870,6 +885,8 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
 
         update_vector_math_socket_names_and_identifiers(ntree);
         update_vector_math_operators_enum_mapping(ntree);
+
+        update_mapping_output_name_and_identifier(ntree);
       }
     }
     FOREACH_NODETREE_END;
