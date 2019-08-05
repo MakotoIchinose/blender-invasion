@@ -335,7 +335,7 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeMapping)) {
     BL::ShaderNodeMapping b_mapping_node(b_node);
     MappingNode *mapping = new MappingNode();
-    mapping->vector_type = (NodeMappingType)b_mapping_node.vector_type();
+    mapping->type = (NodeMappingType)b_mapping_node.vector_type();
     node = mapping;
   }
   else if (b_node.is_a(&RNA_ShaderNodeFresnel)) {

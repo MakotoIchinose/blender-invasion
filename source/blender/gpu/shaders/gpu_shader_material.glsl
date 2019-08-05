@@ -276,48 +276,48 @@ vec4 safe_divide(vec4 a, float b)
 mat3 euler_to_mat3(vec3 euler)
 {
   mat3 mat;
-  float c1, c2, c3, s1, s2, s3;
+  float cx, cy, cz, sx, sy, sz;
 
-  c1 = cos(euler.x);
-  c2 = cos(euler.y);
-  c3 = cos(euler.z);
-  s1 = sin(euler.x);
-  s2 = sin(euler.y);
-  s3 = sin(euler.z);
+  cx = cos(euler.x);
+  cy = cos(euler.y);
+  cz = cos(euler.z);
+  sx = sin(euler.x);
+  sy = sin(euler.y);
+  sz = sin(euler.z);
 
-  mat[0][0] = c2 * c3;
-  mat[0][1] = c1 * s3 + c3 * s1 * s2;
-  mat[0][2] = s1 * s3 - c1 * c3 * s2;
+  mat[0][0] = cy * cz;
+  mat[0][1] = cx * sz + cz * sx * sy;
+  mat[0][2] = sx * sz - cx * cz * sy;
 
-  mat[1][0] = -c2 * s3;
-  mat[1][1] = c1 * c3 - s1 * s2 * s3;
-  mat[1][2] = c3 * s1 + c1 * s2 * s3;
+  mat[1][0] = -cy * sz;
+  mat[1][1] = cx * cz - sx * sy * sz;
+  mat[1][2] = cz * sx + cx * sy * sz;
 
-  mat[2][0] = s2;
-  mat[2][1] = -c2 * s1;
-  mat[2][2] = c1 * c2;
+  mat[2][0] = sy;
+  mat[2][1] = -cy * sx;
+  mat[2][2] = cx * cy;
 
   return mat;
 }
 
-void mapping_texture(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+void mapping_point(vec3 vector, vec3 location, vec3 rotation, vec3 scale, out vec3 result)
 {
-  outvec = safe_divide(euler_to_mat3(-rot) * (vec - loc), size);
+  result = (euler_to_mat3(rotation) * (vector * scale)) + location;
 }
 
-void mapping_point(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+void mapping_texture(vec3 vector, vec3 location, vec3 rotation, vec3 scale, out vec3 result)
 {
-  outvec = (euler_to_mat3(rot) * (vec * size)) + loc;
+  result = safe_divide(euler_to_mat3(-rotation) * (vector - location), scale);
 }
 
-void mapping_vector(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+void mapping_vector(vec3 vector, vec3 location, vec3 rotation, vec3 scale, out vec3 result)
 {
-  outvec = euler_to_mat3(rot) * (vec * size);
+  result = euler_to_mat3(rotation) * (vector * scale);
 }
 
-void mapping_normal(vec3 vec, vec3 loc, vec3 rot, vec3 size, out vec3 outvec)
+void mapping_normal(vec3 vector, vec3 location, vec3 rotation, vec3 scale, out vec3 result)
 {
-  outvec = normalize(euler_to_mat3(rot) * safe_divide(vec, size));
+  result = normalize(euler_to_mat3(rotation) * safe_divide(vector, scale));
 }
 
 void camera(vec3 co, out vec3 outview, out float outdepth, out float outdist)
@@ -2778,7 +2778,7 @@ void node_tex_image_cubic_ex(
 
 #if 1 /* Optimized version using 4 filtered tap. */
   vec2 s0 = w0 + w1;
-  vec2 s1 = w2 + w3;
+  vec2 sx = w2 + w3;
 
   vec2 f0 = w1 / (w0 + w1);
   vec2 f1 = w3 / (w2 + w3);
@@ -2793,9 +2793,9 @@ void node_tex_image_cubic_ex(
   final_co /= tex_size.xyxy;
 
   color = safe_color(textureLod(ima, final_co.xy, 0.0)) * s0.x * s0.y;
-  color += safe_color(textureLod(ima, final_co.zy, 0.0)) * s1.x * s0.y;
-  color += safe_color(textureLod(ima, final_co.xw, 0.0)) * s0.x * s1.y;
-  color += safe_color(textureLod(ima, final_co.zw, 0.0)) * s1.x * s1.y;
+  color += safe_color(textureLod(ima, final_co.zy, 0.0)) * sx.x * s0.y;
+  color += safe_color(textureLod(ima, final_co.xw, 0.0)) * s0.x * sx.y;
+  color += safe_color(textureLod(ima, final_co.zw, 0.0)) * sx.x * sx.y;
 
 #else /* Reference bruteforce 16 tap. */
   color = texelFetch(ima, ivec2(tc + vec2(-1.0, -1.0)), 0) * w0.x * w0.y;

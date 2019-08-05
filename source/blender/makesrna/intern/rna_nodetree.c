@@ -100,18 +100,22 @@ static const EnumPropertyItem node_chunksize_items[] = {
 #endif
 
 const EnumPropertyItem rna_enum_mapping_type_items[] = {
+    {NODE_MAPPING_TYPE_POINT, "POINT", 0, "Point", "Transform a point"},
     {NODE_MAPPING_TYPE_TEXTURE,
      "TEXTURE",
      0,
      "Texture",
      "Transform a texture by inverse mapping the texture coordinate"},
-    {NODE_MAPPING_TYPE_POINT, "POINT", 0, "Point", "Transform a point"},
-    {NODE_MAPPING_TYPE_VECTOR, "VECTOR", 0, "Vector", "Transform a direction vector"},
+    {NODE_MAPPING_TYPE_VECTOR,
+     "VECTOR",
+     0,
+     "Vector",
+     "Transform a direction vector. Location is ignored"},
     {NODE_MAPPING_TYPE_NORMAL,
      "NORMAL",
      0,
      "Normal",
-     "Transform a normal vector with unit length"},
+     "Transform a unit normal vector. Location is ignored"},
     {0, NULL, 0, NULL, NULL},
 };
 

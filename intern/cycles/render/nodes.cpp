@@ -1751,14 +1751,14 @@ NODE_DEFINE(MappingNode)
   type_enum.insert("texture", NODE_MAPPING_TYPE_TEXTURE);
   type_enum.insert("vector", NODE_MAPPING_TYPE_VECTOR);
   type_enum.insert("normal", NODE_MAPPING_TYPE_NORMAL);
-  SOCKET_ENUM(vector_type, "Type", type_enum, NODE_MAPPING_TYPE_TEXTURE);
+  SOCKET_ENUM(type, "Type", type_enum, NODE_MAPPING_TYPE_POINT);
 
-  SOCKET_IN_POINT(vector_in, "Vector", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(location, "Location", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(rotation, "Rotation", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_POINT(scale, "Scale", make_float3(1.0f, 1.0f, 1.0f));
 
-  SOCKET_OUT_POINT(vector_out, "Vector");
+  SOCKET_OUT_POINT(result, "Result");
 
   return type;
 }
@@ -1769,39 +1769,35 @@ MappingNode::MappingNode() : ShaderNode(node_type)
 
 void MappingNode::constant_fold(const ConstantFolder &folder)
 {
-  float3 vector_out;
-
   if (folder.all_inputs_constant()) {
-    svm_mapping(&vector_out, vector_type, vector_in, location, rotation, scale);
-    folder.make_constant(vector_out);
+    float3 result = svm_mapping((NodeMappingType)type, vector, location, rotation, scale);
+    folder.make_constant(result);
   }
   else {
-    folder.fold_mapping((NodeMappingType)vector_type);
+    folder.fold_mapping((NodeMappingType)type);
   }
 }
 
 void MappingNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
-  ShaderInput *location = input("Location");
-  ShaderInput *rotation = input("Rotation");
-  ShaderInput *scale = input("Scale");
+  ShaderInput *location_in = input("Location");
+  ShaderInput *rotation_in = input("Rotation");
+  ShaderInput *scale_in = input("Scale");
 
-  ShaderOutput *vector_out = output("Vector");
+  ShaderOutput *result_out = output("Result");
 
-  int rotation_stack = compiler.stack_assign(rotation);
-  int scale_stack = compiler.stack_assign(scale);
+  int rotation_stack = compiler.stack_assign(rotation_in);
+  int scale_stack = compiler.stack_assign(scale_in);
 
-  compiler.add_node(NODE_MAPPING,
-                    vector_type,
-                    compiler.stack_assign(vector_in),
-                    compiler.stack_assign(location));
-  compiler.add_node(NODE_MAPPING, rotation_stack, scale_stack, compiler.stack_assign(vector_out));
+  compiler.add_node(
+      NODE_MAPPING, type, compiler.stack_assign(vector_in), compiler.stack_assign(location_in));
+  compiler.add_node(NODE_MAPPING, rotation_stack, scale_stack, compiler.stack_assign(result_out));
 }
 
 void MappingNode::compile(OSLCompiler &compiler)
 {
-  compiler.parameter(this, "vector_type");
+  compiler.parameter(this, "type");
   compiler.add(this, "node_mapping");
 }
 

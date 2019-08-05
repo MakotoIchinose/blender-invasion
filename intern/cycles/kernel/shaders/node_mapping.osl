@@ -49,20 +49,22 @@ matrix euler_to_mat(point euler){
   return mat;
 }
 
-shader node_mapping(string vector_type = "point",
-                    point VectorIn = point(0.0, 0.0, 0.0),
+shader node_mapping(string type = "point",
+                    point Vector = point(0.0, 0.0, 0.0),
                     point Location = point(0.0, 0.0, 0.0),
                     point Rotation = point(0.0, 0.0, 0.0),
                     point Scale = point(1.0, 1.0, 1.0),
-                    output point VectorOut = point(0.0, 0.0, 0.0))
+                    output point Result = point(0.0, 0.0, 0.0))
 {
-  if (vector_type == "texture") {
-    VectorOut = safe_divide(transform(euler_to_mat(-Rotation), (VectorIn - Location)), Scale);
-  } else if (vector_type == "point") {
-    VectorOut = transform(euler_to_mat(Rotation), (VectorIn * Scale)) + Location;
-  } else if (vector_type == "vector") {
-    VectorOut = transform(euler_to_mat(Rotation), (VectorIn * Scale));
-  } else if (vector_type == "normal") {
-    VectorOut = normalize(transform(euler_to_mat(Rotation), safe_divide(VectorIn, Scale)));
+  if (type == "point") {
+    Result = transform(euler_to_mat(Rotation), (Vector * Scale)) + Location;
+  } else if (type == "texture") {
+    Result = safe_divide(transform(euler_to_mat(-Rotation), (Vector - Location)), Scale);
+  } else if (type == "vector") {
+    Result = transform(euler_to_mat(Rotation), (Vector * Scale));
+  } else if (type == "normal") {
+    Result = normalize(transform(euler_to_mat(Rotation), safe_divide(Vector, Scale)));
+  } else {
+    warning("%s", "Unknown Mapping vector type!");
   }
 }
