@@ -307,6 +307,21 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       ba = ED_lanpr_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
 
+    /* Restore normal value */
+    if (rl->tl || rl->tr) {
+      zero_v3(N);
+      if (rl->tl) {
+        N[0] += rl->tl->gn[0];
+        N[1] += rl->tl->gn[1];
+        N[2] += rl->tl->gn[2];
+      }
+      if (rl->tr) {
+        N[0] += rl->tr->gn[0];
+        N[1] += rl->tr->gn[1];
+        N[2] += rl->tr->gn[2];
+      }
+      normalize_v3(N);
+    }
     /*  step 2: this line */
     rls = rl->segments.first;
     last_occlusion = ((LANPR_RenderLineSegment *)rls)->occlusion;
