@@ -1283,7 +1283,7 @@ class MapRangeNode : public ShaderNode {
   {
     return NODE_GROUP_LEVEL_3;
   }
-  float valueIn, fromMin, fromMax, toMin, toMax;
+  float value, fromMin, fromMax, toMin, toMax;
 };
 
 class ClampNode : public ShaderNode {

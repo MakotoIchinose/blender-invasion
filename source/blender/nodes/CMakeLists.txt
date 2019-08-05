@@ -203,7 +203,7 @@ set(SRC
   shader/nodes/node_shader_vertex_color.c
   shader/nodes/node_shader_valToRgb.c
   shader/nodes/node_shader_value.c
-  shader/nodes/node_shader_mapRange.c
+  shader/nodes/node_shader_map_range.c
   shader/nodes/node_shader_clamp.c
   shader/nodes/node_shader_vectMath.c
   shader/nodes/node_shader_vectTransform.c

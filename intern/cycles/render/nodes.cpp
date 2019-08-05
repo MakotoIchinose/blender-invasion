@@ -5526,13 +5526,13 @@ NODE_DEFINE(MapRangeNode)
 {
   NodeType *type = NodeType::add("map_range", create, NodeType::SHADER);
 
-  SOCKET_IN_FLOAT(valueIn, "Value", 0.0f);
+  SOCKET_IN_FLOAT(value, "Value", 1.0f);
   SOCKET_IN_FLOAT(fromMin, "From Min", 0.0f);
   SOCKET_IN_FLOAT(fromMax, "From Max", 1.0f);
   SOCKET_IN_FLOAT(toMin, "To Min", 0.0f);
   SOCKET_IN_FLOAT(toMax, "To Max", 1.0f);
 
-  SOCKET_OUT_FLOAT(valueOut, "Value");
+  SOCKET_OUT_FLOAT(result, "Result");
 
   return type;
 }
@@ -5544,14 +5544,14 @@ MapRangeNode::MapRangeNode() : ShaderNode(node_type)
 void MapRangeNode::constant_fold(const ConstantFolder &folder)
 {
   if (folder.all_inputs_constant()) {
-    float r;
+    float result;
     if (fromMax != fromMin) {
-      r = toMin + ((valueIn - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
+      result = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
     }
     else {
-      r = 0.0f;
+      result = 0.0f;
     }
-    folder.make_constant(r);
+    folder.make_constant(result);
   }
 }
 
@@ -5563,7 +5563,7 @@ void MapRangeNode::compile(SVMCompiler &compiler)
   ShaderInput *toMin_in = input("To Min");
   ShaderInput *toMax_in = input("To Max");
 
-  ShaderOutput *value_out = output("Value");
+  ShaderOutput *result_out = output("Result");
 
   int toMin_stack = compiler.stack_assign(toMin_in);
   int toMax_stack = compiler.stack_assign(toMax_in);
@@ -5572,7 +5572,7 @@ void MapRangeNode::compile(SVMCompiler &compiler)
                     compiler.stack_assign(value_in),
                     compiler.stack_assign(fromMin_in),
                     compiler.stack_assign(fromMax_in));
-  compiler.add_node(NODE_MAP_RANGE, toMin_stack, toMax_stack, compiler.stack_assign(value_out));
+  compiler.add_node(NODE_MAP_RANGE, toMin_stack, toMax_stack, compiler.stack_assign(result_out));
 }
 
 void MapRangeNode::compile(OSLCompiler &compiler)

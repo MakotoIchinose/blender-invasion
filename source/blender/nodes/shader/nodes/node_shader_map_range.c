@@ -33,32 +33,9 @@ static bNodeSocketTemplate sh_node_map_range_in[] = {
     {-1, 0, ""},
 };
 static bNodeSocketTemplate sh_node_map_range_out[] = {
-    {SOCK_FLOAT, 0, N_("Value")},
+    {SOCK_FLOAT, 0, N_("Result")},
     {-1, 0, ""},
 };
-
-static void node_shader_exec_map_range(void *UNUSED(data),
-                                       int UNUSED(thread),
-                                       bNode *UNUSED(node),
-                                       bNodeExecData *UNUSED(execdata),
-                                       bNodeStack **in,
-                                       bNodeStack **out)
-{
-  float value, fromMin, fromMax, toMin, toMax;
-
-  nodestack_get_vec(&value, SOCK_FLOAT, in[0]);
-  nodestack_get_vec(&fromMin, SOCK_FLOAT, in[1]);
-  nodestack_get_vec(&fromMax, SOCK_FLOAT, in[2]);
-  nodestack_get_vec(&toMin, SOCK_FLOAT, in[3]);
-  nodestack_get_vec(&toMax, SOCK_FLOAT, in[4]);
-
-  if (fromMax != fromMin) {
-    out[0]->vec[0] = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
-  }
-  else {
-    out[0]->vec[0] = 0.0f;
-  }
-}
 
 static int gpu_shader_map_range(GPUMaterial *mat,
                                 bNode *node,
@@ -76,7 +53,6 @@ void register_node_type_sh_map_range(void)
 
   sh_node_type_base(&ntype, SH_NODE_MAP_RANGE, "Map Range", NODE_CLASS_CONVERTOR, 0);
   node_type_socket_templates(&ntype, sh_node_map_range_in, sh_node_map_range_out);
-  node_type_exec(&ntype, NULL, NULL, node_shader_exec_map_range);
   node_type_gpu(&ntype, gpu_shader_map_range);
 
   nodeRegisterType(&ntype);
