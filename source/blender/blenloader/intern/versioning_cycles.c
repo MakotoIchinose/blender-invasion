@@ -400,23 +400,19 @@ static void light_emission_unify(Light *light, const char *engine)
  * them here. The sockets' identifiers needs to be updated as well since they
  * are autmatically generated from the name.
  */
-static void update_math_socket_names_and_identifiers(bNodeTree *ntree)
+static void update_math_socket_names_and_identifiers(bNode *mathNode)
 {
-  for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_MATH) {
-      bNodeSocket *sockA = node->inputs.first;
-      bNodeSocket *sockB = sockA->next;
-      bNodeSocket *sockResult = node->outputs.first;
+  bNodeSocket *sockA = mathNode->inputs.first;
+  bNodeSocket *sockB = sockA->next;
+  bNodeSocket *sockResult = mathNode->outputs.first;
 
-      strcpy(sockA->name, "A");
-      strcpy(sockB->name, "B");
-      strcpy(sockResult->name, "Result");
+  strcpy(sockA->name, "A");
+  strcpy(sockB->name, "B");
+  strcpy(sockResult->name, "Result");
 
-      strcpy(sockA->identifier, "A");
-      strcpy(sockB->identifier, "B");
-      strcpy(sockResult->identifier, "Result");
-    }
-  }
+  strcpy(sockA->identifier, "A");
+  strcpy(sockB->identifier, "B");
+  strcpy(sockResult->identifier, "Result");
 }
 
 /* The B input of the Math node is no longer used for single-operand operators.
@@ -499,20 +495,16 @@ static void update_math_clamp_option(bNodeTree *ntree)
  * update them here. The sockets' identifiers needs to be updated as well since
  * they are autmatically generated from the name.
  */
-static void update_vector_math_socket_names_and_identifiers(bNodeTree *ntree)
+static void update_vector_math_socket_names_and_identifiers(bNode *vectorMathNode)
 {
-  for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_VECTOR_MATH) {
-      bNodeSocket *sockA = node->inputs.first;
-      bNodeSocket *sockB = sockA->next;
+  bNodeSocket *sockA = vectorMathNode->inputs.first;
+  bNodeSocket *sockB = sockA->next;
 
-      strcpy(sockA->name, "A");
-      strcpy(sockB->name, "B");
+  strcpy(sockA->name, "A");
+  strcpy(sockB->name, "B");
 
-      strcpy(sockA->identifier, "A");
-      strcpy(sockB->identifier, "B");
-    }
-  }
+  strcpy(sockA->identifier, "A");
+  strcpy(sockB->identifier, "B");
 }
 
 /* The Value output of the Vector Math node is no longer available in the Add
@@ -743,22 +735,18 @@ static void update_vector_normalize_operators(bNodeTree *ntree)
  * NODE_VECTOR_MATH_AVERAGE : 2 -> -1
  *
  */
-static void update_vector_math_operators_enum_mapping(bNodeTree *ntree)
+static void update_vector_math_operators_enum_mapping(bNode *vectorMathNode)
 {
-  for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_VECTOR_MATH) {
-      switch (node->custom1) {
-        case 2:
-          node->custom1 = -1;
-          break;
-        case 3:
-          node->custom1 = 7;
-          break;
-        case 5:
-          node->custom1 = 11;
-          break;
-      }
-    }
+  switch (vectorMathNode->custom1) {
+    case 2:
+      vectorMathNode->custom1 = -1;
+      break;
+    case 3:
+      vectorMathNode->custom1 = 7;
+      break;
+    case 5:
+      vectorMathNode->custom1 = 11;
+      break;
   }
 }
 
@@ -867,12 +855,19 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
 
   if (1) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      if (ntree->type != NTREE_SHADER) {
-        continue;
+      if (ntree->type == NTREE_SHADER) {
+        for (bNode *node = ntree->nodes.first; node; node = node->next) {
+          switch (node->type) {
+            case SH_NODE_MATH:
+              update_math_socket_names_and_identifiers(node);
+              break;
+            case SH_NODE_VECTOR_MATH:
+              update_vector_math_socket_names_and_identifiers(node);
+              update_vector_math_operators_enum_mapping(node);
+              break;
+          }
+        }
       }
-      update_math_socket_names_and_identifiers(ntree);
-      update_vector_math_socket_names_and_identifiers(ntree);
-      update_vector_math_operators_enum_mapping(ntree);
     }
     FOREACH_NODETREE_END;
   }
