@@ -209,6 +209,16 @@ void mesh_foreachScreenEdge(struct ViewContext *vc,
                                          int index),
                             void *userData,
                             const eV3DProjTest clip_flag);
+
+void mesh_foreachScreenEdge_clip_bb_segment(struct ViewContext *vc,
+                                            void (*func)(void *userData,
+                                                         struct BMEdge *eed,
+                                                         const float screen_co_a[2],
+                                                         const float screen_co_b[2],
+                                                         int index),
+                                            void *userData,
+                                            const eV3DProjTest clip_flag);
+
 void mesh_foreachScreenFace(
     struct ViewContext *vc,
     void (*func)(void *userData, struct BMFace *efa, const float screen_co[2], int index),
@@ -568,7 +578,7 @@ void ED_view3d_draw_offscreen(struct Depsgraph *depsgraph,
                               bool do_sky,
                               bool is_persp,
                               const char *viewname,
-                              const bool do_color_managment,
+                              const bool do_color_management,
                               struct GPUOffScreen *ofs,
                               struct GPUViewport *viewport);
 void ED_view3d_draw_setup_view(struct wmWindow *win,
