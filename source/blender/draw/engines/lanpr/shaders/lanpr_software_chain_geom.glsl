@@ -200,7 +200,7 @@ void decide_line_style(int component_id)
 
   if (component_id == 0) {
     out_color = contour_color;
-    use_thickness = th * enable_contour;
+    use_thickness = th * thickness_contour * enable_contour;
     return;
   }
   if (component_id == 1) {

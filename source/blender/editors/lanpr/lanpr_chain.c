@@ -240,18 +240,18 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
 
-      N[0] = N[1] = N[2] = 0;
-      if (new_rl->tl) {
-        N[0] += new_rl->tl->gn[0];
-        N[1] += new_rl->tl->gn[1];
-        N[2] += new_rl->tl->gn[2];
-      }
-      if (new_rl->tr) {
-        N[0] += new_rl->tr->gn[0];
-        N[1] += new_rl->tr->gn[1];
-        N[2] += new_rl->tr->gn[2];
-      }
-      if (rl->tl || rl->tr) {
+      if (new_rl->tl || new_rl->tr) {
+        zero_v3(N);
+        if (new_rl->tl) {
+          N[0] += new_rl->tl->gn[0];
+          N[1] += new_rl->tl->gn[1];
+          N[2] += new_rl->tl->gn[2];
+        }
+        if (new_rl->tr) {
+          N[0] += new_rl->tr->gn[0];
+          N[1] += new_rl->tr->gn[1];
+          N[2] += new_rl->tr->gn[2];
+        }
         normalize_v3(N);
       }
 
@@ -337,6 +337,21 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
      */
     while (ba && (new_rl = lanpr_get_connected_render_line(ba, new_rv, &new_rv, rl->flags))) {
       new_rl->flags |= LANPR_EDGE_FLAG_CHAIN_PICKED;
+
+      if (new_rl->tl || new_rl->tr) {
+        zero_v3(N);
+        if (new_rl->tl) {
+          N[0] += new_rl->tl->gn[0];
+          N[1] += new_rl->tl->gn[1];
+          N[2] += new_rl->tl->gn[2];
+        }
+        if (new_rl->tr) {
+          N[0] += new_rl->tr->gn[0];
+          N[1] += new_rl->tr->gn[1];
+          N[2] += new_rl->tr->gn[2];
+        }
+        normalize_v3(N);
+      }
 
       /*  fix leading vertex type */
       rlci = rlc->chain.last;
