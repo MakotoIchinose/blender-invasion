@@ -832,15 +832,15 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         col = layout.column(align=True)
         if not expand:
             col.prop(active_layer, "color")
-        col.prop(active_layer, "thickness")
+        col.prop(active_layer, "thickness", text="Main Thickness")
 
-        lanpr_make_line_type(expand,layout,active_layer.contour,"Draw Contour")
-        lanpr_make_line_type(expand,layout,active_layer.crease,"Draw Crease")
-        lanpr_make_line_type(expand,layout,active_layer.edge_mark,"Draw EdgeMark")
-        lanpr_make_line_type(expand,layout,active_layer.material_separate,"Draw Material")
+        lanpr_make_line_type(expand,layout,active_layer.contour,"Contour")
+        lanpr_make_line_type(expand,layout,active_layer.crease,"Crease")
+        lanpr_make_line_type(expand,layout,active_layer.edge_mark,"EdgeMark")
+        lanpr_make_line_type(expand,layout,active_layer.material_separate,"Material")
 
         if lanpr.enable_intersections:
-            lanpr_make_line_type(expand,layout,active_layer.intersection,"Draw Intersection")
+            lanpr_make_line_type(expand,layout,active_layer.intersection,"Intersection")
         else:
             layout.label(text= "Intersection calculation disabled.")
 
@@ -1065,7 +1065,7 @@ class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
         layout.prop(lanpr,"auto_update", text='Auto Update')
         layout.prop(lanpr,"gpencil_overwrite", text='Overwrite')
         if not lanpr.auto_update:
-            layout.operator("scene.lanpr_update_gp_strokes", icon='FILE_REFRESH', text='Update GPencil Targets')
+            layout.operator("scene.lanpr_update_gp_strokes", icon='FILE_REFRESH', text='Update Grease Pencil Targets')
         layout.operator("scene.lanpr_bake_gp_strokes", icon='RENDER_ANIMATION', text='Bake All Frames')
 
 class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
@@ -1133,8 +1133,8 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
         layout.prop(lanpr,"enable_intersections")
         layout.prop(lanpr, "disable_edge_splits")
 
-        if scene.render.engine=='BLENDER_LANPR':
-            layout.prop(lanpr,"enable_chaining", text = "Chain lines")
+        if scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='SOFTWARE':
+            layout.prop(lanpr,"enable_chaining", text = "Chained Lines")
 
 
 classes = (

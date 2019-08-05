@@ -81,7 +81,7 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
         layout.prop(md,'enable_modifier_mark')
 
 class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):
-    bl_label = "GPencil Target"
+    bl_label = "Grease Pencil"
     bl_parent_id = "OBJECT_PT_lanpr_settings"
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
 
@@ -101,13 +101,7 @@ class OBJECT_PT_lanpr_modifier_target(LanprButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        split = layout.split(factor=0.5)
-        col = split.column()
-        col.label(text="Object:")
-        col.prop(md, "target", text="")
-        col = split.column()
-        col.label(text="Vertex Group:")
-        col.label(text="Inoperative")
+        layout.prop(md, "target")
         
         if md.target:
             if not is_unit_transformation(md.target):
