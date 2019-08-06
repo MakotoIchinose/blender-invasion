@@ -1392,10 +1392,13 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v, const int cd
 static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, ClothVertMap &cvm)
 {
   BMVert *v1 = cloth_remeshing_edge_vert(e, which);
-  BMVert v = *v1;
+  /* Need to store the value of vertex v1 which will be killed */
+  BMVert *v = v1;
   BMVert *v2 = BM_edge_collapse(bm, e, v1, true, true);
 
-  cloth_remeshing_remove_vertex_from_cloth(&v, cvm);
+  if (v2) {
+    cloth_remeshing_remove_vertex_from_cloth(v, cvm);
+  }
 #if COLLAPSE_EDGES_DEBUG
   printf("killed %f %f %f into %f %f %f\n",
          v.co[0],
