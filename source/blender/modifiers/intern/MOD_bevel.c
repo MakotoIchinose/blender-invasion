@@ -73,9 +73,7 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
   BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
   modifier_copyData_generic(md_src, md_dst, flag);
-//  printf("(src prwdgt: %p)", (const void *)bmd_src);
   bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
-//  printf("(dst prwdgt: %p)\n", (void *)bmd_dst);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -248,6 +246,12 @@ static void freeData(ModifierData *md)
   profilewidget_free(bmd->prwdgt);
 }
 
+static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED(userRenderParams))
+{
+  BevelModifierData *bmd = (BevelModifierData *)md;
+  return (bmd->value == 0.0f);
+}
+
 ModifierTypeInfo modifierType_Bevel = {
     /* name */ "Bevel",
     /* structName */ "BevelModifierData",
@@ -264,7 +268,7 @@ ModifierTypeInfo modifierType_Bevel = {
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
     /* freeData */ freeData,
-    /* isDisabled */ NULL,
+    /* isDisabled */ isDisabled,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ dependsOnNormals,
