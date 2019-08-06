@@ -3515,7 +3515,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   static EnumPropertyItem prop_vmesh_method_items[] = {
       {MOD_BEVEL_VMESH_ADJ, "ADJ", 0, "Grid Fill", "Default patterned fill"},
       {MOD_BEVEL_VMESH_CUTOFF, "CUTOFF", 0, "Cutoff",
-       "A cut-off at each profile's end before the intersection"},
+       "A cut-off at the end of each profile before the intersection"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -3589,8 +3589,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "mat");
   RNA_def_property_range(prop, -1, SHRT_MAX);
-  RNA_def_property_ui_text(
-      prop, "Material", "Material index of generated faces, -1 for automatic");
+  RNA_def_property_ui_text(prop, "Material",
+                           "Material index of generated faces, -1 for automatic");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "loop_slide", PROP_BOOLEAN, PROP_NONE);

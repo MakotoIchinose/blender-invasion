@@ -176,10 +176,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.row().prop(md, "use_custom_profile")
         if md.use_custom_profile:
             layout.template_profilewidget(md, "prwdgt")
-            # For drawing the sampled segment positions in the profile widget itself. This has to
-            # be done here before the ProfileWidget that the bevel code uses is copied from the
-            # original
-            md.prwdgt.initialize(md.segments)
+            # If the number of segments has changed update the table to show the new sampled
+            # segment locations on the widget
+            if md.prwdgt.totsegments != md.segments:
+                md.prwdgt.initialize(md.segments)
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()
