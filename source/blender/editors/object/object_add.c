@@ -232,25 +232,17 @@ void ED_object_rotation_from_view(bContext *C, float rot[3], const char align_ax
   }
 }
 
-void ED_object_base_init_transform(bContext *C, Base *base, const float loc[3], const float rot[3])
+void ED_object_base_init_transform_on_add(Object *object, const float loc[3], const float rot[3])
 {
-  Object *ob = base->object;
-  Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-
-  if (!scene) {
-    return;
-  }
-
   if (loc) {
-    copy_v3_v3(ob->loc, loc);
+    copy_v3_v3(object->loc, loc);
   }
 
   if (rot) {
-    copy_v3_v3(ob->rot, rot);
+    copy_v3_v3(object->rot, rot);
   }
 
-  BKE_object_where_is_calc(depsgraph, scene, ob);
+  BKE_object_to_mat4(object, object->obmat);
 }
 
 /* Uses context to figure out transform for primitive.
@@ -490,7 +482,7 @@ Object *ED_object_add_type(bContext *C,
   ED_object_base_activate(C, view_layer->basact);
 
   /* more editor stuff */
-  ED_object_base_init_transform(C, view_layer->basact, loc, rot);
+  ED_object_base_init_transform_on_add(ob, loc, rot);
 
   /* TODO(sergey): This is weird to manually tag objects for update, better to
    * use DEG_id_tag_update here perhaps.
@@ -1758,12 +1750,15 @@ static bool dupliobject_instancer_cmp(const void *a_, const void *b_)
   return false;
 }
 
-static void make_object_duplilist_real(
-    bContext *C, Scene *scene, Base *base, const bool use_base_parent, const bool use_hierarchy)
+static void make_object_duplilist_real(bContext *C,
+                                       Depsgraph *depsgraph,
+                                       Scene *scene,
+                                       Base *base,
+                                       const bool use_base_parent,
+                                       const bool use_hierarchy)
 {
   Main *bmain = CTX_data_main(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   ListBase *lb_duplis;
   DupliObject *dob;
   GHash *dupli_gh, *parent_gh = NULL, *instancer_gh = NULL;
@@ -1955,6 +1950,7 @@ static void make_object_duplilist_real(
 static int object_duplicates_make_real_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
 
   const bool use_base_parent = RNA_boolean_get(op->ptr, "use_base_parent");
@@ -1963,7 +1959,7 @@ static int object_duplicates_make_real_exec(bContext *C, wmOperator *op)
   BKE_main_id_clear_newpoins(bmain);
 
   CTX_DATA_BEGIN (C, Base *, base, selected_editable_bases) {
-    make_object_duplilist_real(C, scene, base, use_base_parent, use_hierarchy);
+    make_object_duplilist_real(C, depsgraph, scene, base, use_base_parent, use_hierarchy);
 
     /* dependencies were changed */
     WM_event_add_notifier(C, NC_OBJECT | ND_PARENT, base->object);
@@ -1990,7 +1986,7 @@ void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
   ot->poll = ED_operator_objectmode;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(ot->srna,
                   "use_base_parent",
@@ -2131,7 +2127,7 @@ static Base *duplibase_for_convert(
 static int convert_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Base *basen = NULL, *basact = NULL;

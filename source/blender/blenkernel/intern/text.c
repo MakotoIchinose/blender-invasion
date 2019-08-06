@@ -2042,16 +2042,42 @@ static void txt_select_prefix(Text *text, const char *add)
  *
  * \param r_line_index_mask: List of lines that are already at indent level 0,
  * to store them later into the undo buffer.
+ * \param require_all: When true, all non-empty lines must have this prefix.
+ * Needed for comments where we might want to un-comment a block which contains some comments.
  *
  * \note caller must handle undo.
  */
-static void txt_select_unprefix(Text *text, const char *remove)
+static bool txt_select_unprefix(Text *text, const char *remove, const bool require_all)
 {
   int num = 0;
   const int indentlen = strlen(remove);
   bool unindented_first = false;
+  bool changed_any = false;
 
   BLI_assert(!ELEM(NULL, text->curl, text->sell));
+
+  if (require_all) {
+    /* Check all non-empty lines use this 'remove',
+     * so the operation is applied equally or not at all. */
+    TextLine *l = text->curl;
+    while (true) {
+      if (STREQLEN(l->line, remove, indentlen)) {
+        /* pass */
+      }
+      else {
+        /* Blank lines or whitespace can be skipped. */
+        for (int i = 0; i < l->len; i++) {
+          if (!ELEM(l->line[i], '\t', ' ')) {
+            return false;
+          }
+        }
+      }
+      if (l == text->sell) {
+        break;
+      }
+      l = l->next;
+    }
+  }
 
   while (true) {
     bool changed = false;
@@ -2062,6 +2088,7 @@ static void txt_select_unprefix(Text *text, const char *remove)
       text->curl->len -= indentlen;
       memmove(text->curl->line, text->curl->line + indentlen, text->curl->len + 1);
       changed = true;
+      changed_any = true;
     }
 
     txt_make_dirty(text);
@@ -2089,6 +2116,7 @@ static void txt_select_unprefix(Text *text, const char *remove)
   }
 
   /* caller must handle undo */
+  return changed_any;
 }
 
 void txt_comment(Text *text)
@@ -2102,15 +2130,15 @@ void txt_comment(Text *text)
   txt_select_prefix(text, prefix);
 }
 
-void txt_uncomment(Text *text)
+bool txt_uncomment(Text *text)
 {
   const char *prefix = "#";
 
   if (ELEM(NULL, text->curl, text->sell)) {
-    return;
+    return false;
   }
 
-  txt_select_unprefix(text, prefix);
+  return txt_select_unprefix(text, prefix, true);
 }
 
 void txt_indent(Text *text)
@@ -2124,15 +2152,15 @@ void txt_indent(Text *text)
   txt_select_prefix(text, prefix);
 }
 
-void txt_unindent(Text *text)
+bool txt_unindent(Text *text)
 {
   const char *prefix = (text->flags & TXT_TABSTOSPACES) ? tab_to_spaces : "\t";
 
   if (ELEM(NULL, text->curl, text->sell)) {
-    return;
+    return false;
   }
 
-  txt_select_unprefix(text, prefix);
+  return txt_select_unprefix(text, prefix, false);
 }
 
 void txt_move_lines(struct Text *text, const int direction)

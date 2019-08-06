@@ -353,7 +353,7 @@ static void wm_window_match_do(bContext *C,
 }
 
 /* in case UserDef was read, we re-initialize all, and do versioning */
-static void wm_init_userdef(Main *bmain, const bool read_userdef_from_memory)
+static void wm_init_userdef(Main *bmain)
 {
   /* versioning is here */
   UI_init_userdef(bmain);
@@ -365,11 +365,6 @@ static void wm_init_userdef(Main *bmain, const bool read_userdef_from_memory)
   /* enabled by default, unless explicitly enabled in the command line which overrides */
   if ((G.f & G_FLAG_SCRIPT_OVERRIDE_PREF) == 0) {
     SET_FLAG_FROM_TEST(G.f, (U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0, G_FLAG_SCRIPT_AUTOEXEC);
-  }
-
-  /* avoid re-saving for every small change to our prefs, allow overrides */
-  if (read_userdef_from_memory) {
-    BLO_update_defaults_userpref_blend();
   }
 
   MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
@@ -605,7 +600,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   /* assume automated tasks with background, don't write recent file list */
   const bool do_history = (G.background == false) && (CTX_wm_manager(C)->op_undo_depth == 0);
   bool success = false;
-  int retval;
 
   /* so we can get the error message */
   errno = 0;
@@ -619,7 +613,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   /* first try to append data from exotic file formats... */
   /* it throws error box when file doesn't exist and returns -1 */
   /* note; it should set some error message somewhere... (ton) */
-  retval = wm_read_exotic(filepath);
+  const int retval = wm_read_exotic(filepath);
 
   /* we didn't succeed, now try to read Blender file */
   if (retval == BKE_READ_EXOTIC_OK_BLEND) {
@@ -632,7 +626,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
     /* confusing this global... */
     G.relbase_valid = 1;
-    retval = BKE_blendfile_read(
+    success = BKE_blendfile_read(
         C,
         filepath,
         /* Loading preferences when the user intended to load a regular file is a security risk,
@@ -673,7 +667,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     wm_window_match_do(C, &wmbase, &bmain->wm, &bmain->wm);
     WM_check(C); /* opens window(s), checks keymaps */
 
-    if (retval != BKE_BLENDFILE_READ_FAIL) {
+    if (success) {
       if (do_history) {
         wm_history_file_update();
       }
@@ -682,8 +676,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     const bool use_data = true;
     const bool use_userdef = false;
     wm_file_read_post(C, false, false, use_data, use_userdef, false);
-
-    success = true;
   }
 #if 0
   else if (retval == BKE_READ_EXOTIC_OK_OTHER) {
@@ -795,16 +787,6 @@ void wm_homefile_read(bContext *C,
    * '{BLENDER_SYSTEM_SCRIPTS}/startup/bl_app_templates_system/{app_template}' */
   char app_template_config[FILE_MAX];
 
-  /* Indicates whether user preferences were really load from memory.
-   *
-   * This is used for versioning code, and for this we can not rely on use_factory_settings
-   * passed via argument. This is because there might be configuration folder
-   * exists but it might not have userpref.blend and in this case we fallback to
-   * reading home file from memory.
-   *
-   * And in this case versioning code is to be run.
-   */
-  bool read_userdef_from_memory = false;
   eBLOReadSkip skip_flags = 0;
 
   if (use_data == false) {
@@ -944,9 +926,9 @@ void wm_homefile_read(bContext *C,
                                    filepath_startup,
                                    &(const struct BlendFileReadParams){
                                        .is_startup = true,
-                                       .skip_flags = skip_flags,
+                                       .skip_flags = skip_flags | BLO_READ_SKIP_USERDEF,
                                    },
-                                   NULL) != BKE_BLENDFILE_READ_FAIL;
+                                   NULL);
 
 #ifdef DEBUG_LIBRARY
       printf("Updating assets for: %s\n", filepath_startup);
@@ -976,6 +958,14 @@ void wm_homefile_read(bContext *C,
   }
 
   if (success == false) {
+    if (use_userdef) {
+      if ((skip_flags & BLO_READ_SKIP_USERDEF) == 0) {
+        UserDef *userdef_default = BKE_blendfile_userdef_from_defaults();
+        BKE_blender_userdef_data_set_and_free(userdef_default);
+        skip_flags |= BLO_READ_SKIP_USERDEF;
+      }
+    }
+
     success = BKE_blendfile_read_from_memory(C,
                                              datatoc_startup_blend,
                                              datatoc_startup_blend_size,
@@ -985,13 +975,7 @@ void wm_homefile_read(bContext *C,
                                                  .skip_flags = skip_flags,
                                              },
                                              NULL);
-    if (success) {
-      if (use_userdef) {
-        if ((skip_flags & BLO_READ_SKIP_USERDEF) == 0) {
-          read_userdef_from_memory = true;
-        }
-      }
-    }
+
     if (use_data && BLI_listbase_is_empty(&wmbase)) {
       wm_clear_default_size(C);
     }
@@ -1028,9 +1012,7 @@ void wm_homefile_read(bContext *C,
       }
       if (userdef_template == NULL) {
         /* we need to have preferences load to overwrite preferences from previous template */
-        userdef_template = BKE_blendfile_userdef_read_from_memory(
-            datatoc_startup_blend, datatoc_startup_blend_size, NULL);
-        read_userdef_from_memory = true;
+        userdef_template = BKE_blendfile_userdef_from_defaults();
       }
       if (userdef_template) {
         BKE_blender_userdef_app_template_data_set_and_free(userdef_template);
@@ -1054,7 +1036,7 @@ void wm_homefile_read(bContext *C,
 
   if (use_userdef) {
     /* check userdef before open window, keymaps etc */
-    wm_init_userdef(bmain, read_userdef_from_memory);
+    wm_init_userdef(bmain);
     reset_app_template = true;
   }
 
@@ -1089,6 +1071,7 @@ void wm_homefile_read(bContext *C,
   }
 }
 
+/* -------------------------------------------------------------------- */
 /** \name WM History File API
  * \{ */
 
@@ -1217,6 +1200,10 @@ static void wm_history_file_update(void)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Save Main .blend File (internal)
+ * \{ */
+
 /* screen can be NULL */
 static ImBuf *blend_file_thumb(const bContext *C,
                                Scene *scene,
@@ -1257,7 +1244,7 @@ static ImBuf *blend_file_thumb(const bContext *C,
   }
 
   /* gets scaled to BLEN_THUMB_SIZE */
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   if (scene->camera) {
     ibuf = ED_view3d_draw_offscreen_imbuf_simple(depsgraph,
@@ -1450,7 +1437,11 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
   return ok;
 }
 
-/************************ autosave ****************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Auto-Save API
+ * \{ */
 
 void wm_autosave_location(char *filepath)
 {
@@ -1578,6 +1569,9 @@ void wm_autosave_read(bContext *C, ReportList *reports)
   WM_file_read(C, filename, reports);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Initialize WM_OT_open_xxx properties
  *
  * Check if load_ui was set by the caller.
@@ -1621,8 +1615,8 @@ void WM_file_tag_modified(void)
   }
 }
 
+/* -------------------------------------------------------------------- */
 /** \name Preferences/startup save & load.
- *
  * \{ */
 
 /**
@@ -1663,7 +1657,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   /*  force save as regular blend file */
   fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_HISTORY);
 
-  if (BLO_write_file(bmain, filepath, fileflags | G_FILE_USERPREFS, op->reports, NULL) == 0) {
+  if (BLO_write_file(bmain, filepath, fileflags, op->reports, NULL) == 0) {
     printf("fail\n");
     return OPERATOR_CANCELLED;
   }
@@ -1747,7 +1741,7 @@ void WM_OT_save_userpref(wmOperatorType *ot)
 {
   ot->name = "Save Preferences";
   ot->idname = "WM_OT_save_userpref";
-  ot->description = "Save preferences separately, overrides startup file preferences";
+  ot->description = "Make the current preferences default";
 
   ot->invoke = WM_operator_confirm;
   ot->exec = wm_userpref_write_exec;
@@ -2063,8 +2057,8 @@ void WM_OT_read_factory_settings(wmOperatorType *ot)
 
 /** \} */
 
-/** \name Open main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Open Main .blend File Utilities
  * \{ */
 
 /**
@@ -2090,8 +2084,7 @@ static bool wm_file_read_opwrap(bContext *C,
   return success;
 }
 
-/* Generic operator state utilities
- *********************************************/
+/* Generic operator state utilities */
 
 static void create_operator_state(wmOperatorType *ot, int first_state)
 {
@@ -2129,8 +2122,11 @@ static int operator_state_dispatch(bContext *C, wmOperator *op, OperatorDispatch
   return OPERATOR_CANCELLED;
 }
 
-/* Open Mainfile operator
- ********************************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Open Main .blend File Operator
+ * \{ */
 
 enum {
   OPEN_MAINFILE_STATE_DISCARD_CHANGES,
@@ -2354,8 +2350,8 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
 
 /** \} */
 
-/** \name Reload (revert) main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Reload (revert) Main .blend File Operator
  * \{ */
 
 static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
@@ -2409,8 +2405,8 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
 /** \name Recover last session & auto-save.
- *
  * \{ */
 
 void WM_recover_last_session(bContext *C, ReportList *reports)
@@ -2506,8 +2502,8 @@ void WM_OT_recover_auto_save(wmOperatorType *ot)
 
 /** \} */
 
-/** \name Save main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Save Main .blend File Operator
  * \{ */
 
 static void wm_filepath_default(char *filepath)
@@ -2735,8 +2731,8 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
 /** \name Auto-execution of scripts warning popup
- *
  * \{ */
 
 static void wm_block_autorun_warning_ignore(bContext *C, void *arg_block, void *UNUSED(arg))

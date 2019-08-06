@@ -93,7 +93,7 @@ void WM_init_native_pixels(bool do_it);
 void WM_init_tablet_api(void);
 
 void WM_init(struct bContext *C, int argc, const char **argv);
-void WM_exit_ext(struct bContext *C, const bool do_python);
+void WM_exit_ex(struct bContext *C, const bool do_python);
 
 void WM_exit(struct bContext *C) ATTR_NORETURN;
 
@@ -565,8 +565,8 @@ bool WM_menutype_poll(struct bContext *C, struct MenuType *mt);
 void WM_paneltype_init(void);
 void WM_paneltype_clear(void);
 struct PanelType *WM_paneltype_find(const char *idname, bool quiet);
-bool WM_paneltype_add(struct PanelType *mt);
-void WM_paneltype_remove(struct PanelType *mt);
+bool WM_paneltype_add(struct PanelType *pt);
+void WM_paneltype_remove(struct PanelType *pt);
 
 /* wm_gesture_ops.c */
 int WM_gesture_box_invoke(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
@@ -741,6 +741,10 @@ void *WM_draw_cb_activate(struct wmWindow *win,
                           void *customdata);
 void WM_draw_cb_exit(struct wmWindow *win, void *handle);
 void WM_redraw_windows(struct bContext *C);
+
+void WM_draw_region_viewport_ensure(struct ARegion *ar, short space_type);
+void WM_draw_region_viewport_bind(struct ARegion *ar);
+void WM_draw_region_viewport_unbind(struct ARegion *ar);
 
 /* Region drawing */
 void WM_draw_region_free(struct ARegion *ar);

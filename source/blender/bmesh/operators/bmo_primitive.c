@@ -807,6 +807,7 @@ void BM_mesh_calc_uvs_grid(BMesh *bm,
 
   const float dx = 1.0f / (float)(x_segments - 1);
   const float dy = 1.0f / (float)(y_segments - 1);
+  const float dx_wrap = 1.0 - (dx / 2.0f);
   float x = 0.0f;
   float y = dy;
 
@@ -844,7 +845,7 @@ void BM_mesh_calc_uvs_grid(BMesh *bm,
     }
 
     x += dx;
-    if (x >= 1.0f) {
+    if (x >= dx_wrap) {
       x = 0.0f;
       y += dy;
     }
@@ -1091,7 +1092,7 @@ static void bm_mesh_calc_uvs_sphere_face(BMFace *f, const int cd_loop_uv_offset)
     float z = l->v->co[2];
     float len = len_v3(l->v->co);
 
-    /* Use neigboring point to compute angle for poles. */
+    /* Use neighboring point to compute angle for poles. */
     float theta;
     if (f->len == 3 && fabsf(x) < 0.0001f && fabsf(y) < 0.0001f) {
       theta = atan2f(avgy, avgx);

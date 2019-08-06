@@ -84,6 +84,8 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h" /* RE_ free stuff */
 
+#include "IMB_thumbs.h"
+
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
@@ -301,6 +303,9 @@ void WM_init(bContext *C, int argc, const char **argv)
   /* Call again to set from userpreferences... */
   BLT_lang_set(NULL);
 
+  /* That one is generated on demand, we need to be sure it's clear on init. */
+  IMB_thumb_clear_translations();
+
   if (!G.background) {
 
 #ifdef WITH_INPUT_NDOF
@@ -464,7 +469,7 @@ void wm_exit_schedule_delayed(const bContext *C)
 /**
  * \note doesn't run exit() call #WM_exit() for that.
  */
-void WM_exit_ext(bContext *C, const bool do_python)
+void WM_exit_ex(bContext *C, const bool do_python)
 {
   wmWindowManager *wm = C ? CTX_wm_manager(C) : NULL;
 
@@ -665,7 +670,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
  */
 void WM_exit(bContext *C)
 {
-  WM_exit_ext(C, 1);
+  WM_exit_ex(C, true);
 
   printf("\nBlender quit\n");
 

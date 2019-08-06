@@ -595,7 +595,6 @@ static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
 
   int mode = RNA_enum_get(op->ptr, "mode");
 
@@ -605,12 +604,12 @@ static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
   }
 
   if (mode == 0) {
-    BKE_gpencil_frame_addcopy(gpl, cfra_eval);
+    BKE_gpencil_frame_addcopy(gpl, CFRA);
   }
   else {
     for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
       if ((gpl->flag & GP_LAYER_LOCKED) == 0) {
-        BKE_gpencil_frame_addcopy(gpl, cfra_eval);
+        BKE_gpencil_frame_addcopy(gpl, CFRA);
       }
     }
   }
@@ -2201,7 +2200,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob_active = CTX_data_active_object(C);
   bGPdata *gpd_dst = NULL;
   bool ok = false;

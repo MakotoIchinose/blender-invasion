@@ -2687,7 +2687,7 @@ class VIEW3D_MT_brush(Menu):
             sculpt_tool = brush.sculpt_tool
 
             layout.separator()
-            layout.operator_menu_enum("brush.curve_preset", "shape", text="Curve Preset")
+            layout.prop_menu_enum(brush, "curve_preset")
             layout.separator()
 
             if sculpt_tool != 'GRAB':
@@ -2746,7 +2746,7 @@ class VIEW3D_MT_hook(Menu):
         layout.operator("object.hook_add_selob").use_bone = False
         layout.operator("object.hook_add_selob", text="Hook to Selected Object Bone").use_bone = True
 
-        if [mod.type == 'HOOK' for mod in context.active_object.modifiers]:
+        if any([mod.type == 'HOOK' for mod in context.active_object.modifiers]):
             layout.separator()
 
             layout.operator_menu_enum("object.hook_assign", "modifier")
@@ -2862,7 +2862,6 @@ class VIEW3D_MT_sculpt(Menu):
         layout.prop(sculpt, "show_low_resolution")
         layout.prop(sculpt, "show_brush")
         layout.prop(sculpt, "use_deform_only")
-        layout.prop(sculpt, "show_diffuse_color")
         layout.prop(sculpt, "show_mask")
 
 
@@ -5760,8 +5759,6 @@ class VIEW3D_PT_overlay_sculpt(Panel):
         view = context.space_data
         overlay = view.overlay
 
-        layout.prop(sculpt, "show_diffuse_color")
-
         row = layout.row(align=True)
         row.prop(sculpt, "show_mask", text="")
         sub = row.row()
@@ -5804,23 +5801,36 @@ class VIEW3D_PT_overlay_pose(Panel):
             row.prop(overlay, "show_xray_bone")
 
 
-class VIEW3D_PT_overlay_paint(Panel):
+class VIEW3D_PT_overlay_texture_paint(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_parent_id = 'VIEW3D_PT_overlay'
-    bl_label = ""
+    bl_label = "Texture Paint"
 
     @classmethod
     def poll(cls, context):
-        return context.mode in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}
+        return context.mode == 'PAINT_TEXTURE'
 
-    def draw_header(self, context):
+    def draw(self, context):
         layout = self.layout
-        layout.label(text={
-            'PAINT_TEXTURE': "Texture Paint",
-            'PAINT_VERTEX': "Vertex Paint",
-            'PAINT_WEIGHT': "Weight Paint",
-        }[context.mode])
+        view = context.space_data
+        overlay = view.overlay
+        display_all = overlay.show_overlays
+
+        col = layout.column()
+        col.active = display_all
+        col.prop(overlay, "texture_paint_mode_opacity")
+
+
+class VIEW3D_PT_overlay_vertex_paint(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_label = "Vertex Paint"
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'PAINT_VERTEX'
 
     def draw(self, context):
         layout = self.layout
@@ -5831,22 +5841,37 @@ class VIEW3D_PT_overlay_paint(Panel):
         col = layout.column()
         col.active = display_all
 
-        col.prop(overlay, {
-            'PAINT_TEXTURE': "texture_paint_mode_opacity",
-            'PAINT_VERTEX': "vertex_paint_mode_opacity",
-            'PAINT_WEIGHT': "weight_paint_mode_opacity",
-        }[context.mode], text="Opacity")
+        col.prop(overlay, "vertex_paint_mode_opacity", text="Opacity")
+        col.prop(overlay, "show_paint_wire")
 
-        if context.mode == 'PAINT_WEIGHT':
-            row = col.split(factor=0.33)
-            row.label(text="Zero Weights")
-            sub = row.row()
-            sub.prop(context.tool_settings, "vertex_group_user", expand=True)
 
-            col.prop(overlay, "show_wpaint_contours")
+class VIEW3D_PT_overlay_weight_paint(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_parent_id = 'VIEW3D_PT_overlay'
+    bl_label = "Weight Paint"
 
-        if context.mode in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
-            col.prop(overlay, "show_paint_wire")
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'PAINT_WEIGHT'
+
+    def draw(self, context):
+        layout = self.layout
+        view = context.space_data
+        overlay = view.overlay
+        display_all = overlay.show_overlays
+
+        col = layout.column()
+        col.active = display_all
+
+        col.prop(overlay, "weight_paint_mode_opacity", text="Opacity")
+        row = col.split(factor=0.33)
+        row.label(text="Zero Weights")
+        sub = row.row()
+        sub.prop(context.tool_settings, "vertex_group_user", expand=True)
+
+        col.prop(overlay, "show_wpaint_contours")
+        col.prop(overlay, "show_paint_wire")
 
 
 class VIEW3D_PT_pivot_point(Panel):
@@ -5884,7 +5909,7 @@ class VIEW3D_PT_snapping(Panel):
 
         layout = self.layout
         col = layout.column()
-        col.label(text="Snapping")
+        col.label(text="Snap to")
         col.prop(tool_settings, "snap_elements", expand=True)
 
         col.separator()
@@ -5892,7 +5917,7 @@ class VIEW3D_PT_snapping(Panel):
             col.prop(tool_settings, "use_snap_grid_absolute")
 
         if snap_elements != {'INCREMENT'}:
-            col.label(text="Target")
+            col.label(text="Snap with")
             row = col.row(align=True)
             row.prop(tool_settings, "snap_target", expand=True)
 
@@ -6292,7 +6317,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
 
         layout.operator("gpencil.stroke_join", text="Join").type = 'JOIN'
         layout.operator("gpencil.stroke_join", text="Join & Copy").type = 'JOINCOPY'
-        layout.menu("GPENCIL_MT_separate", text="Separate")
+        layout.operator_menu_enum("gpencil.stroke_separate", "mode")
         layout.operator("gpencil.stroke_split", text="Split")
         op = layout.operator("gpencil.stroke_cyclical_set", text="Close")
         op.type = 'CLOSE'
@@ -6671,7 +6696,9 @@ classes = (
     VIEW3D_PT_overlay_edit_mesh_normals,
     VIEW3D_PT_overlay_edit_mesh_freestyle,
     VIEW3D_PT_overlay_edit_curve,
-    VIEW3D_PT_overlay_paint,
+    VIEW3D_PT_overlay_texture_paint,
+    VIEW3D_PT_overlay_vertex_paint,
+    VIEW3D_PT_overlay_weight_paint,
     VIEW3D_PT_overlay_pose,
     VIEW3D_PT_overlay_sculpt,
     VIEW3D_PT_pivot_point,

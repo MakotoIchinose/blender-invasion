@@ -3408,11 +3408,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ARegion *ar = NULL;
             if (sl->spacetype == SPACE_CLIP) {
               if (((SpaceClip *)sl)->view == SC_VIEW_GRAPH) {
-                ar = do_versions_find_region(regionbase, RGN_TYPE_PREVIEW);
+                ar = do_versions_find_region_or_null(regionbase, RGN_TYPE_PREVIEW);
               }
             }
             else {
-              ar = do_versions_find_region(regionbase, RGN_TYPE_WINDOW);
+              ar = do_versions_find_region_or_null(regionbase, RGN_TYPE_WINDOW);
             }
 
             if (ar != NULL) {
@@ -3534,8 +3534,41 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 1)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+        if (md->type == eModifierType_DataTransfer) {
+          /* Now datatransfer's mix factor is multiplied with weights when any,
+           * instead of being ignored,
+           * we need to take care of that to keep 'old' files compatible. */
+          DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
+          if (dtmd->defgrp_name[0] != '\0') {
+            dtmd->mix_factor = 1.0f;
+          }
+        }
+      }
+    }
+  }
+
   {
     /* Versioning code until next subversion bump goes here. */
+    if (U.view_rotate_sensitivity_turntable == 0) {
+      U.view_rotate_sensitivity_turntable = DEG2RADF(0.4f);
+      U.view_rotate_sensitivity_trackball = 1.0f;
+    }
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_TEXT) {
+            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+            ARegion *ar = do_versions_find_region_or_null(regionbase, RGN_TYPE_UI);
+            if (ar) {
+              ar->alignment = RGN_ALIGN_RIGHT;
+            }
+          }
+        }
+      }
+    }
   }
 
   if (1 ||

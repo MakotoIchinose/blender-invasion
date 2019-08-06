@@ -803,12 +803,18 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
 
   GPU_depth_test(true);
 
+  /* Needed in cases the view-port isn't already setup. */
+  WM_draw_region_viewport_ensure(ar, SPACE_VIEW3D);
+  WM_draw_region_viewport_bind(ar);
+
   GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
   /* When Blender is starting, a click event can trigger a depth test while the viewport is not
    * yet available. */
   if (viewport != NULL) {
-    DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
+    DRW_draw_depth_loop(depsgraph, ar, v3d, viewport, false);
   }
+
+  WM_draw_region_viewport_unbind(ar);
 
   if (rv3d->rflag & RV3D_CLIPPING) {
     ED_view3d_clipping_disable();
@@ -1076,7 +1082,7 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
 static void view3d_draw_border(const bContext *C, ARegion *ar)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   RegionView3D *rv3d = ar->regiondata;
   View3D *v3d = CTX_wm_view3d(C);
 
@@ -1447,7 +1453,7 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
 static void view3d_draw_view(const bContext *C, ARegion *ar)
 {
   ED_view3d_draw_setup_view(CTX_wm_window(C),
-                            CTX_data_depsgraph(C),
+                            CTX_data_expect_evaluated_depsgraph(C),
                             CTX_data_scene(C),
                             ar,
                             CTX_wm_view3d(C),

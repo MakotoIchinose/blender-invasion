@@ -303,10 +303,9 @@ typedef enum eGP_SelectGrouped {
 static void gp_select_same_layer(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
     bGPDstroke *gps;
     bool found = false;
 
@@ -990,7 +989,7 @@ void GPENCIL_OT_select_circle(wmOperatorType *ot)
   ot->cancel = WM_gesture_circle_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_gesture_circle(ot);
@@ -1181,7 +1180,7 @@ void GPENCIL_OT_select_box(wmOperatorType *ot)
   ot->poll = gpencil_select_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_gesture_box(ot);
@@ -1249,7 +1248,7 @@ void GPENCIL_OT_select_lasso(wmOperatorType *ot)
   ot->cancel = WM_gesture_lasso_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_select_operation(ot);
@@ -1469,7 +1468,7 @@ void GPENCIL_OT_select(wmOperatorType *ot)
   ot->poll = gpencil_select_poll;
 
   /* flag */
-  ot->flag = OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_mouse_select(ot);

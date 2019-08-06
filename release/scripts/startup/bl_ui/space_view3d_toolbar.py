@@ -429,9 +429,16 @@ class VIEW3D_PT_tools_brush_color(Panel, View3DPaintPanel):
         settings = self.paint_settings(context)
         brush = settings.brush
 
-        layout.active = not brush.use_gradient
+        if context.vertex_paint_object:
+            brush_texpaint_common_color(self, context, layout, brush, settings, True)
 
-        brush_texpaint_common_color(self, context, layout, brush, settings, True)
+        else:
+            layout.prop(brush, "color_type", expand=True)
+
+            if brush.color_type == 'COLOR':
+                brush_texpaint_common_color(self, context, layout, brush, settings, True)
+            elif brush.color_type == 'GRADIENT':
+                brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class VIEW3D_PT_tools_brush_swatches(Panel, View3DPaintPanel):
@@ -459,37 +466,6 @@ class VIEW3D_PT_tools_brush_swatches(Panel, View3DPaintPanel):
         layout.template_ID(settings, "palette", new="palette.new")
         if settings.palette:
             layout.template_palette(settings, "palette", color=True)
-
-
-class VIEW3D_PT_tools_brush_gradient(Panel, View3DPaintPanel):
-    bl_context = ".paint_common"  # dot on purpose (access from topbar)
-    bl_parent_id = "VIEW3D_PT_tools_brush"
-    bl_label = "Gradient"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        settings = cls.paint_settings(context)
-        brush = settings.brush
-        capabilities = brush.image_paint_capabilities
-
-        return capabilities.has_color and context.image_paint_object
-
-    def draw_header(self, context):
-        settings = self.paint_settings(context)
-        brush = settings.brush
-        self.layout.prop(brush, "use_gradient", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = False
-        layout.use_property_decorate = False  # No animation.
-        settings = self.paint_settings(context)
-        brush = settings.brush
-
-        layout.active = brush.use_gradient
-
-        brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class VIEW3D_PT_tools_brush_clone(Panel, View3DPaintPanel):
@@ -707,7 +683,7 @@ class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
         colsub.label(text="UV Layer")
         split.column().menu("VIEW3D_MT_tools_projectpaint_stencil", text=stencil_text, translate=False)
 
-        # todo this should be combinded into a single row
+        # todo this should be combined into a single row
         split = col.split(factor=0.5)
         colsub = split.column()
         colsub.alignment = 'RIGHT'
@@ -958,16 +934,21 @@ class VIEW3D_PT_tools_brush_falloff(Panel, View3DPaintPanel):
         settings = self.paint_settings(context)
         brush = settings.brush
 
-        layout.template_curve_mapping(brush, "curve", brush=True)
-
         col = layout.column(align=True)
         row = col.row(align=True)
-        row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
-        row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
-        row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
-        row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
-        row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
-        row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+        row.prop(brush, "curve_preset", text="")
+
+        if brush.curve_preset == 'CUSTOM':
+            layout.template_curve_mapping(brush, "curve", brush=True)
+
+            col = layout.column(align=True)
+            row = col.row(align=True)
+            row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+            row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+            row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+            row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+            row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+            row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
 class VIEW3D_PT_tools_brush_falloff_frontface(View3DPaintPanel, Panel):
@@ -1136,8 +1117,6 @@ class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
         col.prop(sculpt, "show_low_resolution")
         col = flow.column()
         col.prop(sculpt, "use_deform_only")
-        col = flow.column()
-        col.prop(sculpt, "show_diffuse_color")
         col = flow.column()
         col.prop(sculpt, "show_mask")
 
@@ -2057,7 +2036,7 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
             brush_basic_gpencil_weight_settings(col, context, brush)
 
 
-# Grease Pencil Brush Appeareance (one for each mode)
+# Grease Pencil Brush Appearance (one for each mode)
 class VIEW3D_PT_tools_grease_pencil_paint_appearance(GreasePencilAppearancePanel, View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
     bl_label = "Display"
@@ -2101,7 +2080,6 @@ classes = (
     VIEW3D_PT_tools_brush,
     VIEW3D_PT_tools_brush_color,
     VIEW3D_PT_tools_brush_swatches,
-    VIEW3D_PT_tools_brush_gradient,
     VIEW3D_PT_tools_brush_clone,
     VIEW3D_PT_tools_brush_options,
     TEXTURE_UL_texpaintslots,
