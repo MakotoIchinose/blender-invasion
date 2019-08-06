@@ -331,6 +331,75 @@ void sculpt_vertex_mask_clamp(SculptSession *ss, int index, float min, float max
   }
 }
 
+static void do_nearest_vertex_get_task_cb(void *__restrict userdata,
+                                          const int n,
+                                          const ParallelRangeTLS *__restrict UNUSED(tls))
+{
+  SculptThreadedTaskData *data = userdata;
+  SculptSession *ss = data->ob->sculpt;
+
+  PBVHVertexIter vd;
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+  {
+    if (len_squared_v3v3(vd.co, data->nearest_vertex_search_co) < data->max_distance_squared) {
+      BLI_mutex_lock(&data->mutex);
+      if (data->nearest_vertex_index == -1) {
+        data->nearest_vertex_index = vd.index;
+      }
+      else {
+        if (len_v3v3(data->nearest_vertex_search_co,
+                     sculpt_vertex_co_get(ss, data->nearest_vertex_index)) >
+            len_v3v3(vd.co, data->nearest_vertex_search_co)) {
+          data->nearest_vertex_index = vd.index;
+        }
+      }
+      BLI_mutex_unlock(&data->mutex);
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
+int sculpt_nearest_vertex_get(
+    Sculpt *sd, Object *ob, float co[3], float max_distance, bool use_original)
+{
+  SculptSession *ss = ob->sculpt;
+  PBVHNode **nodes = NULL;
+  int totnode;
+  SculptSearchSphereData data = {
+      .ss = ss,
+      .sd = sd,
+      .radius_squared = max_distance * max_distance,
+      .original = use_original,
+
+  };
+  copy_v3_v3(data.location, co);
+  BKE_pbvh_search_gather(ss->pbvh, sculpt_search_sphere_cb, &data, &nodes, &totnode);
+  if (totnode == 0) {
+    return -1;
+  }
+
+  SculptThreadedTaskData task_data = {
+      .sd = sd,
+      .ob = ob,
+      .nodes = nodes,
+      .max_distance_squared = max_distance * max_distance,
+      .nearest_vertex_index = -1,
+  };
+
+  copy_v3_v3(task_data.nearest_vertex_search_co, co);
+
+  BLI_mutex_init(&task_data.mutex);
+
+  ParallelRangeSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
+  BLI_task_parallel_range(0, totnode, &task_data, do_nearest_vertex_get_task_cb, &settings);
+
+  BLI_mutex_end(&task_data.mutex);
+
+  return task_data.nearest_vertex_index;
+}
+
 /** \name Tool Capabilities
  *
  * Avoid duplicate checks, internal logic only,
@@ -1812,9 +1881,11 @@ static void calc_brush_local_mat(const Brush *brush, Object *ob, float local_mat
 
 static bool sculpt_automasking_enabled(SculptSession *ss, const Brush *br)
 {
-  if (!BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
     return false;
   }
+
   if (br->automasking_mode != BRUSH_AUTOMASKING_NONE) {
     return true;
   }
@@ -3050,7 +3121,7 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
                                 tls->thread_id);
 
       if (sculpt_automasking_enabled(ss, brush)) {
-        fade *= sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
+        fade *= sculpt_automasking_value_get(ss, brush, vd.index);
       }
 
       if (brush->sculpt_color_mix_mode & BRUSH_SCULPT_COLOR_MIX) {
@@ -3387,7 +3458,7 @@ static void do_grab_brush_task_cb_ex(void *__restrict userdata,
                                             vd.mask ? *vd.mask : 0.0f,
                                             tls->thread_id);
       if (sculpt_automasking_enabled(ss, brush)) {
-        fade *= sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
+        fade *= sculpt_automasking_value_get(ss, brush, vd.index);
       }
 
       mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
@@ -3531,7 +3602,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
                                                   tls->thread_id);
       float automasking = 1.0f;
       if (sculpt_automasking_enabled(ss, brush)) {
-        automasking = sculpt_automasking_value_get(ss, brush, vd.vert_indices[vd.i]);
+        automasking = sculpt_automasking_value_get(ss, brush, vd.index);
       }
 
       mul_v3_v3fl(proxy[vd.i], grab_delta, fade * automasking);
@@ -4822,7 +4893,7 @@ static bool find_connected_set(
 
 static bool sculpt_automasking_needs_updates(const Brush *br)
 {
-  if (br->sculpt_tool == SCULPT_TOOL_GRAB || br->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) {
+  if (br->sculpt_tool == SCULPT_TOOL_GRAB) {
     return false;
   }
   return true;
@@ -4837,13 +4908,10 @@ static void init_topology_automask_cb_exec(void *__restrict userdata,
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
 
   if (sculpt_tool_needs_original(data->brush->sculpt_tool)) {
     sculpt_orig_vert_data_init(&orig_data, data->ob, data->nodes[n]);
   }
-
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n])->co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = sculpt_brush_test_init_with_falloff_shape(
@@ -4855,9 +4923,9 @@ static void init_topology_automask_cb_exec(void *__restrict userdata,
     flip_v3_v3(active_vertex_co, active_vertex_co, ss->cache->mirror_symmetry_pass);
   }
   else {
-    copy_v3_v3(active_vertex_co, ss->mvert[ss->cache->active_vertex_mesh_index].co);
+    copy_v3_v3(active_vertex_co, sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)));
     flip_v3_v3(active_vertex_co,
-               ss->mvert[ss->cache->active_vertex_mesh_index].co,
+               sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)),
                ss->cache->mirror_symmetry_pass);
   }
 
@@ -4944,52 +5012,67 @@ static void sculpt_automasking_clear(Sculpt *sd, Object *ob)
   }
 }
 
-static void sculpt_topology_automasking_init(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+typedef struct vertex_topology_it {
+  int v;
+  int it;
+} vertex_topology_it;
+
+static float *sculpt_topology_automasking_init(Sculpt *sd, Object *ob, int initial_vertex_index)
 {
 
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
-  if (!sculpt_automasking_enabled(ss, brush))
-    return;
-  int msp = ss->cache->mirror_symmetry_pass;
-  PBVHType type = BKE_pbvh_type(ss->pbvh);
 
-  if (type == PBVH_FACES && !ss->pmap) {
+  if (!sculpt_automasking_enabled(ss, brush))
+    return NULL;
+
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && !ss->pmap) {
     BLI_assert(!"Topology masking: pmap missing");
-    return;
+    return NULL;
   }
 
   ss->cache->mirror_active_vertex[0] = ss->cache->active_vertex_mesh_index;
 
-  if (ss->cache->influence_set[msp] == NULL) {
-    ss->cache->influence_set[msp] = BLI_gset_new(
-        BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "verts influence");
-    ss->cache->topo_connected_set[msp] = BLI_gset_new(
-        BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "verts topology connected");
+  char *visited_vertices = MEM_callocN(sculpt_vertex_count_get(ss) * sizeof(char),
+                                       "visited vertices");
+  float *automask_factor = MEM_callocN(sizeof(float) * sculpt_vertex_count_get(ss),
+                                       "automask_factor");
+
+  float brush_co[3];
+  copy_v3_v3(brush_co, ss->cache->location);
+
+  GSQueue *queue = BLI_gsqueue_new(sizeof(vertex_topology_it));
+  vertex_topology_it mevit;
+  mevit.v = initial_vertex_index;
+  mevit.it = 1;
+  BLI_gsqueue_push(queue, &mevit);
+
+  while (!BLI_gsqueue_is_empty(queue)) {
+    vertex_topology_it c_mevit;
+    BLI_gsqueue_pop(queue, &c_mevit);
+    SculptVertexNeighbourIter ni;
+    sculpt_vertex_neighbours_iter_begin(ss, c_mevit.v, ni)
+    {
+      if (visited_vertices[(int)ni.index] == 0) {
+        vertex_topology_it new_entry;
+        new_entry.v = ni.index;
+        new_entry.it = c_mevit.it + 1;
+        automask_factor[new_entry.v] = 1.0f;
+        visited_vertices[(int)ni.index] = 1;
+        if (len_squared_v3v3(ss->cache->location, sculpt_vertex_co_get(ss, new_entry.v)) <
+            ss->cache->radius_squared) {
+          BLI_gsqueue_push(queue, &new_entry);
+        }
+      }
+    }
+    sculpt_vertex_neighbours_iter_end(ni)
   }
 
-  SculptThreadedTaskData data = {
-      .sd = sd,
-      .ob = ob,
-      .brush = brush,
-      .nodes = nodes,
-      .min_len = FLT_MAX,
-  };
+  BLI_gsqueue_free(queue);
 
-  data.use_automasking_brush_location = sculpt_automasking_needs_updates(brush);
+  MEM_freeN(visited_vertices);
 
-  ParallelRangeSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-  BLI_mutex_init(&data.mutex);
-  BLI_task_parallel_range(0, totnode, &data, init_topology_automask_cb_exec, &settings);
-  BLI_mutex_end(&data.mutex);
-
-  find_connected_set(ss,
-                     ss->cache->mirror_active_vertex[msp],
-                     ss->cache->influence_set[msp],
-                     ss->cache->topo_connected_set[msp],
-                     ss->cache->automask[msp]);
+  return automask_factor;
 }
 
 static void sculpt_automasking_init(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
@@ -5000,10 +5083,15 @@ static void sculpt_automasking_init(Sculpt *sd, Object *ob, PBVHNode **nodes, in
     return;
   int msp = ss->cache->mirror_symmetry_pass;
 
-  ss->cache->automask[msp] = MEM_callocN(sizeof(float) * ss->totvert, "automask");
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
+    BM_mesh_elem_table_init(ss->bm, BM_VERT);
+    BM_mesh_elem_index_ensure(ss->bm, BM_VERT);
+  }
 
   if (brush->automasking_mode & BRUSH_AUTOMASKING_TOPOLOGY) {
-    sculpt_topology_automasking_init(sd, ob, nodes, totnode);
+    int active_vertex_mirrored = sculpt_nearest_vertex_get(
+        sd, ob, ss->cache->location, FLT_MAX, false);
+    ss->cache->automask[msp] = sculpt_topology_automasking_init(sd, ob, active_vertex_mirrored);
   }
 
   if (brush->automasking_mode & BRUSH_AUTOMASKING_EDGES) {
@@ -9648,11 +9736,6 @@ int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
-typedef struct maskExmandVIT {
-  int v;
-  int it;
-} maskExmandVIT;
-
 static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -9706,21 +9789,21 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   char *visited_vertices = MEM_callocN(sculpt_vertex_count_get(ss) * sizeof(char), "prevmask");
 
-  GSQueue *queue = BLI_gsqueue_new(sizeof(maskExmandVIT));
+  GSQueue *queue = BLI_gsqueue_new(sizeof(vertex_topology_it));
 
-  maskExmandVIT mevit;
+  vertex_topology_it mevit;
   mevit.v = sculpt_active_vertex_get(ss);
   mevit.it = 1;
   BLI_gsqueue_push(queue, &mevit);
 
   while (!BLI_gsqueue_is_empty(queue)) {
-    maskExmandVIT c_mevit;
+    vertex_topology_it c_mevit;
     BLI_gsqueue_pop(queue, &c_mevit);
     SculptVertexNeighbourIter ni;
     sculpt_vertex_neighbours_iter_begin(ss, c_mevit.v, ni)
     {
       if (visited_vertices[(int)ni.index] == 0) {
-        maskExmandVIT new_entry;
+        vertex_topology_it new_entry;
         new_entry.v = ni.index;
         new_entry.it = c_mevit.it + 1;
         ss->filter_cache->mask_update_it[(int)new_entry.v] = new_entry.it;

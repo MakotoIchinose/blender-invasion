@@ -216,6 +216,10 @@ typedef struct SculptThreadedTaskData {
 
   int proc_it;
 
+  float max_distance_squared;
+  float nearest_vertex_search_co[3];
+  int nearest_vertex_index;
+
   ThreadMutex mutex;
 
 } SculptThreadedTaskData;
