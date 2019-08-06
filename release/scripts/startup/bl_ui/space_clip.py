@@ -180,8 +180,6 @@ class CLIP_HT_header(Header):
             active_object = tracking.objects.active
 
             if sc.view == 'CLIP':
-                layout.template_running_jobs()
-
                 r = active_object.reconstruction
 
                 if r.is_valid and sc.view == 'CLIP':
@@ -1001,7 +999,7 @@ class CLIP_PT_stabilization(CLIP_PT_reconstruction_panel, Panel):
             sub.menu('CLIP_MT_stabilize_2d_context_menu', text="",
                      icon='DOWNARROW_HLT')
 
-            # Usually we don't hide things from iterface, but here every pixel of
+            # Usually we don't hide things from interface, but here every pixel of
             # vertical space is precious.
             if stab.use_stabilize_rotation:
                 box.label(text="Tracks For Rotation / Scale")
@@ -1444,10 +1442,10 @@ class CLIP_MT_tracking_context_menu(Menu):
     def poll(cls, context):
         return context.space_data.clip
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
-        mode = _context.space_data.mode
+        mode = context.space_data.mode
 
         if mode == 'TRACKING':
 

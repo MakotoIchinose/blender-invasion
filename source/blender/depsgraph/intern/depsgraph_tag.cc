@@ -325,25 +325,31 @@ void deg_graph_id_tag_legacy_compat(
        * tagging here. */
       case ID_ME: {
         Mesh *mesh = (Mesh *)id;
-        ID *key_id = &mesh->key->id;
-        if (key_id != NULL) {
-          graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+        if (mesh->key != NULL) {
+          ID *key_id = &mesh->key->id;
+          if (key_id != NULL) {
+            graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+          }
         }
         break;
       }
       case ID_LT: {
         Lattice *lattice = (Lattice *)id;
-        ID *key_id = &lattice->key->id;
-        if (key_id != NULL) {
-          graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+        if (lattice->key != NULL) {
+          ID *key_id = &lattice->key->id;
+          if (key_id != NULL) {
+            graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+          }
         }
         break;
       }
       case ID_CU: {
         Curve *curve = (Curve *)id;
-        ID *key_id = &curve->key->id;
-        if (key_id != NULL) {
-          graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+        if (curve->key != NULL) {
+          ID *key_id = &curve->key->id;
+          if (key_id != NULL) {
+            graph_id_tag_update(bmain, depsgraph, key_id, 0, update_source);
+          }
         }
         break;
       }
@@ -824,7 +830,7 @@ static void deg_graph_clear_id_recalc_flags(ID *id)
 
 static void deg_graph_clear_id_node_func(void *__restrict data_v,
                                          const int i,
-                                         const ParallelRangeTLS *__restrict /*tls*/)
+                                         const TaskParallelTLS *__restrict /*tls*/)
 {
   /* TODO: we clear original ID recalc flags here, but this may not work
    * correctly when there are multiple depsgraph with others still using
@@ -850,7 +856,7 @@ void DEG_ids_clear_recalc(Main *UNUSED(bmain), Depsgraph *depsgraph)
   }
   /* Go over all ID nodes nodes, clearing tags. */
   const int num_id_nodes = deg_graph->id_nodes.size();
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.min_iter_per_thread = 1024;
   BLI_task_parallel_range(0, num_id_nodes, deg_graph, deg_graph_clear_id_node_func, &settings);

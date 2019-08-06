@@ -1338,7 +1338,7 @@ typedef struct TrackingStabilizeFrameInterpolationData {
 } TrackingStabilizeFrameInterpolationData;
 
 static void tracking_stabilize_frame_interpolation_cb(
-    void *__restrict userdata, const int j, const ParallelRangeTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int j, const TaskParallelTLS *__restrict UNUSED(tls))
 {
   TrackingStabilizeFrameInterpolationData *data = userdata;
   ImBuf *ibuf = data->ibuf;
@@ -1443,7 +1443,7 @@ ImBuf *BKE_tracking_stabilize_frame(
       .interpolation = interpolation,
   };
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (tmpibuf->y > 128);
   BLI_task_parallel_range(

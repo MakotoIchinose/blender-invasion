@@ -298,7 +298,7 @@ static void gpencil_primitive_allocate_memory(tGPDprimitive *tgpi)
 static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 {
   Scene *scene = CTX_data_scene(C);
-  int cfra_eval = CFRA;
+  int cfra = CFRA;
 
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
 
@@ -310,7 +310,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 
   /* create a new temporary frame */
   tgpi->gpf = MEM_callocN(sizeof(bGPDframe), "Temp bGPDframe");
-  tgpi->gpf->framenum = tgpi->cframe = cfra_eval;
+  tgpi->gpf->framenum = tgpi->cframe = cfra;
 
   /* create new temp stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke");
@@ -704,13 +704,13 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   gp_session_validatebuffer(tgpi);
   gp_init_colors(tgpi);
   if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
-    curvemapping_initialize(ts->gp_sculpt.cur_primitive);
+    BKE_curvemapping_initialize(ts->gp_sculpt.cur_primitive);
   }
   if (tgpi->brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
-    curvemapping_initialize(tgpi->brush->gpencil_settings->curve_jitter);
+    BKE_curvemapping_initialize(tgpi->brush->gpencil_settings->curve_jitter);
   }
   if (tgpi->brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-    curvemapping_initialize(tgpi->brush->gpencil_settings->curve_strength);
+    BKE_curvemapping_initialize(tgpi->brush->gpencil_settings->curve_strength);
   }
 
   /* get an array of depths, far depths are blended */
@@ -834,7 +834,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     /* normalize value to evaluate curve */
     if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
       float value = (float)i / (gps->totpoints - 1);
-      curve_pressure = curvemapping_evaluateF(gset->cur_primitive, 0, value);
+      curve_pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, value);
       pressure = curve_pressure;
     }
 
@@ -844,7 +844,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
       float jitter;
 
       if (brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
-        jitter = curvemapping_evaluateF(brush->gpencil_settings->curve_jitter, 0, curve_pressure);
+        jitter = BKE_curvemapping_evaluateF(
+            brush->gpencil_settings->curve_jitter, 0, curve_pressure);
         jitter *= brush->gpencil_settings->draw_sensitivity;
       }
       else {
@@ -890,7 +891,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
     /* color strength */
     if (brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-      float curvef = curvemapping_evaluateF(
+      float curvef = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, curve_pressure);
       strength *= curvef * brush->gpencil_settings->draw_sensitivity;
       strength *= brush->gpencil_settings->draw_strength;
@@ -1095,8 +1096,6 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Paint *paint = &ts->gp_paint->paint;
 
-  int cfra_eval = CFRA;
-
   /* create temporary operator data */
   tGPDprimitive *tgpi = MEM_callocN(sizeof(tGPDprimitive), "GPencil Primitive Data");
   op->customdata = tgpi;
@@ -1111,14 +1110,14 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   tgpi->ar = CTX_wm_region(C);
   tgpi->rv3d = tgpi->ar->regiondata;
   tgpi->v3d = tgpi->sa->spacedata.first;
-  tgpi->depsgraph = CTX_data_depsgraph(C);
+  tgpi->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   tgpi->win = CTX_wm_window(C);
 
   /* save original type */
   tgpi->orign_type = RNA_enum_get(op->ptr, "type");
 
   /* set current frame number */
-  tgpi->cframe = cfra_eval;
+  tgpi->cframe = CFRA;
 
   /* set GP datablock */
   tgpi->gpd = gpd;
@@ -1129,7 +1128,12 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
     BKE_brush_gpencil_presets(C);
   }
-  tgpi->brush = paint->brush;
+
+  /* Set Draw brush. */
+  Brush *brush = BKE_paint_toolslots_brush_get(paint, 0);
+  BKE_brush_tool_set(brush, paint, 0);
+  BKE_paint_brush_set(paint, brush);
+  tgpi->brush = brush;
 
   /* control points */
   tgpi->gpd->runtime.cp_points = MEM_callocN(sizeof(bGPDcontrolpoint) * MAX_CP,

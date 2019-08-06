@@ -131,7 +131,7 @@ static SpaceLink *image_new(const ScrArea *UNUSED(area), const Scene *UNUSED(sce
   BKE_imageuser_default(&simage->iuser);
   simage->iuser.flag = IMA_SHOW_STEREO | IMA_ANIM_ALWAYS;
 
-  scopes_new(&simage->scopes);
+  BKE_scopes_new(&simage->scopes);
   simage->sample_line_hist.height = 100;
 
   /* tool header */
@@ -179,7 +179,7 @@ static void image_free(SpaceLink *sl)
 {
   SpaceImage *simage = (SpaceImage *)sl;
 
-  scopes_free(&simage->scopes);
+  BKE_scopes_free(&simage->scopes);
 }
 
 /* spacetype; init callback, add handlers */
@@ -197,7 +197,7 @@ static SpaceLink *image_duplicate(SpaceLink *sl)
 
   /* clear or remove stuff from old */
 
-  scopes_new(&simagen->scopes);
+  BKE_scopes_new(&simagen->scopes);
 
   return (SpaceLink *)simagen;
 }
@@ -576,7 +576,7 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
   SpaceImage *sima = CTX_wm_space_image(C);
   Object *obact = CTX_data_active_object(C);
   Object *obedit = CTX_data_edit_object(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   Mask *mask = NULL;
   bool show_uvedit = false;
   bool show_curve = false;

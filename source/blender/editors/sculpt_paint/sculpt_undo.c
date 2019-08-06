@@ -127,11 +127,10 @@ static bool sculpt_undo_restore_deformed(
   }
 }
 
-static bool sculpt_undo_restore_coords(bContext *C, SculptUndoNode *unode)
+static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, SculptUndoNode *unode)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = OBACT(view_layer);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
   MVert *mvert;
@@ -323,7 +322,7 @@ static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode)
 }
 
 static void sculpt_undo_bmesh_restore_generic_task_cb(
-    void *__restrict userdata, const int n, const ParallelRangeTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int n, const TaskParallelTLS *__restrict UNUSED(tls))
 {
   PBVHNode **nodes = userdata;
 
@@ -351,7 +350,7 @@ static void sculpt_undo_bmesh_restore_generic(bContext *C,
 
     BKE_pbvh_search_gather(ss->pbvh, NULL, NULL, &nodes, &totnode);
 
-    ParallelRangeSettings settings;
+    TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
     settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
     BLI_task_parallel_range(
@@ -455,13 +454,12 @@ static int sculpt_undo_bmesh_restore(bContext *C,
   return false;
 }
 
-static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
+static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase *lb)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
   Object *ob = OBACT(view_layer);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
   SculptUndoNode *unode;
@@ -512,7 +510,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 
     switch (unode->type) {
       case SCULPT_UNDO_COORDS:
-        if (sculpt_undo_restore_coords(C, unode)) {
+        if (sculpt_undo_restore_coords(C, depsgraph, unode)) {
           update = true;
         }
         break;
@@ -1014,6 +1012,7 @@ void sculpt_undo_push_end(void)
   if (wm->op_undo_depth == 0) {
     UndoStack *ustack = ED_undo_stack_get();
     BKE_undosys_step_push(ustack, NULL, NULL);
+    WM_file_tag_modified();
   }
 }
 
@@ -1062,21 +1061,27 @@ static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C),
   return true;
 }
 
-static void sculpt_undosys_step_decode_undo_impl(struct bContext *C, SculptUndoStep *us)
+static void sculpt_undosys_step_decode_undo_impl(struct bContext *C,
+                                                 Depsgraph *depsgraph,
+                                                 SculptUndoStep *us)
 {
   BLI_assert(us->step.is_applied == true);
-  sculpt_undo_restore_list(C, &us->data.nodes);
+  sculpt_undo_restore_list(C, depsgraph, &us->data.nodes);
   us->step.is_applied = false;
 }
 
-static void sculpt_undosys_step_decode_redo_impl(struct bContext *C, SculptUndoStep *us)
+static void sculpt_undosys_step_decode_redo_impl(struct bContext *C,
+                                                 Depsgraph *depsgraph,
+                                                 SculptUndoStep *us)
 {
   BLI_assert(us->step.is_applied == false);
-  sculpt_undo_restore_list(C, &us->data.nodes);
+  sculpt_undo_restore_list(C, depsgraph, &us->data.nodes);
   us->step.is_applied = true;
 }
 
-static void sculpt_undosys_step_decode_undo(struct bContext *C, SculptUndoStep *us)
+static void sculpt_undosys_step_decode_undo(struct bContext *C,
+                                            Depsgraph *depsgraph,
+                                            SculptUndoStep *us)
 {
   SculptUndoStep *us_iter = us;
   while (us_iter->step.next && (us_iter->step.next->type == us_iter->step.type)) {
@@ -1086,12 +1091,14 @@ static void sculpt_undosys_step_decode_undo(struct bContext *C, SculptUndoStep *
     us_iter = (SculptUndoStep *)us_iter->step.next;
   }
   while (us_iter != us) {
-    sculpt_undosys_step_decode_undo_impl(C, us_iter);
+    sculpt_undosys_step_decode_undo_impl(C, depsgraph, us_iter);
     us_iter = (SculptUndoStep *)us_iter->step.prev;
   }
 }
 
-static void sculpt_undosys_step_decode_redo(struct bContext *C, SculptUndoStep *us)
+static void sculpt_undosys_step_decode_redo(struct bContext *C,
+                                            Depsgraph *depsgraph,
+                                            SculptUndoStep *us)
 {
   SculptUndoStep *us_iter = us;
   while (us_iter->step.prev && (us_iter->step.prev->type == us_iter->step.type)) {
@@ -1101,7 +1108,7 @@ static void sculpt_undosys_step_decode_redo(struct bContext *C, SculptUndoStep *
     us_iter = (SculptUndoStep *)us_iter->step.prev;
   }
   while (us_iter && (us_iter->step.is_applied == false)) {
-    sculpt_undosys_step_decode_redo_impl(C, us_iter);
+    sculpt_undosys_step_decode_redo_impl(C, depsgraph, us_iter);
     if (us_iter == us) {
       break;
     }
@@ -1112,6 +1119,8 @@ static void sculpt_undosys_step_decode_redo(struct bContext *C, SculptUndoStep *
 static void sculpt_undosys_step_decode(
     struct bContext *C, struct Main *bmain, UndoStep *us_p, int dir, bool UNUSED(is_final))
 {
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+
   /* Ensure sculpt mode. */
   {
     Scene *scene = CTX_data_scene(C);
@@ -1120,7 +1129,6 @@ static void sculpt_undosys_step_decode(
     BKE_scene_view_layer_graph_evaluated_ensure(bmain, scene, view_layer);
     Object *ob = OBACT(view_layer);
     if (ob && (ob->type == OB_MESH)) {
-      Depsgraph *depsgraph = CTX_data_depsgraph(C);
       if (ob->mode & OB_MODE_SCULPT) {
         /* pass */
       }
@@ -1142,10 +1150,10 @@ static void sculpt_undosys_step_decode(
 
   SculptUndoStep *us = (SculptUndoStep *)us_p;
   if (dir < 0) {
-    sculpt_undosys_step_decode_undo(C, us);
+    sculpt_undosys_step_decode_undo(C, depsgraph, us);
   }
   else {
-    sculpt_undosys_step_decode_redo(C, us);
+    sculpt_undosys_step_decode_redo(C, depsgraph, us);
   }
 }
 

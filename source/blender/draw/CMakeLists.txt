@@ -94,6 +94,7 @@ set(SRC
   engines/eevee/eevee_lightprobes.c
   engines/eevee/eevee_lights.c
   engines/eevee/eevee_lookdev.c
+  engines/eevee/eevee_lut.c
   engines/eevee/eevee_materials.c
   engines/eevee/eevee_mist.c
   engines/eevee/eevee_motion_blur.c
@@ -126,6 +127,8 @@ set(SRC
   engines/gpencil/gpencil_engine.h
   engines/gpencil/gpencil_render.c
   engines/gpencil/gpencil_shader_fx.c
+  engines/select/select_engine.c
+  engines/select/select_draw_utils.c
 
   DRW_engine.h
   intern/DRW_render.h
@@ -150,6 +153,8 @@ set(SRC
   engines/external/external_engine.h
   engines/workbench/workbench_engine.h
   engines/workbench/workbench_private.h
+  engines/select/select_engine.h
+  engines/select/select_private.h
 )
 
 set(LIB
@@ -362,6 +367,9 @@ data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_shadow_prepare_frag.glsl 
 data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_shadow_resolve_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_swirl_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_wave_frag.glsl SRC)
+
+data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
+data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
 
 list(APPEND INC

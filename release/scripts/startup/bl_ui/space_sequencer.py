@@ -244,13 +244,6 @@ class SEQUENCER_MT_view(Menu):
                     translate=False,
                 ).ratio = a / b
 
-            layout.separator()
-
-            layout.operator_context = 'INVOKE_DEFAULT'
-
-            # # XXX, invokes in the header view
-            # layout.operator("sequencer.view_ghost_border", text="Overlay Border")
-
         if is_sequencer_view:
             layout.prop(st, "show_seconds")
             layout.prop(st, "show_frame_indicator")
@@ -1844,6 +1837,11 @@ class SEQUENCER_PT_frame_overlay(SequencerButtonsPanel_Output, Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        layout.operator_context = 'INVOKE_REGION_PREVIEW'
+        layout.operator("sequencer.view_ghost_border", text="Set Overlay Region")
+        layout.operator_context = 'INVOKE_DEFAULT'
+
         layout.use_property_split = True
         layout.use_property_decorate = False
 
@@ -1996,6 +1994,15 @@ class SEQUENCER_PT_grease_pencil(AnnotationDataPanel, SequencerButtonsPanel_Outp
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "View"
+
+    @staticmethod
+    def has_preview(context):
+        st = context.space_data
+        return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}
+
+    @classmethod
+    def poll(cls, context):
+        return cls.has_preview(context)
 
     # NOTE: this is just a wrapper around the generic GP Panel
     # But, it should only show up when there are images in the preview region

@@ -144,6 +144,11 @@ set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} /MT")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT")
 
+#JMC is available on msvc 15.8 (1915) and up
+if(MSVC_VERSION GREATER 1914 AND NOT MSVC_CLANG)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /JMC")
+endif()
+
 set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /SUBSYSTEM:CONSOLE /STACK:2097152 /INCREMENTAL:NO ")
 set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:msvcmrt.lib /NODEFAULTLIB:msvcurt.lib /NODEFAULTLIB:msvcrtd.lib ")
 
@@ -166,8 +171,7 @@ if(NOT DEFINED LIBDIR)
     message(STATUS "64 bit compiler detected.")
     set(LIBDIR_BASE "win64")
   else()
-    message(STATUS "32 bit compiler detected.")
-    set(LIBDIR_BASE "windows")
+    message(FATAL_ERROR "32 bit compiler detected, blender no longer provides pre-build libraries for 32 bit windows, please set the LIBDIR cmake variable to your own library folder")
   endif()
   # Can be 1910..1912
   if(MSVC_VERSION GREATER 1919)
@@ -381,9 +385,6 @@ if(WITH_BOOST)
     if(CMAKE_CL_64)
       set(BOOST_POSTFIX "vc140-mt-s-x64-1_68.lib")
       set(BOOST_DEBUG_POSTFIX "vc140-mt-sgd-x64-1_68.lib")
-    else()
-      set(BOOST_POSTFIX "vc140-mt-s-x32-1_68.lib")
-      set(BOOST_DEBUG_POSTFIX "vc140-mt-sgd-x32-1_68.lib")
     endif()
     set(BOOST_LIBRARIES
       optimized ${BOOST_LIBPATH}/libboost_date_time-${BOOST_POSTFIX}

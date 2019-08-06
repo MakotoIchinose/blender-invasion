@@ -547,7 +547,7 @@ static int apply_objects_internal(bContext *C,
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   float rsmat[3][3], obmat[3][3], iobmat[3][3], mat[4][4], scale;
   bool changed = true;
 
@@ -881,7 +881,7 @@ static int apply_objects_internal(bContext *C,
 static int visual_transform_apply_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects) {
@@ -976,7 +976,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *obact = CTX_data_active_object(C);
   Object *obedit = CTX_data_edit_object(C);
-  Depsgraph *depsgraph = CTX_data_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *tob;
   float cent[3], cent_neg[3], centn[3];
   const float *cursor = scene->cursor.location;
@@ -1337,12 +1337,13 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
                 }
               }
             }
-            DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-
             tot_change++;
             if (centermode == ORIGIN_TO_GEOMETRY) {
               copy_v3_v3(ob->loc, gpcenter);
             }
+            DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+            DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+
             ob->id.tag |= LIB_TAG_DOIT;
             do_inverse_offset = true;
           }

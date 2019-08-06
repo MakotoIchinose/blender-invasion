@@ -784,9 +784,9 @@ PaintStroke *paint_stroke_new(bContext *C,
   ups->average_stroke_counter = 0;
 
   /* initialize here to avoid initialization conflict with threaded strokes */
-  curvemapping_initialize(br->curve);
+  BKE_curvemapping_initialize(br->curve);
   if (p->flags & PAINT_USE_CAVITY_MASK) {
-    curvemapping_initialize(p->cavity_curve);
+    BKE_curvemapping_initialize(p->cavity_curve);
   }
 
   BKE_paint_set_overlay_override(br->overlay_flags);
@@ -1329,7 +1329,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
     redraw = true;
   }
 
-  /* do updates for redraw. if event is inbetween mousemove there are more
+  /* do updates for redraw. if event is in between mouse-move there are more
    * coming, so postpone potentially slow redraw updates until all are done */
   if (event->type != INBETWEEN_MOUSEMOVE) {
     wmWindow *window = CTX_wm_window(C);
