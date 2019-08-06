@@ -486,11 +486,6 @@ typedef struct MergedSearchData {
   TreeElement *select_element;
 } MergedSearchData;
 
-static void merged_element_search_free_cb(void *arg)
-{
-  MEM_freeN(arg);
-}
-
 static void merged_element_search_cb_recursive(
     const ListBase *tree, short tselem_type, short type, const char *str, uiSearchItems *items)
 {
@@ -590,7 +585,7 @@ void merged_element_search_menu_invoke(bContext *C,
   select_data->parent_element = parent_te;
   select_data->select_element = activate_te;
 
-  UI_popup_block_invoke(C, merged_element_search_menu, select_data, merged_element_search_free_cb);
+  UI_popup_block_invoke(C, merged_element_search_menu, select_data, MEM_freeN);
 }
 
 static void object_select_cb(bContext *C,
