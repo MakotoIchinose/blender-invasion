@@ -9517,11 +9517,11 @@ static int sculpt_set_pivot_position_invoke(bContext *C, wmOperator *op, const w
     float avg[3];
     int total = 0;
     zero_v3(avg);
-    for (int i = 0; i < ss->totvert; i++) {
-      if (ss->vmask[i] < 1.0f &&
-          check_vertex_pivot_symmetry(ss->mvert[i].co, ss->pivot_pos, symm)) {
+    for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
+      if (sculpt_vertex_mask_get(ss, i) < 1.0f &&
+          check_vertex_pivot_symmetry(sculpt_vertex_co_get(ss, i), ss->pivot_pos, symm)) {
         total++;
-        add_v3_v3(avg, ss->mvert[i].co);
+        add_v3_v3(avg, sculpt_vertex_co_get(ss, i));
       }
     }
     if (total > 0) {
@@ -9536,11 +9536,12 @@ static int sculpt_set_pivot_position_invoke(bContext *C, wmOperator *op, const w
     int total = 0;
     float threshold = 0.2f;
     zero_v3(avg);
-    for (int i = 0; i < ss->totvert; i++) {
-      if (ss->vmask[i] < (0.5f + threshold) && ss->vmask[i] > (0.5f - threshold) &&
-          check_vertex_pivot_symmetry(ss->mvert[i].co, ss->pivot_pos, symm)) {
+    for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
+      if (sculpt_vertex_mask_get(ss, i) < (0.5f + threshold) &&
+          sculpt_vertex_mask_get(ss, i) > (0.5f - threshold) &&
+          check_vertex_pivot_symmetry(sculpt_vertex_co_get(ss, i), ss->pivot_pos, symm)) {
         total++;
-        add_v3_v3(avg, ss->mvert[i].co);
+        add_v3_v3(avg, sculpt_vertex_co_get(ss, i));
       }
     }
     if (total > 0) {
@@ -9551,7 +9552,7 @@ static int sculpt_set_pivot_position_invoke(bContext *C, wmOperator *op, const w
 
   /* pivot to active vertex */
   if (mode == SCULPT_PIVOT_POSITION_ACTIVE_VERTEX) {
-    copy_v3_v3(ss->pivot_pos, ss->mvert[ss->active_vertex_mesh_index].co);
+    copy_v3_v3(ss->pivot_pos, sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)));
   }
 
   /* pivot to raycast surface */
