@@ -1176,7 +1176,7 @@ static int outliner_select_all_exec(bContext *C, wmOperator *op)
   }
 
   if (soops->flag & SO_SYNC_SELECT) {
-    outliner_select_sync(C, soops);
+    ED_outliner_select_sync_from_outliner(C, soops);
   }
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);

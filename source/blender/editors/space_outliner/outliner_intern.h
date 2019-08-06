@@ -487,7 +487,6 @@ void outliner_scroll_view(struct ARegion *ar, int delta_y);
 
 /* outliner_sync.c ---------------------------------------------- */
 
-void outliner_select_sync(struct bContext *C, struct SpaceOutliner *soops);
 void outliner_sync_selection(const struct bContext *C, struct SpaceOutliner *soops);
 
 #endif /* __OUTLINER_INTERN_H__ */

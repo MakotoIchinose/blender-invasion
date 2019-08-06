@@ -56,12 +56,13 @@
 #include "DEG_depsgraph_build.h"
 
 #include "ED_armature.h"
+#include "ED_gpencil.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_sequencer.h"
 #include "ED_undo.h"
-#include "ED_gpencil.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -1404,7 +1405,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     ED_undo_push(C, "Outliner selection change");
 
     if (soops->flag & SO_SYNC_SELECT) {
-      outliner_select_sync(C, soops);
+      ED_outliner_select_sync_from_outliner(C, soops);
     }
   }
 
@@ -1494,7 +1495,7 @@ static int outliner_box_select_exec(bContext *C, wmOperator *op)
   ED_region_tag_redraw(ar);
 
   if (soops->flag & SO_SYNC_SELECT) {
-    outliner_select_sync(C, soops);
+    ED_outliner_select_sync_from_outliner(C, soops);
   }
 
   return OPERATOR_FINISHED;
@@ -1785,7 +1786,7 @@ static int outliner_walk_select_invoke(bContext *C, wmOperator *op, const wmEven
   outliner_walk_scroll(ar, walk_element);
 
   if (soops->flag & SO_SYNC_SELECT) {
-    outliner_select_sync(C, soops);
+    ED_outliner_select_sync_from_outliner(C, soops);
   }
   ED_region_tag_redraw(ar);
 

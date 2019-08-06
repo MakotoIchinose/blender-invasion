@@ -310,7 +310,7 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
 }
 
 /* Set clean outliner and mark other outliners for syncing */
-void outliner_select_sync(bContext *C, SpaceOutliner *soops)
+void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 {
   /* Don't sync in certain outliner display modes */
   if (ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS)) {
