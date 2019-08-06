@@ -2714,7 +2714,7 @@ static void direct_link_profilewidget(FileData *fd, ProfileWidget *prwdgt)
 {
   prwdgt->path = newdataadr(fd, prwdgt->path);
   prwdgt->table = NULL;
-  prwdgt->samples = NULL;
+  prwdgt->segments = NULL;
 }
 
 /** \} */

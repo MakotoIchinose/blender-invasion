@@ -58,7 +58,6 @@
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
 #define DEBUG_CUSTOM_PROFILE_SAMPLE 0
-#define DEBUG_CUSTOM_PROFILE_ORIGINAL 0
 #define DEBUG_CUSTOM_PROFILE_WELD 0
 #define DEBUG_CUSTOM_PROFILE_ADJ 0
 #define DEBUG_CUSTOM_PROFILE_PIPE 0
@@ -2433,8 +2432,6 @@ static void build_boundary_terminal_edge(BevelParams *bp,
     /* For the edges not adjacent to the beveled edge, slide the bevel amount along. */
     d = efirst->offset_l_spec;
     if (bp->use_custom_profile || bp->profile < 0.25f) {
-      /* HANS-TODO: Even this doesn't give enough room to the profile when the adjacent edges
-       * aren't square so the profile is rotated sideways. */
       d *= sqrtf(2.0f); /* Need to go further down the edge to make room for full profile area */
     }
     for (e = e->next; e->next != efirst; e = e->next) {
@@ -3190,6 +3187,7 @@ static void debug_RPO_edge_draw_profile_orientation(BevelParams* bp, BMEdge* e) 
  * the profiles can start from opposite sides of the edge. In order to fix this we
  * need to travel along the beveled edges marking consistent boundverts for the
  * bevels to start from. */
+/* HANS-TODO: Orientation bug */
 static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
 {
   BevVert *start_bv;
@@ -3810,29 +3808,26 @@ static int interp_range(const float *frac, int n, const float f, float *r_rest)
 /* HANS-TODO: This puts the center mesh vert at a slightly off location sometimes, which seems to
  * be associated with the rest of that ring being shifted or connected slightly incorrectly to its
  * neighbors */
-/* HANS-TODO: Figure out once and for all if the "frac" process is incorrect for custom profiles
- * (even though it produces workable results). If it's incorrect than find a better solution. If
- * it's a fine solution than document it better with comments. */
 static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm_in, int nseg)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ
   printf("INTERP VMESH\n");
 #endif
-  int n_bndv, ns0, nseg2, odd, i, j, k, j0, k0, k0prev, j0inc, k0inc;
+  int n_bndv, ns_in, nseg2, odd, i, j, k, j_in, k_in, k_in_prev, j0inc, k0inc;
   float *prev_frac, *frac, *new_frac, *prev_new_frac;
-  float f, restj, restk, restkprev;
+  float fraction, restj, restk, restkprev;
   float quad[4][3], co[3], center[3];
   VMesh *vm_out;
   BoundVert *bndv;
 
   n_bndv = vm_in->count;
-  ns0 = vm_in->seg;
+  ns_in = vm_in->seg;
   nseg2 = nseg / 2;
   odd = nseg % 2;
   vm_out = new_adj_vmesh(bp->mem_arena, n_bndv, nseg, vm_in->boundstart);
 
-  prev_frac = BLI_array_alloca(prev_frac, (ns0 + 1));
-  frac = BLI_array_alloca(frac, (ns0 + 1));
+  prev_frac = BLI_array_alloca(prev_frac, (ns_in + 1));
+  frac = BLI_array_alloca(frac, (ns_in + 1));
   new_frac = BLI_array_alloca(new_frac, (nseg + 1));
   prev_new_frac = BLI_array_alloca(prev_new_frac, (nseg + 1));
 
@@ -3844,37 +3839,38 @@ static VMesh *interp_vmesh(BevelParams *bp, VMesh *vm_in, int nseg)
     fill_profile_fracs(bp, bndv, new_frac, nseg);
     for (j = 0; j <= nseg2 - 1 + odd; j++) {
       for (k = 0; k <= nseg2; k++) {
-        f = new_frac[k];
-        k0 = interp_range(frac, ns0, f, &restk);
-        f = prev_new_frac[nseg - j];
-        k0prev = interp_range(prev_frac, ns0, f, &restkprev);
-        j0 = ns0 - k0prev;
+        /* Finding the locations where "fraction" fits into previous and current "frac" */
+        fraction = new_frac[k];
+        k_in = interp_range(frac, ns_in, fraction, &restk);
+        fraction = prev_new_frac[nseg - j];
+        k_in_prev = interp_range(prev_frac, ns_in, fraction, &restkprev);
+        j_in = ns_in - k_in_prev;
         restj = -restkprev;
         if (restj > -BEVEL_EPSILON) {
           restj = 0.0f;
         }
         else {
-          j0 = j0 - 1;
+          j_in = j_in - 1;
           restj = 1.0f + restj;
         }
         /* Use bilinear interpolation within the source quad; could be smarter here */
         if (restj < BEVEL_EPSILON && restk < BEVEL_EPSILON) {
-          copy_v3_v3(co, mesh_vert_canon(vm_in, i, j0, k0)->co);
+          copy_v3_v3(co, mesh_vert_canon(vm_in, i, j_in, k_in)->co);
         }
         else {
-          j0inc = (restj < BEVEL_EPSILON || j0 == ns0) ? 0 : 1;
-          k0inc = (restk < BEVEL_EPSILON || k0 == ns0) ? 0 : 1;
-          copy_v3_v3(quad[0], mesh_vert_canon(vm_in, i, j0, k0)->co);
-          copy_v3_v3(quad[1], mesh_vert_canon(vm_in, i, j0, k0 + k0inc)->co);
-          copy_v3_v3(quad[2], mesh_vert_canon(vm_in, i, j0 + j0inc, k0 + k0inc)->co);
-          copy_v3_v3(quad[3], mesh_vert_canon(vm_in, i, j0 + j0inc, k0)->co);
+          j0inc = (restj < BEVEL_EPSILON || j_in == ns_in) ? 0 : 1;
+          k0inc = (restk < BEVEL_EPSILON || k_in == ns_in) ? 0 : 1;
+          copy_v3_v3(quad[0], mesh_vert_canon(vm_in, i, j_in, k_in)->co);
+          copy_v3_v3(quad[1], mesh_vert_canon(vm_in, i, j_in, k_in + k0inc)->co);
+          copy_v3_v3(quad[2], mesh_vert_canon(vm_in, i, j_in + j0inc, k_in + k0inc)->co);
+          copy_v3_v3(quad[3], mesh_vert_canon(vm_in, i, j_in + j0inc, k_in)->co);
           interp_bilinear_quad_v3(quad, restk, restj, co);
         }
         copy_v3_v3(mesh_vert(vm_out, i, j, k)->co, co);
       }
     }
     bndv = bndv->next;
-    memcpy(prev_frac, frac, (size_t)(ns0 + 1) * sizeof(float));
+    memcpy(prev_frac, frac, (size_t)(ns_in + 1) * sizeof(float));
     memcpy(prev_new_frac, new_frac, (size_t)(nseg + 1) * sizeof(float));
   }
   if (!odd) {
@@ -4084,7 +4080,7 @@ static VMesh *make_cube_corner_square(MemArena *mem_arena, int nseg)
 
   ns2 = nseg / 2;
   vm = new_adj_vmesh(mem_arena, 3, nseg, NULL);
-  vm->count = 0;  // reset, so following loop will end up with correct count
+  vm->count = 0;  /* Reset, so the following loop will end up with correct count. */
   for (i = 0; i < 3; i++) {
     zero_v3(co);
     co[i] = 1.0f;
@@ -4180,14 +4176,11 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
 
   /* Initial mesh has 3 sides and 2 segments on each side */
   vm0 = new_adj_vmesh(mem_arena, 3, 2, NULL);
-  vm0->count = 0;  // reset, so following loop will end up with correct count
+  vm0->count = 0;  /* Reset, so the following loop will end up with correct count. */
   for (i = 0; i < 3; i++) {
     zero_v3(co);
     co[i] = 1.0f;
-    /* HANS-QUESTION: Why are we adding new boundverts now? I thought they already been created?
-     * And we're calculating profiles again too? Maybe I'm missing something obvious but I thought
-     * that was done earlier. It probably has to be done here anyway though because we fixed
-     * orientations after the boundary was created */
+    /* HANS-QUESTION: Why are we adding new boundverts now? I thought they already been created? */
     add_new_bound_vert(mem_arena, vm0, co);
   }
   bndv = vm0->boundstart;
@@ -4204,7 +4197,8 @@ static VMesh *make_cube_corner_adj_vmesh(BevelParams *bp)
     copy_v3_v3(bndv->profile.plane_co, bndv->profile.start);
     cross_v3_v3v3(bndv->profile.plane_no, bndv->profile.start, bndv->profile.end);
     copy_v3_v3(bndv->profile.proj_dir, bndv->profile.plane_no);
-    calculate_profile(bp, bndv, !bndv->is_profile_start, false);
+    /* No need to reverse the profile-- this case isn't used with custom profiles. */
+    calculate_profile(bp, bndv, false, false);
 
     /* Just building the boundaries here, so sample the profile halfway through */
     get_profile_point(bp, &bndv->profile, 1, 2, mesh_vert(vm0, i, 0, 1)->co);
@@ -4328,6 +4322,8 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 }
 
 /* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
+/* HANS-TODO: Does the fullness parameter impact the "ballooning" that's happening with small
+ * profiles? */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -4490,8 +4486,7 @@ static VMesh *pipe_adj_vmesh(BevelParams *bp, BevVert *bv, BoundVert *vpipe)
   bool even, midline;
   float *profile_point_pipe1, *profile_point_pipe2, f;
 
-  /* HANS-TODO: We shouldn't need to go through the subdivision process with a custom profile.
-   * Try just using "new_adj_vmesh" in that case. */
+  /* Some unecessary overhead running this subdivision with custom profile snapping later on */
   vm = adj_vmesh(bp, bv);
 
   /* Now snap all interior coordinates to be on the epipe profile */
@@ -7027,7 +7022,6 @@ static void find_even_superellipse_chords(int n, float r, double *xvals, double 
 static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bool custom)
 {
   int seg, seg_2;
-  float *temp_locs = NULL;
 
   /* Sample the input number of segments */
   seg = bp->seg;
@@ -7038,12 +7032,15 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
     pro_spacing->yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                          (size_t)(seg + 1) * sizeof(double));
     if (custom) {
-      temp_locs = BLI_memarena_alloc(bp->mem_arena, (size_t)(2 * (seg_2)) * sizeof(float));
-      profilewidget_create_samples(bp->prwdgt, temp_locs, seg,
-                                   bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
+      /* Make sure the profile widget's sample table is full */
+      if (bp->prwdgt->totsegments != seg || !bp->prwdgt->segments) {
+        profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg);
+      }
+
+      /* Copy segment locations into the profile spacing struct */
       for (int i = 0; i < seg + 1; i++) {
-        pro_spacing->xvals[i] = (double)temp_locs[2 * i + 1];
-        pro_spacing->yvals[i] = (double)temp_locs[2 * i];
+        pro_spacing->xvals[i] = (double)bp->prwdgt->segments[i].y;
+        pro_spacing->yvals[i] = (double)bp->prwdgt->segments[i].x;
       }
     }
     else {
@@ -7066,11 +7063,13 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
       pro_spacing->yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (custom) {
-        profilewidget_create_samples(bp->prwdgt, temp_locs, seg_2 + 1,
-                                     bp->prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
+        /* Make sure the profile widget's sample table is full of the seg_2 samples */
+        profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg_2);
+
+        /* Copy segment locations into the profile spacing struct */
         for (int i = 0; i < seg_2 + 1; i++) {
-          pro_spacing->xvals_2[i] = (double)temp_locs[2 * i + 1];
-          pro_spacing->yvals_2[i] = (double)temp_locs[2 * i];
+          pro_spacing->xvals_2[i] = (double)bp->prwdgt->segments[i].y;
+          pro_spacing->yvals_2[i] = (double)bp->prwdgt->segments[i].x;
         }
       }
       else {
@@ -7498,7 +7497,7 @@ void BM_mesh_bevel(BMesh *bm,
     }
 
     if (bp.harden_normals) {
-      bevel_harden_normals(bm, &bp);
+      bevel_harden_normals(&bp, bm);
     }
     if (bp.face_strength_mode != BEVEL_FACE_STRENGTH_NONE) {
       bevel_set_weighted_normal_face_strength(bm, &bp);
@@ -7529,17 +7528,20 @@ void BM_mesh_bevel(BMesh *bm,
       }
 
 #if DEBUG_CUSTOM_PROFILE_SAMPLE
-      printf("Profile spacing struct:\n");
-      /* Figure out what's already in the ProfileSpacing struct to see if I should put the 2D custom
-       * profile sampling there */
+      printf("Profile spacing:\n");
+      printf("Seg values:\n");
       if (bp.pro_spacing.xvals != NULL) {
         for (int i = 0; i < bp.seg; i++) {
           printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals[i], bp.pro_spacing.yvals[i]);
         }
         printf("\n");
       }
-      else {
-        printf("Profile spacing values don't exist\n");
+      if (bp.pro_spacing.seg_2 != bp.seg && bp.pro_spacing.seg_2 != 0) {
+        printf("Seg_2 values:\n");
+        for (int i = 0; i < bp.pro_spacing.seg_2; i++) {
+          printf("(%0.2f, %0.2f)", bp.pro_spacing.xvals_2[i], bp.pro_spacing.yvals_2[i]);
+        }
+        printf("\n");
       }
 #endif
     }
@@ -7552,7 +7554,6 @@ void BM_mesh_bevel(BMesh *bm,
 }
 
 #undef DEBUG_CUSTOM_PROFILE_SAMPLE
-#undef DEBUG_CUSTOM_PROFILE_ORIGINAL
 #undef DEBUG_CUSTOM_PROFILE_WELD
 #undef DEBUG_CUSTOM_PROFILE_ADJ
 #undef DEBUG_CUSTOM_PROFILE_PIPE

@@ -6832,7 +6832,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   }
   else {
     /* clamp for clip */
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       if (prwdgt->view_rect.xmin - fx < prwdgt->clip_rect.xmin) {
         fx = prwdgt->view_rect.xmin - prwdgt->clip_rect.xmin;
       }

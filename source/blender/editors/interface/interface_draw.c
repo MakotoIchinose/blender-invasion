@@ -2177,7 +2177,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Backdrop */
   float color_backdrop[4] = {0, 0, 0, 1};
-  if (prwdgt->flag & PROF_DO_CLIP) {
+  if (prwdgt->flag & PROF_USE_CLIP) {
     gl_shaded_color_get_fl((uchar *)wcol->inner, -20, color_backdrop);
     immUniformColor3fv(color_backdrop);
     immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
@@ -2343,7 +2343,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   immEnd();
 
   /* Draw the sampled points in addition to the control points if they have been created */
-  pts = prwdgt->samples;
+  pts = prwdgt->segments;
   tot_points = (uint)prwdgt->totsegments;
   if (tot_points > 0 && pts) {
     GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 3.0f, 3.0f)));

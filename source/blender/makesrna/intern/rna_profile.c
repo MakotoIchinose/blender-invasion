@@ -66,13 +66,18 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
   ProfileWidget *prwdgt = (ProfileWidget *)ptr->data;
 
   if (value) {
-    prwdgt->flag |= PROF_DO_CLIP;
+    prwdgt->flag |= PROF_USE_CLIP;
   }
   else {
-    prwdgt->flag &= ~PROF_DO_CLIP;
+    prwdgt->flag &= ~PROF_USE_CLIP ;
   }
 
   profilewidget_changed(prwdgt, false);
+}
+
+static void rna_ProfileWidget_totsegments_set(struct ProfileWidget *prwdgt, int totsegments)
+{
+  prwdgt->totsegments = (short)totsegments;
 }
 
 static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value)
@@ -113,17 +118,9 @@ static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt,
   profilewidget_evaluate_portion(prwdgt, length_portion, &location[0], &location[1]);
 }
 
-static void rna_ProfileWidget_sample_segments(struct ProfileWidget *prwdgt,
-                                              int segments,
-                                              float *samples)
+static void rna_ProfileWidget_initialize(struct ProfileWidget *prwdgt, int totsegments)
 {
-  profilewidget_create_samples(prwdgt, samples, segments,
-                               prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES);
-}
-
-static void rna_ProfileWidget_initialize(struct ProfileWidget *prwdgt, int nsegments)
-{
-  profilewidget_initialize(prwdgt, (short)nsegments);
+  profilewidget_initialize(prwdgt, (short)totsegments);
 }
 
 static void rna_ProfileWidget_changed(struct ProfileWidget *prwdgt)
@@ -174,7 +171,7 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_struct_sdna(srna, "ProfileWidget");
   RNA_def_struct_ui_text(srna, "Profile Point", "Collection of Profile Points");
 
-  func = RNA_def_function(srna, "new", "profilewidget_insert");
+  func = RNA_def_function(srna, "add", "profilewidget_insert");
   RNA_def_function_ui_description(func, "Add point to the profile widget");
   parm = RNA_def_float(func, "x", 0.0f, -FLT_MAX, FLT_MAX, "X Position",
                        "X Position for new point", -FLT_MAX, FLT_MAX);
@@ -218,7 +215,7 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Preset", "");
 
   prop = RNA_def_property(srna, "use_clip", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_DO_CLIP);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_USE_CLIP);
   RNA_def_property_ui_text(prop, "Clip", "Force the path view to fit a defined boundary");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_clip_set");
 
@@ -231,16 +228,32 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Update profile widget after making changes");
 
   func = RNA_def_function(srna, "initialize", "rna_ProfileWidget_initialize");
-  parm = RNA_def_int(func, "nsegments", 1, 1, 1000, "", "The number of segment values to"
-                     " initialize the visualization table with", 1, 100);
+  parm = RNA_def_int(func, "totsegments", 1, 1, 1000, "", "The number of segment values to"
+                     " initialize the segments table with", 1, 100);
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   RNA_def_function_ui_description(func, "Set the number of display segments and fill tables");
 
   prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
   RNA_def_property_struct_type(prop, "ProfilePoint");
-  RNA_def_property_ui_text(prop, "Points", "");
+  RNA_def_property_ui_text(prop, "Points", "Profile widget control points");
   rna_def_profilewidget_points_api(brna, prop);
+
+  func = RNA_def_function(srna, "set_totsegments", "rna_ProfileWidget_totsegments_set");
+  parm = RNA_def_int(func, "totsegments", 1, 1, 1000, "", "The number of segment values to"
+                     " use when sampling the array", 1, 100);
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_function_ui_description(func, "Set the number of segments to sample with");
+
+  prop = RNA_def_property(srna, "totsegments", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "totsegments");
+  RNA_def_property_ui_text(prop, "Number of Segments", "The number of segments to sample from"
+                           " control points");
+
+  prop = RNA_def_property(srna, "segments", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "segments", "totsegments");
+  RNA_def_property_struct_type(prop, "ProfilePoint");
+  RNA_def_property_ui_text(prop, "Segments", "Segments sampled from control points");
 
   func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_evaluate");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
@@ -250,19 +263,6 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_float_vector(func, "location", 2, NULL, -100.0f, 100.0f, "Location",
                               "The location at the given portion of the profile", -100.0f, 100.0f);
-  RNA_def_function_output(func, parm);
-
-  /* 16 samples maximum now because the largest possible return array size is 32 */
-  func = RNA_def_function(srna, "sample_segments", "rna_ProfileWidget_sample_segments");
-  RNA_def_function_ui_description(func, "Sample the given number of segments from the profile");
-  parm = RNA_def_int(func, "segments", 1, 1, 16, "Length Portion",
-                     "How many segments to sample from the control points", 1, 16);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  /* Ideally the return array would be dynamically sized based on the input */
-  parm = RNA_def_float_vector(func, "samples", 2 * 16, NULL, -100.0f, 100.0f,
-                              "Samples", "The sampled locations on the profile's path", -100.0f,
-                              100.0f);
-  RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
   RNA_def_function_output(func, parm);
 }
 

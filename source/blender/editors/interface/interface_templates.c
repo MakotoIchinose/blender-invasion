@@ -4431,7 +4431,7 @@ static void profilewidget_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UN
   if (BLI_rctf_size_x(&prwdgt->view_rect) < 20.0f * BLI_rctf_size_x(&prwdgt->clip_rect)) {
     d = d1 = 0.15f * BLI_rctf_size_x(&prwdgt->view_rect);
 
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       if (prwdgt->view_rect.xmin - d < prwdgt->clip_rect.xmin) {
         d1 = prwdgt->view_rect.xmin - prwdgt->clip_rect.xmin;
       }
@@ -4439,7 +4439,7 @@ static void profilewidget_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UN
     prwdgt->view_rect.xmin -= d1;
 
     d1 = d;
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       if (prwdgt->view_rect.xmax + d > prwdgt->clip_rect.xmax) {
         d1 = -prwdgt->view_rect.xmax + prwdgt->clip_rect.xmax;
       }
@@ -4448,7 +4448,7 @@ static void profilewidget_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UN
 
     d = d1 = 0.15f * BLI_rctf_size_y(&prwdgt->view_rect);
 
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       if (prwdgt->view_rect.ymin - d < prwdgt->clip_rect.ymin) {
         d1 = prwdgt->view_rect.ymin - prwdgt->clip_rect.ymin;
       }
@@ -4456,7 +4456,7 @@ static void profilewidget_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UN
     prwdgt->view_rect.ymin -= d1;
 
     d1 = d;
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       if (prwdgt->view_rect.ymax + d > prwdgt->clip_rect.ymax) {
         d1 = -prwdgt->view_rect.ymax + prwdgt->clip_rect.ymax;
       }
@@ -4471,7 +4471,7 @@ static void profilewidget_clipping_toggle(bContext *C, void *cb_v, void *prwdgt_
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  prwdgt->flag ^= PROF_DO_CLIP;
+  prwdgt->flag ^= PROF_USE_CLIP;
 
   profilewidget_changed(prwdgt, false);
   rna_update_cb(C, cb_v, NULL);
@@ -4581,7 +4581,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   UI_but_funcN_set(bt, profilewidget_buttons_reverse, MEM_dupallocN(cb), prwdgt);
 
   /* Clipping toggle */
-  icon = (prwdgt->flag & PROF_DO_CLIP) ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
+  icon = (prwdgt->flag & PROF_USE_CLIP) ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
   bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, icon, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL, 0.0, 0.0, 0.0,
                     0.0, TIP_("Toggle Profile Clipping"));
   UI_but_funcN_set(bt, profilewidget_clipping_toggle, MEM_dupallocN(cb), prwdgt);
@@ -4609,7 +4609,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
 
   /* Selected point data */
   if (point) {
-    if (prwdgt->flag & PROF_DO_CLIP) {
+    if (prwdgt->flag & PROF_USE_CLIP) {
       bounds = prwdgt->clip_rect;
     }
     else {

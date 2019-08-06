@@ -27,6 +27,9 @@
 struct ProfileWidget;
 struct ProfilePoint;
 
+/* HANS-QUESTION: Should I add the BKE_ to the front of these functions? The CurveMapping widget
+ * doesn't have them but it's mentioned in the style guide that public functions should have it */
+
 void profilewidget_set_defaults(struct ProfileWidget *prwdgt);
 
 struct ProfileWidget *profilewidget_add(int preset);
@@ -51,10 +54,10 @@ void profilewidget_reverse(struct ProfileWidget *prwdgt);
 
 void profilewidget_reset(struct ProfileWidget *prwdgt);
 
-void profilewidget_create_samples(const struct ProfileWidget *prwdgt,
-                                  float *locations,
+void profilewidget_create_samples(struct ProfileWidget *prwdgt,
                                   int n_segments,
-                                  bool sample_straight_edges);
+                                  bool sample_straight_edges,
+                                  struct ProfilePoint *r_samples);
 
 void profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
 
@@ -68,8 +71,8 @@ float profilewidget_distance_to_next_point(const struct ProfileWidget *prwdgt, i
 float profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
 void profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
-                                      double *x_table_out,
-                                      double *y_table_out);
+                                               double *x_table_out,
+                                               double *y_table_out);
 
 /* Length portion is the fraction of the total path length where we want the location */
 void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,

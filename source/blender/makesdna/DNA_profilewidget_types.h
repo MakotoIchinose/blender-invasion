@@ -28,11 +28,13 @@
 
 /** Number of points in high resolution table is dynamic up to the maximum */
 #define PROF_TABLE_MAX 512
-#define PROF_RESOL 16 /* Number of table points per control point */
-#define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts) - 1) * PROF_RESOL)) /* n_pts is prwdgt->totpoint */
+/** Number of table points per control point */
+#define PROF_RESOL 16
+/** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint */
+#define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts) - 1) * PROF_RESOL))
 
 typedef struct ProfilePoint {
-  /** Location of the point */
+  /** Location of the point, keep together */
   float x, y;
   /** Flag for handle type and selection state */
   short flag;
@@ -58,8 +60,8 @@ typedef struct ProfileWidget {
   /** Display and evaluation table at higher resolution for curves */
   ProfilePoint *table;
   /** The positions of the sampled points. Used to display a preview of where they will be */
-  ProfilePoint *samples;
-  /** Cur; for buttons, to show active curve. */
+  ProfilePoint *segments;
+  /** Flag for mode states, sampling options, etc... */
   int flag;
   /** Used for keeping track how many times the widget is changed */
   int changed_timestamp;
@@ -69,9 +71,9 @@ typedef struct ProfileWidget {
 
 /** ProfileWidget->flag */
 enum {
-  PROF_DO_CLIP = (1 << 0),
-  PROF_USE_TABLE = (1 << 1),
-  PROF_SAMPLE_STRAIGHT_EDGES = (1 << 2),
+  PROF_USE_CLIP = (1 << 0), /* Keep control points inside bounding rectangle */
+  PROF_SYMMETRY_MODE = (1 << 1), /* HANS-TODO: Add symmetry mode */
+  PROF_SAMPLE_STRAIGHT_EDGES = (1 << 2), /* Sample extra points on straight edges */
 };
 
 typedef enum eProfileWidgetPresets {
