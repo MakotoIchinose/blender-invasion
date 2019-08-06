@@ -1942,10 +1942,8 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
+                        dvert++;
                       }
-                    }
-                    if (gps->dvert != NULL) {
-                      dvert++;
                     }
                   }
                   break;
@@ -1974,10 +1972,8 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
+                        dvert++;
                       }
-                    }
-                    if (gps->dvert != NULL) {
-                      dvert++;
                     }
                   }
                   /* copy last segment */
@@ -2007,10 +2003,8 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
                         *ndvert = *dvert;
                         ndvert->dw = MEM_dupallocN(dvert->dw);
                         ndvert++;
+                        dvert++;
                       }
-                    }
-                    if (gps->dvert != NULL) {
-                      dvert++;
                     }
                   }
                   break;
@@ -2061,6 +2055,260 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
 
 /* ----------------------------------- */
 
+/* Temp data for storing information about an "island" of points
+ * that should be kept when splitting up a stroke. Used in:
+ * gp_stroke_delete_tagged_points()
+ */
+typedef struct tGPDeleteIsland {
+  int start_idx;
+  int end_idx;
+} tGPDeleteIsland;
+
+static void gp_stroke_join_islands(bGPDframe *gpf, bGPDstroke *gps_first, bGPDstroke *gps_last)
+{
+  bGPDspoint *pt = NULL;
+  bGPDspoint *pt_final = NULL;
+  const int totpoints = gps_first->totpoints + gps_last->totpoints;
+
+  /* create new stroke */
+  bGPDstroke *join_stroke = MEM_dupallocN(gps_first);
+
+  join_stroke->points = MEM_callocN(sizeof(bGPDspoint) * totpoints, __func__);
+  join_stroke->totpoints = totpoints;
+  join_stroke->flag &= ~GP_STROKE_CYCLIC;
+
+  /* copy points (last before) */
+  int e1 = 0;
+  int e2 = 0;
+  float delta = 0.0f;
+
+  for (int i = 0; i < totpoints; i++) {
+    pt_final = &join_stroke->points[i];
+    if (i < gps_last->totpoints) {
+      pt = &gps_last->points[e1];
+      e1++;
+    }
+    else {
+      pt = &gps_first->points[e2];
+      e2++;
+    }
+
+    /* copy current point */
+    copy_v3_v3(&pt_final->x, &pt->x);
+    pt_final->pressure = pt->pressure;
+    pt_final->strength = pt->strength;
+    pt_final->time = delta;
+    pt_final->flag = pt->flag;
+
+    /* retiming with fixed time interval (we cannot determine real time) */
+    delta += 0.01f;
+  }
+
+  /* Copy over vertex weight data (if available) */
+  if ((gps_first->dvert != NULL) || (gps_last->dvert != NULL)) {
+    join_stroke->dvert = MEM_callocN(sizeof(MDeformVert) * totpoints, __func__);
+    MDeformVert *dvert_src = NULL;
+    MDeformVert *dvert_dst = NULL;
+
+    /* Copy weights (last before)*/
+    e1 = 0;
+    e2 = 0;
+    for (int i = 0; i < totpoints; i++) {
+      dvert_dst = &join_stroke->dvert[i];
+      dvert_src = NULL;
+      if (i < gps_last->totpoints) {
+        if (gps_last->dvert) {
+          dvert_src = &gps_last->dvert[e1];
+          e1++;
+        }
+      }
+      else {
+        if (gps_first->dvert) {
+          dvert_src = &gps_first->dvert[e2];
+          e2++;
+        }
+      }
+
+      if ((dvert_src) && (dvert_src->dw)) {
+        dvert_dst->dw = MEM_dupallocN(dvert_src->dw);
+      }
+    }
+  }
+
+  /* add new stroke at head */
+  BLI_addhead(&gpf->strokes, join_stroke);
+
+  /* remove first stroke */
+  BLI_remlink(&gpf->strokes, gps_first);
+  BKE_gpencil_free_stroke(gps_first);
+
+  /* remove last stroke */
+  BLI_remlink(&gpf->strokes, gps_last);
+  BKE_gpencil_free_stroke(gps_last);
+}
+
+/* Split the given stroke into several new strokes, partitioning
+ * it based on whether the stroke points have a particular flag
+ * is set (e.g. "GP_SPOINT_SELECT" in most cases, but not always)
+ *
+ * The algorithm used here is as follows:
+ * 1) We firstly identify the number of "islands" of non-tagged points
+ *    which will all end up being in new strokes.
+ *    - In the most extreme case (i.e. every other vert is a 1-vert island),
+ *      we have at most n / 2 islands
+ *    - Once we start having larger islands than that, the number required
+ *      becomes much less
+ * 2) Each island gets converted to a new stroke
+ * If the number of points is <= limit, the stroke is deleted
+ */
+void gp_stroke_delete_tagged_points(bGPDframe *gpf,
+                                    bGPDstroke *gps,
+                                    bGPDstroke *next_stroke,
+                                    int tag_flags,
+                                    bool select,
+                                    int limit)
+{
+  tGPDeleteIsland *islands = MEM_callocN(sizeof(tGPDeleteIsland) * (gps->totpoints + 1) / 2,
+                                         "gp_point_islands");
+  bool in_island = false;
+  int num_islands = 0;
+
+  bGPDstroke *gps_first = NULL;
+  const bool is_cyclic = (bool)(gps->flag & GP_STROKE_CYCLIC);
+
+  /* First Pass: Identify start/end of islands */
+  bGPDspoint *pt = gps->points;
+  for (int i = 0; i < gps->totpoints; i++, pt++) {
+    if (pt->flag & tag_flags) {
+      /* selected - stop accumulating to island */
+      in_island = false;
+    }
+    else {
+      /* unselected - start of a new island? */
+      int idx;
+
+      if (in_island) {
+        /* extend existing island */
+        idx = num_islands - 1;
+        islands[idx].end_idx = i;
+      }
+      else {
+        /* start of new island */
+        in_island = true;
+        num_islands++;
+
+        idx = num_islands - 1;
+        islands[idx].start_idx = islands[idx].end_idx = i;
+      }
+    }
+  }
+
+  /* Watch out for special case where No islands = All points selected = Delete Stroke only */
+  if (num_islands) {
+    /* There are islands, so create a series of new strokes,
+     * adding them before the "next" stroke. */
+    int idx;
+    bGPDstroke *new_stroke = NULL;
+
+    /* Create each new stroke... */
+    for (idx = 0; idx < num_islands; idx++) {
+      tGPDeleteIsland *island = &islands[idx];
+      new_stroke = MEM_dupallocN(gps);
+
+      /* if cyclic and first stroke, save to join later */
+      if ((is_cyclic) && (gps_first == NULL)) {
+        gps_first = new_stroke;
+      }
+
+      /* initialize triangle memory  - to be calculated on next redraw */
+      new_stroke->triangles = NULL;
+      new_stroke->flag |= GP_STROKE_RECALC_GEOMETRY;
+      new_stroke->flag &= ~GP_STROKE_CYCLIC;
+      new_stroke->tot_triangles = 0;
+
+      /* Compute new buffer size (+ 1 needed as the endpoint index is "inclusive") */
+      new_stroke->totpoints = island->end_idx - island->start_idx + 1;
+
+      /* Copy over the relevant point data */
+      new_stroke->points = MEM_callocN(sizeof(bGPDspoint) * new_stroke->totpoints,
+                                       "gp delete stroke fragment");
+      memcpy(new_stroke->points,
+             gps->points + island->start_idx,
+             sizeof(bGPDspoint) * new_stroke->totpoints);
+
+      /* Copy over vertex weight data (if available) */
+      if (gps->dvert != NULL) {
+        /* Copy over the relevant vertex-weight points */
+        new_stroke->dvert = MEM_callocN(sizeof(MDeformVert) * new_stroke->totpoints,
+                                        "gp delete stroke fragment weight");
+        memcpy(new_stroke->dvert,
+               gps->dvert + island->start_idx,
+               sizeof(MDeformVert) * new_stroke->totpoints);
+
+        /* Copy weights */
+        int e = island->start_idx;
+        for (int i = 0; i < new_stroke->totpoints; i++) {
+          MDeformVert *dvert_src = &gps->dvert[e];
+          MDeformVert *dvert_dst = &new_stroke->dvert[i];
+          if (dvert_src->dw) {
+            dvert_dst->dw = MEM_dupallocN(dvert_src->dw);
+          }
+          e++;
+        }
+      }
+      /* Each island corresponds to a new stroke.
+       * We must adjust the timings of these new strokes:
+       *
+       * Each point's timing data is a delta from stroke's inittime, so as we erase some points
+       * from the start of the stroke, we have to offset this inittime and all remaining points'
+       * delta values. This way we get a new stroke with exactly the same timing as if user had
+       * started drawing from the first non-removed point.
+       */
+      {
+        bGPDspoint *pts;
+        float delta = gps->points[island->start_idx].time;
+        int j;
+
+        new_stroke->inittime += (double)delta;
+
+        pts = new_stroke->points;
+        for (j = 0; j < new_stroke->totpoints; j++, pts++) {
+          pts->time -= delta;
+          /* set flag for select again later */
+          if (select == true) {
+            pts->flag &= ~GP_SPOINT_SELECT;
+            pts->flag |= GP_SPOINT_TAG;
+          }
+        }
+      }
+
+      /* Add new stroke to the frame or delete if below limit */
+      if ((limit > 0) && (new_stroke->totpoints <= limit)) {
+        BKE_gpencil_free_stroke(new_stroke);
+      }
+      else {
+        if (next_stroke) {
+          BLI_insertlinkbefore(&gpf->strokes, next_stroke, new_stroke);
+        }
+        else {
+          BLI_addtail(&gpf->strokes, new_stroke);
+        }
+      }
+    }
+    /* if cyclic, need to join last stroke with first stroke */
+    if ((is_cyclic) && (gps_first != NULL) && (gps_first != new_stroke)) {
+      gp_stroke_join_islands(gpf, gps_first, new_stroke);
+    }
+  }
+
+  /* free islands */
+  MEM_freeN(islands);
+
+  /* Delete the old stroke */
+  BLI_remlink(&gpf->strokes, gps);
+  BKE_gpencil_free_stroke(gps);
+}
+
 /* Split selected strokes into segments, splitting on selected points */
 static int gp_delete_selected_points(bContext *C)
 {
@@ -2098,7 +2346,7 @@ static int gp_delete_selected_points(bContext *C)
             gps->flag &= ~GP_STROKE_SELECT;
 
             /* delete unwanted points by splitting stroke into several smaller ones */
-            BKE_gpencil_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+            gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
 
             changed = true;
           }
@@ -3133,6 +3381,7 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
   RegionView3D *rv3d = ar->regiondata;
   SnapObjectContext *sctx = NULL;
   int oldframe = (int)DEG_get_ctime(depsgraph);
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   GP_SpaceConversion gsc = {NULL};
   eGP_ReprojectModes mode = RNA_enum_get(op->ptr, "type");
@@ -3148,118 +3397,149 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
       bmain, scene, depsgraph, 0, ar, CTX_wm_view3d(C));
 
   /* Go through each editable + selected stroke, adjusting each of its points one by one... */
-  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-    if (gps->flag & GP_STROKE_SELECT) {
-      /* update frame to get the new location of objects */
-      if ((mode == GP_REPROJECT_SURFACE) && (cfra_prv != gpf_->framenum)) {
-        cfra_prv = gpf_->framenum;
-        CFRA = gpf_->framenum;
-        BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-      }
+  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+    bGPDframe *init_gpf = gpl->actframe;
+    if (is_multiedit) {
+      init_gpf = gpl->frames.first;
+    }
+    float diff_mat[4][4];
+    float inverse_diff_mat[4][4];
+    /* calculate difference matrix object */
+    ED_gpencil_parent_location(depsgraph, ob, gpd, gpl, diff_mat);
+    /* Compute inverse matrix for unapplying parenting once instead of doing per-point */
+    invert_m4_m4(inverse_diff_mat, diff_mat);
 
-      bGPDspoint *pt;
-      int i;
-      /* Adjust each point */
-      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-        float xy[2];
-
-        /* 3D to Screenspace */
-        /* Note: We can't use gp_point_to_xy() here because that uses ints for the
-         * screenspace coordinates, resulting in lost precision, which in turn causes
-         * stairstepping artifacts in the final points.
-         */
-        bGPDspoint pt2;
-        gp_point_to_parent_space(pt, gpstroke_iter.diff_mat, &pt2);
-        gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
-
-        /* Project stroke in one axis */
-        if (ELEM(mode,
-                 GP_REPROJECT_FRONT,
-                 GP_REPROJECT_SIDE,
-                 GP_REPROJECT_TOP,
-                 GP_REPROJECT_CURSOR)) {
-          if (mode != GP_REPROJECT_CURSOR) {
-            ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
-          }
-          else {
-            copy_v3_v3(origin, scene->cursor.location);
-          }
-
-          int axis = 0;
-          switch (mode) {
-            case GP_REPROJECT_FRONT: {
-              axis = 1;
-              break;
-            }
-            case GP_REPROJECT_SIDE: {
-              axis = 0;
-              break;
-            }
-            case GP_REPROJECT_TOP: {
-              axis = 2;
-              break;
-            }
-            case GP_REPROJECT_CURSOR: {
-              axis = 3;
-              break;
-            }
-            default: {
-              axis = 1;
-              break;
-            }
-          }
-
-          ED_gp_project_point_to_plane(scene, ob, rv3d, origin, axis, &pt2);
-
-          copy_v3_v3(&pt->x, &pt2.x);
-
-          /* apply parent again */
-          gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
-        }
-        /* Project screenspace back to 3D space (from current perspective)
-         * so that all points have been treated the same way
-         */
-        else if (mode == GP_REPROJECT_VIEW) {
-          /* Planar - All on same plane parallel to the viewplane */
-          gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
-        }
-        else {
-          /* Geometry - Snap to surfaces of visible geometry */
-          float ray_start[3];
-          float ray_normal[3];
-          /* magic value for initial depth copied from the default
-           * value of Python's Scene.ray_cast function
-           */
-          float depth = 1.70141e+38f;
-          float location[3] = {0.0f, 0.0f, 0.0f};
-          float normal[3] = {0.0f, 0.0f, 0.0f};
-
-          ED_view3d_win_to_ray(ar, xy, &ray_start[0], &ray_normal[0]);
-          if (ED_transform_snap_object_project_ray(sctx,
-                                                   &(const struct SnapObjectParams){
-                                                       .snap_select = SNAP_ALL,
-                                                   },
-                                                   &ray_start[0],
-                                                   &ray_normal[0],
-                                                   &depth,
-                                                   &location[0],
-                                                   &normal[0])) {
-            copy_v3_v3(&pt->x, location);
-          }
-          else {
-            /* Default to planar */
-            gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
-          }
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+        if (gpf == NULL) {
+          continue;
         }
 
-        /* Unapply parent corrections */
-        if (!ELEM(mode, GP_REPROJECT_FRONT, GP_REPROJECT_SIDE, GP_REPROJECT_TOP)) {
-          mul_m4_v3(gpstroke_iter.inverse_diff_mat, &pt->x);
+        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+          /* skip strokes that are invalid for current view */
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
+            continue;
+          }
+          if ((gps->flag & GP_STROKE_SELECT) == 0) {
+            continue;
+          }
+
+          /* update frame to get the new location of objects */
+          if ((mode == GP_REPROJECT_SURFACE) && (cfra_prv != gpf->framenum)) {
+            cfra_prv = gpf->framenum;
+            CFRA = gpf->framenum;
+            BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+          }
+
+          bGPDspoint *pt;
+          int i;
+          /* Adjust each point */
+          for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+            float xy[2];
+
+            /* 3D to Screenspace */
+            /* Note: We can't use gp_point_to_xy() here because that uses ints for the
+             * screenspace coordinates, resulting in lost precision, which in turn causes
+             * stairstepping artifacts in the final points.
+             */
+            bGPDspoint pt2;
+            gp_point_to_parent_space(pt, diff_mat, &pt2);
+            gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
+
+            /* Project stroke in one axis */
+            if (ELEM(mode,
+                     GP_REPROJECT_FRONT,
+                     GP_REPROJECT_SIDE,
+                     GP_REPROJECT_TOP,
+                     GP_REPROJECT_CURSOR)) {
+              if (mode != GP_REPROJECT_CURSOR) {
+                ED_gp_get_drawing_reference(scene, ob, gpl, ts->gpencil_v3d_align, origin);
+              }
+              else {
+                copy_v3_v3(origin, scene->cursor.location);
+              }
+
+              int axis = 0;
+              switch (mode) {
+                case GP_REPROJECT_FRONT: {
+                  axis = 1;
+                  break;
+                }
+                case GP_REPROJECT_SIDE: {
+                  axis = 0;
+                  break;
+                }
+                case GP_REPROJECT_TOP: {
+                  axis = 2;
+                  break;
+                }
+                case GP_REPROJECT_CURSOR: {
+                  axis = 3;
+                  break;
+                }
+                default: {
+                  axis = 1;
+                  break;
+                }
+              }
+
+              ED_gp_project_point_to_plane(scene, ob, rv3d, origin, axis, &pt2);
+
+              copy_v3_v3(&pt->x, &pt2.x);
+
+              /* apply parent again */
+              gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
+            }
+            /* Project screenspace back to 3D space (from current perspective)
+             * so that all points have been treated the same way
+             */
+            else if (mode == GP_REPROJECT_VIEW) {
+              /* Planar - All on same plane parallel to the viewplane */
+              gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
+            }
+            else {
+              /* Geometry - Snap to surfaces of visible geometry */
+              float ray_start[3];
+              float ray_normal[3];
+              /* magic value for initial depth copied from the default
+               * value of Python's Scene.ray_cast function
+               */
+              float depth = 1.70141e+38f;
+              float location[3] = {0.0f, 0.0f, 0.0f};
+              float normal[3] = {0.0f, 0.0f, 0.0f};
+
+              ED_view3d_win_to_ray(ar, xy, &ray_start[0], &ray_normal[0]);
+              if (ED_transform_snap_object_project_ray(sctx,
+                                                       &(const struct SnapObjectParams){
+                                                           .snap_select = SNAP_ALL,
+                                                       },
+                                                       &ray_start[0],
+                                                       &ray_normal[0],
+                                                       &depth,
+                                                       &location[0],
+                                                       &normal[0])) {
+                copy_v3_v3(&pt->x, location);
+              }
+              else {
+                /* Default to planar */
+                gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
+              }
+            }
+
+            /* Unapply parent corrections */
+            if (!ELEM(mode, GP_REPROJECT_FRONT, GP_REPROJECT_SIDE, GP_REPROJECT_TOP)) {
+              mul_m4_v3(inverse_diff_mat, &pt->x);
+            }
+          }
+        }
+        /* if not multiedit, exit loop*/
+        if (!is_multiedit) {
+          break;
         }
       }
     }
   }
-  GP_EDITABLE_STROKES_END(gpstroke_iter);
+  CTX_DATA_END;
 
   /* return frame state and DB to original state */
   CFRA = oldframe;
@@ -3832,11 +4112,10 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
                 }
 
                 /* delete selected points from destination stroke */
-                BKE_gpencil_delete_tagged_points(
-                    gpf_dst, gps_dst, NULL, GP_SPOINT_SELECT, false, 0);
+                gp_stroke_delete_tagged_points(gpf_dst, gps_dst, NULL, GP_SPOINT_SELECT, false, 0);
 
                 /* delete selected points from origin stroke */
-                BKE_gpencil_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+                gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
               }
               /* selected strokes mode */
               else if (mode == GP_SEPARATE_STROKE) {
@@ -3979,10 +4258,10 @@ static int gp_stroke_split_exec(bContext *C, wmOperator *UNUSED(op))
             }
 
             /* delete selected points from destination stroke */
-            BKE_gpencil_delete_tagged_points(gpf, gps_dst, NULL, GP_SPOINT_SELECT, true, 0);
+            gp_stroke_delete_tagged_points(gpf, gps_dst, NULL, GP_SPOINT_SELECT, true, 0);
 
             /* delete selected points from origin stroke */
-            BKE_gpencil_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+            gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
           }
         }
         /* select again tagged points */
@@ -4150,8 +4429,7 @@ static void gpencil_cutter_dissolve(bGPDlayer *hit_layer, bGPDstroke *hit_stroke
         pt->flag &= ~GP_SPOINT_TAG;
       }
     }
-    BKE_gpencil_delete_tagged_points(
-        hit_layer->actframe, hit_stroke, gpsn, GP_SPOINT_TAG, false, 1);
+    gp_stroke_delete_tagged_points(hit_layer->actframe, hit_stroke, gpsn, GP_SPOINT_TAG, false, 1);
   }
 }
 
@@ -4330,74 +4608,4 @@ bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
     ok = true;
   }
   return ok;
-}
-
-/* ** merge by distance *** */
-bool gp_merge_by_distance_poll(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  if (ob == NULL) {
-    return false;
-  }
-  bGPdata *gpd = (bGPdata *)ob->data;
-  if (gpd == NULL) {
-    return false;
-  }
-
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-
-  return ((gpl != NULL) && (ob->mode == OB_MODE_EDIT_GPENCIL));
-}
-
-static int gp_merge_by_distance_exec(bContext *C, wmOperator *op)
-{
-  Object *ob = CTX_data_active_object(C);
-  bGPdata *gpd = (bGPdata *)ob->data;
-  const float threshold = RNA_float_get(op->ptr, "threshold");
-  const bool unselected = RNA_boolean_get(op->ptr, "use_unselected");
-
-  /* sanity checks */
-  if (ELEM(NULL, gpd)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Go through each editable + selected stroke */
-  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-    if (gps->flag & GP_STROKE_SELECT) {
-      BKE_gpencil_merge_distance_stroke(gpf_, gps, threshold, unselected);
-    }
-  }
-  GP_EDITABLE_STROKES_END(gpstroke_iter);
-
-  /* notifiers */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
-
-  return OPERATOR_FINISHED;
-}
-
-void GPENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot)
-{
-  PropertyRNA *prop;
-
-  /* identifiers */
-  ot->name = "Merge by Distance";
-  ot->idname = "GPENCIL_OT_stroke_merge_by_distance";
-  ot->description = "Merge points by distance";
-
-  /* api callbacks */
-  ot->exec = gp_merge_by_distance_exec;
-  ot->poll = gp_merge_by_distance_poll;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* properties */
-  prop = RNA_def_float(ot->srna, "threshold", 0.001f, 0.0f, 100.0f, "Threshold", "", 0.0f, 100.0f);
-  /* avoid re-using last var */
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  prop = RNA_def_boolean(
-      ot->srna, "use_unselected", 0, "Unselected", "Use whole stroke, not only selected points");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

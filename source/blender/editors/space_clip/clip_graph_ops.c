@@ -64,7 +64,7 @@ static bool clip_graph_knots_poll(bContext *C)
   if (ED_space_clip_graph_poll(C)) {
     SpaceClip *sc = CTX_wm_space_clip(C);
 
-    return (sc->flag & (SC_SHOW_GRAPH_TRACKS_MOTION | SC_SHOW_GRAPH_TRACKS_ERROR)) != 0;
+    return (sc->flag & SC_SHOW_GRAPH_TRACKS_MOTION) != 0;
   }
   return false;
 }
@@ -93,14 +93,13 @@ static void toggle_selection_cb(void *userdata, MovieTrackingMarker *marker)
 /******************** mouse select operator ********************/
 
 typedef struct {
-  SpaceClip *sc;
-  eClipCurveValueSource value_source;
+  int coord;     /* coordinate index of found entity (0 = X-axis, 1 = Y-axis) */
   bool has_prev; /* if there's valid coordinate of previous point of curve segment */
 
-  float min_dist_sq; /* minimal distance between mouse and currently found entity */
-  float mouse_co[2]; /* mouse coordinate */
-  float prev_co[2];  /* coordinate of previous point of segment */
-  float min_co[2];   /* coordinate of entity with minimal distance */
+  float min_dist_sq, /* minimal distance between mouse and currently found entity */
+      mouse_co[2],   /* mouse coordinate */
+      prev_co[2],    /* coordinate of previous point of segment */
+      min_co[2];     /* coordinate of entity with minimal distance */
 
   MovieTrackingTrack *track;   /* nearest found track */
   MovieTrackingMarker *marker; /* nearest found marker */
@@ -109,16 +108,12 @@ typedef struct {
 static void find_nearest_tracking_segment_cb(void *userdata,
                                              MovieTrackingTrack *track,
                                              MovieTrackingMarker *UNUSED(marker),
-                                             eClipCurveValueSource value_source,
+                                             int coord,
                                              int scene_framenr,
                                              float val)
 {
   MouseSelectUserData *data = userdata;
   float co[2] = {scene_framenr, val};
-
-  if (!clip_graph_value_visible(data->sc, value_source)) {
-    return;
-  }
 
   if (data->has_prev) {
     float dist_sq = dist_squared_to_line_segment_v2(data->mouse_co, data->prev_co, co);
@@ -126,7 +121,7 @@ static void find_nearest_tracking_segment_cb(void *userdata,
     if (data->track == NULL || dist_sq < data->min_dist_sq) {
       data->track = track;
       data->min_dist_sq = dist_sq;
-      data->value_source = value_source;
+      data->coord = coord;
       copy_v2_v2(data->min_co, co);
     }
   }
@@ -135,8 +130,7 @@ static void find_nearest_tracking_segment_cb(void *userdata,
   copy_v2_v2(data->prev_co, co);
 }
 
-static void find_nearest_tracking_segment_end_cb(void *userdata,
-                                                 eClipCurveValueSource UNUSED(source_value))
+static void find_nearest_tracking_segment_end_cb(void *userdata, int UNUSED(coord))
 {
   MouseSelectUserData *data = userdata;
 
@@ -146,7 +140,7 @@ static void find_nearest_tracking_segment_end_cb(void *userdata,
 static void find_nearest_tracking_knot_cb(void *userdata,
                                           MovieTrackingTrack *track,
                                           MovieTrackingMarker *marker,
-                                          eClipCurveValueSource value_source,
+                                          int coord,
                                           int scene_framenr,
                                           float val)
 {
@@ -154,26 +148,20 @@ static void find_nearest_tracking_knot_cb(void *userdata,
   float mdiff[2] = {scene_framenr - data->mouse_co[0], val - data->mouse_co[1]};
   float dist_sq = len_squared_v2(mdiff);
 
-  if (!clip_graph_value_visible(data->sc, value_source)) {
-    return;
-  }
-
   if (data->marker == NULL || dist_sq < data->min_dist_sq) {
     float co[2] = {scene_framenr, val};
 
     data->track = track;
     data->marker = marker;
     data->min_dist_sq = dist_sq;
-    data->value_source = value_source;
+    data->coord = coord;
     copy_v2_v2(data->min_co, co);
   }
 }
 
-static void mouse_select_init_data(bContext *C, MouseSelectUserData *userdata, const float co[2])
+static void mouse_select_init_data(MouseSelectUserData *userdata, const float co[2])
 {
-  SpaceClip *sc = CTX_wm_space_clip(C);
   memset(userdata, 0, sizeof(MouseSelectUserData));
-  userdata->sc = sc;
   userdata->min_dist_sq = FLT_MAX;
   copy_v2_v2(userdata->mouse_co, co);
 }
@@ -191,7 +179,7 @@ static bool mouse_select_knot(bContext *C, float co[2], bool extend)
   if (act_track) {
     MouseSelectUserData userdata;
 
-    mouse_select_init_data(C, &userdata, co);
+    mouse_select_init_data(&userdata, co);
     clip_graph_tracking_values_iterate_track(
         sc, act_track, &userdata, find_nearest_tracking_knot_cb, NULL, NULL);
 
@@ -211,7 +199,7 @@ static bool mouse_select_knot(bContext *C, float co[2], bool extend)
                                       toggle_selection_cb);
         }
 
-        if (userdata.value_source == CLIP_VALUE_SOURCE_SPEED_X) {
+        if (userdata.coord == 0) {
           if (extend && (userdata.marker->flag & MARKER_GRAPH_SEL_X) != 0) {
             userdata.marker->flag &= ~MARKER_GRAPH_SEL_X;
           }
@@ -219,7 +207,7 @@ static bool mouse_select_knot(bContext *C, float co[2], bool extend)
             userdata.marker->flag |= MARKER_GRAPH_SEL_X;
           }
         }
-        else if (userdata.value_source == CLIP_VALUE_SOURCE_SPEED_Y) {
+        else {
           if (extend && (userdata.marker->flag & MARKER_GRAPH_SEL_Y) != 0) {
             userdata.marker->flag &= ~MARKER_GRAPH_SEL_Y;
           }
@@ -244,7 +232,7 @@ static bool mouse_select_curve(bContext *C, float co[2], bool extend)
   MovieTrackingTrack *act_track = BKE_tracking_track_get_active(tracking);
   MouseSelectUserData userdata;
 
-  mouse_select_init_data(C, &userdata, co);
+  mouse_select_init_data(&userdata, co);
   clip_graph_tracking_values_iterate(sc,
                                      (sc->flag & SC_SHOW_GRAPH_SEL_ONLY) != 0,
                                      (sc->flag & SC_SHOW_GRAPH_HIDDEN) != 0,
@@ -368,19 +356,16 @@ typedef struct BoxSelectuserData {
 static void box_select_cb(void *userdata,
                           MovieTrackingTrack *UNUSED(track),
                           MovieTrackingMarker *marker,
-                          eClipCurveValueSource value_source,
+                          int coord,
                           int scene_framenr,
                           float val)
 {
   BoxSelectuserData *data = (BoxSelectuserData *)userdata;
-  if (!ELEM(value_source, CLIP_VALUE_SOURCE_SPEED_X, CLIP_VALUE_SOURCE_SPEED_Y)) {
-    return;
-  }
 
   if (BLI_rctf_isect_pt(&data->rect, scene_framenr, val)) {
     int flag = 0;
 
-    if (value_source == CLIP_VALUE_SOURCE_SPEED_X) {
+    if (coord == 0) {
       flag = MARKER_GRAPH_SEL_X;
     }
     else {
@@ -606,7 +591,7 @@ typedef struct {
 static void view_all_cb(void *userdata,
                         MovieTrackingTrack *UNUSED(track),
                         MovieTrackingMarker *UNUSED(marker),
-                        eClipCurveValueSource UNUSED(value_source),
+                        int UNUSED(coord),
                         int UNUSED(scene_framenr),
                         float val)
 {

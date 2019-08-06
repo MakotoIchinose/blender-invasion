@@ -466,7 +466,7 @@ class DATA_PT_text_boxes(CurveButtonsPanelText, Panel):
 
 
 class DATA_PT_custom_props_curve(CurveButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "object.data"
     _property_type = bpy.types.Curve
 

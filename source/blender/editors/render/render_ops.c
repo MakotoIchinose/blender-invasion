@@ -43,10 +43,6 @@ void ED_operatortypes_render(void)
   WM_operatortype_append(OBJECT_OT_material_slot_copy);
   WM_operatortype_append(OBJECT_OT_material_slot_move);
 
-  WM_operatortype_append(OBJECT_OT_lanpr_update_gp_target);
-  /* Not working */
-  /* WM_operatortype_append(OBJECT_OT_lanpr_update_gp_source); */
-
   WM_operatortype_append(MATERIAL_OT_new);
   WM_operatortype_append(TEXTURE_OT_new);
   WM_operatortype_append(WORLD_OT_new);
@@ -82,20 +78,6 @@ void ED_operatortypes_render(void)
   WM_operatortype_append(SCENE_OT_freestyle_modifier_copy);
   WM_operatortype_append(SCENE_OT_freestyle_stroke_material_create);
 #endif
-
-  /* lanpr:  */
-  WM_operatortype_append(SCENE_OT_lanpr_calculate_feature_lines);
-  WM_operatortype_append(SCENE_OT_lanpr_add_line_layer);
-  WM_operatortype_append(SCENE_OT_lanpr_delete_line_layer);
-  WM_operatortype_append(SCENE_OT_lanpr_rebuild_all_commands);
-  WM_operatortype_append(SCENE_OT_lanpr_auto_create_line_layer);
-  WM_operatortype_append(SCENE_OT_lanpr_move_line_layer);
-  WM_operatortype_append(SCENE_OT_lanpr_add_line_component);
-  WM_operatortype_append(SCENE_OT_lanpr_delete_line_component);
-  WM_operatortype_append(SCENE_OT_lanpr_enable_all_line_types);
-  WM_operatortype_append(SCENE_OT_lanpr_update_gp_strokes);
-  WM_operatortype_append(SCENE_OT_lanpr_bake_gp_strokes);
-  WM_operatortype_append(SCENE_OT_lanpr_export_svg);
 
   WM_operatortype_append(TEXTURE_OT_slot_copy);
   WM_operatortype_append(TEXTURE_OT_slot_paste);

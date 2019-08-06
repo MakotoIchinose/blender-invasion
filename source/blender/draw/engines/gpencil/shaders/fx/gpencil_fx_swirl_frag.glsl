@@ -42,11 +42,7 @@ void main()
   vec2 tc = uv - center;
 
   float dist = length(tc);
-  float locpixsize = abs((loc.z * defaultpixsize));
-  if (locpixsize == 0) {
-    locpixsize = 1;
-  }
-  float pxradius = (ProjectionMatrix[3][3] == 0.0) ? (radius / locpixsize) :
+  float pxradius = (ProjectionMatrix[3][3] == 0.0) ? (radius / (loc.z * defaultpixsize)) :
                                                      (radius / defaultpixsize);
   pxradius = max(pxradius, 1);
 

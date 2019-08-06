@@ -171,11 +171,6 @@ MINLINE float interpf(float target, float origin, float fac)
   return (fac * target) + (1.0f - fac) * origin;
 }
 
-MINLINE double interpd(double target, double origin, double fac)
-{
-  return (fac * target) + (1.0f - fac) * origin;
-}
-
 /* used for zoom values*/
 MINLINE float power_of_2(float val)
 {

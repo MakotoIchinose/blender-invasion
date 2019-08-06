@@ -343,7 +343,7 @@ void GPENCIL_render_to_image(void *vedata,
       /* check grease pencil render transparency */
       if (gp_pixel_rgba[3] > 0.0f) {
         if (src_pixel_rgba[3] > 0.0f) {
-          /* if depth enabled, then check z-depth */
+          /* check z-depth */
           if (gp_pixel_depth[0] > src_pixel_depth[0]) {
             /* copy source z-depth */
             gp_pixel_depth[0] = src_pixel_depth[0];

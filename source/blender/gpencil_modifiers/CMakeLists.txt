@@ -33,8 +33,6 @@ set(INC
   ../../../intern/elbeem/extern
   ../../../intern/eigen
   ../../../intern/guardedalloc
-
-  ../draw/engines/lanpr
 )
 
 set(INC_SYS
@@ -68,7 +66,6 @@ set(SRC
 )
 
 set(LIB
-  bf_draw
 )
 
 if(WITH_INTERNATIONAL)

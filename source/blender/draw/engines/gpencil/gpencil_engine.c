@@ -1130,6 +1130,7 @@ void GPENCIL_draw_scene(void *ved)
           stl->storage->do_select_outline = 0;
         }
 
+        /* draw mix pass */
         DRW_draw_pass(psl->mix_pass);
 
         /* disable select flag */

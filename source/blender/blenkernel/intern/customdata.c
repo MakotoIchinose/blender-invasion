@@ -1611,9 +1611,9 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      layerInterp_mvert_skin,
      NULL,
      layerDefault_mvert_skin},
-    /* 37: CD_LANPR_EDGE */
+    /* 37: CD_FREESTYLE_EDGE */
     {sizeof(FreestyleEdge), "FreestyleEdge", 1, NULL, NULL, NULL, NULL, NULL, NULL},
-    /* 38: CD_LANPR_FACE */
+    /* 38: CD_FREESTYLE_FACE */
     {sizeof(FreestyleFace), "FreestyleFace", 1, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 39: CD_MLOOPTANGENT */
     {sizeof(float[4]), "", 0, NULL, NULL, NULL, NULL, NULL, NULL},

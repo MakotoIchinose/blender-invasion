@@ -20,7 +20,7 @@
 import bpy
 from bpy.types import Panel
 from bpy.app.translations import pgettext_iface as iface_
-from mathutils import Vector
+
 
 class ModifierButtonsPanel:
     bl_space_type = 'PROPERTIES'
@@ -400,10 +400,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         split.prop(md, "use_edge_sharp", text="Sharp Edges")
 
-        layout.prop(md, "ignore_lanpr")
-        if md.ignore_lanpr:
-            layout.label(text="Enabeling edge split may cause problems in LANPR.")
-
     def EXPLODE(self, layout, ob, md):
         split = layout.split()
 
@@ -677,34 +673,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row.operator("object.multires_external_save", text="Save External...")
             row.label()
 
-    def MY_BMESH(self, layout, ob, md):
-        split = layout.split(factor=0.25)
-
-        col = split.column()
-        col.label(text="§6.1:")
-        col.prop(md, "do_tri")
-        col.prop(md, "do_ff_bb_split")
-
-        col = split.column()
-        col.label(text="§6.2:")
-        col.prop(md, "do_cusp_dect")
-        col.prop(md, "do_insert")
-        col.prop(md, "do_cusp_insert")
-
-        col = split.column()
-        col.label(text="§6.3:")
-        col.prop(md, "do_rad_insert")
-        col.prop(md, "do_rad_flip")
-        col.prop(md, "do_opti")
-
-
-        col = layout.column()
-        col.label(text="Camera Object:")
-        col.prop(md, "camera_object", text="")
-
-        col.prop(md, "do_sel")
-
-    def OCEAN(self, layout, ob, md):
+    def OCEAN(self, layout, _ob, md):
         if not bpy.app.build_options.mod_oceansim:
             layout.label(text="Built without OceanSim modifier")
             return
@@ -1672,12 +1641,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
-    def FEATURE_LINE(self, layout, _ob, _md):
-        if not (bpy.context.scene.render.engine == "BLENDER_LANPR" or bpy.context.scene.lanpr.enabled):
-            layout.label(text="LANPR is disabled.")
-        else:
-            layout.label(text="Settings are inside the LANPR tab.")
-        
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"
@@ -1819,13 +1782,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.label(text="Settings:")
+        row = col.row(align=True)
+        row.enabled = md.mode == 'FIXED'
+        row.prop(md, "step")
 
-        if md.mode == 'FIXED':
-            col.prop(md, "step")
-        elif md.mode == 'ADAPTIVE':
-            col.prop(md, "factor")
-        elif md.mode == 'SAMPLE':
-            col.prop(md, "length")
+        row = col.row(align=True)
+        row.enabled = not md.mode == 'FIXED'
+        row.prop(md, "factor")
 
         col = layout.column()
         col.separator()
@@ -1852,12 +1815,13 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col.prop(md, "normalize_thickness")
 
-        split = layout.split()
-        col = split.column()
-        col.prop(md, "use_custom_curve")
+        if not md.normalize_thickness:
+            split = layout.split()
+            col = split.column()
+            col.prop(md, "use_custom_curve")
 
-        if md.use_custom_curve:
-            col.template_curve_mapping(md, "curve")
+            if md.use_custom_curve:
+                col.template_curve_mapping(md, "curve")
 
         col = layout.column()
         col.separator()
@@ -2050,27 +2014,6 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.prop(md, "replace_material", text="Material")
         col.prop(md, "keep_on_top", text="Keep original stroke on top")
-
-        col = layout.column()
-        col.separator()
-        col.label(text="Material:")
-        row = col.row(align=True)
-        row.prop(md, "pass_index", text="Pass")
-        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
-
-        col.label(text="Layer:")
-        row = col.row(align=True)
-        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
-        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
-        row = layout.row(align=True)
-        row.prop(md, "layer_pass", text="Pass")
-        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
-
-    def GP_STROKE(self, layout, ob, md):
-        gpd = ob.data
-
-        col = layout.column()
-        col.prop(md, "offset_object", text="Object")
 
         col = layout.column()
         col.separator()

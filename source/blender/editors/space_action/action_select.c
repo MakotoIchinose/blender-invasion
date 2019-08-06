@@ -1199,14 +1199,9 @@ static void select_moreless_action_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
   for (ale = anim_data.first; ale; ale = ale->next) {
-
-    /* TODO: other types. */
-    if (ale->datatype != ALE_FCURVE) {
-      continue;
-    }
+    FCurve *fcu = (FCurve *)ale->key_data;
 
     /* only continue if F-Curve has keyframes */
-    FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->bezt == NULL) {
       continue;
     }

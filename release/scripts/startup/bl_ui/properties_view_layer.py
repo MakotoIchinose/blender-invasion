@@ -33,7 +33,7 @@ class ViewLayerButtonsPanel:
 
 class VIEWLAYER_PT_layer(ViewLayerButtonsPanel, Panel):
     bl_label = "View Layer"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -81,6 +81,7 @@ class VIEWLAYER_PT_eevee_layer_passes(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer, "use_pass_subsurface_direct", text="Subsurface Direct")
         col = flow.column()
         col.prop(view_layer, "use_pass_subsurface_color", text="Subsurface Color")
+
 
 classes = (
     VIEWLAYER_PT_layer,

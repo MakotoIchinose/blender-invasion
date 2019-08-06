@@ -43,49 +43,6 @@ typedef struct CollectionChild {
   struct Collection *collection;
 } CollectionChild;
 
-enum CollectionFeatureLine_Usage {
-  COLLECTION_FEATURE_LINE_INCLUDE = 0,
-  COLLECTION_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
-  COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
-};
-
-typedef struct CollectionLANPR {
-  short usage;
-  short force; /* force objects with LANPR modifier follow the rule */
-
-  int types;
-
-  struct Object *target;
-  int replace;
-  int layer;
-  int material;
-  int use_multiple_levels;
-  int level_begin;
-  int level_end;
-} CollectionLANPR;
-
-/* CollectionLANPR->types */
-enum CollectionFeatureLine_TypeFlag {
-  COLLECTION_FEATURE_LINE_NONE = (1 << 0),
-  COLLECTION_FEATURE_LINE_CONTOUR = (1 << 1),
-  COLLECTION_FEATURE_LINE_CREASE = (1 << 2),
-  COLLECTION_FEATURE_LINE_MARK = (1 << 3),
-  COLLECTION_FEATURE_LINE_MATERIAL = (1 << 4),
-  COLLECTION_FEATURE_LINE_INTERSECTION = (1 << 5),
-};
-
-#define COLLECTION_FEATURE_LINE_ALL \
-  (COLLECTION_FEATURE_LINE_CONTOUR | COLLECTION_FEATURE_LINE_CREASE | \
-   COLLECTION_FEATURE_LINE_MARK | COLLECTION_FEATURE_LINE_MATERIAL | \
-   COLLECTION_FEATURE_LINE_INTERSECTION)
-
-/* CollectionLANPR->mode */
-enum {
-  COLLECTION_LANPR_INCLUDE = 0,
-  COLLECTION_LANPR_OCCLUSION_ONLY = 1,
-  COLLECTION_LANPR_EXCLUDE = 2,
-};
-
 typedef struct Collection {
   ID id;
 
@@ -101,9 +58,6 @@ typedef struct Collection {
 
   short flag;
   char _pad[6];
-
-  /** LANPR engine specific */
-  CollectionLANPR lanpr;
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics

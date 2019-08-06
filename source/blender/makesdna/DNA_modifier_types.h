@@ -88,8 +88,6 @@ typedef enum ModifierType {
   eModifierType_MeshSequenceCache = 52,
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
-  eModifierType_MyBMesh = 55,
-  eModifierType_FeatureLine = 56,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -354,8 +352,6 @@ typedef struct EdgeSplitModifierData {
   /** Angle above which edges should be split. */
   float split_angle;
   int flags;
-  int ignore_lanpr;
-  char _pad[4];
 } EdgeSplitModifierData;
 
 /* EdgeSplitModifierData->flags */
@@ -1767,15 +1763,6 @@ enum {
   MOD_WIREFRAME_CREASE = (1 << 5),
 };
 
-/* Modifier data stored in the blend file */
-typedef struct MyBMeshModifierData {
-  ModifierData modifier;
-  struct Object *camera_ob;
-  void *osd_eval;
-  int flag; /* options stored here */
-  short _pad[2];
-} MyBMeshModifierData;
-
 typedef struct DataTransferModifierData {
   ModifierData modifier;
 
@@ -1958,48 +1945,5 @@ enum {
 
 #define MOD_MESHSEQ_READ_ALL \
   (MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)
-
-enum {
-  MOD_MYBMESH_TRIANG = (1 << 0),
-  MOD_MYBMESH_FF_SPLIT = (1 << 1),
-  MOD_MYBMESH_CUSP_D = (1 << 2),
-  MOD_MYBMESH_CUSP_I = (1 << 3),
-  MOD_MYBMESH_FB_SPLIT = (1 << 4),
-  MOD_MYBMESH_RAD_I = (1 << 5),
-  MOD_MYBMESH_RAD_FLIP = (1 << 6),
-  MOD_MYBMESH_OPTI = (1 << 7),
-  MOD_MYBMESH_SEL = (1 << 8),
-};
-
-typedef struct FeatureLineModifierData {
-  ModifierData modifier;
-
-  char _pad[4];
-  int types;  // eFeatureLine_TypeFlag
-
-  struct Object *target;
-  int replace;
-  int layer;
-  int material;
-
-  int use_multiple_levels;
-  int level_begin;
-  int level_end;
-
-} FeatureLineModifierData;
-
-enum eFeatureLine_TypeFlag {
-  MOD_FEATURE_LINE_NONE = (1 << 0),
-  MOD_FEATURE_LINE_CONTOUR = (1 << 1),
-  MOD_FEATURE_LINE_CREASE = (1 << 2),
-  MOD_FEATURE_LINE_MARK = (1 << 3),
-  MOD_FEATURE_LINE_MATERIAL = (1 << 4),
-  MOD_FEATURE_LINE_INTERSECTION = (1 << 5),
-  MOD_FEATURE_LINE_MODIFIER_MARK = (1 << 6)
-};
-
-#define MOD_FEATURE_LINE_ALL \
-  (MOD_FEATURE_LINE_CONTOUR | MOD_FEATURE_LINE_CREASE | MOD_FEATURE_LINE_MARK | \
-   MOD_FEATURE_LINE_MATERIAL | MOD_FEATURE_LINE_MODIFIER_MARK | MOD_FEATURE_LINE_INTERSECTION)
 
 #endif /* __DNA_MODIFIER_TYPES_H__ */

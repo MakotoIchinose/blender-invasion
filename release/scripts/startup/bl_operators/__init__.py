@@ -32,7 +32,6 @@ _modules = [
     "constraint",
     "file",
     "image",
-    "lanpr",
     "mask",
     "mesh",
     "node",

@@ -233,7 +233,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         break;
       }
       case SIMFACE_FREESTYLE: {
-        if (!CustomData_has_layer(&bm->pdata, CD_LANPR_FACE)) {
+        if (!CustomData_has_layer(&bm->pdata, CD_FREESTYLE_FACE)) {
           face_data_value |= SIMFACE_DATA_FALSE;
           continue;
         }
@@ -298,7 +298,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           }
           case SIMFACE_FREESTYLE: {
             FreestyleFace *fface;
-            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_LANPR_FACE);
+            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE);
             if ((fface == NULL) || ((fface->flag & FREESTYLE_FACE_MARK) == 0)) {
               face_data_value |= SIMFACE_DATA_FALSE;
             }
@@ -357,7 +357,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         break;
       }
       case SIMFACE_FREESTYLE: {
-        has_custom_data_layer = CustomData_has_layer(&bm->pdata, CD_LANPR_FACE);
+        has_custom_data_layer = CustomData_has_layer(&bm->pdata, CD_FREESTYLE_FACE);
         if ((face_data_value == SIMFACE_DATA_TRUE) && !has_custom_data_layer) {
           continue;
         }
@@ -467,7 +467,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
               break;
             }
 
-            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_LANPR_FACE);
+            fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_FREESTYLE_FACE);
             if (((fface != NULL) && (fface->flag & FREESTYLE_FACE_MARK)) ==
                 ((face_data_value & SIMFACE_DATA_TRUE) != 0)) {
               select = true;
@@ -687,7 +687,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
     switch (type) {
       case SIMEDGE_FREESTYLE: {
-        if (!CustomData_has_layer(&bm->edata, CD_LANPR_EDGE)) {
+        if (!CustomData_has_layer(&bm->edata, CD_FREESTYLE_EDGE)) {
           edge_data_value |= SIMEDGE_DATA_FALSE;
           continue;
         }
@@ -746,7 +746,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             break;
           case SIMEDGE_FREESTYLE: {
             FreestyleEdge *fedge;
-            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_LANPR_EDGE);
+            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE);
             if ((fedge == NULL) || ((fedge->flag & FREESTYLE_EDGE_MARK) == 0)) {
               edge_data_value |= SIMEDGE_DATA_FALSE;
             }
@@ -790,7 +790,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     bool has_custom_data_layer = false;
     switch (type) {
       case SIMEDGE_FREESTYLE: {
-        has_custom_data_layer = CustomData_has_layer(&bm->edata, CD_LANPR_EDGE);
+        has_custom_data_layer = CustomData_has_layer(&bm->edata, CD_FREESTYLE_EDGE);
         if ((edge_data_value == SIMEDGE_DATA_TRUE) && !has_custom_data_layer) {
           continue;
         }
@@ -885,7 +885,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
               break;
             }
 
-            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_LANPR_EDGE);
+            fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_FREESTYLE_EDGE);
             if (((fedge != NULL) && (fedge->flag & FREESTYLE_EDGE_MARK)) ==
                 ((edge_data_value & SIMEDGE_DATA_TRUE) != 0)) {
               select = true;

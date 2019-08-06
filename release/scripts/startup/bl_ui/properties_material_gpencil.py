@@ -120,7 +120,6 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
         ma = context.material
         if ma is not None and ma.grease_pencil is not None:
             gpcolor = ma.grease_pencil
-            self.layout.enabled = not gpcolor.lock
             self.layout.prop(gpcolor, "show_stroke", text="")
 
     def draw(self, context):
@@ -132,7 +131,7 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
             gpcolor = ma.grease_pencil
 
             col = layout.column()
-            col.enabled = not gpcolor.lock
+            col.active = not gpcolor.lock
 
             col.prop(gpcolor, "mode")
 
@@ -172,7 +171,6 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
     def draw_header(self, context):
         ma = context.material
         gpcolor = ma.grease_pencil
-        self.layout.enabled = not gpcolor.lock
         self.layout.prop(gpcolor, "show_fill", text="")
 
     def draw(self, context):
@@ -184,7 +182,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
         # color settings
         col = layout.column()
-        col.enabled = not gpcolor.lock
+        col.active = not gpcolor.lock
         col.prop(gpcolor, "fill_style", text="Style")
 
         if gpcolor.fill_style == 'GRADIENT':
@@ -239,7 +237,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
 class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
     bl_label = "Preview"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -249,7 +247,7 @@ class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
 
 
 class MATERIAL_PT_gpencil_custom_props(GPMaterialButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "object.active_material"
     _property_type = bpy.types.Material
 

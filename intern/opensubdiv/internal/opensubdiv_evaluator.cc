@@ -102,21 +102,6 @@ void evaluateLimit(OpenSubdiv_Evaluator *evaluator,
   evaluator->internal->eval_output->evaluateLimit(ptex_face_index, face_u, face_v, P, dPdu, dPdv);
 }
 
-void evaluateLimit2(OpenSubdiv_Evaluator *evaluator,
-                    const int ptex_face_index,
-                    const float face_u,
-                    const float face_v,
-                    float P[3],
-                    float dPdu[3],
-                    float dPdv[3],
-                    float dPduu[3],
-                    float dPduv[3],
-                    float dPdvv[3])
-{
-  evaluator->internal->eval_output->evaluateLimit2(
-      ptex_face_index, face_u, face_v, P, dPdu, dPdv, dPduu, dPduv, dPdvv);
-}
-
 void evaluateVarying(OpenSubdiv_Evaluator *evaluator,
                      const int ptex_face_index,
                      float face_u,
@@ -150,7 +135,6 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
   evaluator->refine = refine;
 
   evaluator->evaluateLimit = evaluateLimit;
-  evaluator->evaluateLimit2 = evaluateLimit2;
   evaluator->evaluateVarying = evaluateVarying;
   evaluator->evaluateFaceVarying = evaluateFaceVarying;
 }

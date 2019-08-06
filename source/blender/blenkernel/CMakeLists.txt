@@ -50,8 +50,6 @@ set(INC
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
   ../../../intern/smoke/extern
-
-  ../draw/engines/lanpr
 )
 
 set(INC_SYS

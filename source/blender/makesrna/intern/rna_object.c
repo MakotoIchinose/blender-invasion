@@ -441,7 +441,7 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, struct Report
     return;
   }
 
-  if (id && ((id->tag & LIB_TAG_NO_MAIN) != (ob->id.tag & LIB_TAG_NO_MAIN))) {
+  if ((id->tag & LIB_TAG_NO_MAIN) != (ob->id.tag & LIB_TAG_NO_MAIN)) {
     BKE_report(reports,
                RPT_ERROR,
                "Can only assign evaluated data to evaluated object, or original data to "
@@ -2307,35 +2307,6 @@ static void rna_def_object_display(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 }
 
-static void rna_def_object_lanpr(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  static EnumPropertyItem prop_feature_line_usage_items[] = {
-      {OBJECT_FEATURE_LINE_INHERENT,
-       "INHERENT",
-       0,
-       "Inherent",
-       "Follow settings from the parent collection"},
-      {OBJECT_FEATURE_LINE_OCCLUSION_ONLY,
-       "OCCLUSION_ONLY",
-       0,
-       "Occlusion Only",
-       "Don't produce lines, only used as occlusion object"},
-      {OBJECT_FEATURE_LINE_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't calculate this object"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  srna = RNA_def_struct(brna, "ObjectLANPR", NULL);
-  RNA_def_struct_ui_text(srna, "Object LANPR", "Object lanpr settings");
-  RNA_def_struct_sdna(srna, "ObjectLANPR");
-
-  prop = RNA_def_property(srna, "usage", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, prop_feature_line_usage_items);
-  RNA_def_property_ui_text(prop, "Usage", "How to use this object");
-}
-
 static void rna_def_object(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -3072,11 +3043,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(prop, "rna_Object_display_get", NULL, NULL, NULL);
   RNA_def_property_ui_text(prop, "Object Display", "Object display settings for 3d viewport");
 
-  /* LANPR */
-  prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ObjectLANPR");
-  RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the object");
-
   RNA_api_object(srna);
 }
 
@@ -3089,7 +3055,6 @@ void RNA_def_object(BlenderRNA *brna)
   rna_def_face_map(brna);
   rna_def_material_slot(brna);
   rna_def_object_display(brna);
-  rna_def_object_lanpr(brna);
   RNA_define_animate_sdna(true);
 }
 

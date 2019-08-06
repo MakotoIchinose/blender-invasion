@@ -231,11 +231,9 @@ MINLINE double normalize_v3_d(double n[3]);
 /******************************* Interpolation *******************************/
 
 void interp_v2_v2v2(float r[2], const float a[2], const float b[2], const float t);
-void interp_v2_v2v2_db(double target[2], const double a[2], const double b[2], const double t);
 void interp_v2_v2v2v2(
     float r[2], const float a[2], const float b[2], const float c[2], const float t[3]);
 void interp_v3_v3v3(float r[3], const float a[3], const float b[3], const float t);
-void interp_v3_v3v3_db(double target[3], const double a[3], const double b[3], const double t);
 void interp_v3_v3v3v3(
     float p[3], const float v1[3], const float v2[3], const float v3[3], const float w[3]);
 void interp_v3_v3v3v3v3(float p[3],

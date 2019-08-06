@@ -96,8 +96,6 @@
 
 #include "engines/eevee/eevee_lightcache.h"
 
-#include "engines/lanpr/lanpr_access.h"
-
 #include "PIL_time.h"
 
 #include "IMB_colormanagement.h"
@@ -107,7 +105,6 @@
 
 const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
-const char *RE_engine_id_BLENDER_LANPR = "BLENDER_LANPR";
 const char *RE_engine_id_CYCLES = "CYCLES";
 
 void free_avicodecdata(AviCodecData *acd)
@@ -336,10 +333,6 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
   sce_dst->eevee.light_cache = NULL;
   sce_dst->eevee.light_cache_info[0] = '\0';
   /* TODO Copy the cache. */
-
-  /* lanpr data */
-
-  ED_lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
@@ -547,8 +540,6 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
     EEVEE_lightcache_free(sce->eevee.light_cache);
     sce->eevee.light_cache = NULL;
   }
-
-  ED_lanpr_free_everything(sce);
 
   /* These are freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);
@@ -975,33 +966,6 @@ void BKE_scene_init(Scene *sce)
   sce->eevee.flag = SCE_EEVEE_VOLUMETRIC_LIGHTS | SCE_EEVEE_GTAO_BENT_NORMALS |
                     SCE_EEVEE_GTAO_BOUNCE | SCE_EEVEE_TAA_REPROJECTION |
                     SCE_EEVEE_SSR_HALF_RESOLUTION;
-
-  /* SceneLANPR */
-
-  sce->lanpr.crease_threshold = 0.7;
-
-  sce->lanpr.line_thickness = 1.5;
-  sce->lanpr.depth_clamp = 0.001;
-  sce->lanpr.depth_strength = 800;
-  sce->lanpr.normal_clamp = 2;
-  sce->lanpr.normal_strength = 10;
-
-  sce->lanpr.enable_intersections = 1;
-
-  sce->lanpr.background_color[0] = 0;
-  sce->lanpr.background_color[1] = 0;
-  sce->lanpr.background_color[2] = 0;
-  sce->lanpr.background_color[3] = 1;
-
-  sce->lanpr.line_color[0] = 1;
-  sce->lanpr.line_color[1] = 1;
-  sce->lanpr.line_color[2] = 1;
-  sce->lanpr.line_color[3] = 1;
-
-  sce->lanpr.enable_intersections = 1;
-  sce->lanpr.enable_chaining = 1;
-  sce->lanpr.chaining_image_threshold = 0.01;
-  sce->lanpr.chaining_geometry_threshold = 0.1;
 }
 
 Scene *BKE_scene_add(Main *bmain, const char *name)

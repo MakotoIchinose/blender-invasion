@@ -27,7 +27,6 @@
 #include "DNA_defs.h"
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
-#include "DNA_lanpr_types.h"
 
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18
@@ -139,14 +138,6 @@ typedef enum eMaterialGPencilStyle_Mode {
   GP_STYLE_MODE_BOX = 2,  /* rectangles */
 } eMaterialGPencilStyle_Mode;
 
-typedef enum eMaterialLANPRMaskLayerCount {
-  LANPR_MASK_NONE = 0,
-  LANPR_MASK_ONE = 1,
-  LANPR_MASK_TWO = 2,
-  LANPR_MASK_THREE = 3,
-  LANPR_MASK_FOUR = 4,
-} eMaterialLANPRMaskLayerCount;
-
 typedef struct Material {
   ID id;
   /** Animation data (must be immediately after id for utilities to use it). */
@@ -187,14 +178,6 @@ typedef struct Material {
   short line_priority;
   short vcol_alpha;
 
-  /* lanpr settings */
-  char mask_layers_count;
-  char exclude_line_display;
-  char exclude_line_geometry;
-  char _pad5;
-  struct LANPR_LineLayer *active_layer;
-  ListBase line_layers;
-
   /* Texture painting slots. */
   short paint_active_slot;
   short paint_clone_slot;
@@ -213,7 +196,6 @@ typedef struct Material {
    * Cached slots for texture painting, must be refreshed in
    * refresh_texpaint_image_cache before using.
    */
-  char _pad4[4];
   struct TexPaintSlot *texpaintslot;
 
   /** Runtime cache for GLSL materials. */

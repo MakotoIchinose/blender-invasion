@@ -395,8 +395,8 @@ typedef enum eStereo3dInterlaceType {
  * this is used for NodeImageFile and IMAGE_OT_save_as operator too.
  *
  * note: its a bit strange that even though this is an image format struct
- *  the imtype can still be used to select video formats.
- *  RNA ensures these enum's are only selectable for render output.
+ * the imtype can still be used to select video formats.
+ * RNA ensures these enum's are only selectable for render output.
  */
 typedef struct ImageFormatData {
   /**
@@ -1632,90 +1632,6 @@ typedef struct SceneEEVEE {
   float light_threshold;
 } SceneEEVEE;
 
-/* LANPR Global Config */
-
-struct LANPR_RenderBuffer;
-struct LANPR_LineLayer;
-
-typedef enum LANPR_MasterMode{
-  LANPR_MASTER_MODE_SOFTWARE = 0,
-  LANPR_MASTER_MODE_DPIX = 1,
-  LANPR_MASTER_MODE_SNAKE = 2,
-}LANPR_MasterMode;
-
-typedef enum LANPR_PostProcessingStatus{
-  LANPR_POST_PROCESSING_DISABLED = 0,
-  LANPR_POST_PROCESSING_ENABLED = 1,
-}LANPR_PostProcessingStatus;
-
-typedef struct SceneLANPR {
-
-  int enabled;
-  int auto_update; /* for LANPR->GP to update automatically */
-
-  int master_mode; /* LANPR_MasterMode */
-
-  int enable_vector_trace;
-  int display_thinning_result;
-
-  float depth_clamp;
-  float depth_strength;
-  float normal_clamp;
-  float normal_strength;
-
-  float line_thickness;
-
-  int use_same_taper;
-  float taper_left_distance;
-  float taper_left_strength;
-  float taper_right_distance;
-  float taper_right_strength;
-
-  int snake_sensitivity;
-
-  /* shared */
-
-  float contour_fade;          /* for dpix contour fading,reserved for future usage */
-  float crease_threshold;      /* 0-1 range for cosine angle */
-  float crease_fade_threshold; /* for dpix crease fading */
-
-  float line_color[4];
-  float background_color[4];
-  int use_world_background; /* color only */
-
-  float depth_width_influence;
-  float depth_width_curve;
-  float depth_alpha_influence;
-  float depth_alpha_curve;
-
-  /* edge split modifier will cause problems in LANPR. */
-  int disable_edge_splits;
-
-  int gpu_cache_size; /* enum! */
-
-  /* offline render */
-  ListBase line_layers;
-  struct LANPR_LineLayer *active_layer;
-
-  char enable_intersections;
-  char enable_chaining;
-  char enable_chain_connection;
-  char _pad2;
-  float chaining_geometry_threshold;
-  float chaining_image_threshold;
-
-  /* Overwrite existing strokes in this frame. */
-  int gpencil_overwrite;
-
-} SceneLANPR;
-
-enum {
-  LANPR_GPU_CACHE_SIZE_512 = 0,
-  LANPR_GPU_CACHE_SIZE_1K = 1, /* default */
-  LANPR_GPU_CACHE_SIZE_2K = 2,
-  LANPR_GPU_CACHE_SIZE_4K = 3,
-};
-
 /* *************************************************************** */
 /* Scene ID-Block */
 
@@ -1846,9 +1762,6 @@ typedef struct Scene {
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
-
-  /* LANPR stuff */
-  struct SceneLANPR lanpr;
 } Scene;
 
 /* **************** RENDERDATA ********************* */

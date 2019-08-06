@@ -66,7 +66,7 @@ static void deformStroke(GpencilModifierData *md,
                                       mmd->layername,
                                       mmd->pass_index,
                                       mmd->layer_pass,
-                                      mmd->mode == GP_SIMPLIFY_SAMPLE ? 3 : 4,
+                                      4,
                                       gpl,
                                       gps,
                                       mmd->flag & GP_SIMPLIFY_INVERT_LAYER,
@@ -75,25 +75,14 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  /* Select simplification mode. */
-  switch (mmd->mode) {
-    case GP_SIMPLIFY_FIXED: {
-      for (int i = 0; i < mmd->step; i++) {
-        BKE_gpencil_simplify_fixed(gps);
-      }
-      break;
+  if (mmd->mode == GP_SIMPLIFY_FIXED) {
+    for (int i = 0; i < mmd->step; i++) {
+      BKE_gpencil_simplify_fixed(gps);
     }
-    case GP_SIMPLIFY_ADAPTIVE: {
-      /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      BKE_gpencil_simplify_stroke(gps, mmd->factor);
-      break;
-    }
-    case GP_SIMPLIFY_SAMPLE: {
-      BKE_gpencil_sample_stroke(gps, mmd->length);
-      break;
-    }
-    default:
-      break;
+  }
+  else {
+    /* simplify stroke using Ramer-Douglas-Peucker algorithm */
+    BKE_gpencil_simplify_stroke(gps, mmd->factor);
   }
 }
 
