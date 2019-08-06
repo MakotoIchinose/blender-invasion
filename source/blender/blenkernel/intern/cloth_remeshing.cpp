@@ -1319,7 +1319,9 @@ static bool cloth_remeshing_can_collapse_edge(ClothModifierData *clmd,
       }
     }
   }
+#if COLLAPSE_EDGES_DEBUG
   printf("sucessfully collapsed\n");
+#endif
   return true;
 }
 
@@ -1331,6 +1333,7 @@ static void cloth_remeshing_remove_vertex_from_cloth(BMVert *v, ClothVertMap &cv
          cvm[v].x[1],
          cvm[v].x[2]);
 #endif
+  MEM_freeN(cvm[v].sizing);
   cvm.erase(v);
 }
 
