@@ -9682,15 +9682,15 @@ int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
     /* Pivot position */
     if (RNA_boolean_get(op->ptr, "update_pivot")) {
+      const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
       float avg[3];
       int total = 0;
       float threshold = 0.2f;
       zero_v3(avg);
       for (int i = 0; i < sculpt_vertex_count_get(ss); i++) {
-        // symmetry not supported yet
         if (sculpt_vertex_mask_get(ss, i) < (0.5f + threshold) &&
             sculpt_vertex_mask_get(ss, i) > (0.5f - threshold) &&
-            check_vertex_pivot_symmetry(sculpt_vertex_co_get(ss, i), ss->pivot_pos, 0)) {
+            check_vertex_pivot_symmetry(sculpt_vertex_co_get(ss, i), ss->pivot_pos, symm)) {
           total++;
           add_v3_v3(avg, sculpt_vertex_co_get(ss, i));
         }
@@ -9785,16 +9785,32 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
   ss->filter_cache->mask_update_last_it = 1;
   ss->filter_cache->mask_update_current_it = 1;
   ss->filter_cache->mask_update_it[(int)sculpt_active_vertex_get(ss)] = 1;
-  ss->vmask[ss->active_vertex_mesh_index] = 1.0f;
 
   char *visited_vertices = MEM_callocN(sculpt_vertex_count_get(ss) * sizeof(char), "prevmask");
 
   GSQueue *queue = BLI_gsqueue_new(sizeof(vertex_topology_it));
 
   vertex_topology_it mevit;
-  mevit.v = sculpt_active_vertex_get(ss);
-  mevit.it = 1;
-  BLI_gsqueue_push(queue, &mevit);
+
+  const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
+  int i;
+  for (i = 0; i <= symm; ++i) {
+    if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5)))) {
+      float location[3];
+      flip_v3_v3(location, sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)), i);
+      if (i == 0) {
+        mevit.v = sculpt_active_vertex_get(ss);
+      }
+      else {
+        mevit.v = sculpt_nearest_vertex_get(sd, ob, location, FLT_MAX, false);
+      }
+      if (mevit.v != -1) {
+        sculpt_vertex_mask_set(ss, mevit.v, 1.0f);
+        mevit.it = 1;
+        BLI_gsqueue_push(queue, &mevit);
+      }
+    }
+  }
 
   while (!BLI_gsqueue_is_empty(queue)) {
     vertex_topology_it c_mevit;
