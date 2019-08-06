@@ -2954,7 +2954,7 @@ static int ptcache_read(PTCacheID *pid, int cfra)
         Object *ob = clmd->ob;
         Depsgraph *depsgraph = clmd->depsgraph;
         Mesh *mesh = clmd->mesh;
-        printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
+        printf("mesh in %s before remeshing has totvert: %d totedge: %d totface %d\n",
                __func__,
                mesh->totvert,
                mesh->totedge,
@@ -2972,14 +2972,13 @@ static int ptcache_read(PTCacheID *pid, int cfra)
 #endif
         Mesh *mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, mesh);
         if (clmd->mesh && mesh_result) {
-          BKE_mesh_free(clmd->mesh);
-          clmd->mesh = mesh_result;
-          mesh = clmd->mesh;
-          printf("mesh in %s has totvert: %d totedge: %d totface %d\n",
+          /* BKE_mesh_free(clmd->mesh); */
+          BKE_id_copy_ex(NULL, (ID *)mesh_result, (ID **)&clmd->mesh, LIB_ID_COPY_LOCALIZE);
+          printf("mesh in %s after remeshing has totvert: %d totedge: %d totface %d\n",
                  __func__,
-                 mesh->totvert,
-                 mesh->totedge,
-                 mesh->totpoly);
+                 clmd->mesh->totvert,
+                 clmd->mesh->totedge,
+                 clmd->mesh->totpoly);
         }
       }
       int pid_totpoint = pid->totpoint(pid->calldata, cfra);

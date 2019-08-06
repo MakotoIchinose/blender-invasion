@@ -473,12 +473,29 @@ Mesh *clothModifier_do(
 
   /* TODO(Ish): clmd->mesh = mesh_result should be done only on the first frame of reading the
    * cache */
-  if (clmd->flags & MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
-    printf("\nPrevious read from cache\n");
+  if (clmd->mesh) {
+    printf("\nclmd->mesh in %s before has totvert: %d totedge: %d totface: %d\n",
+           __func__,
+           clmd->mesh->totvert,
+           clmd->mesh->totedge,
+           clmd->mesh->totpoly);
   }
   else {
-    printf("\nPrevious frame was simulated\n");
+    printf("\n");
+  }
+  if (clmd->flags & MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
+    printf("Previous read from cache\n");
+  }
+  else {
+    printf("Previous frame was simulated\n");
     clmd->mesh = mesh_result;
+  }
+  if (clmd->mesh) {
+    printf("clmd->mesh in %s after has totvert: %d totedge: %d totface: %d\n",
+           __func__,
+           clmd->mesh->totvert,
+           clmd->mesh->totedge,
+           clmd->mesh->totpoly);
   }
   cache_result = BKE_ptcache_read(&pid, (float)framenr + scene->r.subframe, can_simulate);
 
@@ -572,9 +589,9 @@ void cloth_free_modifier(ClothModifierData *clmd)
   if (!clmd) {
     return;
   }
-  clmd->depsgraph = NULL;
-  clmd->ob = NULL;
-  clmd->mesh = NULL;
+  /* clmd->depsgraph = NULL; */
+  /* clmd->ob = NULL; */
+  /* clmd->mesh = NULL; */
 
   cloth = clmd->clothObject;
 
@@ -664,9 +681,9 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
     return;
   }
 
-  clmd->depsgraph = NULL;
-  clmd->ob = NULL;
-  clmd->mesh = NULL;
+  /* clmd->depsgraph = NULL; */
+  /* clmd->ob = NULL; */
+  /* clmd->mesh = NULL; */
 
   cloth = clmd->clothObject;
 
