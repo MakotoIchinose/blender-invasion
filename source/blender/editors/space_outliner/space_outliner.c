@@ -302,7 +302,7 @@ static SpaceLink *outliner_new(const ScrArea *UNUSED(area), const Scene *UNUSED(
   soutliner->filter_id_type = ID_GR;
   soutliner->show_restrict_flags = SO_RESTRICT_ENABLE | SO_RESTRICT_HIDE;
   soutliner->outlinevis = SO_VIEW_LAYER;
-  soutliner->sync_flag |= SO_SYNC_ALL;
+  soutliner->sync_flag |= SO_SYNC_TO_OUTLINER_ANY;
   soutliner->flag |= SO_SYNC_SELECT;
 
   /* header */
@@ -350,7 +350,7 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
   soutlinern->treehash = NULL;
 
   soutlinern->flag |= (soutliner->flag & SO_SYNC_SELECT);
-  soutlinern->sync_flag = SO_SYNC_ALL;
+  soutlinern->sync_flag = SO_SYNC_TO_OUTLINER_ANY;
 
   return (SpaceLink *)soutlinern;
 }

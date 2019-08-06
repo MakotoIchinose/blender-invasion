@@ -89,8 +89,6 @@ static void pose_do_bone_select(bPoseChannel *pchan, const int select_mode)
       }
       break;
   }
-
-  sync_select_dirty_flag = SYNC_SELECT_REPLACE;
 }
 
 void ED_pose_bone_select_tag_update(Object *ob)
@@ -452,6 +450,8 @@ static int pose_select_connected_invoke(bContext *C, wmOperator *op, const wmEve
     selectconnected_posebonechildren(base->object, curBone, extend);
   }
 
+  ED_outliner_select_sync_from_pose_bone_tag(C);
+
   ED_pose_bone_select_tag_update(base->object);
 
   return OPERATOR_FINISHED;
@@ -517,6 +517,8 @@ static int pose_de_select_all_exec(bContext *C, wmOperator *op)
   }
   CTX_DATA_END;
 
+  ED_outliner_select_sync_from_pose_bone_tag(C);
+
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, NULL);
 
   return OPERATOR_FINISHED;
@@ -562,6 +564,8 @@ static int pose_select_parent_exec(bContext *C, wmOperator *UNUSED(op))
   else {
     return OPERATOR_CANCELLED;
   }
+
+  ED_outliner_select_sync_from_pose_bone_tag(C);
 
   ED_pose_bone_select_tag_update(ob);
   return OPERATOR_FINISHED;
@@ -626,6 +630,8 @@ static int pose_select_constraint_target_exec(bContext *C, wmOperator *UNUSED(op
   if (!found) {
     return OPERATOR_CANCELLED;
   }
+
+  ED_outliner_select_sync_from_pose_bone_tag(C);
 
   return OPERATOR_FINISHED;
 }
@@ -714,6 +720,8 @@ static int pose_select_hierarchy_exec(bContext *C, wmOperator *op)
   if (changed == false) {
     return OPERATOR_CANCELLED;
   }
+
+  ED_outliner_select_sync_from_pose_bone_tag(C);
 
   ED_pose_bone_select_tag_update(ob);
 
@@ -1064,6 +1072,8 @@ static int pose_select_grouped_exec(bContext *C, wmOperator *op)
 
   /* report done status */
   if (changed) {
+    ED_outliner_select_sync_from_pose_bone_tag(C);
+
     return OPERATOR_FINISHED;
   }
   else {
@@ -1174,6 +1184,8 @@ static int pose_select_mirror_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
   }
   MEM_freeN(objects);
+
+  ED_outliner_select_sync_from_pose_bone_tag(C);
 
   return OPERATOR_FINISHED;
 }

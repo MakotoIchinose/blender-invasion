@@ -131,11 +131,14 @@ typedef struct wmWindowManager {
   ListBase windows;
 
   /** Set on file read. */
-  int initialized;
+  short initialized;
   /** Indicator whether data was saved. */
   short file_saved;
   /** Operator stack depth to avoid nested undo pushes. */
   short op_undo_depth;
+
+  /** Set after selection to notify outliner to sync. Stores type of selection */
+  short sync_select_dirty_flag;
 
   /** Operator registry. */
   ListBase operators;
@@ -184,6 +187,14 @@ typedef struct wmWindowManager {
 enum {
   WM_WINDOW_IS_INITIALIZED = (1 << 0),
   WM_KEYCONFIG_IS_INITIALIZED = (1 << 1),
+};
+
+/* wmWindowManager.sync_select_dirty_flag */
+enum {
+  WM_SYNC_SELECT_FROM_OBJECT = (1 << 0),
+  WM_SYNC_SELECT_FROM_EDIT_BONE = (1 << 1),
+  WM_SYNC_SELECT_FROM_POSE_BONE = (1 << 2),
+  WM_SYNC_SELECT_FROM_SEQUENCE = (1 << 3),
 };
 
 #define WM_KEYCONFIG_STR_DEFAULT "blender"

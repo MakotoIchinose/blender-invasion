@@ -244,7 +244,12 @@ typedef struct SpaceOutliner {
   char search_string[64];
   struct TreeStoreElem search_tse;
 
-  short flag, outlinevis, storeflag, search_flags;
+  short flag, outlinevis, storeflag;
+  char search_flags;
+
+  /* Selection syncing */
+  char sync_flag;
+
   int filter;
   char filter_state;
   char show_restrict_flags;
@@ -264,7 +269,6 @@ typedef enum eSpaceOutliner_Flag {
   SO_HIDE_KEYINGSETINFO = (1 << 3),
   SO_SKIP_SORT_ALPHA = (1 << 4),
   SO_SYNC_SELECT = (1 << 5),
-  SO_IS_DIRTY = (1 << 6),
 } eSpaceOutliner_Flag;
 
 /* SpaceOutliner.filter */
@@ -361,6 +365,17 @@ typedef enum eSpaceOutliner_Search_Flags {
   SO_FIND_COMPLETE = (1 << 1),
   SO_SEARCH_RECURSIVE = (1 << 2),
 } eSpaceOutliner_Search_Flags;
+
+/* SpaceOutliner.sync_flag */
+typedef enum eSpaceOutliner_SyncFlag {
+  SO_SYNC_OBJECT = (1 << 0),
+  SO_SYNC_EDIT_BONE = (1 << 1),
+  SO_SYNC_POSE_BONE = (1 << 2),
+  SO_SYNC_SEQUENCE = (1 << 3),
+} eSpaceOutliner_Sync_Flag;
+
+#define SO_SYNC_TO_OUTLINER_ANY \
+  (SO_SYNC_OBJECT | SO_SYNC_EDIT_BONE | SO_SYNC_POSE_BONE | SO_SYNC_SEQUENCE)
 
 /** \} */
 

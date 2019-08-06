@@ -3634,13 +3634,15 @@ void draw_outliner(const bContext *C)
 
   outliner_build_tree(mainvar, scene, view_layer, soops, ar);  // always
 
-  /* Sync selection state from view layer or clean outliner if needed */
+  /* If global sync select is dirty flag other outliners */
+  if (ED_outliner_select_sync_is_dirty(C)) {
+    ED_outliner_select_sync_flag_outliners(C);
+  }
+
+  /* Sync selection state from view layer */
   if (!ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS) &&
       soops->flag & SO_SYNC_SELECT) {
     outliner_sync_selection(C, soops);
-  }
-  else {
-    soops->flag |= SO_IS_DIRTY;
   }
 
   /* force display to pixel coords */

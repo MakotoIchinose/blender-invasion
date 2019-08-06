@@ -1098,6 +1098,7 @@ eOLDrawState tree_element_type_active(bContext *C,
 
 /* ================================================ */
 
+/* Activate a tree store element and set the walk navigation start element */
 void outliner_element_activate(SpaceOutliner *soops, TreeStoreElem *tselem)
 {
   outliner_flag_set(&soops->tree, TSE_ACTIVE | TSE_ACTIVE_WALK, false);

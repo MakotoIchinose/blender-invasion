@@ -26,20 +26,19 @@
 struct ListBase;
 struct bContext;
 
-/* Flag to indicate if a sync is to extend or replace the outliner selection */
-extern short sync_select_dirty_flag;
-
-/* sync_select_dirty_flag types */
-enum {
-  SYNC_SELECT_NONE = 0,
-  SYNC_SELECT_REPLACE = 1,
-  SYNC_SELECT_EXTEND = 2,
-};
-
 bool ED_outliner_collections_editor_poll(struct bContext *C);
 
 void ED_outliner_selected_objects_get(const struct bContext *C, struct ListBase *objects);
 
 Base *ED_outliner_give_base_under_cursor(struct bContext *C, const int mval[2]);
+
+void ED_outliner_select_sync_from_object_tag(struct bContext *C);
+void ED_outliner_select_sync_from_edit_bone_tag(struct bContext *C);
+void ED_outliner_select_sync_from_pose_bone_tag(struct bContext *C);
+void ED_outliner_select_sync_from_sequence_tag(struct bContext *C);
+
+bool ED_outliner_select_sync_is_dirty(const struct bContext *C);
+
+void ED_outliner_select_sync_flag_outliners(const struct bContext *C);
 
 #endif /*  __ED_OUTLINER_H__ */
