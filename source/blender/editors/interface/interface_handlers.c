@@ -2427,8 +2427,8 @@ static void ui_but_copy_profilewidget(uiBut *but)
 {
   if (but->poin != NULL) {
     but_copypaste_profile_alive = true;
-    profilewidget_free_data(&but_copypaste_profile);
-    profilewidget_copy_data(&but_copypaste_profile, (ProfileWidget *)but->poin);
+    BKE_profilewidget_free_data(&but_copypaste_profile);
+    BKE_profilewidget_copy_data(&but_copypaste_profile, (ProfileWidget *)but->poin);
   }
 }
 
@@ -2440,8 +2440,8 @@ static void ui_but_paste_profilewidget(bContext *C, uiBut *but)
     }
 
     button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-    profilewidget_free_data((ProfileWidget *)but->poin);
-    profilewidget_copy_data((ProfileWidget *)but->poin, &but_copypaste_profile);
+    BKE_profilewidget_free_data((ProfileWidget *)but->poin);
+    BKE_profilewidget_copy_data((ProfileWidget *)but->poin, &but_copypaste_profile);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
   }
 }
@@ -2638,7 +2638,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 void ui_but_clipboard_free(void)
 {
   curvemapping_free_data(&but_copypaste_curve);
-  profilewidget_free_data(&but_copypaste_profile);
+  BKE_profilewidget_free_data(&but_copypaste_profile);
 }
 
 /** \} */
@@ -6811,7 +6811,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
       }
     }
 
-    profilewidget_changed(prwdgt, false);
+    BKE_profilewidget_changed(prwdgt, false);
 
     if (moved_point) {
       data->draglastx = evtx;
@@ -6887,8 +6887,8 @@ static int ui_do_but_PROFILE(bContext *C,
 
   /* Delete selected control points (hardcoded keymap) */
   if (event->type == XKEY && event->val == KM_RELEASE) {
-    profilewidget_remove(prwdgt, PROF_SELECT);
-    profilewidget_changed(prwdgt, false);
+    BKE_profilewidget_remove(prwdgt, PROF_SELECT);
+    BKE_profilewidget_changed(prwdgt, false);
     ED_region_tag_redraw(data->region);
     return WM_UI_HANDLER_BREAK;
   }
@@ -6905,8 +6905,8 @@ static int ui_do_but_PROFILE(bContext *C,
         float f_xy[2];
         BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
 
-        profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
-        profilewidget_changed(prwdgt, false);
+        BKE_profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
+        BKE_profilewidget_changed(prwdgt, false);
       }
 
       /* Check for selecting of a point by finding closest point in radius */
@@ -6938,8 +6938,8 @@ static int ui_do_but_PROFILE(bContext *C,
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
             BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
 
-            ProfilePoint *new_pt = profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
-            profilewidget_changed(prwdgt, false);
+            ProfilePoint *new_pt = BKE_profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
+            BKE_profilewidget_changed(prwdgt, false);
 
             /* reset pts back to the control points */
             pts = prwdgt->path;
@@ -7007,7 +7007,7 @@ static int ui_do_but_PROFILE(bContext *C,
           }
         }
         else {
-          profilewidget_changed(prwdgt, true); /* remove doubles */
+          BKE_profilewidget_changed(prwdgt, true); /* remove doubles */
         }
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);

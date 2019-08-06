@@ -7034,7 +7034,7 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
     if (custom) {
       /* Make sure the profile widget's sample table is full */
       if (bp->prwdgt->totsegments != seg || !bp->prwdgt->segments) {
-        profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg);
+        BKE_profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg);
       }
 
       /* Copy segment locations into the profile spacing struct */
@@ -7064,7 +7064,7 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
                                                              (size_t)(seg_2 + 1) * sizeof(double));
       if (custom) {
         /* Make sure the profile widget's sample table is full of the seg_2 samples */
-        profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg_2);
+        BKE_profilewidget_initialize((ProfileWidget *)bp->prwdgt, (short)seg_2);
 
         /* Copy segment locations into the profile spacing struct */
         for (int i = 0; i < seg_2 + 1; i++) {

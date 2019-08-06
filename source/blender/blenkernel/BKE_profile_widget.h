@@ -27,55 +27,49 @@
 struct ProfileWidget;
 struct ProfilePoint;
 
-/* HANS-QUESTION: Should I add the BKE_ to the front of these functions? The CurveMapping widget
- * doesn't have them but it's mentioned in the style guide that public functions should have it */
+void BKE_profilewidget_set_defaults(struct ProfileWidget *prwdgt);
 
-void profilewidget_set_defaults(struct ProfileWidget *prwdgt);
+struct ProfileWidget *BKE_profilewidget_add(int preset);
 
-struct ProfileWidget *profilewidget_add(int preset);
+void BKE_profilewidget_free_data(struct ProfileWidget *prwdgt);
 
-void profilewidget_free_data(struct ProfileWidget *prwdgt);
+void BKE_profilewidget_free(struct ProfileWidget *prwdgt);
 
-void profilewidget_free(struct ProfileWidget *prwdgt);
+void BKE_profilewidget_copy_data(struct ProfileWidget *target, const struct ProfileWidget *prwdgt);
 
-void profilewidget_copy_data(struct ProfileWidget *target, const struct ProfileWidget *prwdgt);
+struct ProfileWidget *BKE_profilewidget_copy(const struct ProfileWidget *prwdgt);
 
-struct ProfileWidget *profilewidget_copy(const struct ProfileWidget *prwdgt);
+bool BKE_profilewidget_remove_point(struct ProfileWidget *prwdgt, struct ProfilePoint *point);
 
-bool profilewidget_remove_point(struct ProfileWidget *prwdgt, struct ProfilePoint *point);
+void BKE_profilewidget_remove(struct ProfileWidget *prwdgt, const short flag);
 
-void profilewidget_remove(struct ProfileWidget *prwdgt, const short flag);
+struct ProfilePoint *BKE_profilewidget_insert(struct ProfileWidget *prwdgt, float x, float y);
 
-struct ProfilePoint *profilewidget_insert(struct ProfileWidget *prwdgt, float x, float y);
+void BKE_profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
 
-void profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
+void BKE_profilewidget_reverse(struct ProfileWidget *prwdgt);
 
-void profilewidget_reverse(struct ProfileWidget *prwdgt);
+void BKE_profilewidget_reset(struct ProfileWidget *prwdgt);
 
-void profilewidget_reset(struct ProfileWidget *prwdgt);
-
-void profilewidget_create_samples(struct ProfileWidget *prwdgt,
+void BKE_profilewidget_create_samples(struct ProfileWidget *prwdgt,
                                   int n_segments,
                                   bool sample_straight_edges,
                                   struct ProfilePoint *r_samples);
 
-void profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
+void BKE_profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
 
 /* Called for a complete update of the widget after modifications */
-void profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
-
-/* Distance in 2D to the next point */
-float profilewidget_distance_to_next_point(const struct ProfileWidget *prwdgt, int i);
+void BKE_profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
 
 /* Need to find the total length of the curve to sample a portion of it */
-float profilewidget_total_length(const struct ProfileWidget *prwdgt);
+float BKE_profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
-void profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
+void BKE_profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
                                                double *x_table_out,
                                                double *y_table_out);
 
 /* Length portion is the fraction of the total path length where we want the location */
-void profilewidget_evaluate_portion(const struct ProfileWidget *prwdgt,
+void BKE_profilewidget_evaluate_length_portion(const struct ProfileWidget *prwdgt,
                                     float length_portion,
                                     float *x_out,
                                     float *y_out);

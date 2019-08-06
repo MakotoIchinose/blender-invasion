@@ -303,7 +303,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Make sure that the profile widget is initialized */
   if (ts->prwdgt == NULL) {
-    ts->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+    ts->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
   }
 }
 

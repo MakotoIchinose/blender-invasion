@@ -3559,7 +3559,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         ToolSettings *ts = scene->toolsettings;
         if ((ts) && (ts->prwdgt == NULL)) {
-          ts->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+          ts->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
         }
       }
     }
@@ -3571,7 +3571,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           if (md->type == eModifierType_Bevel) {
             BevelModifierData *bmd = (BevelModifierData *)md;
             if (!bmd->prwdgt) {
-              bmd->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+              bmd->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
             }
           }
         }

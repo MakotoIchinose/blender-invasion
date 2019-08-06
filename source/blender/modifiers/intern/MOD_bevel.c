@@ -64,7 +64,7 @@ static void initData(ModifierData *md)
   bmd->profile = 0.5f;
   bmd->bevel_angle = DEG2RADF(30.0f);
   bmd->defgrp_name[0] = '\0';
-  bmd->prwdgt = profilewidget_add(PROF_PRESET_LINE);
+  bmd->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
@@ -73,7 +73,7 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
   BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
   modifier_copyData_generic(md_src, md_dst, flag);
-  bmd_dst->prwdgt = profilewidget_copy(bmd_src->prwdgt);
+  bmd_dst->prwdgt = BKE_profilewidget_copy(bmd_src->prwdgt);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -243,7 +243,7 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
 static void freeData(ModifierData *md)
 {
   BevelModifierData *bmd = (BevelModifierData *)md;
-  profilewidget_free(bmd->prwdgt);
+  BKE_profilewidget_free(bmd->prwdgt);
 }
 
 static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED(userRenderParams))

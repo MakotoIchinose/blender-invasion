@@ -4317,8 +4317,8 @@ static void profilewidget_presets_dofunc(bContext *C, void *prwdgt_v, int event)
   ProfileWidget *prwdgt = prwdgt_v;
 
   prwdgt->preset = event;
-  profilewidget_reset(prwdgt);
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_reset(prwdgt);
+  BKE_profilewidget_changed(prwdgt, false);
 
   ED_undo_push(C, "ProfileWidget tools");
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -4366,8 +4366,8 @@ static void profilewidget_tools_dofunc(bContext *C, void *prwdgt_v, int event)
 
   switch (event) {
     case UIPROFILE_FUNC_RESET: /* reset */
-      profilewidget_reset(prwdgt);
-      profilewidget_changed(prwdgt, false);
+      BKE_profilewidget_reset(prwdgt);
+      BKE_profilewidget_changed(prwdgt, false);
       break;
     case UIPROFILE_FUNC_RESET_VIEW: /* reset view to clipping rect */
       prwdgt->view_rect = prwdgt->clip_rect;
@@ -4473,7 +4473,7 @@ static void profilewidget_clipping_toggle(bContext *C, void *cb_v, void *prwdgt_
 
   prwdgt->flag ^= PROF_USE_CLIP;
 
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_changed(prwdgt, false);
   rna_update_cb(C, cb_v, NULL);
 }
 
@@ -4481,8 +4481,8 @@ static void profilewidget_buttons_reverse(bContext *C, void *cb_v, void *prwdgt_
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_reverse(prwdgt);
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_reverse(prwdgt);
+  BKE_profilewidget_changed(prwdgt, false);
   rna_update_cb(C, cb_v, NULL);
 }
 
@@ -4490,8 +4490,8 @@ static void profilewidget_buttons_delete(bContext *C, void *cb_v, void *prwdgt_v
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_remove(prwdgt, SELECT);
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_remove(prwdgt, SELECT);
+  BKE_profilewidget_changed(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
 }
@@ -4500,8 +4500,8 @@ static void profilewidget_buttons_setsharp(bContext *C, void *cb_v, void *prwdgt
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_handle_set(prwdgt, HD_VECT);
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_handle_set(prwdgt, HD_VECT);
+  BKE_profilewidget_changed(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
 }
@@ -4510,8 +4510,8 @@ static void profilewidget_buttons_setcurved(bContext *C, void *cb_v, void *prwdg
 {
   ProfileWidget *prwdgt = prwdgt_v;
 
-  profilewidget_handle_set(prwdgt, HD_AUTO_ANIM);
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_handle_set(prwdgt, HD_AUTO_ANIM);
+  BKE_profilewidget_changed(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
 }
@@ -4519,7 +4519,7 @@ static void profilewidget_buttons_setcurved(bContext *C, void *cb_v, void *prwdg
 static void profilewidget_buttons_update(bContext *C, void *arg1_v, void *prwdgt_v)
 {
   ProfileWidget *prwdgt = prwdgt_v;
-  profilewidget_changed(prwdgt, true);
+  BKE_profilewidget_changed(prwdgt, true);
   rna_update_cb(C, arg1_v, NULL);
 }
 

@@ -67,7 +67,7 @@ void BKE_profilewidget_set_defaults(ProfileWidget *prwdgt)
   prwdgt->changed_timestamp = 0;
 }
 
-void profilewidget_free_data(ProfileWidget *prwdgt)
+void BKE_profilewidget_free_data(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET FREE DATA\n");
@@ -89,18 +89,18 @@ void profilewidget_free_data(ProfileWidget *prwdgt)
   }
 }
 
-void profilewidget_free(ProfileWidget *prwdgt)
+void BKE_profilewidget_free(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET FREE\n");
 #endif
   if (prwdgt) {
-    profilewidget_free_data(prwdgt);
+    BKE_profilewidget_free_data(prwdgt);
     MEM_freeN(prwdgt);
   }
 }
 
-void profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
+void BKE_profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET COPY DATA\n");
@@ -118,7 +118,7 @@ void profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
   }
 }
 
-ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
+ProfileWidget *BKE_profilewidget_copy(const ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET COPY\n");
@@ -126,7 +126,7 @@ ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
 
   if (prwdgt) {
     ProfileWidget *new_prdgt = MEM_dupallocN(prwdgt);
-    profilewidget_copy_data(new_prdgt, prwdgt);
+    BKE_profilewidget_copy_data(new_prdgt, prwdgt);
     return new_prdgt;
   }
   return NULL;
@@ -134,7 +134,7 @@ ProfileWidget *profilewidget_copy(const ProfileWidget *prwdgt)
 
 /** Removes a specific point from the path of control points
  * \note: Requiress profilewidget_changed call after */
-bool profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
+bool BKE_profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 {
   ProfilePoint *pts;
   int a, b, removed = 0;
@@ -170,7 +170,7 @@ bool profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 /** Removes every point in the widget with the supplied flag set, except for the first and last.
  * \param flag: ProfilePoint->flag
  * \note: Requiress profilewidget_changed call after */
-void profilewidget_remove(ProfileWidget *prwdgt, const short flag)
+void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH REMOVE\n");
@@ -203,7 +203,7 @@ void profilewidget_remove(ProfileWidget *prwdgt, const short flag)
  * between is more complex for a profile. We can't just find the new neighbors with X value
  * comparisons. Instead this function checks which line segment is closest to the new point.
  * \note: Requiress profilewidget_changed call after */
-ProfilePoint *profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
+ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 {
   ProfilePoint *new_pt = NULL;
   float new_loc[2] = {x, y};
@@ -261,7 +261,7 @@ ProfilePoint *profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 /** Sets the handle type of the selected control points.
  * \param type: Either HD_VECT or HD_AUTO
  * \note: Requiress profilewidget_changed call after. */
-void profilewidget_handle_set(ProfileWidget *prwdgt, int type)
+void BKE_profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH HANDLE SET\n");
@@ -281,7 +281,7 @@ void profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 
 /** Flips the profile across the diagonal so that its orientation is reversed.
  * \note: Requiress profilewidget_changed call after.  */
-void profilewidget_reverse(ProfileWidget *prwdgt)
+void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH INSERT\n");
@@ -318,7 +318,7 @@ void profilewidget_reverse(ProfileWidget *prwdgt)
 
 /** Resets the profile to the current preset.
  * \note: Requiress profilewidget_changed call after */
-void profilewidget_reset(ProfileWidget *prwdgt)
+void BKE_profilewidget_reset(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH RESET\n");
@@ -560,7 +560,7 @@ static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, c
  * \return r_samples: Fill the array with the sampled locations and if the point corresponds
  *         to a control point, its handle type */
 /* HANS-TODO: This is getting called way too much: when the mouse moves over the bevel modifier UI */
-void profilewidget_create_samples(ProfileWidget *prwdgt,
+void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
                                   int n_segments,
                                   bool sample_straight_edges,
                                   ProfilePoint *r_samples)
@@ -735,7 +735,7 @@ static void profilewidget_make_table(ProfileWidget *prwdgt)
   ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
                                         "high-res table");
 
-  profilewidget_create_samples(prwdgt, n_samples, false, new_table);
+  BKE_profilewidget_create_samples(prwdgt, n_samples, false, new_table);
 
   if (prwdgt->table) {
     MEM_freeN(prwdgt->table);
@@ -758,7 +758,7 @@ static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
   ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
                                         "samples table");
 
-  profilewidget_create_samples(prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES,
+  BKE_profilewidget_create_samples(prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES,
                                new_table);
 
   if (prwdgt->segments) {
@@ -767,7 +767,7 @@ static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
   prwdgt->segments = new_table;
 }
 
-struct ProfileWidget *profilewidget_add(int preset)
+struct ProfileWidget *BKE_profilewidget_add(int preset)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET ADD\n");
@@ -777,7 +777,7 @@ struct ProfileWidget *profilewidget_add(int preset)
 
   BKE_profilewidget_set_defaults(prwdgt);
   prwdgt->preset = preset;
-  profilewidget_reset(prwdgt);
+  BKE_profilewidget_reset(prwdgt);
   profilewidget_make_table(prwdgt);
 
   return prwdgt;
@@ -785,7 +785,7 @@ struct ProfileWidget *profilewidget_add(int preset)
 
 /** Should be called after the widget is changed. Does profile and remove double checks and more
  * importantly recreates the display / evaluation and samples tables */
-void profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
+void BKE_profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
 {
   ProfilePoint *points = prwdgt->path;
   rctf *clipr = &prwdgt->clip_rect;
@@ -842,7 +842,7 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
       }
     }
     if (i != prwdgt->totpoint - 1) {
-      profilewidget_remove(prwdgt, 2);
+      BKE_profilewidget_remove(prwdgt, 2);
     }
   }
 
@@ -858,7 +858,7 @@ void profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
 /** Refreshes the higher resolution table sampled from the input points. A call to this or
  * profilewidget_changed is needed before evaluation functions that use the table. Also sets the
  * number of segments used for the display preview of the locations of the sampled points. */
-void profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
+void BKE_profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH INITIALIZE\n");
@@ -866,13 +866,13 @@ void profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
   prwdgt->totsegments = nsegments;
 
   /* Calculate the higher resolution tables for display and evaluation */
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_changed(prwdgt, false);
 }
 
 /** Gives the distance to the next point in the widget's sampled table, in other words the length
  * of the ith edge of the table.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
-float profilewidget_distance_to_next_point(const ProfileWidget *prwdgt, int i)
+static float profilewidget_distance_to_next_point(const ProfileWidget *prwdgt, int i)
 {
   BLI_assert(prwdgt != NULL);
   BLI_assert(i >= 0);
@@ -888,7 +888,7 @@ float profilewidget_distance_to_next_point(const ProfileWidget *prwdgt, int i)
 
 /** Calculates the total length of the profile, including the curves sampled in the table.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
-float profilewidget_total_length(const ProfileWidget *prwdgt)
+float BKE_profilewidget_total_length(const ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH TOTAL LENGTH\n");
@@ -910,14 +910,14 @@ float profilewidget_total_length(const ProfileWidget *prwdgt)
  * an entire table at once for a speedup if all of the results are going to be used anyway.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
 /* HANS-TODO: Enable this for an "even length sampling" option (and debug it). */
-void profilewidget_create_samples_even_spacing(const ProfileWidget *prwdgt,
+void BKE_profilewidget_create_samples_even_spacing(const ProfileWidget *prwdgt,
                                                double *x_table_out,
                                                double *y_table_out)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH FILL SEGMENT TABLE\n");
 #endif
-  const float total_length = profilewidget_total_length(prwdgt);
+  const float total_length = BKE_profilewidget_total_length(prwdgt);
   const float segment_length = total_length / prwdgt->totsegments;
   float length_travelled = 0.0f;
   float distance_to_next_point = profilewidget_distance_to_next_point(prwdgt, 0);
@@ -953,7 +953,7 @@ void profilewidget_create_samples_even_spacing(const ProfileWidget *prwdgt,
  * and returns the position at that point
  * \param length_portion: The portion (0 to 1) of the path's full length to sample at.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
-void profilewidget_evaluate_portion(const ProfileWidget *prwdgt,
+void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
                                     float length_portion,
                                     float *x_out,
                                     float *y_out)
@@ -961,7 +961,7 @@ void profilewidget_evaluate_portion(const ProfileWidget *prwdgt,
 #if DEBUG_PRWDGT
   printf("PROFILEPATH EVALUATE\n");
 #endif
-  const float total_length = profilewidget_total_length(prwdgt);
+  const float total_length = BKE_profilewidget_total_length(prwdgt);
   float requested_length = length_portion * total_length;
 
   /* Find the last point along the path with a lower length portion than the input */

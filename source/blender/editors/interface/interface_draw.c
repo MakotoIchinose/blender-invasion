@@ -2203,7 +2203,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Draw the path's fill */
   if (prwdgt->table == NULL) {
-    profilewidget_changed(prwdgt, false);
+    BKE_profilewidget_changed(prwdgt, false);
   }
   ProfilePoint *pts = prwdgt->table;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
