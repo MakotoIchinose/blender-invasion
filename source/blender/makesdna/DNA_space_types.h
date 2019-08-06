@@ -247,8 +247,8 @@ typedef struct SpaceOutliner {
   short flag, outlinevis, storeflag;
   char search_flags;
 
-  /* Selection syncing */
-  char sync_flag;
+  /** Selection syncing flag (#WM_OUTLINER_SYNC_SELECT_FROM_OBJECT and similar flags). */
+  char sync_select_dirty;
 
   int filter;
   char filter_state;
@@ -365,17 +365,6 @@ typedef enum eSpaceOutliner_Search_Flags {
   SO_FIND_COMPLETE = (1 << 1),
   SO_SEARCH_RECURSIVE = (1 << 2),
 } eSpaceOutliner_Search_Flags;
-
-/* SpaceOutliner.sync_flag */
-typedef enum eSpaceOutliner_SyncFlag {
-  SO_SYNC_OBJECT = (1 << 0),
-  SO_SYNC_EDIT_BONE = (1 << 1),
-  SO_SYNC_POSE_BONE = (1 << 2),
-  SO_SYNC_SEQUENCE = (1 << 3),
-} eSpaceOutliner_Sync_Flag;
-
-#define SO_SYNC_TO_OUTLINER_ANY \
-  (SO_SYNC_OBJECT | SO_SYNC_EDIT_BONE | SO_SYNC_POSE_BONE | SO_SYNC_SEQUENCE)
 
 /** \} */
 

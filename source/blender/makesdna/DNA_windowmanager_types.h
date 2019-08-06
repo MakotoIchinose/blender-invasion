@@ -138,7 +138,7 @@ typedef struct wmWindowManager {
   short op_undo_depth;
 
   /** Set after selection to notify outliner to sync. Stores type of selection */
-  short sync_select_dirty_flag;
+  short outliner_sync_select_dirty;
 
   /** Operator registry. */
   ListBase operators;
@@ -189,13 +189,17 @@ enum {
   WM_KEYCONFIG_IS_INITIALIZED = (1 << 1),
 };
 
-/* wmWindowManager.sync_select_dirty_flag */
+/* wmWindowManager.outliner_sync_select_dirty */
 enum {
-  WM_SYNC_SELECT_FROM_OBJECT = (1 << 0),
-  WM_SYNC_SELECT_FROM_EDIT_BONE = (1 << 1),
-  WM_SYNC_SELECT_FROM_POSE_BONE = (1 << 2),
-  WM_SYNC_SELECT_FROM_SEQUENCE = (1 << 3),
+  WM_OUTLINER_SYNC_SELECT_FROM_OBJECT = (1 << 0),
+  WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE = (1 << 1),
+  WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE = (1 << 2),
+  WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE = (1 << 3),
 };
+
+#define WM_OUTLINER_SYNC_SELECT_FROM_ALL \
+  (WM_OUTLINER_SYNC_SELECT_FROM_OBJECT | WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE | \
+   WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE | WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE)
 
 #define WM_KEYCONFIG_STR_DEFAULT "blender"
 

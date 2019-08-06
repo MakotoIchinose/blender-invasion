@@ -50,31 +50,31 @@
 void ED_outliner_select_sync_from_object_tag(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wm->sync_select_dirty_flag |= WM_SYNC_SELECT_FROM_OBJECT;
+  wm->outliner_sync_select_dirty |= WM_OUTLINER_SYNC_SELECT_FROM_OBJECT;
 }
 
 void ED_outliner_select_sync_from_edit_bone_tag(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wm->sync_select_dirty_flag |= WM_SYNC_SELECT_FROM_EDIT_BONE;
+  wm->outliner_sync_select_dirty |= WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE;
 }
 
 void ED_outliner_select_sync_from_pose_bone_tag(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wm->sync_select_dirty_flag |= WM_SYNC_SELECT_FROM_POSE_BONE;
+  wm->outliner_sync_select_dirty |= WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE;
 }
 
 void ED_outliner_select_sync_from_sequence_tag(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  wm->sync_select_dirty_flag |= WM_SYNC_SELECT_FROM_SEQUENCE;
+  wm->outliner_sync_select_dirty |= WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE;
 }
 
 bool ED_outliner_select_sync_is_dirty(const bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  return wm->sync_select_dirty_flag != 0;
+  return wm->outliner_sync_select_dirty != 0;
 }
 
 void ED_outliner_select_sync_flag_outliners(const bContext *C)
@@ -89,14 +89,14 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
           SpaceOutliner *soutliner = (SpaceOutliner *)sl;
 
           /* Mark selection state as dirty */
-          soutliner->sync_flag = wm->sync_select_dirty_flag;
+          soutliner->sync_select_dirty = wm->outliner_sync_select_dirty;
         }
       }
     }
   }
 
   /* Clear global sync flag */
-  wm->sync_select_dirty_flag = 0;
+  wm->outliner_sync_select_dirty = 0;
 }
 
 static void outliner_select_sync_to_object(ViewLayer *view_layer,
@@ -170,7 +170,9 @@ static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem
 }
 
 /* Sync selection and active flags from outliner to active view layer, bones, and sequencer */
-static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
+static void outliner_sync_selection_from_outliner(bContext *C,
+                                                  ListBase *tree,
+                                                  const short sync_select_dirty)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -191,7 +193,7 @@ static void outliner_sync_selection_from_outliner(bContext *C, ListBase *tree)
       outliner_select_sync_to_sequence(scene, tselem);
     }
 
-    outliner_sync_selection_from_outliner(C, &te->subtree);
+    outliner_sync_selection_from_outliner(C, &te->subtree, sync_select_dirty);
   }
 }
 
@@ -319,14 +321,14 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 
   Scene *scene = CTX_data_scene(C);
 
-  outliner_sync_selection_from_outliner(C, &soops->tree);
+  outliner_sync_selection_from_outliner(C, &soops->tree, soops->sync_select_dirty);
 
   ED_outliner_select_sync_from_object_tag(C);
   ED_outliner_select_sync_from_edit_bone_tag(C);
   ED_outliner_select_sync_from_pose_bone_tag(C);
   ED_outliner_select_sync_from_sequence_tag(C);
   ED_outliner_select_sync_flag_outliners(C);
-  soops->sync_flag &= ~SO_SYNC_TO_OUTLINER_ANY;
+  soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_ALL;
 
   /* Update editors */
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
@@ -336,12 +338,12 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 
 void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
 {
-  /* If outiner is dirty sync from the current view layer and clear the dirty flag */
-  if (soops->sync_flag & SO_SYNC_TO_OUTLINER_ANY) {
+  /* If outliner is dirty sync from the current view layer and clear the dirty flag. */
+  if (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_ALL) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
 
     outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree);
 
-    soops->sync_flag = 0;
+    soops->sync_select_dirty = 0;
   }
 }
