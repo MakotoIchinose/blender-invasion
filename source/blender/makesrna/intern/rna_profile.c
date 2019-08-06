@@ -72,7 +72,7 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
     prwdgt->flag &= ~PROF_USE_CLIP ;
   }
 
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_changed(prwdgt, false);
 }
 
 static void rna_ProfileWidget_totsegments_set(struct ProfileWidget *prwdgt, int totsegments)
@@ -91,7 +91,7 @@ static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value)
     prwdgt->flag &= ~PROF_SAMPLE_STRAIGHT_EDGES;
   }
 
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_changed(prwdgt, false);
 }
 
 static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt,
@@ -99,7 +99,7 @@ static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt,
                                            PointerRNA *point_ptr)
 {
   ProfilePoint *point = point_ptr->data;
-  if (profilewidget_remove_point(prwdgt, point) == false) {
+  if (BKE_profilewidget_remove_point(prwdgt, point) == false) {
     BKE_report(reports, RPT_ERROR, "Unable to remove path point");
     return;
   }
@@ -115,17 +115,17 @@ static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt,
   if (!prwdgt->table) {
     BKE_report(reports, RPT_ERROR,"ProfileWidget table not initialized, call initialize()");
   }
-  profilewidget_evaluate_portion(prwdgt, length_portion, &location[0], &location[1]);
+  BKE_profilewidget_evaluate_length_portion(prwdgt, length_portion, &location[0], &location[1]);
 }
 
 static void rna_ProfileWidget_initialize(struct ProfileWidget *prwdgt, int totsegments)
 {
-  profilewidget_initialize(prwdgt, (short)totsegments);
+  BKE_profilewidget_initialize(prwdgt, (short)totsegments);
 }
 
 static void rna_ProfileWidget_changed(struct ProfileWidget *prwdgt)
 {
-  profilewidget_changed(prwdgt, false);
+  BKE_profilewidget_changed(prwdgt, false);
 }
 
 #else
@@ -171,7 +171,7 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_struct_sdna(srna, "ProfileWidget");
   RNA_def_struct_ui_text(srna, "Profile Point", "Collection of Profile Points");
 
-  func = RNA_def_function(srna, "add", "profilewidget_insert");
+  func = RNA_def_function(srna, "add", "BKE_profilewidget_insert");
   RNA_def_function_ui_description(func, "Add point to the profile widget");
   parm = RNA_def_float(func, "x", 0.0f, -FLT_MAX, FLT_MAX, "X Position",
                        "X Position for new point", -FLT_MAX, FLT_MAX);
