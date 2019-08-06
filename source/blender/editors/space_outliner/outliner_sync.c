@@ -89,7 +89,7 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
           SpaceOutliner *soutliner = (SpaceOutliner *)sl;
 
           /* Mark selection state as dirty */
-          soutliner->sync_select_dirty = wm->outliner_sync_select_dirty;
+          soutliner->sync_select_dirty |= wm->outliner_sync_select_dirty;
         }
       }
     }
