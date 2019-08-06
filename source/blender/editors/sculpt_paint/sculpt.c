@@ -9243,9 +9243,6 @@ void ED_sculpt_init_transform(const struct bContext *C, bool transform_pivot_onl
   }
 
   sculpt_filter_cache_init(ob, sd, false, false);
-
-  printf("TOTVERT %d\n", sculpt_vertex_count_get(ss));
-  printf("TOTVERT  MAL %d\n", ss->totvert);
 }
 
 typedef enum paintSymmAreas {
@@ -9337,7 +9334,7 @@ static void sculpt_transform_task_cb(void *__restrict userdata,
     float val[3], orig_co[3], disp[3], final_pivot_pos[3], transform[4][4], transform_aux[4][4],
         rot[4], co_w[3];
     float transform_aux_inv[4][4], final_disp[3];
-    float fade = *vd.mask;
+    float fade = vd.mask ? *vd.mask : 0.0f;
     fade = 1 - fade;
     copy_v3_v3(orig_co, ss->filter_cache->orco[vd.index]);
     char symm_area = sculpt_get_vertex_symm_area(ss, orig_co, ss->init_pivot_pos);
