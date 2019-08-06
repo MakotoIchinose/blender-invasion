@@ -133,7 +133,7 @@ static void outliner_select_sync_to_edit_bone(TreeElement *te, TreeStoreElem *ts
   }
 }
 
-static void outliner_select_sync_to_pose_bone(bContext *C, TreeElement *te, TreeStoreElem *tselem)
+static void outliner_select_sync_to_pose_bone(TreeElement *te, TreeStoreElem *tselem)
 {
   Object *ob = (Object *)tselem->id;
   bArmature *arm = ob->data;
@@ -150,7 +150,7 @@ static void outliner_select_sync_to_pose_bone(bContext *C, TreeElement *te, Tree
 
   /* TODO: (Zachman) move these updates */
   DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, ob);
 }
 
 static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem)
@@ -170,12 +170,11 @@ static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem
 }
 
 /* Sync selection and active flags from outliner to active view layer, bones, and sequencer */
-static void outliner_sync_selection_from_outliner(bContext *C,
+static void outliner_sync_selection_from_outliner(Scene *scene,
+                                                  ViewLayer *view_layer,
                                                   ListBase *tree,
                                                   const short sync_select_dirty)
 {
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
@@ -187,13 +186,13 @@ static void outliner_sync_selection_from_outliner(bContext *C,
       outliner_select_sync_to_edit_bone(te, tselem);
     }
     else if (tselem->type == TSE_POSE_CHANNEL) {
-      outliner_select_sync_to_pose_bone(C, te, tselem);
+      outliner_select_sync_to_pose_bone(te, tselem);
     }
     else if (tselem->type == TSE_SEQUENCE) {
       outliner_select_sync_to_sequence(scene, tselem);
     }
 
-    outliner_sync_selection_from_outliner(C, &te->subtree, sync_select_dirty);
+    outliner_sync_selection_from_outliner(scene, view_layer, &te->subtree, sync_select_dirty);
   }
 }
 
@@ -320,8 +319,9 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
   }
 
   Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  outliner_sync_selection_from_outliner(C, &soops->tree, soops->sync_select_dirty);
+  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, soops->sync_select_dirty);
 
   ED_outliner_select_sync_from_object_tag(C);
   ED_outliner_select_sync_from_edit_bone_tag(C);
