@@ -67,6 +67,10 @@ GHOST_XrContext::~GHOST_XrContext()
 {
   // TODO OpenXR calls here can fail, but we should not throw an exception in the destructor.
 
+  /* Destroy session data first. Otherwise xrDestroyInstance will implicitly do it, before the
+   * session had a chance to do so explicitly. */
+  m_session = nullptr;
+
   if (m_oxr->debug_messenger != XR_NULL_HANDLE) {
     assert(m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn != nullptr);
     m_oxr->s_xrDestroyDebugUtilsMessengerEXT_fn(m_oxr->debug_messenger);
