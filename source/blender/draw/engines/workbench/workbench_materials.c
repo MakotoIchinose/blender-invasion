@@ -78,6 +78,9 @@ void workbench_material_update_data(WORKBENCH_PrivateData *wpd,
         data->roughness = sqrtf(mat->roughness); /* Remap to disney roughness. */
       }
     }
+    else {
+      copy_v3_fl(data->base_color, 0.8f);
+    }
   }
 }
 
