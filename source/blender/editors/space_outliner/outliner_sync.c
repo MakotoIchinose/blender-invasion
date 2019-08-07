@@ -178,6 +178,8 @@ static void outliner_select_sync_to_pose_bone(TreeElement *te, TreeStoreElem *ts
   bArmature *arm = ob->data;
   bPoseChannel *pchan = (bPoseChannel *)te->directdata;
 
+  short bone_flag = pchan->bone->flag;
+
   if (PBONE_SELECTABLE(arm, pchan->bone)) {
     if (tselem->flag & TSE_SELECTED) {
       pchan->bone->flag |= BONE_SELECTED;
@@ -187,8 +189,11 @@ static void outliner_select_sync_to_pose_bone(TreeElement *te, TreeStoreElem *ts
     }
   }
 
-  DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
-  WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, ob);
+  /* Tag if selection changed */
+  if (bone_flag != pchan->bone->flag) {
+    DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
+    WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, ob);
+  }
 }
 
 static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem)
