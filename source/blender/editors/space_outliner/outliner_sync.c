@@ -193,7 +193,7 @@ static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem
   }
 }
 
-/* Sync selection and active flags from outliner to active view layer, bones, and sequencer */
+/* Sync select and active flags from outliner to active view layer, bones, and sequencer */
 static void outliner_sync_selection_from_outliner(Scene *scene,
                                                   ViewLayer *view_layer,
                                                   ListBase *tree,
@@ -300,38 +300,52 @@ static void outliner_select_sync_from_sequence(SpaceOutliner *soops,
   }
 }
 
-/* Sync selection and active flags from active view layer, bones, and sequences to the outliner */
-static void outliner_sync_selection_to_outliner(const bContext *C,
-                                                ViewLayer *view_layer,
+/* Contains active object, bones, and sequence for syncing to prevent getting active data
+ * repeatedly throughout syncing to the outliner */
+typedef struct SyncSelectActiveData {
+  Object *object;
+  EditBone *edit_bone;
+  bPoseChannel *pose_channel;
+  Sequence *sequence;
+} SyncSelectActiveData;
+
+/* Sync select and active flags from active view layer, bones, and sequences to the outliner */
+static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
                                                 SpaceOutliner *soops,
                                                 ListBase *tree,
+                                                SyncSelectActiveData active_data,
                                                 SyncSelectTypes sync_types)
 {
-  Scene *scene = CTX_data_scene(C);
-  Object *obact = OBACT(view_layer);
-  EditBone *ebone_active = CTX_data_active_bone(C);
-  bPoseChannel *pchan_active = CTX_data_active_pose_bone(C);
-  Sequence *sequence_active = BKE_sequencer_active_get(scene);
-
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
     if (sync_types.object && tselem->type == 0 && te->idcode == ID_OB) {
-      outliner_select_sync_from_object(view_layer, soops, obact, te, tselem);
+      outliner_select_sync_from_object(view_layer, soops, active_data.object, te, tselem);
     }
     else if (sync_types.edit_bone && tselem->type == TSE_EBONE) {
-      outliner_select_sync_from_edit_bone(soops, ebone_active, te, tselem);
+      outliner_select_sync_from_edit_bone(soops, active_data.edit_bone, te, tselem);
     }
     else if (sync_types.pose_bone && tselem->type == TSE_POSE_CHANNEL) {
-      outliner_select_sync_from_pose_bone(soops, pchan_active, te, tselem);
+      outliner_select_sync_from_pose_bone(soops, active_data.pose_channel, te, tselem);
     }
     else if (sync_types.sequence && tselem->type == TSE_SEQUENCE) {
-      outliner_select_sync_from_sequence(soops, sequence_active, tselem);
+      outliner_select_sync_from_sequence(soops, active_data.sequence, tselem);
     }
 
     /* Sync subtree elements */
-    outliner_sync_selection_to_outliner(C, view_layer, soops, &te->subtree, sync_types);
+    outliner_sync_selection_to_outliner(view_layer, soops, &te->subtree, active_data, sync_types);
   }
+}
+
+/* Get active data from context */
+static void get_sync_select_active_data(const bContext *C, SyncSelectActiveData *active_data)
+{
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  active_data->object = OBACT(view_layer);
+  active_data->edit_bone = CTX_data_active_bone(C);
+  active_data->pose_channel = CTX_data_active_pose_bone(C);
+  active_data->sequence = BKE_sequencer_active_get(scene);
 }
 
 /* Set clean outliner and mark other outliners for syncing */
@@ -360,17 +374,23 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
 }
 
+/* If outliner is dirty sync selection from view layer and sequwncer */
 void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
 {
-  /* If outliner is dirty sync from the current view layer and clear the dirty flag. */
   if (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_ALL) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
 
+    /* Set which types of data to sync from sync dirty flag and outliner display mode */
     SyncSelectTypes sync_types;
     set_sync_select_types(soops, &sync_types);
 
-    outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree, sync_types);
+    /* Store active object, bones, and sequence */
+    SyncSelectActiveData active_data;
+    get_sync_select_active_data(C, &active_data);
 
+    outliner_sync_selection_to_outliner(view_layer, soops, &soops->tree, active_data, sync_types);
+
+    /* Keep any unsynced data in the dirty flag */
     if (sync_types.object) {
       soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_OBJECT;
     }
