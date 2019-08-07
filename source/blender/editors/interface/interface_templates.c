@@ -4329,6 +4329,7 @@ static uiBlock *profilewidget_presets_func(bContext *C, ARegion *ar, ProfileWidg
   uiBlock *block;
   short yco = 0;
   short menuwidth = 12 * UI_UNIT_X;
+  menuwidth = 0;
 
   block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
   UI_block_func_butmenu_set(block, profilewidget_presets_dofunc, prwdgt);
@@ -4548,7 +4549,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   /* HANS-QUESTION: I'm guessing this is the newer way to do this. I'd be happy to switch
    * everythingn here to this method, as it seems simpler, more elegant, and more linked to the RNA
    * system anyway, but this doesn't redraw the widget
-  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE); */
+  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE);*/
 
   row = uiLayoutRow(layout, false);
 
@@ -4570,7 +4571,7 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   sub = uiLayoutRow(row, true);
   uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);
 
-  /* Reset view, vector handle, auto handle, auto clamped handle, reset curve */
+  /* Reset view, reset curve */
   bt = uiDefIconBlockBut(block, profilewidget_buttons_tools, prwdgt, 0, 0, 0, 0, UI_UNIT_X,
                          UI_UNIT_X, TIP_("Tools"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);

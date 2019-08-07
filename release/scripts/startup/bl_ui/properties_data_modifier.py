@@ -163,23 +163,25 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Width Method:")
         layout.row().prop(md, "offset_type", expand=True)
 
-        layout.row().prop(md, "face_strength_mode", expand=False)
-
-        layout.label(text="Miter Patterns")
+#        layout.label(text="Miter Methods:")
         layout.row().prop(md, "miter_outer")
         layout.row().prop(md, "miter_inner")
         if md.miter_inner == 'MITER_PATCH' or md.miter_inner == 'MITER_ARC':
             layout.row().prop(md, "spread")
 
-        layout.label(text="Vertex Mesh Method")
+        layout.label(text="Face Strength Mode:")
+        layout.row().prop(md, "face_strength_mode", expand=True)
+
+        layout.label(text="Intersection Method:")
         layout.row().prop(md, "vmesh_method", expand=True)
         layout.row().prop(md, "use_custom_profile")
-        if md.use_custom_profile:
-            layout.template_profilewidget(md, "prwdgt")
-            # If the number of segments has changed update the table to show the new sampled
-            # segment locations on the widget
-            if md.prwdgt.totsegments != md.segments:
-                md.prwdgt.initialize(md.segments)
+        row = layout.row()
+        row.enabled = md.use_custom_profile
+        layout.template_profilewidget(md, "prwdgt")
+        # If the number of segments has changed update the table to show the new sampled
+        # segment locations on the widget
+        if md.prwdgt.totsegments != md.segments:
+            md.prwdgt.initialize(md.segments)
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

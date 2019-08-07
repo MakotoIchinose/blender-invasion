@@ -52,9 +52,9 @@ void BKE_profilewidget_reverse(struct ProfileWidget *prwdgt);
 void BKE_profilewidget_reset(struct ProfileWidget *prwdgt);
 
 void BKE_profilewidget_create_samples(struct ProfileWidget *prwdgt,
-                                  int n_segments,
-                                  bool sample_straight_edges,
-                                  struct ProfilePoint *r_samples);
+                                      int n_segments,
+                                      bool sample_straight_edges,
+                                      struct ProfilePoint *r_samples);
 
 void BKE_profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
 
@@ -65,12 +65,12 @@ void BKE_profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doub
 float BKE_profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
 void BKE_profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
-                                               double *x_table_out,
-                                               double *y_table_out);
+                                                   double *x_table_out,
+                                                   double *y_table_out);
 
 /* Length portion is the fraction of the total path length where we want the location */
 void BKE_profilewidget_evaluate_length_portion(const struct ProfileWidget *prwdgt,
-                                    float length_portion,
-                                    float *x_out,
-                                    float *y_out);
+                                               float length_portion,
+                                               float *x_out,
+                                               float *y_out);
 #endif
