@@ -748,13 +748,13 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   }
 }
 
-void wm_draw_upside_down(int sizex, int sizey)
+void wm_draw_upside_down(int sizex, int sizey, bool to_srgb)
 {
   GPUVertFormat *format = immVertexFormat();
   uint texcoord = GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_2D_IMAGE);
+  immBindBuiltinProgram(to_srgb ? GPU_SHADER_2D_IMAGE_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE);
 
   /* wmOrtho for the screen has this same offset */
   const float halfx = GLA_PIXEL_OFS / sizex;
@@ -804,7 +804,7 @@ static void wm_draw_window_upside_down_onscreen(bContext *C, wmWindow *win)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GPU_texture_opengl_bindcode(texture));
 
-    wm_draw_upside_down(win->sizex, win->sizey);
+    wm_draw_upside_down(win->sizex, win->sizey, false);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 

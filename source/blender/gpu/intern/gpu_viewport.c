@@ -505,7 +505,7 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   }
 }
 
-void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+void GPU_viewport_draw_to_screen_ex(GPUViewport *viewport, const rcti *rect, bool to_srgb)
 {
   DefaultFramebufferList *dfbl = viewport->fbl;
 
@@ -532,7 +532,8 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   float y1 = rect->ymin;
   float y2 = rect->ymin + h;
 
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
+  GPUShader *shader = GPU_shader_get_builtin_shader(
+      to_srgb ? GPU_SHADER_2D_IMAGE_RECT_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE_RECT_COLOR);
   GPU_shader_bind(shader);
 
   GPU_texture_bind(color, 0);
@@ -548,6 +549,11 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
 
   GPU_texture_unbind(color);
+}
+
+void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+{
+  GPU_viewport_draw_to_screen_ex(viewport, rect, false);
 }
 
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))
