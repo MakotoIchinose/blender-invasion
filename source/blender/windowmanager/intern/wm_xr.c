@@ -308,6 +308,7 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   BKE_screen_view3d_shading_init(&shading);
   shading.flag |= V3D_SHADING_WORLD_ORIENTATION;
+  shading.flag &= ~V3D_SHADING_SPECULAR_HIGHLIGHT;
   shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   CTX_data_scene(C),
