@@ -3634,7 +3634,7 @@ void draw_outliner(const bContext *C)
 
   outliner_build_tree(mainvar, scene, view_layer, soops, ar);  // always
 
-  /* If global sync select is dirty flag other outliners */
+  /* If global sync select is dirty, flag other outliners */
   if (ED_outliner_select_sync_is_dirty(C)) {
     ED_outliner_select_sync_flag_outliners(C);
   }

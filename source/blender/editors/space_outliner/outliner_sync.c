@@ -47,6 +47,7 @@
 
 #include "outliner_intern.h"
 
+/* Functions for tagging outliner selection syncing is dirty from operators */
 void ED_outliner_select_sync_from_object_tag(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -74,9 +75,10 @@ void ED_outliner_select_sync_from_sequence_tag(bContext *C)
 bool ED_outliner_select_sync_is_dirty(const bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  return wm->outliner_sync_select_dirty != 0;
+  return wm->outliner_sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_ALL;
 }
 
+/* Copy sync select dirty flag from window manager to all outliners to be synced lazily on draw */
 void ED_outliner_select_sync_flag_outliners(const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
@@ -88,7 +90,6 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
         if (sl->spacetype == SPACE_OUTLINER) {
           SpaceOutliner *soutliner = (SpaceOutliner *)sl;
 
-          /* Mark selection state as dirty */
           soutliner->sync_select_dirty |= wm->outliner_sync_select_dirty;
         }
       }
