@@ -100,9 +100,11 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
   wm->outliner_sync_select_dirty = 0;
 }
 
-/* Outliner sync select dirty flags are not enough to determine which types to sync,
+/**
+ * Outliner sync select dirty flags are not enough to determine which types to sync,
  * outliner display mode also needs to be considered. This stores the types of data
- * to sync to increase code clarity */
+ * to sync to increase code clarity.
+ */
 typedef struct SyncSelectTypes {
   bool object;
   bool edit_bone;
@@ -110,7 +112,7 @@ typedef struct SyncSelectTypes {
   bool sequence;
 } SyncSelectTypes;
 
-/* Set which types of data to sync when syncing selection from the outliner */
+/** Set which types of data to sync when syncing selection from the outliner. */
 static void outliner_sync_select_from_outliner_set_types(SpaceOutliner *soops,
                                                          SyncSelectTypes *sync_types)
 {
@@ -122,8 +124,10 @@ static void outliner_sync_select_from_outliner_set_types(SpaceOutliner *soops,
   sync_types->sequence = sequence_view;
 }
 
-/* Current dirty flags and outliner display mode determine which type of syncing should occur.
- * This is to ensure sync flag data is not lost on sync in the wrong display mode */
+/**
+ * Current dirty flags and outliner display mode determine which type of syncing should occur.
+ * This is to ensure sync flag data is not lost on sync in the wrong display mode.
+ */
 static void outliner_sync_select_to_outliner_set_types(SpaceOutliner *soops,
                                                        SyncSelectTypes *sync_types)
 {
@@ -212,26 +216,26 @@ static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem
   }
 }
 
-/* Sync select and active flags from outliner to active view layer, bones, and sequencer */
+/** Sync select and active flags from outliner to active view layer, bones, and sequencer. */
 static void outliner_sync_selection_from_outliner(Scene *scene,
                                                   ViewLayer *view_layer,
                                                   ListBase *tree,
-                                                  SyncSelectTypes sync_types)
+                                                  const SyncSelectTypes *sync_types)
 {
 
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    if (sync_types.object && (tselem->type == 0 && te->idcode == ID_OB)) {
+    if (sync_types->object && (tselem->type == 0 && te->idcode == ID_OB)) {
       outliner_select_sync_to_object(view_layer, te, tselem);
     }
-    else if (sync_types.edit_bone && tselem->type == TSE_EBONE) {
+    else if (sync_types->edit_bone && tselem->type == TSE_EBONE) {
       outliner_select_sync_to_edit_bone(te, tselem);
     }
-    else if (sync_types.pose_bone && tselem->type == TSE_POSE_CHANNEL) {
+    else if (sync_types->pose_bone && tselem->type == TSE_POSE_CHANNEL) {
       outliner_select_sync_to_pose_bone(te, tselem);
     }
-    else if (sync_types.sequence && tselem->type == TSE_SEQUENCE) {
+    else if (sync_types->sequence && tselem->type == TSE_SEQUENCE) {
       outliner_select_sync_to_sequence(scene, tselem);
     }
 
@@ -253,7 +257,7 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
   SyncSelectTypes sync_types;
   outliner_sync_select_from_outliner_set_types(soops, &sync_types);
 
-  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, sync_types);
+  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, &sync_types);
 
   /* Set global sync select flag based on outliner selection type */
   if (sync_types.object) {
@@ -357,8 +361,10 @@ static void outliner_select_sync_from_sequence(SpaceOutliner *soops,
   }
 }
 
-/* Contains active object, bones, and sequence for syncing to prevent getting active data
- * repeatedly throughout syncing to the outliner */
+/**
+ * Contains active object, bones, and sequence for syncing to prevent getting active data
+ * repeatedly throughout syncing to the outliner.
+ */
 typedef struct SyncSelectActiveData {
   Object *object;
   EditBone *edit_bone;
@@ -366,27 +372,35 @@ typedef struct SyncSelectActiveData {
   Sequence *sequence;
 } SyncSelectActiveData;
 
-/* Sync select and active flags from active view layer, bones, and sequences to the outliner */
+/** Sync select and active flags from active view layer, bones, and sequences to the outliner. */
 static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
                                                 SpaceOutliner *soops,
                                                 ListBase *tree,
                                                 SyncSelectActiveData active_data,
-                                                SyncSelectTypes sync_types)
+                                                const SyncSelectTypes *sync_types)
 {
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    if (sync_types.object && tselem->type == 0 && te->idcode == ID_OB) {
-      outliner_select_sync_from_object(view_layer, soops, active_data.object, te, tselem);
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      if (sync_types->object) {
+        outliner_select_sync_from_object(view_layer, soops, active_data.object, te, tselem);
+      }
     }
-    else if (sync_types.edit_bone && tselem->type == TSE_EBONE) {
-      outliner_select_sync_from_edit_bone(soops, active_data.edit_bone, te, tselem);
+    else if (tselem->type == TSE_EBONE) {
+      if (sync_types->edit_bone) {
+        outliner_select_sync_from_edit_bone(soops, active_data.edit_bone, te, tselem);
+      }
     }
-    else if (sync_types.pose_bone && tselem->type == TSE_POSE_CHANNEL) {
-      outliner_select_sync_from_pose_bone(soops, active_data.pose_channel, te, tselem);
+    else if (tselem->type == TSE_POSE_CHANNEL) {
+      if (sync_types->pose_bone) {
+        outliner_select_sync_from_pose_bone(soops, active_data.pose_channel, te, tselem);
+      }
     }
-    else if (sync_types.sequence && tselem->type == TSE_SEQUENCE) {
-      outliner_select_sync_from_sequence(soops, active_data.sequence, tselem);
+    else if (tselem->type == TSE_SEQUENCE) {
+      if (sync_types->sequence) {
+        outliner_select_sync_from_sequence(soops, active_data.sequence, tselem);
+      }
     }
 
     /* Sync subtree elements */
@@ -419,7 +433,7 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
     SyncSelectActiveData active_data;
     get_sync_select_active_data(C, &active_data);
 
-    outliner_sync_selection_to_outliner(view_layer, soops, &soops->tree, active_data, sync_types);
+    outliner_sync_selection_to_outliner(view_layer, soops, &soops->tree, active_data, &sync_types);
 
     /* Keep any unsynced data in the dirty flag */
     if (sync_types.object) {
