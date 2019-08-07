@@ -375,9 +375,9 @@ int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata), Object *ob, int b
   }
 
   GPUBatch *gb = GPU_batch_create_ex(
-      GPU_PRIM_POINTS, vbo, 0, GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
+      GPU_PRIM_POINTS, vbo, 0, GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
   GPUBatch *gb2 = GPU_batch_create_ex(
-      GPU_PRIM_POINTS, vbo2, 0, GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
+      GPU_PRIM_POINTS, vbo2, 0, GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 
   LANPR_BatchItem *bi = BLI_mempool_alloc(lanpr_share.mp_batch_list);
   BLI_addtail(&lanpr_share.dpix_batch_list, bi);
@@ -442,9 +442,9 @@ void lanpr_create_atlas_intersection_preview(void *UNUSED(vedata), int begin_ind
     GPU_vertbuf_attr_set(vbo2, attr_id2.pos, i, co);
   }
   rb->DPIXIntersectionTransformBatch = GPU_batch_create_ex(
-      GPU_PRIM_POINTS, vbo, 0, GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
+      GPU_PRIM_POINTS, vbo, 0, GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
   rb->DPIXIntersectionBatch = GPU_batch_create_ex(
-      GPU_PRIM_POINTS, vbo2, 0, GPU_USAGE_STATIC | GPU_BATCH_OWNS_VBO);
+      GPU_PRIM_POINTS, vbo2, 0, GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 }
 
 void lanpr_dpix_draw_scene(LANPR_TextureList *txl,

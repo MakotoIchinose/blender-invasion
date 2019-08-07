@@ -132,6 +132,23 @@ static void lanpr_engine_init(void *ved)
   lanpr_share.init_complete = 1;
 }
 
+static void lanpr_dpix_batch_free(void){
+  LANPR_BatchItem *dpbi;
+    while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) != NULL) {
+      GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
+      GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
+    }
+    LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+    if (rb) {
+      if (rb->DPIXIntersectionBatch) {
+        GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
+      }
+      if (rb->DPIXIntersectionTransformBatch) {
+        GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionTransformBatch);
+      }
+    }
+}
+
 static void lanpr_engine_free(void)
 {
   DRW_SHADER_FREE_SAFE(lanpr_share.multichannel_shader);
@@ -143,12 +160,7 @@ static void lanpr_engine_free(void)
   DRW_SHADER_FREE_SAFE(lanpr_share.edge_thinning_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.software_shader);
 
-  BLI_mempool *mp = lanpr_share.mp_batch_list;
-
-  if (mp) {
-    BLI_mempool_destroy(mp);
-    mp = NULL;
-  }
+  lanpr_dpix_batch_free();
 
   if (lanpr_share.render_buffer_shared) {
     LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared;
@@ -158,6 +170,12 @@ static void lanpr_engine_free(void)
 
     MEM_freeN(rb);
     lanpr_share.render_buffer_shared = NULL;
+  }
+
+  BLI_mempool *mp = lanpr_share.mp_batch_list;
+
+  if (mp) {
+    BLI_mempool_destroy(mp);
   }
 }
 
@@ -390,23 +408,8 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_nl = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_nr = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
-
-      LANPR_BatchItem *dpbi;
-      while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) != NULL) {
-        GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
-        GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
-      }
-      LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
-      if (rb) {
-        if (rb->DPIXIntersectionBatch) {
-          GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
-          rb->DPIXIntersectionBatch = 0;
-        }
-        if (rb->DPIXIntersectionTransformBatch) {
-          GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionTransformBatch);
-          rb->DPIXIntersectionTransformBatch = 0;
-        }
-      }
+      
+      lanpr_dpix_batch_free();
 
       BLI_mempool_clear(lanpr_share.mp_batch_list);
     }
