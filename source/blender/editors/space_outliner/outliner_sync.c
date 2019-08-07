@@ -99,6 +99,30 @@ void ED_outliner_select_sync_flag_outliners(const bContext *C)
   wm->outliner_sync_select_dirty = 0;
 }
 
+/* Outliner sync select dirty flags are not enough to determine which types to sync,
+ * outliner display mode also needs to be considered. This stores the types of data
+ * to sync to increase code clarity */
+typedef struct SyncSelectTypes {
+  bool object;
+  bool edit_bone;
+  bool pose_bone;
+  bool sequence;
+} SyncSelectTypes;
+
+/* Current dirty flags and outliner display mode determine which type of syncing should occur.
+ * This is to ensure sync flag data is not lost */
+static void set_sync_select_types(SpaceOutliner *soops, SyncSelectTypes *sync_types)
+{
+  sync_types->object = (soops->outlinevis != SO_SEQUENCE) &&
+                       (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_OBJECT);
+  sync_types->edit_bone = (soops->outlinevis != SO_SEQUENCE) &&
+                          (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE);
+  sync_types->pose_bone = (soops->outlinevis != SO_SEQUENCE) &&
+                          (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE);
+  sync_types->sequence = (soops->outlinevis == SO_SEQUENCE) &&
+                         (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE);
+}
+
 static void outliner_select_sync_to_object(ViewLayer *view_layer,
                                            TreeElement *te,
                                            TreeStoreElem *tselem)
@@ -280,7 +304,8 @@ static void outliner_select_sync_from_sequence(SpaceOutliner *soops,
 static void outliner_sync_selection_to_outliner(const bContext *C,
                                                 ViewLayer *view_layer,
                                                 SpaceOutliner *soops,
-                                                ListBase *tree)
+                                                ListBase *tree,
+                                                SyncSelectTypes sync_types)
 {
   Scene *scene = CTX_data_scene(C);
   Object *obact = OBACT(view_layer);
@@ -291,22 +316,21 @@ static void outliner_sync_selection_to_outliner(const bContext *C,
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    /* Sync objects */
-    if (tselem->type == 0 && te->idcode == ID_OB) {
+    if (sync_types.object && tselem->type == 0 && te->idcode == ID_OB) {
       outliner_select_sync_from_object(view_layer, soops, obact, te, tselem);
     }
-    else if (tselem->type == TSE_EBONE) {
+    else if (sync_types.edit_bone && tselem->type == TSE_EBONE) {
       outliner_select_sync_from_edit_bone(soops, ebone_active, te, tselem);
     }
-    else if (tselem->type == TSE_POSE_CHANNEL) {
+    else if (sync_types.pose_bone && tselem->type == TSE_POSE_CHANNEL) {
       outliner_select_sync_from_pose_bone(soops, pchan_active, te, tselem);
     }
-    else if (tselem->type == TSE_SEQUENCE) {
+    else if (sync_types.sequence && tselem->type == TSE_SEQUENCE) {
       outliner_select_sync_from_sequence(soops, sequence_active, tselem);
     }
 
     /* Sync subtree elements */
-    outliner_sync_selection_to_outliner(C, view_layer, soops, &te->subtree);
+    outliner_sync_selection_to_outliner(C, view_layer, soops, &te->subtree, sync_types);
   }
 }
 
@@ -342,8 +366,22 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
   if (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_ALL) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
 
-    outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree);
+    SyncSelectTypes sync_types;
+    set_sync_select_types(soops, &sync_types);
 
-    soops->sync_select_dirty = 0;
+    outliner_sync_selection_to_outliner(C, view_layer, soops, &soops->tree, sync_types);
+
+    if (sync_types.object) {
+      soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_OBJECT;
+    }
+    if (sync_types.edit_bone) {
+      soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE;
+    }
+    if (sync_types.pose_bone) {
+      soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE;
+    }
+    if (sync_types.sequence) {
+      soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE;
+    }
   }
 }

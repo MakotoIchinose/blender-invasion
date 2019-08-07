@@ -1421,7 +1421,6 @@ static const EnumPropertyItem *object_select_menu_enum_itemf(bContext *C,
   return item;
 }
 
-/* TODO (Nathan) ask about this op */
 static int object_select_menu_exec(bContext *C, wmOperator *op)
 {
   const int name_index = RNA_enum_get(op->ptr, "name");
