@@ -1159,7 +1159,7 @@ NODE_DEFINE(WhiteNoiseTextureNode)
   SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
   SOCKET_IN_FLOAT(w, "W", 0.0f);
 
-  SOCKET_OUT_FLOAT(fac, "Fac");
+  SOCKET_OUT_FLOAT(value, "Value");
 
   return type;
 }
@@ -1172,13 +1172,13 @@ void WhiteNoiseTextureNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
   ShaderInput *w_in = input("W");
-  ShaderOutput *fac_out = output("Fac");
+  ShaderOutput *value_out = output("Value");
 
   compiler.add_node(NODE_TEX_WHITE_NOISE,
                     dimensions,
                     compiler.stack_assign(vector_in),
                     compiler.stack_assign(w_in));
-  compiler.add_node(NODE_TEX_WHITE_NOISE, compiler.stack_assign(fac_out));
+  compiler.add_node(NODE_TEX_WHITE_NOISE, compiler.stack_assign(value_out));
 }
 
 void WhiteNoiseTextureNode::compile(OSLCompiler &compiler)

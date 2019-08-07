@@ -27,7 +27,7 @@ static bNodeSocketTemplate sh_node_tex_white_noise_in[] = {
     {-1, 0, ""}};
 
 static bNodeSocketTemplate sh_node_tex_white_noise_out[] = {
-    {SOCK_FLOAT, 0, N_("Fac"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
+    {SOCK_FLOAT, 0, N_("Value")},
     {-1, 0, ""},
 };
 
@@ -44,10 +44,10 @@ static int gpu_shader_tex_white_noise(GPUMaterial *mat,
 {
   static const char *names[] = {
       "",
-      "white_noise_1D",
-      "white_noise_2D",
-      "white_noise_3D",
-      "white_noise_4D",
+      "node_white_noise_1d",
+      "node_white_noise_2d",
+      "node_white_noise_3d",
+      "node_white_noise_4d",
   };
 
   GPU_stack_link(mat, node, names[node->custom1], in, out);
@@ -56,11 +56,11 @@ static int gpu_shader_tex_white_noise(GPUMaterial *mat,
 
 static void node_shader_update_tex_white_noise(bNodeTree *UNUSED(ntree), bNode *node)
 {
-  bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 0);
-  bNodeSocket *inWSock = BLI_findlink(&node->inputs, 1);
+  bNodeSocket *sockVector = nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *sockW = nodeFindSocket(node, SOCK_IN, "W");
 
-  nodeSetSocketAvailability(inVecSock, node->custom1 != 1);
-  nodeSetSocketAvailability(inWSock, node->custom1 == 1 || node->custom1 == 4);
+  nodeSetSocketAvailability(sockVector, node->custom1 != 1);
+  nodeSetSocketAvailability(sockW, node->custom1 == 1 || node->custom1 == 4);
 }
 
 void register_node_type_sh_tex_white_noise(void)
@@ -70,7 +70,6 @@ void register_node_type_sh_tex_white_noise(void)
   sh_node_type_base(&ntype, SH_NODE_TEX_WHITE_NOISE, "White Noise Texture", NODE_CLASS_TEXTURE, 0);
   node_type_socket_templates(&ntype, sh_node_tex_white_noise_in, sh_node_tex_white_noise_out);
   node_type_init(&ntype, node_shader_init_tex_white_noise);
-  node_type_storage(&ntype, "", NULL, NULL);
   node_type_gpu(&ntype, gpu_shader_tex_white_noise);
   node_type_update(&ntype, node_shader_update_tex_white_noise);
 

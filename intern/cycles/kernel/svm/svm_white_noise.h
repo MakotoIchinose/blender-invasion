@@ -20,33 +20,33 @@ ccl_device void svm_node_tex_white_noise(KernelGlobals *kg,
                                          ShaderData *sd,
                                          float *stack,
                                          uint dimensions,
-                                         uint vec_offset,
+                                         uint vector_offset,
                                          uint w_offset,
                                          int *offset)
 {
   uint4 node1 = read_node(kg, offset);
 
-  float3 vec = stack_load_float3(stack, vec_offset);
+  float3 vector = stack_load_float3(stack, vector_offset);
   float w = stack_load_float(stack, w_offset);
 
-  float r;
+  float value;
   switch (dimensions) {
     case 1:
-      r = hash_float_to_float(w);
+      value = hash_float_to_float(w);
       break;
     case 2:
-      r = hash_float2_to_float(make_float2(vec.x, vec.y));
+      value = hash_float2_to_float(make_float2(vector.x, vector.y));
       break;
     case 3:
-      r = hash_float3_to_float(vec);
+      value = hash_float3_to_float(vector);
       break;
     case 4:
-      r = hash_float4_to_float(make_float4(vec.x, vec.y, vec.z, w));
+      value = hash_float4_to_float(make_float4(vector.x, vector.y, vector.z, w));
       break;
     default:
-      r = 0.0f;
+      kernel_assert(0);
   }
-  stack_store_float(stack, node1.y, r);
+  stack_store_float(stack, node1.y, value);
 }
 
 CCL_NAMESPACE_END

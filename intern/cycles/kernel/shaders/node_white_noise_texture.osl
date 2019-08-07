@@ -19,21 +19,21 @@
 shader node_white_noise_texture(string dimensions = "3D",
                                 point Vector = vector(0.0, 0.0, 0.0),
                                 float W = 0.0,
-                                output float Fac = 0.0)
+                                output float Value = 0.0)
 {
   if (dimensions == "1D") {
-    Fac = noise("hash", W);
+    Value = noise("hash", W);
   }
   else if (dimensions == "2D") {
-    Fac = noise("hash", Vector[0], Vector[1]);
+    Value = noise("hash", Vector[0], Vector[1]);
   }
   else if (dimensions == "3D") {
-    Fac = noise("hash", Vector);
+    Value = noise("hash", Vector);
   }
   else if (dimensions == "4D") {
-    Fac = noise("hash", Vector, W);
+    Value = noise("hash", Vector, W);
   }
   else {
-    Fac = 0.0;
+    warning("%s", "Unknown dimension!");
   }
 }
