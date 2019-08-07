@@ -33,6 +33,7 @@
 
 struct OpenXRInstanceData {
   XrInstance instance{XR_NULL_HANDLE};
+  XrInstanceProperties instance_properties;
 
   std::vector<XrExtensionProperties> extensions;
   std::vector<XrApiLayerProperties> layers;
@@ -86,6 +87,7 @@ void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
 
   assert(m_oxr->instance == XR_NULL_HANDLE);
   createOpenXRInstance();
+  storeInstanceProperties();
   printInstanceInfo();
   XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
 }
@@ -110,6 +112,23 @@ void GHOST_XrContext::createOpenXRInstance()
            "Failed to connect to an OpenXR runtime.");
 }
 
+void GHOST_XrContext::storeInstanceProperties()
+{
+  const std::map<std::string, GHOST_TXrOpenXRRuntimeID> runtime_map{
+      // TODO other runtimes?
+      {"Windows Mixed Reality Runtime", OPENXR_RUNTIME_WMR}};
+  decltype(runtime_map)::const_iterator runtime_map_iter;
+
+  m_oxr->instance_properties.type = XR_TYPE_INSTANCE_PROPERTIES;
+  CHECK_XR(xrGetInstanceProperties(m_oxr->instance, &m_oxr->instance_properties),
+           "Failed to get OpenXR runtime information. Do you have an active runtime set up?");
+
+  runtime_map_iter = runtime_map.find(m_oxr->instance_properties.runtimeName);
+  if (runtime_map_iter != runtime_map.end()) {
+    m_runtime_id = runtime_map_iter->second;
+  }
+}
+
 /** \} */ /* Create, Initialize and Destruct */
 
 /* -------------------------------------------------------------------- */
@@ -121,15 +140,11 @@ void GHOST_XrContext::printInstanceInfo()
 {
   assert(m_oxr->instance != XR_NULL_HANDLE);
 
-  XrInstanceProperties instance_properties{XR_TYPE_INSTANCE_PROPERTIES};
-  CHECK_XR(xrGetInstanceProperties(m_oxr->instance, &instance_properties),
-           "Failed to get OpenXR runtime information. Do you have an active runtime set up?");
-
   printf("Connected to OpenXR runtime: %s (Version %u.%u.%u)\n",
-         instance_properties.runtimeName,
-         XR_VERSION_MAJOR(instance_properties.runtimeVersion),
-         XR_VERSION_MINOR(instance_properties.runtimeVersion),
-         XR_VERSION_PATCH(instance_properties.runtimeVersion));
+         m_oxr->instance_properties.runtimeName,
+         XR_VERSION_MAJOR(m_oxr->instance_properties.runtimeVersion),
+         XR_VERSION_MINOR(m_oxr->instance_properties.runtimeVersion),
+         XR_VERSION_PATCH(m_oxr->instance_properties.runtimeVersion));
 }
 
 void GHOST_XrContext::printAvailableAPILayersAndExtensionsInfo()
@@ -499,6 +514,11 @@ void GHOST_XrContext::setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn)
 /** \name Ghost Internal Accessors and Mutators
  *
  * \{ */
+
+GHOST_TXrOpenXRRuntimeID GHOST_XrContext::getOpenXRRuntimeID() const
+{
+  return m_runtime_id;
+}
 
 const GHOST_XrCustomFuncs *GHOST_XrContext::getCustomFuncs() const
 {
