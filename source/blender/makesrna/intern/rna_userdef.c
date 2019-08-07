@@ -4590,10 +4590,6 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Grease Pencil Euclidean Distance",
                            "Distance moved by mouse when drawing stroke to include");
 
-  prop = RNA_def_property(srna, "use_grease_pencil_simplify_stroke", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "gp_settings", GP_PAINT_DOSIMPLIFY);
-  RNA_def_property_ui_text(prop, "Grease Pencil Simplify Stroke", "Simplify the final stroke");
-
   prop = RNA_def_property(srna, "grease_pencil_eraser_radius", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "gp_eraser");
   RNA_def_property_range(prop, 1, 500);
@@ -5236,14 +5232,14 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   RNA_def_property_float_default(prop, DEG2RADF(0.4f));
   RNA_def_property_ui_range(prop, DEG2RADF(0.001f), DEG2RADF(15.0f), 1.0f, 2);
   RNA_def_property_ui_text(prop,
-                           "Rotate Sensitivity",
-                           "Rotation amount per-pixel to control how fast the viewport rotates");
+                           "Orbit Sensitivity",
+                           "Rotation amount per-pixel to control how fast the viewport orbits");
 
   prop = RNA_def_property(srna, "view_rotate_sensitivity_trackball", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.1f, 10.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_range(prop, 0.1f, 2.0f, 0.01f, 2);
-  RNA_def_property_ui_text(prop, "Rotate Sensitivity", "Scale trackball rotation sensitivity");
+  RNA_def_property_ui_text(prop, "Orbit Sensitivity", "Scale trackball orbit sensitivity");
 
   /* tweak tablet & mouse preset */
   prop = RNA_def_property(srna, "drag_threshold_mouse", PROP_INT, PROP_PIXEL);
