@@ -218,6 +218,7 @@ GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
       end();
       break;
     case XR_SESSION_STATE_EXITING:
+    case XR_SESSION_STATE_LOSS_PENDING:
       return SESSION_DESTROY;
     default:
       break;

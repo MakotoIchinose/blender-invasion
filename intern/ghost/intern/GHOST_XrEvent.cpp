@@ -50,6 +50,9 @@ GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_contexthandle)
         xr_context->handleSessionStateChange((XrEventDataSessionStateChanged *)event);
         return GHOST_kSuccess;
 
+      case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
+        GHOST_XrContextDestroy(xr_contexthandle);
+        return GHOST_kSuccess;
       default:
         XR_DEBUG_PRINTF(xr_context, "Unhandled event: %i\n", event->type);
         return GHOST_kFailure;
