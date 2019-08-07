@@ -89,9 +89,6 @@ void GPENCIL_OT_export_svg(wmOperatorType *ot)
   ot->exec = gpencil_export_svg_exec;
   ot->poll = gpencil_export_svg_poll;
 
-  /* flag */
-  ot->flag = OPTYPE_USE_EVAL_DATA;
-
   /* properties */
   /* Should have: facing, layer, visibility, file split... */
 }

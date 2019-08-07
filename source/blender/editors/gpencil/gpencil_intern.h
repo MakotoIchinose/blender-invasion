@@ -646,7 +646,7 @@ struct GP_EditableStrokes_Iter {
 #define GP_DERIVED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps) \
   { \
     struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
-    Depsgraph *depsgraph_ = CTX_data_depsgraph(C); \
+    Depsgraph *depsgraph_ = CTX_data_ensure_evaluated_depsgraph(C); \
     Object *obact_ = CTX_data_active_object(C); \
     Object *obeval_ = DEG_get_evaluated_object(depsgraph_, obact_); \
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
