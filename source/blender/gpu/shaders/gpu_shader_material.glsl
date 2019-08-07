@@ -1241,9 +1241,9 @@ float integer_noise(int n)
   return 0.5 * (float(nn) / 1073741824.0);
 }
 
-/* Jenkins Lookup3 Hash Functions.
- * http://burtleburtle.net/bob/c/lookup3.c
- */
+/* ***** Jenkins Lookup3 Hash Functions ***** */
+
+/* Source: http://burtleburtle.net/bob/c/lookup3.c */
 
 #define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
 
@@ -1287,7 +1287,7 @@ float integer_noise(int n)
     c -= rot(b, 24); \
   }
 
-uint hash(uint kx)
+uint hash_uint(uint kx)
 {
   uint a, b, c;
   a = b = c = 0xdeadbeefu + (1u << 2u) + 13u;
@@ -1298,7 +1298,7 @@ uint hash(uint kx)
   return c;
 }
 
-uint hash(uint kx, uint ky)
+uint hash_uint2(uint kx, uint ky)
 {
   uint a, b, c;
   a = b = c = 0xdeadbeefu + (2u << 2u) + 13u;
@@ -1310,7 +1310,7 @@ uint hash(uint kx, uint ky)
   return c;
 }
 
-uint hash(uint kx, uint ky, uint kz)
+uint hash_uint3(uint kx, uint ky, uint kz)
 {
   uint a, b, c;
   a = b = c = 0xdeadbeefu + (3u << 2u) + 13u;
@@ -1323,7 +1323,7 @@ uint hash(uint kx, uint ky, uint kz)
   return c;
 }
 
-uint hash(uint kx, uint ky, uint kz, uint kw)
+uint hash_uint4(uint kx, uint ky, uint kz, uint kw)
 {
   uint a, b, c;
   a = b = c = 0xdeadbeefu + (4u << 2u) + 13u;
@@ -1343,107 +1343,125 @@ uint hash(uint kx, uint ky, uint kz, uint kw)
 #undef final
 #undef mix
 
-uint hash(int kx)
+uint hash_int(int kx)
 {
-  return hash(uint(kx));
+  return hash_uint(uint(kx));
 }
 
-uint hash(int kx, int ky)
+uint hash_int2(int kx, int ky)
 {
-  return hash(uint(kx), uint(ky));
+  return hash_uint2(uint(kx), uint(ky));
 }
 
-uint hash(int kx, int ky, int kz)
+uint hash_int3(int kx, int ky, int kz)
 {
-  return hash(uint(kx), uint(ky), uint(kz));
+  return hash_uint3(uint(kx), uint(ky), uint(kz));
 }
 
-uint hash(int kx, int ky, int kz, int kw)
+uint hash_int4(int kx, int ky, int kz, int kw)
 {
-  return hash(uint(kx), uint(ky), uint(kz), uint(kw));
+  return hash_uint4(uint(kx), uint(ky), uint(kz), uint(kw));
 }
 
-float bits_to_01(uint bits)
+/* Hashing uint or uint[234] into a float in the range [0, 1]. */
+
+float hash_uint_to_float(uint kx)
 {
-  return (float(bits) / 4294967295.0);
+  return float(hash_uint(kx)) / float(0xFFFFFFFFu);
 }
 
-/* **** Hash a float or vec[234] into a float [0, 1] **** */
-
-float hash_01(float k)
+float hash_uint2_to_float(uint kx, uint ky)
 {
-  return bits_to_01(hash(floatBitsToUint(k)));
+  return float(hash_uint2(kx, ky)) / float(0xFFFFFFFFu);
 }
 
-float hash_01(vec2 k)
+float hash_uint3_to_float(uint kx, uint ky, uint kz)
 {
-  return bits_to_01(hash(floatBitsToUint(k.x), floatBitsToUint(k.y)));
+  return float(hash_uint3(kx, ky, kz)) / float(0xFFFFFFFFu);
 }
 
-float hash_01(vec3 k)
+float hash_uint4_to_float(uint kx, uint ky, uint kz, uint kw)
 {
-  return bits_to_01(hash(floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z)));
+  return float(hash_uint4(kx, ky, kz, kw)) / float(0xFFFFFFFFu);
 }
 
-float hash_01(vec4 k)
+/* Hashing float or vec[234] into a float in the range [0, 1]. */
+
+float hash_float_to_float(float k)
 {
-  return bits_to_01(hash(
-      floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z), floatBitsToUint(k.w)));
+  return hash_uint_to_float(floatBitsToUint(k));
 }
 
-/* **** Hash a vec[234] into a vec[234] [0, 1] **** */
-
-vec2 hash_01_vec2(vec2 k)
+float hash_vec2_to_float(vec2 k)
 {
-  return vec2(hash_01(k), hash_01(vec3(k, 1.0)));
+  return hash_uint2_to_float(floatBitsToUint(k.x), floatBitsToUint(k.y));
 }
 
-vec3 hash_01_vec3(vec3 k)
+float hash_vec3_to_float(vec3 k)
 {
-  return vec3(hash_01(k), hash_01(vec4(k, 1.0)), hash_01(vec4(k, 2.0)));
+  return hash_uint3_to_float(floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z));
 }
 
-vec4 hash_01_vec4(vec4 k)
+float hash_vec4_to_float(vec4 k)
 {
-  return vec4(hash_01(k.xyzw), hash_01(k.wxyz), hash_01(k.zwxy), hash_01(k.yzwx));
+  return hash_uint4_to_float(
+      floatBitsToUint(k.x), floatBitsToUint(k.y), floatBitsToUint(k.z), floatBitsToUint(k.w));
 }
 
-/* **** Hash a float or a vec[234] into a vec3 [0, 1] **** */
+/* Hashing vec[234] into vec[234] of components in the range [0, 1]. */
 
-vec3 hash_01_vec3(float k)
+vec2 hash_vec2_to_vec2(vec2 k)
 {
-  return vec3(hash_01(k), hash_01(vec2(k, 1.0)), hash_01(vec2(k, 2.0)));
+  return vec2(hash_vec2_to_float(k), hash_vec3_to_float(vec3(k, 1.0)));
 }
 
-vec3 hash_01_vec3(vec2 k)
+vec3 hash_vec3_to_vec3(vec3 k)
 {
-  return vec3(hash_01(k), hash_01(vec3(k, 1.0)), hash_01(vec3(k, 2.0)));
+  return vec3(hash_vec3_to_float(k), hash_vec4_to_float(vec4(k, 1.0)), hash_vec4_to_float(vec4(k, 2.0)));
 }
 
-vec3 hash_01_vec3(vec4 k)
+vec4 hash_vec4_to_vec4(vec4 k)
 {
-  return vec3(hash_01(k.xyzw), hash_01(k.zxwy), hash_01(k.wzyx));
+  return vec4(hash_vec4_to_float(k.xyzw), hash_vec4_to_float(k.wxyz), hash_vec4_to_float(k.zwxy), hash_vec4_to_float(k.yzwx));
 }
 
-void white_noise_1D(vec3 vec, float w, out float fac)
+/* Hashing float or vec[234] into vec3 of components in range [0, 1]. */
+
+vec3 hash_float_to_vec3(float k)
 {
-  fac = bits_to_01(hash(floatBitsToUint(w)));
+  return vec3(hash_float_to_float(k), hash_vec2_to_float(vec2(k, 1.0)), hash_vec2_to_float(vec2(k, 2.0)));
 }
 
-void white_noise_2D(vec3 vec, float w, out float fac)
+vec3 hash_vec2_to_vec3(vec2 k)
 {
-  fac = bits_to_01(hash(floatBitsToUint(vec.x), floatBitsToUint(vec.y)));
+  return vec3(hash_vec2_to_float(k), hash_vec3_to_float(vec3(k, 1.0)), hash_vec3_to_float(vec3(k, 2.0)));
 }
 
-void white_noise_3D(vec3 vec, float w, out float fac)
+vec3 hash_vec4_to_vec3(vec4 k)
 {
-  fac = bits_to_01(hash(floatBitsToUint(vec.x), floatBitsToUint(vec.y), floatBitsToUint(vec.z)));
+  return vec3(hash_vec4_to_float(k.xyzw), hash_vec4_to_float(k.zxwy), hash_vec4_to_float(k.wzyx));
 }
 
-void white_noise_4D(vec3 vec, float w, out float fac)
+/* White Noise */
+
+void node_white_noise_1d(vec3 vector, float w, out float fac)
 {
-  fac = bits_to_01(hash(
-      floatBitsToUint(vec.x), floatBitsToUint(vec.y), floatBitsToUint(vec.z), floatBitsToUint(w)));
+  fac = hash_float_to_float(w);
+}
+
+void node_white_noise_2d(vec3 vector, float w, out float fac)
+{
+  fac = hash_vec2_to_float(vector.xy);
+}
+
+void node_white_noise_3d(vec3 vector, float w, out float fac)
+{
+  fac = hash_vec3_to_float(vector);
+}
+
+void node_white_noise_4d(vec3 vector, float w, out float fac)
+{
+  fac = hash_vec4_to_float(vec4(vector, w));
 }
 
 float floorfrac(float x, out int i)
@@ -3219,7 +3237,7 @@ float noise_perlin(float x)
   float fx = floorfrac(x, X);
   float u = noise_fade(fx);
 
-  float r = mix(noise_grad(hash(X), fx), noise_grad(hash(X + 1), fx - 1.0), u);
+  float r = mix(noise_grad(hash_int(X), fx), noise_grad(hash_int(X + 1), fx - 1.0), u);
 
   return r;
 }
@@ -3235,10 +3253,10 @@ float noise_perlin(vec2 vec)
   float u = noise_fade(fx);
   float v = noise_fade(fy);
 
-  float r = bi_mix(noise_grad(hash(X, Y), fx, fy),
-                   noise_grad(hash(X + 1, Y), fx - 1.0, fy),
-                   noise_grad(hash(X, Y + 1), fx, fy - 1.0),
-                   noise_grad(hash(X + 1, Y + 1), fx - 1.0, fy - 1.0),
+  float r = bi_mix(noise_grad(hash_int2(X, Y), fx, fy),
+                   noise_grad(hash_int2(X + 1, Y), fx - 1.0, fy),
+                   noise_grad(hash_int2(X, Y + 1), fx, fy - 1.0),
+                   noise_grad(hash_int2(X + 1, Y + 1), fx - 1.0, fy - 1.0),
                    u,
                    v);
 
@@ -3259,14 +3277,14 @@ float noise_perlin(vec3 vec)
   float v = noise_fade(fy);
   float w = noise_fade(fz);
 
-  float r = tri_mix(noise_grad(hash(X, Y, Z), fx, fy, fz),
-                    noise_grad(hash(X + 1, Y, Z), fx - 1, fy, fz),
-                    noise_grad(hash(X, Y + 1, Z), fx, fy - 1, fz),
-                    noise_grad(hash(X + 1, Y + 1, Z), fx - 1, fy - 1, fz),
-                    noise_grad(hash(X, Y, Z + 1), fx, fy, fz - 1),
-                    noise_grad(hash(X + 1, Y, Z + 1), fx - 1, fy, fz - 1),
-                    noise_grad(hash(X, Y + 1, Z + 1), fx, fy - 1, fz - 1),
-                    noise_grad(hash(X + 1, Y + 1, Z + 1), fx - 1, fy - 1, fz - 1),
+  float r = tri_mix(noise_grad(hash_int3(X, Y, Z), fx, fy, fz),
+                    noise_grad(hash_int3(X + 1, Y, Z), fx - 1, fy, fz),
+                    noise_grad(hash_int3(X, Y + 1, Z), fx, fy - 1, fz),
+                    noise_grad(hash_int3(X + 1, Y + 1, Z), fx - 1, fy - 1, fz),
+                    noise_grad(hash_int3(X, Y, Z + 1), fx, fy, fz - 1),
+                    noise_grad(hash_int3(X + 1, Y, Z + 1), fx - 1, fy, fz - 1),
+                    noise_grad(hash_int3(X, Y + 1, Z + 1), fx, fy - 1, fz - 1),
+                    noise_grad(hash_int3(X + 1, Y + 1, Z + 1), fx - 1, fy - 1, fz - 1),
                     u,
                     v,
                     w);
@@ -3292,25 +3310,25 @@ float noise_perlin(vec4 vec)
   float s = noise_fade(fw);
 
   float r = mix(
-      tri_mix(noise_grad(hash(X, Y, Z, W), fx, fy, fz, fw),
-              noise_grad(hash(X + 1, Y, Z, W), fx - 1.0, fy, fz, fw),
-              noise_grad(hash(X, Y + 1, Z, W), fx, fy - 1.0, fz, fw),
-              noise_grad(hash(X + 1, Y + 1, Z, W), fx - 1.0, fy - 1.0, fz, fw),
-              noise_grad(hash(X, Y, Z + 1, W), fx, fy, fz - 1.0, fw),
-              noise_grad(hash(X + 1, Y, Z + 1, W), fx - 1.0, fy, fz - 1.0, fw),
-              noise_grad(hash(X, Y + 1, Z + 1, W), fx, fy - 1.0, fz - 1.0, fw),
-              noise_grad(hash(X + 1, Y + 1, Z + 1, W), fx - 1.0, fy - 1.0, fz - 1.0, fw),
+      tri_mix(noise_grad(hash_int4(X, Y, Z, W), fx, fy, fz, fw),
+              noise_grad(hash_int4(X + 1, Y, Z, W), fx - 1.0, fy, fz, fw),
+              noise_grad(hash_int4(X, Y + 1, Z, W), fx, fy - 1.0, fz, fw),
+              noise_grad(hash_int4(X + 1, Y + 1, Z, W), fx - 1.0, fy - 1.0, fz, fw),
+              noise_grad(hash_int4(X, Y, Z + 1, W), fx, fy, fz - 1.0, fw),
+              noise_grad(hash_int4(X + 1, Y, Z + 1, W), fx - 1.0, fy, fz - 1.0, fw),
+              noise_grad(hash_int4(X, Y + 1, Z + 1, W), fx, fy - 1.0, fz - 1.0, fw),
+              noise_grad(hash_int4(X + 1, Y + 1, Z + 1, W), fx - 1.0, fy - 1.0, fz - 1.0, fw),
               u,
               v,
               t),
-      tri_mix(noise_grad(hash(X, Y, Z, W + 1), fx, fy, fz, fw - 1.0),
-              noise_grad(hash(X + 1, Y, Z, W + 1), fx - 1.0, fy, fz, fw - 1.0),
-              noise_grad(hash(X, Y + 1, Z, W + 1), fx, fy - 1.0, fz, fw - 1.0),
-              noise_grad(hash(X + 1, Y + 1, Z, W + 1), fx - 1.0, fy - 1.0, fz, fw - 1.0),
-              noise_grad(hash(X, Y, Z + 1, W + 1), fx, fy, fz - 1.0, fw - 1.0),
-              noise_grad(hash(X + 1, Y, Z + 1, W + 1), fx - 1.0, fy, fz - 1.0, fw - 1.0),
-              noise_grad(hash(X, Y + 1, Z + 1, W + 1), fx, fy - 1.0, fz - 1.0, fw - 1.0),
-              noise_grad(hash(X + 1, Y + 1, Z + 1, W + 1), fx - 1.0, fy - 1.0, fz - 1.0, fw - 1.0),
+      tri_mix(noise_grad(hash_int4(X, Y, Z, W + 1), fx, fy, fz, fw - 1.0),
+              noise_grad(hash_int4(X + 1, Y, Z, W + 1), fx - 1.0, fy, fz, fw - 1.0),
+              noise_grad(hash_int4(X, Y + 1, Z, W + 1), fx, fy - 1.0, fz, fw - 1.0),
+              noise_grad(hash_int4(X + 1, Y + 1, Z, W + 1), fx - 1.0, fy - 1.0, fz, fw - 1.0),
+              noise_grad(hash_int4(X, Y, Z + 1, W + 1), fx, fy, fz - 1.0, fw - 1.0),
+              noise_grad(hash_int4(X + 1, Y, Z + 1, W + 1), fx - 1.0, fy, fz - 1.0, fw - 1.0),
+              noise_grad(hash_int4(X, Y + 1, Z + 1, W + 1), fx, fy - 1.0, fz - 1.0, fw - 1.0),
+              noise_grad(hash_int4(X + 1, Y + 1, Z + 1, W + 1), fx - 1.0, fy - 1.0, fz - 1.0, fw - 1.0),
               u,
               v,
               t),
@@ -4517,7 +4535,7 @@ void node_tex_voronoi_f1_1d(vec3 coord,
   float targetOffset, targetPosition;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = float(i);
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
     if (distanceToPoint < minDistance) {
       targetOffset = cellOffset;
@@ -4526,7 +4544,7 @@ void node_tex_voronoi_f1_1d(vec3 coord,
     }
   }
   outDistance = minDistance;
-  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outColor.xyz = hash_float_to_vec3(cellPosition + targetOffset);
   outW = safe_divide(targetPosition + cellPosition, scale);
 }
 
@@ -4555,11 +4573,11 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
   vec3 smoothColor = vec3(0.0);
   for (int i = -2; i <= 2; i++) {
     float cellOffset = float(i);
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
     float weight = exp(-smoothness * distanceToPoint);
     smoothDistance += weight;
-    smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+    smoothColor += hash_float_to_vec3(cellPosition + cellOffset) * weight;
     smoothPosition += pointPosition * weight;
   }
   outDistance = -log(smoothDistance) / smoothness;
@@ -4593,7 +4611,7 @@ void node_tex_voronoi_f2_1d(vec3 coord,
   float offsetF2, positionF2;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = float(i);
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
     if (distanceToPoint < distanceF1) {
       distanceF2 = distanceF1;
@@ -4610,7 +4628,7 @@ void node_tex_voronoi_f2_1d(vec3 coord,
     }
   }
   outDistance = distanceF2;
-  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outColor.xyz = hash_float_to_vec3(cellPosition + offsetF2);
   outW = safe_divide(positionF2 + cellPosition, scale);
 }
 
@@ -4636,7 +4654,7 @@ void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
   float minDistance = 8.0;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = float(i);
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
     minDistance = min(distanceToPoint, minDistance);
   }
@@ -4667,7 +4685,7 @@ void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
   float minDistance = 8.0;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = float(i);
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = distance(pointPosition, localPosition);
     if (distanceToPoint < minDistance) {
       minDistance = distanceToPoint;
@@ -4682,7 +4700,7 @@ void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
     if (i == 0)
       continue;
     float cellOffset = float(i) + closestPointOffset;
-    float pointPosition = cellOffset + hash_01(cellPosition + cellOffset) * jitter;
+    float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * jitter;
     float distanceToPoint = distance(closestPoint, pointPosition);
     if (distanceToPoint < minDistance) {
       minDistance = distanceToPoint;
@@ -4732,7 +4750,7 @@ void node_tex_voronoi_f1_2d(vec3 coord,
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
       if (distanceToPoint < minDistance) {
         targetOffset = cellOffset;
@@ -4742,7 +4760,7 @@ void node_tex_voronoi_f1_2d(vec3 coord,
     }
   }
   outDistance = minDistance;
-  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outColor.xyz = hash_vec2_to_vec3(cellPosition + targetOffset);
   outPosition = vec3(safe_divide(targetPosition + cellPosition, scale), 0.0);
 }
 
@@ -4772,11 +4790,11 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
   for (int j = -2; j <= 2; j++) {
     for (int i = -2; i <= 2; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
       float weight = exp(-smoothness * distanceToPoint);
       smoothDistance += weight;
-      smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+      smoothColor += hash_vec2_to_vec3(cellPosition + cellOffset) * weight;
       smoothPosition += pointPosition * weight;
     }
   }
@@ -4812,7 +4830,7 @@ void node_tex_voronoi_f2_2d(vec3 coord,
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
       if (distanceToPoint < distanceF1) {
         distanceF2 = distanceF1;
@@ -4830,7 +4848,7 @@ void node_tex_voronoi_f2_2d(vec3 coord,
     }
   }
   outDistance = distanceF2;
-  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outColor.xyz = hash_vec2_to_vec3(cellPosition + offsetF2);
   outPosition = vec3(safe_divide(positionF2 + cellPosition, scale), 0.0);
 }
 
@@ -4858,7 +4876,7 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 vectorToPoint = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter -
+      vec2 vectorToPoint = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter -
                            localPosition;
       float distanceToPoint = dot(vectorToPoint, vectorToPoint);
       if (distanceToPoint < minDistance) {
@@ -4872,7 +4890,7 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 vectorToPoint = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter -
+      vec2 vectorToPoint = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter -
                            localPosition;
       vec2 perpendicularToEdge = vectorToPoint - vectorToClosest;
       if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
@@ -4910,7 +4928,7 @@ void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
-      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = distance(pointPosition, localPosition);
       if (distanceToPoint < minDistance) {
         minDistance = distanceToPoint;
@@ -4927,7 +4945,7 @@ void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
       if (i == 0 && j == 0)
         continue;
       vec2 cellOffset = vec2(i, j) + closestPointOffset;
-      vec2 pointPosition = cellOffset + hash_01_vec2(cellPosition + cellOffset) * jitter;
+      vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * jitter;
       float distanceToPoint = distance(closestPoint, pointPosition);
       if (distanceToPoint < minDistance) {
         minDistance = distanceToPoint;
@@ -4981,7 +4999,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        vec3 pointPosition = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
         if (distanceToPoint < minDistance) {
           targetOffset = cellOffset;
@@ -4992,7 +5010,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
     }
   }
   outDistance = minDistance;
-  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
   outPosition = safe_divide(targetPosition + cellPosition, scale);
 }
 
@@ -5023,11 +5041,11 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
     for (int j = -2; j <= 2; j++) {
       for (int i = -2; i <= 2; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        vec3 pointPosition = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
         float weight = exp(-smoothness * distanceToPoint);
         smoothDistance += weight;
-        smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+        smoothColor += hash_vec3_to_vec3(cellPosition + cellOffset) * weight;
         smoothPosition += pointPosition * weight;
       }
     }
@@ -5065,7 +5083,7 @@ void node_tex_voronoi_f2_3d(vec3 coord,
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        vec3 pointPosition = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
         if (distanceToPoint < distanceF1) {
           distanceF2 = distanceF1;
@@ -5084,7 +5102,7 @@ void node_tex_voronoi_f2_3d(vec3 coord,
     }
   }
   outDistance = distanceF2;
-  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outColor.xyz = hash_vec3_to_vec3(cellPosition + offsetF2);
   outPosition = safe_divide(positionF2 + cellPosition, scale);
 }
 
@@ -5113,7 +5131,7 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 vectorToPoint = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter -
+        vec3 vectorToPoint = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter -
                              localPosition;
         float distanceToPoint = dot(vectorToPoint, vectorToPoint);
         if (distanceToPoint < minDistance) {
@@ -5129,7 +5147,7 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 vectorToPoint = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter -
+        vec3 vectorToPoint = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter -
                              localPosition;
         vec3 perpendicularToEdge = vectorToPoint - vectorToClosest;
         if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
@@ -5169,7 +5187,7 @@ void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
         vec3 cellOffset = vec3(i, j, k);
-        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        vec3 pointPosition = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = distance(pointPosition, localPosition);
         if (distanceToPoint < minDistance) {
           minDistance = distanceToPoint;
@@ -5188,7 +5206,7 @@ void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
         if (i == 0 && j == 0 && k == 0)
           continue;
         vec3 cellOffset = vec3(i, j, k) + closestPointOffset;
-        vec3 pointPosition = cellOffset + hash_01_vec3(cellPosition + cellOffset) * jitter;
+        vec3 pointPosition = cellOffset + hash_vec3_to_vec3(cellPosition + cellOffset) * jitter;
         float distanceToPoint = distance(closestPoint, pointPosition);
         if (distanceToPoint < minDistance) {
           minDistance = distanceToPoint;
@@ -5244,7 +5262,7 @@ void node_tex_voronoi_f1_4d(vec3 coord,
       for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          vec4 pointPosition = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
           if (distanceToPoint < minDistance) {
             targetOffset = cellOffset;
@@ -5256,7 +5274,7 @@ void node_tex_voronoi_f1_4d(vec3 coord,
     }
   }
   outDistance = minDistance;
-  outColor.xyz = hash_01_vec3(cellPosition + targetOffset);
+  outColor.xyz = hash_vec4_to_vec3(cellPosition + targetOffset);
   vec4 p = safe_divide(targetPosition + cellPosition, scale);
   outPosition = p.xyz;
   outW = p.w;
@@ -5290,11 +5308,11 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
       for (int j = -2; j <= 2; j++) {
         for (int i = -2; i <= 2; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          vec4 pointPosition = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
           float weight = exp(-smoothness * distanceToPoint);
           smoothDistance += weight;
-          smoothColor += hash_01_vec3(cellPosition + cellOffset) * weight;
+          smoothColor += hash_vec4_to_vec3(cellPosition + cellOffset) * weight;
           smoothPosition += pointPosition * weight;
         }
       }
@@ -5336,7 +5354,7 @@ void node_tex_voronoi_f2_4d(vec3 coord,
       for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          vec4 pointPosition = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
           if (distanceToPoint < distanceF1) {
             distanceF2 = distanceF1;
@@ -5356,7 +5374,7 @@ void node_tex_voronoi_f2_4d(vec3 coord,
     }
   }
   outDistance = distanceF2;
-  outColor.xyz = hash_01_vec3(cellPosition + offsetF2);
+  outColor.xyz = hash_vec4_to_vec3(cellPosition + offsetF2);
   vec4 p = safe_divide(positionF2 + cellPosition, scale);
   outPosition = p.xyz;
   outW = p.w;
@@ -5388,7 +5406,7 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
       for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 vectorToPoint = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter -
+          vec4 vectorToPoint = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter -
                                localPosition;
           float distanceToPoint = dot(vectorToPoint, vectorToPoint);
           if (distanceToPoint < minDistance) {
@@ -5406,7 +5424,7 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
       for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 vectorToPoint = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter -
+          vec4 vectorToPoint = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter -
                                localPosition;
           vec4 perpendicularToEdge = vectorToPoint - vectorToClosest;
           if (dot(perpendicularToEdge, perpendicularToEdge) > 0.0001) {
@@ -5448,7 +5466,7 @@ void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
       for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
           vec4 cellOffset = vec4(i, j, k, u);
-          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          vec4 pointPosition = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = distance(pointPosition, localPosition);
           if (distanceToPoint < minDistance) {
             minDistance = distanceToPoint;
@@ -5469,7 +5487,7 @@ void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
           if (i == 0 && j == 0 && k == 0 && u == 0)
             continue;
           vec4 cellOffset = vec4(i, j, k, u) + closestPointOffset;
-          vec4 pointPosition = cellOffset + hash_01_vec4(cellPosition + cellOffset) * jitter;
+          vec4 pointPosition = cellOffset + hash_vec4_to_vec4(cellPosition + cellOffset) * jitter;
           float distanceToPoint = distance(closestPoint, pointPosition);
           if (distanceToPoint < minDistance) {
             minDistance = distanceToPoint;

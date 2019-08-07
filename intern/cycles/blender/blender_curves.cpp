@@ -656,7 +656,7 @@ static void ExportCurveSegments(Scene *scene, Mesh *mesh, ParticleCurveData *CDa
       }
 
       if (attr_random != NULL) {
-        attr_random->add(hash_uint_01(num_curves));
+        attr_random->add(hash_uint_to_float(num_curves));
       }
 
       mesh->add_curve(num_keys, CData->psys_shader[sys]);
