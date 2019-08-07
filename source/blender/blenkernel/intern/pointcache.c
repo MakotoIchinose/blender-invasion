@@ -2959,7 +2959,7 @@ static int ptcache_read(PTCacheID *pid, int cfra)
                mesh->totvert,
                mesh->totedge,
                mesh->totpoly);
-#if 0
+#if 1
         if (clmd->flags & MOD_CLOTH_FLAG_PREV_FRAME_READ_CACHE) {
         }
         else {

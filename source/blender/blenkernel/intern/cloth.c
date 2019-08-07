@@ -490,13 +490,6 @@ Mesh *clothModifier_do(
     printf("Previous frame was simulated\n");
     clmd->mesh = mesh_result;
   }
-  if (clmd->mesh) {
-    printf("clmd->mesh in %s after has totvert: %d totedge: %d totface: %d\n",
-           __func__,
-           clmd->mesh->totvert,
-           clmd->mesh->totedge,
-           clmd->mesh->totpoly);
-  }
   cache_result = BKE_ptcache_read(&pid, (float)framenr + scene->r.subframe, can_simulate);
 
   if (cache_result == PTCACHE_READ_EXACT || cache_result == PTCACHE_READ_INTERPOLATED ||
@@ -505,6 +498,7 @@ Mesh *clothModifier_do(
      * the cache */
     printf("cache_result: %d\n", cache_result);
     mesh_result = clmd->mesh;
+    BKE_id_copy_ex(NULL, (ID *)clmd->mesh, (ID **)&mesh_result, LIB_ID_COPY_LOCALIZE);
     BKE_cloth_solver_set_positions(clmd);
     cloth_to_mesh(ob, clmd, mesh_result);
 
@@ -518,6 +512,13 @@ Mesh *clothModifier_do(
 
 #endif
     clmd->clothObject->last_frame = framenr;
+    if (clmd->mesh) {
+      printf("clmd->mesh in %s after has totvert: %d totedge: %d totface: %d\n",
+             __func__,
+             clmd->mesh->totvert,
+             clmd->mesh->totedge,
+             clmd->mesh->totpoly);
+    }
 #if USE_CLOTH_CACHE
     return mesh_result;
   }
