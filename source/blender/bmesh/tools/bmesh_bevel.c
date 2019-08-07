@@ -167,12 +167,18 @@ typedef struct Profile {
  * get even spacing on superellipse for current BevelParams seg
  * and pro_super_r. */
 typedef struct ProfileSpacing {
-  double *xvals;   /* seg+1 x values */
-  double *xvals_2; /* seg_2+1 x values, seg_2 = power of 2 >= seg */
-  double *yvals;   /* seg+1 y values */
-  double *yvals_2; /* seg_2+1 y values, seg_2 = power of 2 >= seg */
-  int seg_2;       /* the seg_2 value */
-  int _pad;
+  /** The profile's seg+1 x values */
+  double *xvals;
+  /** The profile's seg+1 y values */
+  double *yvals;
+  /** The profile's seg_2+1 x values, (seg_2 = power of 2 >= seg) */
+  double *xvals_2;
+  /** The profile's seg_2+1 y values, (seg_2 = power of 2 >= seg) */
+  double *yvals_2;
+  /** The power of two greater than or equal to the number of segments. */
+  int seg_2;
+  /** How far "out" the profile is, used at the start of subdivision */
+  float fullness;
 } ProfileSpacing;
 
 /* An element in a cyclic boundary of a Vertex Mesh (VMesh) */
@@ -220,7 +226,7 @@ typedef struct VMesh {
   BoundVert *boundstart;
   /** Number of vertices in the boundary */
   int count;
-  /** Common # of segments for segmented edges (same as bp->seg) */
+  /** Common number of segments for segmented edges (same as bp->seg) */
   int seg;
   /** The kind of mesh to build at the corner vertex meshes */
   enum {
@@ -251,6 +257,7 @@ typedef struct BevVert {
   /** Used in graph traversal */
   bool visited;
   /** Array of size edgecount; CCW order from vertex normal side */
+  char _pad[6];
   EdgeHalf *edges;
   /** Array of size wirecount of wire edges */
   BMEdge **wire_edges;
@@ -2063,131 +2070,131 @@ static void bevel_edges_sharp_boundary(BMesh *bm, BevelParams *bp)
  * And at boundaries between #F_EDGE and #F_VERT faces, the normals should match the #F_EDGE ones.
  * Assumes custom loop normals are in use.
  */
-static void bevel_harden_normals(BMesh *bm, BevelParams *bp)
+static void bevel_harden_normals(BevelParams *bp, BMesh *bm)
 {
-  BMIter liter, fiter;
-  BMFace *f;
-  BMLoop *l, *lnext, *lprev, *lprevprev, *lnextnext;
-  BMEdge *estep;
-  FKind fkind, fprevkind, fnextkind, fprevprevkind, fnextnextkind;
-  int cd_clnors_offset, l_index;
-  short *clnors;
-  float *pnorm, norm[3];
+      BMIter liter, fiter;
+      BMFace *f;
+      BMLoop *l, *lnext, *lprev, *lprevprev, *lnextnext;
+      BMEdge *estep;
+      FKind fkind, fprevkind, fnextkind, fprevprevkind, fnextnextkind;
+      int cd_clnors_offset, l_index;
+      short *clnors;
+      float *pnorm, norm[3];
 
-  if (bp->offset == 0.0 || !bp->harden_normals) {
-    return;
-  }
+      if (bp->offset == 0.0 || !bp->harden_normals) {
+        return;
+      }
 
-  /* recalculate all face and vertex normals; side effect: ensures vertex, edge, face indices */
-  /* I suspect this is not necessary: TODO: test that guess */
-  BM_mesh_normals_update(bm);
+      /* recalculate all face and vertex normals; side effect: ensures vertex, edge, face indices */
+      /* I suspect this is not necessary: TODO: test that guess */
+      BM_mesh_normals_update(bm);
 
-  cd_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
+      cd_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
 
-  /* If there is not already a custom split normal layer then making one (with BM_lnorspace_update)
-   * will not respect the autosmooth angle between smooth faces. To get that to happen, we have
-   * to mark the sharpen the edges that are only sharp because
-   * of the angle test -- otherwise would be smooth.
-   */
-  if (cd_clnors_offset == -1) {
-    BM_edges_sharp_from_angle_set(bm, bp->smoothresh);
-    bevel_edges_sharp_boundary(bm, bp);
-  }
+      /* If there is not already a custom split normal layer then making one (with BM_lnorspace_update)
+       * will not respect the autosmooth angle between smooth faces. To get that to happen, we have
+       * to mark the sharpen the edges that are only sharp because
+       * of the angle test -- otherwise would be smooth.
+       */
+      if (cd_clnors_offset == -1) {
+        BM_edges_sharp_from_angle_set(bm, bp->smoothresh);
+        bevel_edges_sharp_boundary(bm, bp);
+      }
 
-  /* Ensure that bm->lnor_spacearr has properly stored loop normals;
-   * side effect: ensures loop indices. */
-  BM_lnorspace_update(bm);
+      /* Ensure that bm->lnor_spacearr has properly stored loop normals;
+       * side effect: ensures loop indices. */
+      BM_lnorspace_update(bm);
 
-  if (cd_clnors_offset == -1) {
-    cd_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
-  }
+      if (cd_clnors_offset == -1) {
+        cd_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
+      }
 
-  BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
-    fkind = get_face_kind(bp, f);
-    if (fkind == F_ORIG || fkind == F_RECON) {
-      continue;
+      BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
+        fkind = get_face_kind(bp, f);
+        if (fkind == F_ORIG || fkind == F_RECON) {
+          continue;
+        }
+        BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
+          estep = l->prev->e; /* causes CW walk around l->v fan */
+          lprev = BM_vert_step_fan_loop(l, &estep);
+          estep = l->e; /* causes CCW walk around l->v fan */
+          lnext = BM_vert_step_fan_loop(l, &estep);
+          fprevkind = lprev ? get_face_kind(bp, lprev->f) : F_NONE;
+          fnextkind = lnext ? get_face_kind(bp, lnext->f) : F_NONE;
+          pnorm = NULL;
+          if (fkind == F_EDGE) {
+            if (fprevkind == F_EDGE && BM_elem_flag_test(l, BM_ELEM_LONG_TAG)) {
+              add_v3_v3v3(norm, f->no, lprev->f->no);
+              pnorm = norm;
+            }
+            else if (fnextkind == F_EDGE && BM_elem_flag_test(lnext, BM_ELEM_LONG_TAG)) {
+              add_v3_v3v3(norm, f->no, lnext->f->no);
+              pnorm = norm;
+            }
+            else if (fprevkind == F_RECON && BM_elem_flag_test(l, BM_ELEM_LONG_TAG)) {
+              pnorm = lprev->f->no;
+            }
+            else if (fnextkind == F_RECON && BM_elem_flag_test(l->prev, BM_ELEM_LONG_TAG)) {
+              pnorm = lnext->f->no;
+            }
+            else {
+              /* printf("unexpected harden case (edge)\n"); */
+            }
+          }
+          else if (fkind == F_VERT) {
+            if (fprevkind == F_VERT && fnextkind == F_VERT) {
+              pnorm = l->v->no;
+            }
+            else if (fprevkind == F_RECON) {
+              pnorm = lprev->f->no;
+            }
+            else if (fnextkind == F_RECON) {
+              pnorm = lnext->f->no;
+            }
+            else {
+              if (lprev) {
+                estep = lprev->prev->e;
+                lprevprev = BM_vert_step_fan_loop(lprev, &estep);
+              }
+              else {
+                lprevprev = NULL;
+              }
+              if (lnext) {
+                estep = lnext->e;
+                lnextnext = BM_vert_step_fan_loop(lnext, &estep);
+              }
+              else {
+                lnextnext = NULL;
+              }
+              fprevprevkind = lprevprev ? get_face_kind(bp, lprevprev->f) : F_NONE;
+              fnextnextkind = lnextnext ? get_face_kind(bp, lnextnext->f) : F_NONE;
+              if (fprevkind == F_EDGE && fprevprevkind == F_RECON) {
+                pnorm = lprevprev->f->no;
+              }
+              else if (fprevkind == F_EDGE && fnextkind == F_VERT && fprevprevkind == F_EDGE) {
+                add_v3_v3v3(norm, lprev->f->no, lprevprev->f->no);
+                pnorm = norm;
+              }
+              else if (fnextkind == F_EDGE && fprevkind == F_VERT && fnextnextkind == F_EDGE) {
+                add_v3_v3v3(norm, lnext->f->no, lnextnext->f->no);
+                pnorm = norm;
+              }
+              else {
+                /* printf("unexpected harden case (vert)\n"); */
+              }
+            }
+          }
+          if (pnorm) {
+            if (pnorm == norm) {
+              normalize_v3(norm);
+            }
+            l_index = BM_elem_index_get(l);
+            clnors = BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset);
+            BKE_lnor_space_custom_normal_to_data(bm->lnor_spacearr->lspacearr[l_index], pnorm, clnors);
+          }
+        }
+      }
     }
-    BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
-      estep = l->prev->e; /* causes CW walk around l->v fan */
-      lprev = BM_vert_step_fan_loop(l, &estep);
-      estep = l->e; /* causes CCW walk around l->v fan */
-      lnext = BM_vert_step_fan_loop(l, &estep);
-      fprevkind = lprev ? get_face_kind(bp, lprev->f) : F_NONE;
-      fnextkind = lnext ? get_face_kind(bp, lnext->f) : F_NONE;
-      pnorm = NULL;
-      if (fkind == F_EDGE) {
-        if (fprevkind == F_EDGE && BM_elem_flag_test(l, BM_ELEM_LONG_TAG)) {
-          add_v3_v3v3(norm, f->no, lprev->f->no);
-          pnorm = norm;
-        }
-        else if (fnextkind == F_EDGE && BM_elem_flag_test(lnext, BM_ELEM_LONG_TAG)) {
-          add_v3_v3v3(norm, f->no, lnext->f->no);
-          pnorm = norm;
-        }
-        else if (fprevkind == F_RECON && BM_elem_flag_test(l, BM_ELEM_LONG_TAG)) {
-          pnorm = lprev->f->no;
-        }
-        else if (fnextkind == F_RECON && BM_elem_flag_test(l->prev, BM_ELEM_LONG_TAG)) {
-          pnorm = lnext->f->no;
-        }
-        else {
-          /* printf("unexpected harden case (edge)\n"); */
-        }
-      }
-      else if (fkind == F_VERT) {
-        if (fprevkind == F_VERT && fnextkind == F_VERT) {
-          pnorm = l->v->no;
-        }
-        else if (fprevkind == F_RECON) {
-          pnorm = lprev->f->no;
-        }
-        else if (fnextkind == F_RECON) {
-          pnorm = lnext->f->no;
-        }
-        else {
-          if (lprev) {
-            estep = lprev->prev->e;
-            lprevprev = BM_vert_step_fan_loop(lprev, &estep);
-          }
-          else {
-            lprevprev = NULL;
-          }
-          if (lnext) {
-            estep = lnext->e;
-            lnextnext = BM_vert_step_fan_loop(lnext, &estep);
-          }
-          else {
-            lnextnext = NULL;
-          }
-          fprevprevkind = lprevprev ? get_face_kind(bp, lprevprev->f) : F_NONE;
-          fnextnextkind = lnextnext ? get_face_kind(bp, lnextnext->f) : F_NONE;
-          if (fprevkind == F_EDGE && fprevprevkind == F_RECON) {
-            pnorm = lprevprev->f->no;
-          }
-          else if (fprevkind == F_EDGE && fnextkind == F_VERT && fprevprevkind == F_EDGE) {
-            add_v3_v3v3(norm, lprev->f->no, lprevprev->f->no);
-            pnorm = norm;
-          }
-          else if (fnextkind == F_EDGE && fprevkind == F_VERT && fnextnextkind == F_EDGE) {
-            add_v3_v3v3(norm, lnext->f->no, lnextnext->f->no);
-            pnorm = norm;
-          }
-          else {
-            /* printf("unexpected harden case (vert)\n"); */
-          }
-        }
-      }
-      if (pnorm) {
-        if (pnorm == norm) {
-          normalize_v3(norm);
-        }
-        l_index = BM_elem_index_get(l);
-        clnors = BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset);
-        BKE_lnor_space_custom_normal_to_data(bm->lnor_spacearr->lspacearr[l_index], pnorm, clnors);
-      }
-    }
-  }
-}
 
 static void bevel_set_weighted_normal_face_strength(BMesh *bm, BevelParams *bp)
 {
@@ -4322,8 +4329,6 @@ static VMesh *tri_corner_adj_vmesh(BevelParams *bp, BevVert *bv)
 }
 
 /* Makes the mesh that replaces the original vertex, bounded by the profiles on the sides */
-/* HANS-TODO: Does the fullness parameter impact the "ballooning" that's happening with small
- * profiles? */
 static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
 {
 #if DEBUG_CUSTOM_PROFILE_ADJ | DEBUG_CUSTOM_PROFILE_CUTOFF
@@ -4334,22 +4339,7 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
   float boundverts_center[3], original_vertex[3], negative_fullest[3], center_direction[3];
   BoundVert *bndv;
   MemArena *mem_arena = bp->mem_arena;
-  float r, p, fullness;
-  /* best fullness for circles, segs = 2,4,6,8,10 */
-#define CIRCLE_FULLNESS_SEGS 11
-  static const float circle_fullness[CIRCLE_FULLNESS_SEGS] = {
-      0.0f,   /* nsegs == 1 */
-      0.559f, /* 2 */
-      0.642f, /* 3 */
-      0.551f, /* 4 */
-      0.646f, /* 5 */
-      0.624f, /* 6 */
-      0.646f, /* 7 */
-      0.619f, /* 8 */
-      0.647f, /* 9 */
-      0.639f, /* 10 */
-      0.647f, /* 11 */
-  };
+  float fullness;
 
   n_bndv = bv->vmesh->count;
 
@@ -4362,6 +4352,7 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
   nseg = bv->vmesh->seg;
   vm0 = new_adj_vmesh(mem_arena, n_bndv, 2, bv->vmesh->boundstart);
 
+  /* Find the center of the boundverts that make up the vmesh */
   bndv = vm0->boundstart;
   zero_v3(boundverts_center);
   for (i = 0; i < n_bndv; i++) {
@@ -4371,52 +4362,33 @@ static VMesh *adj_vmesh(BevelParams *bp, BevVert *bv)
     add_v3_v3(boundverts_center, bndv->nv.co);
     bndv = bndv->next;
   }
+  mul_v3_fl(boundverts_center, 1.0f / (float)n_bndv);
 
   /* To place the center vertex:
-   * coa is original vertex
-   * co is centroid of boundary corners
    * 'negative_fullest' is the reflection of the original vertex across the boundverts' center.
-   * 'fullness' is the fraction of the way from the boundvert's centroid to to the
-   * original vertex(if positive) or to negative_fullest (if negative).
-   */
+   * 'fullness' is the fraction of the way from the boundvert's centroid to to the original vertex
+   * (if positive) or to negative_fullest (if negative). */
   copy_v3_v3(original_vertex, bv->v->co);
-  mul_v3_fl(boundverts_center, 1.0f / (float)n_bndv);
   sub_v3_v3v3(negative_fullest, boundverts_center, original_vertex);
   add_v3_v3(negative_fullest, boundverts_center);
 
-  /* An offline optimization process found fullness that let to closest fit to sphere as
-   * a function of r and ns (for case of cube corner) */
-  if (bp->use_custom_profile) {
-    fullness = 0.0f;
-  }
-  else {
-    r = bp->pro_super_r;
-    p = bp->profile;
-    if (r == PRO_LINE_R) {
-      fullness = 0.0f;
-    }
-    else if (r == PRO_CIRCLE_R && nseg > 0 && nseg <= CIRCLE_FULLNESS_SEGS) {
-      fullness = circle_fullness[nseg - 1];
-    }
-    else {
-      /* linear regression fit found best linear function, separately for even/odd segs */
-      if (nseg % 2 == 0) {
-        fullness = 2.4506f * p - 0.00000300f * nseg - 0.6266f;
-      }
-      else {
-        fullness = 2.3635f * p + 0.000152f * nseg - 0.6060f;
-      }
-    }
-  }
+  /* Find the vertex mesh's start center with the profile's fullness */
+  fullness = bp->pro_spacing.fullness;
   sub_v3_v3v3(center_direction, original_vertex, boundverts_center);
   if (len_squared_v3(center_direction) > BEVEL_EPSILON_SQ) {
-    madd_v3_v3v3fl(mesh_vert(vm0, 0, 1, 1)->co, boundverts_center, center_direction, fullness);
+    if (bp->use_custom_profile) {
+      madd_v3_v3v3fl(mesh_vert(vm0, 0, 1, 1)->co, negative_fullest, center_direction, fullness);
+    }
+    else {
+      madd_v3_v3v3fl(mesh_vert(vm0, 0, 1, 1)->co, boundverts_center, center_direction, fullness);
+    }
   }
   else {
     copy_v3_v3(mesh_vert(vm0, 0, 1, 1)->co, boundverts_center);
   }
   vmesh_copy_equiv_verts(vm0);
 
+  /* Do the subdivision process to go from the two segment start mesh to the final vertex mesh. */
   vm1 = vm0;
   do {
     vm1 = cubic_subdiv(bp, vm1);
@@ -5181,14 +5153,18 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   BMEdge **bmedges = NULL;
   BMFace **bmfaces = NULL;
 
-  /* Find the locations for the corner vertices at the bottom of the cutoff faces */
+  /* Find the locations for the corner vertices at the bottom of the cutoff faces. */
   bndv = bv->vmesh->boundstart;
   do {
     i = bndv->index;
 
+    /* Find the "down" direction for this side of the cutoff face. */
     /* Find the direction along the intersection of the two adjecent profile normals */
     /* HANS-TODO: This cross product doesn't work for all situations */
     cross_v3_v3v3(down_direction, bndv->profile.plane_no, bndv->prev->profile.plane_no);
+    if (dot_v3v3(down_direction, bv->v->no) > 0.0f) {
+      negate_v3(down_direction);
+    }
 
     /* Move down from the boundvert by average profile height from the two adjacent profiles */
     length = (bndv->profile.height / sqrtf(2.0f) +  bndv->prev->profile.height / sqrtf(2.0f)) / 2;
@@ -5685,6 +5661,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
 #endif
 
   /* Make sure the pipe case ADJ mesh is used for both the "Grid Fill" (ADJ) and cutoff options */
+  vpipe = NULL;
   if (vm->count == 3 || vm->count == 4) {
     /* Overhead of running pipe_test again is avoided by passing the result to bevel_build_rings */
     vpipe = pipe_test(bv);
@@ -5693,7 +5670,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
   }
 
-  /* HANS-QUESTION: Maybe it would make sense to make the weld case a mesh_kind option. It would
+  /* HANS-QUESTION: Maybe it would make sense to make the weld case a mesh_kind option? It would
    * simplify this function a fair amount and help with consistency. */
   switch (vm->mesh_kind) {
     case M_NONE:
@@ -7011,13 +6988,67 @@ static void find_even_superellipse_chords(int n, float r, double *xvals, double 
   find_even_superellipse_chords_general(n, r, xvals, yvals);
 }
 
+/** Find the profile's "fullness," which is the fraction of the space it takes up way from the
+ * boundvert's centroid to to the original vertex for a non-custom profile, or in the case of a
+ * custom profile, the average "height" of the profile points along its centerline. */
+static float find_profile_fullness(BevelParams *bp) {
+  float fullness;
+  int nseg = bp->seg;
+
+  /* Precalculated fullness for circle profile radius and more common low seg values */
+#define CIRCLE_FULLNESS_SEGS 11
+  static const float circle_fullness[CIRCLE_FULLNESS_SEGS] = {
+      0.0f,   /* nsegs == 1 */
+      0.559f, /* 2 */
+      0.642f, /* 3 */
+      0.551f, /* 4 */
+      0.646f, /* 5 */
+      0.624f, /* 6 */
+      0.646f, /* 7 */
+      0.619f, /* 8 */
+      0.647f, /* 9 */
+      0.639f, /* 10 */
+      0.647f, /* 11 */
+  };
+
+  if (bp->use_custom_profile) {
+    /* Set fullness to the average "height" of the profile's control points. Using control points
+     * instead of the segments is faster and should be a good approximation. */
+    fullness = 0.0f;
+    for (int i = 0; i < nseg; i++) { /* Don't use the end points. */
+      fullness += (float)(bp->pro_spacing.xvals[i] + bp->pro_spacing.yvals[i]) / (2.0f * nseg);
+    }
+  }
+  else {
+    /* An offline optimization process found fullness that let to closest fit to sphere as
+     * a function of r and ns (for case of cube corner) */
+    if (bp->pro_super_r == PRO_LINE_R) {
+      fullness = 0.0f;
+    }
+    else if (bp->pro_super_r == PRO_CIRCLE_R && nseg > 0 && nseg <= CIRCLE_FULLNESS_SEGS) {
+      fullness = circle_fullness[nseg - 1];
+    }
+    else {
+      /* linear regression fit found best linear function, separately for even/odd segs */
+      if (nseg % 2 == 0) {
+        fullness = 2.4506f * bp->profile - 0.00000300f * nseg - 0.6266f;
+      }
+      else {
+        fullness = 2.3635f * bp->profile + 0.000152f * nseg - 0.6060f;
+      }
+    }
+  }
+  return fullness;
+}
+
+
 /** Fills the ProfileSpacing struct with the 2D coordinates for the profile's vertices.
  * The superellipse used for multisegment profiles does not have a closed-form way
  * to generate evenly spaced points along an arc. We use an expensive search procedure
  * to find the parameter values that lead to bp->seg even chords.
  * We also want spacing for a number of segments that is a power of 2 >= bp->seg (but at least 4).
  * Use doubles because otherwise we cannot come close to float precision for final results.
- * \param pro_spacing The struct to fill. Would change depending on whether there needs
+ * \param pro_spacing: The struct to fill. Changes depending on whether there needs
           to be a separate miter profile. */
 static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bool custom)
 {
@@ -7394,6 +7425,9 @@ void BM_mesh_bevel(BMesh *bm,
 
     /* Get the 2D profile point locations from either the superellipse or the custom profile */
     set_profile_spacing(&bp, &bp.pro_spacing, bp.use_custom_profile);
+    if (bp.seg > 1) {
+      bp.pro_spacing.fullness = find_profile_fullness(&bp);
+    }
 
     /* Get separate non-custom profile samples for the miter profiles if they are needed */
     if (bp.use_custom_profile &&
