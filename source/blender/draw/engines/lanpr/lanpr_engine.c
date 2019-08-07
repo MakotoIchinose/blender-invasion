@@ -151,8 +151,12 @@ static void lanpr_engine_free(void)
   }
 
   if (lanpr_share.render_buffer_shared) {
-    ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-    MEM_freeN(lanpr_share.render_buffer_shared);
+    LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared;
+    ED_lanpr_destroy_render_data(rb);
+    
+    GPU_BATCH_DISCARD_SAFE(rb->chain_draw_batch);
+
+    MEM_freeN(rb);
     lanpr_share.render_buffer_shared = NULL;
   }
 }

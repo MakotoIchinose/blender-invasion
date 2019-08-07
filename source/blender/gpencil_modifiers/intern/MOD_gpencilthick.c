@@ -121,7 +121,7 @@ static void deformStroke(GpencilModifierData *md,
     if ((mmd->flag & GP_THICK_CUSTOM_CURVE) && (mmd->curve_thickness)) {
       /* normalize value to evaluate curve */
       float value = (float)i / (gps->totpoints - 1);
-      curvef = curvemapping_evaluateF(mmd->curve_thickness, 0, value);
+      curvef = BKE_curvemapping_evaluateF(mmd->curve_thickness, 0, value);
     }
 
     float new_pressure = weight * curvef;

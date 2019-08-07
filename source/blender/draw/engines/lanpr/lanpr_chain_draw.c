@@ -160,8 +160,8 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
   MEM_freeN(lengths);
 
   if (rb->chain_draw_batch) {
-    GPU_batch_discard(rb->chain_draw_batch);
+    GPU_BATCH_DISCARD_SAFE(rb->chain_draw_batch);
   }
   rb->chain_draw_batch = GPU_batch_create_ex(
-      GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
+      GPU_PRIM_LINES_ADJ, vbo, GPU_indexbuf_build(&elb), GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
 }
