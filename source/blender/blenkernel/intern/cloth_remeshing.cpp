@@ -979,7 +979,7 @@ static void cloth_remeshing_print_all_verts(BMesh *bm)
  *
  * v2 same as new_vert
  **/
-
+#if 0
 static BMEdge *cloth_remeshing_fix_sewing_verts(
     Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, ClothVertMap &cvm)
 {
@@ -1042,6 +1042,44 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
     }
   }
 }
+#else
+static BMEdge *cloth_remeshing_fix_sewing_verts(
+    Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, ClothVertMap &cvm)
+{
+  BMVert *v4, *v5;
+  BMIter iter;
+  BMEdge *v3v4, *v4v5, *v5v1;
+  v3v4 = cloth_remeshing_find_next_loose_edge(v3);
+  v4 = v3v4->v1 == v3 ? v3v4->v2 : v3v4->v1;
+
+  BM_ITER_ELEM (v4v5, &iter, v4, BM_EDGES_OF_VERT) {
+    v5 = v4v5->v1 == v4 ? v4v5->v2 : v4v5->v1;
+
+    v5v1 = cloth_remeshing_find_next_loose_edge(v5);
+    if (v5v1) {
+      if (v5v1->v1 == v1 || v5v1->v2 == v1) {
+        break;
+      }
+    }
+  }
+
+  if (!v4 || !v5 || !v5v1 || !v4v5) {
+    return NULL;
+  }
+
+  float size_v4v5 = cloth_remeshing_edge_size(bm, v4v5, cvm);
+  if (size_v4v5 > 1.0f) {
+    BMEdge v4v5_old = *v4v5;
+    BMVert *v6 = cloth_remeshing_split_edge_keep_triangles(bm, v4v5, v4, 0.5f);
+    if (!v6) {
+      return NULL;
+    }
+    cloth_remeshing_add_vertex_to_cloth(v4v5_old.v1, v4v5_old.v2, v6, cvm);
+    return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
+  }
+  return BM_edge_create(bm, new_vert, v5, v3v4, BM_CREATE_NO_DOUBLE);
+}
+#endif
 
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
                                         ClothVertMap &cvm,
@@ -1071,6 +1109,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
     BMVert *new_vert = cloth_remeshing_split_edge_keep_triangles(bm, e, e->v1, 0.5);
     if (!new_vert) {
       printf("new_vert == NULL\n");
+      continue;
     }
 
     cloth_remeshing_add_vertex_to_cloth(old_edge.v1, old_edge.v2, new_vert, cvm);
@@ -2567,7 +2606,7 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 
   const int cd_loop_uv_offset = CustomData_get_offset(&clmd->clothObject->bm->ldata, CD_MLOOPUV);
 
-  if (false) {
+  if (true) {
     cloth_remeshing_static(clmd, cvm, cd_loop_uv_offset);
   }
   else {
