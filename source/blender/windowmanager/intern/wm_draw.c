@@ -752,15 +752,14 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   }
 }
 
-void wm_draw_upside_down(int sizex, int sizey)
+void wm_draw_upside_down(int sizex, int sizey, bool to_srgb)
 {
-  /* Don't use imm here, this is called from a separate thread with no imm available. */
 
   /* wmOrtho for the screen has this same offset */
   const float halfx = GLA_PIXEL_OFS / sizex;
   const float halfy = GLA_PIXEL_OFS / sizey;
 
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
+  GPUShader *shader = GPU_shader_get_builtin_shader(to_srgb ? GPU_SHADER_2D_IMAGE_RECT_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE_RECT_COLOR);
   GPU_shader_bind(shader);
 
   glUniform1i(GPU_shader_get_uniform_ensure(shader, "image"), 0);
@@ -798,7 +797,7 @@ static void wm_draw_window_upside_down_onscreen(bContext *C, wmWindow *win)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GPU_texture_opengl_bindcode(texture));
 
-    wm_draw_upside_down(win->sizex, win->sizey);
+    wm_draw_upside_down(win->sizex, win->sizey, false);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 

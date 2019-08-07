@@ -420,6 +420,13 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
   r_info.fov.angle_down = view.fov.angleDown;
 }
 
+bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
+{
+  /* WMR seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
+   * compensate. */
+  return context->getOpenXRRuntimeID() == OPENXR_RUNTIME_WMR;
+}
+
 void GHOST_XrSession::drawView(XrSwapchain swapchain,
                                XrCompositionLayerProjectionView &proj_layer_view,
                                XrView &view,
@@ -449,6 +456,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
 
   swapchain_image = m_oxr->swapchain_images[swapchain][swapchain_idx];
 
+  draw_view_info.expects_srgb_buffer = ghost_xr_draw_view_expects_srgb_buffer(m_context);
   draw_view_info.ofsx = proj_layer_view.subImage.imageRect.offset.x;
   draw_view_info.ofsy = proj_layer_view.subImage.imageRect.offset.y;
   draw_view_info.width = proj_layer_view.subImage.imageRect.extent.width;

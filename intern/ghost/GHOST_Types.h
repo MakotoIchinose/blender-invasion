@@ -615,6 +615,9 @@ typedef struct {
     float angle_left, angle_right;
     float angle_up, angle_down;
   } fov;
+
+  /** Set if the buffer should be submitted with a srgb transfer applied. */
+  char expects_srgb_buffer;
 } GHOST_XrDrawViewInfo;
 
 typedef struct {

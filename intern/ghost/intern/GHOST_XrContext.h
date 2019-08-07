@@ -36,6 +36,17 @@ struct GHOST_XrCustomFuncs {
 };
 
 /**
+ * In some occasions, runtime specific handling is needed, e.g. to work around runtime bugs.
+ */
+enum GHOST_TXrOpenXRRuntimeID {
+  OPENXR_RUNTIME_MONADO,
+  OPENXR_RUNTIME_OCULUS,
+  OPENXR_RUNTIME_WMR, /* Windows Mixed Reality */
+
+  OPENXR_RUNTIME_UNKNOWN
+};
+
+/**
  * \brief Main GHOST container to manage OpenXR through.
  *
  * Creating a context using #GHOST_XrContextCreate involves dynamically connecting to the OpenXR
@@ -63,6 +74,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
 
   void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
+  GHOST_TXrOpenXRRuntimeID getOpenXRRuntimeID() const;
   const GHOST_XrCustomFuncs *getCustomFuncs() const;
   GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
   XrInstance getInstance() const;
@@ -71,6 +83,8 @@ class GHOST_XrContext : public GHOST_IXrContext {
 
  private:
   std::unique_ptr<struct OpenXRInstanceData> m_oxr;
+
+  GHOST_TXrOpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
 
   /* The active GHOST XR Session. Null while no session runs. */
   std::unique_ptr<class GHOST_XrSession> m_session;
@@ -92,6 +106,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
   bool m_debug_time{false};
 
   void createOpenXRInstance();
+  void storeInstanceProperties();
   void initDebugMessenger();
 
   void printInstanceInfo();

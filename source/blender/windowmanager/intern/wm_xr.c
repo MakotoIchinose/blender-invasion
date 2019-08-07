@@ -362,11 +362,11 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   if (g_xr_surface->secondary_ghost_ctx &&
       GHOST_isUpsideDownContext(g_xr_surface->secondary_ghost_ctx)) {
     GPU_texture_bind(texture, 0);
-    wm_draw_upside_down(draw_view->width, draw_view->height);
+    wm_draw_upside_down(draw_view->width, draw_view->height, draw_view->expects_srgb_buffer);
     GPU_texture_unbind(texture);
   }
   else {
-    GPU_viewport_draw_to_screen(viewport, &rect);
+    GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
   }
 
   GPU_viewport_unbind(viewport);
