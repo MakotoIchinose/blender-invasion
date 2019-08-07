@@ -220,6 +220,32 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
   }
 }
 
+/* Set clean outliner and mark other outliners for syncing */
+void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
+{
+  /* Don't sync in certain outliner display modes */
+  if (ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS)) {
+    return;
+  }
+
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, soops->sync_select_dirty);
+
+  ED_outliner_select_sync_from_object_tag(C);
+  ED_outliner_select_sync_from_edit_bone_tag(C);
+  ED_outliner_select_sync_from_pose_bone_tag(C);
+  ED_outliner_select_sync_from_sequence_tag(C);
+  ED_outliner_select_sync_flag_outliners(C);
+  soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_ALL;
+
+  /* Update editors */
+  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
+}
+
 static void outliner_select_sync_from_object(ViewLayer *view_layer,
                                              SpaceOutliner *soops,
                                              Object *obact,
@@ -346,32 +372,6 @@ static void get_sync_select_active_data(const bContext *C, SyncSelectActiveData 
   active_data->edit_bone = CTX_data_active_bone(C);
   active_data->pose_channel = CTX_data_active_pose_bone(C);
   active_data->sequence = BKE_sequencer_active_get(scene);
-}
-
-/* Set clean outliner and mark other outliners for syncing */
-void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
-{
-  /* Don't sync in certain outliner display modes */
-  if (ELEM(soops->outlinevis, SO_LIBRARIES, SO_DATA_API, SO_ID_ORPHANS)) {
-    return;
-  }
-
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-
-  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, soops->sync_select_dirty);
-
-  ED_outliner_select_sync_from_object_tag(C);
-  ED_outliner_select_sync_from_edit_bone_tag(C);
-  ED_outliner_select_sync_from_pose_bone_tag(C);
-  ED_outliner_select_sync_from_sequence_tag(C);
-  ED_outliner_select_sync_flag_outliners(C);
-  soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_ALL;
-
-  /* Update editors */
-  DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
 }
 
 /* If outliner is dirty sync selection from view layer and sequwncer */
