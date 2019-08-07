@@ -159,8 +159,7 @@ static void outliner_select_sync_to_object(ViewLayer *view_layer,
 
 static void outliner_select_sync_to_edit_bone(TreeElement *te, TreeStoreElem *tselem)
 {
-  Object *ob = (Object *)tselem->id;
-  bArmature *arm = ob->data;
+  bArmature *arm = (bArmature *)tselem->id;
   EditBone *ebone = (EditBone *)te->directdata;
 
   if (EBONE_SELECTABLE(arm, ebone)) {
