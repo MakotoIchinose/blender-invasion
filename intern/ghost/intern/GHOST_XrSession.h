@@ -35,7 +35,7 @@ class GHOST_XrSession {
   ~GHOST_XrSession();
 
   void start(const GHOST_XrSessionBeginInfo *begin_info);
-  void end();
+  void requestEnd();
 
   eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);
 
@@ -60,6 +60,7 @@ class GHOST_XrSession {
   std::unique_ptr<struct GHOST_XrDrawInfo> m_draw_info;
 
   void initSystem();
+  void end();
 
   void bindGraphicsContext();
 

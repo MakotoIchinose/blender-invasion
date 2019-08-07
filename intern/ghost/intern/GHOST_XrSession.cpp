@@ -181,6 +181,11 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   create_reference_space(m_oxr.get(), &begin_info->base_pose);
 }
 
+void GHOST_XrSession::requestEnd()
+{
+  xrRequestExitSession(m_oxr->session);
+}
+
 void GHOST_XrSession::end()
 {
   assert(m_oxr->session != XR_NULL_HANDLE);

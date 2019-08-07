@@ -452,8 +452,7 @@ void GHOST_XrContext::startSession(const GHOST_XrSessionBeginInfo *begin_info)
 }
 void GHOST_XrContext::endSession()
 {
-  m_session->end();
-  m_session = nullptr;
+  m_session->requestEnd();
 }
 
 bool GHOST_XrContext::isSessionRunning() const
