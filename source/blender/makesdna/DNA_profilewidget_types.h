@@ -31,7 +31,7 @@
 /** Number of table points per control point */
 #define PROF_RESOL 16
 /** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint */
-#define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts) - 1) * PROF_RESOL))
+#define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts - 1)) * PROF_RESOL) + 1)
 
 typedef struct ProfilePoint {
   /** Location of the point, keep together */

@@ -42,7 +42,7 @@
 #include "BKE_fcurve.h"
 
 #define DEBUG_PRWDGT 0
-#define DEBUG_PRWDGT_TABLE 1
+#define DEBUG_PRWDGT_TABLE 0
 #define DEBUG_PRWDGT_EVALUATE 0
 #define DEBUG_PRWDGT_REVERSE 0
 
@@ -559,11 +559,10 @@ static int compare_curvature_bezt_edge_i(const BezTriple *bezt, const int i_a, c
  * \param r_samples: An array of points to put the sampled positions. Must have length n_segments.
  * \return r_samples: Fill the array with the sampled locations and if the point corresponds
  *         to a control point, its handle type */
-/* HANS-TODO: This is getting called way too much: when the mouse moves over the bevel modifier UI */
 void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
-                                  int n_segments,
-                                  bool sample_straight_edges,
-                                  ProfilePoint *r_samples)
+                                      int n_segments,
+                                      bool sample_straight_edges,
+                                      ProfilePoint *r_samples)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEWIDGET CREATE SAMPLES\n");
@@ -735,7 +734,18 @@ static void profilewidget_make_table(ProfileWidget *prwdgt)
   ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
                                         "high-res table");
 
-  BKE_profilewidget_create_samples(prwdgt, n_samples, false, new_table);
+  BKE_profilewidget_create_samples(prwdgt, n_samples - 1, false, new_table);
+  /* Manually add last point at the end of the profile */
+  new_table[n_samples - 1].x = 0.0f;
+  new_table[n_samples - 1].y = 1.0f;
+
+#if DEBUG_PRWDGT_TABLE
+  printf("High-res table samples:\n");
+  for (int i = 0; i < n_samples; i++) {
+    printf("(%.3f, %.3f), ", new_table[i].x, new_table[i].y);
+  }
+  printf("\n");
+#endif
 
   if (prwdgt->table) {
     MEM_freeN(prwdgt->table);
@@ -790,7 +800,7 @@ void BKE_profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
   ProfilePoint *points = prwdgt->path;
   rctf *clipr = &prwdgt->clip_rect;
   float thresh;
-  float dx = 0.0f, dy = 0.0f;
+  float dx, dy;
   int i;
 
   prwdgt->changed_timestamp++;
