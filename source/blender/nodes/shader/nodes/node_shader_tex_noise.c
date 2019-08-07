@@ -31,6 +31,17 @@ static bNodeSocketTemplate sh_node_tex_noise_in[] = {
 };
 
 static bNodeSocketTemplate sh_node_tex_noise_out[] = {
+    {SOCK_FLOAT,
+     0,
+     N_("Value"),
+     0.0f,
+     0.0f,
+     0.0f,
+     0.0f,
+     0.0f,
+     1.0f,
+     PROP_FACTOR,
+     SOCK_NO_INTERNAL_LINK},
     {SOCK_RGBA,
      0,
      N_("Color"),
@@ -41,17 +52,6 @@ static bNodeSocketTemplate sh_node_tex_noise_out[] = {
      0.0f,
      1.0f,
      PROP_NONE,
-     SOCK_NO_INTERNAL_LINK},
-    {SOCK_FLOAT,
-     0,
-     N_("Fac"),
-     0.0f,
-     0.0f,
-     0.0f,
-     0.0f,
-     0.0f,
-     1.0f,
-     PROP_FACTOR,
      SOCK_NO_INTERNAL_LINK},
     {-1, 0, ""},
 };
@@ -79,8 +79,7 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
   node_shader_gpu_tex_mapping(mat, node, in, out);
 
-  NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
-
+  NodeTexNoise *tex = (NodeTexNoise *)node->storage;
   switch (tex->dimensions) {
     case 1:
       return GPU_stack_link(mat, node, "node_tex_noise_1d", in, out);
@@ -97,13 +96,12 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
 static void node_shader_update_tex_noise(bNodeTree *UNUSED(ntree), bNode *node)
 {
+  bNodeSocket *sockVector = nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *sockW = nodeFindSocket(node, SOCK_IN, "W");
+
   NodeTexNoise *tex = (NodeTexNoise *)node->storage;
-
-  bNodeSocket *inVecSock = BLI_findlink(&node->inputs, 0);
-  bNodeSocket *inWSock = BLI_findlink(&node->inputs, 1);
-
-  nodeSetSocketAvailability(inVecSock, tex->dimensions != 1);
-  nodeSetSocketAvailability(inWSock, tex->dimensions == 1 || tex->dimensions == 4);
+  nodeSetSocketAvailability(sockVector, tex->dimensions != 1);
+  nodeSetSocketAvailability(sockW, tex->dimensions == 1 || tex->dimensions == 4);
 }
 
 /* node type definition */

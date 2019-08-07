@@ -3519,19 +3519,19 @@ float noise_turbulence(vec4 p, float octaves)
  * components, add a random offset {75, 125, 150}, or do both.
  */
 void node_tex_noise_1d(
-    vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
+    vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   float p = w * scale;
   if (distortion != 0.0) {
     p += noise(p + 13.5) * distortion;
   }
 
-  fac = noise_turbulence(p, detail);
-  color = vec4(fac, noise_turbulence(p + 75.0, detail), noise_turbulence(p + 125.0, detail), 1.0);
+  value = noise_turbulence(p, detail);
+  color = vec4(value, noise_turbulence(p + 75.0, detail), noise_turbulence(p + 125.0, detail), 1.0);
 }
 
 void node_tex_noise_2d(
-    vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
+    vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec2 p = co.xy * scale;
   if (distortion != 0.0) {
@@ -3541,15 +3541,15 @@ void node_tex_noise_2d(
     p += r;
   }
 
-  fac = noise_turbulence(p, detail);
-  color = vec4(fac,
+  value = noise_turbulence(p, detail);
+  color = vec4(value,
                noise_turbulence(p + vec2(150.0, 125.0), detail),
                noise_turbulence(p + vec2(75.0, 125.0), detail),
                1.0);
 }
 
 void node_tex_noise_3d(
-    vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
+    vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec3 p = co * scale;
   if (distortion != 0.0) {
@@ -3560,12 +3560,12 @@ void node_tex_noise_3d(
     p += r;
   }
 
-  fac = noise_turbulence(p, detail);
-  color = vec4(fac, noise_turbulence(p.yxz, detail), noise_turbulence(p.yzx, detail), 1.0);
+  value = noise_turbulence(p, detail);
+  color = vec4(value, noise_turbulence(p.yxz, detail), noise_turbulence(p.yzx, detail), 1.0);
 }
 
 void node_tex_noise_4d(
-    vec3 co, float w, float scale, float detail, float distortion, out vec4 color, out float fac)
+    vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec4 p = vec4(co, w) * scale;
   if (distortion != 0.0) {
@@ -3577,8 +3577,8 @@ void node_tex_noise_4d(
     p += r;
   }
 
-  fac = noise_turbulence(p, detail);
-  color = vec4(fac, noise_turbulence(p.ywzx, detail), noise_turbulence(p.yzwx, detail), 1.0);
+  value = noise_turbulence(p, detail);
+  color = vec4(value, noise_turbulence(p.ywzx, detail), noise_turbulence(p.yzwx, detail), 1.0);
 }
 
 /* 1D Musgrave fBm

@@ -906,8 +906,8 @@ NODE_DEFINE(NoiseTextureNode)
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(distortion, "Distortion", 0.0f);
 
+  SOCKET_OUT_FLOAT(value, "Value");
   SOCKET_OUT_COLOR(color, "Color");
-  SOCKET_OUT_FLOAT(fac, "Fac");
 
   return type;
 }
@@ -924,8 +924,8 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *detail_in = input("Detail");
   ShaderInput *distortion_in = input("Distortion");
 
+  ShaderOutput *value_out = output("Value");
   ShaderOutput *color_out = output("Color");
-  ShaderOutput *fac_out = output("Fac");
 
   int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
 
@@ -936,8 +936,8 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
                                            compiler.stack_assign_if_linked(scale_in),
                                            compiler.stack_assign_if_linked(detail_in)),
                     compiler.encode_uchar4(compiler.stack_assign_if_linked(distortion_in),
-                                           compiler.stack_assign_if_linked(color_out),
-                                           compiler.stack_assign_if_linked(fac_out)));
+                                           compiler.stack_assign_if_linked(value_out),
+                                           compiler.stack_assign_if_linked(color_out)));
   compiler.add_node(__float_as_int(w),
                     __float_as_int(scale),
                     __float_as_int(detail),
