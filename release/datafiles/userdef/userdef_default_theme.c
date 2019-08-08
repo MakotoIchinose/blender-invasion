@@ -749,6 +749,7 @@ const bTheme U_theme_default = {
     .facedot_size = 4,
     .match = RGBA(0x337f334c),
     .selected_highlight = RGBA(0x314e784c),
+    .active = RGBA(0x59749d4c),
     .selected_object = RGBA(0xe96a00ff),
     .active_object = RGBA(0xffaf29ff),
     .edited_object = RGBA(0x00806266),
