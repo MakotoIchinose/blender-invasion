@@ -1095,10 +1095,10 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
             if lanpr.use_same_taper == "DISABLED":
                 col = layout.column(align = True)
                 col.prop(lanpr,"taper_left_distance")
-                col.prop(lanpr,"taper_left_strength")
+                col.prop(lanpr,"taper_left_strength", text="Strength")
                 col = layout.column(align = True)
                 col.prop(lanpr,"taper_right_distance")
-                col.prop(lanpr,"taper_right_strength")
+                col.prop(lanpr,"taper_right_strength", text="Strength")
             else:
                 col = layout.column(align = True)
                 col.prop(lanpr,"taper_left_distance", text="Distance")
