@@ -856,13 +856,9 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *row;
+  PointerRNA ptr, toolsettings_ptr;
 
-  PointerRNA ptr;
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
-  /* Get an RNA pointer to ToolSettings to give to the profile widget template code */
-  Scene *scene = CTX_data_scene(C);
-  PointerRNA toolsettings_ptr;
-  RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
 
   uiItemR(layout, &ptr, "offset_type", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
@@ -883,26 +879,26 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
+  uiItemR(layout, &ptr, "miter_outer", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "miter_inner", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
+    uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
+  }
+
   uiItemL(layout, "Face Strength Mode:", ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "face_strength_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-  uiItemL(layout, "Outer Miter:", ICON_NONE);
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "miter_outer", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  uiItemL(layout, "Inner Miter:", ICON_NONE);
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "miter_inner", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-  if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
-    uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
-  }
   uiItemL(layout, "Intersection Method:", ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "vmesh_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
   if (RNA_boolean_get(&ptr, "use_custom_profile")) {
+    /* Get an RNA pointer to ToolSettings to give to the profile widget template code */
+    Scene *scene = CTX_data_scene(C);
+    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
     uiTemplateProfileWidget(layout, &toolsettings_ptr, "prwdgt");
-
   }
 }
 
