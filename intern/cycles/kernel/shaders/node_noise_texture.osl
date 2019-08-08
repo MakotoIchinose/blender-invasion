@@ -21,68 +21,95 @@
 
 #define vector3 point
 
-/* To compute the color output of the noise, we either swizzle the
- * components, add a random offset {75, 125, 150}, or do both.
+/* The following offset functions generate random offsets to be added to texture
+ * coordinates to act as a seed since the noise functions don't have seed values.
+ * A seed value is needed for generating distortion textures and color outputs.
+ * The offset's components are in the range [100, 200], not too high to cause
+ * bad precision and not to small to be noticeable. We use float seed because
+ * OSL only support float hashes.
  */
+
+float random_float_offset(float seed)
+{
+  return 100.0 + noise("hash", seed) * 100.0;
+}
+
+vector2 random_vector2_offset(float seed)
+{
+  return vector2(100.0 + noise("hash", seed, 0.0) * 100.0,
+                 100.0 + noise("hash", seed, 1.0) * 100.0);
+}
+
+vector3 random_vector3_offset(float seed)
+{
+  return vector3(100.0 + noise("hash", seed, 0.0) * 100.0,
+                 100.0 + noise("hash", seed, 1.0) * 100.0,
+                 100.0 + noise("hash", seed, 2.0) * 100.0);
+}
+
+vector4 random_vector4_offset(float seed)
+{
+  return vector4(100.0 + noise("hash", seed, 0.0) * 100.0,
+                 100.0 + noise("hash", seed, 1.0) * 100.0,
+                 100.0 + noise("hash", seed, 2.0) * 100.0,
+                 100.0 + noise("hash", seed, 3.0) * 100.0);
+}
+
 float noise(float p, float detail, float distortion, output color Color)
 {
   if (distortion != 0.0) {
-    p += safe_noise(p + 13.5) * distortion;
+    p += safe_noise(p + random_float_offset(0.0)) * distortion;
   }
 
   float value = noise_turbulence(p, detail);
-  Color = color(value, noise_turbulence(p + 75.0, detail), noise_turbulence(p + 125.0, detail));
+  Color = color(value,
+                noise_turbulence(p + random_float_offset(1.0), detail),
+                noise_turbulence(p + random_float_offset(2.0), detail));
   return value;
 }
 
 float noise(vector2 p, float detail, float distortion, output color Color)
 {
   if (distortion != 0.0) {
-    vector2 r;
-    r.x = safe_noise(p + vector2(13.5, 13.5)) * distortion;
-    r.y = safe_noise(p) * distortion;
-    p += r;
+    p += vector2(safe_noise(p + random_vector2_offset(0.0)) * distortion,
+                 safe_noise(p + random_vector2_offset(1.0)) * distortion);
   }
 
   float value = noise_turbulence(p, detail);
   Color = color(value,
-                noise_turbulence(p + vector2(150.0, 125.0), detail),
-                noise_turbulence(p + vector2(75.0, 125.0), detail));
+                noise_turbulence(p + random_vector2_offset(2.0), detail),
+                noise_turbulence(p + random_vector2_offset(3.0), detail));
   return value;
 }
 
 float noise(vector3 p, float detail, float distortion, output color Color)
 {
   if (distortion != 0.0) {
-    vector3 r, offset = vector3(13.5);
-    r[0] = safe_noise(p + offset) * distortion;
-    r[1] = safe_noise(p) * distortion;
-    r[2] = safe_noise(p - offset) * distortion;
-    p += r;
+    p += vector3(safe_noise(p + random_vector3_offset(0.0)) * distortion,
+                 safe_noise(p + random_vector3_offset(1.0)) * distortion,
+                 safe_noise(p + random_vector3_offset(2.0)) * distortion);
   }
 
   float value = noise_turbulence(p, detail);
   Color = color(value,
-                noise_turbulence(vector3(p[1], p[0], p[2]), detail),
-                noise_turbulence(vector3(p[1], p[2], p[0]), detail));
+                noise_turbulence(p + random_vector3_offset(3.0), detail),
+                noise_turbulence(p + random_vector3_offset(4.0), detail));
   return value;
 }
 
 float noise(vector4 p, float detail, float distortion, output color Color)
 {
   if (distortion != 0.0) {
-    vector4 r, offset = vector4(13.5, 13.5, 13.5, 13.5);
-    r.x = safe_noise(p + offset) * distortion;
-    r.y = safe_noise(p) * distortion;
-    r.z = safe_noise(p - offset) * distortion;
-    r.w = safe_noise(vector4(p.w, p.y, p.z, p.x) + offset) * distortion;
-    p += r;
+    p += vector4(safe_noise(p + random_vector4_offset(0.0)) * distortion,
+                 safe_noise(p + random_vector4_offset(1.0)) * distortion,
+                 safe_noise(p + random_vector4_offset(2.0)) * distortion,
+                 safe_noise(p + random_vector4_offset(3.0)) * distortion);
   }
 
   float value = noise_turbulence(p, detail);
   Color = color(value,
-                noise_turbulence(vector4(p.y, p.w, p.z, p.x), detail),
-                noise_turbulence(vector4(p.y, p.z, p.w, p.x), detail));
+                noise_turbulence(p + random_vector4_offset(4.0), detail),
+                noise_turbulence(p + random_vector4_offset(5.0), detail));
   return value;
 }
 

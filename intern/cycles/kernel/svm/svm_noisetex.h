@@ -16,20 +16,52 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* To compute the color output of the noise, we either swizzle the
- * components, add a random offset {75, 125, 150}, or do both.
+/* The following offset functions generate random offsets to be added to texture
+ * coordinates to act as a seed since the noise functions don't have seed values.
+ * A seed value is needed for generating distortion textures and color outputs.
+ * The offset's components are in the range [100, 200], not too high to cause
+ * bad precision and not to small to be noticeable. We use float seed because
+ * OSL only support float hashes.
  */
+
+ccl_device_inline float random_float_offset(float seed)
+{
+  return 100.0f + hash_float_to_float(seed) * 100.0f;
+}
+
+ccl_device_inline float2 random_float2_offset(float seed)
+{
+  return make_float2(100.0f + hash_float2_to_float(make_float2(seed, 0.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 1.0f)) * 100.0f);
+}
+
+ccl_device_inline float3 random_float3_offset(float seed)
+{
+  return make_float3(100.0f + hash_float2_to_float(make_float2(seed, 0.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 1.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 2.0f)) * 100.0f);
+}
+
+ccl_device_inline float4 random_float4_offset(float seed)
+{
+  return make_float4(100.0f + hash_float2_to_float(make_float2(seed, 0.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 1.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 2.0f)) * 100.0f,
+                     100.0f + hash_float2_to_float(make_float2(seed, 3.0f)) * 100.0f);
+}
+
 ccl_device void tex_noise_1d(
     float p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
   if (distortion != 0.0f) {
-    p += noise_1d(p + 13.5f) * distortion;
+    p += noise_1d(p + random_float_offset(0.0f)) * distortion;
   }
 
   *value = noise_turbulence_1d(p, detail);
   if (color_is_needed) {
-    *color = make_float3(
-        *value, noise_turbulence_1d(p + 75.0f, detail), noise_turbulence_1d(p + 125.0f, detail));
+    *color = make_float3(*value,
+                         noise_turbulence_1d(p + random_float_offset(1.0f), detail),
+                         noise_turbulence_1d(p + random_float_offset(2.0f), detail));
   }
 }
 
@@ -37,17 +69,15 @@ ccl_device void tex_noise_2d(
     float2 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
   if (distortion != 0.0f) {
-    float2 r;
-    r.x = noise_2d(p + make_float2(13.5f, 13.5f)) * distortion;
-    r.y = noise_2d(p) * distortion;
-    p += r;
+    p += make_float2(noise_2d(p + random_float2_offset(0.0f)) * distortion,
+                     noise_2d(p + random_float2_offset(1.0f)) * distortion);
   }
 
   *value = noise_turbulence_2d(p, detail);
   if (color_is_needed) {
     *color = make_float3(*value,
-                         noise_turbulence_2d(p + make_float2(150.0f, 125.0f), detail),
-                         noise_turbulence_2d(p + make_float2(75.0f, 125.0f), detail));
+                         noise_turbulence_2d(p + random_float2_offset(2.0f), detail),
+                         noise_turbulence_2d(p + random_float2_offset(3.0f), detail));
   }
 }
 
@@ -55,18 +85,16 @@ ccl_device void tex_noise_3d(
     float3 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
   if (distortion != 0.0f) {
-    float3 r, offset = make_float3(13.5f, 13.5f, 13.5f);
-    r.x = noise_3d(p + offset) * distortion;
-    r.y = noise_3d(p) * distortion;
-    r.z = noise_3d(p - offset) * distortion;
-    p += r;
+    p += make_float3(noise_3d(p + random_float3_offset(0.0f)) * distortion,
+                     noise_3d(p + random_float3_offset(1.0f)) * distortion,
+                     noise_3d(p + random_float3_offset(2.0f)) * distortion);
   }
 
   *value = noise_turbulence_3d(p, detail);
   if (color_is_needed) {
     *color = make_float3(*value,
-                         noise_turbulence_3d(make_float3(p.y, p.x, p.z), detail),
-                         noise_turbulence_3d(make_float3(p.y, p.z, p.x), detail));
+                         noise_turbulence_3d(p + random_float3_offset(3.0f), detail),
+                         noise_turbulence_3d(p + random_float3_offset(4.0f), detail));
   }
 }
 
@@ -74,19 +102,17 @@ ccl_device void tex_noise_4d(
     float4 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
   if (distortion != 0.0f) {
-    float4 r, offset = make_float4(13.5, 13.5, 13.5, 13.5);
-    r.x = noise_4d(p + offset) * distortion;
-    r.y = noise_4d(p) * distortion;
-    r.z = noise_4d(p - offset) * distortion;
-    r.w = noise_4d(make_float4(p.w, p.y, p.z, p.x) + offset) * distortion;
-    p += r;
+    p += make_float4(noise_4d(p + random_float4_offset(0.0f)) * distortion,
+                     noise_4d(p + random_float4_offset(1.0f)) * distortion,
+                     noise_4d(p + random_float4_offset(2.0f)) * distortion,
+                     noise_4d(p + random_float4_offset(3.0f)) * distortion);
   }
 
   *value = noise_turbulence_4d(p, detail);
   if (color_is_needed) {
     *color = make_float3(*value,
-                         noise_turbulence_4d(make_float4(p.y, p.w, p.z, p.x), detail),
-                         noise_turbulence_4d(make_float4(p.y, p.z, p.w, p.x), detail));
+                         noise_turbulence_4d(p + random_float4_offset(4.0f), detail),
+                         noise_turbulence_4d(p + random_float4_offset(5.0f), detail));
   }
 }
 

@@ -3515,19 +3515,53 @@ float noise_turbulence(vec4 p, float octaves)
   }
 }
 
-/* To compute the color output of the noise, we either swizzle the
- * components, add a random offset {75, 125, 150}, or do both.
+/* The following offset functions generate random offsets to be added to texture
+ * coordinates to act as a seed since the noise functions don't have seed values.
+ * A seed value is needed for generating distortion textures and color outputs.
+ * The offset's components are in the range [100, 200], not too high to cause
+ * bad precision and not to small to be noticeable. We use float seed because
+ * OSL only support float hashes.
  */
+
+float random_float_offset(float seed)
+{
+  return 100.0 + hash_float_to_float(seed) * 100.0;
+}
+
+vec2 random_vec2_offset(float seed)
+{
+  return vec2(100.0 + hash_vec2_to_float(vec2(seed, 0.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 1.0)) * 100.0);
+}
+
+vec3 random_vec3_offset(float seed)
+{
+  return vec3(100.0 + hash_vec2_to_float(vec2(seed, 0.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 1.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 2.0)) * 100.0);
+}
+
+vec4 random_vec4_offset(float seed)
+{
+  return vec4(100.0 + hash_vec2_to_float(vec2(seed, 0.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 1.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 2.0)) * 100.0,
+              100.0 + hash_vec2_to_float(vec2(seed, 3.0)) * 100.0);
+}
+
 void node_tex_noise_1d(
     vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   float p = w * scale;
   if (distortion != 0.0) {
-    p += noise(p + 13.5) * distortion;
+    p += noise(p + random_float_offset(0.0)) * distortion;
   }
 
   value = noise_turbulence(p, detail);
-  color = vec4(value, noise_turbulence(p + 75.0, detail), noise_turbulence(p + 125.0, detail), 1.0);
+  color = vec4(value,
+               noise_turbulence(p + random_float_offset(1.0), detail),
+               noise_turbulence(p + random_float_offset(2.0), detail),
+               1.0);
 }
 
 void node_tex_noise_2d(
@@ -3535,16 +3569,14 @@ void node_tex_noise_2d(
 {
   vec2 p = co.xy * scale;
   if (distortion != 0.0) {
-    vec2 r;
-    r.x = noise(p + vec2(13.5)) * distortion;
-    r.y = noise(p) * distortion;
-    p += r;
+    p += vec2(noise(p + random_vec2_offset(0.0)) * distortion,
+              noise(p + random_vec2_offset(1.0)) * distortion);
   }
 
   value = noise_turbulence(p, detail);
   color = vec4(value,
-               noise_turbulence(p + vec2(150.0, 125.0), detail),
-               noise_turbulence(p + vec2(75.0, 125.0), detail),
+               noise_turbulence(p + random_vec2_offset(2.0), detail),
+               noise_turbulence(p + random_vec2_offset(3.0), detail),
                1.0);
 }
 
@@ -3553,15 +3585,16 @@ void node_tex_noise_3d(
 {
   vec3 p = co * scale;
   if (distortion != 0.0) {
-    vec3 r, offset = vec3(13.5, 13.5, 13.5);
-    r.x = noise(p + offset) * distortion;
-    r.y = noise(p) * distortion;
-    r.z = noise(p - offset) * distortion;
-    p += r;
+    p += vec3(noise(p + random_vec3_offset(0.0)) * distortion,
+              noise(p + random_vec3_offset(1.0)) * distortion,
+              noise(p + random_vec3_offset(2.0)) * distortion);
   }
 
   value = noise_turbulence(p, detail);
-  color = vec4(value, noise_turbulence(p.yxz, detail), noise_turbulence(p.yzx, detail), 1.0);
+  color = vec4(value,
+               noise_turbulence(p + random_vec3_offset(3.0), detail),
+               noise_turbulence(p + random_vec3_offset(4.0), detail),
+               1.0);
 }
 
 void node_tex_noise_4d(
@@ -3569,16 +3602,17 @@ void node_tex_noise_4d(
 {
   vec4 p = vec4(co, w) * scale;
   if (distortion != 0.0) {
-    vec4 r, offset = vec4(13.5, 13.5, 13.5, 13.5);
-    r.x = noise(p + offset) * distortion;
-    r.y = noise(p) * distortion;
-    r.z = noise(p - offset) * distortion;
-    r.w = noise(p.wyzx + offset) * distortion;
-    p += r;
+    p += vec4(noise(p + random_vec4_offset(0.0)) * distortion,
+              noise(p + random_vec4_offset(1.0)) * distortion,
+              noise(p + random_vec4_offset(2.0)) * distortion,
+              noise(p + random_vec4_offset(3.0)) * distortion);
   }
 
   value = noise_turbulence(p, detail);
-  color = vec4(value, noise_turbulence(p.ywzx, detail), noise_turbulence(p.yzwx, detail), 1.0);
+  color = vec4(value,
+               noise_turbulence(p + random_vec4_offset(4.0), detail),
+               noise_turbulence(p + random_vec4_offset(5.0), detail),
+               1.0);
 }
 
 /* 1D Musgrave fBm
