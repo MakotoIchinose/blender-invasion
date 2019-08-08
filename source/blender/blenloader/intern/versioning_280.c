@@ -3532,7 +3532,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
 
-    /* Marks each outliner as dirty so a sync will occur as synced selection is enabled. */
+    /* Marks each outliner as dirty so a sync will occur as an outliner draws. */
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
