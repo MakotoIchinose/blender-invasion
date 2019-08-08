@@ -114,11 +114,9 @@ typedef struct LANPR_LineLayer {
   int use_same_style;
 
   int _pad1;
-  char _pad2;
-
-  char normal_enabled;
-  char normal_mode;
-  char normal_effect_inverse;
+  int normal_enabled;
+  int normal_mode;
+  int normal_effect_inverse;
   float normal_ramp_begin;
   float normal_ramp_end;
   float normal_thickness_begin;
