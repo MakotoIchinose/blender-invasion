@@ -50,9 +50,10 @@ ccl_device_inline float4 random_float4_offset(float seed)
                      100.0f + hash_float2_to_float(make_float2(seed, 3.0f)) * 100.0f);
 }
 
-ccl_device void tex_noise_1d(
-    float p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
+ccl_device void noise_texture_1d(
+    float co, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
+  float p = co;
   if (distortion != 0.0f) {
     p += noise_1d(p + random_float_offset(0.0f)) * distortion;
   }
@@ -65,9 +66,10 @@ ccl_device void tex_noise_1d(
   }
 }
 
-ccl_device void tex_noise_2d(
-    float2 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
+ccl_device void noise_texture_2d(
+    float2 co, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
+  float2 p = co;
   if (distortion != 0.0f) {
     p += make_float2(noise_2d(p + random_float2_offset(0.0f)) * distortion,
                      noise_2d(p + random_float2_offset(1.0f)) * distortion);
@@ -81,9 +83,10 @@ ccl_device void tex_noise_2d(
   }
 }
 
-ccl_device void tex_noise_3d(
-    float3 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
+ccl_device void noise_texture_3d(
+    float3 co, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
+  float3 p = co;
   if (distortion != 0.0f) {
     p += make_float3(noise_3d(p + random_float3_offset(0.0f)) * distortion,
                      noise_3d(p + random_float3_offset(1.0f)) * distortion,
@@ -98,9 +101,10 @@ ccl_device void tex_noise_3d(
   }
 }
 
-ccl_device void tex_noise_4d(
-    float4 p, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
+ccl_device void noise_texture_4d(
+    float4 co, float detail, float distortion, bool color_is_needed, float *value, float3 *color)
 {
+  float4 p = co;
   if (distortion != 0.0f) {
     p += make_float4(noise_4d(p + random_float4_offset(0.0f)) * distortion,
                      noise_4d(p + random_float4_offset(1.0f)) * distortion,
@@ -143,29 +147,28 @@ ccl_device void svm_node_tex_noise(KernelGlobals *kg,
 
   float value;
   float3 color;
-
   switch (dimensions) {
     case 1:
-      tex_noise_1d(w, detail, distortion, stack_valid(color_offset), &value, &color);
+      noise_texture_1d(w, detail, distortion, stack_valid(color_offset), &value, &color);
       break;
     case 2:
-      tex_noise_2d(make_float2(vector.x, vector.y),
-                   detail,
-                   distortion,
-                   stack_valid(color_offset),
-                   &value,
-                   &color);
+      noise_texture_2d(make_float2(vector.x, vector.y),
+                       detail,
+                       distortion,
+                       stack_valid(color_offset),
+                       &value,
+                       &color);
       break;
     case 3:
-      tex_noise_3d(vector, detail, distortion, stack_valid(color_offset), &value, &color);
+      noise_texture_3d(vector, detail, distortion, stack_valid(color_offset), &value, &color);
       break;
     case 4:
-      tex_noise_4d(make_float4(vector.x, vector.y, vector.z, w),
-                   detail,
-                   distortion,
-                   stack_valid(color_offset),
-                   &value,
-                   &color);
+      noise_texture_4d(make_float4(vector.x, vector.y, vector.z, w),
+                       detail,
+                       distortion,
+                       stack_valid(color_offset),
+                       &value,
+                       &color);
       break;
     default:
       kernel_assert(0);

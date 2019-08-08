@@ -55,8 +55,9 @@ vector4 random_vector4_offset(float seed)
                  100.0 + noise("hash", seed, 3.0) * 100.0);
 }
 
-float noise(float p, float detail, float distortion, output color Color)
+float noise_texture(float co, float detail, float distortion, output color Color)
 {
+  float p = co;
   if (distortion != 0.0) {
     p += safe_noise(p + random_float_offset(0.0)) * distortion;
   }
@@ -68,8 +69,9 @@ float noise(float p, float detail, float distortion, output color Color)
   return value;
 }
 
-float noise(vector2 p, float detail, float distortion, output color Color)
+float noise_texture(vector2 co, float detail, float distortion, output color Color)
 {
+  vector2 p = co;
   if (distortion != 0.0) {
     p += vector2(safe_noise(p + random_vector2_offset(0.0)) * distortion,
                  safe_noise(p + random_vector2_offset(1.0)) * distortion);
@@ -82,8 +84,9 @@ float noise(vector2 p, float detail, float distortion, output color Color)
   return value;
 }
 
-float noise(vector3 p, float detail, float distortion, output color Color)
+float noise_texture(vector3 co, float detail, float distortion, output color Color)
 {
+  vector3 p = co;
   if (distortion != 0.0) {
     p += vector3(safe_noise(p + random_vector3_offset(0.0)) * distortion,
                  safe_noise(p + random_vector3_offset(1.0)) * distortion,
@@ -97,8 +100,9 @@ float noise(vector3 p, float detail, float distortion, output color Color)
   return value;
 }
 
-float noise(vector4 p, float detail, float distortion, output color Color)
+float noise_texture(vector4 co, float detail, float distortion, output color Color)
 {
+  vector4 p = co;
   if (distortion != 0.0) {
     p += vector4(safe_noise(p + random_vector4_offset(0.0)) * distortion,
                  safe_noise(p + random_vector4_offset(1.0)) * distortion,
@@ -131,13 +135,13 @@ shader node_noise_texture(int use_mapping = 0,
   float w = W * Scale;
 
   if (dimensions == "1D")
-    Value = noise(w, Detail, Distortion, Color);
+    Value = noise_texture(w, Detail, Distortion, Color);
   else if (dimensions == "2D")
-    Value = noise(vector2(p[0], p[1]), Detail, Distortion, Color);
+    Value = noise_texture(vector2(p[0], p[1]), Detail, Distortion, Color);
   else if (dimensions == "3D")
-    Value = noise(p, Detail, Distortion, Color);
+    Value = noise_texture(p, Detail, Distortion, Color);
   else if (dimensions == "4D")
-    Value = noise(vector4(p[0], p[1], p[2], w), Detail, Distortion, Color);
+    Value = noise_texture(vector4(p[0], p[1], p[2], w), Detail, Distortion, Color);
   else
     error("Unknown dimension!");
 }

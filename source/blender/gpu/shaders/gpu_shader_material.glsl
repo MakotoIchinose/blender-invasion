@@ -3549,7 +3549,7 @@ vec4 random_vec4_offset(float seed)
               100.0 + hash_vec2_to_float(vec2(seed, 3.0)) * 100.0);
 }
 
-void node_tex_noise_1d(
+void node_noise_texture_1d(
     vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   float p = w * scale;
@@ -3564,7 +3564,7 @@ void node_tex_noise_1d(
                1.0);
 }
 
-void node_tex_noise_2d(
+void node_noise_texture_2d(
     vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec2 p = co.xy * scale;
@@ -3580,7 +3580,7 @@ void node_tex_noise_2d(
                1.0);
 }
 
-void node_tex_noise_3d(
+void node_noise_texture_3d(
     vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec3 p = co * scale;
@@ -3597,7 +3597,7 @@ void node_tex_noise_3d(
                1.0);
 }
 
-void node_tex_noise_4d(
+void node_noise_texture_4d(
     vec3 co, float w, float scale, float detail, float distortion, out float value, out vec4 color)
 {
   vec4 p = vec4(co, w) * scale;

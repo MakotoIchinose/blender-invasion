@@ -82,13 +82,13 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
   NodeTexNoise *tex = (NodeTexNoise *)node->storage;
   switch (tex->dimensions) {
     case 1:
-      return GPU_stack_link(mat, node, "node_tex_noise_1d", in, out);
+      return GPU_stack_link(mat, node, "node_noise_texture_1d", in, out);
     case 2:
-      return GPU_stack_link(mat, node, "node_tex_noise_2d", in, out);
+      return GPU_stack_link(mat, node, "node_noise_texture_2d", in, out);
     case 3:
-      return GPU_stack_link(mat, node, "node_tex_noise_3d", in, out);
+      return GPU_stack_link(mat, node, "node_noise_texture_3d", in, out);
     case 4:
-      return GPU_stack_link(mat, node, "node_tex_noise_4d", in, out);
+      return GPU_stack_link(mat, node, "node_noise_texture_4d", in, out);
     default:
       return 0;
   }
