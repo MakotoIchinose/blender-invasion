@@ -226,17 +226,25 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
   for (TreeElement *te = tree->first; te; te = te->next) {
     TreeStoreElem *tselem = TREESTORE(te);
 
-    if (sync_types->object && (tselem->type == 0 && te->idcode == ID_OB)) {
-      outliner_select_sync_to_object(view_layer, te, tselem);
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      if (sync_types->object) {
+        outliner_select_sync_to_object(view_layer, te, tselem);
+      }
     }
-    else if (sync_types->edit_bone && tselem->type == TSE_EBONE) {
-      outliner_select_sync_to_edit_bone(te, tselem);
+    else if (tselem->type == TSE_EBONE) {
+      if (sync_types->edit_bone) {
+        outliner_select_sync_to_edit_bone(te, tselem);
+      }
     }
-    else if (sync_types->pose_bone && tselem->type == TSE_POSE_CHANNEL) {
-      outliner_select_sync_to_pose_bone(te, tselem);
+    else if (tselem->type == TSE_POSE_CHANNEL) {
+      if (sync_types->pose_bone) {
+        outliner_select_sync_to_pose_bone(te, tselem);
+      }
     }
-    else if (sync_types->sequence && tselem->type == TSE_SEQUENCE) {
-      outliner_select_sync_to_sequence(scene, tselem);
+    else if (tselem->type == TSE_SEQUENCE) {
+      if (sync_types->sequence) {
+        outliner_select_sync_to_sequence(scene, tselem);
+      }
     }
 
     outliner_sync_selection_from_outliner(scene, view_layer, &te->subtree, sync_types);
@@ -376,7 +384,7 @@ typedef struct SyncSelectActiveData {
 static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
                                                 SpaceOutliner *soops,
                                                 ListBase *tree,
-                                                SyncSelectActiveData active_data,
+                                                SyncSelectActiveData *active_data,
                                                 const SyncSelectTypes *sync_types)
 {
   for (TreeElement *te = tree->first; te; te = te->next) {
@@ -384,22 +392,22 @@ static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
 
     if (tselem->type == 0 && te->idcode == ID_OB) {
       if (sync_types->object) {
-        outliner_select_sync_from_object(view_layer, soops, active_data.object, te, tselem);
+        outliner_select_sync_from_object(view_layer, soops, active_data->object, te, tselem);
       }
     }
     else if (tselem->type == TSE_EBONE) {
       if (sync_types->edit_bone) {
-        outliner_select_sync_from_edit_bone(soops, active_data.edit_bone, te, tselem);
+        outliner_select_sync_from_edit_bone(soops, active_data->edit_bone, te, tselem);
       }
     }
     else if (tselem->type == TSE_POSE_CHANNEL) {
       if (sync_types->pose_bone) {
-        outliner_select_sync_from_pose_bone(soops, active_data.pose_channel, te, tselem);
+        outliner_select_sync_from_pose_bone(soops, active_data->pose_channel, te, tselem);
       }
     }
     else if (tselem->type == TSE_SEQUENCE) {
       if (sync_types->sequence) {
-        outliner_select_sync_from_sequence(soops, active_data.sequence, tselem);
+        outliner_select_sync_from_sequence(soops, active_data->sequence, tselem);
       }
     }
 
@@ -433,7 +441,8 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
     SyncSelectActiveData active_data;
     get_sync_select_active_data(C, &active_data);
 
-    outliner_sync_selection_to_outliner(view_layer, soops, &soops->tree, active_data, &sync_types);
+    outliner_sync_selection_to_outliner(
+        view_layer, soops, &soops->tree, &active_data, &sync_types);
 
     /* Keep any unsynced data in the dirty flag */
     if (sync_types.object) {
