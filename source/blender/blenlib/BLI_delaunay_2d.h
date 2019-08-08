@@ -21,17 +21,17 @@
  * \ingroup bli
  */
 
-/*
+/**
  * Interface for Constrained Delaunay Triangulation (CDT) in 2D.
  *
  * The input is a set of vertices, edges between those vertices,
  * and faces using those vertices.
  * Those inputs are called "constraints". The output must contain
- * those contraints, or at least edges, points, and vertices that
+ * those constraints, or at least edges, points, and vertices that
  * may be pieced together to form the constraints. Part of the
  * work of doing the CDT is to detect intersections and mergers
  * among the input elements, so these routines are also useful
- * for doing 2d intersection
+ * for doing 2d intersection.
  *
  * The output is a triangulation of the plane that includes the
  * constraints in the above sense, and also satisfies the
@@ -51,10 +51,10 @@
  * beforehand a bounding box for all of the constraints.
  * This code can be extended in the future to allow for
  * deletion of constraints, if there is a use in Blender
- * for dynmically maintaining a triangulation.
+ * for dynamically maintaining a triangulation.
  */
 
-/*
+/**
  * Input to Constrained Delaunay Triangulation.
  * There are num_vertex vertices, whose coordinates
  * are given by vert_coords. For the rest of tne input,
@@ -75,7 +75,7 @@
  * and need not be put in the edges array, which is intended
  * as a way to specify edges that are not part of any face.
  *
- * epsilon is used for "is it near enough" distance calculations.
+ * Epsilon is used for "is it near enough" distance calculations.
  */
 typedef struct CDT_input {
   int num_verts;
@@ -89,7 +89,7 @@ typedef struct CDT_input {
   float epsilon;
 } CDT_input;
 
-/*
+/**
  * A representation of the triangulation for output.
  * See CDT_input for the representation of the output
  * vertices, edges, and faces, all represented in
@@ -106,10 +106,11 @@ typedef struct CDT_input {
  * a run-together array and a "start" and "len" extra array,
  * similar triples are used to represent the output to input
  * mapping of vertices, edges, and faces.
+ *
  * Those triples are:
- *  vert_orig, vert_orig_start, vert_orig_len
- *  edge_eorig, edge_orig_start, edge_orig_len
- *  face_orig, face_orig_start, face_orig_len
+ * - vert_orig, vert_orig_start, vert_orig_len
+ * - edge_eorig, edge_orig_start, edge_orig_len
+ * - face_orig, face_orig_start, face_orig_len
  *
  * For edges, the edge_orig triple can also say which original face
  * edge is part of a given output edge. If an index in edge_orig
@@ -140,28 +141,28 @@ typedef struct CDT_result {
   int *face_orig_len;
 } CDT_result;
 
-/*
- * What triangles and edges of CDT are desired when getting output?
- *
- * CDT_FULL - all triangles, outer boundary is convex hull
- * CDT_INSIDE - all triangles fully enclosed by constraint edges or faces
- * CDT_CONSTRAINTS - only point, edge, and face constraints, and their intersections
- * CDT_CONSTRAINTS_VALID_BMESH - like CDT_CONSTRAINTS, but keep enough
- *   edges so that any output faces that came from input faces can be made as valid
- *   BMesh faces in Blender: that is, no vertex appears more than once and no isolated holes in
- * faces.
- */
+/** What triangles and edges of CDT are desired when getting output? */
 typedef enum CDT_output_type {
+  /** All triangles, outer boundary is convex hull. */
   CDT_FULL,
+  /** All triangles fully enclosed by constraint edges or faces. */
   CDT_INSIDE,
+  /**  Only point, edge, and face constraints, and their intersections. */
   CDT_CONSTRAINTS,
+  /**
+   * Like CDT_CONSTRAINTS, but keep enough
+   * edges so that any output faces that came from input faces can be made as valid
+   * #BMesh faces in Blender: that is,
+   * no vertex appears more than once and no isolated holes in faces.
+   */
   CDT_CONSTRAINTS_VALID_BMESH
 } CDT_output_type;
 
-/* API interface to CDT.
+/**
+ * API interface to CDT.
  * This returns a pointer to an allocated CDT_result.
  * When the caller is finished with it, the caller
- * should use BLI_constrained_delaunay_free() to free it.
+ * should use #BLI_constrained_delaunay_free() to free it.
  */
 CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_type output_type);
 

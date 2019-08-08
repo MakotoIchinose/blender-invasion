@@ -33,7 +33,7 @@
 
 #include "BLI_delaunay_2d.h"
 
-/* uncomment this define to get helpful debugging functions etc. defined */
+/* Uncomment this define to get helpful debugging functions etc. defined. */
 #define DEBUG_CDT
 
 struct CDTVert;
@@ -61,7 +61,7 @@ typedef struct CDTEdge {
 } CDTEdge;
 
 typedef struct CDTFace {
-  double centroid[2];  /* avearge of vertex coords */
+  double centroid[2];  /* average of vertex coords */
   SymEdge *symedge;    /* a symedge in face; only used during output */
   LinkNode *input_ids; /* list of input face ids that this is part of */
   int visit_index;     /* which visit epoch has this been seen */
@@ -97,8 +97,10 @@ typedef struct LocateResult {
 
 #define DLNY_ARENASIZE 1 << 14
 
-/* This margin means that will only be a 1 degree possible
- * concavity on outside if remove all border touching triangles */
+/**
+ * This margin means that will only be a 1 degree possible
+ * concavity on outside if remove all border touching triangles.
+ */
 #define DLNY_MARGIN_PCT 2000.0
 
 #ifdef DEBUG_CDT
@@ -199,7 +201,7 @@ static int isect_seg_seg_v2_lambda_mu_db(const double v1[2],
   return ISECT_LINE_LINE_NONE;
 }
 
-/* return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight */
+/** return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight */
 static int CCW_test(const double a[2], const double b[2], const double c[2])
 {
   double det;
@@ -218,7 +220,7 @@ static int CCW_test(const double a[2], const double b[2], const double c[2])
   return 0;
 }
 
-/* return true if a -- b -- c are in that order, assuming they are on a straight line */
+/** return true if a -- b -- c are in that order, assuming they are on a straight line */
 static bool in_line(const double a[2], const double b[2], const double c[2])
 {
   double dir_ab[2], dir_ac[2];
@@ -228,7 +230,7 @@ static bool in_line(const double a[2], const double b[2], const double c[2])
   return dot_v2v2_db(dir_ab, dir_ac) >= 0.0;
 }
 
-/* Is s2 reeachable from s1 by next pointers with < limit hops? */
+/** Is s2 reeachable from s1 by next pointers with < limit hops? */
 static bool reachable(SymEdge *s1, SymEdge *s2, int limit)
 {
   int count = 0;
@@ -255,7 +257,7 @@ static void calc_face_centroid(SymEdge *se)
   centroidp[1] /= count;
 }
 
-/* Using array to store these instead of linked list so can make a random selection from them */
+/** Using array to store these instead of linked list so can make a random selection from them */
 static CDTVert *add_cdtvert(CDT_state *cdt, double x, double y)
 {
   CDTVert *v = BLI_memarena_alloc(cdt->arena, sizeof(*v));
@@ -319,7 +321,7 @@ static bool id_in_list(const LinkNode *id_list, int id)
   return false;
 }
 
-/* is any id in (range_start, range_start+1, ... , range_end) in id_list? */
+/** is any id in (range_start, range_start+1, ... , range_end) in id_list? */
 static bool id_range_in_list(const LinkNode *id_list, int range_start, int range_end)
 {
   const LinkNode *ln;
@@ -349,13 +351,13 @@ static void add_list_to_input_ids(LinkNode **dst, const LinkNode *src, CDT_state
   }
 }
 
-/* Return other SymEdge for same CDTEdge as se */
+/** Return other SymEdge for same CDTEdge as se */
 static inline SymEdge *sym(const SymEdge *se)
 {
   return se->next->rot;
 }
 
-/* Return SymEdge whose next is se */
+/** Return SymEdge whose next is se */
 static inline SymEdge *prev(const SymEdge *se)
 {
   return se->rot->next->rot;
@@ -366,7 +368,7 @@ static inline bool is_border_edge(const CDTEdge *e, const CDT_state *cdt)
   return e->symedges[0].face == cdt->outer_face || e->symedges[1].face == cdt->outer_face;
 }
 
-/* Does one edge of this edge touch the frame? */
+/** Does one edge of this edge touch the frame? */
 static bool edge_touches_frame(const CDTEdge *e)
 {
   return e->symedges[0].vert->index < 4 || e->symedges[1].vert->index < 4;
@@ -382,7 +384,7 @@ static inline bool is_deleted_edge(const CDTEdge *e)
   return e->symedges[0].next == NULL;
 }
 
-/* Is there already an edge between a and b? */
+/** Is there already an edge between a and b? */
 static bool exists_edge(const CDTVert *a, const CDTVert *b)
 {
   SymEdge *se, *ss;
@@ -396,7 +398,8 @@ static bool exists_edge(const CDTVert *a, const CDTVert *b)
   return false;
 }
 
-/* Assume s1 and s2 are both SymEdges in a face with > 3 sides,
+/**
+ * Assume s1 and s2 are both SymEdges in a face with > 3 sides,
  * and one is not the next of the other.
  * Add an edge from s1->v to s2->v, splitting the face in two.
  * The original face will continue to be associated with the subface
@@ -482,12 +485,13 @@ static CDTEdge *split_edge(CDT_state *cdt, SymEdge *se, double lambda)
   return e;
 }
 
-/* Delete an edge from the structure. The new combined face on either side of
+/**
+ * Delete an edge from the structure. The new combined face on either side of
  * the deleted edge will be the one that was e's face; the centroid is updated.
  * There will be now an unused face, marked by setting its deleted flag,
  * and an unused CDTEdge, marked by setting the next and rot pointers of
  * its SymEdges to NULL.
- *
+ * <pre>
  *        .  v2               .
  *       / \                 / \
  *      /f|j\               /   \
@@ -498,7 +502,7 @@ static CDTEdge *split_edge(CDT_state *cdt, SymEdge *se, double lambda)
  *     \  | /              \     /
  *      \h|i/               \   /
  *        .  v1               .
- *
+ * </pre>
  * Also handle variant cases where one or both ends
  * are attached only to e.
  */
@@ -559,7 +563,7 @@ static void delete_edge(CDT_state *cdt, SymEdge *e)
     calc_face_centroid(f);
 }
 
-/*
+/**
  * The initial structure will be the rectangle with opposite corners (minx,miny)
  * and (maxx,maxy), and a diagonal going between those two corners.
  * We keep track of the outer face (surrounding the entire structure; its boundary
@@ -570,13 +574,13 @@ static void delete_edge(CDT_state *cdt, SymEdge *e)
  * marked by setting all pointers to NULL (for edges), or setting the deleted flag to true (for
  * faces).
  *
- * A MemArena is allocated to do all allocations from except for link list nodes; a listpool
+ * A #MemArena is allocated to do all allocations from except for link list nodes; a listpool
  * is created for link list node allocations.
  *
  * The epsilon argument is stored and used in "near enough" distance calculations.
  *
  * When done, caller must call BLI_constrained_delaunay_free to free
- * the memory used by the returned CDT_state.
+ * the memory used by the returned #CDT_state.
  */
 static CDT_state *cdt_init(double minx, double maxx, double miny, double maxy, double epsilon)
 {
@@ -922,7 +926,7 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
   return lr;
 }
 
-/* return true if circumcircle(v1, v2, v3) does not contain p */
+/** return true if circumcircle(v1, v2, v3) does not contain p */
 static bool delaunay_check(CDTVert *v1, CDTVert *v2, CDTVert *v3, CDTVert *p, const double epsilon)
 {
   double a, b, c, d, z1, z2, z3;
@@ -967,7 +971,8 @@ static inline bool is_empty(Stack *stack)
   return *stack == NULL;
 }
 
-/*
+/**
+ * <pre>
  *       /\                  /\
  *      /a|\                /  \
  *     /  | sesym          /    \
@@ -976,6 +981,7 @@ static inline bool is_empty(Stack *stack)
  *    \ se|  /            \       /
  *     \  |c/              \     /
  *      \ |/                \   /
+ * </pre>
  */
 static void flip(SymEdge *se, CDT_state *cdt)
 {
@@ -1143,9 +1149,10 @@ static void flip_edges(CDTVert *v, Stack *stack, CDT_state *cdt)
   }
 }
 
-/* Splits e at lambda and returns a SymEdge with new vert as its vert.
+/**
+ * Splits e at lambda and returns a SymEdge with new vert as its vert.
  * The two opposite triangle vertices to e are connect to new point.
- *
+ * <pre>
  *       /\                  /\
  *      /f|\                / |\
  *     /  |j\              /  | \
@@ -1158,6 +1165,7 @@ static void flip_edges(CDTVert *v, Stack *stack, CDT_state *cdt)
  * t1 = {e, f, g}; t2 = {h, i, j};
  * t1' = {e, l.sym, g}; t2' = {h, m.sym, e'.sym}
  * t3 = {k, f, l}; t4 = {m, i, j}
+ * </pre>
  */
 static CDTVert *insert_point_in_edge(CDT_state *cdt, SymEdge *e, double lambda)
 {
@@ -1195,11 +1203,11 @@ static CDTVert *insert_point_in_edge(CDT_state *cdt, SymEdge *e, double lambda)
   return p;
 }
 
-/*
+/**
  * Inserts p inside e's triangle and connects the three cornders
  * of the triangle to the new point. Returns a SymEdge that has
  * new point as its point.
- *
+ * <pre>
  *               *                                *
  *             *g  *                            * .j*
  *           *       *                        *   .   *
@@ -1207,7 +1215,7 @@ static CDTVert *insert_point_in_edge(CDT_state *cdt, SymEdge *e, double lambda)
  *       *               *                *  .         .  *
  *     *   e              f*            *  . h     2    i . *
  *   * * * * * * * * * * * * *        * * * * * * * * * * * * *
- *
+ * </pre>
  */
 static CDTVert *insert_point_in_face(CDT_state *cdt, SymEdge *e, const double p[2])
 {
@@ -1281,7 +1289,8 @@ static CDTVert *insert_point_in_face(CDT_state *cdt, SymEdge *e, const double p[
   return v;
 }
 
-/* Retriangulates, assuring constrained delaunay condition,
+/**
+ * Retriangulates, assuring constrained delaunay condition,
  * the pseudopolygon that cycles from se.
  * "pseudo" because a vertex may be repeated.
  * See Anglada paper, "An Improved incremental algorithm
@@ -1383,7 +1392,8 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
   }
 }
 
-/* Add a constrained point to cdt structure, and return the corresponding CDTVert*.
+/**
+ * Add a constrained point to cdt structure, and return the corresponding CDTVert*.
  * May not be at exact coords given, because it can be merged with an existing vertex
  * or moved to an existing edge (which could be a triangulation edge, not just a constraint one)
  * if the point is within cdt->epsilon of those other elements.
@@ -1391,7 +1401,7 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
  * input_id will be added to the list of input_ids for the returned CDTVert (don't use -1 for id).
  *
  * Assumes cdt has been initialized, with min/max bounds that contain coords.
- * Assumes that BLI_constrained_delaunay_get_output has not been called yet.
+ * Assumes that #BLI_constrained_delaunay_get_output has not been called yet.
  */
 static CDTVert *add_point_constraint(CDT_state *cdt, const double (*coords)[2], int input_id)
 {
@@ -1424,7 +1434,8 @@ static CDTVert *add_point_constraint(CDT_state *cdt, const double (*coords)[2], 
   return v;
 }
 
-/* Add a constrained edge between v1 and v2 to cdt structure.
+/**
+ * Add a constrained edge between v1 and v2 to cdt structure.
  * This may result in a number of CDTEdges created, due to intersections
  * and partial overlaps with existing cdt vertices and edges.
  * Each created CDTEdge will have input_id added to its input_ids list.
@@ -1432,7 +1443,7 @@ static CDTVert *add_point_constraint(CDT_state *cdt, const double (*coords)[2], 
  * If r_edges is not NULL, the CDTEdges generated or found that go from
  * v1 to v2 are put into that linked list, in order.
  *
- * Assumes that BLI_constrained_delaunay_get_output has not been called yet.
+ * Assumes that #BLI_constrained_delaunay_get_output has not been called yet.
  */
 static void add_edge_constraint(
     CDT_state *cdt, CDTVert *v1, CDTVert *v2, int input_id, LinkNode **r_edges)
@@ -1817,7 +1828,7 @@ static void add_edge_constraint(
   BLI_array_free(crossings);
 }
 
-/*
+/**
  * Add face_id to the input_ids lists of all CDTFaces on the interior of the input face with that
  * id. face_symedge is on edge of the boundary of the input face, with assumption that interior is
  * on the left of that SymEdge.
@@ -2011,8 +2022,9 @@ static void remove_outer_edges(CDT_state *cdt, const bool remove_until_constrain
   }
 }
 
-/* Remove edges and merge faces to get desired output, as per options.
- * Note: the cdt cannot be further changed after this.
+/**
+ * Remove edges and merge faces to get desired output, as per options.
+ * \note the cdt cannot be further changed after this.
  */
 static void prepare_cdt_for_output(CDT_state *cdt, const CDT_output_type output_type)
 {
@@ -2454,7 +2466,8 @@ static void dump_cdt(const CDT_state *cdt, const char *lab)
 }
 #  undef PL
 
-/* Make an html file with svg in it to display the argument cdt.
+/**
+ * Make an html file with svg in it to display the argument cdt.
  * Mouse-overs will reveal the coordinates of vertices and edges.
  * Constraint edges are drawn thicker than non-constraint edges.
  * The first call creates DRAWFILE; subsequent calls append to it.
@@ -2541,7 +2554,8 @@ static void cdt_draw(CDT_state *cdt, const char *lab)
 #  undef SY
 }
 
-/* Is a visible from b: i.e., ab crosses no edge of cdt?
+/**
+ * Is a visible from b: i.e., ab crosses no edge of cdt?
  * If constrained is true, consider only constrained edges as possible crossers.
  * In any case, don't count an edge ab itself.
  */
@@ -2575,7 +2589,8 @@ static bool is_visible(const CDTVert *a, const CDTVert *b, bool constrained, con
   return true;
 }
 
-/* Check that edge ab satisifies constrained delaunay condition:
+/**
+ * Check that edge ab satisifies constrained delaunay condition:
  * That is, for all non-constraint, non-border edges ab,
  * (1) ab is visible in the constraint graph; and
  * (2) there is a circle through a and b such that any vertex v connected by an edge to a or b
