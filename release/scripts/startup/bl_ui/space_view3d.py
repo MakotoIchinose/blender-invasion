@@ -4459,7 +4459,6 @@ class VIEW3D_MT_paint_gpencil(Menu):
         layout = self.layout
 
         layout.menu("VIEW3D_MT_gpencil_animation")
-        layout.menu("VIEW3D_MT_edit_gpencil_interpolate")
 
         layout.separator()
 
@@ -4515,7 +4514,6 @@ class VIEW3D_MT_edit_gpencil(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_gpencil_animation")
-        layout.menu("VIEW3D_MT_edit_gpencil_interpolate")
 
         layout.separator()
 
@@ -4528,11 +4526,11 @@ class VIEW3D_MT_edit_gpencil(Menu):
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_weight_gpencil")        
+        layout.menu("VIEW3D_MT_weight_gpencil")
 
         layout.separator()
-                
-        layout.menu("VIEW3D_MT_edit_gpencil_showhide")        
+
+        layout.menu("VIEW3D_MT_edit_gpencil_showhide")
 
         layout.operator_menu_enum("gpencil.stroke_separate", "mode")
         layout.menu("GPENCIL_MT_cleanup")
@@ -4540,22 +4538,22 @@ class VIEW3D_MT_edit_gpencil(Menu):
         layout.separator()
 
         # Remove
-        layout.menu("VIEW3D_MT_edit_gpencil_delete")        
-        
+        layout.menu("VIEW3D_MT_edit_gpencil_delete")
+
 
 class VIEW3D_MT_edit_gpencil_stroke(Menu):
     bl_label = "Stroke"
 
     def draw(self, _context):
         layout = self.layout
-        
+
         layout.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
         layout.menu("VIEW3D_MT_gpencil_simplify")
         layout.operator("gpencil.stroke_trim", text="Trim")
 
         layout.separator()
-          
-        layout.operator_menu_enum("gpencil.stroke_join", "type", text="Join...")        
+
+        layout.operator_menu_enum("gpencil.stroke_join", "type", text="Join...")
 
         layout.separator()
 
@@ -4569,7 +4567,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         op = layout.operator("gpencil.stroke_cyclical_set", text="Close")
         op.type = 'CLOSE'
         op.geometry = True
-        layout.operator("gpencil.stroke_cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'        
+        layout.operator("gpencil.stroke_cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
         layout.operator_menu_enum("gpencil.stroke_caps_set", text="Toggle Caps...", property="type")
         layout.operator("gpencil.stroke_flip", text="Switch Direction")
 
@@ -4579,21 +4577,21 @@ class VIEW3D_MT_edit_gpencil_point(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        
+
         layout.operator("gpencil.extrude_move", text="Extrude Points")
 
         layout.separator()
-        
+
         layout.operator("gpencil.stroke_smooth", text="Smooth Points").only_selected = True
 
         layout.separator()
 
         layout.operator("gpencil.stroke_merge", text="Merge Points")
-        
-        # TODO: add new RIP operator        
+
+        # TODO: add new RIP operator
 
         layout.separator()
-        
+
         layout.menu("VIEW3D_MT_vertex_group")
 
 
@@ -4627,7 +4625,7 @@ class VIEW3D_MT_gpencil_animation(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("gpencil.blank_frame_add")        
+        layout.operator("gpencil.blank_frame_add")
 
         layout.separator()
 
@@ -4672,7 +4670,7 @@ class VIEW3D_MT_edit_gpencil_showhide(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        
+
         layout.operator("gpencil.hide", text="Hide Active Layer")
         layout.operator("gpencil.reveal", text="Show All Layers")
 
@@ -6711,7 +6709,6 @@ classes = (
     VIEW3D_MT_edit_armature_names,
     VIEW3D_MT_edit_armature_delete,
     VIEW3D_MT_edit_gpencil_transform,
-    VIEW3D_MT_edit_gpencil_interpolate,
     VIEW3D_MT_object_mode_pie,
     VIEW3D_MT_view_pie,
     VIEW3D_MT_transform_gizmo_pie,
