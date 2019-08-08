@@ -4449,6 +4449,7 @@ class VIEW3D_MT_gpencil_simplify(Menu):
         layout = self.layout
         layout.operator("gpencil.stroke_simplify_fixed", text="Fixed")
         layout.operator("gpencil.stroke_simplify", text="Adaptive")
+        layout.operator("gpencil.stroke_sample", text="Sample")
 
 
 class VIEW3D_MT_paint_gpencil(Menu):
@@ -6384,8 +6385,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
         if is_3d_view:
             layout.menu("GPENCIL_MT_cleanup")
 
-        layout.operator("gpencil.stroke_simplify_fixed", text="Simplify")
-        layout.operator("gpencil.stroke_simplify", text="Simplify Adaptive")
+        layout.menu("VIEW3D_MT_gpencil_simplify")
         layout.operator("gpencil.stroke_merge", text="Merge")
         layout.menu("VIEW3D_MT_edit_gpencil_delete")
 
