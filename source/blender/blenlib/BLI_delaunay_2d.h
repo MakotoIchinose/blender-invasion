@@ -56,7 +56,7 @@
 
 /**
  * Input to Constrained Delaunay Triangulation.
- * There are num_vertex vertices, whose coordinates
+ * There are verts_len vertices, whose coordinates
  * are given by vert_coords. For the rest of the input,
  * vertices are referred to by indices into that array.
  * Edges and Faces are optional. If provided, they will
@@ -65,10 +65,10 @@
  * implied by the faces will be inferred.
  *
  * The edges are given by pairs of vertex indices.
- * The faces are given in a triple `(faces, face_start, face_len)`
+ * The faces are given in a triple `(faces, faces_start_table, faces_len_table)`
  * to represent a list-of-lists as follows:
  * the vertex indices for a counterclockwise traversal of
- * face number `i` starts at `face_start[i]` and has `face_len[i]`
+ * face number `i` starts at `faces_start_table[i]` and has `faces_len_table[i]`
  * elements.
  *
  * The edges implied by the faces are automatically added
@@ -78,14 +78,14 @@
  * Epsilon is used for "is it near enough" distance calculations.
  */
 typedef struct CDT_input {
-  int num_verts;
-  int num_edges;
-  int num_faces;
+  int verts_len;
+  int edges_len;
+  int faces_len;
   float (*vert_coords)[2];
   int (*edges)[2];
   int *faces;
-  int *face_start;
-  int *face_len;
+  int *faces_start_table;
+  int *faces_len_table;
   float epsilon;
 } CDT_input;
 
@@ -108,37 +108,37 @@ typedef struct CDT_input {
  * mapping of vertices, edges, and faces.
  *
  * Those triples are:
- * - vert_orig, vert_orig_start, vert_orig_len
- * - edge_eorig, edge_orig_start, edge_orig_len
- * - face_orig, face_orig_start, face_orig_len
+ * - verts_orig, verts_orig_start_table, verts_orig_len_table
+ * - edges_orig, edges_orig_start_table, edges_orig_len_table
+ * - faces_orig, faces_orig_start_table, faces_orig_len_table
  *
- * For edges, the edge_orig triple can also say which original face
- * edge is part of a given output edge. If an index in edge_orig
- * is greater than the input's num_edges, then subtract input's num_edges
+ * For edges, the edges_orig triple can also say which original face
+ * edge is part of a given output edge. If an index in edges_orig
+ * is greater than the input's edges_len, then subtract input's edges_len
  * from it to some number i: then the face edge that starts from the
  * input vertex at input's faces[i] is the corresponding face edge.
  * for convenience, face_edge_offset in the result will be the input's
- * num_edges, so that this conversion can be easily done by the caller.
+ * edges_len, so that this conversion can be easily done by the caller.
  */
 typedef struct CDT_result {
-  int num_verts;
-  int num_edges;
-  int num_faces;
+  int verts_len;
+  int edges_len;
+  int faces_len;
   int face_edge_offset;
   float (*vert_coords)[2];
   int (*edges)[2];
   int *faces;
-  int *face_start;
-  int *face_len;
-  int *vert_orig;
-  int *vert_orig_start;
-  int *vert_orig_len;
-  int *edge_orig;
-  int *edge_orig_start;
-  int *edge_orig_len;
-  int *face_orig;
-  int *face_orig_start;
-  int *face_orig_len;
+  int *faces_start_table;
+  int *faces_len_table;
+  int *verts_orig;
+  int *verts_orig_start_table;
+  int *verts_orig_len_table;
+  int *edges_orig;
+  int *edges_orig_start_table;
+  int *edges_orig_len_table;
+  int *faces_orig;
+  int *faces_orig_start_table;
+  int *faces_orig_len_table;
 } CDT_result;
 
 /** What triangles and edges of CDT are desired when getting output? */

@@ -74,7 +74,7 @@ typedef struct CDT_state {
   CDTFace *outer_face;
   CDTVert **vert_array;
   int vert_array_len;
-  int vert_array_allocated;
+  int vert_array_len_alloc;
   double minx;
   double miny;
   double maxx;
@@ -278,14 +278,14 @@ static CDTVert *add_cdtvert(CDT_state *cdt, double x, double y)
   v->co[1] = y;
   v->input_ids = NULL;
   v->symedge = NULL;
-  if (cdt->vert_array_len == cdt->vert_array_allocated) {
+  if (cdt->vert_array_len == cdt->vert_array_len_alloc) {
     CDTVert **old_array = cdt->vert_array;
-    cdt->vert_array_allocated *= 4;
+    cdt->vert_array_len_alloc *= 4;
     cdt->vert_array = BLI_memarena_alloc(cdt->arena,
-                                         cdt->vert_array_allocated * sizeof(cdt->vert_array[0]));
+                                         cdt->vert_array_len_alloc * sizeof(cdt->vert_array[0]));
     memmove(cdt->vert_array, old_array, cdt->vert_array_len * sizeof(cdt->vert_array[0]));
   }
-  BLI_assert(cdt->vert_array_len < cdt->vert_array_allocated);
+  BLI_assert(cdt->vert_array_len < cdt->vert_array_len_alloc);
   v->index = cdt->vert_array_len;
   cdt->vert_array[cdt->vert_array_len++] = v;
   return v;
@@ -622,9 +622,9 @@ static CDT_state *cdt_init(double minx, double maxx, double miny, double maxy, d
   cdt->edges = NULL;
   cdt->faces = NULL;
   cdt->vert_array_len = 0;
-  cdt->vert_array_allocated = 32;
+  cdt->vert_array_len_alloc = 32;
   cdt->vert_array = BLI_memarena_alloc(arena,
-                                       cdt->vert_array_allocated * sizeof(*cdt->vert_array));
+                                       cdt->vert_array_len_alloc * sizeof(*cdt->vert_array));
   cdt->minx = minx;
   cdt->miny = miny;
   cdt->maxx = maxx;
@@ -2155,7 +2155,7 @@ static void prepare_cdt_for_output(CDT_state *cdt, const CDT_output_type output_
 
 static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_type)
 {
-  int i, j, nv, ne, nf, tot_face_len;
+  int i, j, nv, ne, nf, faces_len_total;
   int orig_map_size, orig_map_index;
   CDT_result *result;
   LinkNode *lne, *lnf, *ln;
@@ -2173,7 +2173,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
     return result;
   }
 
-  result->num_verts = nv;
+  result->verts_len = nv;
   result->vert_coords = MEM_malloc_arrayN(nv, sizeof(result->vert_coords[0]), __func__);
 
   /* Make the vertex "orig" map arrays, mapping output verts to lists of input ones. */
@@ -2181,20 +2181,20 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   for (i = 0; i < nv; i++) {
     orig_map_size += BLI_linklist_count(cdt->vert_array[i + 4]->input_ids);
   }
-  result->vert_orig_len = MEM_malloc_arrayN(nv, sizeof(int), __func__);
-  result->vert_orig_start = MEM_malloc_arrayN(nv, sizeof(int), __func__);
-  result->vert_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
+  result->verts_orig_len_table = MEM_malloc_arrayN(nv, sizeof(int), __func__);
+  result->verts_orig_start_table = MEM_malloc_arrayN(nv, sizeof(int), __func__);
+  result->verts_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
 
   orig_map_index = 0;
   for (i = 0; i < nv; i++) {
     j = i + NUM_BOUND_VERTS;
     result->vert_coords[i][0] = (float)cdt->vert_array[j]->co[0];
     result->vert_coords[i][1] = (float)cdt->vert_array[j]->co[1];
-    result->vert_orig_start[i] = orig_map_index;
+    result->verts_orig_start_table[i] = orig_map_index;
     for (ln = cdt->vert_array[j]->input_ids; ln; ln = ln->next) {
-      result->vert_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
+      result->verts_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
     }
-    result->vert_orig_len[i] = orig_map_index - result->vert_orig_start[i];
+    result->verts_orig_len_table[i] = orig_map_index - result->verts_orig_start_table[i];
   }
 
   ne = 0;
@@ -2209,13 +2209,13 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
     }
   }
   if (ne != 0) {
-    result->num_edges = ne;
+    result->edges_len = ne;
     result->face_edge_offset = cdt->face_edge_offset;
     result->edges = MEM_malloc_arrayN(ne, sizeof(result->edges[0]), __func__);
-    result->edge_orig_len = MEM_malloc_arrayN(ne, sizeof(int), __func__);
-    result->edge_orig_start = MEM_malloc_arrayN(ne, sizeof(int), __func__);
+    result->edges_orig_len_table = MEM_malloc_arrayN(ne, sizeof(int), __func__);
+    result->edges_orig_start_table = MEM_malloc_arrayN(ne, sizeof(int), __func__);
     if (orig_map_size > 0) {
-      result->edge_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
+      result->edges_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
     }
     orig_map_index = 0;
     i = 0;
@@ -2224,18 +2224,18 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
       if (!is_deleted_edge(e)) {
         result->edges[i][0] = VERT_OUT_INDEX(e->symedges[0].vert);
         result->edges[i][1] = VERT_OUT_INDEX(e->symedges[1].vert);
-        result->edge_orig_start[i] = orig_map_index;
+        result->edges_orig_start_table[i] = orig_map_index;
         for (ln = e->input_ids; ln; ln = ln->next) {
-          result->edge_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
+          result->edges_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
         }
-        result->edge_orig_len[i] = orig_map_index - result->edge_orig_start[i];
+        result->edges_orig_len_table[i] = orig_map_index - result->edges_orig_start_table[i];
         i++;
       }
     }
   }
 
   nf = 0;
-  tot_face_len = 0;
+  faces_len_total = 0;
   orig_map_size = 0;
   for (ln = cdt->faces; ln; ln = ln->next) {
     f = (CDTFace *)ln->link;
@@ -2244,7 +2244,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
       se = se_start = f->symedge;
       BLI_assert(se != NULL);
       do {
-        tot_face_len++;
+        faces_len_total++;
         se = se->next;
       } while (se != se_start);
       if (f->input_ids) {
@@ -2254,14 +2254,14 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   }
 
   if (nf != 0) {
-    result->num_faces = nf;
-    result->face_len = MEM_malloc_arrayN(nf, sizeof(int), __func__);
-    result->face_start = MEM_malloc_arrayN(nf, sizeof(int), __func__);
-    result->faces = MEM_malloc_arrayN(tot_face_len, sizeof(int), __func__);
-    result->face_orig_len = MEM_malloc_arrayN(nf, sizeof(int), __func__);
-    result->face_orig_start = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->faces_len = nf;
+    result->faces_len_table = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->faces_start_table = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->faces = MEM_malloc_arrayN(faces_len_total, sizeof(int), __func__);
+    result->faces_orig_len_table = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->faces_orig_start_table = MEM_malloc_arrayN(nf, sizeof(int), __func__);
     if (orig_map_size > 0) {
-      result->face_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
+      result->faces_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
     }
     orig_map_index = 0;
     i = 0;
@@ -2269,18 +2269,18 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
     for (lnf = cdt->faces; lnf; lnf = lnf->next) {
       f = (CDTFace *)lnf->link;
       if (!f->deleted && f != cdt->outer_face) {
-        result->face_start[i] = j;
+        result->faces_start_table[i] = j;
         se = se_start = f->symedge;
         do {
           result->faces[j++] = VERT_OUT_INDEX(se->vert);
           se = se->next;
         } while (se != se_start);
-        result->face_len[i] = j - result->face_start[i];
-        result->face_orig_start[i] = orig_map_index;
+        result->faces_len_table[i] = j - result->faces_start_table[i];
+        result->faces_orig_start_table[i] = orig_map_index;
         for (ln = f->input_ids; ln; ln = ln->next) {
-          result->face_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
+          result->faces_orig[orig_map_index++] = POINTER_AS_INT(ln->link);
         }
-        result->face_orig_len[i] = orig_map_index - result->face_orig_start[i];
+        result->faces_orig_len_table[i] = orig_map_index - result->faces_orig_start_table[i];
         i++;
       }
     }
@@ -2290,15 +2290,15 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
 
 CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_type output_type)
 {
-  int nv = input->num_verts;
-  int ne = input->num_edges;
-  int nf = input->num_faces;
+  int nv = input->verts_len;
+  int ne = input->edges_len;
+  int nf = input->faces_len;
   double epsilon = (double)input->epsilon;
   int i, f, v1, v2;
   int fedge_start, fedge_end;
   double minx, maxx, miny, maxy;
   float *xy;
-  double vert_coords[2];
+  double vert_co[2];
   CDT_state *cdt;
   CDT_result *result;
   CDTVert **verts;
@@ -2310,7 +2310,8 @@ CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_ty
 #endif
 
   if ((nv > 0 && input->vert_coords == NULL) || (ne > 0 && input->edges == NULL) ||
-      (nf > 0 && (input->faces == NULL || input->face_start == NULL || input->face_len == NULL))) {
+      (nf > 0 && (input->faces == NULL || input->faces_start_table == NULL ||
+                  input->faces_len_table == NULL))) {
 #ifdef DEBUG_CDT
     fprintf(stderr, "invalid input: unexpected NULL array(s)\n");
 #endif
@@ -2348,9 +2349,9 @@ CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_ty
   cdt = cdt_init(minx, maxx, miny, maxy, epsilon);
   /* TODO: use a random permutation for order of adding the vertices. */
   for (i = 0; i < nv; i++) {
-    vert_coords[0] = (double)input->vert_coords[i][0];
-    vert_coords[1] = (double)input->vert_coords[i][1];
-    verts[i] = add_point_constraint(cdt, &vert_coords, i);
+    vert_co[0] = (double)input->vert_coords[i][0];
+    vert_co[1] = (double)input->vert_coords[i][1];
+    verts[i] = add_point_constraint(cdt, &vert_co, i);
   }
   for (i = 0; i < ne; i++) {
     v1 = input->edges[i][0];
@@ -2365,8 +2366,8 @@ CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_ty
   }
   cdt->face_edge_offset = ne;
   for (f = 0; f < nf; f++) {
-    int flen = input->face_len[f];
-    int fstart = input->face_start[f];
+    int flen = input->faces_len_table[f];
+    int fstart = input->faces_start_table[f];
     if (flen <= 2) {
 #ifdef DEBUG_CDT
       fprintf(stderr, "face %d has length %d; ignored\n", f, flen);
@@ -2445,38 +2446,38 @@ void BLI_constrained_delaunay_free(CDT_result *result)
   if (result->faces) {
     MEM_freeN(result->faces);
   }
-  if (result->face_start) {
-    MEM_freeN(result->face_start);
+  if (result->faces_start_table) {
+    MEM_freeN(result->faces_start_table);
   }
-  if (result->face_len) {
-    MEM_freeN(result->face_len);
+  if (result->faces_len_table) {
+    MEM_freeN(result->faces_len_table);
   }
-  if (result->vert_orig) {
-    MEM_freeN(result->vert_orig);
+  if (result->verts_orig) {
+    MEM_freeN(result->verts_orig);
   }
-  if (result->vert_orig_start) {
-    MEM_freeN(result->vert_orig_start);
+  if (result->verts_orig_start_table) {
+    MEM_freeN(result->verts_orig_start_table);
   }
-  if (result->vert_orig_len) {
-    MEM_freeN(result->vert_orig_len);
+  if (result->verts_orig_len_table) {
+    MEM_freeN(result->verts_orig_len_table);
   }
-  if (result->edge_orig) {
-    MEM_freeN(result->edge_orig);
+  if (result->edges_orig) {
+    MEM_freeN(result->edges_orig);
   }
-  if (result->edge_orig_start) {
-    MEM_freeN(result->edge_orig_start);
+  if (result->edges_orig_start_table) {
+    MEM_freeN(result->edges_orig_start_table);
   }
-  if (result->edge_orig_len) {
-    MEM_freeN(result->edge_orig_len);
+  if (result->edges_orig_len_table) {
+    MEM_freeN(result->edges_orig_len_table);
   }
-  if (result->face_orig) {
-    MEM_freeN(result->face_orig);
+  if (result->faces_orig) {
+    MEM_freeN(result->faces_orig);
   }
-  if (result->face_orig_start) {
-    MEM_freeN(result->face_orig_start);
+  if (result->faces_orig_start_table) {
+    MEM_freeN(result->faces_orig_start_table);
   }
-  if (result->face_orig_len) {
-    MEM_freeN(result->face_orig_len);
+  if (result->faces_orig_len_table) {
+    MEM_freeN(result->faces_orig_len_table);
   }
   MEM_freeN(result);
 }

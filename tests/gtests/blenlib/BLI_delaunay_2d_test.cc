@@ -19,29 +19,29 @@ extern "C" {
 
 static void fill_input_verts(CDT_input *r_input, float (*vcos)[2], int nverts)
 {
-  r_input->num_verts = nverts;
-  r_input->num_edges = 0;
-  r_input->num_faces = 0;
+  r_input->verts_len = nverts;
+  r_input->edges_len = 0;
+  r_input->faces_len = 0;
   r_input->vert_coords = vcos;
   r_input->edges = NULL;
   r_input->faces = NULL;
-  r_input->face_start = NULL;
-  r_input->face_len = NULL;
+  r_input->faces_start_table = NULL;
+  r_input->faces_len_table = NULL;
   r_input->epsilon = 1e-6f;
 }
 
 static void add_input_edges(CDT_input *r_input, int (*edges)[2], int nedges)
 {
-  r_input->num_edges = nedges;
+  r_input->edges_len = nedges;
   r_input->edges = edges;
 }
 
-static void add_input_faces(CDT_input *r_input, int *faces, int *face_start, int *face_len, int nfaces)
+static void add_input_faces(CDT_input *r_input, int *faces, int *faces_start_table, int *faces_len_table, int nfaces)
 {
-  r_input->num_faces = nfaces;
+  r_input->faces_len = nfaces;
   r_input->faces = faces;
-  r_input->face_start = face_start;
-  r_input->face_len = face_len;
+  r_input->faces_start_table = faces_start_table;
+  r_input->faces_len_table = faces_len_table;
 }
 
 /* which output vert index goes with given input vertex? -1 if not found */
@@ -49,9 +49,9 @@ static int get_output_vert_index(const CDT_result *r, int in_index)
 {
   int i, j;
 
-  for (i = 0; i < r->num_verts; i++) {
-    for (j = 0; j < r->vert_orig_len[i]; j++) {
-      if (r->vert_orig[r->vert_orig_start[i] + j] == in_index) {
+  for (i = 0; i < r->verts_len; i++) {
+    for (j = 0; j < r->verts_orig_len_table[i]; j++) {
+      if (r->verts_orig[r->verts_orig_start_table[i] + j] == in_index) {
         return i;
       }
     }
@@ -64,7 +64,7 @@ static int get_edge(const CDT_result *r, int out_index_1, int out_index_2)
 {
   int i;
 
-  for (i = 0; i < r->num_edges; i++) {
+  for (i = 0; i < r->edges_len; i++) {
     if ((r->edges[i][0] == out_index_1 && r->edges[i][1] == out_index_2) ||
         (r->edges[i][0] == out_index_2 && r->edges[i][1] == out_index_1))
       return i;
@@ -75,12 +75,12 @@ static int get_edge(const CDT_result *r, int out_index_1, int out_index_2)
 /* return true if given output edge has given input edge id in its originals list */
 static bool out_edge_has_input_id(const CDT_result *r, int out_edge_index, int in_edge_index)
 {
-  if (r->edge_orig == NULL)
+  if (r->edges_orig == NULL)
     return false;
-  if (out_edge_index < 0 || out_edge_index >= r->num_edges)
+  if (out_edge_index < 0 || out_edge_index >= r->edges_len)
     return false;
-  for (int i = 0; i < r->edge_orig_len[out_edge_index]; i++) {
-    if (r->edge_orig[r->edge_orig_start[out_edge_index] + i] == in_edge_index)
+  for (int i = 0; i < r->edges_orig_len_table[out_edge_index]; i++) {
+    if (r->edges_orig[r->edges_orig_start_table[out_edge_index] + i] == in_edge_index)
       return true;
   }
   return false;
@@ -92,12 +92,12 @@ static int get_face(const CDT_result *r, int *out_indices, int nverts)
   int f, cycle_start, k, fstart;
   bool ok;
 
-  if (r->num_faces == 0)
+  if (r->faces_len == 0)
     return -1;
-  for (f = 0; f < r->num_faces; f++) {
-    if (r->face_len[f] != nverts)
+  for (f = 0; f < r->faces_len; f++) {
+    if (r->faces_len_table[f] != nverts)
       continue;
-    fstart = r->face_start[f];
+    fstart = r->faces_start_table[f];
     for (cycle_start = 0; cycle_start < nverts; cycle_start++) {
       ok = true;
       for (k = 0; ok && k < nverts; k++) {
@@ -126,12 +126,12 @@ static int get_face_tri(const CDT_result *r, int out_index_1, int out_index_2, i
 /* return true if given otuput face has given input face id in its originals list */
 static bool out_face_has_input_id(const CDT_result *r, int out_face_index, int in_face_index)
 {
-  if (r->face_orig == NULL)
+  if (r->faces_orig == NULL)
     return false;
-  if (out_face_index < 0 || out_face_index >= r->num_faces)
+  if (out_face_index < 0 || out_face_index >= r->faces_len)
     return false;
-  for (int i = 0; i < r->face_orig_len[out_face_index]; i++) {
-    if (r->face_orig[r->face_orig_start[out_face_index] + i] == in_face_index)
+  for (int i = 0; i < r->faces_orig_len_table[out_face_index]; i++) {
+    if (r->faces_orig[r->faces_orig_start_table[out_face_index] + i] == in_face_index)
       return true;
   }
   return false;
@@ -144,45 +144,45 @@ static void dump_result(CDT_result *r)
 
   fprintf(stderr, "\nRESULT\n");
   fprintf(stderr,
-          "num_verts=%d num_edges=%d num_faces=%d\n",
-          r->num_verts,
-          r->num_edges,
-          r->num_faces);
+          "verts_len=%d edges_len=%d faces_len=%d\n",
+          r->verts_len,
+          r->edges_len,
+          r->faces_len);
   fprintf(stderr, "\nvert coords:\n");
-  for (i = 0; i < r->num_verts; i++)
+  for (i = 0; i < r->verts_len; i++)
     fprintf(stderr, "%d: (%f,%f)\n", i, r->vert_coords[i][0], r->vert_coords[i][1]);
   fprintf(stderr, "vert orig:\n");
-  for (i = 0; i < r->num_verts; i++) {
+  for (i = 0; i < r->verts_len; i++) {
     fprintf(stderr, "%d:", i);
-    for (j = 0; j < r->vert_orig_len[i]; j++)
-      fprintf(stderr, " %d", r->vert_orig[r->vert_orig_start[i] + j]);
+    for (j = 0; j < r->verts_orig_len_table[i]; j++)
+      fprintf(stderr, " %d", r->verts_orig[r->verts_orig_start_table[i] + j]);
     fprintf(stderr, "\n");
   }
   fprintf(stderr, "\nedges:\n");
-  for (i = 0; i < r->num_edges; i++)
+  for (i = 0; i < r->edges_len; i++)
     fprintf(stderr, "%d: (%d,%d)\n", i, r->edges[i][0], r->edges[i][1]);
-  if (r->edge_orig) {
+  if (r->edges_orig) {
     fprintf(stderr, "edge orig:\n");
-    for (i = 0; i < r->num_edges; i++) {
+    for (i = 0; i < r->edges_len; i++) {
       fprintf(stderr, "%d:", i);
-      for (j = 0; j < r->edge_orig_len[i]; j++)
-        fprintf(stderr, " %d", r->edge_orig[r->edge_orig_start[i] + j]);
+      for (j = 0; j < r->edges_orig_len_table[i]; j++)
+        fprintf(stderr, " %d", r->edges_orig[r->edges_orig_start_table[i] + j]);
       fprintf(stderr, "\n");
     }
   }
   fprintf(stderr, "\nfaces:\n");
-  for (i = 0; i < r->num_faces; i++) {
+  for (i = 0; i < r->faces_len; i++) {
     fprintf(stderr, "%d: ", i);
-    for (j = 0; j < r->face_len[i]; j++)
-      fprintf(stderr, " %d", r->faces[r->face_start[i] + j]);
+    for (j = 0; j < r->faces_len_table[i]; j++)
+      fprintf(stderr, " %d", r->faces[r->faces_start_table[i] + j]);
     fprintf(stderr, "\n");
   }
-  if (r->face_orig) {
+  if (r->faces_orig) {
     fprintf(stderr, "face orig:\n");
-    for (i = 0; i < r->num_faces; i++) {
+    for (i = 0; i < r->faces_len; i++) {
       fprintf(stderr, "%d:", i);
-      for (j = 0; j < r->face_orig_len[i]; j++)
-        fprintf(stderr, " %d", r->face_orig[r->face_orig_start[i] + j]);
+      for (j = 0; j < r->faces_orig_len_table[i]; j++)
+        fprintf(stderr, " %d", r->faces_orig[r->faces_orig_start_table[i] + j]);
       fprintf(stderr, "\n");
     }
   }
@@ -196,9 +196,9 @@ TEST(delaunay, Empty)
   fill_input_verts(&in, NULL, 0);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
   EXPECT_NE((CDT_result *)NULL, out);
-  EXPECT_EQ(out->num_verts, 0);
-  EXPECT_EQ(out->num_edges, 0);
-  EXPECT_EQ(out->num_faces, 0);
+  EXPECT_EQ(out->verts_len, 0);
+  EXPECT_EQ(out->edges_len, 0);
+  EXPECT_EQ(out->faces_len, 0);
   BLI_constrained_delaunay_free(out);
 }
 
@@ -210,9 +210,9 @@ TEST(delaunay, OnePt)
 
   fill_input_verts(&in, p, 1);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 1);
-  EXPECT_EQ(out->num_edges, 0);
-  EXPECT_EQ(out->num_faces, 0);
+  EXPECT_EQ(out->verts_len, 1);
+  EXPECT_EQ(out->edges_len, 0);
+  EXPECT_EQ(out->faces_len, 0);
   EXPECT_EQ(out->vert_coords[0][0], 0.0f);
   EXPECT_EQ(out->vert_coords[0][1], 0.0f);
   BLI_constrained_delaunay_free(out);
@@ -227,9 +227,9 @@ TEST(delaunay, TwoPt)
 
   fill_input_verts(&in, p, 2);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 2);
-  EXPECT_EQ(out->num_edges, 1);
-  EXPECT_EQ(out->num_faces, 0);
+  EXPECT_EQ(out->verts_len, 2);
+  EXPECT_EQ(out->edges_len, 1);
+  EXPECT_EQ(out->faces_len, 0);
   v0_out = get_output_vert_index(out, 0);
   v1_out = get_output_vert_index(out, 1);
   EXPECT_NE(v0_out, -1);
@@ -255,9 +255,9 @@ TEST(delaunay, ThreePt)
 
   fill_input_verts(&in, p, 3);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 3);
-  EXPECT_EQ(out->num_edges, 3);
-  EXPECT_EQ(out->num_faces, 1);
+  EXPECT_EQ(out->verts_len, 3);
+  EXPECT_EQ(out->edges_len, 3);
+  EXPECT_EQ(out->faces_len, 1);
   v0_out = get_output_vert_index(out, 0);
   v1_out = get_output_vert_index(out, 1);
   v2_out = get_output_vert_index(out, 2);
@@ -285,9 +285,9 @@ TEST(delaunay, ThreePtsMerge)
   fill_input_verts(&in, p, 3);
   in.epsilon = 0.21f;
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 1);
-  EXPECT_EQ(out->num_edges, 0);
-  EXPECT_EQ(out->num_faces, 0);
+  EXPECT_EQ(out->verts_len, 1);
+  EXPECT_EQ(out->edges_len, 0);
+  EXPECT_EQ(out->faces_len, 0);
   v0_out = get_output_vert_index(out, 0);
   v1_out = get_output_vert_index(out, 1);
   v2_out = get_output_vert_index(out, 2);
@@ -303,9 +303,9 @@ TEST(delaunay, ThreePtsMerge)
    */
   in.epsilon = 0.05f;
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 3);
-  EXPECT_EQ(out->num_edges, 3);
-  EXPECT_EQ(out->num_faces, 1);
+  EXPECT_EQ(out->verts_len, 3);
+  EXPECT_EQ(out->edges_len, 3);
+  EXPECT_EQ(out->faces_len, 1);
   BLI_constrained_delaunay_free(out);
 }
 
@@ -321,8 +321,8 @@ TEST(delaunay, MixedPts)
   fill_input_verts(&in, p, 4);
   add_input_edges(&in, e, 3);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 4);
-  EXPECT_EQ(out->num_edges, 6);
+  EXPECT_EQ(out->verts_len, 4);
+  EXPECT_EQ(out->edges_len, 6);
   v0_out = get_output_vert_index(out, 0);
   v1_out = get_output_vert_index(out, 1);
   v2_out = get_output_vert_index(out, 2);
@@ -350,16 +350,16 @@ TEST(delaunay, CrossSegs)
   fill_input_verts(&in, p, 4);
   add_input_edges(&in, e, 2);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 5);
-  EXPECT_EQ(out->num_edges, 8);
-  EXPECT_EQ(out->num_faces, 4);
+  EXPECT_EQ(out->verts_len, 5);
+  EXPECT_EQ(out->edges_len, 8);
+  EXPECT_EQ(out->faces_len, 4);
   v0_out = get_output_vert_index(out, 0);
   v1_out = get_output_vert_index(out, 1);
   v2_out = get_output_vert_index(out, 2);
   v3_out = get_output_vert_index(out, 3);
   EXPECT_TRUE(v0_out != -1 && v1_out != -1 && v2_out != -1 && v3_out != -1);
   v_intersect = -1;
-  for (i = 0; i < out->num_verts; i++) {
+  for (i = 0; i < out->verts_len; i++) {
     if (i != v0_out && i != v1_out && i != v2_out && i != v3_out) {
       EXPECT_EQ(v_intersect, -1);
       v_intersect = i;
@@ -387,9 +387,9 @@ TEST(delaunay, DiamondCross)
   fill_input_verts(&in, p, 7);
   add_input_edges(&in, e, 5);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 4);
-  EXPECT_EQ(out->num_edges, 5);
-  EXPECT_EQ(out->num_faces, 2);
+  EXPECT_EQ(out->verts_len, 4);
+  EXPECT_EQ(out->edges_len, 5);
+  EXPECT_EQ(out->faces_len, 2);
   BLI_constrained_delaunay_free(out);
 }
 
@@ -418,9 +418,9 @@ TEST(delaunay, TwoDiamondsCrossed)
   fill_input_verts(&in, p, 12);
   add_input_edges(&in, e, 9);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 8);
-  EXPECT_EQ(out->num_edges, 15);
-  EXPECT_EQ(out->num_faces, 8);
+  EXPECT_EQ(out->verts_len, 8);
+  EXPECT_EQ(out->edges_len, 15);
+  EXPECT_EQ(out->faces_len, 8);
   for (i = 0; i < 12; i++) {
     v_out[i] = get_output_vert_index(out, i);
     EXPECT_NE(v_out[i], -1);
@@ -490,9 +490,9 @@ TEST(delaunay, ManyCross)
   fill_input_verts(&in, p, 27);
   add_input_edges(&in, e, 21);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 19);
-  EXPECT_EQ(out->num_edges, 46);
-  EXPECT_EQ(out->num_faces, 28);
+  EXPECT_EQ(out->verts_len, 19);
+  EXPECT_EQ(out->edges_len, 46);
+  EXPECT_EQ(out->faces_len, 28);
   BLI_constrained_delaunay_free(out);
 }
 
@@ -509,9 +509,9 @@ TEST(delaunay, TwoFace) {
   fill_input_verts(&in, p, 6);
   add_input_faces(&in, f, fstart, flen, 2);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 6);
-  EXPECT_EQ(out->num_edges, 9);
-  EXPECT_EQ(out->num_faces, 4);
+  EXPECT_EQ(out->verts_len, 6);
+  EXPECT_EQ(out->edges_len, 9);
+  EXPECT_EQ(out->faces_len, 4);
   for (i = 0; i < 6; i++) {
     v_out[i] = get_output_vert_index(out, i);
     EXPECT_NE(v_out[i], -1);
@@ -549,9 +549,9 @@ TEST(delaunay, OverlapFaces) {
   fill_input_verts(&in, p, 12);
   add_input_faces(&in, f, fstart, flen, 3);
   out = BLI_constrained_delaunay(&in, CDT_FULL);
-  EXPECT_EQ(out->num_verts, 14);
-  EXPECT_EQ(out->num_edges, 33);
-  EXPECT_EQ(out->num_faces, 20);
+  EXPECT_EQ(out->verts_len, 14);
+  EXPECT_EQ(out->edges_len, 33);
+  EXPECT_EQ(out->faces_len, 20);
   for (i = 0; i < 12; i++) {
     v_out[i] = get_output_vert_index(out, i);
     EXPECT_NE(v_out[i], -1);
@@ -581,15 +581,15 @@ TEST(delaunay, OverlapFaces) {
 
   /* Different output types */
   out = BLI_constrained_delaunay(&in, CDT_INSIDE);
-  EXPECT_EQ(out->num_faces, 18);
+  EXPECT_EQ(out->faces_len, 18);
   BLI_constrained_delaunay_free(out);
 
   out = BLI_constrained_delaunay(&in, CDT_CONSTRAINTS);
-  EXPECT_EQ(out->num_faces, 4);
+  EXPECT_EQ(out->faces_len, 4);
   BLI_constrained_delaunay_free(out);
 
   out = BLI_constrained_delaunay(&in, CDT_CONSTRAINTS_VALID_BMESH);
-  EXPECT_EQ(out->num_faces, 5);
+  EXPECT_EQ(out->faces_len, 5);
   BLI_constrained_delaunay_free(out);
 }
 
@@ -643,7 +643,7 @@ static void rand_delaunay_test(int test_kind, int max_lg_size, int reps_per_size
         p[i][1] = (float)BLI_rng_get_double(rng);
       }
       fill_input_verts(&in, p, size);
-      
+
       if (test_kind == RANDOM_SEGS || test_kind == RANDOM_POLY) {
         for (i = 0; i < size - 1; i++) {
           e[i][0] = i;
@@ -657,7 +657,7 @@ static void rand_delaunay_test(int test_kind, int max_lg_size, int reps_per_size
       }
       tstart = PIL_check_seconds_timer();
       out = BLI_constrained_delaunay(&in, CDT_FULL);
-      EXPECT_NE(out->num_verts, 0);
+      EXPECT_NE(out->verts_len, 0);
       BLI_constrained_delaunay_free(out);
       times[lg_size] += PIL_check_seconds_timer() - tstart;
     }
