@@ -1612,9 +1612,9 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      NULL,
      layerDefault_mvert_skin},
     /* 37: CD_LANPR_EDGE */
-    {sizeof(FreestyleEdge), "FreestyleEdge", 1, NULL, NULL, NULL, NULL, NULL, NULL},
+    {sizeof(LanprEdge), "LanprEdge", 1, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 38: CD_LANPR_FACE */
-    {sizeof(FreestyleFace), "FreestyleFace", 1, NULL, NULL, NULL, NULL, NULL, NULL},
+    {sizeof(LanprFace), "LanprFace", 1, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 39: CD_MLOOPTANGENT */
     {sizeof(float[4]), "", 0, NULL, NULL, NULL, NULL, NULL, NULL},
     /* 40: CD_TESSLOOPNORMAL */
@@ -1663,8 +1663,8 @@ static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
     "CDPaintMask",
     /* 35-36 */ "CDGridPaintMask",
     "CDMVertSkin",
-    /* 37-38 */ "CDFreestyleEdge",
-    "CDFreestyleFace",
+    /* 37-38 */ "CDLanprEdge",
+    "CDLanprFace",
     /* 39-41 */ "CDMLoopTangent",
     "CDTessLoopNormal",
     "CDCustomLoopNormal",

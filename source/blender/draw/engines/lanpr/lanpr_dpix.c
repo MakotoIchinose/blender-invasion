@@ -159,7 +159,7 @@ int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
   struct BMVert *v1, *v2;
   struct BMEdge *e;
   struct BMLoop *l1, *l2;
-  FreestyleEdge *fe;
+  LanprEdge *fe;
   int CanFindFreestyle = 0;
   int edge_count = me->totedge;
   int i, idx;
@@ -216,7 +216,7 @@ int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
 
     if (CanFindFreestyle) {
       fe = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
-      if (fe->flag & FREESTYLE_EDGE_MARK) {
+      if (fe->flag & LANPR_EDGE_MARK) {
         AtlasEdgeMask[idx + 1] = 1; /*  channel G */
       }
     }

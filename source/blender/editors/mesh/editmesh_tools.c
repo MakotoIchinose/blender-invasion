@@ -7427,7 +7427,7 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
 {
   BMEdge *eed;
   BMIter iter;
-  FreestyleEdge *fed;
+  LanprEdge *fed;
   const bool clear = RNA_boolean_get(op->ptr, "clear");
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
@@ -7456,7 +7456,7 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
           fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
-          fed->flag &= ~FREESTYLE_EDGE_MARK;
+          fed->flag &= ~LANPR_EDGE_MARK;
         }
       }
     }
@@ -7464,7 +7464,7 @@ static int edbm_mark_lanpr_edge_exec(bContext *C, wmOperator *op)
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
           fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_LANPR_EDGE);
-          fed->flag |= FREESTYLE_EDGE_MARK;
+          fed->flag |= LANPR_EDGE_MARK;
         }
       }
     }
@@ -7507,7 +7507,7 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
 {
   BMFace *efa;
   BMIter iter;
-  FreestyleFace *ffa;
+  LanprFace *ffa;
   const bool clear = RNA_boolean_get(op->ptr, "clear");
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
@@ -7534,7 +7534,7 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
           ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
-          ffa->flag &= ~FREESTYLE_FACE_MARK;
+          ffa->flag &= ~LANPR_FACE_MARK;
         }
       }
     }
@@ -7542,7 +7542,7 @@ static int edbm_mark_lanpr_face_exec(bContext *C, wmOperator *op)
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
           ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_LANPR_FACE);
-          ffa->flag |= FREESTYLE_FACE_MARK;
+          ffa->flag |= LANPR_FACE_MARK;
         }
       }
     }

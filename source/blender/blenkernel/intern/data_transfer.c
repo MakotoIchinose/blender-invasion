@@ -520,10 +520,10 @@ static void data_transfer_layersmapping_add_item_cd(ListBase *r_map,
   uint64_t data_flag = 0;
 
   if (cddata_type == CD_LANPR_EDGE) {
-    data_flag = FREESTYLE_EDGE_MARK;
+    data_flag = LANPR_EDGE_MARK;
   }
   else if (cddata_type == CD_LANPR_FACE) {
-    data_flag = FREESTYLE_FACE_MARK;
+    data_flag = LANPR_FACE_MARK;
   }
 
   data_transfer_layersmapping_add_item(r_map,

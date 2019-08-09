@@ -297,9 +297,9 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
             break;
           }
           case SIMFACE_FREESTYLE: {
-            FreestyleFace *fface;
+            LanprFace *fface;
             fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_LANPR_FACE);
-            if ((fface == NULL) || ((fface->flag & FREESTYLE_FACE_MARK) == 0)) {
+            if ((fface == NULL) || ((fface->flag & LANPR_FACE_MARK) == 0)) {
               face_data_value |= SIMFACE_DATA_FALSE;
             }
             else {
@@ -459,7 +459,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
             }
             break;
           case SIMFACE_FREESTYLE: {
-            FreestyleFace *fface;
+            LanprFace *fface;
 
             if (!has_custom_data_layer) {
               BLI_assert(face_data_value == SIMFACE_DATA_FALSE);
@@ -468,7 +468,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
             }
 
             fface = CustomData_bmesh_get(&bm->pdata, face->head.data, CD_LANPR_FACE);
-            if (((fface != NULL) && (fface->flag & FREESTYLE_FACE_MARK)) ==
+            if (((fface != NULL) && (fface->flag & LANPR_FACE_MARK)) ==
                 ((face_data_value & SIMFACE_DATA_TRUE) != 0)) {
               select = true;
             }
@@ -745,9 +745,9 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             }
             break;
           case SIMEDGE_FREESTYLE: {
-            FreestyleEdge *fedge;
+            LanprEdge *fedge;
             fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_LANPR_EDGE);
-            if ((fedge == NULL) || ((fedge->flag & FREESTYLE_EDGE_MARK) == 0)) {
+            if ((fedge == NULL) || ((fedge->flag & LANPR_EDGE_MARK) == 0)) {
               edge_data_value |= SIMEDGE_DATA_FALSE;
             }
             else {
@@ -877,7 +877,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             }
             break;
           case SIMEDGE_FREESTYLE: {
-            FreestyleEdge *fedge;
+            LanprEdge *fedge;
 
             if (!has_custom_data_layer) {
               BLI_assert(edge_data_value == SIMEDGE_DATA_FALSE);
@@ -886,7 +886,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             }
 
             fedge = CustomData_bmesh_get(&bm->edata, edge->head.data, CD_LANPR_EDGE);
-            if (((fedge != NULL) && (fedge->flag & FREESTYLE_EDGE_MARK)) ==
+            if (((fedge != NULL) && (fedge->flag & LANPR_EDGE_MARK)) ==
                 ((edge_data_value & SIMEDGE_DATA_TRUE) != 0)) {
               select = true;
             }

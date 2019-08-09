@@ -1653,8 +1653,8 @@ static uchar mesh_render_data_face_flag(MeshRenderData *rdata, const BMFace *efa
 
 #ifdef WITH_FREESTYLE
   if (rdata->cd.offset.freestyle_face != -1) {
-    const FreestyleFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
-    if (ffa->flag & FREESTYLE_FACE_MARK) {
+    const LanprFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
+    if (ffa->flag & LANPR_FACE_MARK) {
       fflag |= VFLAG_FACE_FREESTYLE;
     }
   }
@@ -1718,8 +1718,8 @@ static void mesh_render_data_edge_flag(const MeshRenderData *rdata,
   }
 #ifdef WITH_FREESTYLE
   if (rdata->cd.offset.freestyle_edge != -1) {
-    const FreestyleEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
-    if (fed->flag & FREESTYLE_EDGE_MARK) {
+    const LanprEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
+    if (fed->flag & LANPR_EDGE_MARK) {
       eattr->e_flag |= VFLAG_EDGE_FREESTYLE;
     }
   }

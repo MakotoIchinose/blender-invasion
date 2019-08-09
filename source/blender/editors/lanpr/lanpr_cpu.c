@@ -1584,7 +1584,7 @@ static void lanpr_make_render_geometry_buffers_object(
   LANPR_RenderVert *orv;
   LANPR_RenderLine *orl;
   LANPR_RenderTriangle *ort;
-  FreestyleEdge *fe;
+  LanprEdge *fe;
   int CanFindFreestyle = 0;
   int i;
 
@@ -1661,7 +1661,7 @@ static void lanpr_make_render_geometry_buffers_object(
       e = BM_edge_at_index(bm, i);
       if (CanFindFreestyle) {
         fe = CustomData_bmesh_get(&bm->edata, e->head.data, CD_LANPR_EDGE);
-        if (fe->flag & FREESTYLE_EDGE_MARK) {
+        if (fe->flag & LANPR_EDGE_MARK) {
           rl->flags |= LANPR_EDGE_FLAG_EDGE_MARK;
         }
       }
