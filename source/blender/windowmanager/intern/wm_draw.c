@@ -781,37 +781,6 @@ void wm_draw_upside_down(int sizex, int sizey, bool to_srgb)
   immUnbindProgram();
 }
 
-static void wm_draw_window_upside_down_onscreen(bContext *C, wmWindow *win)
-{
-  const int width = WM_window_pixels_x(win);
-  const int height = WM_window_pixels_y(win);
-  GPUOffScreen *offscreen = GPU_offscreen_create(width, height, 0, false, false, NULL);
-
-  /* Upside down rendering only implemented for non-stereo. Easy to add but makes code messy. */
-  BLI_assert(
-      !(WM_stereo3d_enabled(win, false) && GHOST_isUpsideDownWindow(win->offscreen_context)));
-
-  if (offscreen) {
-    GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
-    wm_draw_offscreen_texture_parameters(offscreen);
-
-    /* Draw view into offscreen buffer. */
-    GPU_offscreen_bind(offscreen, false);
-    wm_draw_window_onscreen(C, win, -1);
-    GPU_offscreen_unbind(offscreen, false);
-
-    /* Draw offscreen buffer to screen. */
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, GPU_texture_opengl_bindcode(texture));
-
-    wm_draw_upside_down(win->sizex, win->sizey, false);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    GPU_offscreen_free(offscreen);
-  }
-}
-
 static void wm_draw_window(bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);
@@ -823,13 +792,8 @@ static void wm_draw_window(bContext *C, wmWindow *win)
 
   /* Now we draw into the window framebuffer, in full window coordinates. */
   if (!stereo) {
-    if (GHOST_isUpsideDownWindow(win->ghostwin)) {
-      wm_draw_window_upside_down_onscreen(C, win);
-    }
-    else {
-      /* Regular mono drawing. */
-      wm_draw_window_onscreen(C, win, -1);
-    }
+    /* Regular mono drawing. */
+    wm_draw_window_onscreen(C, win, -1);
   }
   else if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP) {
     /* For pageflip we simply draw to both back buffers. */
@@ -1023,7 +987,7 @@ void wm_draw_update(bContext *C)
       wm_draw_window(C, win);
       wm_draw_update_clear_window(win);
 
-      wm_window_present(win);
+      wm_window_swap_buffers(win);
 
       CTX_wm_window_set(C, NULL);
     }

@@ -95,12 +95,6 @@
 #  include "BLI_threads.h"
 #endif
 
-/* We may want to open non-OpenGL windows in certain cases and do all drawing into an offscreen
- * OpenGL context then. This flag is useful for testing the blitting. It forces OpenGL windows
- * only, but still does the offscreen rendering and blitting (if supported by GHOST context).
- * See GHOST_BlitOpenGLOffscreenContext. */
-// #define USE_FORCE_OPENGL_FOR_NON_OPENGL_WIN
-
 /* the global to talk to ghost */
 static GHOST_SystemHandle g_system = NULL;
 
@@ -163,7 +157,7 @@ void wm_get_desktopsize(int *r_width, int *r_height)
 
 /* keeps offset and size within monitor bounds */
 /* XXX solve dual screen... */
-void wm_window_check_position(rcti *rect)
+static void wm_window_check_position(rcti *rect)
 {
   int width, height, d;
 
@@ -196,17 +190,6 @@ void wm_window_check_position(rcti *rect)
   }
 }
 
-static void wm_window_drawing_context_activate(wmWindow *win)
-{
-  if (win->offscreen_context) {
-    /* In rare cases we may want to draw to an offscreen context.  */
-    GHOST_ActivateOpenGLContext(win->offscreen_context);
-  }
-  else {
-    GHOST_ActivateWindowDrawingContext(win->ghostwin);
-  }
-}
-
 static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
 {
   if (win->ghostwin) {
@@ -221,7 +204,7 @@ static void wm_ghostwindow_destroy(wmWindowManager *wm, wmWindow *win)
     }
 
     /* We need this window's opengl context active to discard it. */
-    wm_window_drawing_context_activate(win);
+    GHOST_ActivateWindowDrawingContext(win->ghostwin);
     GPU_context_active_set(win->gpuctx);
 
     /* Delete local gpu context.  */
@@ -567,10 +550,7 @@ static void wm_window_ensure_eventstate(wmWindow *win)
 }
 
 /* belongs to below */
-static void wm_window_ghostwindow_add(wmWindowManager *wm,
-                                      const char *title,
-                                      wmWindow *win,
-                                      GHOST_TDrawingContextType context_type)
+static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wmWindow *win)
 {
   GHOST_WindowHandle ghostwin;
   GHOST_GLSettings glSettings = {0};
@@ -599,29 +579,14 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                 win->sizex,
                                 win->sizey,
                                 (GHOST_TWindowState)win->windowstate,
-#ifdef USE_FORCE_OPENGL_FOR_NON_OPENGL_WIN
                                 GHOST_kDrawingContextTypeOpenGL,
-#else
-                                context_type,
-#endif
                                 glSettings);
 
   if (ghostwin) {
     GHOST_RectangleHandle bounds;
-    GLuint default_fb;
 
-    if (context_type == GHOST_kDrawingContextTypeOpenGL) {
-      default_fb = GHOST_GetDefaultOpenGLFramebuffer(ghostwin);
-      win->gpuctx = GPU_context_create(default_fb);
-    }
-    else {
-      /* Drawing into a non-OpenGL window -> create an offscreen OpenGL context to draw into. */
-      win->offscreen_context = WM_opengl_context_create();
-      WM_opengl_context_activate(win->offscreen_context);
-
-      default_fb = GHOST_GetContextDefaultOpenGLFramebuffer(win->offscreen_context);
-      win->gpuctx = GPU_context_create(default_fb);
-    }
+    GLuint default_fb = GHOST_GetDefaultOpenGLFramebuffer(ghostwin);
+    win->gpuctx = GPU_context_create(default_fb);
 
     /* needed so we can detect the graphics card below */
     GPU_init();
@@ -661,7 +626,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     /* needed here, because it's used before it reads userdef */
     WM_window_set_dpi(win);
 
-    wm_window_present(win);
+    wm_window_swap_buffers(win);
 
     // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
 
@@ -673,11 +638,23 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   }
 }
 
-static void wm_window_ghostwindow_ensure(wmWindowManager *wm,
-                                         wmWindow *win,
-                                         GHOST_TDrawingContextType context_type)
+/**
+ * Initialize #wmWindow without ghostwin, open these and clear.
+ *
+ * window size is read from window, if 0 it uses prefsize
+ * called in #WM_check, also inits stuff after file read.
+ *
+ * \warning
+ * After running, 'win->ghostwin' can be NULL in rare cases
+ * (where OpenGL driver fails to create a context for eg).
+ * We could remove them with #wm_window_ghostwindows_remove_invalid
+ * but better not since caller may continue to use.
+ * Instead, caller needs to handle the error case and cleanup.
+ */
+void wm_window_ghostwindows_ensure(wmWindowManager *wm)
 {
   wmKeyMap *keymap;
+  wmWindow *win;
 
   BLI_assert(G.background == false);
 
@@ -708,83 +685,63 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm,
 #endif
   }
 
-  if (win->ghostwin == NULL) {
-    if ((win->sizex == 0) || (wm_init_state.override_flag & WIN_OVERRIDE_GEOM)) {
-      win->posx = wm_init_state.start_x;
-      win->posy = wm_init_state.start_y;
-      win->sizex = wm_init_state.size_x;
-      win->sizey = wm_init_state.size_y;
+  for (win = wm->windows.first; win; win = win->next) {
+    if (win->ghostwin == NULL) {
+      if ((win->sizex == 0) || (wm_init_state.override_flag & WIN_OVERRIDE_GEOM)) {
+        win->posx = wm_init_state.start_x;
+        win->posy = wm_init_state.start_y;
+        win->sizex = wm_init_state.size_x;
+        win->sizey = wm_init_state.size_y;
 
-      if (wm_init_state.override_flag & WIN_OVERRIDE_GEOM) {
-        win->windowstate = GHOST_kWindowStateNormal;
-        wm_init_state.override_flag &= ~WIN_OVERRIDE_GEOM;
+        if (wm_init_state.override_flag & WIN_OVERRIDE_GEOM) {
+          win->windowstate = GHOST_kWindowStateNormal;
+          wm_init_state.override_flag &= ~WIN_OVERRIDE_GEOM;
+        }
+        else {
+          win->windowstate = GHOST_WINDOW_STATE_DEFAULT;
+        }
       }
-      else {
-        win->windowstate = GHOST_WINDOW_STATE_DEFAULT;
+
+      if (wm_init_state.override_flag & WIN_OVERRIDE_WINSTATE) {
+        win->windowstate = wm_init_state.windowstate;
+        wm_init_state.override_flag &= ~WIN_OVERRIDE_WINSTATE;
       }
+
+      /* without this, cursor restore may fail, T45456 */
+      if (win->cursor == 0) {
+        win->cursor = CURSOR_STD;
+      }
+
+      wm_window_ghostwindow_add(wm, "Blender", win);
     }
 
-    if (wm_init_state.override_flag & WIN_OVERRIDE_WINSTATE) {
-      win->windowstate = wm_init_state.windowstate;
-      wm_init_state.override_flag &= ~WIN_OVERRIDE_WINSTATE;
+    if (win->ghostwin != NULL) {
+      /* If we have no ghostwin this is a buggy window that should be removed.
+       * However we still need to initialize it correctly so the screen doesn't hang. */
+
+      /* happens after fileread */
+      wm_window_ensure_eventstate(win);
     }
 
-    /* without this, cursor restore may fail, T45456 */
-    if (win->cursor == 0) {
-      win->cursor = CURSOR_STD;
+    /* add keymap handlers (1 handler for all keys in map!) */
+    keymap = WM_keymap_ensure(wm->defaultconf, "Window", 0, 0);
+    WM_event_add_keymap_handler(&win->handlers, keymap);
+
+    keymap = WM_keymap_ensure(wm->defaultconf, "Screen", 0, 0);
+    WM_event_add_keymap_handler(&win->handlers, keymap);
+
+    keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
+    WM_event_add_keymap_handler(&win->modalhandlers, keymap);
+
+    /* add drop boxes */
+    {
+      ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
+      WM_event_add_dropbox_handler(&win->handlers, lb);
     }
+    wm_window_title(wm, win);
 
-    wm_window_ghostwindow_add(wm, "Blender", win, context_type);
-  }
-
-  if (win->ghostwin != NULL) {
-    /* If we have no ghostwin this is a buggy window that should be removed.
-     * However we still need to initialize it correctly so the screen doesn't hang. */
-
-    /* happens after fileread */
-    wm_window_ensure_eventstate(win);
-  }
-
-  /* add keymap handlers (1 handler for all keys in map!) */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Window", 0, 0);
-  WM_event_add_keymap_handler(&win->handlers, keymap);
-
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen", 0, 0);
-  WM_event_add_keymap_handler(&win->handlers, keymap);
-
-  keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
-  WM_event_add_keymap_handler(&win->modalhandlers, keymap);
-
-  /* add drop boxes */
-  {
-    ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
-    WM_event_add_dropbox_handler(&win->handlers, lb);
-  }
-  wm_window_title(wm, win);
-
-  /* add topbar */
-  ED_screen_global_areas_refresh(win);
-}
-
-/**
- * Initialize #wmWindow without ghostwin, open these and clear.
- *
- * window size is read from window, if 0 it uses prefsize
- * called in #WM_check, also inits stuff after file read.
- *
- * \warning
- * After running, 'win->ghostwin' can be NULL in rare cases
- * (where OpenGL driver fails to create a context for eg).
- * We could remove them with #wm_window_ghostwindows_remove_invalid
- * but better not since caller may continue to use.
- * Instead, caller needs to handle the error case and cleanup.
- */
-void wm_window_ghostwindows_ensure(wmWindowManager *wm)
-{
-  BLI_assert(G.background == false);
-
-  for (wmWindow *win = wm->windows.first; win; win = win->next) {
-    wm_window_ghostwindow_ensure(wm, win, GHOST_kDrawingContextTypeOpenGL);
+    /* add topbar */
+    ED_screen_global_areas_refresh(win);
   }
 }
 
@@ -812,11 +769,8 @@ void wm_window_ghostwindows_remove_invalid(bContext *C, wmWindowManager *wm)
  * \note area-rip calls this.
  * \return the window or NULL.
  */
-static wmWindow *wm_window_open_ex(bContext *C,
-                                   const rcti *rect,
-                                   GHOST_TDrawingContextType context_type)
+wmWindow *WM_window_open(bContext *C, const rcti *rect)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win_prev = CTX_wm_window(C);
   wmWindow *win = wm_window_new(C, win_prev);
 
@@ -825,30 +779,17 @@ static wmWindow *wm_window_open_ex(bContext *C,
   win->sizex = BLI_rcti_size_x(rect);
   win->sizey = BLI_rcti_size_y(rect);
 
-  wm_window_ghostwindow_ensure(wm, win, context_type);
-
   WM_check(C);
 
   if (win->ghostwin) {
     return win;
   }
   else {
-    wm_window_close(C, wm, win);
+    wm_window_close(C, CTX_wm_manager(C), win);
     CTX_wm_window_set(C, win_prev);
     return NULL;
   }
 }
-
-wmWindow *WM_window_open(bContext *C, const rcti *rect)
-{
-  return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeOpenGL);
-}
-#ifdef WIN32
-wmWindow *WM_window_open_directx(bContext *C, const rcti *rect)
-{
-  return wm_window_open_ex(C, rect, GHOST_kDrawingContextTypeD3D);
-}
-#endif
 
 /**
  * Uses `screen->temp` tag to define what to do, currently it limits
@@ -1125,9 +1066,8 @@ static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool acti
 
   wm->windrawable = win;
   if (activate) {
-    wm_window_drawing_context_activate(win);
+    GHOST_ActivateWindowDrawingContext(win->ghostwin);
   }
-
   GPU_context_active_set(win->gpuctx);
   immActivate();
 }
@@ -1991,20 +1931,9 @@ void wm_window_raise(wmWindow *win)
 
 /**
  * \brief Push rendered buffer to the screen.
- * In most cases, just swaps the buffer. However a window offscreen context may have been used to
- * inject a layer of control in-between the OpenGL context and the window. We use this to support
- * drawing with OpenGL into a DirectX window for the rare cases we need this (Windows Mixed
- * Reality OpenXR runtime, which doesn't support OpenGL).
  */
-void wm_window_present(wmWindow *win)
+void wm_window_swap_buffers(wmWindow *win)
 {
-  if (win->offscreen_context) {
-    /* The window may be a non-OpenGL window (unlikely though). In that case it's given the
-     * chance to blit the offscreen buffer to its onscreen context. Just a simple interop
-     * layer. */
-    GHOST_BlitOpenGLOffscreenContext(win->ghostwin, win->offscreen_context);
-    GHOST_SwapContextBuffers(win->offscreen_context);
-  }
   GHOST_SwapWindowBuffers(win->ghostwin);
 }
 
@@ -2254,15 +2183,6 @@ void WM_window_screen_rect_calc(const wmWindow *win, rcti *r_rect)
   BLI_assert(screen_rect.xmin < screen_rect.xmax);
   BLI_assert(screen_rect.ymin < screen_rect.ymax);
   *r_rect = screen_rect;
-}
-
-/**
- * For some specific use cases (VR views for DirectX only OpenXR runtime) non-OpenGL windows are
- * supported. These are treated really specially though.
- */
-bool WM_window_is_non_opengl(const wmWindow *win)
-{
-  return GHOST_GetDrawingContextType(win->ghostwin) != GHOST_kDrawingContextTypeOpenGL;
 }
 
 bool WM_window_is_fullscreen(wmWindow *win)

@@ -53,14 +53,6 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
-#ifdef WIN32 /* Only WIN32 supported now */
-//#  define USE_FORCE_WINDOWED_SESSION
-#endif
-
-#ifdef USE_FORCE_WINDOWED_SESSION
-static void xr_session_window_create(bContext *C);
-#endif
-
 static wmSurface *g_xr_surface = NULL;
 
 typedef struct {
@@ -354,37 +346,20 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
 static void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
 {
-#ifndef USE_FORCE_WINDOWED_SESSION
   wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
   wmXrSurfaceData *data = surface->customdata;
 
   wm_surface_add(surface);
 
   return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
-#else
-#  ifdef WIN32
-  if (graphics_binding == GHOST_kXrGraphicsD3D11) {
-    wmWindowManager *wm = G_MAIN->wm.first;
-    for (wmWindow *win = wm->windows.first; win; win = win->next) {
-      /* TODO better lookup? For now only one D3D window possible, but later? */
-      if (GHOST_GetDrawingContextType(win->ghostwin) == GHOST_kDrawingContextTypeD3D) {
-        return GHOST_GetWindowContext(win->ghostwin);
-      }
-    }
-  }
-#  endif
-  return NULL;
-#endif
 }
 
 static void wm_xr_session_gpu_binding_context_destroy(
     GHOST_TXrGraphicsBinding UNUSED(graphics_lib), void *UNUSED(context))
 {
-#ifndef USE_FORCE_WINDOWED_SESSION
   if (g_xr_surface) { /* Might have been freed already */
     wm_surface_remove(g_xr_surface);
   }
-#endif
 
   wm_window_reset_drawable();
 }
@@ -413,9 +388,6 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
   else {
     GHOST_XrSessionBeginInfo begin_info;
 
-#if defined(USE_FORCE_WINDOWED_SESSION)
-    xr_session_window_create(C);
-#endif
     wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
 
     GHOST_XrGraphicsContextBindFuncs(xr_context,
@@ -426,70 +398,3 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
     GHOST_XrSessionStart(xr_context, &begin_info);
   }
 }
-
-#if defined(USE_FORCE_WINDOWED_SESSION)
-
-#  include "BLI_rect.h"
-#  include "DNA_workspace_types.h"
-#  include "BKE_workspace.h"
-#  include "ED_screen.h"
-#  include "BLI_string.h"
-
-static void xr_session_window_create(bContext *C)
-{
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  wmWindow *win_prev = CTX_wm_window(C);
-
-  rcti rect;
-  wmWindow *win;
-  bScreen *screen;
-  ScrArea *sa;
-  int screen_size[2];
-
-  wm_get_screensize(&screen_size[0], &screen_size[1]);
-  BLI_rcti_init(&rect, 0, screen_size[0], 0, screen_size[1]);
-  BLI_rcti_scale(&rect, 0.8f);
-  wm_window_check_position(&rect);
-
-  win = WM_window_open_directx(C, &rect);
-
-  if (WM_window_get_active_workspace(win) == NULL) {
-    WorkSpace *workspace = WM_window_get_active_workspace(win_prev);
-    BKE_workspace_active_set(win->workspace_hook, workspace);
-  }
-
-  /* add new screen layout */
-  WorkSpace *workspace = WM_window_get_active_workspace(win);
-  WorkSpaceLayout *layout = ED_workspace_layout_add(bmain, workspace, win, "VR Session");
-
-  screen = BKE_workspace_layout_screen_get(layout);
-  WM_window_set_active_layout(win, workspace, layout);
-
-  /* Set scene and view layer to match original window. */
-  STRNCPY(win->view_layer_name, view_layer->name);
-  if (WM_window_get_active_scene(win) != scene) {
-    ED_screen_scene_change(C, win, scene);
-  }
-
-  WM_check(C);
-
-  CTX_wm_window_set(C, win);
-  sa = screen->areabase.first;
-  CTX_wm_area_set(C, sa);
-  ED_area_newspace(C, sa, SPACE_VIEW3D, false);
-
-  ED_screen_change(C, screen);
-  ED_screen_refresh(CTX_wm_manager(C), win); /* test scale */
-
-  if (win->ghostwin) {
-    GHOST_SetTitle(win->ghostwin, "Blender VR Session View");
-  }
-  else {
-    /* very unlikely! but opening a new window can fail */
-    wm_window_close(C, CTX_wm_manager(C), win);
-    CTX_wm_window_set(C, win_prev);
-  }
-}
-#endif /* USE_FORCE_WINDOWED_SESSION */
