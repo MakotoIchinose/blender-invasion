@@ -162,10 +162,10 @@ typedef enum CDT_output_type {
  * API interface to CDT.
  * This returns a pointer to an allocated CDT_result.
  * When the caller is finished with it, the caller
- * should use #BLI_constrained_delaunay_free() to free it.
+ * should use #BLI_delaunay_2d_cdt_free() to free it.
  */
-CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_type output_type);
+CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_type output_type);
 
-void BLI_constrained_delaunay_free(CDT_result *result);
+void BLI_delaunay_2d_cdt_free(CDT_result *result);
 
 #endif /* __BLI_DELAUNAY_2D_H__ */

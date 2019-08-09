@@ -2288,7 +2288,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   return result;
 }
 
-CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_type output_type)
+CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_type output_type)
 {
   int nv = input->verts_len;
   int ne = input->edges_len;
@@ -2432,7 +2432,7 @@ CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_ty
   return result;
 }
 
-void BLI_constrained_delaunay_free(CDT_result *result)
+void BLI_delaunay_2d_cdt_free(CDT_result *result)
 {
   if (result == NULL) {
     return;

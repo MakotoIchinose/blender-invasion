@@ -194,12 +194,12 @@ TEST(delaunay, Empty)
   CDT_result *out;
 
   fill_input_verts(&in, NULL, 0);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_NE((CDT_result *)NULL, out);
   EXPECT_EQ(out->verts_len, 0);
   EXPECT_EQ(out->edges_len, 0);
   EXPECT_EQ(out->faces_len, 0);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, OnePt)
@@ -209,13 +209,13 @@ TEST(delaunay, OnePt)
   float p[][2] = {{0.0f, 0.0f}};
 
   fill_input_verts(&in, p, 1);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 1);
   EXPECT_EQ(out->edges_len, 0);
   EXPECT_EQ(out->faces_len, 0);
   EXPECT_EQ(out->vert_coords[0][0], 0.0f);
   EXPECT_EQ(out->vert_coords[0][1], 0.0f);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, TwoPt)
@@ -226,7 +226,7 @@ TEST(delaunay, TwoPt)
   float p[][2] = {{0.0f, -0.75f}, {0.0f, 0.75f}};
 
   fill_input_verts(&in, p, 2);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 2);
   EXPECT_EQ(out->edges_len, 1);
   EXPECT_EQ(out->faces_len, 0);
@@ -241,7 +241,7 @@ TEST(delaunay, TwoPt)
   EXPECT_NEAR(out->vert_coords[v1_out][1], p[1][1], in.epsilon);
   e0_out = get_edge(out, v0_out, v1_out);
   EXPECT_EQ(e0_out, 0);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, ThreePt)
@@ -254,7 +254,7 @@ TEST(delaunay, ThreePt)
   float p[][2] = {{-0.1f, -0.75f}, {0.1f, 0.75f}, {0.5f, 0.5f}};
 
   fill_input_verts(&in, p, 3);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 3);
   EXPECT_EQ(out->edges_len, 3);
   EXPECT_EQ(out->faces_len, 1);
@@ -270,7 +270,7 @@ TEST(delaunay, ThreePt)
   EXPECT_TRUE(e0_out != e1_out && e0_out != e2_out && e1_out != e2_out);
   f0_out = get_face_tri(out, v0_out, v2_out, v1_out);
   EXPECT_EQ(f0_out, 0);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, ThreePtsMerge)
@@ -284,7 +284,7 @@ TEST(delaunay, ThreePtsMerge)
   /* First with epsilon such that points are within that distance of each other */
   fill_input_verts(&in, p, 3);
   in.epsilon = 0.21f;
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 1);
   EXPECT_EQ(out->edges_len, 0);
   EXPECT_EQ(out->faces_len, 0);
@@ -294,7 +294,7 @@ TEST(delaunay, ThreePtsMerge)
   EXPECT_EQ(v0_out, 0);
   EXPECT_EQ(v1_out, 0);
   EXPECT_EQ(v2_out, 0);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
   /* Now with epsilon such that points are farther away than that.
    * Note that the points won't merge with each other if distance is
    * less than .01, but that they may merge with points on the Delaunay
@@ -302,11 +302,11 @@ TEST(delaunay, ThreePtsMerge)
    * this test.
    */
   in.epsilon = 0.05f;
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 3);
   EXPECT_EQ(out->edges_len, 3);
   EXPECT_EQ(out->faces_len, 1);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, MixedPts)
@@ -320,7 +320,7 @@ TEST(delaunay, MixedPts)
 
   fill_input_verts(&in, p, 4);
   add_input_edges(&in, e, 3);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 4);
   EXPECT_EQ(out->edges_len, 6);
   v0_out = get_output_vert_index(out, 0);
@@ -335,7 +335,7 @@ TEST(delaunay, MixedPts)
   EXPECT_TRUE(out_edge_has_input_id(out, e0_out, 0));
   EXPECT_TRUE(out_edge_has_input_id(out, e1_out, 1));
   EXPECT_TRUE(out_edge_has_input_id(out, e2_out, 2));
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, CrossSegs)
@@ -349,7 +349,7 @@ TEST(delaunay, CrossSegs)
 
   fill_input_verts(&in, p, 4);
   add_input_edges(&in, e, 2);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 5);
   EXPECT_EQ(out->edges_len, 8);
   EXPECT_EQ(out->faces_len, 4);
@@ -368,7 +368,7 @@ TEST(delaunay, CrossSegs)
   EXPECT_NE(v_intersect, -1);
   EXPECT_NEAR(out->vert_coords[v_intersect][0], 0.0f, in.epsilon);
   EXPECT_NEAR(out->vert_coords[v_intersect][1], 0.0f, in.epsilon);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, DiamondCross)
@@ -386,11 +386,11 @@ TEST(delaunay, DiamondCross)
 
   fill_input_verts(&in, p, 7);
   add_input_edges(&in, e, 5);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 4);
   EXPECT_EQ(out->edges_len, 5);
   EXPECT_EQ(out->faces_len, 2);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, TwoDiamondsCrossed)
@@ -417,7 +417,7 @@ TEST(delaunay, TwoDiamondsCrossed)
 
   fill_input_verts(&in, p, 12);
   add_input_edges(&in, e, 9);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 8);
   EXPECT_EQ(out->edges_len, 15);
   EXPECT_EQ(out->faces_len, 8);
@@ -442,7 +442,7 @@ TEST(delaunay, TwoDiamondsCrossed)
   EXPECT_TRUE(out_edge_has_input_id(out, e_cross_1, 8));
   EXPECT_TRUE(out_edge_has_input_id(out, e_cross_2, 8));
   EXPECT_TRUE(out_edge_has_input_id(out, e_cross_3, 8));
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, ManyCross)
@@ -489,11 +489,11 @@ TEST(delaunay, ManyCross)
 
   fill_input_verts(&in, p, 27);
   add_input_edges(&in, e, 21);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 19);
   EXPECT_EQ(out->edges_len, 46);
   EXPECT_EQ(out->faces_len, 28);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, TwoFace) {
@@ -508,7 +508,7 @@ TEST(delaunay, TwoFace) {
 
   fill_input_verts(&in, p, 6);
   add_input_faces(&in, f, fstart, flen, 2);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 6);
   EXPECT_EQ(out->edges_len, 9);
   EXPECT_EQ(out->faces_len, 4);
@@ -531,7 +531,7 @@ TEST(delaunay, TwoFace) {
   EXPECT_TRUE(out_edge_has_input_id(out, e2_out, out->face_edge_offset + 2));
   EXPECT_TRUE(out_face_has_input_id(out, f0_out, 0));
   EXPECT_TRUE(out_face_has_input_id(out, f1_out, 1));
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 TEST(delaunay, OverlapFaces) {
@@ -548,7 +548,7 @@ TEST(delaunay, OverlapFaces) {
 
   fill_input_verts(&in, p, 12);
   add_input_faces(&in, f, fstart, flen, 3);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   EXPECT_EQ(out->verts_len, 14);
   EXPECT_EQ(out->edges_len, 33);
   EXPECT_EQ(out->faces_len, 20);
@@ -577,20 +577,20 @@ TEST(delaunay, OverlapFaces) {
   EXPECT_NE(f2_out, -1);
   EXPECT_TRUE(out_face_has_input_id(out, f2_out, 0));
   EXPECT_TRUE(out_face_has_input_id(out, f2_out, 2));
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 
   /* Different output types */
-  out = BLI_constrained_delaunay(&in, CDT_INSIDE);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_INSIDE);
   EXPECT_EQ(out->faces_len, 18);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 
-  out = BLI_constrained_delaunay(&in, CDT_CONSTRAINTS);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS);
   EXPECT_EQ(out->faces_len, 4);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 
-  out = BLI_constrained_delaunay(&in, CDT_CONSTRAINTS_VALID_BMESH);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out->faces_len, 5);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 enum {
@@ -656,9 +656,9 @@ static void rand_delaunay_test(int test_kind, int max_lg_size, int reps_per_size
         add_input_edges(&in, e, size - 1 + (test_kind == RANDOM_POLY));
       }
       tstart = PIL_check_seconds_timer();
-      out = BLI_constrained_delaunay(&in, CDT_FULL);
+      out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
       EXPECT_NE(out->verts_len, 0);
-      BLI_constrained_delaunay_free(out);
+      BLI_delaunay_2d_cdt_free(out);
       times[lg_size] += PIL_check_seconds_timer() - tstart;
     }
   }
@@ -725,9 +725,9 @@ static void points_from_file_test(const char *filename)
   }
   tstart = PIL_check_seconds_timer();
   fill_input_verts(&in, p, n);
-  out = BLI_constrained_delaunay(&in, CDT_FULL);
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_FULL);
   fprintf(stderr, "time to triangulate=%f seconds\n", PIL_check_seconds_timer() - tstart);
-  BLI_constrained_delaunay_free(out);
+  BLI_delaunay_2d_cdt_free(out);
   MEM_freeN(p);
 }
 
