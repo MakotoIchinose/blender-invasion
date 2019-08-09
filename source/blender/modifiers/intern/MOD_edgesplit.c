@@ -41,8 +41,6 @@
 
 #include "MOD_modifiertypes.h"
 
-#include "lanpr_access.h"
-
 static Mesh *doEdgeSplit(Mesh *mesh, EdgeSplitModifierData *emd)
 {
   Mesh *result;

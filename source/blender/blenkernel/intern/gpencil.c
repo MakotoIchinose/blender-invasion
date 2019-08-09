@@ -1921,8 +1921,8 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
   second_last = &pt[gps->totpoints - 2];
   next_pt = &pt[1];
 
-  float len1 = 0, this_len1, cut_len1;
-  float len2 = 0, this_len2, cut_len2;
+  float len1 = 0, this_len1 = 0, cut_len1 = 0;
+  float len2 = 0, this_len2 = 0, cut_len2 = 0;
   int index_start, index_end;
 
   i = 1;
@@ -2761,11 +2761,11 @@ static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
 
 /* Helper function to convert one spline to grease pencil stroke. */
 static void gpencil_convert_spline(Main *bmain,
-                                   Scene *scene,
+                                   Scene *UNUSED(scene),
                                    Object *ob_gp,
                                    Object *ob_cu,
                                    const bool gpencil_lines,
-                                   const bool use_collections,
+                                   const bool UNUSED(use_collections),
                                    bGPDframe *gpf,
                                    Nurb *nu)
 {

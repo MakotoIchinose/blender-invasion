@@ -55,8 +55,6 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "lanpr_access.h"
-
 static void initData(ModifierData *md)
 {
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
