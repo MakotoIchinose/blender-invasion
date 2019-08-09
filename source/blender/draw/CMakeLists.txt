@@ -161,7 +161,6 @@ set(SRC
   engines/workbench/workbench_engine.h
   engines/workbench/workbench_private.h
 	engines/lanpr/lanpr_all.h
-  engines/lanpr/lanpr_access.h
   engines/select/select_engine.h
   engines/select/select_private.h
 )

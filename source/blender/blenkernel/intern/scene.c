@@ -96,8 +96,6 @@
 
 #include "engines/eevee/eevee_lightcache.h"
 
-#include "engines/lanpr/lanpr_access.h"
-
 #include "PIL_time.h"
 
 #include "IMB_colormanagement.h"

@@ -49,8 +49,6 @@
 
 #include "ED_svg.h"
 
-#include "lanpr_access.h"
-
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
 
