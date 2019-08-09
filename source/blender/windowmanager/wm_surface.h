@@ -27,15 +27,12 @@ typedef struct wmSurface {
   struct wmSurface *next, *prev;
 
   GHOST_ContextHandle ghost_ctx;
-  /** Some surfaces may want to use a secondary context. E.g. a DirectX one to draw OpenGL
-   * resources using DirectX (compatibility layer using shared resources). */
-  GHOST_ContextHandle secondary_ghost_ctx;
   struct GPUContext *gpu_ctx;
 
   void *customdata;
 
   void (*draw)(struct bContext *);
-  /** Free data, not the surface itself (done by wm_surface API) */
+  /** Free customdata, not the surface itself (done by wm_surface API) */
   void (*free_data)(struct wmSurface *);
 } wmSurface;
 

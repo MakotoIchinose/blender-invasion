@@ -67,6 +67,8 @@ typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
   GPUOffScreen *offscreen;
   GPUViewport *viewport;
+
+  GHOST_ContextHandle secondary_ghost_ctx;
 } wmXrSurfaceData;
 
 typedef struct {
@@ -141,10 +143,10 @@ static void wm_xr_session_free_data(wmSurface *surface)
 {
   wmXrSurfaceData *data = surface->customdata;
 
-  if (surface->secondary_ghost_ctx) {
+  if (data->secondary_ghost_ctx) {
 #ifdef WIN32
     if (data->gpu_binding_type == GHOST_kXrGraphicsD3D11) {
-      WM_directx_context_dispose(surface->secondary_ghost_ctx);
+      WM_directx_context_dispose(data->secondary_ghost_ctx);
     }
 #endif
   }
@@ -193,7 +195,7 @@ static wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm),
       break;
 #ifdef WIN32
     case GHOST_kXrGraphicsD3D11:
-      surface->secondary_ghost_ctx = WM_directx_context_create();
+      data->secondary_ghost_ctx = WM_directx_context_create();
       break;
 #endif
   }
@@ -339,8 +341,8 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
 
   wmViewport(&rect);
   GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
-  if (g_xr_surface->secondary_ghost_ctx &&
-      GHOST_isUpsideDownContext(g_xr_surface->secondary_ghost_ctx)) {
+  if (surface_data->secondary_ghost_ctx &&
+      GHOST_isUpsideDownContext(surface_data->secondary_ghost_ctx)) {
     GPU_texture_bind(texture, 0);
     wm_draw_upside_down(draw_view->width, draw_view->height, draw_view->expects_srgb_buffer);
     GPU_texture_unbind(texture);
@@ -354,10 +356,11 @@ static void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding g
 {
 #ifndef USE_FORCE_WINDOWED_SESSION
   wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
+  wmXrSurfaceData *data = surface->customdata;
 
   wm_surface_add(surface);
 
-  return surface->secondary_ghost_ctx ? surface->secondary_ghost_ctx : surface->ghost_ctx;
+  return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
 #else
 #  ifdef WIN32
   if (graphics_binding == GHOST_kXrGraphicsD3D11) {
