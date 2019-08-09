@@ -4519,21 +4519,6 @@ class VIEW3D_MT_edit_gpencil_point(Menu):
 
         # TODO: add new RIP operator
 
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.extrude_move", text="Extrude Points")
-
-        layout.separator()
-
-        layout.operator("gpencil.stroke_smooth", text="Smooth Points").only_selected = True
-
-        layout.separator()
-
-        layout.operator("gpencil.stroke_merge", text="Merge Points")
-
-        # TODO: add new RIP operator
-
         layout.separator()
 
         layout.menu("VIEW3D_MT_gpencil_vertex_group")
@@ -4599,24 +4584,6 @@ class VIEW3D_MT_edit_gpencil_transform(Menu):
         layout.operator("transform.tosphere", text="To Sphere")
         layout.operator("transform.transform", text="Shrink Fatten").mode = 'GPENCIL_SHRINKFATTEN'
 
-
-class VIEW3D_MT_edit_gpencil_interpolate(Menu):
-    bl_label = "Interpolate"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.interpolate", text="Interpolate")
-        layout.operator("gpencil.interpolate_sequence", text="Sequence")
-
-class VIEW3D_MT_edit_gpencil_showhide(Menu):
-    bl_label = "Show/hide"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.hide", text="Hide Active Layer")
-        layout.operator("gpencil.reveal", text="Show All Layers")
 
         layout.operator("gpencil.interpolate", text="Interpolate")
         layout.operator("gpencil.interpolate_sequence", text="Sequence")
