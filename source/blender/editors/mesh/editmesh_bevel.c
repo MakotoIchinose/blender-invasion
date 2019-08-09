@@ -855,32 +855,39 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
 static void edbm_bevel_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
-  uiLayout *row;
+  uiLayout *row, *col, *split;
   PointerRNA ptr, toolsettings_ptr;
 
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
-  uiItemR(layout, &ptr, "offset_type", 0, NULL, ICON_NONE);
   if (RNA_enum_get(&ptr, "offset_type") == BEVEL_AMT_PERCENT) {
     uiItemR(layout, &ptr, "offset_pct", 0, NULL, ICON_NONE);
   }
   else {
     uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
   }
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, &ptr, "offset_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+
+
+
   uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
-  if (!RNA_boolean_get(&ptr, "use_custom_profile")) {
-    uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  }
-  uiItemR(layout, &ptr, "vertex_only", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "clamp_overlap", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "loop_slide", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "mark_seam", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "miter_outer", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "miter_inner", 0, NULL, ICON_NONE);
+  split = uiLayoutSplit(layout, 0.5f, true);
+  col = uiLayoutColumn(split, true);
+  uiItemR(col, &ptr, "vertex_only", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "clamp_overlap", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "loop_slide", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(split, true);
+  uiItemR(col, &ptr, "mark_seam", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
+  uiItemR(col, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+
+  uiItemL(layout, "Miter Type:", ICON_NONE);
+  uiItemR(layout, &ptr, "miter_outer", 0, "Outer", ICON_NONE);
+  uiItemR(layout, &ptr, "miter_inner", 0, "Inner", ICON_NONE);
   if (RNA_enum_get(&ptr, "miter_inner") == BEVEL_MITER_ARC) {
     uiItemR(layout, &ptr, "spread", 0, NULL, ICON_NONE);
   }
@@ -889,7 +896,7 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "face_strength_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-  uiItemL(layout, "Intersection Method:", ICON_NONE);
+  uiItemL(layout, "Intersection Type:", ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "vmesh_method", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
