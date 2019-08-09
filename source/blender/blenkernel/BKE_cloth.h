@@ -46,7 +46,7 @@ struct ClothSizing;
 #define ALMOST_ZERO FLT_EPSILON
 
 /* Toggle Cloth Cache */
-#define USE_CLOTH_CACHE 1
+#define USE_CLOTH_CACHE 0
 
 /* Bits to or into the ClothVertex.flags. */
 typedef enum eClothVertexFlag {

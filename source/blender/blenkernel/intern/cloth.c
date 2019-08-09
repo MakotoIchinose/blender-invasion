@@ -383,7 +383,10 @@ static Mesh *do_step_cloth(
 
   // printf ( "%f\n", ( float ) tval() );
 
-  Mesh *mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, result);
+  Mesh *mesh_result = NULL;
+  if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING) {
+    mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, result);
+  }
 
   if (!ret) {
     return NULL;

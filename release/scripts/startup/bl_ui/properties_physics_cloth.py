@@ -315,6 +315,13 @@ class PHYSICS_PT_cloth_remeshing(PhysicButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
+    def draw_header(self, context):
+        md = context.cloth
+        cloth = md.settings
+
+#self.layout.active = cloth_panel_enabled(context.cloth)
+        self.layout.prop(cloth, "use_adaptive_remeshing", text="")
+
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
@@ -322,7 +329,7 @@ class PHYSICS_PT_cloth_remeshing(PhysicButtonsPanel, Panel):
         md = context.cloth
         cloth = md.settings
 
-#layout.active = cloth_panel_enabled(md)
+        layout.active = cloth.use_adaptive_remeshing# and cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
