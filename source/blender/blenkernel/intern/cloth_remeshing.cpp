@@ -2606,11 +2606,14 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
 
   const int cd_loop_uv_offset = CustomData_get_offset(&clmd->clothObject->bm->ldata, CD_MLOOPUV);
 
-  if (true) {
+  if (clmd->sim_parms->remeshing_model == CLOTH_REMESHING_STATIC) {
     cloth_remeshing_static(clmd, cvm, cd_loop_uv_offset);
   }
-  else {
+  else if (clmd->sim_parms->remeshing_model == CLOTH_REMESHING_DYNAMIC) {
     cloth_remeshing_dynamic(depsgraph, ob, clmd, cvm, cd_loop_uv_offset);
+  }
+  else {
+    /* TODO(Ish): give error */
   }
 
   /* printf("totvert: %d totedge: %d totface: %d\n", */

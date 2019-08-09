@@ -223,6 +223,12 @@ typedef enum {
   CLOTH_BENDING_ANGULAR = 1,
 } CLOTH_BENDING_MODEL;
 
+/* ClothSimSettings.remeshing_model. */
+typedef enum {
+  CLOTH_REMESHING_STATIC = 0,
+  CLOTH_REMESHING_DYNAMIC = 1,
+} CLOTH_REMESHING_MODEL;
+
 /* COLLISION FLAGS */
 typedef enum {
   CLOTH_COLLSETTINGS_FLAG_ENABLED = (1 << 1), /* enables cloth - object collisions */

@@ -150,6 +150,8 @@ typedef struct ClothSimSettings {
   float shear_damp;
 
   /** Remeshing parameters **/
+  short remeshing_model;
+  char _pad1[2];
   float refine_angle;
   float refine_compression;
   float refine_velocity;
@@ -157,7 +159,6 @@ typedef struct ClothSimSettings {
   float size_min;
   float size_max;
   float aspect_min;
-  char _pad1[4];
 } ClothSimSettings;
 
 typedef struct ClothCollSettings {

@@ -334,19 +334,22 @@ class PHYSICS_PT_cloth_remeshing(PhysicButtonsPanel, Panel):
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
         col = flow.column()
-        col.prop(cloth, "refine_angle", text="Refine Angle")
-        col = flow.column()
-        col.prop(cloth, "refine_compression", text="Refine Compression")
-        col = flow.column()
-        col.prop(cloth, "refine_velocity", text="Refine Velocity")
-        col = flow.column()
-        col.prop(cloth, "refine_obstacle", text="Refine Obstacle")
-        col = flow.column()
-        col.prop(cloth, "size_min", text="Size Minimum")
-        col = flow.column()
-        col.prop(cloth, "size_max", text="Size Maximum")
+        col.prop(cloth, "remeshing_model")
         col = flow.column()
         col.prop(cloth, "aspect_min", text="Aspect Minimum")
+        col = flow.column()
+        col.prop(cloth, "size_min", text="Size Minimum")
+        if cloth.remeshing_model == 'REMESHING_DYNAMIC':
+            col = flow.column()
+            col.prop(cloth, "size_max", text="Size Maximum")
+            col = flow.column()
+            col.prop(cloth, "refine_angle", text="Refine Angle")
+            col = flow.column()
+            col.prop(cloth, "refine_compression", text="Refine Compression")
+            col = flow.column()
+            col.prop(cloth, "refine_velocity", text="Refine Velocity")
+            col = flow.column()
+            col.prop(cloth, "refine_obstacle", text="Refine Obstacle")
 
 
 class PHYSICS_PT_cloth_property_weights(PhysicButtonsPanel, Panel):

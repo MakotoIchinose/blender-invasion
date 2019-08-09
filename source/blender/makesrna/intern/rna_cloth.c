@@ -461,6 +461,19 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
        "Cloth model with linear bending springs (legacy)"},
       {0, NULL, 0, NULL, NULL},
   };
+  static const EnumPropertyItem prop_remeshing_model_items[] = {
+      {CLOTH_REMESHING_STATIC,
+       "REMESHING_STATIC",
+       0,
+       "Static",
+       "Cloth remeshing model with statically determined vertices"},
+      {CLOTH_REMESHING_DYNAMIC,
+       "REMESHING_DYNAMIC",
+       0,
+       "Dynamic",
+       "Cloth remeshing model with dynamically changing vertices"},
+      {0, NULL, 0, NULL, NULL},
+  };
 
   srna = RNA_def_struct(brna, "ClothSettings", NULL);
   RNA_def_struct_ui_text(srna, "Cloth Settings", "Cloth simulation settings for an object");
@@ -780,6 +793,15 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Adaptive Remeshing", "Enables adaptive remeshing");
   RNA_def_property_clear_flag(prop, PROP_NONE);
   RNA_def_property_update(prop, 0, "rna_cloth_update");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "remeshing_model", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "remeshing_model");
+  RNA_def_property_enum_items(prop, prop_remeshing_model_items);
+  RNA_def_property_ui_text(
+      prop, "Remeshing Model", "Remeshing model for determining how vertices are created/removed");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "refine_angle", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "refine_angle");

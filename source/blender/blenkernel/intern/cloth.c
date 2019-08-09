@@ -156,6 +156,7 @@ void cloth_init(ClothModifierData *clmd)
   /**
    *remeshing parameters
    */
+  clmd->sim_parms->remeshing_model = CLOTH_REMESHING_DYNAMIC;
   clmd->sim_parms->refine_angle = 0.3f;
   clmd->sim_parms->refine_compression = 0.005f;
   clmd->sim_parms->refine_velocity = 0.5f;
