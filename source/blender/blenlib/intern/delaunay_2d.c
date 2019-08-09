@@ -233,6 +233,7 @@ static bool in_line(const double a[2], const double b[2], const double c[2])
   return dot_v2v2_db(dir_ab, dir_ac) >= 0.0;
 }
 
+#ifndef NDEBUG
 /** Is s2 reachable from s1 by next pointers with < limit hops? */
 static bool reachable(SymEdge *s1, SymEdge *s2, int limit)
 {
@@ -244,6 +245,7 @@ static bool reachable(SymEdge *s1, SymEdge *s2, int limit)
   }
   return false;
 }
+#endif
 
 static void calc_face_centroid(SymEdge *se)
 {
@@ -1635,8 +1637,9 @@ static void add_edge_constraint(
       }
 #endif
       isect = isect_seg_seg_v2_lambda_mu_db(va->co, vb->co, v1->co, v2->co, &lambda, NULL);
-      BLI_assert(isect ==
-                 ISECT_LINE_LINE_CROSS); /* TODO: something sensible for "this can't happen" */
+      /* TODO: something sensible for "this can't happen" */
+      BLI_assert(isect == ISECT_LINE_LINE_CROSS);
+      UNUSED_VARS_NDEBUG(isect);
 #ifdef DEBUG_CDT
       if (dbg_level > 0) {
         fprintf(stderr, "intersect point at %f along va--vb\n", lambda);
@@ -2558,6 +2561,7 @@ static void cdt_draw(CDT_state *cdt, const char *lab)
 #  undef SY
 }
 
+#  ifndef NDEBUG /* Only used in assert. */
 /**
  * Is a visible from b: i.e., ab crosses no edge of cdt?
  * If constrained is true, consider only constrained edges as possible crossers.
@@ -2592,7 +2596,9 @@ static bool is_visible(const CDTVert *a, const CDTVert *b, bool constrained, con
   }
   return true;
 }
+#  endif
 
+#  ifndef NDEBUG /* Only used in assert. */
 /**
  * Check that edge ab satisfies constrained delaunay condition:
  * That is, for all non-constraint, non-border edges ab,
@@ -2627,16 +2633,21 @@ static bool is_delaunay_edge(const SymEdge *se, const double epsilon)
   }
   return ok[0] || ok[1];
 }
+#  endif
 
+#  ifndef NDEBUG
 static bool plausible_non_null_ptr(void *p)
 {
   return p > (void *)0x1000;
 }
+#  endif
 
 static void validate_face_centroid(SymEdge *se)
 {
   SymEdge *senext;
+#  ifndef NDEBUG
   double *centroidp = se->face->centroid;
+#  endif
   double c[2];
   int count;
   copy_v2_v2_db(c, se->vert->co);
@@ -2661,7 +2672,6 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
   CDTFace *f;
   double *p;
   double margin;
-  const double epsilon = cdt->epsilon;
   int i, limit;
   bool isborder;
 
@@ -2698,6 +2708,7 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
       v = se->vert;
       f = se->face;
       p = v->co;
+      UNUSED_VARS_NDEBUG(p);
       BLI_assert(plausible_non_null_ptr(v));
       if (f != NULL)
         BLI_assert(plausible_non_null_ptr(f));
@@ -2708,6 +2719,7 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
       else
         limit = 10000;
       BLI_assert(reachable(se->next, se, limit));
+      UNUSED_VARS_NDEBUG(limit);
       BLI_assert(se->next->next != se);
       s = se;
       do {
@@ -2717,7 +2729,7 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
       } while (s != se);
     }
     BLI_assert(isborder || is_visible(se->vert, se->next->vert, false, cdt));
-    BLI_assert(isborder || is_delaunay_edge(se, epsilon));
+    BLI_assert(isborder || is_delaunay_edge(se, cdt->epsilon));
   }
   totverts = 0;
   margin = cdt->margin;
@@ -2727,6 +2739,7 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
     BLI_assert(plausible_non_null_ptr(v));
     p = v->co;
     BLI_assert(p[0] >= cdt->minx - margin && p[0] <= cdt->maxx + margin);
+    UNUSED_VARS_NDEBUG(margin);
     BLI_assert(v->symedge->vert == v);
   }
   totfaces = 0;
