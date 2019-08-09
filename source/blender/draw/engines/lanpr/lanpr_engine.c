@@ -132,21 +132,22 @@ static void lanpr_engine_init(void *ved)
   lanpr_share.init_complete = 1;
 }
 
-static void lanpr_dpix_batch_free(void){
+static void lanpr_dpix_batch_free(void)
+{
   LANPR_BatchItem *dpbi;
-    while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) != NULL) {
-      GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
-      GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
+  while ((dpbi = BLI_pophead(&lanpr_share.dpix_batch_list)) != NULL) {
+    GPU_BATCH_DISCARD_SAFE(dpbi->dpix_preview_batch);
+    GPU_BATCH_DISCARD_SAFE(dpbi->dpix_transform_batch);
+  }
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+  if (rb) {
+    if (rb->DPIXIntersectionBatch) {
+      GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
     }
-    LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
-    if (rb) {
-      if (rb->DPIXIntersectionBatch) {
-        GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
-      }
-      if (rb->DPIXIntersectionTransformBatch) {
-        GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionTransformBatch);
-      }
+    if (rb->DPIXIntersectionTransformBatch) {
+      GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionTransformBatch);
     }
+  }
 }
 
 static void lanpr_engine_free(void)
@@ -163,9 +164,9 @@ static void lanpr_engine_free(void)
   lanpr_dpix_batch_free();
 
   if (lanpr_share.render_buffer_shared) {
-    LANPR_RenderBuffer* rb = lanpr_share.render_buffer_shared;
+    LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
     ED_lanpr_destroy_render_data(rb);
-    
+
     GPU_BATCH_DISCARD_SAFE(rb->chain_draw_batch);
 
     MEM_freeN(rb);
@@ -408,7 +409,7 @@ static void lanpr_cache_init(void *vedata)
       pd->atlas_nl = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_nr = MEM_callocN(fsize, "atlas_normal_l");
       pd->atlas_edge_mask = MEM_callocN(fsize, "atlas_edge_mask"); /*  should always be float */
-      
+
       lanpr_dpix_batch_free();
 
       BLI_mempool_clear(lanpr_share.mp_batch_list);

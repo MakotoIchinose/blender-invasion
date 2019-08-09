@@ -46,19 +46,20 @@
 
 #else
 
-static void rna_def_lanpr_line_layer(BlenderRNA* brna){
+static void rna_def_lanpr_line_layer(BlenderRNA *brna)
+{
   StructRNA *srna;
   PropertyRNA *prop;
 
-static const EnumPropertyItem rna_enum_lanpr_normal_mode[] = {
-    {LANPR_NORMAL_DIRECTIONAL,
-    "DIRECTIONAL",
-    0,
-    "Directional",
-    "Use directional vector to control line width"},
-    /* Seems working... */
-    {LANPR_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"},
-    {0, NULL, 0, NULL, NULL}};
+  static const EnumPropertyItem rna_enum_lanpr_normal_mode[] = {
+      {LANPR_NORMAL_DIRECTIONAL,
+       "DIRECTIONAL",
+       0,
+       "Directional",
+       "Use directional vector to control line width"},
+      /* Seems working... */
+      {LANPR_NORMAL_POINT, "POINT", 0, "Point", "Use Point Light Style"},
+      {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "LANPR_LineLayer", NULL);
   RNA_def_struct_sdna(srna, "LANPR_LineLayer");
@@ -160,7 +161,8 @@ static const EnumPropertyItem rna_enum_lanpr_normal_mode[] = {
   RNA_def_property_ui_text(prop, "Components", "Line Layer Components");
 }
 
-static void rna_def_lanpr_line_type(BlenderRNA* brna){
+static void rna_def_lanpr_line_type(BlenderRNA *brna)
+{
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -181,10 +183,10 @@ static void rna_def_lanpr_line_type(BlenderRNA* brna){
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Color", "Color of this line type");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
-  
 }
 
-static void rna_def_lanpr_line_component(BlenderRNA* brna){
+static void rna_def_lanpr_line_component(BlenderRNA *brna)
+{
   StructRNA *srna;
   PropertyRNA *prop;
 
