@@ -183,6 +183,60 @@ BVHNode* createInstance(int nbPrim, unsigned int geomID[], const RTCBounds &boun
     return ret;
 }
 
+BVHNode* createCurve(unsigned int nbPrim, BVHPrimitive prims[], const RTCBounds &bounds, Data *userData) {
+    const BoundBox bb = RTCBoundBoxToCCL(bounds);
+    std::deque<BVHNode *> nodes;
+
+    for(unsigned int i = 0; i < nbPrim; i++) {
+        const auto geom_id = prims[i].geomID;
+        const auto prim_id = prims[i].primID;
+
+        const unsigned int object_id = geom_id / 2;
+        Object *obj = userData->object.at(object_id);
+
+        unsigned int curve_id = 0;
+        int segment_id = prim_id;
+        Mesh::Curve curve = obj->mesh->get_curve(0);
+        while(segment_id >= curve.num_segments()) {
+            curve = obj->mesh->get_curve(++curve_id);
+            segment_id -= curve.num_segments();
+        }
+
+        int prim_type = PRIMITIVE_PACK_SEGMENT(PRIMITIVE_CURVE, segment_id);
+
+        LeafNode *leafNode = new LeafNode(bb, obj->visibility, userData->packIdx, userData->packIdx + 1);
+        packPush(userData->pack, userData->packIdx++, object_id, curve_id, prim_type, obj->visibility, -1);
+
+        nodes.push_back(leafNode);
+    }
+
+    BVHNode *ret = nullptr;
+    while(!nodes.empty()) {
+        if(ret == nullptr) {
+            ret = nodes.front();
+            nodes.pop_front();
+            continue;
+        }
+
+        /* If it's a leaf or a full node -> create a new parrent */
+        if(ret->is_leaf() || ret->num_children() == 4) {
+            ret = new InnerNode(bb, &ret, 1);
+        }
+
+        InnerNode *innerNode = dynamic_cast<InnerNode*>(ret);
+        innerNode->children[innerNode->num_children_++] = nodes.front();
+        innerNode->bounds.grow(nodes.front()->bounds);
+        nodes.pop_front();
+
+        if(ret->num_children() == 4) {
+            nodes.push_back(ret);
+            ret = nullptr;
+        }
+    }
+
+    return ret;
+}
+
 BVHNode* createAlignedNode(int nbChild, BVHNode* children[], const RTCBounds &bounds, const RTCBounds* deltaBounds, Data *userData) {
     BoundBox bb = RTCBoundBoxToCCL(bounds);
     InnerNode *ret = new InnerNode(bb, children, nbChild);
@@ -209,6 +263,10 @@ BVHNode* BVHEmbreeConverter::getBVH4() {
 
     param.createInstance = [](int nbPrim, unsigned int geomID[], const RTCBounds &bounds, void* userData) -> void* {
         return reinterpret_cast<void*>(createInstance(nbPrim, geomID, bounds, reinterpret_cast<Data*>(userData)));
+    };
+
+    param.createCurve = [](unsigned int nbPrim, BVHPrimitive prims[], const RTCBounds &bounds, void* userData) -> void* {
+        return reinterpret_cast<void*>(createCurve(nbPrim, prims, bounds, reinterpret_cast<Data*>(userData)));
     };
 
     param.createAlignedNode = [](int nbChild, void* children[], const RTCBounds &bounds, const RTCBounds* deltaBounds, void* userData) -> void* {
@@ -606,7 +664,7 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack, vector<Object *> objects) {
     // Additional size for unaligned nodes
     if (params.use_unaligned_nodes) {
         const size_t num_unaligned_nodes = root->getSubtreeSize(BVH_STAT_UNALIGNED_INNER_COUNT);
-        node_size = num_unaligned_nodes * BVH_NODE_SIZE_UNALIGNED;
+        node_size += num_unaligned_nodes * BVH_NODE_SIZE_UNALIGNED;
     }
 
     // Additional size for linear bound
