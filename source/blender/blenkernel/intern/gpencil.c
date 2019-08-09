@@ -1453,14 +1453,14 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
       int found = 0;
       dw = &dv->dw[j];
       for (ld = result->first; ld; ld = ld->next) {
-        if (ld->data == (void *)dw->def_nr) {
+        if (ld->data == POINTER_FROM_INT(dw->def_nr)) {
           found = 1;
           break;
         }
       }
       if (!found) {
         ld = MEM_callocN(sizeof(LinkData), "def_nr_item");
-        ld->data = (void *)dw->def_nr;
+        ld->data = POINTER_FROM_INT(dw->def_nr);
         BLI_addtail(result, ld);
         tw++;
       }
@@ -1470,7 +1470,7 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
   *totweight = tw;
 }
 
-MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr_list)
+static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr_list)
 {
   int i, j;
   LinkData *ld;
@@ -1483,7 +1483,7 @@ MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr
     j = 0;
     /* re-assign deform groups */
     for (ld = def_nr_list->first; ld; ld = ld->next) {
-      dst[i].dw[j].def_nr = (int)ld->data;
+      dst[i].dw[j].def_nr = POINTER_AS_INT(ld->data);
       j++;
     }
   }
@@ -1491,27 +1491,16 @@ MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr
   return dst;
 }
 
-static float stroke_defvert_get_nr_weight(MDeformVert *dv, int def_nr)
-{
-  int i;
-  for (i = 0; i < dv->totweight; i++) {
-    if (dv->dw[i].def_nr == def_nr) {
-      return dv->dw[i].weight;
-    }
-  }
-  return 0.0f;
-}
-
 static void stroke_interpolate_deform_weights(
     bGPDstroke *gps, int index_from, int index_to, float ratio, MDeformVert *vert)
 {
-  MDeformVert *vl = &gps->dvert[index_from];
-  MDeformVert *vr = &gps->dvert[index_to];
+  const MDeformVert *vl = &gps->dvert[index_from];
+  const MDeformVert *vr = &gps->dvert[index_to];
   int i;
 
   for (i = 0; i < vert->totweight; i++) {
-    float wl = stroke_defvert_get_nr_weight(vl, vert->dw[i].def_nr);
-    float wr = stroke_defvert_get_nr_weight(vr, vert->dw[i].def_nr);
+    float wl = defvert_find_weight(vl, vert->dw[i].def_nr);
+    float wr = defvert_find_weight(vr, vert->dw[i].def_nr);
     vert->dw[i].weight = interpf(wr, wl, ratio);
   }
 }
@@ -1659,7 +1648,7 @@ static int stroke_march_count(const bGPDstroke *gps, const float dist)
  * \param gps: Stroke to sample
  * \param dist: Distance of one segment
  */
-bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist)
+bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool select)
 {
   bGPDspoint *pt = gps->points;
   bGPDspoint *pt1 = NULL;
@@ -1701,6 +1690,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist)
   copy_v3_v3(&pt2->x, last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
+  if (select) {
+    new_pt[i].flag |= GP_SPOINT_SELECT;
+  }
   i++;
 
   if (new_dv) {
@@ -1722,6 +1714,9 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist)
     copy_v3_v3(&pt2->x, last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
+    if (select) {
+      new_pt[i].flag |= GP_SPOINT_SELECT;
+    }
 
     if (new_dv) {
       stroke_interpolate_deform_weights(gps, index_from, index_to, ratio_result, &new_dv[i]);
@@ -1739,7 +1734,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist)
 
   if (new_dv) {
     BKE_gpencil_free_stroke_weights(gps);
-    while (ld = BLI_pophead(&def_nr_list)) {
+    while ((ld = BLI_pophead(&def_nr_list))) {
       MEM_freeN(ld);
     }
     gps->dvert = new_dv;
@@ -3055,5 +3050,83 @@ void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short ta
     /* triangles cache needs to be recalculated */
     gps->flag |= GP_STROKE_RECALC_GEOMETRY;
     gps->tot_triangles = 0;
+  }
+}
+
+/* Merge by distance ------------------------------------- */
+/* Reduce a series of points when the distance is below a threshold.
+ * Special case for first and last points (both are keeped) for other points,
+ * the merge point always is at first point.
+ * \param gpf: Grease Pencil frame
+ * \param gps: Grease Pencil stroke
+ * \param threshold: Distance between points
+ * \param use_unselected: Set to true to analyze all stroke and not only selected points
+ */
+void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
+                                       bGPDstroke *gps,
+                                       const float threshold,
+                                       const bool use_unselected)
+{
+  bGPDspoint *pt = NULL;
+  bGPDspoint *pt_next = NULL;
+  float tagged = false;
+  /* Use square distance to speed up loop */
+  const float th_square = threshold * threshold;
+  /* Need to have something to merge. */
+  if (gps->totpoints < 2) {
+    return;
+  }
+  int i = 0;
+  int step = 1;
+  while ((i < gps->totpoints - 1) && (i + step < gps->totpoints)) {
+    pt = &gps->points[i];
+    if (pt->flag & GP_SPOINT_TAG) {
+      i++;
+      step = 1;
+      continue;
+    }
+    pt_next = &gps->points[i + step];
+    /* Do not recalc tagged points. */
+    if (pt_next->flag & GP_SPOINT_TAG) {
+      step++;
+      continue;
+    }
+    /* Check if contiguous points are selected. */
+    if (!use_unselected) {
+      if (((pt->flag & GP_SPOINT_SELECT) == 0) || ((pt_next->flag & GP_SPOINT_SELECT) == 0)) {
+        i++;
+        step = 1;
+        continue;
+      }
+    }
+    float len_square = len_squared_v3v3(&pt->x, &pt_next->x);
+    if (len_square <= th_square) {
+      tagged = true;
+      if (i != gps->totpoints - 1) {
+        /* Tag second point for delete. */
+        pt_next->flag |= GP_SPOINT_TAG;
+      }
+      else {
+        pt->flag |= GP_SPOINT_TAG;
+      }
+      /* Jump to next pair of points, keeping first point segment equals.*/
+      step++;
+    }
+    else {
+      /* Analyze next point. */
+      i++;
+      step = 1;
+    }
+  }
+
+  /* Always untag extremes. */
+  pt = &gps->points[0];
+  pt->flag &= ~GP_SPOINT_TAG;
+  pt = &gps->points[gps->totpoints - 1];
+  pt->flag &= ~GP_SPOINT_TAG;
+
+  /* Dissolve tagged points */
+  if (tagged) {
+    BKE_gpencil_dissolve_points(gpf, gps, GP_SPOINT_TAG);
   }
 }
