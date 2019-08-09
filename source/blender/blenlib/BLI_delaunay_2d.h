@@ -31,7 +31,7 @@
  * may be pieced together to form the constraints. Part of the
  * work of doing the CDT is to detect intersections and mergers
  * among the input elements, so these routines are also useful
- * for doing 2d intersection.
+ * for doing 2D intersection.
  *
  * The output is a triangulation of the plane that includes the
  * constraints in the above sense, and also satisfies the
@@ -45,7 +45,7 @@
  *
  * Optionally, the output can be a subset of the triangulation
  * (but still containing all of the constraints), to get the
- * effect of 2d intersection.
+ * effect of 2D intersection.
  *
  * The underlying method is incremental, but we need to know
  * beforehand a bounding box for all of the constraints.
@@ -57,7 +57,7 @@
 /**
  * Input to Constrained Delaunay Triangulation.
  * There are num_vertex vertices, whose coordinates
- * are given by vert_coords. For the rest of tne input,
+ * are given by vert_coords. For the rest of the input,
  * vertices are referred to by indices into that array.
  * Edges and Faces are optional. If provided, they will
  * appear in the output triangulation ("constraints").
@@ -65,10 +65,10 @@
  * implied by the faces will be inferred.
  *
  * The edges are given by pairs of vertex indices.
- * The faces are given in a triple (faces, face_start, face_len)
+ * The faces are given in a triple `(faces, face_start, face_len)`
  * to represent a list-of-lists as follows:
  * the vertex indices for a counterclockwise traversal of
- * face number i starts at face_start[i] and has face_len[i]
+ * face number `i` starts at `face_start[i]` and has `face_len[i]`
  * elements.
  *
  * The edges implied by the faces are automatically added
@@ -91,7 +91,7 @@ typedef struct CDT_input {
 
 /**
  * A representation of the triangulation for output.
- * See CDT_input for the representation of the output
+ * See #CDT_input for the representation of the output
  * vertices, edges, and faces, all represented in
  * a similar way to the input.
  *

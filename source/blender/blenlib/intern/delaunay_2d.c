@@ -41,31 +41,31 @@ struct CDTEdge;
 struct CDTFace;
 
 typedef struct SymEdge {
-  struct SymEdge *next; /* in face, doing CCW traversal of face */
-  struct SymEdge *rot;  /* CCW around vert */
-  struct CDTVert *vert; /* Vert at origin */
-  struct CDTEdge *edge; /* undirected edge this is for */
-  struct CDTFace *face; /* face on left side */
+  struct SymEdge *next; /* In face, doing CCW traversal of face. */
+  struct SymEdge *rot;  /* CCW around vert. */
+  struct CDTVert *vert; /* Vert at origin. */
+  struct CDTEdge *edge; /* Undirected edge this is for. */
+  struct CDTFace *face; /* Face on left side. */
 } SymEdge;
 
 typedef struct CDTVert {
-  double co[2];        /* coordinates */
-  SymEdge *symedge;    /* some edge attached to it */
-  LinkNode *input_ids; /* list of corresponding vertex input ids */
-  int index;           /* index into array that cdt keeps */
+  double co[2];        /* Coordinate. */
+  SymEdge *symedge;    /* Some edge attached to it. */
+  LinkNode *input_ids; /* List of corresponding vertex input ids. */
+  int index;           /* Index into array that cdt keeps. */
 } CDTVert;
 
 typedef struct CDTEdge {
-  LinkNode *input_ids; /* list of input edge ids that this is part of */
-  SymEdge symedges[2]; /* the directed edges for this edge */
+  LinkNode *input_ids; /* List of input edge ids that this is part of. */
+  SymEdge symedges[2]; /* The directed edges for this edge. */
 } CDTEdge;
 
 typedef struct CDTFace {
-  double centroid[2];  /* average of vertex coords */
-  SymEdge *symedge;    /* a symedge in face; only used during output */
-  LinkNode *input_ids; /* list of input face ids that this is part of */
-  int visit_index;     /* which visit epoch has this been seen */
-  bool deleted;        /* marks this face no longer used */
+  double centroid[2];  /* Average of vertex coords. */
+  SymEdge *symedge;    /* A symedge in face; only used during output. */
+  LinkNode *input_ids; /* List of input face ids that this is part of. */
+  int visit_index;     /* Which visit epoch has this been seen. */
+  bool deleted;        /* Marks this face no longer used. */
 } CDTFace;
 
 typedef struct CDT_state {
@@ -168,8 +168,11 @@ static double closest_to_line_v2_db(double r_close[2],
   return lambda;
 }
 
-/* If intersection == ISECT_LINE_LINE_CROSS or ISECT_LINE_LINE_NONE:
+/**
+ * If intersection == ISECT_LINE_LINE_CROSS or ISECT_LINE_LINE_NONE:
+ * <pre>
  * pt = v1 + lamba * (v2 - v1) = v3 + mu * (v4 - v3)
+ * </pre>
  */
 static int isect_seg_seg_v2_lambda_mu_db(const double v1[2],
                                          const double v2[2],
@@ -201,13 +204,13 @@ static int isect_seg_seg_v2_lambda_mu_db(const double v1[2],
   return ISECT_LINE_LINE_NONE;
 }
 
-/** return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight */
+/** return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight  */
 static int CCW_test(const double a[2], const double b[2], const double c[2])
 {
   double det;
   double ab;
 
-  /* this is twice the signed area of triangle abc */
+  /* This is twice the signed area of triangle abc. */
   det = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
   ab = len_v2v2_db(a, b);
   if (ab < DBL_EPSILON)
@@ -220,7 +223,7 @@ static int CCW_test(const double a[2], const double b[2], const double c[2])
   return 0;
 }
 
-/** return true if a -- b -- c are in that order, assuming they are on a straight line */
+/** return true if a -- b -- c are in that order, assuming they are on a straight line. */
 static bool in_line(const double a[2], const double b[2], const double c[2])
 {
   double dir_ab[2], dir_ac[2];
@@ -230,7 +233,7 @@ static bool in_line(const double a[2], const double b[2], const double c[2])
   return dot_v2v2_db(dir_ab, dir_ac) >= 0.0;
 }
 
-/** Is s2 reeachable from s1 by next pointers with < limit hops? */
+/** Is s2 reachable from s1 by next pointers with < limit hops? */
 static bool reachable(SymEdge *s1, SymEdge *s2, int limit)
 {
   int count = 0;
@@ -257,7 +260,7 @@ static void calc_face_centroid(SymEdge *se)
   centroidp[1] /= count;
 }
 
-/** Using array to store these instead of linked list so can make a random selection from them */
+/** Using array to store these instead of linked list so can make a random selection from them. */
 static CDTVert *add_cdtvert(CDT_state *cdt, double x, double y)
 {
   CDTVert *v = BLI_memarena_alloc(cdt->arena, sizeof(*v));
@@ -351,13 +354,13 @@ static void add_list_to_input_ids(LinkNode **dst, const LinkNode *src, CDT_state
   }
 }
 
-/** Return other SymEdge for same CDTEdge as se */
+/** Return other #SymEdge for same #CDTEdge as se. */
 static inline SymEdge *sym(const SymEdge *se)
 {
   return se->next->rot;
 }
 
-/** Return SymEdge whose next is se */
+/** Return SymEdge whose next is se. */
 static inline SymEdge *prev(const SymEdge *se)
 {
   return se->rot->next->rot;
@@ -444,8 +447,9 @@ static CDTEdge *add_diagonal(CDT_state *cdt, SymEdge *s1, SymEdge *s2)
   return ediag;
 }
 
-/* Split se at fraction lambda,
- * and return the new CDTEdge that is the new second half.
+/**
+ * Split \a se at fraction \a lambda,
+ * and return the new #CDTEdge that is the new second half.
  * Copy the edge crep into the new one.
  */
 static CDTEdge *split_edge(CDT_state *cdt, SymEdge *se, double lambda)
@@ -455,7 +459,7 @@ static CDTEdge *split_edge(CDT_state *cdt, SymEdge *se, double lambda)
   CDTVert *v;
   CDTEdge *e;
   SymEdge *sesym, *newse, *newsesym, *senext, *sesymprev, *sesymprevsym;
-  /* split e at lambda */
+  /* Split e at lambda. */
   a = se->vert->co;
   b = se->next->vert->co;
   sesym = sym(se);
@@ -489,7 +493,7 @@ static CDTEdge *split_edge(CDT_state *cdt, SymEdge *se, double lambda)
  * Delete an edge from the structure. The new combined face on either side of
  * the deleted edge will be the one that was e's face; the centroid is updated.
  * There will be now an unused face, marked by setting its deleted flag,
- * and an unused CDTEdge, marked by setting the next and rot pointers of
+ * and an unused #CDTEdge, marked by setting the next and rot pointers of
  * its SymEdges to NULL.
  * <pre>
  *        .  v2               .
@@ -541,7 +545,7 @@ static void delete_edge(CDT_state *cdt, SymEdge *e)
     }
   }
 
-  /* If e was representative symedge for v1 or v2, fix that */
+  /* If e was representative symedge for v1 or v2, fix that. */
   if (v1_isolated)
     v1->symedge = NULL;
   else if (v1->symedge == e)
@@ -551,7 +555,7 @@ static void delete_edge(CDT_state *cdt, SymEdge *e)
   else if (v2->symedge == esym)
     v2->symedge = f;
 
-  /* Mark SymEdge as deleted by setting all its pointers to NULL */
+  /* Mark SymEdge as deleted by setting all its pointers to NULL. */
   e->next = e->rot = NULL;
   esym->next = esym->rot = NULL;
   if (!v1_isolated && !v2_isolated && aface != bface) {
@@ -607,19 +611,19 @@ static CDT_state *cdt_init(double minx, double maxx, double miny, double maxy, d
   cdt->rng = BLI_rng_new(0);
   cdt->epsilon = epsilon;
 
-  /* expand bounding box a bit and make initial CDT from it */
+  /* Expand bounding box a bit and make initial CDT from it. */
   margin = DLNY_MARGIN_PCT * max_dd(maxx - minx, maxy - miny) / 100.0;
   if (margin <= 0.0)
     margin = 1.0;
   if (margin < epsilon)
-    margin = 4 * epsilon; /* make sure constraint verts don't merge with border verts */
+    margin = 4 * epsilon; /* Make sure constraint verts don't merge with border verts. */
   cdt->margin = margin;
   x0 = minx - margin;
   y0 = miny - margin;
   x1 = maxx + margin;
   y1 = maxy + margin;
 
-  /* make a quad, then split it with a diagonal */
+  /* Make a quad, then split it with a diagonal. */
   v[0] = add_cdtvert(cdt, x0, y0);
   v[1] = add_cdtvert(cdt, x1, y0);
   v[2] = add_cdtvert(cdt, x1, y1);
@@ -659,7 +663,7 @@ static bool locate_point_final(const double p[2],
                                const double epsilon,
                                LocateResult *r_lr)
 {
-  /* p should be in or on our just outside of cur_tri */
+  /* 'p' should be in or on our just outside of 'cur_tri'. */
   double dist_inside[3];
   int i;
   SymEdge *se;
@@ -757,7 +761,7 @@ static bool locate_point_final(const double p[2],
         }
       }
       if (!done) {
-        /* shouldn't happen desperation mode: pick something */
+        /* Shouldn't happen desperation mode: pick something. */
         se = NULL;
         if (dist_inside[0] > 0)
           se = tri_se;
@@ -788,7 +792,7 @@ static bool locate_point_final(const double p[2],
           fprintf(
               stderr, "desperation case kind=%u lambda=%f\n", r_lr->loc_kind, r_lr->edge_lambda);
           dump_se(r_lr->se, "se");
-          BLI_assert(0); /* while developing, catch these "should not happens" */
+          BLI_assert(0); /* While developing, catch these "should not happens" */
         }
 #endif
         fprintf(stderr, "desperation!\n");  // TODO: remove
@@ -818,7 +822,7 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
   if (dbglevel > 0)
     fprintf(stderr, "locate_point (%.2f,%.2f), visit_index=%d\n", F2(p), visit);
 #endif
-  /* starting point determined by closest to p in an n ** (1/3) sized sample of current points */
+  /* Starting point determined by closest to p in an n ** (1/3) sized sample of current points. */
   BLI_assert(cdt->vert_array_len > 0);
   sample_n = (int)round(pow((double)cdt->vert_array_len, 0.33333));
   if (sample_n < 1)
@@ -826,8 +830,8 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
   best_start_vert = NULL;
   best_dist_squared = DBL_MAX;
   for (k = 0; k < sample_n; k++) {
-    /* yes, this may try some i's more than once, but will still get about an n ** (1/3) size
-     * sample */
+    /* Yes, this may try some i's more than once,
+     * but will still get about an n ** (1/3) size sample. */
     i = (int)(BLI_rng_get_uint(cdt->rng) % cdt->vert_array_len);
     v = cdt->vert_array[i];
     dist_squared = len_squared_v2v2_db(p, v->co);
@@ -854,7 +858,7 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
   done = false;
   while (!done) {
     /* Find edge of cur_tri that separates p and t's centroid,
-     * and where other tri over the edge is unvisited */
+     * and where other tri over the edge is unvisited. */
 #ifdef DEBUG_CDT
     if (dbglevel > 0)
       dump_se_cycle(cur_se, "cur search face", 5);
@@ -862,7 +866,7 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
     cur_tri = cur_se->face;
     BLI_assert(cur_tri != cdt->outer_face);
     cur_tri->visit_index = visit;
-    /* is p in or on current triangle? */
+    /* Is p in or on current triangle? */
     a = cur_se->vert->co;
     b = cur_se->next->vert->co;
     c = cur_se->next->next->vert->co;
@@ -926,13 +930,13 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
   return lr;
 }
 
-/** return true if circumcircle(v1, v2, v3) does not contain p */
+/** return true if circumcircle(v1, v2, v3) does not contain p. */
 static bool delaunay_check(CDTVert *v1, CDTVert *v2, CDTVert *v3, CDTVert *p, const double epsilon)
 {
   double a, b, c, d, z1, z2, z3;
   const double *p1, *p2, *p3;
   double cen[2], r, len_pc;
-  /* to do epislon test, need center and radius of circumcircle */
+  /* To do epislon test, need center and radius of circumcircle. */
   p1 = v1->co;
   p2 = v2->co;
   p3 = v3->co;
@@ -945,7 +949,7 @@ static bool delaunay_check(CDTVert *v1, CDTVert *v2, CDTVert *v3, CDTVert *p, co
   d = z1 * (p3[0] * p2[1] - p2[0] * p3[1]) + z2 * (p1[0] * p3[1] - p3[0] * p1[1]) +
       z3 * (p2[0] * p1[1] - p1[0] * p2[1]);
   if (a == 0.0)
-    return true; /* not really, but this shouldn't happen */
+    return true; /* Not really, but this shouldn't happen. */
   cen[0] = -b / (2 * a);
   cen[1] = -c / (2 * a);
   r = sqrt((b * b + c * c - 4 * a * d) / (4 * a * a));
@@ -953,7 +957,7 @@ static bool delaunay_check(CDTVert *v1, CDTVert *v2, CDTVert *v3, CDTVert *p, co
   return (len_pc >= (r - epsilon));
 }
 
-/* Use LinkNode linked list as stack of SymEdges, allocating from cdt->listpool */
+/** Use LinkNode linked list as stack of SymEdges, allocating from cdt->listpool. */
 typedef LinkNode *Stack;
 
 static inline void push(Stack *stack, SymEdge *se, CDT_state *cdt)
@@ -1060,7 +1064,7 @@ static void flip(SymEdge *se, CDT_state *cdt)
   }
 #endif
   if (cdt) {
-    /* pass. */
+    /* Pass. */
   }
 }
 
@@ -1088,7 +1092,7 @@ static void flip_edges(CDTVert *v, Stack *stack, CDT_state *cdt)
       dump_se(se, "flip_edges popped");
 #endif
     if (!is_constrained_edge(se->edge)) {
-      /* edge is not constrained; is it Delaunay? */
+      /* Edge is not constrained; is it Delaunay? */
 #ifdef DEBUG_CDT
       if (dbglevel > 1)
         dump_se_cycle(se, "unconstrained edge", 5);
@@ -1124,7 +1128,7 @@ static void flip_edges(CDTVert *v, Stack *stack, CDT_state *cdt)
 #endif
       }
       if (!is_delaunay) {
-        /* push two edges of tri without p that aren't se */
+        /* Push two edges of tri without p that aren't se. */
 #ifdef DEBUG_CDT
         if (dbglevel > 0)
           fprintf(stderr, "maybe pushing more edges\n");
@@ -1150,7 +1154,7 @@ static void flip_edges(CDTVert *v, Stack *stack, CDT_state *cdt)
 }
 
 /**
- * Splits e at lambda and returns a SymEdge with new vert as its vert.
+ * Splits e at lambda and returns a #SymEdge with new vert as its vert.
  * The two opposite triangle vertices to e are connect to new point.
  * <pre>
  *       /\                  /\
@@ -1173,7 +1177,7 @@ static CDTVert *insert_point_in_edge(CDT_state *cdt, SymEdge *e, double lambda)
   CDTEdge *ke;
   CDTVert *p;
   Stack stack;
-  /* split e at lambda */
+  /* Split e at lambda. */
 
   f = e->next;
   g = f->next;
@@ -1290,8 +1294,8 @@ static CDTVert *insert_point_in_face(CDT_state *cdt, SymEdge *e, const double p[
 }
 
 /**
- * Retriangulates, assuring constrained delaunay condition,
- * the pseudopolygon that cycles from se.
+ * Re-triangulates, assuring constrained delaunay condition,
+ * the pseudo-polygon that cycles from se.
  * "pseudo" because a vertex may be repeated.
  * See Anglada paper, "An Improved incremental algorithm
  * for constructing restricted Delaunay triangulations".
@@ -1312,7 +1316,7 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
     dump_se_cycle(se, "poly ", 1000);
   }
 #endif
-  /* se is a diagonal just added, and it is base of area to retriangulate (face on its left) */
+  /* 'se' is a diagonal just added, and it is base of area to retriangulate (face on its left) */
   count = 1;
   for (ss = se->next; ss != se; ss = ss->next) {
     count++;
@@ -1324,10 +1328,10 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
 #endif
     return;
   }
-  /* first and last are the SymEdges whose verts are first and last off of base, continuing from se
-   */
+  /* First and last are the SymEdges whose verts are first and last off of base,
+   * continuing from 'se'. */
   first = se->next->next;
-  /* we want to make a triangle with se as base and some other c as 3rd vertex */
+  /* We want to make a triangle with 'se' as base and some other c as 3rd vertex. */
   a = se->vert;
   b = se->next->vert;
   c = first->vert;
@@ -1354,7 +1358,7 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
 #endif
     }
   }
-  /* add diagonals necessary to make abc a triangle */
+  /* Add diagonals necessary to make abc a triangle. */
 #ifdef DEBUG_CDT
   if (dbg_level > 0) {
     fprintf(stderr, "make triangle abc exist where\n");
@@ -1383,7 +1387,7 @@ static void re_delaunay_triangulate(CDT_state *cdt, SymEdge *se)
     }
 #endif
   }
-  /* now recurse */
+  /* Now recurse. */
   if (ebc) {
     re_delaunay_triangulate(cdt, &ebc->symedges[1]);
   }
@@ -1436,11 +1440,11 @@ static CDTVert *add_point_constraint(CDT_state *cdt, const double (*coords)[2], 
 
 /**
  * Add a constrained edge between v1 and v2 to cdt structure.
- * This may result in a number of CDTEdges created, due to intersections
+ * This may result in a number of #CDTEdges created, due to intersections
  * and partial overlaps with existing cdt vertices and edges.
- * Each created CDTEdge will have input_id added to its input_ids list.
+ * Each created #CDTEdge will have input_id added to its input_ids list.
  *
- * If r_edges is not NULL, the CDTEdges generated or found that go from
+ * If \a r_edges is not NULL, the #CDTEdges generated or found that go from
  * v1 to v2 are put into that linked list, in order.
  *
  * Assumes that #BLI_constrained_delaunay_get_output has not been called yet.
@@ -1534,7 +1538,7 @@ static void add_edge_constraint(
   t = vse1;
   search_count = 0;
   while (!done) {
-    /* invariant: crossings[0 .. BLI_array_len(crossings)] has crossing info for path up to
+    /* Invariant: crossings[0 .. BLI_array_len(crossings)] has crossing info for path up to
      * but not including the crossing of edge t, which will either be through a vert
      * (if state_through_vert is true) or through edge t not at either end.
      * In the latter case, t->face is the face that ray v1--v2 goes through after path-so-far.
@@ -1547,9 +1551,9 @@ static void add_edge_constraint(
     }
 #endif
     if (state_through_vert) {
-      /* Invariant: ray v1--v2 contains t->vert */
+      /* Invariant: ray v1--v2 contains t->vert. */
       cdata.in = (BLI_array_len(crossings) == 0) ? NULL : t;
-      cdata.out = NULL; /* to be filled in if this isn't final */
+      cdata.out = NULL; /* To be filled in if this isn't final. */
       cdata.lambda = 0.0;
       cdata.vert = t->vert;
       BLI_array_append(crossings, cdata);
@@ -1562,7 +1566,7 @@ static void add_edge_constraint(
         done = true;
       }
       else {
-        /* do ccw scan of triangles around t->vert to find exit triangle for ray v1--v2 */
+        /* Do ccw scan of triangles around t->vert to find exit triangle for ray v1--v2. */
         tstart = t;
         tout = NULL;
         do {
@@ -1618,9 +1622,9 @@ static void add_edge_constraint(
         crossings[BLI_array_len(crossings) - 1].out = tout;
       }
     }
-    else { /* state is "through edge", not "through vert" */
-      /* invariant: ray v1--v2 intersects segment t->edge, not at either end.
-       * and t->face is the face we have just passed through */
+    else { /* State is "through edge", not "through vert" */
+      /* Invariant: ray v1--v2 intersects segment t->edge, not at either end.
+       * and t->face is the face we have just passed through. */
       va = t->vert;
       vb = t->next->vert;
 #ifdef DEBUG_CDT
@@ -1646,14 +1650,14 @@ static void add_edge_constraint(
       cdata.in = t;
       cdata.out = tout;
       cdata.lambda = lambda;
-      cdata.vert = NULL; /* to be filled in with edge split vertex later */
+      cdata.vert = NULL; /* To be filled in with edge split vertex later. */
       BLI_array_append(crossings, cdata);
 #ifdef DEBUG_CDT
       if (dbg_level > 0) {
         dump_se_cycle(tout, "next search tri", 4);
       }
 #endif
-      /* tout is symedge from vb to third vertex, vc */
+      /* 'tout' is 'symedge' from 'vb' to third vertex, 'vc'. */
       BLI_assert(tout->vert == va);
       vc = tout->next->vert;
       ccw1 = CCW_test(v1->co, v2->co, vc->co);
@@ -1665,7 +1669,7 @@ static void add_edge_constraint(
       }
 #endif
       if (ccw1 == -1) {
-        /* v1--v2 should intersect vb--vc */
+        /* v1--v2 should intersect vb--vc. */
 #ifdef DEBUG_CDT
         if (dbg_level > 1)
           fprintf(stderr, "v1--v2 intersects vb--vc\n");
@@ -1674,7 +1678,7 @@ static void add_edge_constraint(
         state_through_vert = false;
       }
       else if (ccw1 == 1) {
-        /* v1--v2 should intersect va--vc */
+        /* v1--v2 should intersect va--vc. */
 #ifdef DEBUG_CDT
         if (dbg_level > 1)
           fprintf(stderr, "v1--v2 intersects va--vc\n");
@@ -1683,7 +1687,7 @@ static void add_edge_constraint(
         state_through_vert = false;
       }
       else {
-        /* ccw1 == 0 */
+        /* ccw1 == 0. */
 #ifdef DEBUG_CDT
         if (dbg_level > 1)
           fprintf(stderr, "ccw==0 case, so going through or to vc\n");
@@ -1694,7 +1698,7 @@ static void add_edge_constraint(
     }
     if (++search_count > 10000) {
       fprintf(stderr, "infinite loop? bailing out\n");
-      BLI_assert(0); /* catch these while developing */
+      BLI_assert(0); /* Catch these while developing. */
       break;
     }
   }
@@ -1718,7 +1722,7 @@ static void add_edge_constraint(
 #endif
 
   if (BLI_array_len(crossings) == 2) {
-    /* for speed, handle special case of segment must have already been there */
+    /* For speed, handle special case of segment must have already been there. */
     se = crossings[1].in;
     if (se->next->vert != v1)
       se = prev(se);
@@ -1735,7 +1739,7 @@ static void add_edge_constraint(
     }
   }
   else {
-    /* insert all intersection points */
+    /* Insert all intersection points. */
     for (i = 0; i < BLI_array_len(crossings); i++) {
       cd = &crossings[i];
       if (cd->lambda != 0.0 && is_constrained_edge(cd->in->edge)) {
@@ -1750,7 +1754,7 @@ static void add_edge_constraint(
       }
     }
 
-    /* remove any crossed, non-intersected edges */
+    /* Remove any crossed, non-intersected edges. */
     for (i = 0; i < BLI_array_len(crossings); i++) {
       cd = &crossings[i];
       if (cd->lambda != 0.0 && !is_constrained_edge(cd->in->edge)) {
@@ -1762,7 +1766,7 @@ static void add_edge_constraint(
       }
     }
 
-    /* insert segments for v1->v2 */
+    /* Insert segments for v1->v2. */
     tstart = crossings[0].out;
     for (i = 1; i < BLI_array_len(crossings); i++) {
       cd = &crossings[i];
@@ -1805,7 +1809,7 @@ static void add_edge_constraint(
         if (r_edges != NULL) {
           BLI_linklist_append_pool(&edge_list, edge, cdt->listpool);
         }
-        /* Now retriangulate upper and lower gaps */
+        /* Now retriangulate upper and lower gaps. */
         re_delaunay_triangulate(cdt, &edge->symedges[0]);
         re_delaunay_triangulate(cdt, &edge->symedges[1]);
       }
@@ -1829,12 +1833,12 @@ static void add_edge_constraint(
 }
 
 /**
- * Add face_id to the input_ids lists of all CDTFaces on the interior of the input face with that
+ * Add face_id to the input_ids lists of all #CDTFace's on the interior of the input face with that
  * id. face_symedge is on edge of the boundary of the input face, with assumption that interior is
  * on the left of that SymEdge.
  *
- * The algorithm is: starting from the CDTFace for face_symedge, add the face_id and then
- * process all adjacent faces where the adjaceny isn't across an edge that was a constraint added
+ * The algorithm is: starting from the #CDTFace for face_symedge, add the face_id and then
+ * process all adjacent faces where the adjacency isn't across an edge that was a constraint added
  * for the boundary of the input face.
  * fedge_start..fedge_end is the inclusive range of edge input ids that are for the given face.
  *
@@ -1854,7 +1858,7 @@ static void add_face_ids(
   CDTFace *face, *face_other;
   int visit;
 
-  /* can't loop forever since eventually would visit every face */
+  /* Can't loop forever since eventually would visit every face. */
   cdt->visit_count++;
   visit = cdt->visit_count;
   stack = NULL;
@@ -1879,13 +1883,13 @@ static void add_face_ids(
   }
 }
 
-/* delete_edge but try not to mess up outer face */
+/* Delete_edge but try not to mess up outer face. */
 static void dissolve_symedge(CDT_state *cdt, SymEdge *se)
 {
   if (sym(se)->face == cdt->outer_face)
     se = sym(se);
   if (cdt->outer_face->symedge == se || cdt->outer_face->symedge == sym(se)) {
-    /* advancing by 2 to get past possible sym(se) */
+    /* Advancing by 2 to get past possible 'sym(se)'. */
     if (se->next->next == se)
       cdt->outer_face->symedge = NULL;
     else
@@ -1912,7 +1916,7 @@ static void remove_non_constraint_edges(CDT_state *cdt, const bool valid_bmesh)
         fright = sym(se)->face;
         if (fleft != cdt->outer_face && fright != cdt->outer_face &&
             (fleft->input_ids != NULL || fright->input_ids != NULL)) {
-          /* is there another symedge with same left and right faces? */
+          /* Is there another symedge with same left and right faces? */
           for (se2 = se->next; dissolve && se2 != se; se2 = se2->next) {
             if (sym(se2)->face == fright) {
               dissolve = false;
@@ -1942,7 +1946,7 @@ static void remove_outer_edges(CDT_state *cdt, const bool remove_until_constrain
 
   cdt->outer_face->visit_index = visit;
 
-  /* find an f, not outer face, but touching outer face */
+  /* Find an f, not outer face, but touching outer face. */
   f = NULL;
   se_start = se = cdt->vert_array[0]->symedge;
   do {
@@ -2034,7 +2038,7 @@ static void prepare_cdt_for_output(CDT_state *cdt, const CDT_output_type output_
 
   cdt->output_prepared = true;
 
-  /* make sure all non-deleted faces have a symedge */
+  /* Make sure all non-deleted faces have a symedge. */
   for (ln = cdt->edges; ln; ln = ln->next) {
     e = (CDTEdge *)ln->link;
     if (e->symedges[0].face->symedge == NULL) {
@@ -2045,7 +2049,7 @@ static void prepare_cdt_for_output(CDT_state *cdt, const CDT_output_type output_
     }
   }
 #ifdef DEBUG_CDT
-  /* all non-deleted faces should have a symedge now */
+  /* All non-deleted faces should have a symedge now. */
   for (ln = cdt->faces; ln; ln = ln->next) {
     f = (CDTFace *)ln->link;
     if (!f->deleted)
@@ -2078,7 +2082,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
 
   result = (CDT_result *)MEM_callocN(sizeof(*result), "delaunay");
 
-  /* All verts except first NUM_BOUND_VERTS will be output */
+  /* All verts except first NUM_BOUND_VERTS will be output. */
   nv = cdt->vert_array_len - NUM_BOUND_VERTS;
   if (nv <= 0) {
     return result;
@@ -2087,7 +2091,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   result->num_verts = nv;
   result->vert_coords = MEM_malloc_arrayN(nv, sizeof(result->vert_coords[0]), "delaunay");
 
-  /* make the vertex "orig" map arrays, mapping output verts to lists of input ones */
+  /* Make the vertex "orig" map arrays, mapping output verts to lists of input ones. */
   orig_map_size = 0;
   for (i = 0; i < nv; i++) {
     orig_map_size += BLI_linklist_count(cdt->vert_array[i + 4]->input_ids);
@@ -2249,7 +2253,7 @@ CDT_result *BLI_constrained_delaunay(const CDT_input *input, const CDT_output_ty
   if (epsilon == 0.0)
     epsilon = 1e-8;
   cdt = cdt_init(minx, maxx, miny, maxy, epsilon);
-  /* TODO: use a random permutation for order of adding the vertices */
+  /* TODO: use a random permutation for order of adding the vertices. */
   for (i = 0; i < nv; i++) {
     vert_coords[0] = (double)input->vert_coords[i][0];
     vert_coords[1] = (double)input->vert_coords[i][1];
@@ -2580,7 +2584,7 @@ static bool is_visible(const CDTVert *a, const CDTVert *b, bool constrained, con
         a->co, b->co, se->vert->co, senext->vert->co, NULL, NULL);
     if (ikind != ISECT_LINE_LINE_NONE) {
       if (ikind == ISECT_LINE_LINE_COLINEAR) {
-        /*TODO: special test here for overlap */
+        /* TODO: special test here for overlap. */
         continue;
       }
       return false;
@@ -2590,12 +2594,12 @@ static bool is_visible(const CDTVert *a, const CDTVert *b, bool constrained, con
 }
 
 /**
- * Check that edge ab satisifies constrained delaunay condition:
+ * Check that edge ab satisfies constrained delaunay condition:
  * That is, for all non-constraint, non-border edges ab,
  * (1) ab is visible in the constraint graph; and
  * (2) there is a circle through a and b such that any vertex v connected by an edge to a or b
  *     is not inside that circle.
- * The argument se specifies ab by: a is se's vert and b is se->next's vert.
+ * The argument 'se' specifies ab by: a is se's vert and b is se->next's vert.
  * Return true if check is OK.
  */
 static bool is_delaunay_edge(const SymEdge *se, const double epsilon)
@@ -2610,7 +2614,7 @@ static bool is_delaunay_edge(const SymEdge *se, const double epsilon)
   sesym = sym(se);
   a = se->vert;
   b = se->next->vert;
-  /* try both the triangles adjacent to se's edge for circle */
+  /* Try both the triangles adjacent to se's edge for circle. */
   for (i = 0; i < 2; i++) {
     ok[i] = true;
     curse = (i == 0) ? se : sesym;
@@ -2684,8 +2688,8 @@ static void validate_cdt(CDT_state *cdt, bool check_all_tris)
       BLI_assert((se->face == cdt->outer_face && sesym->face != cdt->outer_face) ||
                  (se->face != cdt->outer_face && sesym->face == cdt->outer_face));
     }
-    /* BLI_assert(se->face != sesym->face); -- not required because faces can have intruding wire
-     * edges */
+    /* BLI_assert(se->face != sesym->face);
+     * Not required because faces can have intruding wire edges. */
     BLI_assert(se->vert != sesym->vert);
     BLI_assert(se->edge == sesym->edge && se->edge == e);
     BLI_assert(sym(se) == sesym && sym(sesym) == se);
