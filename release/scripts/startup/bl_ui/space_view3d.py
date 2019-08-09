@@ -2730,6 +2730,27 @@ class VIEW3D_MT_vertex_group(Menu):
             layout.operator("object.vertex_group_remove", text="Remove All Groups").all = True
 
 
+class VIEW3D_MT_gpencil_vertex_group(Menu):
+    bl_label = "Vertex Groups"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator_context = 'EXEC_AREA'
+        ob = context.active_object
+
+        layout.operator("object.vertex_group_add", text="Add New Group")
+        ob = context.active_object
+        if ob.vertex_groups.active:
+            layout.separator()
+
+            layout.operator("gpencil.vertex_group_assign", text="Assign")
+            layout.operator("gpencil.vertex_group_remove_from", text="Remove")
+
+            layout.operator("gpencil.vertex_group_select", text="Select")
+            layout.operator("gpencil.vertex_group_deselect", text="Deselect")
+
+
 class VIEW3D_MT_paint_weight(Menu):
     bl_label = "Weights"
 
@@ -4498,9 +4519,24 @@ class VIEW3D_MT_edit_gpencil_point(Menu):
 
         # TODO: add new RIP operator
 
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("gpencil.extrude_move", text="Extrude Points")
+
         layout.separator()
 
-        layout.menu("VIEW3D_MT_vertex_group")
+        layout.operator("gpencil.stroke_smooth", text="Smooth Points").only_selected = True
+
+        layout.separator()
+
+        layout.operator("gpencil.stroke_merge", text="Merge Points")
+
+        # TODO: add new RIP operator
+
+        layout.separator()
+
+        layout.menu("VIEW3D_MT_gpencil_vertex_group")
 
 
 class VIEW3D_MT_weight_gpencil(Menu):
@@ -4569,6 +4605,18 @@ class VIEW3D_MT_edit_gpencil_interpolate(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.operator("gpencil.interpolate", text="Interpolate")
+        layout.operator("gpencil.interpolate_sequence", text="Sequence")
+
+class VIEW3D_MT_edit_gpencil_showhide(Menu):
+    bl_label = "Show/hide"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("gpencil.hide", text="Hide Active Layer")
+        layout.operator("gpencil.reveal", text="Show All Layers")
 
         layout.operator("gpencil.interpolate", text="Interpolate")
         layout.operator("gpencil.interpolate_sequence", text="Sequence")
@@ -6541,6 +6589,7 @@ classes = (
     VIEW3D_MT_paint_vertex,
     VIEW3D_MT_hook,
     VIEW3D_MT_vertex_group,
+    VIEW3D_MT_gpencil_vertex_group,
     VIEW3D_MT_paint_weight,
     VIEW3D_MT_sculpt,
     VIEW3D_MT_particle,
