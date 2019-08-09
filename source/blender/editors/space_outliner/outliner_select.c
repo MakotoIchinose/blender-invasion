@@ -37,13 +37,11 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_listbase.h"
-#include "BLI_string.h"
 
 #include "BKE_armature.h"
 #include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
-#include "BKE_idcode.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
@@ -68,7 +66,6 @@
 #include "WM_types.h"
 
 #include "UI_interface.h"
-#include "UI_resources.h"
 #include "UI_view2d.h"
 
 #include "RNA_access.h"
