@@ -1804,11 +1804,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         scene->lanpr.enable_intersections = 1;
 
-        scene->lanpr.background_color[0] = 0.76;
-        scene->lanpr.background_color[1] = 0.54;
-        scene->lanpr.background_color[2] = 0.29;
-        scene->lanpr.background_color[3] = 1;
-
         scene->lanpr.line_color[0] = 0.39;
         scene->lanpr.line_color[1] = 0.12;
         scene->lanpr.line_color[2] = 0.04;
@@ -3528,12 +3523,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       sce->lanpr.normal_strength = 10;
 
       sce->lanpr.enable_intersections = 1;
-
-      /* default world background color */
-      copy_v3_fl(sce->lanpr.background_color, 0.051);
-      sce->lanpr.background_color[3] = 1;
-
-      sce->lanpr.use_world_background = 1;
 
       zero_v4(sce->lanpr.line_color);
 

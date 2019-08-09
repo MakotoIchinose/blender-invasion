@@ -335,11 +335,13 @@ static void lanpr_cache_init(void *vedata)
                              "intersection_color",
                              ll->use_same_style ? ll->color : ll->intersection.color,
                              1);
+    static float use_background_color[4];
+    copy_v3_v3(use_background_color, &scene->world->horr);
+    use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
+
     DRW_shgroup_uniform_vec4(
-        stl->g_data->dpix_preview_shgrp, "background_color", lanpr->background_color, 1);
-    /*  DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp, "line_color", ll->line_color, 1);
-     */
-    /*  //we have color */
+        stl->g_data->dpix_preview_shgrp, "background_color", use_background_color, 1);
+
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "depth_offset", &stl->g_data->dpix_depth_offset, 1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,

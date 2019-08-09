@@ -499,13 +499,8 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   pd->dpix_znear = camera ? ((Camera *)camera->data)->clip_start : v3d->clip_start;
   pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
 
-  if (lanpr->use_world_background) {
-    copy_v3_v3(use_background_color, &scene->world->horr);
-    use_background_color[3] = 1;
-  }
-  else {
-    copy_v3_v3(use_background_color, lanpr->background_color);
-  }
+  copy_v3_v3(use_background_color, &scene->world->horr);
+  use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
 
   GPU_point_size(1);
   /*  GPU_line_width(2); */

@@ -1680,8 +1680,7 @@ typedef struct SceneLANPR {
   float crease_fade_threshold; /* for dpix crease fading */
 
   float line_color[4];
-  float background_color[4];
-  int use_world_background; /* color only */
+  int _pad1;
 
   float depth_width_influence;
   float depth_width_curve;

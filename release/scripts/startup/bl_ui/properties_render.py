@@ -466,7 +466,7 @@ class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
     bl_label = "Film"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
 
     @classmethod
     def poll(cls, context):
@@ -746,17 +746,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             if not lanpr.auto_update:
                 c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
 
-            c.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")
-
-        #deprecated
-        #layout.label(text="Background Color:")
-        #row = layout.row(align=True)
-        #row.prop(lanpr,"use_world_background",toggle=True,icon='WORLD',text="Use World")
-        #if(lanpr.use_world_background):
-        #    row.prop(scene.world, "color",text="")
-        #else:
-        #    row.prop(lanpr, "background_color",text="")
-        
+            c.operator("scene.lanpr_export_svg", icon='OUTLINER_OB_CURVE', text="Generate SVG to a text block")        
 
         if mode == "DPIX" and len(lanpr.layers)==0:
             layout.label(text="You don't have a layer to display.")

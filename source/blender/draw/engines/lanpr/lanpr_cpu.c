@@ -218,13 +218,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   eGPUFrameBufferBits clear_bits = GPU_DEPTH_BIT | GPU_COLOR_BIT;
   static int zero_value = 0;
 
-  if (lanpr->use_world_background) {
-    copy_v3_v3(use_background_color, &scene->world->horr);
-    use_background_color[3] = 1;
-  }
-  else {
-    copy_v4_v4(use_background_color, lanpr->background_color);
-  }
+  copy_v3_v3(use_background_color, &scene->world->horr);
+  use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
 
   GPU_framebuffer_bind(fbl->software_ms);
   GPU_framebuffer_clear(
