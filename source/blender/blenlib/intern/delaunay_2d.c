@@ -617,7 +617,7 @@ static CDT_state *cdt_init(double minx, double maxx, double miny, double maxy, d
   CDTEdge *e[4];
   CDTFace *f0, *fouter;
   int i, inext, iprev;
-  MemArena *arena = BLI_memarena_new(DLNY_ARENASIZE, "delaunay");
+  MemArena *arena = BLI_memarena_new(DLNY_ARENASIZE, __func__);
   CDT_state *cdt = BLI_memarena_alloc(arena, sizeof(CDT_state));
   cdt->edges = NULL;
   cdt->faces = NULL;
@@ -2165,7 +2165,7 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
 
   prepare_cdt_for_output(cdt, output_type);
 
-  result = (CDT_result *)MEM_callocN(sizeof(*result), "delaunay");
+  result = (CDT_result *)MEM_callocN(sizeof(*result), __func__);
 
   /* All verts except first NUM_BOUND_VERTS will be output. */
   nv = cdt->vert_array_len - NUM_BOUND_VERTS;
@@ -2174,16 +2174,16 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   }
 
   result->num_verts = nv;
-  result->vert_coords = MEM_malloc_arrayN(nv, sizeof(result->vert_coords[0]), "delaunay");
+  result->vert_coords = MEM_malloc_arrayN(nv, sizeof(result->vert_coords[0]), __func__);
 
   /* Make the vertex "orig" map arrays, mapping output verts to lists of input ones. */
   orig_map_size = 0;
   for (i = 0; i < nv; i++) {
     orig_map_size += BLI_linklist_count(cdt->vert_array[i + 4]->input_ids);
   }
-  result->vert_orig_len = MEM_malloc_arrayN(nv, sizeof(int), "delaunay");
-  result->vert_orig_start = MEM_malloc_arrayN(nv, sizeof(int), "delaunay");
-  result->vert_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), "delaunay");
+  result->vert_orig_len = MEM_malloc_arrayN(nv, sizeof(int), __func__);
+  result->vert_orig_start = MEM_malloc_arrayN(nv, sizeof(int), __func__);
+  result->vert_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
 
   orig_map_index = 0;
   for (i = 0; i < nv; i++) {
@@ -2211,11 +2211,11 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
   if (ne != 0) {
     result->num_edges = ne;
     result->face_edge_offset = cdt->face_edge_offset;
-    result->edges = MEM_malloc_arrayN(ne, sizeof(result->edges[0]), "delaunay");
-    result->edge_orig_len = MEM_malloc_arrayN(ne, sizeof(int), "delaunay");
-    result->edge_orig_start = MEM_malloc_arrayN(ne, sizeof(int), "delaunay");
+    result->edges = MEM_malloc_arrayN(ne, sizeof(result->edges[0]), __func__);
+    result->edge_orig_len = MEM_malloc_arrayN(ne, sizeof(int), __func__);
+    result->edge_orig_start = MEM_malloc_arrayN(ne, sizeof(int), __func__);
     if (orig_map_size > 0) {
-      result->edge_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), "delaunay");
+      result->edge_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
     }
     orig_map_index = 0;
     i = 0;
@@ -2255,13 +2255,13 @@ static CDT_result *cdt_get_output(CDT_state *cdt, const CDT_output_type output_t
 
   if (nf != 0) {
     result->num_faces = nf;
-    result->face_len = MEM_malloc_arrayN(nf, sizeof(int), "delaunay");
-    result->face_start = MEM_malloc_arrayN(nf, sizeof(int), "delaunay");
-    result->faces = MEM_malloc_arrayN(tot_face_len, sizeof(int), "delaunay");
-    result->face_orig_len = MEM_malloc_arrayN(nf, sizeof(int), "delaunay");
-    result->face_orig_start = MEM_malloc_arrayN(nf, sizeof(int), "delaunay");
+    result->face_len = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->face_start = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->faces = MEM_malloc_arrayN(tot_face_len, sizeof(int), __func__);
+    result->face_orig_len = MEM_malloc_arrayN(nf, sizeof(int), __func__);
+    result->face_orig_start = MEM_malloc_arrayN(nf, sizeof(int), __func__);
     if (orig_map_size > 0) {
-      result->face_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), "delaunay");
+      result->face_orig = MEM_malloc_arrayN(orig_map_size, sizeof(int), __func__);
     }
     orig_map_index = 0;
     i = 0;
