@@ -52,9 +52,6 @@
 #include "wm_event_system.h"
 #include "wm_draw.h"
 #include "wm.h"
-#ifdef WITH_OPENXR
-#  include "GHOST_C-api.h"
-#endif
 
 #include "ED_screen.h"
 #include "BKE_undo_system.h"
@@ -378,9 +375,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   }
 
 #ifdef WITH_OPENXR
-  if (wm->xr_context != NULL) {
-    GHOST_XrContextDestroy(wm->xr_context);
-  }
+  wm_xr_context_destroy(wm);
 #endif
 
   BLI_freelistN(&wm->paintcursors);

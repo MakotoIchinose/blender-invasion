@@ -103,6 +103,7 @@ void wm_draw_upside_down(int sizex, int sizey, bool to_srgb);
 #ifdef WITH_OPENXR
 /* wm_xr.c */
 bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm);
+void wm_xr_context_destroy(wmWindowManager *wm);
 void wm_xr_session_toggle(bContext *C, void *xr_context);
 #endif
 

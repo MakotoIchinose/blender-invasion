@@ -68,6 +68,16 @@ typedef struct {
   bContext *evil_C;
 } wmXrErrorHandlerData;
 
+GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
+void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
+void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
+wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
+
+/* -------------------------------------------------------------------- */
+/** \name XR-Context
+ *
+ * \{ */
+
 static void wm_xr_error_handler(const GHOST_XrError *error)
 {
   wmXrErrorHandlerData *handler_data = error->customdata;
@@ -116,10 +126,87 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
     }
 
     wm->xr_context = GHOST_XrContextCreate(&create_info);
+
+    /* Set up context callbacks */
+    GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
+                                     wm_xr_session_gpu_binding_context_create,
+                                     wm_xr_session_gpu_binding_context_destroy);
+    GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view);
   }
 
   return wm->xr_context != NULL;
 }
+
+void wm_xr_context_destroy(wmWindowManager *wm)
+{
+  if (wm->xr_context != NULL) {
+    GHOST_XrContextDestroy(wm->xr_context);
+  }
+}
+
+/** \} */ /* XR-Context */
+
+/* -------------------------------------------------------------------- */
+/** \name XR-Session
+ *
+ * \{ */
+
+void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
+{
+  wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
+  wmXrSurfaceData *data = surface->customdata;
+
+  wm_surface_add(surface);
+
+  return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
+}
+
+void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
+                                               void *UNUSED(context))
+{
+  if (g_xr_surface) { /* Might have been freed already */
+    wm_surface_remove(g_xr_surface);
+  }
+
+  wm_window_reset_drawable();
+}
+
+static void wm_xr_session_begin_info_create(const Scene *scene,
+                                            GHOST_XrSessionBeginInfo *begin_info)
+{
+  if (scene->camera) {
+    copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
+    /* TODO will only work if rotmode is euler */
+    eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
+  }
+  else {
+    copy_v3_fl(begin_info->base_pose.position, 0.0f);
+    unit_qt(begin_info->base_pose.orientation_quat);
+  }
+}
+
+void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
+{
+  GHOST_XrContextHandle xr_context = xr_context_ptr;
+
+  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
+    GHOST_XrSessionEnd(xr_context);
+  }
+  else {
+    GHOST_XrSessionBeginInfo begin_info;
+
+    wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
+
+    GHOST_XrSessionStart(xr_context, &begin_info);
+  }
+}
+
+/** \} */ /* XR-Session */
+
+/* -------------------------------------------------------------------- */
+/** \name XR-Session Surface
+ *
+ * \{ */
 
 static void wm_xr_session_surface_draw(bContext *C)
 {
@@ -156,84 +243,6 @@ static void wm_xr_session_free_data(wmSurface *surface)
   MEM_freeN(surface->customdata);
 
   g_xr_surface = NULL;
-}
-
-static wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm),
-                                               unsigned int gpu_binding_type)
-{
-  if (g_xr_surface) {
-    BLI_assert(false);
-    return g_xr_surface;
-  }
-
-  wmSurface *surface = MEM_callocN(sizeof(*surface), __func__);
-  wmXrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
-
-#ifndef WIN32
-  BLI_assert(gpu_binding_type == GHOST_kXrGraphicsOpenGL);
-#endif
-
-  surface->draw = wm_xr_session_surface_draw;
-  surface->free_data = wm_xr_session_free_data;
-
-  data->gpu_binding_type = gpu_binding_type;
-  surface->customdata = data;
-
-  surface->ghost_ctx = DRW_opengl_context_get();
-  DRW_opengl_context_enable();
-
-  switch (gpu_binding_type) {
-    case GHOST_kXrGraphicsOpenGL:
-      break;
-#ifdef WIN32
-    case GHOST_kXrGraphicsD3D11:
-      data->secondary_ghost_ctx = WM_directx_context_create();
-      break;
-#endif
-  }
-
-  surface->gpu_ctx = DRW_gpu_context_get();
-
-  DRW_opengl_context_disable();
-
-  g_xr_surface = surface;
-
-  return surface;
-}
-
-static void wm_xr_draw_matrices_create(const Scene *scene,
-                                       const GHOST_XrDrawViewInfo *draw_view,
-                                       const float clip_start,
-                                       const float clip_end,
-                                       float r_view_mat[4][4],
-                                       float r_proj_mat[4][4])
-{
-  float scalemat[4][4], quat[4];
-  float temp[4][4];
-
-  perspective_m4_fov(r_proj_mat,
-                     draw_view->fov.angle_left,
-                     draw_view->fov.angle_right,
-                     draw_view->fov.angle_up,
-                     draw_view->fov.angle_down,
-                     clip_start,
-                     clip_end);
-
-  scale_m4_fl(scalemat, 1.0f);
-  invert_qt_qt_normalized(quat, draw_view->pose.orientation_quat);
-  quat_to_mat4(temp, quat);
-  translate_m4(temp,
-               -draw_view->pose.position[0],
-               -draw_view->pose.position[1],
-               -draw_view->pose.position[2]);
-
-  if (scene->camera) {
-    invert_m4_m4(scene->camera->imat, scene->camera->obmat);
-    mul_m4_m4m4(r_view_mat, temp, scene->camera->imat);
-  }
-  else {
-    copy_m4_m4(r_view_mat, temp);
-  }
 }
 
 static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *draw_view)
@@ -275,7 +284,91 @@ static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *d
   return true;
 }
 
-static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
+wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned int gpu_binding_type)
+{
+  if (g_xr_surface) {
+    BLI_assert(false);
+    return g_xr_surface;
+  }
+
+  wmSurface *surface = MEM_callocN(sizeof(*surface), __func__);
+  wmXrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
+
+#ifndef WIN32
+  BLI_assert(gpu_binding_type == GHOST_kXrGraphicsOpenGL);
+#endif
+
+  surface->draw = wm_xr_session_surface_draw;
+  surface->free_data = wm_xr_session_free_data;
+
+  data->gpu_binding_type = gpu_binding_type;
+  surface->customdata = data;
+
+  surface->ghost_ctx = DRW_opengl_context_get();
+  DRW_opengl_context_enable();
+
+  switch (gpu_binding_type) {
+    case GHOST_kXrGraphicsOpenGL:
+      break;
+#ifdef WIN32
+    case GHOST_kXrGraphicsD3D11:
+      data->secondary_ghost_ctx = WM_directx_context_create();
+      break;
+#endif
+  }
+
+  surface->gpu_ctx = DRW_gpu_context_get();
+
+  DRW_opengl_context_disable();
+
+  g_xr_surface = surface;
+
+  return surface;
+}
+
+/** \} */ /* XR-Session Surface */
+
+/* -------------------------------------------------------------------- */
+/** \name XR Drawing
+ *
+ * \{ */
+
+static void wm_xr_draw_matrices_create(const Scene *scene,
+                                       const GHOST_XrDrawViewInfo *draw_view,
+                                       const float clip_start,
+                                       const float clip_end,
+                                       float r_view_mat[4][4],
+                                       float r_proj_mat[4][4])
+{
+  float scalemat[4][4], quat[4];
+  float temp[4][4];
+
+  perspective_m4_fov(r_proj_mat,
+                     draw_view->fov.angle_left,
+                     draw_view->fov.angle_right,
+                     draw_view->fov.angle_up,
+                     draw_view->fov.angle_down,
+                     clip_start,
+                     clip_end);
+
+  scale_m4_fl(scalemat, 1.0f);
+  invert_qt_qt_normalized(quat, draw_view->pose.orientation_quat);
+  quat_to_mat4(temp, quat);
+  translate_m4(temp,
+               -draw_view->pose.position[0],
+               -draw_view->pose.position[1],
+               -draw_view->pose.position[2]);
+
+  if (scene->camera) {
+    invert_m4_m4(scene->camera->imat, scene->camera->obmat);
+    mul_m4_m4m4(r_view_mat, temp, scene->camera->imat);
+  }
+  else {
+    copy_m4_m4(r_view_mat, temp);
+  }
+}
+
+GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
   bContext *C = customdata;
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
@@ -344,57 +437,4 @@ static GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view
   return g_xr_surface->ghost_ctx;
 }
 
-static void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
-{
-  wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
-  wmXrSurfaceData *data = surface->customdata;
-
-  wm_surface_add(surface);
-
-  return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
-}
-
-static void wm_xr_session_gpu_binding_context_destroy(
-    GHOST_TXrGraphicsBinding UNUSED(graphics_lib), void *UNUSED(context))
-{
-  if (g_xr_surface) { /* Might have been freed already */
-    wm_surface_remove(g_xr_surface);
-  }
-
-  wm_window_reset_drawable();
-}
-
-static void wm_xr_session_begin_info_create(const Scene *scene,
-                                            GHOST_XrSessionBeginInfo *begin_info)
-{
-  if (scene->camera) {
-    copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
-    /* TODO will only work if rotmode is euler */
-    eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
-  }
-  else {
-    copy_v3_fl(begin_info->base_pose.position, 0.0f);
-    unit_qt(begin_info->base_pose.orientation_quat);
-  }
-}
-
-void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
-{
-  GHOST_XrContextHandle xr_context = xr_context_ptr;
-
-  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
-    GHOST_XrSessionEnd(xr_context);
-  }
-  else {
-    GHOST_XrSessionBeginInfo begin_info;
-
-    wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
-
-    GHOST_XrGraphicsContextBindFuncs(xr_context,
-                                     wm_xr_session_gpu_binding_context_create,
-                                     wm_xr_session_gpu_binding_context_destroy);
-    GHOST_XrDrawViewFunc(xr_context, wm_xr_draw_view);
-
-    GHOST_XrSessionStart(xr_context, &begin_info);
-  }
-}
+/** \} */ /* XR Drawing */

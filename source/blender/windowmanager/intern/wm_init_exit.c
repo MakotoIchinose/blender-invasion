@@ -130,8 +130,6 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "wm.h"
-
 #include "DRW_engine.h"
 
 #ifdef WITH_OPENSUBDIV
