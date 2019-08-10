@@ -226,14 +226,15 @@ static void file_refresh(const bContext *C, ScrArea *sa)
   filelist_setdir(sfile->files, params->dir);
   filelist_setrecursion(sfile->files, params->recursion_level);
   filelist_setsorting(sfile->files, params->sort, params->flag & FILE_SORT_INVERT);
-  filelist_setfilter_options(sfile->files,
-                             (params->flag & FILE_FILTER) != 0,
-                             (params->flag & FILE_HIDE_DOT) != 0,
-                             false, /* TODO hide_parent, should be controllable? */
-                             params->filter,
-                             params->filter_id,
-                             params->filter_glob,
-                             params->filter_search);
+  filelist_setfilter_options(
+      sfile->files,
+      (params->flag & FILE_FILTER) != 0,
+      (params->flag & FILE_HIDE_DOT) != 0,
+      true, /* Just always hide parent, prefer to not add an extra user option for this. */
+      params->filter,
+      params->filter_id,
+      params->filter_glob,
+      params->filter_search);
 
   /* Update the active indices of bookmarks & co. */
   sfile->systemnr = fsmenu_get_active_indices(fsmenu, FS_CATEGORY_SYSTEM, params->dir);
