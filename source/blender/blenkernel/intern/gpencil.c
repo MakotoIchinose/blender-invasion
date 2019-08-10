@@ -2628,7 +2628,6 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
 
   return true;
 }
-
 /* Dissolve points in stroke */
 void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short tag)
 {
