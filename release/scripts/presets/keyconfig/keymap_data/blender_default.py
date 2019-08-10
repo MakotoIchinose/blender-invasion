@@ -1736,6 +1736,7 @@ def km_info(params):
         ("info.report_delete", {"type": 'X', "value": 'PRESS'}, None),
         ("info.report_delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("info.report_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
+        op_menu("INFO_MT_context_menu", params.context_menu_event),
     ])
 
     return keymap
@@ -2128,7 +2129,7 @@ def km_text_generic(_params):
         ),
         ("text.start_find", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         ("text.jump", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
-        ("text.find", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
+        ("text.find_set_selected", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         ("text.replace", {"type": 'H', "value": 'PRESS', "ctrl": True}, None),
     ])
 
@@ -2449,7 +2450,7 @@ def km_sequencerpreview(params):
     return keymap
 
 
-def km_console(_params):
+def km_console(params):
     items = []
     keymap = (
         "Console",
@@ -2509,6 +2510,7 @@ def km_console(_params):
         ("console.indent", {"type": 'TAB', "value": 'PRESS'}, None),
         ("console.unindent", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
         ("console.insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True}, None),
+        op_menu("CONSOLE_MT_context_menu", params.context_menu_event),
     ])
 
     return keymap
