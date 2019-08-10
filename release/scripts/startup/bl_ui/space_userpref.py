@@ -44,9 +44,11 @@ class USERPREF_HT_header(Header):
         if prefs.use_preferences_save and (not bpy.app.use_userpref_skip_save_on_exit):
             pass
         else:
-            sub = row.row(align=True)
-            sub.active = prefs.is_dirty
-            sub.operator("wm.save_userpref")
+            # Show '*' to let users know the preferences have been modified.
+            row.operator(
+                "wm.save_userpref",
+                text="Save Preferences{:s}".format(" *" if prefs.is_dirty else ""),
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -427,7 +429,6 @@ class USERPREF_PT_edit_annotations(PreferencePanel, Panel):
 
         flow.prop(edit, "grease_pencil_default_color", text="Default Color")
         flow.prop(edit, "grease_pencil_eraser_radius", text="Eraser Radius")
-        flow.prop(edit, "use_grease_pencil_simplify_stroke", text="Simplify Stroke")
 
 
 class USERPREF_PT_edit_weight_paint(PreferencePanel, Panel):

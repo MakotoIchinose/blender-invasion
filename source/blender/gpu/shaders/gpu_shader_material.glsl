@@ -420,12 +420,10 @@ void math_fraction(float a, float b, out float result)
 
 void math_modulo(float a, float b, out float result)
 {
-  result = (b != 0.0) ? mod(a, b) : 0.0;
-
   /* Change sign to match C convention, mod in GLSL will take absolute for negative numbers.
    * See https://www.opengl.org/sdk/docs/man/html/mod.xhtml
    */
-  result = (a > 0.0) ? result : result - b;
+  result = (b != 0.0) ? sign(a) * mod(abs(a), b) : 0.0;
 }
 
 void math_sine(float a, float b, out float result)
