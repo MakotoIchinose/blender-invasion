@@ -410,6 +410,9 @@ static void outliner_sync_selection_to_outliner(ViewLayer *view_layer,
         outliner_select_sync_from_sequence(soops, active_data->sequence, tselem);
       }
     }
+    else {
+      tselem->flag &= ~TSE_SELECTED;
+    }
 
     /* Sync subtree elements */
     outliner_sync_selection_to_outliner(view_layer, soops, &te->subtree, active_data, sync_types);
