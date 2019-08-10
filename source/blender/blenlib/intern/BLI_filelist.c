@@ -369,7 +369,7 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
   if (r_date) {
     strftime(r_date,
              sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN,
-             compact ? "%d/%m/%y" : "%d-%b-%y",
+             compact ? "%d/%m/%y" : "%d %b %Y",
              tm);
   }
 }

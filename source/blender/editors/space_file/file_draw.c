@@ -500,7 +500,7 @@ static const char *filelist_get_details_column_string(FileListColumns column,
           char date[16], time[8];
           BLI_filelist_entry_datetime_to_string(NULL, file->entry->time, small_size, time, date);
           BLI_snprintf(
-              file->entry->datetime_str, sizeof(file->entry->datetime_str), "%s %s", date, time);
+              file->entry->datetime_str, sizeof(file->entry->datetime_str), "%s, %s", date, time);
         }
 
         return file->entry->datetime_str;

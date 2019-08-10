@@ -619,9 +619,10 @@ static void details_columns_widths(const FileSelectParams *params, FileLayout *l
   }
 
   /* Biggest possible reasonable values... */
-  columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" : "23-Dec-89 23:59") +
+  columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" :
+                                                                  "23 Dec 6789, 23:59") +
                                    pad;
-  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "98.7 MB") + pad;
+  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "098.7 MB") + pad;
   if (params->display == FILE_IMGDISPLAY) {
     columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   }
@@ -647,7 +648,7 @@ static void details_columns_init(const FileSelectParams *params, FileLayout *lay
   layout->details_columns[COLUMN_NAME].text_align = UI_STYLE_TEXT_LEFT;
   layout->details_columns[COLUMN_DATETIME].name = "Date Modified";
   layout->details_columns[COLUMN_DATETIME].sort_type = FILE_SORT_TIME;
-  layout->details_columns[COLUMN_DATETIME].text_align = UI_STYLE_TEXT_CENTER;
+  layout->details_columns[COLUMN_DATETIME].text_align = UI_STYLE_TEXT_LEFT;
   layout->details_columns[COLUMN_SIZE].name = "Size";
   layout->details_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
   layout->details_columns[COLUMN_SIZE].text_align = UI_STYLE_TEXT_RIGHT;
