@@ -654,9 +654,9 @@ static bool is_filtered_file(FileListInternEntry *file,
 {
   bool is_filtered = !is_hidden_file(file->relpath, filter);
 
-  if (is_filtered && (filter->flags & FLF_DO_FILTER) && !FILENAME_IS_CURRPAR(file->relpath)) {
+  if (is_filtered && !FILENAME_IS_CURRPAR(file->relpath)) {
     /* We only check for types if some type are enabled in filtering. */
-    if (filter->filter) {
+    if (filter->filter && (filter->flags & FLF_DO_FILTER)) {
       if (file->typeflag & FILE_TYPE_DIR) {
         if (file->typeflag &
             (FILE_TYPE_BLENDERLIB | FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) {
@@ -676,6 +676,7 @@ static bool is_filtered_file(FileListInternEntry *file,
         }
       }
     }
+    /* If there's a filter string, apply it as filter even if FLF_DO_FILTER is not set. */
     if (is_filtered && (filter->filter_search[0] != '\0')) {
       if (fnmatch(filter->filter_search, file->relpath, FNM_CASEFOLD) != 0) {
         is_filtered = false;
@@ -695,9 +696,9 @@ static bool is_filtered_lib(FileListInternEntry *file, const char *root, FileLis
 
   if (BLO_library_path_explode(path, dir, &group, &name)) {
     is_filtered = !is_hidden_file(file->relpath, filter);
-    if (is_filtered && (filter->flags & FLF_DO_FILTER) && !FILENAME_IS_CURRPAR(file->relpath)) {
+    if (is_filtered && !FILENAME_IS_CURRPAR(file->relpath)) {
       /* We only check for types if some type are enabled in filtering. */
-      if (filter->filter || filter->filter_id) {
+      if ((filter->filter || filter->filter_id) && (filter->flags & FLF_DO_FILTER)) {
         if (file->typeflag & FILE_TYPE_DIR) {
           if (file->typeflag &
               (FILE_TYPE_BLENDERLIB | FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP)) {
@@ -723,6 +724,7 @@ static bool is_filtered_lib(FileListInternEntry *file, const char *root, FileLis
           }
         }
       }
+      /* If there's a filter string, apply it as filter even if FLF_DO_FILTER is not set. */
       if (is_filtered && (filter->filter_search[0] != '\0')) {
         if (fnmatch(filter->filter_search, file->relpath, FNM_CASEFOLD) != 0) {
           is_filtered = false;
