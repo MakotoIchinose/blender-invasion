@@ -39,6 +39,11 @@ extern "C" {
 #include "BLI_linklist.h"
 #include "BLI_array.h"
 #include "BLI_kdopbvh.h"
+#include "BLI_memarena.h"
+#include "BLI_heap.h"
+#include "BLI_alloca.h"
+#include "BLI_polyfill_2d.h"
+#include "BLI_polyfill_2d_beautify.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -532,6 +537,9 @@ static vector<BMEdge *> cloth_remeshing_find_edges_to_flip(BMesh *bm,
   for (int i = 0; i < active_faces.size(); i++) {
     BMEdge *e;
     BMIter eiter;
+    /* if (active_faces[i]->head.htype != BM_FACE) { */
+    /*   continue; */
+    /* } */
     BM_ITER_ELEM (e, &eiter, active_faces[i], BM_EDGES_OF_FACE) {
       edges.push_back(e);
     }
@@ -615,6 +623,9 @@ static bool cloth_remeshing_flip_edges(BMesh *bm,
     vector<BMFace *> add_faces;
     BM_ITER_ELEM (f, &fiter, new_edge, BM_FACES_OF_EDGE) {
       add_faces.push_back(f);
+#  if 1
+      BLI_assert(f->len == 3);
+#  endif
     }
     cloth_remeshing_update_active_faces(active_faces, remove_faces, add_faces);
 #endif
@@ -1081,6 +1092,57 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
 }
 #endif
 
+static bool bm_face_triangulate(BMesh *bm,
+                                BMFace *f_base,
+                                LinkNode **r_faces_double,
+                                int *r_edges_tri_tot,
+
+                                MemArena *pf_arena,
+                                /* use for MOD_TRIANGULATE_NGON_BEAUTY only! */
+                                struct Heap *pf_heap)
+{
+  const int f_base_len = f_base->len;
+  int faces_array_tot = f_base_len - 3;
+  int edges_array_tot = f_base_len - 3;
+  BMFace **faces_array = BLI_array_alloca(faces_array, faces_array_tot);
+  BMEdge **edges_array = BLI_array_alloca(edges_array, edges_array_tot);
+  const int quad_method = 0, ngon_method = 0; /* beauty */
+
+  bool has_cut = false;
+
+  const int f_index = BM_elem_index_get(f_base);
+
+  BM_face_triangulate(bm,
+                      f_base,
+                      faces_array,
+                      &faces_array_tot,
+                      edges_array,
+                      &edges_array_tot,
+                      r_faces_double,
+                      quad_method,
+                      ngon_method,
+                      false,
+                      pf_arena,
+                      pf_heap);
+
+  for (int i = 0; i < edges_array_tot; i++) {
+    BMLoop *l_iter, *l_first;
+    l_iter = l_first = edges_array[i]->l;
+    do {
+      BM_elem_index_set(l_iter, f_index); /* set_dirty */
+      has_cut = true;
+    } while ((l_iter = l_iter->radial_next) != l_first);
+  }
+
+  for (int i = 0; i < faces_array_tot; i++) {
+    BM_face_normal_update(faces_array[i]);
+  }
+
+  *r_edges_tri_tot += edges_array_tot;
+
+  return has_cut;
+}
+
 static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
                                         ClothVertMap &cvm,
                                         const int cd_loop_uv_offset)
@@ -1118,6 +1180,29 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
     BMFace *af;
     BMIter afiter;
     BM_ITER_ELEM (af, &afiter, new_vert, BM_FACES_OF_VERT) {
+#if 1
+      /* BLI_assert(af->len == 3); */
+      if (af->len > 3) {
+        MemArena *pf_arena;
+        Heap *pf_heap;
+        LinkNode *faces_double = NULL;
+        pf_arena = BLI_memarena_new(BLI_POLYFILL_ARENA_SIZE, __func__);
+        pf_heap = BLI_heap_new_ex(BLI_POLYFILL_ALLOC_NGON_RESERVE);
+        int edges_tri_tot = 0;
+        BM_face_normal_update(af);
+        bm_face_triangulate(bm, af, &faces_double, &edges_tri_tot, pf_arena, pf_heap);
+        while (faces_double) {
+          LinkNode *next = faces_double->next;
+          BM_face_kill(bm, (BMFace *)faces_double->link);
+          MEM_freeN(faces_double);
+          faces_double = next;
+        }
+        BLI_memarena_free(pf_arena);
+        BLI_heap_free(pf_heap, NULL);
+        BM_mesh_elem_index_ensure(bm, BM_EDGE | BM_FACE);
+        continue;
+      }
+#endif
       active_faces.push_back(af);
     }
     cloth_remeshing_fix_mesh(bm, cvm, active_faces, cd_loop_uv_offset);
@@ -1440,6 +1525,13 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
 
   if (v2) {
     cloth_remeshing_remove_vertex_from_cloth(v, cvm);
+#if 1
+    BMFace *f;
+    BMIter fiter;
+    BM_ITER_ELEM (f, &fiter, v2, BM_FACES_OF_VERT) {
+      BLI_assert(f->len == 3);
+    }
+#endif
   }
 #if COLLAPSE_EDGES_DEBUG
   printf("killed %f %f %f into %f %f %f\n",
