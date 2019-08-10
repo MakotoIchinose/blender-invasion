@@ -866,6 +866,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
   float tfill[4];
   short sthickness;
   float ink[4];
+  const bool is_unique = (tgpw->gps != NULL);
 
   GPU_program_point_size(true);
 
@@ -1099,7 +1100,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
       }
     }
     /* if only one stroke, exit from loop */
-    if (tgpw->gps) {
+    if (is_unique) {
       break;
     }
   }
@@ -1117,7 +1118,8 @@ void ED_gp_draw_interpolation(const bContext *C, tGPDinterpolate *tgpi, const in
   RegionView3D *rv3d = ar->regiondata;
   tGPDinterpolate_layer *tgpil;
   Object *obact = CTX_data_active_object(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  /* Drawing code is expected to run with fully evaluated depsgraph. */
+  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
 
   float color[4];
 

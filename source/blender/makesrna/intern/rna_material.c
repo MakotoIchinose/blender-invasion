@@ -147,16 +147,8 @@ static void rna_Material_active_paint_texture_index_update(Main *bmain,
   Material *ma = ptr->id.data;
 
   if (ma->use_nodes && ma->nodetree) {
-    struct bNode *node;
-    int index = 0;
-    for (node = ma->nodetree->nodes.first; node; node = node->next) {
-      if (node->typeinfo->nclass == NODE_CLASS_TEXTURE &&
-          node->typeinfo->type == SH_NODE_TEX_IMAGE && node->id) {
-        if (index++ == ma->paint_active_slot) {
-          break;
-        }
-      }
-    }
+    struct bNode *node = BKE_texpaint_slot_material_find_node(ma, ma->paint_active_slot);
+
     if (node) {
       nodeSetActive(ma->nodetree, node);
     }
@@ -618,6 +610,12 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_fill_pattern", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_FILL_PATTERN);
   RNA_def_property_ui_text(prop, "Pattern", "Use Fill Texture as a pattern to apply color");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
+
+  prop = RNA_def_property(srna, "use_overlap_strokes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_DISABLE_STENCIL);
+  RNA_def_property_ui_text(
+      prop, "Self Overlap", "Disable stencil and overlap self intersections with alpha materials");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "show_stroke", PROP_BOOLEAN, PROP_NONE);

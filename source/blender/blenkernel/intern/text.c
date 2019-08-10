@@ -703,50 +703,6 @@ bool txt_cursor_is_line_end(Text *text)
 /* Cursor movement functions */
 /*****************************/
 
-int txt_utf8_offset_to_index(const char *str, int offset)
-{
-  int index = 0, pos = 0;
-  while (pos != offset) {
-    pos += BLI_str_utf8_size(str + pos);
-    index++;
-  }
-  return index;
-}
-
-int txt_utf8_index_to_offset(const char *str, int index)
-{
-  int offset = 0, pos = 0;
-  while (pos != index) {
-    offset += BLI_str_utf8_size(str + offset);
-    pos++;
-  }
-  return offset;
-}
-
-int txt_utf8_offset_to_column(const char *str, int offset)
-{
-  int column = 0, pos = 0;
-  while (pos < offset) {
-    column += BLI_str_utf8_char_width_safe(str + pos);
-    pos += BLI_str_utf8_size_safe(str + pos);
-  }
-  return column;
-}
-
-int txt_utf8_column_to_offset(const char *str, int column)
-{
-  int offset = 0, pos = 0, col;
-  while (*(str + offset) && pos < column) {
-    col = BLI_str_utf8_char_width_safe(str + offset);
-    if (pos + col > column) {
-      break;
-    }
-    offset += BLI_str_utf8_size_safe(str + offset);
-    pos += col;
-  }
-  return offset;
-}
-
 void txt_move_up(Text *text, const bool sel)
 {
   TextLine **linep;
@@ -764,9 +720,9 @@ void txt_move_up(Text *text, const bool sel)
   }
 
   if ((*linep)->prev) {
-    int column = txt_utf8_offset_to_column((*linep)->line, *charp);
+    int column = BLI_str_utf8_offset_to_column((*linep)->line, *charp);
     *linep = (*linep)->prev;
-    *charp = txt_utf8_column_to_offset((*linep)->line, column);
+    *charp = BLI_str_utf8_offset_from_column((*linep)->line, column);
   }
   else {
     txt_move_bol(text, sel);
@@ -794,9 +750,9 @@ void txt_move_down(Text *text, const bool sel)
   }
 
   if ((*linep)->next) {
-    int column = txt_utf8_offset_to_column((*linep)->line, *charp);
+    int column = BLI_str_utf8_offset_to_column((*linep)->line, *charp);
     *linep = (*linep)->next;
-    *charp = txt_utf8_column_to_offset((*linep)->line, column);
+    *charp = BLI_str_utf8_offset_from_column((*linep)->line, column);
   }
   else {
     txt_move_eol(text, sel);
@@ -1977,7 +1933,7 @@ bool txt_replace_char(Text *text, unsigned int add)
  */
 static void txt_select_prefix(Text *text, const char *add)
 {
-  int len, num, curc_old;
+  int len, num, curc_old, selc_old;
   char *tmp;
 
   const int indentlen = strlen(add);
@@ -1985,6 +1941,7 @@ static void txt_select_prefix(Text *text, const char *add)
   BLI_assert(!ELEM(NULL, text->curl, text->sell));
 
   curc_old = text->curc;
+  selc_old = text->selc;
 
   num = 0;
   while (true) {
@@ -2022,19 +1979,24 @@ static void txt_select_prefix(Text *text, const char *add)
       num++;
     }
   }
-  if (!curc_old) {
-    text->curc = 0;
-  }
-  else {
-    text->curc = curc_old + indentlen;
-  }
 
   while (num > 0) {
     text->curl = text->curl->prev;
     num--;
   }
 
-  /* caller must handle undo */
+  /* Keep the cursor left aligned if we don't have a selection. */
+  if (curc_old == 0 && !(text->curl == text->sell && curc_old == selc_old)) {
+    if (text->curl == text->sell) {
+      if (text->curc == text->selc) {
+        text->selc = 0;
+      }
+    }
+    text->curc = 0;
+  }
+  else {
+    text->curc = curc_old + indentlen;
+  }
 }
 
 /**
@@ -2042,16 +2004,42 @@ static void txt_select_prefix(Text *text, const char *add)
  *
  * \param r_line_index_mask: List of lines that are already at indent level 0,
  * to store them later into the undo buffer.
+ * \param require_all: When true, all non-empty lines must have this prefix.
+ * Needed for comments where we might want to un-comment a block which contains some comments.
  *
  * \note caller must handle undo.
  */
-static void txt_select_unprefix(Text *text, const char *remove)
+static bool txt_select_unprefix(Text *text, const char *remove, const bool require_all)
 {
   int num = 0;
   const int indentlen = strlen(remove);
   bool unindented_first = false;
+  bool changed_any = false;
 
   BLI_assert(!ELEM(NULL, text->curl, text->sell));
+
+  if (require_all) {
+    /* Check all non-empty lines use this 'remove',
+     * so the operation is applied equally or not at all. */
+    TextLine *l = text->curl;
+    while (true) {
+      if (STREQLEN(l->line, remove, indentlen)) {
+        /* pass */
+      }
+      else {
+        /* Blank lines or whitespace can be skipped. */
+        for (int i = 0; i < l->len; i++) {
+          if (!ELEM(l->line[i], '\t', ' ')) {
+            return false;
+          }
+        }
+      }
+      if (l == text->sell) {
+        break;
+      }
+      l = l->next;
+    }
+  }
 
   while (true) {
     bool changed = false;
@@ -2062,6 +2050,7 @@ static void txt_select_unprefix(Text *text, const char *remove)
       text->curl->len -= indentlen;
       memmove(text->curl->line, text->curl->line + indentlen, text->curl->len + 1);
       changed = true;
+      changed_any = true;
     }
 
     txt_make_dirty(text);
@@ -2089,6 +2078,7 @@ static void txt_select_unprefix(Text *text, const char *remove)
   }
 
   /* caller must handle undo */
+  return changed_any;
 }
 
 void txt_comment(Text *text)
@@ -2102,15 +2092,15 @@ void txt_comment(Text *text)
   txt_select_prefix(text, prefix);
 }
 
-void txt_uncomment(Text *text)
+bool txt_uncomment(Text *text)
 {
   const char *prefix = "#";
 
   if (ELEM(NULL, text->curl, text->sell)) {
-    return;
+    return false;
   }
 
-  txt_select_unprefix(text, prefix);
+  return txt_select_unprefix(text, prefix, true);
 }
 
 void txt_indent(Text *text)
@@ -2124,15 +2114,15 @@ void txt_indent(Text *text)
   txt_select_prefix(text, prefix);
 }
 
-void txt_unindent(Text *text)
+bool txt_unindent(Text *text)
 {
   const char *prefix = (text->flags & TXT_TABSTOSPACES) ? tab_to_spaces : "\t";
 
   if (ELEM(NULL, text->curl, text->sell)) {
-    return;
+    return false;
   }
 
-  txt_select_unprefix(text, prefix);
+  return txt_select_unprefix(text, prefix, false);
 }
 
 void txt_move_lines(struct Text *text, const int direction)
