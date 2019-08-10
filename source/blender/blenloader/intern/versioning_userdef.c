@@ -145,7 +145,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * Include next version bump.
    */
   {
-    copy_v4_v4_char(btheme->space_file.execution_buts, btheme->space_file.button);
+    copy_v4_v4_uchar(btheme->space_file.execution_buts, btheme->space_file.button);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
