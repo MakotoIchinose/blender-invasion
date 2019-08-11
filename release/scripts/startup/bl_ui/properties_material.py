@@ -67,14 +67,14 @@ class MaterialButtonsPanel:
 class MATERIAL_PT_preview(MaterialButtonsPanel, Panel):
     bl_label = "Preview"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
 
     def draw(self, context):
         self.layout.template_preview(context.material)
 
 
 class MATERIAL_PT_custom_props(MaterialButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
     _context_path = "material"
     _property_type = bpy.types.Material
 
@@ -83,7 +83,7 @@ class EEVEE_MATERIAL_PT_context_material(MaterialButtonsPanel, Panel):
     bl_label = ""
     bl_context = "material"
     bl_options = {'HIDE_HEADER'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_LANPR'}
 
     @classmethod
     def poll(cls, context):
@@ -162,7 +162,7 @@ def panel_node_draw(layout, ntree, _output_type, input_name):
 class EEVEE_MATERIAL_PT_surface(MaterialButtonsPanel, Panel):
     bl_label = "Surface"
     bl_context = "material"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
 
     def draw(self, context):
         layout = self.layout
@@ -201,6 +201,27 @@ class EEVEE_MATERIAL_PT_volume(MaterialButtonsPanel, Panel):
 
         panel_node_draw(layout, mat.node_tree, 'OUTPUT_MATERIAL', "Volume")
 
+class EEVEE_MATERIAL_PT_lines(MaterialButtonsPanel, Panel):
+    bl_label = "Lines"
+    bl_context = "material"
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_LANPR'}
+
+    def draw_header(self, context):
+        layout = self.layout
+        mat = context.material
+        layout.prop(mat, "enable_lines", text="")
+    
+    def draw(self, context):
+        layout = self.layout
+        mat = context.material
+
+        if mat.enable_lines: 
+            layout.label(text="Transparency")
+            layout.prop(mat,"mask_layers_count", expand=True)
+            layout.label(text="Customization")
+            layout.template_list("LANPR_linesets", "", mat, "line_layers", mat.line_layers, "active_layer_index", rows=1)
+        else:
+            layout.prop(mat, "exclude_line_geometry", toggle=True)
 
 class EEVEE_MATERIAL_PT_settings(MaterialButtonsPanel, Panel):
     bl_label = "Settings"
@@ -261,6 +282,7 @@ classes = (
     EEVEE_MATERIAL_PT_context_material,
     EEVEE_MATERIAL_PT_surface,
     EEVEE_MATERIAL_PT_volume,
+    EEVEE_MATERIAL_PT_lines,
     EEVEE_MATERIAL_PT_settings,
     MATERIAL_PT_viewport,
     MATERIAL_PT_custom_props,

@@ -984,6 +984,32 @@ bGPDlayer *BKE_gpencil_layer_getactive(bGPdata *gpd)
   return NULL;
 }
 
+bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not_found)
+{
+  bGPDlayer *gpl;
+  int i = 0;
+
+  /* error checking */
+  if (ELEM(NULL, gpd, gpd->layers.first)) {
+    return NULL;
+  }
+
+  /* loop over layers until found (assume only one active) */
+  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+    if (i == index) {
+      return gpl;
+    }
+    i++;
+  }
+
+  /* no such layer */
+  if (first_if_not_found) {
+    return gpd->layers.first;
+  }
+  return NULL;
+}
+
+
 /* set the active gp-layer */
 void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
 {

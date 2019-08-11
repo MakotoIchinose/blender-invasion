@@ -78,6 +78,7 @@
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_lightprobe_types.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
@@ -5805,6 +5806,10 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
         }
       }
     }
+    else if (md->type == eModifierType_FeatureLine) {
+      FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
+      UNUSED_VARS(flmd);
+    }
   }
 }
 
@@ -6253,6 +6258,8 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
     child->collection = newlibadr_us(fd, lib, child->collection);
   }
 
+  collection->lanpr.target = newlibadr_us(fd, lib, collection->lanpr.target);
+
   BKE_collection_parent_relations_rebuild(collection);
 }
 
@@ -6557,6 +6564,16 @@ static void lib_link_scene(FileData *fd, Main *main)
           fls->group = newlibadr_us(fd, sce->id.lib, fls->group);
         }
       }
+
+      for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+        for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+          llc->object_select = newlibadr_us(fd, sce->id.lib, llc->object_select);
+          llc->material_select = newlibadr_us(fd, sce->id.lib, llc->material_select);
+          llc->collection_select = newlibadr_us(fd, sce->id.lib, llc->collection_select);
+        }
+        ll->normal_control_object = newlibadr_us(fd, sce->id.lib, ll->normal_control_object);
+      }
+
       /* Motion Tracking */
       sce->clip = newlibadr_us(fd, sce->id.lib, sce->clip);
 
@@ -6992,6 +7009,21 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     if (sce->eevee.light_cache) {
       direct_link_lightcache(fd, sce->eevee.light_cache);
     }
+  }
+
+  /* LANPR things */
+  sce->lanpr.active_layer = newdataadr(fd, sce->lanpr.active_layer);
+  link_list(fd, &sce->lanpr.line_layers);
+  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+    link_list(fd, &ll->components);
+    for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+      // llc->object_select = newlibadr(fd, sce->id.lib, llc->object_select);
+      // llc->material_select = newlibadr(fd, sce->id.lib, llc->material_select);
+      // llc->collection_select = newlibadr(fd, sce->id.lib, llc->collection_select);
+    }
+    ll->batch = NULL;
+    ll->shgrp = NULL;
+    // ll->normal_control_object = newlibadr(fd, sce->id.lib, ll->normal_control_object);
   }
 
   sce->layer_properties = newdataadr(fd, sce->layer_properties);
@@ -10280,6 +10312,8 @@ static void expand_collection(FileData *fd, Main *mainvar, Collection *collectio
     expand_doit(fd, mainvar, child->collection);
   }
 
+  expand_doit(fd, mainvar, collection->lanpr.target);
+
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection != NULL) {
     expand_scene_collection(fd, mainvar, collection->collection);
@@ -10737,9 +10771,21 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
     }
   }
 
-  if (sce->gpd) {
-    expand_doit(fd, mainvar, sce->gpd);
+  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+    for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
+      if (llc->object_select)
+        expand_doit(fd, mainvar, llc->object_select);
+      if (llc->material_select)
+        expand_doit(fd, mainvar, llc->material_select);
+      if (llc->collection_select)
+        expand_doit(fd, mainvar, llc->collection_select);
+    }
+    if (ll->normal_control_object)
+      expand_doit(fd, mainvar, ll->normal_control_object);
   }
+
+  if (sce->gpd)
+    expand_doit(fd, mainvar, sce->gpd);
 
   if (sce->ed) {
     Sequence *seq;

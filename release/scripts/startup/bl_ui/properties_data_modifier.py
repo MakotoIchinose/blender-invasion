@@ -20,6 +20,7 @@
 import bpy
 from bpy.types import Panel
 from bpy.app.translations import pgettext_iface as iface_
+from mathutils import Vector
 
 
 class ModifierButtonsPanel:
@@ -399,6 +400,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         sub.prop(md, "split_angle")
 
         split.prop(md, "use_edge_sharp", text="Sharp Edges")
+
+        layout.prop(md, "ignore_lanpr")
+        if md.ignore_lanpr:
+            layout.label(text="Enabeling edge split may cause problems in LANPR.")
 
     def EXPLODE(self, layout, ob, md):
         split = layout.split()
@@ -1641,6 +1646,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "face_influence")
 
+    def FEATURE_LINE(self, layout, _ob, _md):
+        if not (bpy.context.scene.render.engine == "BLENDER_LANPR" or bpy.context.scene.lanpr.enabled):
+            layout.label(text="LANPR is disabled.")
+        else:
+            layout.label(text="Settings are inside the LANPR tab.")
+        
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
     bl_label = "Modifiers"

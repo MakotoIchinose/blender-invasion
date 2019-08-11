@@ -127,6 +127,11 @@ set(SRC
   engines/gpencil/gpencil_engine.h
   engines/gpencil/gpencil_render.c
   engines/gpencil/gpencil_shader_fx.c
+	engines/lanpr/lanpr_dpix.c
+	engines/lanpr/lanpr_engine.c
+	# engines/lanpr/lanpr_snake.c  deprecated for now.
+	engines/lanpr/lanpr_cpu.c
+  engines/lanpr/lanpr_chain_draw.c
   engines/select/select_engine.c
   engines/select/select_draw_utils.c
   engines/select/select_buffer.c
@@ -155,6 +160,7 @@ set(SRC
   engines/external/external_engine.h
   engines/workbench/workbench_engine.h
   engines/workbench/workbench_private.h
+	engines/lanpr/lanpr_all.h
   engines/select/select_engine.h
   engines/select/select_private.h
 )
@@ -255,6 +261,21 @@ data_to_c_simple(engines/workbench/shaders/workbench_shadow_debug_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_volume_vert.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_volume_frag.glsl SRC)
 data_to_c_simple(engines/workbench/shaders/workbench_world_light_lib.glsl SRC)
+
+data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_preview_geom.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_preview_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_project_clip_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_project_passthrough_vert.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_image_peel_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_line_connection_vert.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_line_connection_geom.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_line_connection_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_edge_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_snake_multichannel_frag.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_software_line_chain_geom.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_software_passthrough_vert.glsl SRC)
+data_to_c_simple(engines/lanpr/shaders/lanpr_software_chain_geom.glsl SRC)
+
 
 data_to_c_simple(modes/shaders/common_colormanagement_lib.glsl SRC)
 data_to_c_simple(modes/shaders/common_globals_lib.glsl SRC)

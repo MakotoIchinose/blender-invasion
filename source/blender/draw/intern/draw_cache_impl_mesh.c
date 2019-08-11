@@ -271,10 +271,8 @@ typedef struct MeshRenderData {
       int bweight;
       int *uv;
       int *vcol;
-#ifdef WITH_FREESTYLE
       int freestyle_edge;
       int freestyle_face;
-#endif
     } offset;
 
     struct {
@@ -721,10 +719,8 @@ static MeshRenderData *mesh_render_data_create_ex(Mesh *me,
       rdata->cd.offset.crease = CustomData_get_offset(&bm->edata, CD_CREASE);
       rdata->cd.offset.bweight = CustomData_get_offset(&bm->edata, CD_BWEIGHT);
 
-#ifdef WITH_FREESTYLE
-      rdata->cd.offset.freestyle_edge = CustomData_get_offset(&bm->edata, CD_FREESTYLE_EDGE);
-      rdata->cd.offset.freestyle_face = CustomData_get_offset(&bm->pdata, CD_FREESTYLE_FACE);
-#endif
+      rdata->cd.offset.freestyle_edge = CustomData_get_offset(&bm->edata, CD_LANPR_EDGE);
+      rdata->cd.offset.freestyle_face = CustomData_get_offset(&bm->pdata, CD_LANPR_FACE);
     }
     if (types & (MR_DATATYPE_DVERT)) {
       bm_ensure_types |= BM_VERT;
@@ -1657,8 +1653,8 @@ static uchar mesh_render_data_face_flag(MeshRenderData *rdata, const BMFace *efa
 
 #ifdef WITH_FREESTYLE
   if (rdata->cd.offset.freestyle_face != -1) {
-    const FreestyleFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
-    if (ffa->flag & FREESTYLE_FACE_MARK) {
+    const LanprFace *ffa = BM_ELEM_CD_GET_VOID_P(efa, rdata->cd.offset.freestyle_face);
+    if (ffa->flag & LANPR_FACE_MARK) {
       fflag |= VFLAG_FACE_FREESTYLE;
     }
   }
@@ -1722,8 +1718,8 @@ static void mesh_render_data_edge_flag(const MeshRenderData *rdata,
   }
 #ifdef WITH_FREESTYLE
   if (rdata->cd.offset.freestyle_edge != -1) {
-    const FreestyleEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
-    if (fed->flag & FREESTYLE_EDGE_MARK) {
+    const LanprEdge *fed = BM_ELEM_CD_GET_VOID_P(eed, rdata->cd.offset.freestyle_edge);
+    if (fed->flag & LANPR_EDGE_MARK) {
       eattr->e_flag |= VFLAG_EDGE_FREESTYLE;
     }
   }

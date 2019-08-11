@@ -1791,6 +1791,26 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
+    if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
+      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+
+        scene->lanpr.crease_threshold = 0.7;
+
+        scene->lanpr.line_thickness = 1.5;
+        scene->lanpr.depth_clamp = 0.001;
+        scene->lanpr.depth_strength = 800;
+        scene->lanpr.normal_clamp = 2;
+        scene->lanpr.normal_strength = 10;
+
+        scene->lanpr.enable_intersections = 1;
+
+        scene->lanpr.line_color[0] = 0.39;
+        scene->lanpr.line_color[1] = 0.12;
+        scene->lanpr.line_color[2] = 0.04;
+        scene->lanpr.line_color[3] = 1;
+      }
+    }
+
     if (!MAIN_VERSION_ATLEAST(bmain, 280, 15)) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         scene->display.matcap_ssao_distance = 0.2f;
@@ -3492,6 +3512,29 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (scene->ed != NULL) {
         do_versions_seq_alloc_transform_and_crop(&scene->ed->seqbase);
       }
+    }
+    for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      sce->lanpr.crease_threshold = 0.7;
+
+      sce->lanpr.line_thickness = 1.5;
+      sce->lanpr.depth_clamp = 0.001;
+      sce->lanpr.depth_strength = 800;
+      sce->lanpr.normal_clamp = 2;
+      sce->lanpr.normal_strength = 10;
+
+      sce->lanpr.enable_intersections = 1;
+
+      zero_v4(sce->lanpr.line_color);
+
+      sce->lanpr.enable_intersections = 1;
+      sce->lanpr.enable_chaining = 1;
+      sce->lanpr.chaining_image_threshold = 0.01f;
+      sce->lanpr.chaining_geometry_threshold = 0.0f;
+
+      sce->lanpr.disable_edge_splits = 1;
+    }
+    for (Collection *co = bmain->collections.first; co; co = co->id.next) {
+      co->lanpr.types = COLLECTION_FEATURE_LINE_ALL;
     }
   }
 

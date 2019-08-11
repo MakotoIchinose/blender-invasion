@@ -180,6 +180,17 @@ typedef struct Object_Runtime {
   void *_pad2; /* Padding is here for win32s unconventional struct alignment rules. */
 } Object_Runtime;
 
+typedef struct ObjectLANPR {
+  int usage;
+  char _pad[4];
+} ObjectLANPR;
+
+enum ObjectFeatureLine_Usage {
+  OBJECT_FEATURE_LINE_INHERENT = 0,
+  OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
+  OBJECT_FEATURE_LINE_EXCLUDE = (1 << 1),
+};
+
 typedef struct Object {
   ID id;
   /** Animation data (must be immediately after id for utilities to use it). */
@@ -389,6 +400,8 @@ typedef struct Object {
   LodLevel *currentlod;
 
   struct PreviewImage *preview;
+
+  ObjectLANPR lanpr;
 
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;

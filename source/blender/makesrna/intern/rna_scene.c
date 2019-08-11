@@ -33,6 +33,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_screen_types.h" /* TransformOrientation */
+#include "DNA_lanpr_types.h"
 
 #include "IMB_imbuf_types.h"
 
@@ -2436,6 +2437,64 @@ static void rna_UnitSettings_system_update(Main *UNUSED(bmain),
 static char *rna_UnitSettings_path(PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("unit_settings");
+}
+
+/* lanpr */
+
+void rna_lanpr_active_line_layer_index_range(
+    PointerRNA *ptr, int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+{
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  *min = 0;
+  *max = max_ii(0, BLI_listbase_count(&lanpr->line_layers) - 1);
+}
+
+int rna_lanpr_active_line_layer_index_get(PointerRNA *ptr)
+{
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  LANPR_LineLayer *ls;
+  int i = 0;
+  for (ls = lanpr->line_layers.first; ls; ls = ls->next) {
+    if (ls == lanpr->active_layer)
+      return i;
+    i++;
+  }
+  return 0;
+}
+
+void rna_lanpr_active_line_layer_index_set(PointerRNA *ptr, int value)
+{
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  LANPR_LineLayer *ls;
+  int i = 0;
+  for (ls = lanpr->line_layers.first; ls; ls = ls->next) {
+    if (i == value) {
+      lanpr->active_layer = ls;
+      return;
+    }
+    i++;
+  }
+  lanpr->active_layer = 0;
+}
+
+PointerRNA rna_lanpr_active_line_layer_get(PointerRNA *ptr)
+{
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  LANPR_LineLayer *ls = lanpr->active_layer;
+  return rna_pointer_inherit_refine(ptr, &RNA_LANPR_LineLayer, ls);
+}
+
+void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
+{
+  SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
+  lanpr->active_layer = value.data;
+}
+
+extern bool ED_lanpr_dpix_shader_error(void);
+
+static bool rna_lanpr_shader_error_get(PointerRNA *UNUSED(ptr))
+{
+  return ED_lanpr_dpix_shader_error();
 }
 
 #else
@@ -7084,6 +7143,302 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
+static void rna_def_scene_lanpr(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem rna_enum_lanpr_master_mode[] = {
+      {LANPR_MASTER_MODE_SOFTWARE, "SOFTWARE", 0, "CPU", "Software edge calculation"},
+      {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
+      /* Temporally remove image filter mode. */
+      /* {LANPR_MASTER_MODE_SNAKE, "SNAKE", 0, "Edge Detection", "Edge detection filter and
+         tracing"}, */
+      {0, NULL, 0, NULL, NULL}};
+
+  static const EnumPropertyItem rna_enum_lanpr_enable_post_processing[] = {
+      {LANPR_POST_PROCESSING_DISABLED,
+       "DISABLED",
+       0,
+       "Disabled",
+       "LANPR does not compute anything"},
+      {LANPR_POST_PROCESSING_ENABLED,
+       "ENABLED",
+       0,
+       "Enabled",
+       "LANPR will compute feature lines in image post processing"},
+      {0, NULL, 0, NULL, NULL}};
+
+  static const EnumPropertyItem rna_enum_lanpr_display_thinning_result[] = {
+      {LANPR_POST_PROCESSING_DISABLED,
+       "DISABLED",
+       0,
+       "Edge Detection",
+       "Display edge detector result"},
+      {LANPR_POST_PROCESSING_ENABLED,
+       "ENABLED",
+       0,
+       "Thinning",
+       "Apply thinning filters for vector usage"},
+      {0, NULL, 0, NULL, NULL}};
+
+  static const EnumPropertyItem rna_enum_lanpr_use_same_taper[] = {
+      {LANPR_USE_DIFFERENT_TAPER, "DISABLED", 0, "Different", "Use different taper value"},
+      {LANPR_USE_SAME_TAPER,
+       "ENABLED",
+       0,
+       "Same",
+       "Use same taper value for both sides of the line"},
+      {0, NULL, 0, NULL, NULL}};
+  static const EnumPropertyItem rna_enum_lanpr_gpu_cache_size[] = {
+      {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
+      {0, NULL, 0, NULL, NULL}};
+
+  srna = RNA_def_struct(brna, "SceneLANPR", NULL);
+  RNA_def_struct_sdna(srna, "SceneLANPR");
+  RNA_def_struct_ui_text(srna, "Scene LANPR Config", "LANPR global config");
+
+  prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop, "Enabled", "Is LANPR enabled");
+  RNA_def_property_update(prop, NC_WINDOW, NULL);
+
+  prop = RNA_def_property(srna, "auto_update", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(
+      prop, "Auto Update", "Automatically update LANPR cache when frame changes");
+
+  prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop,
+                           "GPencil Overwrite",
+                           "Overwrite existing strokes in the current frame of target GP objects");
+
+  prop = RNA_def_property(srna, "master_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_master_mode);
+  RNA_def_property_enum_default(prop, LANPR_MASTER_MODE_DPIX);
+  RNA_def_property_ui_text(prop, "Master Mode", "Choose calculation mode for NPR Line");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "gpu_cache_size", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_gpu_cache_size);
+  RNA_def_property_enum_default(prop, LANPR_GPU_CACHE_SIZE_512);
+  RNA_def_property_ui_text(prop, "GPU Cache Size", "Texture cache size for DPIX algorithm");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "enable_vector_trace", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_enable_post_processing);
+  RNA_def_property_enum_default(prop, LANPR_POST_PROCESSING_DISABLED);
+  RNA_def_property_ui_text(
+      prop, "Enable Post Processing", "Draw image post processing line or not");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "display_thinning_result", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_display_thinning_result);
+  RNA_def_property_enum_default(prop, LANPR_POST_PROCESSING_DISABLED);
+  RNA_def_property_ui_text(prop, "Display", "Display mode");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_clamp", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 0.001f);
+  RNA_def_property_ui_text(prop, "Depth Clamp", "Depth clamp value for edge extraction");
+  RNA_def_property_ui_range(prop, 0.0, 0.01, 0.0001, 5);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_strength", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 800);
+  RNA_def_property_ui_text(prop, "Depth Strength", "Depth strength value for edge extraction");
+  RNA_def_property_ui_range(prop, 0, 1000, 10, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "normal_clamp", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 2);
+  RNA_def_property_ui_text(prop, "Normal Clamp", "Normal clamp value for edge extraction");
+  RNA_def_property_ui_range(prop, 0, 5, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "normal_strength", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 10);
+  RNA_def_property_ui_text(prop, "Normal Strength", "Normal strength value for edge extraction");
+  RNA_def_property_ui_range(prop, 0, 20, 1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "line_thickness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 2.0f);
+  RNA_def_property_ui_text(prop, "Line Thickness", "Thickness of extracted line");
+  RNA_def_property_ui_range(prop, 0.01f, 10.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_width_influence", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 0.3f);
+  RNA_def_property_ui_text(prop, "Width Influence", "Use camera distance to control line width.");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_width_curve", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.3f);
+  RNA_def_property_ui_text(prop, "Width Curve", "Width curve");
+  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1, 1);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_alpha_influence", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, 0.3f);
+  RNA_def_property_ui_text(prop, "Alpha Influence", "Use camera distance to control line alpha.");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "depth_alpha_curve", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.3f);
+  RNA_def_property_ui_text(prop, "Alpha Curve", "alpha curve");
+  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1, 1);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "taper_left_distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 20.0f);
+  RNA_def_property_ui_text(prop, "Left Distance", "Left side taper distance");
+  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "taper_right_distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 20.0f);
+  RNA_def_property_ui_text(prop, "Right Distance", "Right side taper distance");
+  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "taper_left_strength", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Left Strength", "Left side taper strength");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "taper_right_strength", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Right Strength", "Right side taper strength");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "use_same_taper", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_lanpr_use_same_taper);
+  RNA_def_property_enum_default(prop, LANPR_USE_DIFFERENT_TAPER);
+  RNA_def_property_ui_text(prop, "Taper", "Same/Different taper value");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "line_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Line Color", "Drawing lines using this color");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.5f);
+  RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "crease_fade_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.5f);
+  RNA_def_property_ui_text(prop, "Crease Fade", "cosine value of face angle");
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01, 2);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+
+  prop = RNA_def_property(srna, "enable_intersections", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
+
+  prop = RNA_def_property(srna, "enable_chaining", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
+
+  prop = RNA_def_property(srna, "enable_chain_connection", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(prop,
+                           "Enable Chain Connection",
+                           "Connect short chains in the image space into one longer chain");
+
+  /* should be read-only */
+  prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", "");
+  RNA_def_property_ui_text(
+      prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU.");
+
+  prop = RNA_def_property(srna, "disable_edge_splits", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(
+      prop, "Disable Edge Splits", "Disable edge split modifiers to prevent errors in LANPR.");
+
+  prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.1f);
+  RNA_def_property_ui_text(prop,
+                           "Geometry Threshold",
+                           "Segments where their geometric distance between them lower than this "
+                           "will be chained together");
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+
+  prop = RNA_def_property(srna, "chaining_image_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, 0.01f);
+  RNA_def_property_ui_text(
+      prop,
+      "Image Threshold",
+      "Segments where their image distance between them lower than this will be chained together");
+  RNA_def_property_ui_range(prop, 0.0f, 0.3f, 0.001, 4);
+  RNA_def_property_range(prop, 0.0f, 0.3f);
+
+  /* here's the collection stuff.... */
+
+  prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
+  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
+  RNA_def_property_ui_text(prop, "Line Layers", "LANPR Line Layers");
+
+  /* this part I refered to gpencil's and freestyle's and it seems that there's no difference */
+  RNA_def_property_srna(prop, "LineLayers");
+  srna = RNA_def_struct(brna, "LineLayers", NULL);
+  RNA_def_struct_sdna(srna, "SceneLANPR");
+  RNA_def_struct_ui_text(srna, "LANPR Line Layers", "");
+
+  prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "LANPR_LineLayer");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_lanpr_active_line_layer_get", "rna_lanpr_active_line_layer_set", NULL, NULL);
+  RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+
+  prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop,
+                             "rna_lanpr_active_line_layer_index_get",
+                             "rna_lanpr_active_line_layer_index_set",
+                             "rna_lanpr_active_line_layer_index_range");
+  RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+}
+
 void RNA_def_scene(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -7555,6 +7910,11 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "SceneEEVEE");
   RNA_def_property_ui_text(prop, "EEVEE", "EEVEE settings for the scene");
 
+  /* LANPR */
+  prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "SceneLANPR");
+  RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the scene");
+
   /* Nestled Data  */
   /* *** Non-Animated *** */
   RNA_define_animate_sdna(false);
@@ -7572,6 +7932,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_display_safe_areas(brna);
   rna_def_scene_display(brna);
   rna_def_scene_eevee(brna);
+  rna_def_scene_lanpr(brna);
   RNA_define_animate_sdna(true);
   /* *** Animated *** */
   rna_def_scene_render_data(brna);
