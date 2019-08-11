@@ -96,8 +96,9 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
 static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
 {
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-  if (!flmd->target)
+  if (!flmd->target){
     return true;
+  }
   return false;
 }
 
