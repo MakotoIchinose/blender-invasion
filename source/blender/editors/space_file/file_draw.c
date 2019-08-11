@@ -285,13 +285,13 @@ static void file_draw_preview(uiBlock *block,
     immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
     immBegin(GPU_PRIM_LINE_LOOP, 4);
     immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.07f);
-    immVertex2f(pos_attr, (float)xco, (float)(yco + ey));
+    immVertex2f(pos_attr, (float)xco + 1, (float)(yco + ey));
     immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.10f);
     immVertex2f(pos_attr, (float)(xco + ex), (float)(yco + ey));
     immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.15f);
-    immVertex2f(pos_attr, (float)(xco + ex), (float)yco);
+    immVertex2f(pos_attr, (float)(xco + ex), (float)yco + 1);
     immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.2f);
-    immVertex2f(pos_attr, (float)xco, (float)yco);
+    immVertex2f(pos_attr, (float)xco + 1, (float)yco + 1);
     immEnd();
     immUnbindProgram();
   }
