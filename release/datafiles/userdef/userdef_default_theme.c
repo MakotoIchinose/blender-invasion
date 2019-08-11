@@ -370,7 +370,7 @@ const bTheme U_theme_default = {
     .paint_curve_handle = RGBA(0x7fff7f7f),
   },
   .space_file = {
-    .back = RGBA(0x35353500),
+    .back = RGBA(0x21212100),
     .title = RGBA(0xffffffff),
     .text = RGBA(0xe6e6e6ff),
     .text_hi = RGBA(0xffffffff),
