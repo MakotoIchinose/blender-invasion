@@ -144,7 +144,7 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
   ll->edge_mark.enabled = 1;
   ll->intersection.enabled = 1;
 
-  ll->normal_thickness_begin = 0.2f;
+  ll->normal_thickness_start = 0.2f;
   ll->normal_thickness_end = 1.5f;
   ll->normal_ramp_begin = 0.0f;
   ll->normal_ramp_end = 1.0f;

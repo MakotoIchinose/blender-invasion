@@ -119,7 +119,7 @@ typedef struct LANPR_LineLayer {
   int normal_effect_inverse;
   float normal_ramp_begin;
   float normal_ramp_end;
-  float normal_thickness_begin;
+  float normal_thickness_start;
   float normal_thickness_end;
   struct Object *normal_control_object;
 

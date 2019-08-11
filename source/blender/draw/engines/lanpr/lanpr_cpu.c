@@ -327,7 +327,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
         DRW_shgroup_uniform_float(rb->ChainShgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
         DRW_shgroup_uniform_float(rb->ChainShgrp, "normal_ramp_end", &ll->normal_ramp_end, 1);
         DRW_shgroup_uniform_float(
-            rb->ChainShgrp, "normal_thickness_begin", &ll->normal_thickness_begin, 1);
+            rb->ChainShgrp, "normal_thickness_start", &ll->normal_thickness_start, 1);
         DRW_shgroup_uniform_float(
             rb->ChainShgrp, "normal_thickness_end", &ll->normal_thickness_end, 1);
         DRW_shgroup_uniform_vec3(rb->ChainShgrp, "normal_direction", normal_object_direction, 1);
@@ -428,7 +428,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
           DRW_shgroup_uniform_float(ll->shgrp, "normal_ramp_begin", &ll->normal_ramp_begin, 1);
           DRW_shgroup_uniform_float(ll->shgrp, "normal_ramp_end", &ll->normal_ramp_end, 1);
           DRW_shgroup_uniform_float(
-              ll->shgrp, "normal_thickness_begin", &ll->normal_thickness_begin, 1);
+              ll->shgrp, "normal_thickness_start", &ll->normal_thickness_start, 1);
           DRW_shgroup_uniform_float(
               ll->shgrp, "normal_thickness_end", &ll->normal_thickness_end, 1);
           DRW_shgroup_uniform_vec3(ll->shgrp, "normal_direction", normal_object_direction, 1);

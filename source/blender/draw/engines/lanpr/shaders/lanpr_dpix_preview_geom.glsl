@@ -40,7 +40,7 @@ uniform int normal_effect_inverse;
 uniform vec3 normal_direction;  // also used as point position
 uniform float normal_ramp_begin;
 uniform float normal_ramp_end;
-uniform float normal_thickness_begin;
+uniform float normal_thickness_start;
 uniform float normal_thickness_end;
 
 float use_thickness;
@@ -132,8 +132,8 @@ float factor_to_thickness(float factor)
   if (r < 0)
     r = 0;
   float thickness = normal_effect_inverse == 1 ?
-                        mix(normal_thickness_begin, normal_thickness_end, r) :
-                        mix(normal_thickness_end, normal_thickness_begin, r);
+                        mix(normal_thickness_start, normal_thickness_end, r) :
+                        mix(normal_thickness_end, normal_thickness_start, r);
   return thickness;
 }
 

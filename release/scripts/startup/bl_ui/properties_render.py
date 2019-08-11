@@ -745,7 +745,7 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
             txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
             if not lanpr.auto_update:
                 c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
-                
+
         if mode == "DPIX" and len(lanpr.layers)==0:
             layout.label(text="You don't have a layer to display.")
             layout.operator("scene.lanpr_add_line_layer");
@@ -906,7 +906,7 @@ class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
             col.prop(active_layer,"normal_ramp_begin")
             col.prop(active_layer,"normal_ramp_end", text="End")
             col = layout.column(align=True)
-            col.prop(active_layer,"normal_thickness_begin", slider=True)
+            col.prop(active_layer,"normal_thickness_start", slider=True)
             col.prop(active_layer,"normal_thickness_end", slider=True, text="End")
 
 class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):

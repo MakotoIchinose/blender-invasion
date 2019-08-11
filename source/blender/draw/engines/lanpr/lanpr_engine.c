@@ -395,7 +395,7 @@ static void lanpr_cache_init(void *vedata)
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "normal_ramp_end", &ll->normal_ramp_end, 1);
     DRW_shgroup_uniform_float(
-        stl->g_data->dpix_preview_shgrp, "normal_thickness_begin", &ll->normal_thickness_begin, 1);
+        stl->g_data->dpix_preview_shgrp, "normal_thickness_start", &ll->normal_thickness_start, 1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp, "normal_thickness_end", &ll->normal_thickness_end, 1);
     DRW_shgroup_uniform_vec3(

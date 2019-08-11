@@ -90,7 +90,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
 
   prop = RNA_def_property(
-      srna, "normal_thickness_begin", PROP_FLOAT, PROP_NONE); /* begin is least strength */
+      srna, "normal_thickness_start", PROP_FLOAT, PROP_NONE); /* begin is least strength */
   RNA_def_property_float_default(prop, 0.2f);
   RNA_def_property_ui_text(prop, "Thickness Begin", "Normal thickness begin value");
   RNA_def_property_ui_range(prop, 0.0f, 5.0f, 0.05, 2);
