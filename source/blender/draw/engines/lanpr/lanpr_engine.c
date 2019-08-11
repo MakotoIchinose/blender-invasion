@@ -337,7 +337,7 @@ static void lanpr_cache_init(void *vedata)
                              1);
     static float use_background_color[4];
     copy_v3_v3(use_background_color, &scene->world->horr);
-    use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
+    use_background_color[3] = scene->r.alphamode ? 0.0f : 1.0f;
 
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "background_color", use_background_color, 1);

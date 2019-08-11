@@ -74,12 +74,6 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 {
   return true; /*  ?? */
 }
-static void requiredDataMask(Object *UNUSED(ob),
-                             ModifierData *md,
-                             CustomData_MeshMasks *r_cddata_masks)
-{
-  FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-}
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
@@ -96,7 +90,7 @@ static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk,
 static bool isDisabled(const struct Scene *scene, struct ModifierData *md, bool userRenderParams)
 {
   FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
-  if (!flmd->target){
+  if (!flmd->target) {
     return true;
   }
   return false;
@@ -117,7 +111,7 @@ ModifierTypeInfo modifierType_FeatureLine = {
     /* applyModifier */ applyModifier,
 
     /* initData */ initData,
-    /* requiredDataMask */ requiredDataMask,
+    /* requiredDataMask */ NULL,
     /* freeData */ freeData,
     /* isDisabled */ isDisabled,
     /* updateDepsgraph */ NULL,

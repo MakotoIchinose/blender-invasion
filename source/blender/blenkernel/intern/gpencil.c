@@ -1009,7 +1009,6 @@ bGPDlayer *BKE_gpencil_layer_get_index(bGPdata *gpd, int index, int first_if_not
   return NULL;
 }
 
-
 /* set the active gp-layer */
 void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
 {

@@ -549,11 +549,10 @@ void lanpr_snake_draw_scene(LANPR_TextureList *txl,
   float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   copy_v3_v3(use_background_color, &scene->world->horr);
-  use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
+  use_background_color[3] = scene->r.alphamode ? 0.0f : 1.0f;
 
   GPU_framebuffer_bind(DefaultFB);
-  GPU_framebuffer_clear(
-      DefaultFB, clear_bits, use_background_color, clear_depth, clear_stencil);
+  GPU_framebuffer_clear(DefaultFB, clear_bits, use_background_color, clear_depth, clear_stencil);
 
   GPU_framebuffer_bind(fbl->edge_intermediate);
   clear_bits = GPU_COLOR_BIT;

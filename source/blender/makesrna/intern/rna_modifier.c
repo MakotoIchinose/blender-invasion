@@ -5982,13 +5982,14 @@ static void rna_def_modifier_featureline(BlenderRNA *brna)
   prop = RNA_def_property(srna, "layer", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(prop, "Layer", "GPencil layer to put the results into");
+  RNA_def_property_ui_text(prop, "Layer", "Grease Pencil layer to put the results into");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(prop, "Material", "GPencil material to use to generate the results");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material to use to generate the results");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);

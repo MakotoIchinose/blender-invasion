@@ -217,7 +217,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   static int zero_value = 0;
 
   copy_v3_v3(use_background_color, &scene->world->horr);
-  use_background_color[3] = scene->r.alphamode?0.0f:1.0f;
+  use_background_color[3] = scene->r.alphamode ? 0.0f : 1.0f;
 
   GPU_framebuffer_bind(fbl->software_ms);
   GPU_framebuffer_clear(
@@ -447,9 +447,9 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
   }
 }
 
-void ED_lanpr_update_render_progress(const char* text)
+void ED_lanpr_update_render_progress(const char *text)
 {
-  if(lanpr_share.re_render){
-    RE_engine_update_stats(lanpr_share.re_render,NULL,text);
+  if (lanpr_share.re_render) {
+    RE_engine_update_stats(lanpr_share.re_render, NULL, text);
   }
 }
