@@ -215,7 +215,7 @@ static void file_draw_preview(uiBlock *block,
 
   /* shadow */
   if (use_dropshadow) {
-    UI_draw_box_shadow(128, (float)(xco), (float)(yco), (float)(xco + ex), (float)(yco + ey));
+    UI_draw_box_shadow(128, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
   }
 
   GPU_blend(true);
@@ -253,25 +253,24 @@ static void file_draw_preview(uiBlock *block,
   if (icon && (icon != ICON_FILE_FONT)) {
     /* size of center icon is scaled to fit container and UI scale */
     float icon_x, icon_y;
+
     if (is_icon) {
-      float icon_size = 16.0f / icon_aspect * U.dpi_fac;
-      icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
-      if (typeflags & FILE_TYPE_DIR) {
-        icon_y = yco + (ey / 2.0f) - (icon_size * 0.78f);
-      }
-      else {
-        icon_y = yco + (ey / 2.0f) - (icon_size * 0.65f);
-      }
+      const float icon_size = 16.0f / icon_aspect * U.dpi_fac;
       float icon_opacity = MIN2(icon_aspect, 0.8);
+
+      icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
+      icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.65f));
       UI_icon_draw_ex(
           icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, NULL, false);
     }
     else {
+      const uchar dark[4] = {0, 0, 0, 255};
+      const uchar light[4] = {255, 255, 255, 255};
+
       /* Smaller, fainter icon for preview image thumbnail. */
       icon_x = xco + (2.0f * UI_DPI_FAC);
       icon_y = yco + (2.0f * UI_DPI_FAC);
-      uchar dark[4] = {0, 0, 0, 255};
-      uchar light[4] = {255, 255, 255, 255};
+
       UI_icon_draw_ex(icon_x + 1, icon_y - 1, icon, 1.0f / U.dpi_fac, 0.2f, 0.0f, dark, false);
       UI_icon_draw_ex(icon_x, icon_y, icon, 1.0f / U.dpi_fac, 0.6f, 0.0f, light, false);
     }
@@ -290,9 +289,9 @@ static void file_draw_preview(uiBlock *block,
     immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.10f);
     immVertex2f(pos_attr, (float)(xco + ex), (float)(yco + ey));
     immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.15f);
-    immVertex2f(pos_attr, (float)(xco + ex), (float)(yco));
+    immVertex2f(pos_attr, (float)(xco + ex), (float)yco);
     immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.2f);
-    immVertex2f(pos_attr, (float)(xco), (float)(yco));
+    immVertex2f(pos_attr, (float)xco, (float)yco);
     immEnd();
     immUnbindProgram();
   }
@@ -771,8 +770,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
     else {
       const int txpos = (params->display == FILE_IMGDISPLAY) ? sx : sx + 1 + icon_ofs;
       const int typos = (params->display == FILE_IMGDISPLAY) ?
-                           sy - layout->tile_h + layout->textheight :
-                           sy - layout->tile_border_y;
+                            sy - layout->tile_h + layout->textheight :
+                            sy - layout->tile_border_y;
       const int twidth = (params->display == FILE_IMGDISPLAY) ?
                              textwidth :
                              textwidth - 1 - icon_ofs - padx - layout->tile_border_x;
