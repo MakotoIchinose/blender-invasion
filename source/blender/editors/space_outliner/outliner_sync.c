@@ -112,15 +112,22 @@ typedef struct SyncSelectTypes {
   bool sequence;
 } SyncSelectTypes;
 
-/** Set which types of data to sync when syncing selection from the outliner. */
-static void outliner_sync_select_from_outliner_set_types(SpaceOutliner *soops,
+/**
+ * Set which types of data to sync when syncing selection from the outliner based on object
+ * interaction mode and outliner display mode
+ */
+static void outliner_sync_select_from_outliner_set_types(bContext *C,
+                                                         SpaceOutliner *soops,
                                                          SyncSelectTypes *sync_types)
 {
+  Object *obact = CTX_data_active_object(C);
+  Object *obedit = CTX_data_edit_object(C);
+
   const bool sequence_view = soops->outlinevis == SO_SEQUENCE;
 
-  sync_types->object = !sequence_view;
-  sync_types->edit_bone = !sequence_view;
-  sync_types->pose_bone = !sequence_view;
+  sync_types->object = !sequence_view && (obact && obact->mode == OB_MODE_OBJECT);
+  sync_types->edit_bone = !sequence_view && (obedit && obedit->type == OB_ARMATURE);
+  sync_types->pose_bone = !sequence_view && (obact && obact->mode == OB_MODE_POSE);
   sync_types->sequence = sequence_view;
 }
 
@@ -128,16 +135,20 @@ static void outliner_sync_select_from_outliner_set_types(SpaceOutliner *soops,
  * Current dirty flags and outliner display mode determine which type of syncing should occur.
  * This is to ensure sync flag data is not lost on sync in the wrong display mode.
  */
-static void outliner_sync_select_to_outliner_set_types(SpaceOutliner *soops,
+static void outliner_sync_select_to_outliner_set_types(const bContext *C,
+                                                       SpaceOutliner *soops,
                                                        SyncSelectTypes *sync_types)
 {
+  Object *obact = CTX_data_active_object(C);
+  Object *obedit = CTX_data_edit_object(C);
+
   const bool sequence_view = soops->outlinevis == SO_SEQUENCE;
 
-  sync_types->object = !sequence_view &&
+  sync_types->object = !sequence_view && (obact && obact->mode == OB_MODE_OBJECT) &&
                        (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_OBJECT);
-  sync_types->edit_bone = !sequence_view &&
+  sync_types->edit_bone = !sequence_view && (obedit && obedit->type == OB_ARMATURE) &&
                           (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE);
-  sync_types->pose_bone = !sequence_view &&
+  sync_types->pose_bone = !sequence_view && (obact && obact->mode == OB_MODE_POSE) &&
                           (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE);
   sync_types->sequence = sequence_view &&
                          (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE);
@@ -263,7 +274,7 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   SyncSelectTypes sync_types;
-  outliner_sync_select_from_outliner_set_types(soops, &sync_types);
+  outliner_sync_select_from_outliner_set_types(C, soops, &sync_types);
 
   outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, &sync_types);
 
@@ -438,7 +449,7 @@ void outliner_sync_selection(const bContext *C, SpaceOutliner *soops)
 
     /* Set which types of data to sync from sync dirty flag and outliner display mode */
     SyncSelectTypes sync_types;
-    outliner_sync_select_to_outliner_set_types(soops, &sync_types);
+    outliner_sync_select_to_outliner_set_types(C, soops, &sync_types);
 
     /* Store active object, bones, and sequence */
     SyncSelectActiveData active_data;
