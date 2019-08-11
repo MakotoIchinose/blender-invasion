@@ -280,18 +280,19 @@ static void file_draw_preview(uiBlock *block,
   /* border */
   if (use_dropshadow) {
     GPUVertFormat *format = immVertexFormat();
-    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    uint pos_attr = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    uint col_attr = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
     immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
     immBegin(GPU_PRIM_LINE_LOOP, 4);
-    immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.07f);
-    immVertex2f(pos, (float)xco, (float)(yco + ey));
-    immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.10f);
-    immVertex2f(pos, (float)(xco + ex), (float)(yco + ey));
-    immAttr4f(col, 0.0f, 0.0f, 0.0f, 0.15f);
-    immVertex2f(pos, (float)(xco + ex), (float)(yco));
-    immAttr4f(col, 0.0f, 0.0f, 0.0f, 0.2f);
-    immVertex2f(pos, (float)(xco), (float)(yco));
+    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.07f);
+    immVertex2f(pos_attr, (float)xco, (float)(yco + ey));
+    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.10f);
+    immVertex2f(pos_attr, (float)(xco + ex), (float)(yco + ey));
+    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.15f);
+    immVertex2f(pos_attr, (float)(xco + ex), (float)(yco));
+    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.2f);
+    immVertex2f(pos_attr, (float)(xco), (float)(yco));
     immEnd();
     immUnbindProgram();
   }
