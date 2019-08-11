@@ -211,7 +211,7 @@ static void file_draw_preview(uiBlock *block,
   dx = (fx + 0.5f + layout->prv_border_x);
   dy = (fy + 0.5f - layout->prv_border_y);
   xco = sx + (int)dx;
-  yco = sy - layout->prv_h;
+  yco = sy - layout->prv_h + (int)dy;
 
   /* shadow */
   if (use_dropshadow) {
@@ -296,7 +296,6 @@ static void file_draw_preview(uiBlock *block,
   }
 
   but = uiDefBut(block, UI_BTYPE_LABEL, 0, "", xco, yco, ex, ey, NULL, 0.0, 0.0, 0, 0, NULL);
-  UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path));
 
   /* dragregion */
   if (drag) {
@@ -768,16 +767,14 @@ void file_draw_list(const bContext *C, ARegion *ar)
       }
     }
     else {
-      const int tpos = (FILE_IMGDISPLAY == params->display) ?
+      const int txpos = (params->display == FILE_IMGDISPLAY) ? sx : sx + 1 + icon_ofs;
+      const int typos = (params->display == FILE_IMGDISPLAY) ?
                            sy - layout->tile_h + layout->textheight :
                            sy - layout->tile_border_y;
-      file_draw_string(sx + 1 + icon_ofs,
-                       tpos,
-                       file->name,
-                       (float)textwidth - 1 - icon_ofs - padx - layout->tile_border_x,
-                       textheight,
-                       align,
-                       text_col);
+      const int twidth = (params->display == FILE_IMGDISPLAY) ?
+                             textwidth :
+                             textwidth - 1 - icon_ofs - padx - layout->tile_border_x;
+      file_draw_string(txpos, typos, file->name, (float)twidth, textheight, align, text_col);
     }
 
     if (params->display != FILE_IMGDISPLAY) {
