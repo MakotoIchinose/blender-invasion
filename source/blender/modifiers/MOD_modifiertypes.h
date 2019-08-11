@@ -80,7 +80,7 @@ extern ModifierTypeInfo modifierType_NormalEdit;
 extern ModifierTypeInfo modifierType_CorrectiveSmooth;
 extern ModifierTypeInfo modifierType_MeshSequenceCache;
 extern ModifierTypeInfo modifierType_SurfaceDeform;
-extern ModifierTypeInfo modifierType_MyBMesh;
+extern ModifierTypeInfo modifierType_SmoothContour;
 extern ModifierTypeInfo modifierType_WeightedNormal;
 extern ModifierTypeInfo modifierType_FeatureLine;
 

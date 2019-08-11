@@ -104,8 +104,8 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_WIREFRAME,
      "Wireframe",
      "Generate a wireframe on the edges of a mesh"},
-    {eModifierType_MyBMesh,
-     "MY_BMESH",
+    {eModifierType_SmoothContour,
+     "SMOOTH_CONTOUR",
      ICON_MOD_SMOOTH,
      "Smooth Contour",
      "Generate smooth contour geometry for feature line rendering."},
@@ -583,8 +583,8 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_SurfaceDeformModifier;
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
-    case eModifierType_MyBMesh:
-      return &RNA_MyBMeshModifier;
+    case eModifierType_SmoothContour:
+      return &RNA_SmoothContourModifier;
     case eModifierType_FeatureLine:
       return &RNA_FeatureLineModifier;
     /* Default */
@@ -5862,9 +5862,9 @@ static void rna_def_modifier_mybmesh(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "MyBMeshModifier", "Modifier");
+  srna = RNA_def_struct(brna, "SmoothContourModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Wireframe Modifier", "Wireframe effect modifier");
-  RNA_def_struct_sdna(srna, "MyBMeshModifierData");
+  RNA_def_struct_sdna(srna, "SmoothContourModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_MESHDEFORM);
 
   prop = RNA_def_property(srna, "do_tri", PROP_BOOLEAN, PROP_NONE);

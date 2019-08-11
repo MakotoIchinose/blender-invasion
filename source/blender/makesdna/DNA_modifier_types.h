@@ -88,7 +88,7 @@ typedef enum ModifierType {
   eModifierType_MeshSequenceCache = 52,
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
-  eModifierType_MyBMesh = 55,
+  eModifierType_SmoothContour = 55,
   eModifierType_FeatureLine = 56,
   NUM_MODIFIER_TYPES,
 } ModifierType;
@@ -1768,13 +1768,13 @@ enum {
 };
 
 /* Modifier data stored in the blend file */
-typedef struct MyBMeshModifierData {
+typedef struct SmoothContourModifierData {
   ModifierData modifier;
   struct Object *camera_ob;
   void *osd_eval;
   int flag; /* options stored here */
   short _pad[2];
-} MyBMeshModifierData;
+} SmoothContourModifierData;
 
 typedef struct DataTransferModifierData {
   ModifierData modifier;

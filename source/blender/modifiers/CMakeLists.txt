@@ -71,7 +71,6 @@ set(SRC
 	intern/MOD_meshsequencecache.c
 	intern/MOD_mirror.c
 	intern/MOD_multires.c
-	intern/MOD_mybmesh.c
 	intern/MOD_none.c
 	intern/MOD_normal_edit.c
 	intern/MOD_ocean.c
@@ -85,6 +84,7 @@ set(SRC
 	intern/MOD_skin.c
 	intern/MOD_smoke.c
 	intern/MOD_smooth.c
+	intern/MOD_smoothcontour.c
 	intern/MOD_softbody.c
 	intern/MOD_solidify.c
 	intern/MOD_subsurf.c

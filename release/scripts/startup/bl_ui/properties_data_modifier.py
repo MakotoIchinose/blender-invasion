@@ -677,7 +677,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             row.operator("object.multires_external_save", text="Save External...")
             row.label()
 
-    def MY_BMESH(self, layout, ob, md):
+    def SMOOTH_CONTOUR(self, layout, ob, md):
         split = layout.split(factor=0.25)
 
         col = split.column()
