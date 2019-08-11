@@ -59,7 +59,7 @@ class FILEBROWSER_PT_display(Panel):
         params = space.params
         is_lib_browser = params.use_library_browsing
 
-        layout.label(text="Display As")
+        layout.label(text="Display as")
         layout.column().prop(params, "display_type", expand=True)
 
         layout.use_property_split = True
@@ -76,7 +76,7 @@ class FILEBROWSER_PT_display(Panel):
         layout.use_property_split = False
         layout.separator()
 
-        layout.label(text="Sort By")
+        layout.label(text="Sort by")
         layout.column().prop(params, "sort_method", expand=True)
         layout.prop(params, "use_sort_invert")
 
@@ -101,7 +101,7 @@ class FILEBROWSER_PT_filter(Panel):
 
         row = layout.row(align=True)
         row.prop(params, "use_filter", text="", toggle=0)
-        row.label(text="Filter:")
+        row.label(text="Filter")
 
         col = layout.column()
         col.active = params.use_filter
