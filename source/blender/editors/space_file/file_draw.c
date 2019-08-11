@@ -412,7 +412,7 @@ static void draw_columnheader_background(const FileLayout *layout, const View2D 
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  immUniformThemeColorShade(TH_BACK, 7);
+  immUniformThemeColorShade(TH_BACK, 11);
 
   immRectf(
       pos, v2d->cur.xmin, v2d->cur.ymax - layout->columnheader_h, v2d->cur.xmax, v2d->cur.ymax);
