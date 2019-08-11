@@ -3774,6 +3774,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
 
   rb->max_occlusion_level = lanpr_get_max_occlusion_level(depsgraph);
 
+  ED_lanpr_update_render_progress("LANPR: Loading geometries.");
+
   lanpr_make_render_geometry_buffers(depsgraph, rb->scene, rb->scene->camera, rb);
 
   lanpr_compute_view_Vector(rb);
@@ -3787,11 +3789,17 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
     lanpr_compute_scene_contours(rb, lanpr->crease_threshold);
   }
 
+  ED_lanpr_update_render_progress("LANPR: Computing intersections.");
+
   lanpr_add_triangles(rb);
+
+  ED_lanpr_update_render_progress("LANPR: Computing line occlusion.");
 
   if (!intersectons_only) {
     lanpr_THREAD_calculate_line_occlusion_begin(rb);
   }
+
+  ED_lanpr_update_render_progress("LANPR: Chaining.");
 
   /* When not using LANPR engine, chaining is forced in order to generate data for GPencil. */
   if ((lanpr->enable_chaining || !is_lanpr_engine) && (!intersectons_only)) {

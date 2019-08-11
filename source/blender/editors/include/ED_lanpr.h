@@ -356,6 +356,9 @@ typedef struct LANPR_SharedResource {
   int init_complete;
 
   SpinLock render_flag_lock;
+
+  /** Set before rendering and cleared upon finish! */
+  struct RenderEngine* re_render;
 } LANPR_SharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8
@@ -851,6 +854,8 @@ void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 struct SceneLANPR;
 
 void ED_lanpr_rebuild_all_command(struct SceneLANPR *lanpr);
+
+void ED_lanpr_update_render_progress(const char* text);
 
 void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction);
 

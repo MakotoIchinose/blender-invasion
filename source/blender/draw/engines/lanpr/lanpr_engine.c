@@ -655,6 +655,10 @@ static void lanpr_render_to_image(void *vedata,
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
 
+  lanpr_share.re_render = engine;
+
+  RE_engine_update_stats(engine, NULL, "LANPR: Initializing");
+
   if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
       (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->enable_intersections)) {
     if (!lanpr_share.render_buffer_shared) {
@@ -719,8 +723,8 @@ static void lanpr_render_to_image(void *vedata,
                              0,
                              rp->rect);
 
-  /*  we don't need to free pass/buffer/texture in the engine's list */
-  /*  lanpr_engine_free(); */
+  /* Must clear to avoid other problems. */
+  lanpr_share.re_render = NULL;
 }
 
 static void lanpr_view_update(void *UNUSED(vedata))

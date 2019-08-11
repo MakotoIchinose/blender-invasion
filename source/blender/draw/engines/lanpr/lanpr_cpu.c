@@ -448,3 +448,10 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     DRW_view_set_active(NULL);
   }
 }
+
+void ED_lanpr_update_render_progress(const char* text)
+{
+  if(lanpr_share.re_render){
+    RE_engine_update_stats(lanpr_share.re_render,NULL,text);
+  }
+}
