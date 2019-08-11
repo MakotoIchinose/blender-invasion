@@ -123,10 +123,6 @@ class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
         if context.object.type == 'MESH':
             layout.prop(lanpr,'usage')
 
-        if context.object.type == 'GPENCIL':
-            layout.prop(context.scene.lanpr,"gpencil_overwrite", text="Overwrite Frame")
-            layout.operator("object.lanpr_update_gp_target")
-
 
 classes = (
     OBJECT_PT_lanpr,
