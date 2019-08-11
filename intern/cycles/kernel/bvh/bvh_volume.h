@@ -134,6 +134,7 @@ ccl_device_inline
                                        shufflexyz,
                                        node_addr,
                                        visibility,
+                                       ray->time,
                                        dist);
 #endif  // __KERNEL_SSE2__
 

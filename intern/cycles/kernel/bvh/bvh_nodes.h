@@ -190,34 +190,59 @@ int ccl_device_forceinline bvh_aligned_node_intersect(KernelGlobals *kg,
                                                       const ssef Psplat[3],
                                                       const ssef idirsplat[3],
                                                       const shuffle_swap_t shufflexyz[3],
-                                                      const int node_addr,
+                                                      int node_addr,
                                                       const uint visibility,
+                                                      const float rayTime,
                                                       float dist[2])
 {
   /* Intersect two child bounding boxes, SSE3 version adapted from Embree */
   const ssef pn = cast(ssei(0, 0, 0x80000000, 0x80000000));
 
   /* fetch node data */
-  const ssef *bvh_nodes = (ssef *)kg->__bvh_nodes.data + node_addr;
+  const ssef *bvh_nodes = (ssef *)kg->__bvh_nodes.data;
 
   /* intersect ray against child nodes */
-  const ssef tminmaxx = (shuffle_swap(bvh_nodes[1], shufflexyz[0]) - Psplat[0]) * idirsplat[0];
-  const ssef tminmaxy = (shuffle_swap(bvh_nodes[2], shufflexyz[1]) - Psplat[1]) * idirsplat[1];
-  const ssef tminmaxz = (shuffle_swap(bvh_nodes[3], shufflexyz[2]) - Psplat[2]) * idirsplat[2];
+  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr++);
+  ssef x = bvh_nodes[node_addr++];
+  ssef y = bvh_nodes[node_addr++];
+  ssef z = bvh_nodes[node_addr++];
+
+  if (__float_as_uint(cnodes.x) & PATH_RAY_NODE_MB) {
+    const ssef dx = bvh_nodes[node_addr++];
+    const ssef dy = bvh_nodes[node_addr++];
+    const ssef dz = bvh_nodes[node_addr++];
+
+    x += rayTime * dx;
+    y += rayTime * dy;
+    z += rayTime * dz;
+  }
+
+  /* intersect ray against child nodes */
+  const ssef tminmaxx = (shuffle_swap(x, shufflexyz[0]) - Psplat[0]) * idirsplat[0];
+  const ssef tminmaxy = (shuffle_swap(y, shufflexyz[1]) - Psplat[1]) * idirsplat[1];
+  const ssef tminmaxz = (shuffle_swap(z, shufflexyz[2]) - Psplat[2]) * idirsplat[2];
 
   /* calculate { c0min, c1min, -c0max, -c1max} */
   ssef minmax = max(max(tminmaxx, tminmaxy), max(tminmaxz, tsplat));
   const ssef tminmax = minmax ^ pn;
-  const sseb lrhit = tminmax <= shuffle<2, 3, 0, 1>(tminmax);
+  sseb lrhit = tminmax <= shuffle<2, 3, 0, 1>(tminmax);
 
   dist[0] = tminmax[0];
   dist[1] = tminmax[1];
+
+  if (__float_as_uint(cnodes.x) & PATH_RAY_NODE_4D) {
+    const ssef timeLimit = bvh_nodes[node_addr++];
+
+    const sseb timeMin = timeLimit < rayTime;
+    const sseb timeMax = timeLimit > rayTime;
+
+    lrhit &= timeMin & shuffle<2, 3, 0, 1>(timeMax);
+  }
 
   int mask = movemask(lrhit);
 
 #  ifdef __VISIBILITY_FLAG__
   /* this visibility test gives a 5% performance hit, how to solve? */
-  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr + 0);
   int cmask = (((mask & 1) && (__float_as_uint(cnodes.x) & visibility)) ? 1 : 0) |
               (((mask & 2) && (__float_as_uint(cnodes.y) & visibility)) ? 2 : 0);
   return cmask;
@@ -289,6 +314,7 @@ ccl_device_forceinline int bvh_node_intersect(KernelGlobals *kg,
                                               const shuffle_swap_t shufflexyz[3],
                                               const int node_addr,
                                               const uint visibility,
+                                              const float rayTime,
                                               float dist[2])
 {
   float4 node = kernel_tex_fetch(__bvh_nodes, node_addr);
@@ -298,7 +324,7 @@ ccl_device_forceinline int bvh_node_intersect(KernelGlobals *kg,
   }
   else {
     return bvh_aligned_node_intersect(
-        kg, P, dir, tsplat, Psplat, idirsplat, shufflexyz, node_addr, visibility, dist);
+        kg, P, dir, tsplat, Psplat, idirsplat, shufflexyz, node_addr, visibility, rayTime, dist);
   }
 }
 #endif /* !defined(__KERNEL_SSE2__) */

@@ -135,6 +135,7 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals *kg,
                                          shufflexyz,
                                          node_addr,
                                          visibility,
+                                         ray->time,
                                          dist);
         }
 #endif  // __KERNEL_SSE2__
