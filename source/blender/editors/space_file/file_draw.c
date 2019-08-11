@@ -176,7 +176,8 @@ static void file_draw_preview(uiBlock *block,
   float scaledx, scaledy;
   float scale;
   int ex, ey;
-  bool use_dropshadow = !is_icon && (typeflags & FILE_TYPE_IMAGE);
+  bool use_dropshadow = !is_icon &&
+                        (typeflags & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
   BLI_assert(imb != NULL);
@@ -210,11 +211,11 @@ static void file_draw_preview(uiBlock *block,
   dx = (fx + 0.5f + layout->prv_border_x);
   dy = (fy + 0.5f - layout->prv_border_y);
   xco = sx + (int)dx;
-  yco = sy - layout->prv_h + (int)dy;
+  yco = sy - layout->prv_h;
 
   /* shadow */
   if (use_dropshadow) {
-    UI_draw_box_shadow(220, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
+    UI_draw_box_shadow(128, (float)(xco), (float)(yco), (float)(xco + ex), (float)(yco + ey));
   }
 
   GPU_blend(true);
@@ -249,25 +250,48 @@ static void file_draw_preview(uiBlock *block,
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
-  if (icon) {
-    UI_icon_draw_ex((float)xco + (7 * UI_DPI_FAC),
-                    (float)yco + (7 * UI_DPI_FAC),
-                    icon,
-                    icon_aspect,
-                    1.0f,
-                    0.0f,
-                    NULL,
-                    false);
+  if (icon && (icon != ICON_FILE_FONT)) {
+    /* size of center icon is scaled to fit container and UI scale */
+    float icon_x, icon_y;
+    if (is_icon) {
+      float icon_size = 16.0f / icon_aspect * U.dpi_fac;
+      icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
+      if (typeflags & FILE_TYPE_DIR) {
+        icon_y = yco + (ey / 2.0f) - (icon_size * 1.52f);
+      }
+      else {
+        icon_y = yco + (ey / 2.0f) - (icon_size * 1.0f);
+      }
+      UI_icon_draw_ex(
+          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_aspect, 0.0f, NULL, false);
+    }
+    else {
+      /* Smaller, fainter icon for preview image thumbnail. */
+      icon_x = xco + (2.0f * UI_DPI_FAC);
+      icon_y = yco + (2.0f * UI_DPI_FAC);
+      uchar dark[4] = {0, 0, 0, 255};
+      uchar light[4] = {255, 255, 255, 255};
+      UI_icon_draw_ex(icon_x + 1, icon_y - 1, icon, 1.0f / U.dpi_fac, 0.2f, 0.0f, dark, false);
+      UI_icon_draw_ex(icon_x, icon_y, icon, 1.0f / U.dpi_fac, 0.6f, 0.0f, light, false);
+    }
   }
 
   /* border */
   if (use_dropshadow) {
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-    immUniformColor4f(0.0f, 0.0f, 0.0f, 0.4f);
-    imm_draw_box_wire_2d(pos, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
+    uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
+    immBegin(GPU_PRIM_LINE_LOOP, 4);
+    immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.07f);
+    immVertex2f(pos, (float)xco, (float)(yco + ey));
+    immAttr4f(col, 1.0f, 1.0f, 1.0f, 0.10f);
+    immVertex2f(pos, (float)(xco + ex), (float)(yco + ey));
+    immAttr4f(col, 0.0f, 0.0f, 0.0f, 0.15f);
+    immVertex2f(pos, (float)(xco + ex), (float)(yco));
+    immAttr4f(col, 0.0f, 0.0f, 0.0f, 0.2f);
+    immVertex2f(pos, (float)(xco), (float)(yco));
+    immEnd();
     immUnbindProgram();
   }
 
@@ -582,7 +606,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
   bool do_drag;
   unsigned char text_col[4];
   const bool draw_columnheader = (params->display == FILE_VERTICALDISPLAY);
-  const float thumb_icon_aspect = sqrtf(64.0f / (float)(params->thumbnail_size));
+  const float thumb_icon_aspect = MIN2(64.0f / (float)(params->thumbnail_size), 1.0f);
 
   numfiles = filelist_files_ensure(files);
 

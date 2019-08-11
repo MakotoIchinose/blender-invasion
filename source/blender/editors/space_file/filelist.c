@@ -332,23 +332,14 @@ enum {
   FL_SORT_INVERT = 1 << 5,
 };
 
-#define SPECIAL_IMG_SIZE 48
-#define SPECIAL_IMG_ROWS 4
-#define SPECIAL_IMG_COLS 4
+#define SPECIAL_IMG_SIZE 256
+#define SPECIAL_IMG_ROWS 1
+#define SPECIAL_IMG_COLS 3
 
 enum {
-  SPECIAL_IMG_FOLDER = 0,
-  SPECIAL_IMG_PARENT = 1,
-  SPECIAL_IMG_REFRESH = 2,
-  SPECIAL_IMG_BLENDFILE = 3,
-  SPECIAL_IMG_SOUNDFILE = 4,
-  SPECIAL_IMG_MOVIEFILE = 5,
-  SPECIAL_IMG_PYTHONFILE = 6,
-  SPECIAL_IMG_TEXTFILE = 7,
-  SPECIAL_IMG_FONTFILE = 8,
-  SPECIAL_IMG_UNKNOWNFILE = 9,
-  SPECIAL_IMG_LOADING = 10,
-  SPECIAL_IMG_BACKUP = 11,
+  SPECIAL_IMG_DOCUMENT = 0,
+  SPECIAL_IMG_FOLDER = 1,
+  SPECIAL_IMG_PARENT = 3,
   SPECIAL_IMG_MAX,
 };
 
@@ -925,42 +916,12 @@ static ImBuf *filelist_geticon_image_ex(const unsigned int typeflag, const char 
     if (FILENAME_IS_PARENT(relpath)) {
       ibuf = gSpecialFileImages[SPECIAL_IMG_PARENT];
     }
-    else if (FILENAME_IS_CURRENT(relpath)) {
-      ibuf = gSpecialFileImages[SPECIAL_IMG_REFRESH];
-    }
     else {
       ibuf = gSpecialFileImages[SPECIAL_IMG_FOLDER];
     }
   }
-  else if (typeflag & FILE_TYPE_BLENDER) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_BLENDFILE];
-  }
-  else if (typeflag & FILE_TYPE_BLENDERLIB) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_UNKNOWNFILE];
-  }
-  else if (typeflag & (FILE_TYPE_MOVIE)) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_MOVIEFILE];
-  }
-  else if (typeflag & FILE_TYPE_SOUND) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_SOUNDFILE];
-  }
-  else if (typeflag & FILE_TYPE_PYSCRIPT) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_PYTHONFILE];
-  }
-  else if (typeflag & FILE_TYPE_FTFONT) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_FONTFILE];
-  }
-  else if (typeflag & FILE_TYPE_TEXT) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_TEXTFILE];
-  }
-  else if (typeflag & FILE_TYPE_IMAGE) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_LOADING];
-  }
-  else if (typeflag & FILE_TYPE_BLENDER_BACKUP) {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_BACKUP];
-  }
   else {
-    ibuf = gSpecialFileImages[SPECIAL_IMG_UNKNOWNFILE];
+    ibuf = gSpecialFileImages[SPECIAL_IMG_DOCUMENT];
   }
 
   return ibuf;
