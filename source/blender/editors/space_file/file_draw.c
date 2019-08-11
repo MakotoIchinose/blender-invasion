@@ -257,13 +257,14 @@ static void file_draw_preview(uiBlock *block,
       float icon_size = 16.0f / icon_aspect * U.dpi_fac;
       icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
       if (typeflags & FILE_TYPE_DIR) {
-        icon_y = yco + (ey / 2.0f) - (icon_size * 1.52f);
+        icon_y = yco + (ey / 2.0f) - (icon_size * 0.78f);
       }
       else {
-        icon_y = yco + (ey / 2.0f) - (icon_size * 1.0f);
+        icon_y = yco + (ey / 2.0f) - (icon_size * 0.65f);
       }
+      float icon_opacity = MIN2(icon_aspect, 0.8);
       UI_icon_draw_ex(
-          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_aspect, 0.0f, NULL, false);
+          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, NULL, false);
     }
     else {
       /* Smaller, fainter icon for preview image thumbnail. */
