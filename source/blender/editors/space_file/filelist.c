@@ -983,10 +983,22 @@ static int filelist_geticon_ex(const int typeflag,
     return ICON_FILE_BLANK;
   }
   else if (typeflag & FILE_TYPE_COLLADA) {
-    return ICON_FILE_BLANK;
+    return ICON_FILE_3D;
+  }
+  else if (typeflag & FILE_TYPE_OBJ) {
+    return ICON_FILE_3D;
+  }
+  else if (typeflag & FILE_TYPE_FBX) {
+    return ICON_FILE_3D;
+  }
+  else if (typeflag & FILE_TYPE_3DS) {
+    return ICON_FILE_3D;
+  }
+  else if (typeflag & FILE_TYPE_GLTF) {
+    return ICON_FILE_3D;
   }
   else if (typeflag & FILE_TYPE_ALEMBIC) {
-    return ICON_FILE_BLANK;
+    return ICON_FILE_3D;
   }
   else if (typeflag & FILE_TYPE_TEXT) {
     return ICON_FILE_TEXT;
@@ -2110,6 +2122,21 @@ int ED_path_extension_type(const char *path)
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
   }
+  else if (BLI_path_extension_check(path, ".obj")) {
+    return FILE_TYPE_OBJ;
+  }
+  else if (BLI_path_extension_check(path, ".3ds")) {
+    return FILE_TYPE_3DS;
+  }
+  else if (BLI_path_extension_check(path, ".fbx")) {
+    return FILE_TYPE_FBX;
+  }
+  else if (BLI_path_extension_check(path, ".glb")) {
+    return FILE_TYPE_GLTF;
+  }
+  else if (BLI_path_extension_check(path, ".gltf")) {
+    return FILE_TYPE_GLTF;
+  }
   else if (BLI_path_extension_check_array(path, imb_ext_image)) {
     return FILE_TYPE_IMAGE;
   }
@@ -2159,9 +2186,17 @@ int ED_file_extension_icon(const char *path)
     case FILE_TYPE_BTX:
       return ICON_FILE_BLANK;
     case FILE_TYPE_COLLADA:
-      return ICON_FILE_BLANK;
+      return ICON_FILE_3D;
     case FILE_TYPE_ALEMBIC:
-      return ICON_FILE_BLANK;
+      return ICON_FILE_3D;
+    case FILE_TYPE_3DS:
+      return ICON_FILE_3D;
+    case FILE_TYPE_OBJ:
+      return ICON_FILE_3D;
+    case FILE_TYPE_GLTF:
+      return ICON_FILE_3D;
+    case FILE_TYPE_FBX:
+      return ICON_FILE_3D;
     case FILE_TYPE_TEXT:
       return ICON_FILE_TEXT;
     default:
