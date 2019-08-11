@@ -743,7 +743,8 @@ void GPU_draw_primitive(GPUPrimType prim_type, int v_count)
 #if 0
 #  define USE_MULTI_DRAW_INDIRECT 0
 #else
-#  define USE_MULTI_DRAW_INDIRECT (GL_ARB_multi_draw_indirect && GLEW_ARB_base_instance)
+#  define USE_MULTI_DRAW_INDIRECT \
+    (GL_ARB_multi_draw_indirect && GPU_arb_base_instance_is_supported())
 #endif
 
 typedef struct GPUDrawCommand {
