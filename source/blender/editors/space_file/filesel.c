@@ -348,7 +348,7 @@ void ED_fileselect_reset_params(SpaceFile *sfile)
 void fileselect_file_set(SpaceFile *sfile, const int index)
 {
   const struct FileDirEntry *file = filelist_file(sfile->files, index);
-  if (file && file->relpath && file->relpath[0] && !(file->typeflag & FILE_TYPE_FOLDER)) {
+  if (file && file->relpath && file->relpath[0] && !(file->typeflag & FILE_TYPE_DIR)) {
     BLI_strncpy(sfile->params->file, file->relpath, FILE_MAXFILE);
   }
 }
