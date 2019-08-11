@@ -716,12 +716,8 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                (layout->tile_h + 2 * layout->tile_border_y);
     details_columns_init(params, layout);
 
-    if (numfiles && (int)rowcount / numfiles >= 1) {
-      layout->rows = rowcount;
-    }
-    else {
-      layout->rows = rowcount + (numfiles - rowcount);
-    }
+    layout->rows = MAX2(rowcount, numfiles);
+    BLI_assert(layout->rows != 0);
     layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
                      layout->tile_border_y * 2 + layout->offset_top;
     layout->flag = FILE_LAYOUT_VER;
