@@ -985,19 +985,10 @@ static int filelist_geticon_ex(const int typeflag,
   else if (typeflag & FILE_TYPE_COLLADA) {
     return ICON_FILE_3D;
   }
-  else if (typeflag & FILE_TYPE_OBJ) {
-    return ICON_FILE_3D;
-  }
-  else if (typeflag & FILE_TYPE_FBX) {
-    return ICON_FILE_3D;
-  }
-  else if (typeflag & FILE_TYPE_3DS) {
-    return ICON_FILE_3D;
-  }
-  else if (typeflag & FILE_TYPE_GLTF) {
-    return ICON_FILE_3D;
-  }
   else if (typeflag & FILE_TYPE_ALEMBIC) {
+    return ICON_FILE_3D;
+  }
+  else if (typeflag & FILE_TYPE_OBJECT_IO) {
     return ICON_FILE_3D;
   }
   else if (typeflag & FILE_TYPE_TEXT) {
@@ -1237,7 +1228,8 @@ static void filelist_cache_previews_clear(FileListEntryCache *cache)
     BLI_task_pool_cancel(cache->previews_pool);
 
     while ((preview = BLI_thread_queue_pop_timeout(cache->previews_done, 0))) {
-      // printf("%s: DONE %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
+      // printf("%s: DONE %d - %s - %p\n", __func__, preview->index, preview->path,
+      // preview->img);
       if (preview->img) {
         IMB_freeImBuf(preview->img);
       }
@@ -2122,20 +2114,8 @@ int ED_path_extension_type(const char *path)
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
   }
-  else if (BLI_path_extension_check(path, ".obj")) {
-    return FILE_TYPE_OBJ;
-  }
-  else if (BLI_path_extension_check(path, ".3ds")) {
-    return FILE_TYPE_3DS;
-  }
-  else if (BLI_path_extension_check(path, ".fbx")) {
-    return FILE_TYPE_FBX;
-  }
-  else if (BLI_path_extension_check(path, ".glb")) {
-    return FILE_TYPE_GLTF;
-  }
-  else if (BLI_path_extension_check(path, ".gltf")) {
-    return FILE_TYPE_GLTF;
+  else if (BLI_path_extension_check_n(path, ".obj", ".3ds", ".fbx", ".glb", "gltf", NULL)) {
+    return FILE_TYPE_OBJECT_IO;
   }
   else if (BLI_path_extension_check_array(path, imb_ext_image)) {
     return FILE_TYPE_IMAGE;
@@ -2186,16 +2166,8 @@ int ED_file_extension_icon(const char *path)
     case FILE_TYPE_BTX:
       return ICON_FILE_BLANK;
     case FILE_TYPE_COLLADA:
-      return ICON_FILE_3D;
     case FILE_TYPE_ALEMBIC:
-      return ICON_FILE_3D;
-    case FILE_TYPE_3DS:
-      return ICON_FILE_3D;
-    case FILE_TYPE_OBJ:
-      return ICON_FILE_3D;
-    case FILE_TYPE_GLTF:
-      return ICON_FILE_3D;
-    case FILE_TYPE_FBX:
+    case FILE_TYPE_OBJECT_IO:
       return ICON_FILE_3D;
     case FILE_TYPE_TEXT:
       return ICON_FILE_TEXT;
