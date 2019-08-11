@@ -93,10 +93,10 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
                 
                 if lanpr.use_multiple_levels:
                     col = layout.column(align=True)
-                    col.prop(lanpr,'level_begin',text="Level Begin")
+                    col.prop(lanpr,'level_start',text="Level Begin")
                     col.prop(lanpr,'level_end',text="End")
                 else:
-                    layout.prop(lanpr,'level_begin',text="Level")
+                    layout.prop(lanpr,'level_start',text="Level")
 
                 layout.prop(lanpr,'enable_contour')
                 layout.prop(lanpr,'enable_crease')

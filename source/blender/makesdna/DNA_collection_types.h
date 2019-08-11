@@ -60,7 +60,7 @@ typedef struct CollectionLANPR {
   int layer;
   int material;
   int use_multiple_levels;
-  int level_begin;
+  int level_start;
   int level_end;
 } CollectionLANPR;
 

@@ -2641,10 +2641,10 @@ static int lanpr_max_occlusion_in_collections(Collection *c)
   int max_occ = 0;
   int max;
   if (c->lanpr.use_multiple_levels) {
-    max = MAX2(c->lanpr.level_begin, c->lanpr.level_end);
+    max = MAX2(c->lanpr.level_start, c->lanpr.level_end);
   }
   else {
-    max = c->lanpr.level_begin;
+    max = c->lanpr.level_start;
   }
   max_occ = MAX2(max, max_occ);
 
@@ -2672,10 +2672,10 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
         FeatureLineModifierData *flmd = (FeatureLineModifierData *)md;
         if (flmd->target) {
           if (flmd->use_multiple_levels) {
-            max = MAX2(flmd->level_begin, flmd->level_end);
+            max = MAX2(flmd->level_start, flmd->level_end);
           }
           else {
-            max = flmd->level_begin;
+            max = flmd->level_start;
           }
           max_occ = MAX2(max, max_occ);
         }
@@ -4044,9 +4044,9 @@ static void lanpr_update_gp_strokes_recursive(
                                             ob,
                                             gpl,
                                             gpf,
-                                            flmd->level_begin,
+                                            flmd->level_start,
                                             flmd->use_multiple_levels ? flmd->level_end :
-                                                                        flmd->level_begin,
+                                                                        flmd->level_start,
                                             flmd->material,
                                             NULL,
                                             flmd->types);
@@ -4109,9 +4109,9 @@ static void lanpr_update_gp_strokes_collection(
                                     NULL,
                                     gpl,
                                     gpf,
-                                    col->lanpr.level_begin,
+                                    col->lanpr.level_start,
                                     col->lanpr.use_multiple_levels ? col->lanpr.level_end :
-                                                                     col->lanpr.level_begin,
+                                                                     col->lanpr.level_start,
                                     col->lanpr.material,
                                     col,
                                     col->lanpr.types);

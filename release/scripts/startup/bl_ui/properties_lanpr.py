@@ -68,10 +68,10 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
         layout.prop(md,'use_multiple_levels', text="Multiple Levels")
         if md.use_multiple_levels:
             col = layout.column(align=True)
-            col.prop(md,'level_begin')
+            col.prop(md,'level_start')
             col.prop(md,'level_end', text="End")
         else:
-            layout.prop(md,'level_begin', text="Level")
+            layout.prop(md,'level_start', text="Level")
 
         layout.prop(md,'enable_contour')
         layout.prop(md,'enable_crease')

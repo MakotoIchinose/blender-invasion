@@ -332,7 +332,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
             rb->ChainShgrp, "normal_thickness_end", &ll->normal_thickness_end, 1);
         DRW_shgroup_uniform_vec3(rb->ChainShgrp, "normal_direction", normal_object_direction, 1);
 
-        DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_begin", &ll->qi_begin, 1);
+        DRW_shgroup_uniform_int(rb->ChainShgrp, "occlusion_level_start", &ll->qi_begin, 1);
         DRW_shgroup_uniform_int(rb->ChainShgrp,
                                 "occlusion_level_end",
                                 ll->use_multiple_levels ? &ll->qi_end : &ll->qi_begin,

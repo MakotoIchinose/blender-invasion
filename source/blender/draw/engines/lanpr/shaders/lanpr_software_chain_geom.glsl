@@ -27,7 +27,7 @@ uniform int enable_material;
 uniform int enable_edge_mark;
 uniform int enable_intersection;
 
-uniform int occlusion_level_begin;
+uniform int occlusion_level_start;
 uniform int occlusion_level_end;
 
 // implement these later.
@@ -238,7 +238,7 @@ void main()
 {
   int level = gLevel[1];
 
-  if (occlusion_level_begin > level || occlusion_level_end < level)
+  if (occlusion_level_start > level || occlusion_level_end < level)
     return;
 
   float asp1 = output_viewport.z / output_viewport.w;

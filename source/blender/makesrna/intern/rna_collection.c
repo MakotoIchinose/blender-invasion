@@ -433,7 +433,7 @@ static void rna_def_collection_lanpr(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_boolean_sdna(prop, NULL, "use_multiple_levels", 0);
   RNA_def_property_ui_text(prop, "Multiple", "Use multiple occlusion levels");
 
-  prop = RNA_def_property(srna, "level_begin", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "level_start", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 255, 1, -1);
   RNA_def_property_ui_text(prop, "Level", "Occlusion level");
