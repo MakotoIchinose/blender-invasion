@@ -869,12 +869,6 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "offset_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 
-
-
-  uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
-
   split = uiLayoutSplit(layout, 0.5f, true);
   col = uiLayoutColumn(split, true);
   uiItemR(col, &ptr, "vertex_only", 0, NULL, ICON_NONE);
@@ -884,6 +878,10 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiItemR(col, &ptr, "mark_seam", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "mark_sharp", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "harden_normals", 0, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "segments", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "profile", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "material", 0, NULL, ICON_NONE);
 
   uiItemL(layout, "Miter Type:", ICON_NONE);
   uiItemR(layout, &ptr, "miter_outer", 0, "Outer", ICON_NONE);
