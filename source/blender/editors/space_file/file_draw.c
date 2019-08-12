@@ -178,7 +178,6 @@ static void file_draw_preview(uiBlock *block,
   int ex, ey;
   bool use_dropshadow = !is_icon &&
                         (typeflags & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
-  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
   BLI_assert(imb != NULL);
 
@@ -221,7 +220,20 @@ static void file_draw_preview(uiBlock *block,
   GPU_blend(true);
 
   /* the image */
-  if (!is_icon && typeflags & FILE_TYPE_FTFONT) {
+
+  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  if (is_icon) {
+    /*  Use dark icons if background is light */
+    float bg[3];
+    UI_GetThemeColor3fv(TH_BACK, bg);
+    if (rgb_to_grayscale(bg) > 0.5f) {
+      col[0] = 0;
+      col[1] = 0;
+      col[2] = 0;
+    }
+  }
+  else if (typeflags & FILE_TYPE_FTFONT) {
+    /*  Use text color for font sample */
     UI_GetThemeColor4fv(TH_TEXT, col);
   }
 
