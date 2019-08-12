@@ -453,6 +453,7 @@ typedef enum eBrushFlags {
 
 typedef enum eBrushFlags2 {
   BRUSH_WORLD_SPACING = (1 << 0),
+  BRUSH_GRAB_ACTIVE_VERTEX = (1 << 0),
 } eBrushFlags2;
 
 typedef enum {

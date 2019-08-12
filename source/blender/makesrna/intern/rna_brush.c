@@ -1979,6 +1979,12 @@ static void rna_def_brush(BlenderRNA *brna)
       prop, "Use world spacing", "Compute the distance between steps in world space");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+  prop = RNA_def_property(srna, "grab_active_vertex", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_GRAB_ACTIVE_VERTEX);
+  RNA_def_property_ui_text(
+      prop, "Grab active vertex", "Grab from the active vertex, ignore the cursor location.");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
   prop = RNA_def_property(srna, "use_pressure_strength", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", BRUSH_ALPHA_PRESSURE);
   RNA_def_property_ui_icon(prop, ICON_STYLUS_PRESSURE, 0);

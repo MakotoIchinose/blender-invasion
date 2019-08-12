@@ -2210,7 +2210,7 @@ static void wpaint_do_paint(bContext *C,
 {
   SculptSession *ss = ob->sculpt;
   ss->cache->radial_symmetry_pass = i;
-  sculpt_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
+  sculpt_cache_calc_brushdata_symm(ss, symm, axis, angle);
 
   int totnode;
   PBVHNode **nodes = vwpaint_pbvh_gather_generic(ob, wp, sd, brush, &totnode);
@@ -2265,7 +2265,7 @@ static void wpaint_do_symmetrical_brush_actions(
     if ((symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5)))) {
       cache->mirror_symmetry_pass = i;
       cache->radial_symmetry_pass = 0;
-      sculpt_cache_calc_brushdata_symm(cache, i, 0, 0);
+      sculpt_cache_calc_brushdata_symm(ss, i, 0, 0);
 
       if (i & (1 << 0)) {
         wpaint_do_paint(C, ob, wp, sd, wpd, wpi, me, brush, i, 'X', 0, 0);
@@ -3220,7 +3220,7 @@ static void vpaint_do_paint(bContext *C,
 {
   SculptSession *ss = ob->sculpt;
   ss->cache->radial_symmetry_pass = i;
-  sculpt_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
+  sculpt_cache_calc_brushdata_symm(ss, symm, axis, angle);
 
   int totnode;
   PBVHNode **nodes = vwpaint_pbvh_gather_generic(ob, vp, sd, brush, &totnode);
@@ -3275,7 +3275,7 @@ static void vpaint_do_symmetrical_brush_actions(
     if (symm & i && (symm != 5 || i != 3) && (symm != 6 || (i != 3 && i != 5))) {
       cache->mirror_symmetry_pass = i;
       cache->radial_symmetry_pass = 0;
-      sculpt_cache_calc_brushdata_symm(cache, i, 0, 0);
+      sculpt_cache_calc_brushdata_symm(ss, i, 0, 0);
 
       if (i & (1 << 0)) {
         vpaint_do_paint(C, sd, vp, vpd, ob, me, brush, i, 'X', 0, 0);

@@ -67,11 +67,19 @@ bool sculpt_stroke_get_location(struct bContext *C, float out[3], const float mo
 bool sculpt_stroke_get_geometry_info(struct bContext *C,
                                      StrokeGeometryInfo *out,
                                      const float mouse[2]);
-
+void sculpt_geometry_preview_lines_update(struct bContext *C, SculptSession *ss, float radius);
 /* Dynamic topology */
 void sculpt_pbvh_clear(Object *ob);
 void sculpt_dyntopo_node_layers_add(struct SculptSession *ss);
 void sculpt_dynamic_topology_disable(bContext *C, struct SculptUndoNode *unode);
+
+/* Sculpt mesh API */
+
+int sculpt_active_vertex_get(SculptSession *ss);
+unsigned int sculpt_vertex_count_get(SculptSession *ss);
+void sculpt_vertex_normal_get(SculptSession *ss, int index, float no[3]);
+float *sculpt_vertex_co_get(SculptSession *ss, int index);
+void sculpt_vertex_co_set(SculptSession *ss, int index, float co[3]);
 
 /* Undo */
 
@@ -418,7 +426,7 @@ typedef struct StrokeCache {
 
 } StrokeCache;
 
-void sculpt_cache_calc_brushdata_symm(StrokeCache *cache,
+void sculpt_cache_calc_brushdata_symm(SculptSession *ss,
                                       const char symm,
                                       const char axis,
                                       const float angle);

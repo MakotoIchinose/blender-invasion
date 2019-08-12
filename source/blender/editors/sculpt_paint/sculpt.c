@@ -282,10 +282,8 @@ void sculpt_vertex_neighbours_get_faces(SculptSession *ss,
     if (poly_get_adj_loops_from_vert(p, ss->mloop, (int)index, f_adj_v) != -1) {
       int j;
       for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-        if (vert_map->count != 2 || ss->pmap[f_adj_v[j]].count <= 2) {
-          if (f_adj_v[j] != (int)index) {
-            sculpt_vertex_neighbour_add(iter, f_adj_v[j]);
-          }
+        if (f_adj_v[j] != (int)index) {
+          sculpt_vertex_neighbour_add(iter, f_adj_v[j]);
         }
       }
     }
@@ -5045,6 +5043,7 @@ static float *sculpt_topology_automasking_init(Sculpt *sd, Object *ob, int initi
   vertex_topology_it mevit;
   mevit.v = initial_vertex_index;
   mevit.it = 1;
+  automask_factor[initial_vertex_index] = 1.0f;
   BLI_gsqueue_push(queue, &mevit);
 
   while (!BLI_gsqueue_is_empty(queue)) {
@@ -5498,11 +5497,12 @@ static void sculpt_flush_stroke_deform(Sculpt *sd, Object *ob)
 
 /* Flip all the editdata across the axis/axes specified by symm. Used to
  * calculate multiple modifications to the mesh when symmetry is enabled. */
-void sculpt_cache_calc_brushdata_symm(StrokeCache *cache,
+void sculpt_cache_calc_brushdata_symm(SculptSession *ss,
                                       const char symm,
                                       const char axis,
                                       const float angle)
 {
+  StrokeCache *cache = ss->cache;
   flip_v3_v3(cache->location, cache->true_location, symm);
   flip_v3_v3(cache->last_location, cache->true_last_location, symm);
   flip_v3_v3(cache->grab_delta_symmetry, cache->grab_delta, symm);
@@ -5618,7 +5618,7 @@ static void do_radial_symmetry(Sculpt *sd,
   for (i = 1; i < sd->radial_symm[axis - 'X']; ++i) {
     const float angle = 2 * M_PI * i / sd->radial_symm[axis - 'X'];
     ss->cache->radial_symmetry_pass = i;
-    sculpt_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
+    sculpt_cache_calc_brushdata_symm(ss, symm, axis, angle);
     do_tiled(sd, ob, brush, ups, action);
   }
 }
@@ -5660,7 +5660,7 @@ static void do_symmetrical_brush_actions(Sculpt *sd,
       cache->mirror_symmetry_pass = i;
       cache->radial_symmetry_pass = 0;
 
-      sculpt_cache_calc_brushdata_symm(cache, i, 0, 0);
+      sculpt_cache_calc_brushdata_symm(ss, i, 0, 0);
       do_tiled(sd, ob, brush, ups, action);
 
       do_radial_symmetry(sd, ob, brush, ups, action, i, 'X', feather);
@@ -6026,7 +6026,14 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
     float grab_location[3], imat[4][4], delta[3], loc[3];
 
     if (cache->first_time) {
-      copy_v3_v3(cache->orig_grab_location, cache->true_location);
+      if (tool == SCULPT_TOOL_GRAB && brush->flag2 & BRUSH_GRAB_ACTIVE_VERTEX &&
+          BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+        copy_v3_v3(cache->orig_grab_location,
+                   sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)));
+      }
+      else {
+        copy_v3_v3(cache->orig_grab_location, cache->true_location);
+      }
     }
     else if (tool == SCULPT_TOOL_SNAKE_HOOK) {
       add_v3_v3(cache->true_location, cache->grab_delta);
@@ -6077,7 +6084,12 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
     copy_v3_v3(cache->old_grab_location, grab_location);
 
     if (tool == SCULPT_TOOL_GRAB) {
-      copy_v3_v3(cache->anchored_location, cache->true_location);
+      if (brush->flag2 & BRUSH_GRAB_ACTIVE_VERTEX && BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
+        copy_v3_v3(cache->anchored_location, cache->orig_grab_location);
+      }
+      else {
+        copy_v3_v3(cache->anchored_location, cache->true_location);
+      }
     }
     else if (tool == SCULPT_TOOL_THUMB) {
       copy_v3_v3(cache->anchored_location, cache->orig_grab_location);
@@ -9863,6 +9875,71 @@ static void SCULPT_OT_mask_expand(wmOperatorType *ot)
                              "Set the pivot position to the mask border after creating the mask");
   ot->prop = RNA_def_int(ot->srna, "smooth_iterations", 2, 0, 10, "Smooth iterations", "", 0, 10);
   ot->prop = RNA_def_int(ot->srna, "mask_speed", 5, 1, 10, "Mask speed", "", 1, 10);
+}
+
+void sculpt_geometry_preview_lines_update(bContext *C, SculptSession *ss, float radius)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Object *ob = CTX_data_active_object(C);
+
+  ss->preview_vert_index_count = 0;
+  int totpoints = 0;
+
+  if (!ss->pbvh) {
+    return;
+  }
+
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
+
+  if (!ss->pmap) {
+    return;
+  }
+
+  float brush_co[3];
+  copy_v3_v3(brush_co, sculpt_vertex_co_get(ss, sculpt_active_vertex_get(ss)));
+
+  char *visited_vertices = MEM_callocN(sculpt_vertex_count_get(ss) * sizeof(char),
+                                       "visited vertices");
+
+  if (ss->preview_vert_index_list == NULL) {
+    ss->preview_vert_index_list = MEM_callocN(4 * sizeof(int) * sculpt_vertex_count_get(ss),
+                                              "preview lines");
+  }
+
+  GSQueue *queue = BLI_gsqueue_new(sizeof(vertex_topology_it));
+  vertex_topology_it mevit;
+  mevit.v = sculpt_active_vertex_get(ss);
+  mevit.it = 1;
+  BLI_gsqueue_push(queue, &mevit);
+
+  while (!BLI_gsqueue_is_empty(queue)) {
+    vertex_topology_it c_mevit;
+    BLI_gsqueue_pop(queue, &c_mevit);
+    SculptVertexNeighbourIter ni;
+    sculpt_vertex_neighbours_iter_begin(ss, c_mevit.v, ni)
+    {
+      vertex_topology_it new_entry;
+      new_entry.v = ni.index;
+      new_entry.it = c_mevit.it + 1;
+      ss->preview_vert_index_list[totpoints] = c_mevit.v;
+      totpoints++;
+      ss->preview_vert_index_list[totpoints] = new_entry.v;
+      totpoints++;
+      if (visited_vertices[(int)ni.index] == 0) {
+        visited_vertices[(int)ni.index] = 1;
+        if (len_v3v3(brush_co, sculpt_vertex_co_get(ss, new_entry.v)) < radius) {
+          BLI_gsqueue_push(queue, &new_entry);
+        }
+      }
+    }
+    sculpt_vertex_neighbours_iter_end(ni)
+  }
+
+  BLI_gsqueue_free(queue);
+
+  MEM_freeN(visited_vertices);
+
+  ss->preview_vert_index_count = totpoints;
 }
 
 void ED_operatortypes_sculpt(void)

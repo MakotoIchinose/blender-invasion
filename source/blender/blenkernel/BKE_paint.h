@@ -283,6 +283,9 @@ typedef struct SculptSession {
 
   RegionView3D *rv3d;
 
+  int *preview_vert_index_list;
+  int preview_vert_index_count;
+
   union {
     struct {
       struct SculptVertexPaintGeomMap gmap;
