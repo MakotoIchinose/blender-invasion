@@ -604,6 +604,7 @@ static bool cloth_remeshing_flip_edges(BMesh *bm,
     BM_ITER_ELEM (f, &fiter, edge, BM_FACES_OF_EDGE) {
       remove_faces.push_back(f);
     }
+    BLI_assert(BM_edge_face_count(edge) <= 2);
     /* BM_EDGEROT_CHECK_SPLICE sets it up for BM_CREATE_NO_DOUBLE */
     BMEdge *new_edge = BM_edge_rotate(bm, edge, true, BM_EDGEROT_CHECK_SPLICE);
     /* TODO(Ish): all the edges part of independent_edges should be
@@ -613,6 +614,7 @@ static bool cloth_remeshing_flip_edges(BMesh *bm,
     /* BLI_assert(new_edge != NULL); */
     /* TODO(Ish): need to check if the normals are flipped by some
      * kind of area check */
+    BLI_assert(BM_edge_face_count(new_edge) <= 2);
 
 #if 0
     cloth_remeshing_update_active_faces(active_faces, bm, new_edge);
@@ -753,6 +755,28 @@ static void cloth_remeshing_find_bad_edges(BMesh *bm, ClothVertMap &cvm, vector<
   edge_pairs.clear();
 }
 
+static void cloth_remeshing_split_face_into_tri(BMesh *bm, BMFace *f, BMVert *v)
+{
+  BLI_assert(BM_vert_in_face(v, f));
+  int len = f->len;
+  if (len == 3) {
+    return;
+  }
+  if (len > 4) {
+    printf("face length: %d\n", len);
+  }
+  BMLoop *l_01 = BM_face_vert_share_loop(f, v);
+  BMLoop *l_iter = l_01->next;
+  vector<BMLoop *> l;
+  for (int i = 0; i < len - 3; i++) {
+    l.push_back(l_iter->next);
+  }
+  for (int i = 0; i < l.size(); i++) {
+    BMFace *new_face = BM_face_split(bm, f, l_01, l[i], NULL, NULL, true);
+    BLI_assert(new_face != NULL);
+  }
+}
+
 static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
                                                          BMEdge *e,
                                                          BMVert *v,
@@ -774,6 +798,7 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   /* split the edge */
   BMEdge *new_edge;
   BMVert *new_v = BM_edge_split(bm, e, v, &new_edge, fac);
+  BLI_assert(BM_vert_face_count(new_v) <= 2);
   /* if (cloth_remeshing_edge_label_test(e)) { */
   /*   BM_elem_flag_enable(new_edge, BM_ELEM_TAG); */
   /* } */
@@ -781,6 +806,7 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
   /*   BM_elem_flag_disable(new_edge, BM_ELEM_TAG); */
   /* } */
 
+#if 1
   BMVert *vert;
   BMIter viter;
   /* search for vert within the face that is not part of input edge
@@ -794,9 +820,12 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
     BMLoop *l_a = NULL, *l_b = NULL;
     l_a = BM_face_vert_share_loop(f1, vert);
     l_b = BM_face_vert_share_loop(f1, new_v);
-    if (!BM_face_split(bm, f1, l_a, l_b, NULL, NULL, true)) {
+    BMFace *new_face = BM_face_split(bm, f1, l_a, l_b, NULL, NULL, true);
+    if (!new_face) {
       printf("face not split: f1\n");
     }
+    BLI_assert(new_face->len == 3);
+    BLI_assert(f1->len == 3);
     break;
   }
   if (f2) {
@@ -808,12 +837,70 @@ static BMVert *cloth_remeshing_split_edge_keep_triangles(BMesh *bm,
       BMLoop *l_a = NULL, *l_b = NULL;
       l_a = BM_face_vert_share_loop(f2, vert);
       l_b = BM_face_vert_share_loop(f2, new_v);
-      if (!BM_face_split(bm, f2, l_a, l_b, NULL, NULL, true)) {
+      BMFace *new_face = BM_face_split(bm, f2, l_a, l_b, NULL, NULL, true);
+      if (!new_face) {
         printf("face not split: f2\n");
       }
+      BLI_assert(new_face->len == 3);
+      BLI_assert(f2->len == 3);
       break;
     }
   }
+#endif
+#if 0
+  BMFace *f;
+  BMIter fiter;
+  int i = 0;
+  BM_ITER_ELEM (f, &fiter, new_v, BM_FACES_OF_VERT) {
+    printf("face count: %d", i);
+    i++;
+    if (f->len == 3) {
+      continue;
+    }
+    BMVert *temp_v;
+    BMIter viter;
+    BM_ITER_ELEM (temp_v, &viter, f, BM_VERTS_OF_FACE) {
+      if (temp_v == new_v || temp_v == e->v1 || temp_v == e->v2) {
+        continue;
+      }
+      if (BM_edge_exists(temp_v, new_v)) {
+        continue;
+      }
+      BMLoop *l_a = NULL, *l_b = NULL;
+      l_a = BM_face_vert_share_loop(f, temp_v);
+      l_b = BM_face_vert_share_loop(f, new_v);
+      BMFace *new_face = BM_face_split(bm, f, l_a, l_b, NULL, NULL, true);
+      if (!new_face) {
+        printf("face not split\n");
+      }
+      else {
+        printf("face is split\n");
+      }
+    }
+  }
+#endif
+#if 0
+  int face_count = BM_vert_face_count(new_v);
+  if (face_count <= 2) {
+    if (f1) {
+      cloth_remeshing_split_face_into_tri(bm, f1, new_v);
+    }
+    if (f2) {
+      cloth_remeshing_split_face_into_tri(bm, f2, new_v);
+    }
+  }
+  else {
+    /* BMFace *f; */
+    /* BMIter fiter; */
+    /* vector<BMFace *> fs; */
+    /* BM_ITER_ELEM (f, &fiter, new_v, BM_FACES_OF_VERT) { */
+    /*   fs.push_back(f); */
+    /* } */
+    /* for (int i = 0; i < fs.size(); i++) { */
+    /*   cloth_remeshing_split_face_into_tri(bm, fs[i], new_v); */
+    /* } */
+  }
+#endif
 
   return new_v;
 }
@@ -1180,7 +1267,7 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
     BMFace *af;
     BMIter afiter;
     BM_ITER_ELEM (af, &afiter, new_vert, BM_FACES_OF_VERT) {
-#if 1
+#if 0
       /* BLI_assert(af->len == 3); */
       if (af->len > 3) {
         MemArena *pf_arena;
@@ -1202,6 +1289,8 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
         BM_mesh_elem_index_ensure(bm, BM_EDGE | BM_FACE);
         continue;
       }
+#else
+      BLI_assert(af->len == 3);
 #endif
       active_faces.push_back(af);
     }
@@ -1744,6 +1833,12 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
         if (!temp_vert) {
           continue;
         }
+      }
+
+      BMEdge *temp_e;
+      BMIter temp_e_iter;
+      BM_ITER_ELEM (temp_e, &temp_e_iter, temp_vert, BM_EDGES_OF_VERT) {
+        BLI_assert(BM_edge_face_count(temp_e) <= 2);
       }
 
       /* update active_faces */
