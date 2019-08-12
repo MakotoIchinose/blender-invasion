@@ -53,7 +53,6 @@
 #include "ED_mesh.h"
 #include "ED_screen.h"
 #include "ED_transform.h"
-#include "ED_select_buffer_utils.h"
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
 
@@ -69,6 +68,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "mesh_intern.h" /* own include */
 
@@ -203,7 +203,7 @@ static BMElem *edbm_select_id_bm_elem_get(Base **bases, const uint sel_id, uint 
 {
   uint elem_id;
   char elem_type = 0;
-  bool success = DRW_select_elem_get(sel_id, &elem_id, r_base_index, &elem_type);
+  bool success = DRW_select_buffer_elem_get(sel_id, &elem_id, r_base_index, &elem_type);
 
   if (success) {
     Object *obedit = bases[*r_base_index]->object;
@@ -237,20 +237,6 @@ static BMElem *edbm_select_id_bm_elem_get(Base **bases, const uint sel_id, uint 
  * when choosing between elements of a single type, but return the real distance
  * to avoid the bias interfering with distance comparisons when mixing types.
  * \{ */
-
-#define FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, select_mode_required) \
-  short select_mode = select_mode_required; \
-  bool fake_select_mode = (select_mode & (vc)->scene->toolsettings->selectmode) == 0; \
-  if (fake_select_mode) { \
-    (vc)->v3d->flag |= V3D_INVALID_BACKBUF; \
-  } \
-  ((void)0)
-
-#define FAKE_SELECT_MODE_END(vc, fake_select_mode) \
-  if (fake_select_mode) { \
-    (vc)->v3d->flag |= V3D_INVALID_BACKBUF; \
-  } \
-  ((void)0)
 
 #define FIND_NEAR_SELECT_BIAS 5
 #define FIND_NEAR_CYCLE_THRESHOLD_MIN 3
@@ -331,11 +317,9 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_VERTEX);
+      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_VERTEX);
 
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
         eve = (BMVert *)edbm_select_id_bm_elem_get(bases, index, &base_index);
@@ -343,8 +327,6 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
       else {
         eve = NULL;
       }
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (eve) {
@@ -557,11 +539,9 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_EDGE);
+      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_EDGE);
 
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
         eed = (BMEdge *)edbm_select_id_bm_elem_get(bases, index, &base_index);
@@ -569,8 +549,6 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
       else {
         eed = NULL;
       }
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (r_eed_zbuf) {
@@ -767,11 +745,9 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
     BMFace *efa;
 
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_FACE);
+      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_FACE);
 
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_sample_point(vc->mval);
+      index = DRW_select_buffer_sample_point(vc->mval);
 
       if (index) {
         efa = (BMFace *)edbm_select_id_bm_elem_get(bases, index, &base_index);
@@ -779,8 +755,6 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
       else {
         efa = NULL;
       }
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (r_efa_zbuf) {

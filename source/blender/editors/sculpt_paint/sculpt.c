@@ -2308,7 +2308,7 @@ static void do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 
   /* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping */
-  curvemapping_initialize(brush->curve);
+  BKE_curvemapping_initialize(brush->curve);
 
   /* threaded loop over nodes */
   SculptThreadedTaskData data = {
@@ -4604,7 +4604,7 @@ static void sculpt_update_cache_invariants(
         brush = br;
         cache->saved_smooth_size = BKE_brush_size_get(scene, brush);
         BKE_brush_size_set(scene, brush, size);
-        curvemapping_initialize(brush->curve);
+        BKE_curvemapping_initialize(brush->curve);
       }
     }
   }
@@ -6152,6 +6152,15 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
   DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 }
 
+void ED_object_sculptmode_enter(struct bContext *C, Depsgraph *depsgraph, ReportList *reports)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *ob = OBACT(view_layer);
+  ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, reports);
+}
+
 void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   const int mode_flag = OB_MODE_SCULPT;
@@ -6198,6 +6207,15 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
   DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 }
 
+void ED_object_sculptmode_exit(bContext *C, Depsgraph *depsgraph)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Object *ob = OBACT(view_layer);
+  ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
+}
+
 static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 {
   struct wmMsgBus *mbus = CTX_wm_message_bus(C);
@@ -6220,6 +6238,9 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
     ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
   }
   else {
+    if (depsgraph) {
+      depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    }
     ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, op->reports);
     BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint);
   }

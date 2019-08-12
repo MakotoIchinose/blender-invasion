@@ -62,23 +62,9 @@ typedef struct SELECTID_PrivateData {
   DRWView *view_verts;
 } SELECTID_PrivateData; /* Transient data */
 
-struct BaseOffset {
-  /* For convenience only. */
-  union {
-    uint offset;
-    uint face_start;
-  };
-  union {
-    uint face;
-    uint edge_start;
-  };
-  union {
-    uint edge;
-    uint vert_start;
-  };
-  uint vert;
-};
-
+/* select_draw_utils.c */
+void draw_select_framebuffer_select_id_setup(struct SELECTID_Context *r_select_ctx);
+short select_id_get_object_select_mode(Scene *scene, Object *ob);
 void select_id_draw_object(void *vedata,
                            View3D *v3d,
                            Object *ob,
