@@ -1017,13 +1017,7 @@ void BKE_scene_init(Scene *sce)
   /* SceneLANPR */
 
   sce->lanpr.crease_threshold = 0.7;
-
-  sce->lanpr.line_thickness = 1.5;
-  sce->lanpr.depth_clamp = 0.001;
-  sce->lanpr.depth_strength = 800;
-  sce->lanpr.normal_clamp = 2;
-  sce->lanpr.normal_strength = 10;
-
+  
   sce->lanpr.enable_intersections = 1;
 
   sce->lanpr.line_color[0] = 1;

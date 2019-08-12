@@ -3756,7 +3756,7 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
   SceneLANPR *lanpr = &s->lanpr;
   int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && !lanpr->enabled) {
+  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED)==0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3844,7 +3844,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
   int result;
   int is_lanpr_engine = !strcmp(scene->r.engine, RE_engine_id_BLENDER_LANPR);
 
-  if (!is_lanpr_engine && !lanpr->enabled) {
+  if (!is_lanpr_engine && (lanpr->flag & LANPR_ENABLED)==0) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3899,7 +3899,7 @@ bool ED_lanpr_dpix_shader_error()
 }
 bool ED_lanpr_disable_edge_splits(Scene *s)
 {
-  return (s->lanpr.enabled && s->lanpr.disable_edge_splits);
+  return ((s->lanpr.flag & LANPR_ENABLED) && s->lanpr.disable_edge_splits);
 }
 
 /* GPencil bindings */
@@ -4283,7 +4283,7 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
 
 void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
 {
-  if (!s->lanpr.enabled || !s->lanpr.auto_update) {
+  if ((s->lanpr.flag & LANPR_ENABLED)==0 || !s->lanpr.auto_update) {
     return;
   }
   if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {

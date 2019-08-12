@@ -1796,12 +1796,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         scene->lanpr.crease_threshold = 0.7;
 
-        scene->lanpr.line_thickness = 1.5;
-        scene->lanpr.depth_clamp = 0.001;
-        scene->lanpr.depth_strength = 800;
-        scene->lanpr.normal_clamp = 2;
-        scene->lanpr.normal_strength = 10;
-
         scene->lanpr.enable_intersections = 1;
 
         scene->lanpr.line_color[0] = 0.39;
@@ -3515,12 +3509,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
       sce->lanpr.crease_threshold = 0.7;
-
-      sce->lanpr.line_thickness = 1.5;
-      sce->lanpr.depth_clamp = 0.001;
-      sce->lanpr.depth_strength = 800;
-      sce->lanpr.normal_clamp = 2;
-      sce->lanpr.normal_strength = 10;
 
       sce->lanpr.enable_intersections = 1;
 
