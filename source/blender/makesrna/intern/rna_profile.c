@@ -75,11 +75,6 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
   BKE_profilewidget_changed(prwdgt, false);
 }
 
-static void rna_ProfileWidget_totsegments_set(struct ProfileWidget *prwdgt, int totsegments)
-{
-  prwdgt->totsegments = (short)totsegments;
-}
-
 static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value)
 {
   ProfileWidget *prwdgt = (ProfileWidget *)ptr->data;
@@ -238,12 +233,6 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "ProfilePoint");
   RNA_def_property_ui_text(prop, "Points", "Profile widget control points");
   rna_def_profilewidget_points_api(brna, prop);
-
-  func = RNA_def_function(srna, "set_totsegments", "rna_ProfileWidget_totsegments_set");
-  parm = RNA_def_int(func, "totsegments", 1, 1, 1000, "", "The number of segment values to"
-                     " use when sampling the array", 1, 100);
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  RNA_def_function_ui_description(func, "Set the number of segments to sample with");
 
   prop = RNA_def_property(srna, "totsegments", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "totsegments");
