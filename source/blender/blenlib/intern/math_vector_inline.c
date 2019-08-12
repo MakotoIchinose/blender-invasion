@@ -374,6 +374,13 @@ MINLINE void add_v3_v3(float r[3], const float a[3])
   r[2] += a[2];
 }
 
+MINLINE void add_v3_v3_db(double r[3], const double a[3])
+{
+  r[0] += a[0];
+  r[1] += a[1];
+  r[2] += a[2];
+}
+
 MINLINE void add_v3_v3v3(float r[3], const float a[3], const float b[3])
 {
   r[0] = a[0] + b[0];
@@ -450,6 +457,13 @@ MINLINE void sub_v3_v3v3_int(int r[3], const int a[3], const int b[3])
   r[2] = a[2] - b[2];
 }
 
+MINLINE void sub_v3_v3v3_db(double r[3], const double a[3], const double b[3])
+{
+  r[0] = a[0] - b[0];
+  r[1] = a[1] - b[1];
+  r[2] = a[2] - b[2];
+}
+
 MINLINE void sub_v3db_v3fl_v3fl(double r[3], const float a[3], const float b[3])
 {
   r[0] = (double)a[0] - (double)b[0];
@@ -486,6 +500,13 @@ MINLINE void mul_v2_v2fl(float r[2], const float a[2], float f)
 }
 
 MINLINE void mul_v3_fl(float r[3], float f)
+{
+  r[0] *= f;
+  r[1] *= f;
+  r[2] *= f;
+}
+
+MINLINE void mul_v3db_db(double r[3], double f)
 {
   r[0] *= f;
   r[1] *= f;
@@ -834,6 +855,11 @@ MINLINE float dot_v4v4(const float a[4], const float b[4])
 MINLINE double dot_v3db_v3fl(const double a[3], const float b[3])
 {
   return a[0] * (double)b[0] + a[1] * (double)b[1] + a[2] * (double)b[2];
+}
+
+MINLINE double dot_v3v3_db(const double a[3], const double b[3])
+{
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 MINLINE float cross_v2v2(const float a[2], const float b[2])

@@ -581,89 +581,6 @@ BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
   double ra = (FromL - l) / (r - l);
   return ra;
 }
-BLI_INLINE void tMatVectorMinus2d(tnsVector2d result, tnsVector2d l, tnsVector2d r)
-{
-  result[0] = l[0] - r[0];
-  result[1] = l[1] - r[1];
-}
-
-BLI_INLINE void tMatVectorMinus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
-{
-  result[0] = l[0] - r[0];
-  result[1] = l[1] - r[1];
-  result[2] = l[2] - r[2];
-}
-BLI_INLINE void tMatVectorSubtract3d(tnsVector3d l, tnsVector3d r)
-{
-  l[0] = l[0] - r[0];
-  l[1] = l[1] - r[1];
-  l[2] = l[2] - r[2];
-}
-BLI_INLINE void tMatVectorPlus3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
-{
-  result[0] = l[0] + r[0];
-  result[1] = l[1] + r[1];
-  result[2] = l[2] + r[2];
-}
-BLI_INLINE void tMatVectorAccum3d(tnsVector3d l, tnsVector3d r)
-{
-  l[0] = l[0] + r[0];
-  l[1] = l[1] + r[1];
-  l[2] = l[2] + r[2];
-}
-BLI_INLINE void tMatVectorAccum2d(tnsVector2d l, tnsVector2d r)
-{
-  l[0] = l[0] + r[0];
-  l[1] = l[1] + r[1];
-}
-BLI_INLINE void tMatVectorNegate3d(tnsVector3d result, tnsVector3d l)
-{
-  result[0] = -l[0];
-  result[1] = -l[1];
-  result[2] = -l[2];
-}
-BLI_INLINE void tMatVectorNegateSelf3d(tnsVector3d l)
-{
-  l[0] = -l[0];
-  l[1] = -l[1];
-  l[2] = -l[2];
-}
-BLI_INLINE void tMatVectorCopy2d(tnsVector2d from, tnsVector2d to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-}
-BLI_INLINE void tMatVectorCopy3d(tnsVector3d from, tnsVector3d to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-  to[2] = from[2];
-}
-BLI_INLINE void tMatVectorCopy4d(tnsVector4d from, tnsVector4d to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-  to[2] = from[2];
-  to[3] = from[3];
-}
-BLI_INLINE void tMatVectorMultiSelf4d(tnsVector3d from, real num)
-{
-  from[0] *= num;
-  from[1] *= num;
-  from[2] *= num;
-  from[3] *= num;
-}
-BLI_INLINE void tMatVectorMultiSelf3d(tnsVector3d from, real num)
-{
-  from[0] *= num;
-  from[1] *= num;
-  from[2] *= num;
-}
-BLI_INLINE void tMatVectorMultiSelf2d(tnsVector3d from, real num)
-{
-  from[0] *= num;
-  from[1] *= num;
-}
 
 BLI_INLINE real tMatDirectionToRad(tnsVector2d Dir)
 {
@@ -701,26 +618,6 @@ BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
 
 int ED_lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
 
-#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
-
-#define CreateNew(Type) MEM_callocN(sizeof(Type), "VOID") /*  nutCalloc(sizeof(Type),1) */
-
-#define CreateNew_Size(size) nutCalloc(size, 1)
-
-#define CreateNewBuffer(Type, Num) \
-  MEM_callocN(sizeof(Type) * Num, "VOID BUFFER") /*  nutCalloc(sizeof(Type),Num); */
-
-void list_handle_empty(ListBase *h);
-
-void list_clear_prev_next(Link *li);
-
-void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot);
-void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot);
-void list_insert_segment_before(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
-void lstInsertSegmentAfter(ListBase *Handle, Link *Begin, Link *End, Link *pivot);
-int lstHaveItemInList(ListBase *Handle);
-void *lst_get_top(ListBase *Handle);
-
 void *list_append_pointer_only(ListBase *h, void *p);
 void *list_append_pointer_sized_only(ListBase *h, void *p, int size);
 void *list_push_pointer_only(ListBase *h, void *p);
@@ -754,12 +651,6 @@ void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, voi
 void *list_pop_pointer_no_free(ListBase *h);
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
-void list_move_up(ListBase *h, Link *li);
-void list_move_down(ListBase *h, Link *li);
-
-void lstAddElement(ListBase *hlst, void *ext);
-void lstDestroyElementList(ListBase *hlst);
-
 LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp);
 void *mem_static_aquire(LANPR_StaticMemPool *smp, int size);
 void *mem_static_aquire_thread(LANPR_StaticMemPool *smp, int size);
@@ -767,19 +658,6 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp);
 
 void tmat_obmat_to_16d(float obmat[4][4], tnsMatrix44d out);
 
-real tmat_dist_idv2(real x1, real y1, real x2, real y2);
-real tmat_dist_3dv(tnsVector3d l, tnsVector3d r);
-real tmat_dist_2dv(tnsVector2d l, tnsVector2d r);
-
-real tmat_length_3d(tnsVector3d l);
-real tmat_length_2d(tnsVector3d l);
-void tmat_normalize_2d(tnsVector2d result, tnsVector2d l);
-void tmat_normalize_3d(tnsVector3d result, tnsVector3d l);
-void tmat_normalize_3f(tnsVector3f result, tnsVector3f l);
-void tmat_normalize_self_3d(tnsVector3d result);
-real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize);
-real tmat_dot_3df(tnsVector3d l, tnsVector3f r, int normalize);
-real tmat_dot_2d(tnsVector2d l, tnsVector2d r, int normalize);
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r);
 real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference);

@@ -8,143 +8,6 @@
 
 /* ===================================================================[slt] */
 
-void list_handle_empty(ListBase *h)
-{
-  h->first = h->last = 0;
-}
-
-void *lst_get_top(ListBase *Handle)
-{
-  return Handle->first;
-};
-
-void list_insert_item_before(ListBase *Handle, Link *toIns, Link *pivot)
-{
-  if (!pivot) {
-    BLI_addhead(Handle, toIns);
-    return;
-  }
-
-  if (pivot->prev) {
-    ((Link *)pivot->prev)->next = toIns;
-    toIns->prev = pivot->prev;
-  }
-  else {
-    Handle->first = toIns;
-  }
-
-  toIns->next = pivot;
-  pivot->prev = toIns;
-};
-void list_insert_item_after(ListBase *Handle, Link *toIns, Link *pivot)
-{
-  if (!pivot) {
-    BLI_addtail(Handle, toIns);
-    return;
-  }
-
-  if (pivot->next) {
-    ((Link *)pivot->next)->prev = toIns;
-    toIns->next = pivot->next;
-  }
-  else {
-    Handle->last = toIns;
-  }
-
-  toIns->prev = pivot;
-  pivot->next = toIns;
-}
-
-void *list_append_pointer_only(ListBase *h, void *data)
-{
-  LinkData *lip;
-  if (!h) {
-    return 0;
-  }
-  lip = CreateNew(LinkData);
-  lip->data = data;
-  BLI_addtail(h, lip);
-  return lip;
-}
-void *list_append_pointer_sized_only(ListBase *h, void *data, int size)
-{
-  LinkData *lip;
-  if (!h) {
-    return 0;
-  }
-  lip = calloc(1, size);
-  lip->data = data;
-  BLI_addtail(h, lip);
-  return lip;
-}
-void *list_push_pointer_only(ListBase *h, void *data)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = CreateNew(LinkData);
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-void *list_push_pointer_sized_only(ListBase *h, void *data, int size)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = calloc(1, size);
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-
-void *list_append_pointer(ListBase *h, void *data)
-{
-  LinkData *lip;
-  if (!h) {
-    return 0;
-  }
-  lip = MEM_callocN(sizeof(LinkData), "LinkNode");
-  lip->data = data;
-  BLI_addtail(h, lip);
-  return lip;
-}
-void *list_append_pointer_sized(ListBase *h, void *data, int size)
-{
-  LinkData *lip;
-  if (!h) {
-    return 0;
-  }
-  lip = MEM_callocN(size, "LinkNode");
-  lip->data = data;
-  BLI_addtail(h, lip);
-  return lip;
-}
-void *list_push_pointer(ListBase *h, void *data)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = MEM_callocN(sizeof(LinkData), "LinkNode");
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-void *list_push_pointer_sized(ListBase *h, void *data, int size)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = MEM_callocN(size, "LinkNodeSized");
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-
 void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip;
@@ -166,129 +29,6 @@ void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, vo
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
-}
-void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = mem_static_aquire(smp, sizeof(LinkData));
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
-{
-  LinkData *lip = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = mem_static_aquire(smp, size);
-  lip->data = data;
-  BLI_addhead(h, lip);
-  return lip;
-}
-
-void *list_pop_pointer_only(ListBase *h)
-{
-  LinkData *lip;
-  void *rev = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = BLI_pophead(h);
-  BLI_remlink(h, h->first);
-  rev = lip ? lip->data : 0;
-  MEM_freeN(lip);
-  return rev;
-}
-void list_remove_pointer_item_only(ListBase *h, LinkData *lip)
-{
-  BLI_remlink(h, (void *)lip);
-  MEM_freeN(lip);
-}
-void list_remove_pointer_only(ListBase *h, void *data)
-{
-  LinkData *i;
-  for (i = h->first; i; i = i->next) {
-    if (i->data == data) {
-      list_remove_pointer_item(h, i);
-      break;
-    }
-  }
-}
-void list_clear_pointer_only(ListBase *h)
-{
-  while (h && h->first) {
-    list_pop_pointer(h);
-  }
-}
-void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to)
-{
-  LinkData *lip = from2 ? from2->last : 0;
-
-  while (lip) {
-    list_push_pointer(to, lip->data);
-    lip = lip->prev;
-  }
-
-  lip = from1 ? from1->last : 0;
-
-  while (lip) {
-    list_push_pointer(to, lip->data);
-    lip = lip->prev;
-  }
-}
-
-void *list_pop_pointer(ListBase *h)
-{
-  LinkData *lip;
-  void *rev = 0;
-  if (!h) {
-    return 0;
-  }
-  lip = BLI_pophead(h);
-  rev = lip ? lip->data : 0;
-  MEM_freeN(lip);
-  return rev;
-}
-void list_remove_pointer_item(ListBase *h, LinkData *lip)
-{
-  BLI_remlink(h, (void *)lip);
-  MEM_freeN(lip);
-}
-void list_remove_pointer(ListBase *h, void *data)
-{
-  LinkData *i;
-  for (i = h->first; i; i = i->next) {
-    if (i->data == data) {
-      list_remove_pointer_item(h, i);
-      break;
-    }
-  }
-}
-void list_clear_pointer(ListBase *h)
-{
-  while (h && h->first) {
-    list_pop_pointer(h);
-  }
-}
-void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to)
-{
-  LinkData *lip = from2 ? from2->last : 0;
-
-  while (lip) {
-    list_push_pointer(to, lip->data);
-    lip = lip->prev;
-  }
-
-  lip = from1 ? from1->last : 0;
-
-  while (lip) {
-    list_push_pointer(to, lip->data);
-    lip = lip->prev;
-  }
 }
 
 void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *data)
@@ -316,63 +56,6 @@ void *list_pop_pointer_no_free(ListBase *h)
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
-}
-
-void list_move_up(ListBase *h, Link *li)
-{
-  void *pprev = li->prev ? ((Link *)li->prev)->prev : 0;
-  if (!h || !li) {
-    return;
-  }
-  if (li == h->first) {
-    return;
-  }
-  else {
-    if (li == h->last) {
-      h->last = li->prev;
-    }
-    ((Link *)li->prev)->next = li->next;
-    ((Link *)li->prev)->prev = li;
-    if (li->next) {
-      ((Link *)li->next)->prev = li->prev;
-    }
-    li->next = li->prev;
-    li->prev = pprev;
-    if (pprev) {
-      ((Link *)pprev)->next = li;
-    }
-  }
-  if (!li->prev) {
-    h->first = li;
-  }
-}
-void list_move_down(ListBase *h, Link *li)
-{
-  void *ppnext = li->next ? ((Link *)li->next)->next : 0;
-  if (!h || !li) {
-    return;
-  }
-  if (li == h->last) {
-    return;
-  }
-  else {
-    if (li == h->first) {
-      h->first = li->next;
-    }
-    ((Link *)li->next)->prev = li->prev;
-    ((Link *)li->next)->next = li;
-    if (li->prev) {
-      ((Link *)li->prev)->next = li->next;
-    }
-    li->prev = li->next;
-    li->next = ppnext;
-    if (ppnext) {
-      ((Link *)ppnext)->prev = li;
-    }
-  }
-  if (!li->next) {
-    h->last = li;
-  }
 }
 
 LANPR_StaticMemPoolNode *mem_new_static_pool(LANPR_StaticMemPool *smp)
@@ -441,90 +124,9 @@ void tmat_load_identity_44d(tnsMatrix44d m)
   m[15] = 1.0f;
 };
 
-real tmat_dist_idv2(real x1, real y1, real x2, real y2)
-{
-  real x = x2 - x1, y = y2 - y1;
-  return sqrt((x * x + y * y));
-}
-real tmat_dist_3dv(tnsVector3d l, tnsVector3d r)
-{
-  real x = r[0] - l[0];
-  real y = r[1] - l[1];
-  real z = r[2] - l[2];
-  return sqrt(x * x + y * y + z * z);
-}
-real tmat_dist_2dv(tnsVector2d l, tnsVector2d r)
-{
-  real x = r[0] - l[0];
-  real y = r[1] - l[1];
-  return sqrt(x * x + y * y);
-}
-
 real tmat_length_3d(tnsVector3d l)
 {
   return (sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]));
-}
-real tmat_length_2d(tnsVector3d l)
-{
-  return (sqrt(l[0] * l[0] + l[1] * l[1]));
-}
-void tmat_normalize_3d(tnsVector3d result, tnsVector3d l)
-{
-  real r = sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
-  result[0] = l[0] / r;
-  result[1] = l[1] / r;
-  result[2] = l[2] / r;
-}
-void tmat_normalize_3f(tnsVector3f result, tnsVector3f l)
-{
-  float r = sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
-  result[0] = l[0] / r;
-  result[1] = l[1] / r;
-  result[2] = l[2] / r;
-}
-void tmat_normalize_2d(tnsVector2d result, tnsVector2d l)
-{
-  real r = sqrt(l[0] * l[0] + l[1] * l[1]);
-  result[0] = l[0] / r;
-  result[1] = l[1] / r;
-}
-void tmat_normalize_self_3d(tnsVector3d result)
-{
-  real r = sqrt(result[0] * result[0] + result[1] * result[1] + result[2] * result[2]);
-  result[0] /= r;
-  result[1] /= r;
-  result[2] /= r;
-}
-real tmat_dot_3d(tnsVector3d l, tnsVector3d r, int normalize)
-{
-  tnsVector3d ln, rn;
-  if (normalize) {
-    tmat_normalize_3d(ln, l);
-    tmat_normalize_3d(rn, r);
-    return (ln[0] * rn[0] + ln[1] * rn[1] + ln[2] * rn[2]);
-  }
-  return (l[0] * r[0] + l[1] * r[1] + l[2] * r[2]);
-}
-real tmat_dot_3df(tnsVector3d l, tnsVector3f r, int normalize)
-{
-  tnsVector3d ln;
-  tnsVector3f rn;
-  if (normalize) {
-    tmat_normalize_3d(ln, l);
-    tmat_normalize_3f(rn, r);
-    return (ln[0] * rn[0] + ln[1] * rn[1] + ln[2] * rn[2]);
-  }
-  return (l[0] * r[0] + l[1] * r[1] + l[2] * r[2]);
-}
-real tmat_dot_2d(tnsVector2d l, tnsVector2d r, int normalize)
-{
-  tnsVector3d ln, rn;
-  if (normalize) {
-    tmat_normalize_2d(ln, l);
-    tmat_normalize_2d(rn, r);
-    return (ln[0] * rn[0] + ln[1] * rn[1]);
-  }
-  return (l[0] * r[0] + l[1] * r[1]);
 }
 real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
 {
@@ -532,32 +134,6 @@ real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
   result[1] = l[2] * r[0] - l[0] * r[2];
   result[2] = l[0] * r[1] - l[1] * r[0];
   return tmat_length_3d(result);
-}
-void tmat_vector_cross_only_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
-{
-  result[0] = l[1] * r[2] - l[2] * r[1];
-  result[1] = l[2] * r[0] - l[0] * r[2];
-  result[2] = l[0] * r[1] - l[1] * r[0];
-}
-real tmat_angle_rad_3d(tnsVector3d from, tnsVector3d to, tnsVector3d PositiveReference)
-{
-  if (PositiveReference) {
-    tnsVector3d res;
-    tmat_vector_cross_3d(res, from, to);
-    if (tmat_dot_3d(res, PositiveReference, 1) > 0) {
-      return acosf(tmat_dot_3d(from, to, 1));
-    }
-    else {
-      return -acosf(tmat_dot_3d(from, to, 1));
-    }
-  }
-  return acosf(tmat_dot_3d(from, to, 1));
-}
-void tmat_apply_rotation_33d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v)
-{
-  result[0] = mat[0] * v[0] + mat[1] * v[1] + mat[2] * v[2];
-  result[1] = mat[3] * v[0] + mat[4] * v[1] + mat[5] * v[2];
-  result[2] = mat[6] * v[0] + mat[7] * v[1] + mat[8] * v[2];
 }
 void tmat_apply_rotation_43d(tnsVector3d result, tnsMatrix44d mat, tnsVector3d v)
 {
@@ -620,26 +196,6 @@ void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVecto
   result[3] = mat[3] * v[0] + mat[7] * v[1] + mat[11] * v[2] + mat[15] * v[3];
 }
 
-void tmat_remove_translation_44d(tnsMatrix44d result, tnsMatrix44d mat)
-{
-  tmat_load_identity_44d(result);
-  result[0] = mat[0];
-  result[1] = mat[1];
-  result[2] = mat[2];
-  result[4] = mat[4];
-  result[5] = mat[5];
-  result[6] = mat[6];
-  result[8] = mat[8];
-  result[9] = mat[9];
-  result[10] = mat[10];
-}
-void tmat_clear_translation_44d(tnsMatrix44d mat)
-{
-  mat[3] = 0;
-  mat[7] = 0;
-  mat[11] = 0;
-}
-
 #define L(row, col) l[(col << 2) + row]
 #define R(row, col) r[(col << 2) + row]
 #define P(row, col) result[(col << 2) + row]
@@ -674,6 +230,9 @@ void tmat_multiply_44d(tnsMatrix44d result, tnsMatrix44d l, tnsMatrix44d r)
     P(i, 3) = ai0 * R(0, 3) + ai1 * R(1, 3) + ai2 * R(2, 3) + ai3 * R(3, 3);
   }
 };
+#undef L
+#undef R
+#undef P
 void tmat_inverse_44d(tnsMatrix44d inverse, tnsMatrix44d mat)
 {
   int i, j, k;
