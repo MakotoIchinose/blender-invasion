@@ -1192,9 +1192,9 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
                                                SculptSession *ss,
                                                float obmat[4][4])
 {
-  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.7f);
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.6f);
   GPU_depth_test(true);
-  GPU_line_width(2.0f);
+  GPU_line_width(1.0f);
   if (ss->preview_vert_index_count > 0) {
     immBegin(GPU_PRIM_LINES, ss->preview_vert_index_count);
     for (int i = 0; i < ss->preview_vert_index_count; i++) {
@@ -1375,7 +1375,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           }
         }
 
-        GPU_line_width(4.0f);
+        GPU_line_width(3.0f);
         GPU_matrix_mul(cursor_mat4);
         GPU_matrix_mul(cursor_rot_mat4);
         immUniformColor3fvAlpha(outline_col, outline_alpha);
