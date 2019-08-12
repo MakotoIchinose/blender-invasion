@@ -219,11 +219,13 @@ static void file_draw_preview(uiBlock *block,
 
   GPU_blend(true);
 
-  /* the image */
+  /* the large image */
 
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
-    /*  Use dark icons if background is light */
+    /*  File and Folder icons draw with lowered opacity until we add themes */
+    col[3] = 0.6f;
+    /*  Use dark images if background is light */
     float bg[3];
     UI_GetThemeColor3fv(TH_BACK, bg);
     if (rgb_to_grayscale(bg) > 0.5f) {
@@ -233,7 +235,6 @@ static void file_draw_preview(uiBlock *block,
     }
   }
   else if (typeflags & FILE_TYPE_FTFONT) {
-    /*  Use text color for font sample */
     UI_GetThemeColor4fv(TH_TEXT, col);
   }
 
@@ -268,12 +269,20 @@ static void file_draw_preview(uiBlock *block,
 
     if (is_icon) {
       const float icon_size = 16.0f / icon_aspect * U.dpi_fac;
-      float icon_opacity = MIN2(icon_aspect, 0.8);
-
+      float icon_opacity = MIN2(icon_aspect, 0.7);
+      uchar icon_color[4] = {255, 255, 255, 255};
+      float bg[3];
+      /*  base this off theme color of file or folder later */
+      UI_GetThemeColor3fv(TH_BACK, bg);
+      if (rgb_to_grayscale(bg) > 0.5f) {
+        icon_color[0] = 0;
+        icon_color[1] = 0;
+        icon_color[2] = 0;
+      }
       icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
       icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.65f));
       UI_icon_draw_ex(
-          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, NULL, false);
+          icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, icon_color, false);
     }
     else {
       const uchar dark[4] = {0, 0, 0, 255};
@@ -296,13 +305,13 @@ static void file_draw_preview(uiBlock *block,
 
     immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
     immBegin(GPU_PRIM_LINE_LOOP, 4);
-    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.07f);
+    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.15f);
     immVertex2f(pos_attr, (float)xco + 1, (float)(yco + ey));
-    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.10f);
+    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.2f);
     immVertex2f(pos_attr, (float)(xco + ex), (float)(yco + ey));
-    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.15f);
-    immVertex2f(pos_attr, (float)(xco + ex), (float)yco + 1);
     immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.2f);
+    immVertex2f(pos_attr, (float)(xco + ex), (float)yco + 1);
+    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.3f);
     immVertex2f(pos_attr, (float)xco + 1, (float)yco + 1);
     immEnd();
     immUnbindProgram();
