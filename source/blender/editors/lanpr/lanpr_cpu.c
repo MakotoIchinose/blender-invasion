@@ -1946,7 +1946,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
 
   copy_v3_v3_db(Cv, CameraDir);
 
-  tMatVectorConvert4fd(cam->obmat[3], vd4);
+  copy_v4db_v4fl(vd4, cam->obmat[3]);
   if (((Camera *)cam->data)->type == CAM_PERSP) {
     sub_v3_v3v3_db(Cv, vd4, rt->v[0]->gloc);
   }
@@ -2293,7 +2293,7 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
   LANPR_RenderVert *Share = lanpr_triangle_share_point(testing, rt);
   Camera *cam = rb->scene->camera->data;
 
-  tMatVectorConvert3fd(rb->scene->camera->obmat[3], cl);
+  copy_v3db_v3fl(cl, rb->scene->camera->obmat[3]);
 
   if (Share) {
     LANPR_RenderVert *NewShare;
@@ -2504,7 +2504,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
     Dot2 = 0;
 
     if (c->type == CAM_PERSP) {
-      tMatVectorConvert3fd(cam_obj->obmat[3], cam_location);
+      copy_v3db_v3fl(cam_location, cam_obj->obmat[3]);
       sub_v3_v3v3_db(view_vector, rl->l->gloc, cam_location);
     }
 
@@ -2852,15 +2852,15 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
         CLAMP(irls->at, 0, 1);
       }
 
-      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], rls->at);
+      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], rls->at);
       v++;
-      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], rls->at);
+      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], rls->at);
       v++;
       *v = componet_id;
       v++;
-      *v = tnsLinearItp(rl->l->fbcoord[0], rl->r->fbcoord[0], irls ? irls->at : 1);
+      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], irls ? irls->at : 1);
       v++;
-      *v = tnsLinearItp(rl->l->fbcoord[1], rl->r->fbcoord[1], irls ? irls->at : 1);
+      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], irls ? irls->at : 1);
       v++;
       *v = componet_id;
       v++;

@@ -318,8 +318,8 @@ int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
 static void lanpr_dpix_index_to_coord(int index, float *x, float *y)
 {
   int texture_size = lanpr_share.texture_size;
-  (*x) = tnsLinearItp(-1, 1, (float)(index % texture_size + 0.5) / (float)texture_size);
-  (*y) = tnsLinearItp(-1, 1, (float)(index / texture_size + 0.5) / (float)texture_size);
+  (*x) = interpf(1, -1, (float)(index % texture_size + 0.5) / (float)texture_size);
+  (*y) = interpf(1, -1, (float)(index / texture_size + 0.5) / (float)texture_size);
 }
 
 static void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)

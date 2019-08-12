@@ -34,8 +34,6 @@
 
 #include "DNA_lanpr_types.h"
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #ifndef BYTE
 #  define BYTE unsigned char
 #endif
@@ -430,15 +428,9 @@ typedef struct LANPR_BoundingArea {
 /* #define TNS_OVERRIDE_ALL_OTHERS_IN_GROUP      3 */
 /* #define TNS_OVERRIDE_ALL_OTHERS               4 */
 
-#define tnsLinearItp(l, r, T) ((l) * (1.0f - (T)) + (r) * (T))
-
 #define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
 
 #define TNS_CLAMP(a, Min, Max) a = a < Min ? Min : (a > Max ? Max : a)
-
-#define TNS_MAX2_INDEX(a, b) (a > b ? 0 : 1)
-
-#define TNS_MIN2_INDEX(a, b) (a < b ? 0 : 1)
 
 #define TNS_MAX3_INDEX(a, b, c) (a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
 
@@ -521,14 +513,14 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
       return 0;
     }
     double r2 = tMatGetLinearRatio(b1[0], b2[0], a1[0]);
-    x = tnsLinearItp(b1[0], b2[0], r2);
-    y = tnsLinearItp(b1[1], b2[1], r2);
+    x = interpd(b2[0], b1[0], r2);
+    y = interpd(b2[1], b1[1], r2);
     *aRatio = Ratio = tMatGetLinearRatio(a1[1], a2[1], y);
   }
   else {
     if (xDiff2 == 0) {
       Ratio = tMatGetLinearRatio(a1[0], a2[0], b1[0]);
-      x = tnsLinearItp(a1[0], a2[0], Ratio);
+      x = interpd(a2[0], a1[0], Ratio);
       *aRatio = Ratio;
     }
     else {
@@ -547,7 +539,7 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
   }
 
   if (b1[0] == b2[0]) {
-    y = tnsLinearItp(a1[1], a2[1], Ratio);
+    y = interpd(a2[1], a1[1], Ratio);
     if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1]))
       return 0;
   }
@@ -560,15 +552,13 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
 }
 BLI_INLINE double lanpr_GetLineZ(tnsVector3d l, tnsVector3d r, real Ratio)
 {
-  /*  double z = 1 / tnsLinearItp(1 / l[2], 1 / r[2], Ratio); */
-  double z = tnsLinearItp(l[2], r[2], Ratio);
+  double z = interpd(r[2], l[2], Ratio);
   return z;
 }
 BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
 {
   double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
-  return tnsLinearItp(l[2], r[2], ra);
-  /*  return 1 / tnsLinearItp(1 / l[2], 1 / r[2], r); */
+  return interpd(r[2], l[2], ra);
 }
 BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
 {
@@ -582,70 +572,12 @@ BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
   return ra;
 }
 
-BLI_INLINE real tMatDirectionToRad(tnsVector2d Dir)
-{
-  real arcc = acos(Dir[0]);
-  real arcs = asin(Dir[1]);
-
-  if (Dir[0] >= 0) {
-    if (Dir[1] >= 0)
-      return arcc;
-    else
-      return M_PI * 2 - arcc;
-  }
-  else {
-    if (Dir[1] >= 0)
-      return arcs + M_PI / 2;
-    else
-      return M_PI + arcs;
-  }
-}
-
-BLI_INLINE void tMatVectorConvert4fd(tnsVector4f from, tnsVector4d to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-  to[2] = from[2];
-  to[3] = from[3];
-}
-
-BLI_INLINE void tMatVectorConvert3fd(tnsVector3f from, tnsVector3d to)
-{
-  to[0] = from[0];
-  to[1] = from[1];
-  to[2] = from[2];
-}
-
 int ED_lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
-
-void *list_append_pointer_only(ListBase *h, void *p);
-void *list_append_pointer_sized_only(ListBase *h, void *p, int size);
-void *list_push_pointer_only(ListBase *h, void *p);
-void *list_push_pointer_sized_only(ListBase *h, void *p, int size);
-
-void *list_append_pointer(ListBase *h, void *p);
-void *list_append_pointer_sized(ListBase *h, void *p, int size);
-void *list_push_pointer(ListBase *h, void *p);
-void *list_push_pointer_sized(ListBase *h, void *p, int size);
 
 void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
 void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
 void *list_push_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *p);
 void *list_push_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *p, int size);
-
-void *list_pop_pointer_only(ListBase *h);
-void list_remove_pointer_item_only(ListBase *h, LinkData *lip);
-void list_remove_pointer_only(ListBase *h, void *p);
-void list_clear_pointer_only(ListBase *h);
-void list_generate_pointer_list_only(ListBase *from1, ListBase *from2, ListBase *to);
-
-void *list_pop_pointer(ListBase *h);
-void list_remove_pointer_item(ListBase *h, LinkData *lip);
-void list_remove_pointer(ListBase *h, void *p);
-void list_clear_pointer(ListBase *h);
-void list_generate_pointer_list(ListBase *from1, ListBase *from2, ListBase *to);
-
-void list_copy_handle(ListBase *target, ListBase *src);
 
 void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *p);
 void *list_pop_pointer_no_free(ListBase *h);

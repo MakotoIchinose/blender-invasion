@@ -252,8 +252,8 @@ int lanpr_reverse_direction(int From)
 
 void lanpr_texture_to_ndc(int x, int y, int w, int h, float *x_ndc, float *y_ndc)
 {
-  *x_ndc = tnsLinearItp(-1, 1, (float)x / (float)w);
-  *y_ndc = tnsLinearItp(-1, 1, (float)y / (float)h);
+  *x_ndc = interpf(1, -1, (float)x / (float)w);
+  *y_ndc = interpf(1, -1, (float)y / (float)h);
 }
 
 void lanpr_count_drawing_elements(LANPR_PrivateData *pd,
