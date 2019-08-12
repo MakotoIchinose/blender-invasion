@@ -5676,7 +5676,7 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
         weld2 = bndv;
         move_weld_profile_planes(bv, weld1, weld2);
 
-        calculate_profile(bp, weld1, !weld1->is_profile_start, false);
+//        calculate_profile(bp, weld1, !weld1->is_profile_start, false);
       }
     }
   } while ((bndv = bndv->next) != vm->boundstart);
@@ -5688,13 +5688,10 @@ static void build_vmesh(BevelParams *bp, BMesh *bm, BevVert *bv)
     i = bndv->index;
     /* bndv's last vert along the boundary arc is the the first of the next BoundVert's arc. */
     copy_mesh_vert(vm, i, 0, ns, bndv->next->index, 0, 0);
-    /* Fix the profile orientation if it has the wrong direction and it's not a miter profile. */
-//    if (bp->use_custom_profile && !bndv->is_arc_start && !bndv->is_patch_start) {
-//      calculate_profile(bp, bndv, !bndv->is_profile_start, false);
-//    }
-    if (bp->use_custom_profile && !bndv->is_profile_start &&
-        !bndv->is_arc_start && !bndv->is_patch_start) {
-        calculate_profile(bp, bndv, true, false);
+
+    /* Fix the profile orientations if it's not a miter profile. */
+    if (bp->use_custom_profile && !bndv->is_arc_start && !bndv->is_patch_start) {
+        calculate_profile(bp, bndv, !bndv->is_profile_start, false);
     }
     if (vm->mesh_kind != M_ADJ) {
       for (k = 1; k < ns; k++) {
@@ -7483,8 +7480,6 @@ void BM_mesh_bevel(BMesh *bm,
   BMLoop *l;
   BevVert *bv;
   BevelParams bp = {NULL};
-
-  printf("\nBM MESH BEVEL\n");
 
   bp.offset = offset;
   bp.offset_type = offset_type;
