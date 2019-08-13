@@ -352,9 +352,28 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
                                            const int64_t ts,
                                            const bool compact,
                                            char r_time[FILELIST_DIRENTRY_TIME_LEN],
-                                           char r_date[FILELIST_DIRENTRY_DATE_LEN])
+                                           char r_date[FILELIST_DIRENTRY_DATE_LEN],
+                                           const bool use_relative_str
+  )
 {
-  time_t ts_mtime = ts;
+  int today_year = 0;
+  int today_yday = 0;
+  int yesterday_year = 0;
+  int yesterday_yday = 0;
+  if (use_relative_str) {
+    /* Localtime() has only one buffer so need to get data out before called again. */
+    const time_t ts_now = time(NULL);
+    struct tm *today = localtime(&ts_now);
+    today_year = today->tm_year;
+    today_yday = today->tm_yday;
+    /* Handle a yesterday that spans a year */
+    today->tm_mday--;
+    mktime(today);
+    yesterday_year = today->tm_year;
+    yesterday_yday = today->tm_yday;
+  }
+
+  const time_t ts_mtime = ts;
   const struct tm *tm = localtime(st ? &st->st_mtime : &ts_mtime);
   const time_t zero = 0;
 
@@ -367,10 +386,19 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
     strftime(r_time, sizeof(*r_time) * FILELIST_DIRENTRY_TIME_LEN, "%H:%M", tm);
   }
   if (r_date) {
-    strftime(r_date,
-             sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN,
-             compact ? "%d/%m/%y" : "%d %b %Y",
-             tm);
+    if (use_relative_str && (tm->tm_year == today_year) && (tm->tm_yday == today_yday)) {
+      BLI_strncpy(r_date, "Today", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
+    }
+    else if (use_relative_str && (tm->tm_year == yesterday_year) &&
+             (tm->tm_yday == yesterday_yday)) {
+      BLI_strncpy(r_date, "Yesterday", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
+    }
+    else {
+      strftime(r_date,
+               sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN,
+               compact ? "%d/%m/%y" : "%d %b %Y",
+               tm);
+    }
   }
 }
 

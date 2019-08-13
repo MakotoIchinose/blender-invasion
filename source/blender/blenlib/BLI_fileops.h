@@ -100,7 +100,7 @@ void BLI_filelist_entry_mode_to_string(
     const struct stat *st, const bool compact, char r_mode1[], char r_mode2[], char r_mode3[]);
 void BLI_filelist_entry_owner_to_string(const struct stat *st, const bool compact, char r_owner[]);
 void BLI_filelist_entry_datetime_to_string(
-    const struct stat *st, const int64_t ts, const bool compact, char r_time[], char r_date[]);
+    const struct stat *st, const int64_t ts, const bool compact, char r_time[], char r_date[], const bool use_relative_str);
 
 /* Files */
 
