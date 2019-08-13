@@ -1608,6 +1608,18 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v, const int cd
 static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, ClothVertMap &cvm)
 {
   BMVert *v1 = cloth_remeshing_edge_vert(e, which);
+#if 1
+  float uv_01[2], uv_02[2];
+  cloth_remeshing_uv_of_vert_in_edge(bm, e, v1, uv_01);
+  cloth_remeshing_uv_of_vert_in_edge(bm, e, cloth_remeshing_edge_vert(e, 1 - which), uv_02);
+  printf("uv killed: ");
+  print_v2(uv_01);
+  printf("uv: ");
+  print_v2(uv_02);
+  char file_name[100];
+  sprintf(file_name, "/tmp/objs/collapse_edge_debug_before_collapse.obj");
+  cloth_remeshing_export_obj(bm, file_name);
+#endif
   /* Need to store the value of vertex v1 which will be killed */
   BMVert *v = v1;
   BMVert *v2 = BM_edge_collapse(bm, e, v1, true, true);
@@ -1838,6 +1850,20 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       BMEdge *temp_e;
       BMIter temp_e_iter;
       BM_ITER_ELEM (temp_e, &temp_e_iter, temp_vert, BM_EDGES_OF_VERT) {
+        if (BM_edge_face_count(temp_e) > 2) {
+#if 1
+          float uv_01[2], uv_02[2];
+          cloth_remeshing_uv_of_vert_in_edge(clmd->clothObject->bm, temp_e, temp_e->v1, uv_01);
+          cloth_remeshing_uv_of_vert_in_edge(clmd->clothObject->bm, temp_e, temp_e->v2, uv_02);
+          printf("uv_01: ");
+          print_v2(uv_01);
+          printf("uv_02: ");
+          print_v2(uv_02);
+          char file_name[100];
+          sprintf(file_name, "/tmp/objs/collapse_edge_debug_after_collapse.obj");
+          cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
+#endif
+        }
         BLI_assert(BM_edge_face_count(temp_e) <= 2);
       }
 
