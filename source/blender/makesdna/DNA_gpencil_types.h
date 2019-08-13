@@ -36,7 +36,7 @@ struct MDeformVert;
 
 #define GP_DEFAULT_PIX_FACTOR 1.0f
 #define GP_DEFAULT_GRID_LINES 4
-#define GP_MAX_INPUT_SAMPLES 10
+#define GP_MAX_INPUT_SAMPLES 50
 
 /* ***************************************** */
 /* GP Stroke Points */
