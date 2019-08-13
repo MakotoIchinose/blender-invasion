@@ -113,7 +113,8 @@ typedef struct BrushGpencilSettings {
   float gradient_f;
   /** factor xy of shape for dots gradients */
   float gradient_s[2];
-  char _pad_2[4];
+  /** Simplify adaptive factor */
+  float simplify_f;
 
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
@@ -485,7 +486,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_THUMB, \
         SCULPT_TOOL_LAYER, \
 \
-        /* These brushes could handle dynamic topology, \
+        /* These brushes could handle dynamic topology, \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
