@@ -253,9 +253,7 @@ static eOLDrawState active_viewlayer(bContext *C,
 }
 
 /**
- * Select object tree:
- * ALT+LMB: Select/Deselect object and all children.
- * CTRL+ALT+LMB: Add/Remove object and all children.
+ * Select object tree
  */
 static void do_outliner_object_select_recursive(ViewLayer *view_layer,
                                                 Object *ob_parent,
