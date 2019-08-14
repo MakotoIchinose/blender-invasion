@@ -3505,10 +3505,16 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static EnumPropertyItem prop_miter_items[] = {
-      {MOD_BEVEL_MITER_SHARP, "MITER_SHARP", 0, "Sharp", "Default sharp miter"},
-      {MOD_BEVEL_MITER_PATCH, "MITER_PATCH", 0, "Patch", "Miter with extra corner"},
-      {MOD_BEVEL_MITER_ARC, "MITER_ARC", 0, "Arc", "Miter with curved arc"},
+  static const EnumPropertyItem prop_miter_outer_items[] = {
+      {MOD_BEVEL_MITER_SHARP, "MITER_SHARP", 0, "Sharp", "Outside of miter is sharp"},
+      {MOD_BEVEL_MITER_PATCH, "MITER_PATCH", 0, "Patch", "Outside of miter is squared-off patch"},
+      {MOD_BEVEL_MITER_ARC, "MITER_ARC", 0, "Arc", "Outside of miter is arc"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem prop_miter_inner_items[] = {
+      {MOD_BEVEL_MITER_SHARP, "MITER_SHARP", 0, "Sharp", "Inside of miter is sharp"},
+      {MOD_BEVEL_MITER_ARC, "MITER_ARC", 0, "Arc", "Inside of miter is arc"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -3622,13 +3628,13 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "miter_outer", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "miter_outer");
-  RNA_def_property_enum_items(prop, prop_miter_items);
+  RNA_def_property_enum_items(prop, prop_miter_outer_items);
   RNA_def_property_ui_text(prop, "Outer Miter", "Pattern to use for outside of miters");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "miter_inner", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "miter_inner");
-  RNA_def_property_enum_items(prop, prop_miter_items);
+  RNA_def_property_enum_items(prop, prop_miter_inner_items);
   RNA_def_property_ui_text(prop, "Inner Miter", "Pattern to use for inside of miters");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
