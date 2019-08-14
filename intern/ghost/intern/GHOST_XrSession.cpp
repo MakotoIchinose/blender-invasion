@@ -424,7 +424,7 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
   r_info.fov.angle_down = view.fov.angleDown;
 }
 
-bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
+static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
 {
   /* WMR seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
    * compensate. */
