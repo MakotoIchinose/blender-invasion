@@ -52,8 +52,8 @@ add_dependencies(XrApiLayer_core_validation
 target_include_directories(XrApiLayer_core_validation
     PRIVATE ${OPENXR_ROOT_DIR}/src/common
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-    PRIVATE ${CMAKE_BINARY_DIR}/include
-    PRIVATE ${CMAKE_BINARY_DIR}/src
+    PRIVATE ${OPENXR_ROOT_DIR}/include
+    PRIVATE ${OPENXR_ROOT_DIR}/src
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 )
 if(VulkanHeaders_FOUND)
@@ -88,7 +88,7 @@ elseif(APPLE)
 
 else()
     # Linux core_validation-specific information
-    target_compile_options(XrApiLayer_core_validation PRIVATE -Wpointer-arith -Wno-unused-function -Wno-sign-compare)
+    target_compile_options(XrApiLayer_core_validation PRIVATE -Wpointer-arith -Wno-unused-function -Wno-sign-compare -Wno-unused-variable -Wno-unused-but-set-variable)
     set_target_properties(XrApiLayer_core_validation PROPERTIES LINK_FLAGS "-Wl,-Bsymbolic,--exclude-libs,ALL")
 endif()
 
