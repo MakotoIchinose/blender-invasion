@@ -23,12 +23,17 @@
 
 #include <stdio.h>
 
+#include "MEM_guardedalloc.h"
+
 #include "DNA_armature_types.h"
 #include "DNA_layer_types.h"
+#include "DNA_listBase.h"
 #include "DNA_outliner_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
+
+#include "BLI_listbase.h"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
@@ -154,9 +159,88 @@ static void outliner_sync_select_to_outliner_set_types(const bContext *C,
                          (soops->sync_select_dirty & WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE);
 }
 
+/**
+ * Stores items selected from a sync from the outliner. Prevents syncing the selection
+ * state of the last instance of an object linked in multiple collections.
+ */
+typedef struct SelectedItems {
+  ListBase *objects;
+  ListBase *edit_bones;
+  ListBase *pose_bones;
+} SelectedItems;
+
+static void selected_items_init(SelectedItems *selected_items)
+{
+  selected_items->objects = MEM_callocN(sizeof(ListBase), "selected_objects");
+  selected_items->edit_bones = MEM_callocN(sizeof(ListBase), "selected_ebones");
+  selected_items->pose_bones = MEM_callocN(sizeof(ListBase), "selected_pbones");
+}
+
+static void selected_items_free(SelectedItems *selected_items)
+{
+  BLI_freelistN(selected_items->objects);
+  MEM_freeN(selected_items->objects);
+  BLI_freelistN(selected_items->edit_bones);
+  MEM_freeN(selected_items->edit_bones);
+  BLI_freelistN(selected_items->pose_bones);
+  MEM_freeN(selected_items->pose_bones);
+}
+
+/* Check if an instance of this object been selected by the sync */
+static bool is_object_selected(ListBase *selected_objects, Base *base)
+{
+  for (LinkData *item = selected_objects->first; item; item = item->next) {
+    Base *selected_base = (Base *)item->data;
+
+    if (base == selected_base) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/* Check if an instance of this edit bone been selected by the sync */
+static bool is_edit_bone_selected(ListBase *selected_ebones, EditBone *ebone)
+{
+  for (LinkData *item = selected_ebones->first; item; item = item->next) {
+    EditBone *selected_ebone = (EditBone *)item->data;
+
+    if (ebone == selected_ebone) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/* Check if an instance of this pose bone been selected by the sync */
+static bool is_pose_bone_selected(ListBase *selected_pbones, bPoseChannel *pchan)
+{
+  for (LinkData *item = selected_pbones->first; item; item = item->next) {
+    bPoseChannel *selected_pchan = (bPoseChannel *)item->data;
+
+    if (pchan == selected_pchan) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/* Add element's data to selected item list */
+static void add_selected_item(ListBase *selected_list, void *data)
+{
+  LinkData *link = MEM_callocN(sizeof(LinkData), "selected_item");
+  link->data = data;
+
+  BLI_addtail(selected_list, link);
+}
+
 static void outliner_select_sync_to_object(ViewLayer *view_layer,
                                            TreeElement *te,
-                                           TreeStoreElem *tselem)
+                                           TreeStoreElem *tselem,
+                                           ListBase *selected_objects)
 {
   Object *ob = (Object *)tselem->id;
   Base *base = (te->directdata) ? (Base *)te->directdata :
@@ -165,14 +249,18 @@ static void outliner_select_sync_to_object(ViewLayer *view_layer,
   if (base && (base->flag & BASE_SELECTABLE)) {
     if (tselem->flag & TSE_SELECTED) {
       ED_object_base_select(base, BA_SELECT);
+
+      add_selected_item(selected_objects, base);
     }
-    else {
+    else if (!is_object_selected(selected_objects, base)) {
       ED_object_base_select(base, BA_DESELECT);
     }
   }
 }
 
-static void outliner_select_sync_to_edit_bone(TreeElement *te, TreeStoreElem *tselem)
+static void outliner_select_sync_to_edit_bone(TreeElement *te,
+                                              TreeStoreElem *tselem,
+                                              ListBase *selected_ebones)
 {
   bArmature *arm = (bArmature *)tselem->id;
   EditBone *ebone = (EditBone *)te->directdata;
@@ -180,14 +268,18 @@ static void outliner_select_sync_to_edit_bone(TreeElement *te, TreeStoreElem *ts
   if (EBONE_SELECTABLE(arm, ebone)) {
     if (tselem->flag & TSE_SELECTED) {
       ebone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+
+      add_selected_item(selected_ebones, ebone);
     }
-    else {
+    else if (!is_edit_bone_selected(selected_ebones, ebone)) {
       ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
     }
   }
 }
 
-static void outliner_select_sync_to_pose_bone(TreeElement *te, TreeStoreElem *tselem)
+static void outliner_select_sync_to_pose_bone(TreeElement *te,
+                                              TreeStoreElem *tselem,
+                                              ListBase *selected_pbones)
 {
   Object *ob = (Object *)tselem->id;
   bArmature *arm = ob->data;
@@ -198,8 +290,10 @@ static void outliner_select_sync_to_pose_bone(TreeElement *te, TreeStoreElem *ts
   if (PBONE_SELECTABLE(arm, pchan->bone)) {
     if (tselem->flag & TSE_SELECTED) {
       pchan->bone->flag |= BONE_SELECTED;
+
+      add_selected_item(selected_pbones, pchan);
     }
-    else {
+    else if (!is_pose_bone_selected(selected_pbones, pchan)) {
       pchan->bone->flag &= ~BONE_SELECTED;
     }
   }
@@ -231,7 +325,8 @@ static void outliner_select_sync_to_sequence(Scene *scene, TreeStoreElem *tselem
 static void outliner_sync_selection_from_outliner(Scene *scene,
                                                   ViewLayer *view_layer,
                                                   ListBase *tree,
-                                                  const SyncSelectTypes *sync_types)
+                                                  const SyncSelectTypes *sync_types,
+                                                  SelectedItems *selected_items)
 {
 
   for (TreeElement *te = tree->first; te; te = te->next) {
@@ -239,17 +334,17 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
 
     if (tselem->type == 0 && te->idcode == ID_OB) {
       if (sync_types->object) {
-        outliner_select_sync_to_object(view_layer, te, tselem);
+        outliner_select_sync_to_object(view_layer, te, tselem, selected_items->objects);
       }
     }
     else if (tselem->type == TSE_EBONE) {
       if (sync_types->edit_bone) {
-        outliner_select_sync_to_edit_bone(te, tselem);
+        outliner_select_sync_to_edit_bone(te, tselem, selected_items->edit_bones);
       }
     }
     else if (tselem->type == TSE_POSE_CHANNEL) {
       if (sync_types->pose_bone) {
-        outliner_select_sync_to_pose_bone(te, tselem);
+        outliner_select_sync_to_pose_bone(te, tselem, selected_items->pose_bones);
       }
     }
     else if (tselem->type == TSE_SEQUENCE) {
@@ -258,7 +353,8 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
       }
     }
 
-    outliner_sync_selection_from_outliner(scene, view_layer, &te->subtree, sync_types);
+    outliner_sync_selection_from_outliner(
+        scene, view_layer, &te->subtree, sync_types, selected_items);
   }
 }
 
@@ -276,7 +372,15 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
   SyncSelectTypes sync_types;
   outliner_sync_select_from_outliner_set_types(C, soops, &sync_types);
 
-  outliner_sync_selection_from_outliner(scene, view_layer, &soops->tree, &sync_types);
+  /* To store elements that have been selected to prevent linked object sync errors */
+  SelectedItems selected_items;
+
+  selected_items_init(&selected_items);
+
+  outliner_sync_selection_from_outliner(
+      scene, view_layer, &soops->tree, &sync_types, &selected_items);
+
+  selected_items_free(&selected_items);
 
   /* Set global sync select flag based on outliner selection type */
   if (sync_types.object) {
