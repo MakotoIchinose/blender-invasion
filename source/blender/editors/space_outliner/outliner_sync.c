@@ -362,26 +362,22 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 
   selected_items_free(&selected_items);
 
-  /* Set global sync select flag based on outliner selection type */
+  /* Clear sync select dirty state from current selection type */
   if (sync_types.object) {
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-    ED_outliner_select_sync_from_object_tag(C);
+    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_OBJECT;
   }
   if (sync_types.edit_bone) {
-    ED_outliner_select_sync_from_edit_bone_tag(C);
+    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE;
   }
   if (sync_types.pose_bone) {
-    ED_outliner_select_sync_from_pose_bone_tag(C);
+    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE;
   }
   if (sync_types.sequence) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
-    ED_outliner_select_sync_from_sequence_tag(C);
+    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE;
   }
-
-  /* Flag all outliners as dirty except for self */
-  ED_outliner_select_sync_flag_outliners(C);
-  soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_ALL;
 }
 
 static void outliner_select_sync_from_object(ViewLayer *view_layer,
