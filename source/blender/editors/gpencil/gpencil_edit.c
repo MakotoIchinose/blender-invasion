@@ -4052,8 +4052,10 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
               }
 
               /* add duplicate materials */
-              ma = give_current_material(
-                  ob, gps->mat_nr + 1); /* XXX same material can be in multiple slots */
+
+              /* XXX same material can be in multiple slots. */
+              ma = give_current_material(ob, gps->mat_nr + 1);
+
               idx = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma);
 
               /* selected points mode */
@@ -4575,7 +4577,7 @@ bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
 static bool gp_merge_by_distance_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob == NULL) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;
