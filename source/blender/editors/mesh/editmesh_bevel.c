@@ -857,6 +857,9 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayout *row, *col, *split;
   PointerRNA ptr, toolsettings_ptr;
+  const char *offset_name;
+
+
 
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
@@ -864,7 +867,18 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
     uiItemR(layout, &ptr, "offset_pct", 0, NULL, ICON_NONE);
   }
   else {
-    uiItemR(layout, &ptr, "offset", 0, NULL, ICON_NONE);
+    switch (RNA_enum_get(&ptr, "offset_type")) {
+      case BEVEL_AMT_DEPTH:
+        offset_name = "Depth";
+        break;
+      case BEVEL_AMT_WIDTH:
+        offset_name = "Width";
+        break;
+      case BEVEL_AMT_OFFSET:
+        offset_name = "Offset";
+        break;
+    }
+    uiItemR(layout, &ptr, "offset", 0, offset_name, ICON_NONE);
   }
   row = uiLayoutRow(layout, true);
   uiItemR(row, &ptr, "offset_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
