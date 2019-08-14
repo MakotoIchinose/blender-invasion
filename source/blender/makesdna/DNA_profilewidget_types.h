@@ -71,15 +71,17 @@ typedef struct ProfileWidget {
 
 /** ProfileWidget->flag */
 enum {
-  PROF_USE_CLIP = (1 << 0), /* Keep control points inside bounding rectangle */
-  PROF_SYMMETRY_MODE = (1 << 1), /* HANS-TODO: Add symmetry mode */
-  PROF_SAMPLE_STRAIGHT_EDGES = (1 << 2), /* Sample extra points on straight edges */
+  PROF_USE_CLIP = (1 << 0), /* Keep control points inside bounding rectangle. */
+  /*PROF_SYMMETRY_MODE = (1 << 1), */
+  PROF_SAMPLE_STRAIGHT_EDGES = (1 << 2), /* Sample extra points on straight edges. */
 };
 
 typedef enum eProfileWidgetPresets {
-  PROF_PRESET_LINE = 0, /* Default simple line */
-  PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile */
-  PROF_PRESET_EXAMPLE1 = 2, /* Molding type example of a supposed common use case */
+  PROF_PRESET_LINE = 0, /* Default simple line between end points. */
+  PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile. */
+  PROF_PRESET_CORNICE = 2, /* Moulding type example. */
+  PROF_PRESET_CROWN = 3, /* Second moulding example. */
+  PROF_PRESET_STEPS = 4, /* Dynamic number of steps defined by totsegments. */
 } ProfileWiedgetPresets;
 
 #endif

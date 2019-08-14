@@ -4343,9 +4343,15 @@ static uiBlock *profilewidget_presets_func(bContext *C, ARegion *ar, ProfileWidg
   uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Support Loops"), 0,
                    yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
                    PROF_PRESET_SUPPORTS, "");
-  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Example 1"), 0,
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Cornice Moulding"), 0,
                    yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
-                   PROF_PRESET_EXAMPLE1, "");
+                   PROF_PRESET_CORNICE, "");
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Crown Moulding"), 0,
+                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
+                   PROF_PRESET_CROWN, "");
+  uiDefIconTextBut(block, UI_BTYPE_BUT_MENU, 1, ICON_BLANK1, IFACE_("Steps"), 0,
+                   yco -= UI_UNIT_Y, menuwidth, UI_UNIT_Y, NULL, 0.0, 0.0, 0,
+                   PROF_PRESET_STEPS, "");
 
   UI_block_direction_set(block, UI_DIR_DOWN);
   UI_block_bounds_set_text(block, (int)(3.0f * UI_UNIT_X));

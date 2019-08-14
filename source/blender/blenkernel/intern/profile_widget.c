@@ -316,14 +316,33 @@ void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
   prwdgt->path = new_pts;
 }
 
+/** Puts the widget's control points in a step pattern, setting vector interpolation */
+static void profilewidget_build_steps(ProfileWidget *prwdgt)
+{
+  int n, step_x, step_y;
+  float n_steps_x, n_steps_y;
+
+  n = prwdgt->totpoint;
+
+  n_steps_x = (n % 2 == 0) ? n : (n - 1);
+  n_steps_y = (n % 2 == 0) ? (n - 2) : (n - 1);
+
+  for (int i = 0; i < n; i++) {
+    step_x = (i + 1) / 2;
+    step_y = i / 2;
+    prwdgt->path[i].x = 1.0f - ((float)(2 * step_x) / n_steps_x);
+    prwdgt->path[i].y = (float)(2 * step_y) / n_steps_y;
+    prwdgt->path[i].flag = PROF_HANDLE_VECTOR;
+  }
+}
+
 /** Resets the profile to the current preset.
- * \note: Requiress profilewidget_changed call after */
+ * \note: Requires profilewidget_changed call after */
 void BKE_profilewidget_reset(ProfileWidget *prwdgt)
 {
 #if DEBUG_PRWDGT
   printf("PROFILEPATH RESET\n");
 #endif
-
   if (prwdgt->path) {
     MEM_freeN(prwdgt->path);
   }
@@ -336,8 +355,21 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
     case PROF_PRESET_SUPPORTS:
       prwdgt->totpoint = 12;
       break;
-    case PROF_PRESET_EXAMPLE1:
-      prwdgt->totpoint = 23;
+    case PROF_PRESET_CORNICE:
+      prwdgt->totpoint = 13;
+      break;
+    case PROF_PRESET_CROWN:
+      prwdgt->totpoint = 11;
+      break;
+    case PROF_PRESET_STEPS:
+      /* Use dynamic number of control points based on the set number of segments. */
+      if (prwdgt->totsegments == 0) {
+        /* If totsegments hasn't been set, use the number of control points for 8 steps. */
+        prwdgt->totpoint = 17;
+      }
+      else {
+        prwdgt->totpoint = prwdgt->totsegments + 1;
+      }
       break;
   }
 
@@ -356,63 +388,86 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
       prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
       prwdgt->path[1].x = 1.0;
       prwdgt->path[1].y = 0.5;
+      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
       for (int i = 1; i < 10; i++) {
         prwdgt->path[i + 1].x = 1.0f - (0.5f * (1.0f - cosf((float)((i / 9.0) * M_PI_2))));
         prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / 9.0) * M_PI_2));
       }
       prwdgt->path[10].x = 0.5;
       prwdgt->path[10].y = 1.0;
+      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
       prwdgt->path[11].x = 0.0;
       prwdgt->path[11].y = 1.0;
       prwdgt->path[11].flag = PROF_HANDLE_VECTOR;
       break;
-    case PROF_PRESET_EXAMPLE1: /* HANS-TODO: Don't worry, this is just temporary */
+    case PROF_PRESET_CORNICE:
       prwdgt->path[0].x = 1.0f;
       prwdgt->path[0].y = 0.0f;
+      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
       prwdgt->path[1].x = 1.0f;
-      prwdgt->path[1].y = 0.6f;
-      prwdgt->path[2].x = 0.9f;
-      prwdgt->path[2].y = 0.6f;
-      prwdgt->path[3].x = 0.9f;
-      prwdgt->path[3].y = 0.7f;
-      prwdgt->path[4].x = 1.0f - 0.195024f;
-      prwdgt->path[4].y = 0.709379f;
-      prwdgt->path[5].x = 1.0f - 0.294767f;
-      prwdgt->path[5].y = 0.735585f;
-      prwdgt->path[6].x = 1.0f - 0.369792f;
-      prwdgt->path[6].y = 0.775577f;
-      prwdgt->path[7].x = 1.0f - 0.43429f;
-      prwdgt->path[7].y = 0.831837f;
-      prwdgt->path[8].x = 1.0f - 0.500148f;
-      prwdgt->path[8].y = 0.884851f;
-      prwdgt->path[9].x = 1.0f - 0.565882f;
-      prwdgt->path[9].y = 0.91889f;
-      prwdgt->path[10].x = 1.0f - 0.633279f;
-      prwdgt->path[10].y = 0.935271f;
-      prwdgt->path[11].x = 1.0f - 0.697628f;
-      prwdgt->path[11].y = 0.937218f;
-      prwdgt->path[12].x = 1.0f - 0.75148f;
-      prwdgt->path[12].y = 0.924844f;
-      prwdgt->path[13].x = 1.0f - 0.791918f;
-      prwdgt->path[13].y = 0.904817f;
-      prwdgt->path[14].x = 1.0f - 0.822379f;
-      prwdgt->path[14].y = 0.873682f;
-      prwdgt->path[15].x = 1.0f - 0.842155f;
-      prwdgt->path[15].y = 0.83174f;
-      prwdgt->path[16].x = 0.15f;
-      prwdgt->path[16].y = 0.775f;
-      prwdgt->path[17].x = 1.0f - 0.929009f;
-      prwdgt->path[17].y = 0.775f;
-      prwdgt->path[18].x = 1.0f - 0.953861f;
-      prwdgt->path[18].y = 0.780265f;
-      prwdgt->path[19].x = 1.0f - 0.967919f;
-      prwdgt->path[19].y = 0.794104f;
-      prwdgt->path[20].x = 1.0f - 0.978458f;
-      prwdgt->path[20].y = 0.818784f;
-      prwdgt->path[21].x = 1.0f - 0.988467f;
-      prwdgt->path[21].y = 0.890742f;
-      prwdgt->path[22].x = 0.0f;
-      prwdgt->path[22].y = 1.0f;
+      prwdgt->path[1].y = 0.125f;
+      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[2].x = 0.92f;
+      prwdgt->path[2].y = 0.16f;
+      prwdgt->path[3].x = 0.875f;
+      prwdgt->path[3].y = 0.25f;
+      prwdgt->path[3].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[4].x = 0.8f;
+      prwdgt->path[4].y = 0.25f;
+      prwdgt->path[4].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[5].x = 0.733f;
+      prwdgt->path[5].y = 0.433f;
+      prwdgt->path[6].x = 0.582f;
+      prwdgt->path[6].y = 0.522f;
+      prwdgt->path[7].x = 0.4f;
+      prwdgt->path[7].y = 0.6f;
+      prwdgt->path[8].x = 0.289f;
+      prwdgt->path[8].y = 0.727f;
+      prwdgt->path[9].x = 0.25f;
+      prwdgt->path[9].y = 0.925f;
+      prwdgt->path[9].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[10].x = 0.175f;
+      prwdgt->path[10].y = 0.925f;
+      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[11].x = 0.175f;
+      prwdgt->path[11].y = 1.0f;
+      prwdgt->path[11].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[12].x = 0.0f;
+      prwdgt->path[12].y = 1.0f;
+      prwdgt->path[12].flag = PROF_HANDLE_VECTOR;
+      break;
+    case PROF_PRESET_CROWN:
+      prwdgt->path[0].x = 1.0f;
+      prwdgt->path[0].y = 0.0f;
+      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[1].x = 1.0f;
+      prwdgt->path[1].y = 0.25f;
+      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[2].x = 0.75f;
+      prwdgt->path[2].y = 0.25f;
+      prwdgt->path[2].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[3].x = 0.75f;
+      prwdgt->path[3].y = 0.325f;
+      prwdgt->path[3].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[4].x = 0.925f;
+      prwdgt->path[4].y = 0.4f;
+      prwdgt->path[5].x = 0.975f;
+      prwdgt->path[5].y = 0.5f;
+      prwdgt->path[6].x = 0.94f;
+      prwdgt->path[6].y = 0.65f;
+      prwdgt->path[7].x = 0.85f;
+      prwdgt->path[7].y = 0.75f;
+      prwdgt->path[8].x = 0.75f;
+      prwdgt->path[8].y = 0.875f;
+      prwdgt->path[9].x = 0.7f;
+      prwdgt->path[9].y = 1.0f;
+      prwdgt->path[9].flag = PROF_HANDLE_VECTOR;
+      prwdgt->path[10].x = 0.0f;
+      prwdgt->path[10].y = 1.0f;
+      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
+      break;
+    case PROF_PRESET_STEPS:
+      profilewidget_build_steps(prwdgt);
       break;
   }
 
@@ -429,7 +484,8 @@ static bool is_curved_edge(BezTriple * bezt, int i)
   return (bezt[i].h2 != HD_VECT || bezt[i + 1].h1 != HD_VECT);
 }
 
-/** Used in the sample creation process. Reduced copy of #calchandleNurb_intern code in curve.c */
+/** Used to set bezier handle locations in the sample creation process. Reduced copy of
+ * #calchandleNurb_intern code in curve.c */
 static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
 #define p2_handle1 ((p2)-3)
@@ -606,7 +662,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
     i_curve_sorted[i_insert] = i;
   }
 
-  /* Assign sampled points to each edge. */
+  /* Assign the number of sampled points for each edge. */
   n_samples = MEM_callocN((size_t)totedges * sizeof(int),  "create samples numbers");
   int n_added = 0;
   if (n_segments >= totedges) {
@@ -640,7 +696,8 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
       n_common = n_left / n_curved_edges; /* Number assigned to all curved edges */
       if (n_common > 0) {
         for (i = 0; i < totedges; i++) {
-          if (is_curved_edge(bezt, i)) {
+          /* Add the common number if it's a c  urved edges or if all of them will get it. */
+          if (is_curved_edge(bezt, i) || n_curved_edges == totedges) {
             n_samples[i] += n_common;
             n_added += n_common;
           }
@@ -657,6 +714,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
     n_left = n_segments;
   }
   /* Assign the remainder of the points that couldn't be spread out evenly. */
+  /* HANS-TODO: Fix this */
   BLI_assert(n_left < totedges);
   for (i = 0; i < n_left; i++) {
     n_samples[i_curve_sorted[i]]++;
