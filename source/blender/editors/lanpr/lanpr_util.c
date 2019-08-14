@@ -3,6 +3,7 @@
 #include <stdio.h>
 /* #include <time.h> */
 #include "ED_lanpr.h"
+#include "BLI_math.h"
 #include "MEM_guardedalloc.h"
 #include <math.h>
 
@@ -297,13 +298,13 @@ void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real 
   mTrans[13] = y;
   mTrans[14] = z;
 }
-void tmat_make_perspective_matrix_44d(
-    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax)
+void tmat_make_perspective_matrix_44f(
+    float (*mProjection)[4], float fFov_rad, float fAspect, float zMin, float zMax)
 {
-  real yMax;
-  real yMin;
-  real xMin;
-  real xMax;
+  float yMax;
+  float yMin;
+  float xMin;
+  float xMax;
 
   if (fAspect < 1) {
     yMax = zMin * tanf(fFov_rad * 0.5f);
@@ -318,16 +319,16 @@ void tmat_make_perspective_matrix_44d(
     yMax = -yMin;
   }
 
-  tmat_load_identity_44d(mProjection);
+  unit_m4(mProjection);
 
-  mProjection[0] = (2.0f * zMin) / (xMax - xMin);
-  mProjection[5] = (2.0f * zMin) / (yMax - yMin);
-  mProjection[8] = (xMax + xMin) / (xMax - xMin);
-  mProjection[9] = (yMax + yMin) / (yMax - yMin);
-  mProjection[10] = -((zMax + zMin) / (zMax - zMin));
-  mProjection[11] = -1.0f;
-  mProjection[14] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
-  mProjection[15] = 0.0f;
+  mProjection[0][0] = (2.0f * zMin) / (xMax - xMin);
+  mProjection[1][1] = (2.0f * zMin) / (yMax - yMin);
+  mProjection[2][0] = (xMax + xMin) / (xMax - xMin);
+  mProjection[2][1] = (yMax + yMin) / (yMax - yMin);
+  mProjection[2][2] = -((zMax + zMin) / (zMax - zMin));
+  mProjection[2][3] = -1.0f;
+  mProjection[3][2] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
+  mProjection[3][3] = 0.0f;
 }
 void tmat_make_ortho_matrix_44d(
     tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax)

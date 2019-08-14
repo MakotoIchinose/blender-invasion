@@ -91,7 +91,7 @@ typedef struct LANPR_RenderTriangle {
   struct LANPR_RenderTriangle *next, *prev;
   struct LANPR_RenderVert *v[3];
   struct LANPR_RenderLine *rl[3];
-  real gn[3];
+  float gn[3];
   real gc[3];
   /*  struct BMFace *F; */
   short material_id;
@@ -225,8 +225,8 @@ typedef struct LANPR_RenderBuffer {
   int tile_size_w, tile_size_h;
   int tile_count_x, tile_count_y;
   real width_per_tile, height_per_tile;
-  tnsMatrix44d view_projection;
-  tnsMatrix44d vp_inverse;
+  float view_projection[4][4];
+  float vp_inverse[4][4];
 
   int output_mode;
   int output_aa_level;
@@ -253,7 +253,7 @@ typedef struct LANPR_RenderBuffer {
 
   int cached_for_frame;
 
-  real view_vector[3];
+  double view_vector[3];
 
   int triangle_size;
 
@@ -606,8 +606,8 @@ void tmat_apply_transform_44dTrue(tnsVector4d result, tnsMatrix44d mat, tnsVecto
 void tmat_load_identity_44d(tnsMatrix44d m);
 void tmat_make_ortho_matrix_44d(
     tnsMatrix44d mProjection, real xMin, real xMax, real yMin, real yMax, real zMin, real zMax);
-void tmat_make_perspective_matrix_44d(
-    tnsMatrix44d mProjection, real fFov_rad, real fAspect, real zMin, real zMax);
+void tmat_make_perspective_matrix_44f(
+    float (*mProjection)[4], float fFov_rad, float fAspect, float zMin, float zMax);
 void tmat_make_translation_matrix_44d(tnsMatrix44d mTrans, real x, real y, real z);
 void tmat_make_rotation_matrix_44d(tnsMatrix44d m, real angle_rad, real x, real y, real z);
 void tmat_make_scale_matrix_44d(tnsMatrix44d m, real x, real y, real z);

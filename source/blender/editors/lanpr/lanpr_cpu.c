@@ -92,7 +92,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
                                                           Object *cam,
-                                                          tnsMatrix44d vp,
+                                                          float (*vp)[4],
                                                           real *CameraDir,
                                                           double *From,
                                                           double *To);
@@ -579,7 +579,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->contour_pointers);
+    BLI_listbase_clear(&rti->contour_pointers);
     rti->contour = 0;
   }
 
@@ -595,7 +595,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->intersection_pointers);
+    BLI_listbase_clear(&rti->intersection_pointers);
     rti->intersection = 0;
   }
 
@@ -611,7 +611,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->crease_pointers);
+    BLI_listbase_clear(&rti->crease_pointers);
     rti->crease = 0;
   }
 
@@ -627,7 +627,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->material_pointers);
+    BLI_listbase_clear(&rti->material_pointers);
     rti->material = 0;
   }
 
@@ -643,7 +643,7 @@ static int lanpr_make_next_occlusion_task_info(LANPR_RenderBuffer *rb, LANPR_Ren
     res = 1;
   }
   else {
-    BLI_listbase_is_empty(&rti->edge_mark_pointers);
+    BLI_listbase_clear(&rti->edge_mark_pointers);
     rti->edge_mark = 0;
   }
 
@@ -861,15 +861,11 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
 
   sub_v3_v3v3_db(l, v1, v0);
   sub_v3_v3v3_db(r, v, v1);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
-  tmat_vector_cross_3d(N1, l, r);
+  cross_v3_v3v3_db(N1,l,r);
 
   sub_v3_v3v3_db(l, v2, v1);
   sub_v3_v3v3_db(r, v, v2);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
-  tmat_vector_cross_3d(N2, l, r);
+  cross_v3_v3v3_db(N2,l,r);
 
   if ((d = dot_v3v3_db(N1,  N2)) < 0) {
     return 0;
@@ -878,9 +874,7 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
 
   sub_v3_v3v3_db(l, v0, v2);
   sub_v3_v3v3_db(r, v, v0);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
-  tmat_vector_cross_3d(N1, l, r);
+  cross_v3_v3v3_db(N1,l,r);
 
   if ((d = dot_v3v3_db(N1,  N2)) < 0) {
     return 0;
@@ -889,9 +883,7 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
 
   sub_v3_v3v3_db(l, v1, v0);
   sub_v3_v3v3_db(r, v, v1);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
-  tmat_vector_cross_3d(N2, l, r);
+  cross_v3_v3v3_db(N2,l,r);
 
   if ((d = dot_v3v3_db(N1,  N2)) < 0) {
     return 0;
@@ -983,7 +975,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   LANPR_RenderVert *rv;
   LANPR_RenderElementLinkNode *reln, *veln, *teln;
   LANPR_RenderLineSegment *rls;
-  real *vp = rb->view_projection;
+  float** vp = rb->view_projection;
   int i;
   real a;
   int v_count = 0, t_count = 0;
@@ -1069,7 +1061,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[0]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
@@ -1077,7 +1069,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1135,7 +1127,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
@@ -1143,7 +1135,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1201,7 +1193,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
@@ -1209,7 +1201,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1270,7 +1262,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot2 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
@@ -1278,7 +1270,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot2 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1353,7 +1345,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[1]->gloc, rt->v[2]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
@@ -1361,7 +1353,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[1]->gloc, rt->v[0]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1436,7 +1428,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[0].gloc, rt->v[2]->gloc, rt->v[0]->gloc, a);
-            tmat_apply_transform_44d(rv[0].fbcoord, vp, rv[0].gloc);
+            mul_v4d_m4v4d(rv[0].fbcoord, vp, rv[0].gloc);
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
@@ -1444,7 +1436,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             dot2 = dot_v3v3_db(vv2,  view_dir);
             a = dot1 / (dot1 + dot2);
             interp_v3_v3v3_db(rv[1].gloc, rt->v[2]->gloc, rt->v[1]->gloc, a);
-            tmat_apply_transform_44d(rv[1].fbcoord, vp, rv[1].gloc);
+            mul_v4d_m4v4d(rv[1].fbcoord, vp, rv[1].gloc);
 
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
             rt->rl[1]->next = rt->rl[1]->prev = 0;
@@ -1546,25 +1538,21 @@ static void lanpr_perspective_division(LANPR_RenderBuffer *rb)
 static void lanpr_transform_render_vert(BMVert *v,
                                         int index,
                                         LANPR_RenderVert *RvBuf,
-                                        real *MvMat,
-                                        real *MvPMat,
+                                        float (*MvMat)[4],
+                                        float (*MvPMat)[4],
                                         Camera *UNUSED(camera))
-{ /*  real HeightMultiply, real clipsta, real clipend) { */
+{ 
+  double co[4]={0,0,0,1};
+  copy_v3db_v3fl(co,v->co);
   LANPR_RenderVert *rv = &RvBuf[index];
-  /*  rv->v = v; */
-  /*  v->Rv = rv; */
-  tmat_apply_transform_43df(rv->gloc, MvMat, v->co);
-  tmat_apply_transform_43dfND(rv->fbcoord, MvPMat, v->co);
-
-  /*  if(rv->fbcoord[2]>0)mul_v3db_db(rv->fbcoord, (1 / */
-  /*  rv->fbcoord[3])); else mul_v3db_db(rv->fbcoord, */
-  /*  -rv->fbcoord[3]); */
-  /*    rv->fbcoord[2] = Camera->clipsta* Camera->clipend / (Camera->clipend - */
-  /*    fabs(rv->fbcoord[2]) * (Camera->clipend - Camera->clipsta)); */
+  mul_v4d_m4v4d(rv->gloc, MvMat, co);
+  rv->gloc[3]=1.0f;
+  /* Don't do persepective division yet. */
+  mul_v4d_m4v4d(rv->fbcoord, MvPMat, co);
 }
 
 static void lanpr_make_render_geometry_buffers_object(
-    Object *o, real *MvMat, real *MvPMat, LANPR_RenderBuffer *rb, int override_usage)
+    Object *o, float (*MvMat)[4], float (*MvPMat)[4], LANPR_RenderBuffer *rb, int override_usage)
 {
   BMesh *bm;
   BMVert *v;
@@ -1573,10 +1561,10 @@ static void lanpr_make_render_geometry_buffers_object(
   BMLoop *loop;
   LANPR_RenderLine *rl;
   LANPR_RenderTriangle *rt;
-  tnsMatrix44d new_mvp;
-  tnsMatrix44d new_mv;
-  tnsMatrix44d self_transform;
-  tnsMatrix44d Normal;
+  float new_mvp[4][4];
+  float new_mv[4][4];
+  float self_transform[4][4];
+  float Normal[4][4];
   LANPR_RenderElementLinkNode *reln;
   Object *cam_object = rb->scene->camera;
   Camera *c = cam_object->data;
@@ -1594,15 +1582,14 @@ static void lanpr_make_render_geometry_buffers_object(
   }
 
   if (o->type == OB_MESH) {
+    copy_m4_m4(self_transform, o->obmat);
 
-    tmat_obmat_to_16d(o->obmat, self_transform);
-
-    tmat_multiply_44d(new_mvp, MvPMat, self_transform);
-    tmat_multiply_44d(new_mv, MvMat, self_transform);
+    mul_m4_m4m4(new_mvp, MvPMat, self_transform);
+    mul_m4_m4m4(new_mv, MvMat, self_transform);
 
     invert_m4_m4(o->imat, o->obmat);
     transpose_m4(o->imat);
-    tmat_obmat_to_16d(o->imat, Normal);
+    copy_m4_m4(Normal, o->imat);
 
     const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(o->data)));
     bm = BM_mesh_create(&allocsize,
@@ -1708,8 +1695,8 @@ static void lanpr_make_render_geometry_buffers_object(
       add_v3_v3_db(rt->gc, rt->v[1]->fbcoord);
       add_v3_v3_db(rt->gc, rt->v[2]->fbcoord);
       mul_v3db_db(rt->gc, 1.0f / 3.0f);
-      tmat_apply_normal_transform_43df(rt->gn, Normal, f->no);
-      normalize_v3_d(rt->gn);
+      mul_v3_mat3_m4v3(rt->gn, Normal, f->no);
+      normalize_v3(rt->gn);
       lanpr_assign_render_line_with_triangle(rt);
       /*  m = tnsGetIndexedMaterial(rb->scene, f->material_id); */
       /*  if(m) m->Previewv_count += (f->triangle_count*3); */
@@ -1790,8 +1777,8 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                                                Object *c /*camera*/,
                                                LANPR_RenderBuffer *rb)
 {
-  tnsMatrix44d obmat16;
-  tnsMatrix44d proj, view, result, inv;
+  float obmat16[4][4];
+  float proj[4][4], view[4][4], result[4][4], inv[4][4];
   Camera *cam = c->data;
 
   float sensor = BKE_camera_sensor_size(cam->sensor_fit, cam->sensor_x, cam->sensor_y);
@@ -1802,27 +1789,24 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   real asp = ((real)rb->w / (real)rb->h);
 
   if (cam->type == CAM_PERSP) {
-    tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
+    tmat_make_perspective_matrix_44f(proj, fov, asp, cam->clip_start, cam->clip_end);
   }
   else if (cam->type == CAM_ORTHO) {
     real w = cam->ortho_scale / 2;
-    tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
+    orthographic_m4(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
   }
 
-  tmat_load_identity_44d(view);
+  unit_m4(view);
 
-  /*  tObjApplyself_transformMatrix(c, 0); */
-  /*  tObjApplyGlobalTransformMatrixReverted(c); */
-  tmat_obmat_to_16d(c->obmat, obmat16);
-  tmat_inverse_44d(inv, obmat16);
-  tmat_multiply_44d(result, proj, inv);
-  memcpy(proj, result, sizeof(tnsMatrix44d));
-  memcpy(rb->view_projection, proj, sizeof(tnsMatrix44d));
+  copy_m4_m4(obmat16,c->obmat);
+  invert_m4_m4(inv, obmat16);
+  mul_m4_m4m4(result, proj, inv);
+  copy_m4_m4(proj,result);
+  copy_m4_m4(rb->view_projection,proj);
+  invert_m4_m4(rb->vp_inverse, rb->view_projection);
 
-  tmat_inverse_44d(rb->vp_inverse, rb->view_projection);
-
-  BLI_listbase_is_empty(&rb->triangle_buffer_pointers);
-  BLI_listbase_is_empty(&rb->vertex_buffer_pointers);
+  BLI_listbase_clear(&rb->triangle_buffer_pointers);
+  BLI_listbase_clear(&rb->vertex_buffer_pointers);
 
   DEG_OBJECT_ITER_BEGIN (depsgraph,
                          o,
@@ -1893,7 +1877,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
                                                           Object *cam,
-                                                          tnsMatrix44d vp,
+                                                          float (*vp)[4],
                                                           real *CameraDir,
                                                           double *From,
                                                           double *To)
@@ -1951,9 +1935,9 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
     sub_v3_v3v3_db(Cv, vd4, rt->v[0]->gloc);
   }
 
-  DotL = dot_v3v3_db(Lv,  rt->gn);
-  DotR = dot_v3v3_db(Rv,  rt->gn);
-  DotF = dot_v3v3_db(Cv,  rt->gn);
+  DotL = dot_v3db_v3fl(Lv,  rt->gn);
+  DotR = dot_v3db_v3fl(Rv,  rt->gn);
+  DotF = dot_v3db_v3fl(Cv,  rt->gn);
 
   if (!DotF) {
     return 0;
@@ -1999,7 +1983,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
 
   if (((Camera *)cam->data)->type == CAM_PERSP) {
     interp_v3_v3v3_db(gloc, rl->l->gloc, rl->r->gloc, Cut);
-    tmat_apply_transform_44d(Trans, vp, gloc);
+    mul_v4d_m4v4d(Trans, vp, gloc);
     mul_v3db_db(Trans, (1 / Trans[3]) /**HeightMultiply/2*/);
     Camera *camera = cam->data;
     Trans[0] -= camera->shiftx * 2;
@@ -2007,7 +1991,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   }
   else {
     interp_v3_v3v3_db(Trans, rl->l->fbcoord, rl->r->fbcoord, Cut);
-    /*  tmat_apply_transform_44d(Trans, vp, gloc); */
+    /*  mul_v4d_m4v4d(Trans, vp, gloc); */
   }
 
   /*  Trans[2] = tmat_dist_3dv(gloc, cam->Base.gloc); */
@@ -2227,8 +2211,8 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
   sub_v3_v3v3_db(Lv, l->gloc, testing->v[0]->gloc);
   sub_v3_v3v3_db(Rv, r->gloc, testing->v[0]->gloc);
 
-  DotL = dot_v3v3_db(Lv, testing->gn);
-  DotR = dot_v3v3_db(Rv, testing->gn);
+  DotL = dot_v3db_v3fl(Lv, testing->gn);
+  DotR = dot_v3db_v3fl(Rv, testing->gn);
 
   if (DotL * DotR > 0 || (!DotL && !DotR)) {
     return 0;
@@ -2376,8 +2360,8 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
       return 0;
     }
   }
-  tmat_apply_transform_44d(l->fbcoord, rb->view_projection, l->gloc);
-  tmat_apply_transform_44d(r->fbcoord, rb->view_projection, r->gloc);
+  mul_v4d_m4v4d(l->fbcoord, rb->view_projection, l->gloc);
+  mul_v4d_m4v4d(r->fbcoord, rb->view_projection, r->gloc);
   mul_v3db_db(l->fbcoord, (1 / l->fbcoord[3]) /**HeightMultiply/2*/);
   mul_v3db_db(r->fbcoord, (1 / r->fbcoord[3]) /**HeightMultiply/2*/);
 
@@ -2463,17 +2447,15 @@ static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_Render
 
 static void lanpr_compute_view_Vector(LANPR_RenderBuffer *rb)
 {
-  tnsVector3d Direction = {0, 0, 1};
-  tnsVector3d Trans;
-  tnsMatrix44d inv;
-  tnsMatrix44d obmat;
+  float Direction[3] = {0, 0, 1};
+  float Trans[3];
+  float inv[4][4];
+  float obmat[4][4];
 
-  tmat_obmat_to_16d(rb->scene->camera->obmat, obmat);
-  tmat_inverse_44d(inv, obmat);
-  tmat_apply_rotation_43d(Trans, inv, Direction);
-  copy_v3_v3_db(rb->view_vector, Trans);
-  /*  mul_v3db_db(Trans, -1); */
-  /*  copy_v3_v3_db(((Camera*)rb->scene->camera)->RenderviewDir, Trans); */
+  copy_m4_m4(obmat, rb->scene->camera->obmat);
+  invert_m4_m4(inv,obmat);
+  mul_v3_mat3_m4v3(Trans, inv, Direction);
+  copy_v3db_v3fl(rb->view_vector, Trans);
 }
 
 static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold)
@@ -2515,13 +2497,13 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
     }
     else {
       if (rl->tl) {
-        Dot1 = dot_v3v3_db(view_vector,  rl->tl->gn);
+        Dot1 = dot_v3db_v3fl(view_vector,  rl->tl->gn);
       }
       else {
         Add = 1;
       }
       if (rl->tr) {
-        Dot2 = dot_v3v3_db(view_vector,  rl->tr->gn);
+        Dot2 = dot_v3db_v3fl(view_vector,  rl->tr->gn);
       }
       else {
         Add = 1;
@@ -2532,7 +2514,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
       if ((Result = Dot1 * Dot2) <= 0 && (Dot1 + Dot2)) {
         Add = 1;
       }
-      else if (dot_v3v3_db(rl->tl->gn,  rl->tr->gn) < threshold) {
+      else if (dot_v3v3(rl->tl->gn,  rl->tr->gn) < threshold) {
         Add = 2;
       }
       else if (rl->tl && rl->tr && rl->tl->material_id != rl->tr->material_id) {
@@ -2595,17 +2577,17 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   rb->edge_mark_count = 0;
   rb->edge_mark_managed = 0;
 
-  BLI_listbase_is_empty(&rb->contours);
-  BLI_listbase_is_empty(&rb->intersection_lines);
-  BLI_listbase_is_empty(&rb->crease_lines);
-  BLI_listbase_is_empty(&rb->material_lines);
-  BLI_listbase_is_empty(&rb->edge_marks);
-  BLI_listbase_is_empty(&rb->all_render_lines);
-  BLI_listbase_is_empty(&rb->chains);
+  BLI_listbase_clear(&rb->contours);
+  BLI_listbase_clear(&rb->intersection_lines);
+  BLI_listbase_clear(&rb->crease_lines);
+  BLI_listbase_clear(&rb->material_lines);
+  BLI_listbase_clear(&rb->edge_marks);
+  BLI_listbase_clear(&rb->all_render_lines);
+  BLI_listbase_clear(&rb->chains);
 
-  BLI_listbase_is_empty(&rb->vertex_buffer_pointers);
-  BLI_listbase_is_empty(&rb->line_buffer_pointers);
-  BLI_listbase_is_empty(&rb->triangle_buffer_pointers);
+  BLI_listbase_clear(&rb->vertex_buffer_pointers);
+  BLI_listbase_clear(&rb->line_buffer_pointers);
+  BLI_listbase_clear(&rb->triangle_buffer_pointers);
 
   BLI_spin_end(&rb->cs_data);
   BLI_spin_end(&rb->cs_info);
@@ -2852,15 +2834,15 @@ void *lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
         CLAMP(irls->at, 0, 1);
       }
 
-      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], rls->at);
+      *v = interpd(rl->r->fbcoord[0], rl->l->fbcoord[0], rls->at);
       v++;
-      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], rls->at);
+      *v = interpd(rl->r->fbcoord[1], rl->l->fbcoord[1], rls->at);
       v++;
       *v = componet_id;
       v++;
-      *v = interpf(rl->r->fbcoord[0], rl->l->fbcoord[0], irls ? irls->at : 1);
+      *v = interpd(rl->r->fbcoord[0], rl->l->fbcoord[0], irls ? irls->at : 1);
       v++;
-      *v = interpf(rl->r->fbcoord[1], rl->l->fbcoord[1], irls ? irls->at : 1);
+      *v = interpd(rl->r->fbcoord[1], rl->l->fbcoord[1], irls ? irls->at : 1);
       v++;
       *v = componet_id;
       v++;
@@ -3431,22 +3413,9 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderElementLinkNode *reln;
   LANPR_RenderTriangle *rt;
-  /*  tnsMatrix44d vP; */
   int i, lim;
   int x1, x2, y1, y2;
   int r, co;
-  /*  tnsMatrix44d proj, view, result, inv; */
-  /*  tmat_make_perspective_matrix_44d(proj, c->FOv, (real)fb->W / (real)fb->H, c->clipsta, */
-  /*  c->clipend); tmat_load_identity_44d(view); tObjApplyself_transformMatrix(c, 0); */
-  /*  tObjApplyGlobalTransformMatrixReverted(c); */
-  /*  tmat_inverse_44d(inv, c->Base.GlobalTransform); */
-  /*  tmat_multiply_44d(result, proj, inv); */
-  /*  memcpy(proj, result, sizeof(tnsMatrix44d)); */
-
-  /*  tnsglobal_TriangleIntersectionCount = 0; */
-
-  /*  tnsset_RenderOverallProgress(rb, NUL_MH2); */
-  /*  nulThreadNotifyUsers("tns.render_buffer_list.calculation_status"); */
 
   for (reln = rb->triangle_buffer_pointers.first; reln; reln = reln->next) {
     rt = reln->pointer;
@@ -3474,7 +3443,6 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
       /* } */
     }
   }
-  /*  tnsset_PlusRenderIntersectionCount(rb, tnsglobal_TriangleIntersectionCount); */
 }
 static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This,
                                                         LANPR_RenderLine *rl,
