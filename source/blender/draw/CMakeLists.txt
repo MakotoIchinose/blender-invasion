@@ -69,6 +69,7 @@ set(SRC
   intern/draw_manager_shader.c
   intern/draw_manager_text.c
   intern/draw_manager_texture.c
+  intern/draw_select_buffer.c
   intern/draw_view.c
   modes/edit_armature_mode.c
   modes/edit_curve_mode.c
@@ -131,6 +132,7 @@ set(SRC
   engines/select/select_draw_utils.c
 
   DRW_engine.h
+  DRW_select_buffer.h
   intern/DRW_render.h
   intern/draw_cache.h
   intern/draw_cache_impl.h
