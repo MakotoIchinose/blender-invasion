@@ -1894,7 +1894,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   real Cv[3];
   real DotL, DotR, DotLA, DotRA;
   real DotF;
-  tnsVector4d gloc, Trans;
+  tnsVector4d gloc={0,0,0,1}, Trans={0,0,0,1};
   real Cut = -1;
 
   double *LFBC = rl->l->fbcoord, *RFBC = rl->r->fbcoord, *FBC0 = rt->v[0]->fbcoord,
@@ -2254,6 +2254,7 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
   Result->v = (void *)r; /*  Caution! */
                          /*  Result->intersecting_with = rt; */
   copy_v3_v3_db(Result->gloc, gloc);
+  Result->gloc[3] = 1.0f;
 
   BLI_addtail(&testing->intersecting_verts, Result);
 
