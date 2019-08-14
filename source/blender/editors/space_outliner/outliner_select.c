@@ -1269,13 +1269,14 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 }
 
 /* Select a range of items between cursor and active element */
-static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
+static void do_outliner_range_select(bContext *C, SpaceOutliner *soops, TreeElement *cursor)
 {
   TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
   outliner_flag_set(&soops->tree, TSE_ACTIVE_WALK, false);
 
   if (!active) {
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_ACTIVE_WALK;
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
     return;
   }
 
@@ -1292,8 +1293,8 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 
   /* If active is not selected, just select the element under the cursor */
   if (!active_selected || !outliner_is_element_visible(active)) {
-    tselem->flag &= ~TSE_ACTIVE;
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_ACTIVE_WALK;
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
     return;
   }
 
@@ -1311,7 +1312,7 @@ static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *soops,
 }
 
 /**
- * A version of #outliner_item_do_acticate_from_cursor that takes the tree element directly.
+ * A version of #outliner_item_do_activate_from_cursor that takes the tree element directly.
  * and doesn't depend on the pointer position.
  *
  * This allows us to simulate clicking on an item without dealing with the mouse cursor.
@@ -1379,7 +1380,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
     if (use_range) {
-      do_outliner_range_select(soops, activate_te);
+      do_outliner_range_select(C, soops, activate_te);
     }
     else {
       outliner_item_select(soops, activate_te, extend, extend);
