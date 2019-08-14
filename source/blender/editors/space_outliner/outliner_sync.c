@@ -362,22 +362,17 @@ void ED_outliner_select_sync_from_outliner(bContext *C, SpaceOutliner *soops)
 
   selected_items_free(&selected_items);
 
-  /* Clear sync select dirty state from current selection type */
+  /* Tag for updates */
   if (sync_types.object) {
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
-    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_OBJECT;
-  }
-  if (sync_types.edit_bone) {
-    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_EDIT_BONE;
-  }
-  if (sync_types.pose_bone) {
-    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_POSE_BONE;
   }
   if (sync_types.sequence) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
-    soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_SEQUENCE;
   }
+
+  /* Clear outliner sync select dirty flag to prevent a sync to the outliner on draw */
+  soops->sync_select_dirty &= ~WM_OUTLINER_SYNC_SELECT_FROM_ALL;
 }
 
 static void outliner_select_sync_from_object(ViewLayer *view_layer,
