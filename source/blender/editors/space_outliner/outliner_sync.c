@@ -258,12 +258,15 @@ static void outliner_select_sync_to_object(ViewLayer *view_layer,
   }
 }
 
-static void outliner_select_sync_to_edit_bone(TreeElement *te,
+static void outliner_select_sync_to_edit_bone(ViewLayer *view_layer,
+                                              TreeElement *te,
                                               TreeStoreElem *tselem,
                                               ListBase *selected_ebones)
 {
   bArmature *arm = (bArmature *)tselem->id;
   EditBone *ebone = (EditBone *)te->directdata;
+
+  short bone_flag = ebone->flag;
 
   if (EBONE_SELECTABLE(arm, ebone)) {
     if (tselem->flag & TSE_SELECTED) {
@@ -274,6 +277,13 @@ static void outliner_select_sync_to_edit_bone(TreeElement *te,
     else if (!is_edit_bone_selected(selected_ebones, ebone)) {
       ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
     }
+  }
+
+  /* Tag if selection changed */
+  if (bone_flag != ebone->flag) {
+    Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
+    DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
+    WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, obedit);
   }
 }
 
@@ -339,7 +349,7 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
     }
     else if (tselem->type == TSE_EBONE) {
       if (sync_types->edit_bone) {
-        outliner_select_sync_to_edit_bone(te, tselem, selected_items->edit_bones);
+        outliner_select_sync_to_edit_bone(view_layer, te, tselem, selected_items->edit_bones);
       }
     }
     else if (tselem->type == TSE_POSE_CHANNEL) {
