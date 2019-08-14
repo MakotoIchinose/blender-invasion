@@ -1804,7 +1804,9 @@ static void wm_userpref_update_when_changed(bContext *C,
   BPY_execute_string(C, (const char *[]){"addon_utils", NULL}, "addon_utils.reset_all()");
 #endif
 
+  WM_reinit_gizmomap_all(bmain);
   WM_keyconfig_reload(C);
+
   userdef_curr->runtime.is_dirty = is_dirty;
 }
 
@@ -1959,6 +1961,10 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   if (use_userdef) {
     wm_userpref_read_exceptions(&U, &U_backup);
     SET_FLAG_FROM_TEST(G.f, use_factory_settings, G_FLAG_USERPREF_NO_SAVE_ON_EXIT);
+
+    if (use_factory_settings) {
+      U.runtime.is_dirty = true;
+    }
   }
 
   return OPERATOR_FINISHED;

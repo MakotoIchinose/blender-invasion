@@ -642,8 +642,10 @@ void BKE_gpencil_copy_data(bGPdata *gpd_dst, const bGPdata *gpd_src, const int U
   BLI_listbase_clear(&gpd_dst->layers);
   for (const bGPDlayer *gpl_src = gpd_src->layers.first; gpl_src; gpl_src = gpl_src->next) {
     /* make a copy of source layer and its data */
-    bGPDlayer *gpl_dst = BKE_gpencil_layer_duplicate(
-        gpl_src); /* TODO here too could add unused flags... */
+
+    /* TODO here too could add unused flags... */
+    bGPDlayer *gpl_dst = BKE_gpencil_layer_duplicate(gpl_src);
+
     BLI_addtail(&gpd_dst->layers, gpl_dst);
   }
 }
@@ -2313,6 +2315,12 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   pt2 = &gps->points[0];
   float dist_close = len_v3v3(&pt1->x, &pt2->x);
 
+  /* if the distance to close is very small, don't need add points and just enable cyclic. */
+  if (dist_close <= dist_avg) {
+    gps->flag |= GP_STROKE_CYCLIC;
+    return true;
+  }
+
   /* Calc number of points required using the average distance. */
   int tot_newpoints = MAX2(dist_close / dist_avg, 1);
 
@@ -2329,9 +2337,11 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
   pt2 = &gps->points[0];
   bGPDspoint *pt = &gps->points[old_tot];
   for (int i = 1; i < tot_newpoints + 1; i++, pt++) {
-    float step = ((float)i / (float)tot_newpoints);
+    float step = (tot_newpoints > 1) ? ((float)i / (float)tot_newpoints) : 0.99f;
     /* Clamp last point to be near, but not on top of first point. */
-    CLAMP(step, 0.0f, 0.99f);
+    if ((tot_newpoints > 1) && (i == tot_newpoints)) {
+      step *= 0.99f;
+    }
 
     /* Average point. */
     interp_v3_v3v3(&pt->x, &pt1->x, &pt2->x, step);
@@ -2363,7 +2373,6 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
 
   return true;
 }
-
 /* Dissolve points in stroke */
 void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short tag)
 {
