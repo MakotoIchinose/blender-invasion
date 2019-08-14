@@ -27,13 +27,13 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_layer_types.h"
-#include "DNA_listBase.h"
 #include "DNA_outliner_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
-#include "BLI_listbase.h"
+#include "BLI_compiler_compat.h"
+#include "BLI_ghash.h"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
@@ -164,83 +164,53 @@ static void outliner_sync_select_to_outliner_set_types(const bContext *C,
  * state of the last instance of an object linked in multiple collections.
  */
 typedef struct SelectedItems {
-  ListBase *objects;
-  ListBase *edit_bones;
-  ListBase *pose_bones;
+  GSet *objects;
+  GSet *edit_bones;
+  GSet *pose_bones;
 } SelectedItems;
 
 static void selected_items_init(SelectedItems *selected_items)
 {
-  selected_items->objects = MEM_callocN(sizeof(ListBase), "selected_objects");
-  selected_items->edit_bones = MEM_callocN(sizeof(ListBase), "selected_ebones");
-  selected_items->pose_bones = MEM_callocN(sizeof(ListBase), "selected_pbones");
+  selected_items->objects = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
+  selected_items->edit_bones = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
+  selected_items->pose_bones = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
 }
 
 static void selected_items_free(SelectedItems *selected_items)
 {
-  BLI_freelistN(selected_items->objects);
-  MEM_freeN(selected_items->objects);
-  BLI_freelistN(selected_items->edit_bones);
-  MEM_freeN(selected_items->edit_bones);
-  BLI_freelistN(selected_items->pose_bones);
-  MEM_freeN(selected_items->pose_bones);
+  BLI_gset_free(selected_items->objects, NULL);
+  BLI_gset_free(selected_items->edit_bones, NULL);
+  BLI_gset_free(selected_items->pose_bones, NULL);
 }
 
 /* Check if an instance of this object been selected by the sync */
-static bool is_object_selected(ListBase *selected_objects, Base *base)
+static bool is_object_selected(GSet *selected_objects, Base *base)
 {
-  for (LinkData *item = selected_objects->first; item; item = item->next) {
-    Base *selected_base = (Base *)item->data;
-
-    if (base == selected_base) {
-      return true;
-    }
-  }
-
-  return false;
+  return BLI_gset_haskey(selected_objects, base);
 }
 
 /* Check if an instance of this edit bone been selected by the sync */
-static bool is_edit_bone_selected(ListBase *selected_ebones, EditBone *ebone)
+static bool is_edit_bone_selected(GSet *selected_ebones, EditBone *ebone)
 {
-  for (LinkData *item = selected_ebones->first; item; item = item->next) {
-    EditBone *selected_ebone = (EditBone *)item->data;
-
-    if (ebone == selected_ebone) {
-      return true;
-    }
-  }
-
-  return false;
+  return BLI_gset_haskey(selected_ebones, ebone);
 }
 
 /* Check if an instance of this pose bone been selected by the sync */
-static bool is_pose_bone_selected(ListBase *selected_pbones, bPoseChannel *pchan)
+static bool is_pose_bone_selected(GSet *selected_pbones, bPoseChannel *pchan)
 {
-  for (LinkData *item = selected_pbones->first; item; item = item->next) {
-    bPoseChannel *selected_pchan = (bPoseChannel *)item->data;
-
-    if (pchan == selected_pchan) {
-      return true;
-    }
-  }
-
-  return false;
+  return BLI_gset_haskey(selected_pbones, pchan);
 }
 
-/* Add element's data to selected item list */
-static void add_selected_item(ListBase *selected_list, void *data)
+/* Add element's data to selected item set */
+static void add_selected_item(GSet *selected, void *data)
 {
-  LinkData *link = MEM_callocN(sizeof(LinkData), "selected_item");
-  link->data = data;
-
-  BLI_addtail(selected_list, link);
+  BLI_gset_add(selected, data);
 }
 
 static void outliner_select_sync_to_object(ViewLayer *view_layer,
                                            TreeElement *te,
                                            TreeStoreElem *tselem,
-                                           ListBase *selected_objects)
+                                           GSet *selected_objects)
 {
   Object *ob = (Object *)tselem->id;
   Base *base = (te->directdata) ? (Base *)te->directdata :
@@ -261,7 +231,7 @@ static void outliner_select_sync_to_object(ViewLayer *view_layer,
 static void outliner_select_sync_to_edit_bone(ViewLayer *view_layer,
                                               TreeElement *te,
                                               TreeStoreElem *tselem,
-                                              ListBase *selected_ebones)
+                                              GSet *selected_ebones)
 {
   bArmature *arm = (bArmature *)tselem->id;
   EditBone *ebone = (EditBone *)te->directdata;
@@ -289,7 +259,7 @@ static void outliner_select_sync_to_edit_bone(ViewLayer *view_layer,
 
 static void outliner_select_sync_to_pose_bone(TreeElement *te,
                                               TreeStoreElem *tselem,
-                                              ListBase *selected_pbones)
+                                              GSet *selected_pbones)
 {
   Object *ob = (Object *)tselem->id;
   bArmature *arm = ob->data;
