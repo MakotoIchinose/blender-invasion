@@ -2971,7 +2971,7 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == Root) {
-        list_remove_pointer_item_no_free(&((LANPR_BoundingArea *)lip->data)->rp, lip2);
+        BLI_remlink(&((LANPR_BoundingArea *)lip->data)->rp, lip2);
         if (ba[1].u > tba->b && ba[1].b < tba->u) {
           list_append_pointer_static_pool(mph, &tba->rp, &ba[1]);
         }
@@ -2986,7 +2986,7 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == Root) {
-        list_remove_pointer_item_no_free(&((LANPR_BoundingArea *)lip->data)->lp, lip2);
+        BLI_remlink(&((LANPR_BoundingArea *)lip->data)->lp, lip2);
         if (ba[0].u > tba->b && ba[0].b < tba->u) {
           list_append_pointer_static_pool(mph, &tba->lp, &ba[0]);
         }
@@ -3001,7 +3001,7 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == Root) {
-        list_remove_pointer_item_no_free(&((LANPR_BoundingArea *)lip->data)->bp, lip2);
+        BLI_remlink(&((LANPR_BoundingArea *)lip->data)->bp, lip2);
         if (ba[0].r > tba->l && ba[0].l < tba->r) {
           list_append_pointer_static_pool(mph, &tba->up, &ba[0]);
         }
@@ -3016,7 +3016,7 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == Root) {
-        list_remove_pointer_item_no_free(&((LANPR_BoundingArea *)lip->data)->up, lip2);
+        BLI_remlink(&((LANPR_BoundingArea *)lip->data)->up, lip2);
         if (ba[2].r > tba->l && ba[2].l < tba->r) {
           list_append_pointer_static_pool(mph, &tba->bp, &ba[2]);
         }

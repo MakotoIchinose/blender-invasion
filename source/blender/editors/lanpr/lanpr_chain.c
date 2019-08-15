@@ -40,7 +40,6 @@ static LANPR_RenderLine *lanpr_get_connected_render_line(LANPR_BoundingArea *ba,
 
     /*  always chain connected lines for now. */
     /*  simplification will take care of the sharp points. */
-    /*  if(cosine whatever) continue; */
 
     if (rv != nrl->l && rv != nrl->r) {
       if (nrl->flags & LANPR_EDGE_FLAG_INTERSECTION) {
@@ -243,14 +242,10 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
         if (new_rl->tl) {
-          N[0] += new_rl->tl->gn[0];
-          N[1] += new_rl->tl->gn[1];
-          N[2] += new_rl->tl->gn[2];
+          add_v3_v3(N,new_rl->tl->gn);
         }
         if (new_rl->tr) {
-          N[0] += new_rl->tr->gn[0];
-          N[1] += new_rl->tr->gn[1];
-          N[2] += new_rl->tr->gn[2];
+          add_v3_v3(N,new_rl->tr->gn);
         }
         normalize_v3(N);
       }
@@ -311,14 +306,10 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     if (rl->tl || rl->tr) {
       zero_v3(N);
       if (rl->tl) {
-        N[0] += rl->tl->gn[0];
-        N[1] += rl->tl->gn[1];
-        N[2] += rl->tl->gn[2];
+        add_v3_v3(N,rl->tl->gn);
       }
       if (rl->tr) {
-        N[0] += rl->tr->gn[0];
-        N[1] += rl->tr->gn[1];
-        N[2] += rl->tr->gn[2];
+        add_v3_v3(N,rl->tr->gn);
       }
       normalize_v3(N);
     }
@@ -356,14 +347,10 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
         if (new_rl->tl) {
-          N[0] += new_rl->tl->gn[0];
-          N[1] += new_rl->tl->gn[1];
-          N[2] += new_rl->tl->gn[2];
+          add_v3_v3(N,new_rl->tl->gn);
         }
         if (new_rl->tr) {
-          N[0] += new_rl->tr->gn[0];
-          N[1] += new_rl->tr->gn[1];
-          N[2] += new_rl->tr->gn[2];
+          add_v3_v3(N,new_rl->tr->gn);
         }
         normalize_v3(N);
       }
@@ -601,12 +588,6 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
     ((LANPR_RenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
     onto->chain.first = sub->chain.first;
   }
-  /* ((LANPR_RenderLineChainItem*)sub->chain.first)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.last)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
-  /* ((LANPR_RenderLineChainItem*)sub->chain.last)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
 }
 
 /*  this only does head-tail connection. */
