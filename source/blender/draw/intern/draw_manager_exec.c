@@ -1124,7 +1124,7 @@ static void draw_call_batching_do(DRWShadingGroup *shgroup,
     draw_call_batching_flush(shgroup, state);
 
     state->batch = call->batch;
-    state->v_first = 0;
+    state->v_first = (call->batch->elem) ? call->batch->elem->index_start : 0;
     state->v_count = (call->batch->elem) ? call->batch->elem->index_len :
                                            call->batch->verts[0]->vertex_len;
     state->inst_count = 1;
