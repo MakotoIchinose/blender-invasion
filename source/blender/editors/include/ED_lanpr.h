@@ -91,8 +91,8 @@ typedef struct LANPR_RenderTriangle {
   struct LANPR_RenderTriangle *next, *prev;
   struct LANPR_RenderVert *v[3];
   struct LANPR_RenderLine *rl[3];
-  float gn[3];
-  real gc[3];
+  double gn[3];
+  double gc[3];
   /*  struct BMFace *F; */
   short material_id;
   ListBase intersecting_verts;

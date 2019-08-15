@@ -113,32 +113,32 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
 void tmat_make_perspective_matrix_44f(
     float (*mProjection)[4], float fFov_rad, float fAspect, float zMin, float zMax)
 {
-  float yMax;
-  float yMin;
-  float xMin;
-  float xMax;
+  double yMax;
+  double yMin;
+  double xMin;
+  double xMax;
 
   if (fAspect < 1) {
-    yMax = zMin * tanf(fFov_rad * 0.5f);
+    yMax = zMin * tan((double)fFov_rad * 0.5f);
     yMin = -yMax;
-    xMin = yMin * fAspect;
+    xMin = yMin * (double)fAspect;
     xMax = -xMin;
   }
   else {
-    xMax = zMin * tanf(fFov_rad * 0.5f);
+    xMax = zMin * tan((double)fFov_rad * 0.5f);
     xMin = -xMax;
-    yMin = xMin / fAspect;
+    yMin = xMin / (double)fAspect;
     yMax = -yMin;
   }
 
   unit_m4(mProjection);
 
-  mProjection[0][0] = (2.0f * zMin) / (xMax - xMin);
-  mProjection[1][1] = (2.0f * zMin) / (yMax - yMin);
+  mProjection[0][0] = (2.0f * (double)zMin) / (xMax - xMin);
+  mProjection[1][1] = (2.0f * (double)zMin) / (yMax - yMin);
   mProjection[2][0] = (xMax + xMin) / (xMax - xMin);
   mProjection[2][1] = (yMax + yMin) / (yMax - yMin);
-  mProjection[2][2] = -((zMax + zMin) / (zMax - zMin));
+  mProjection[2][2] = -(((double)zMax + (double)zMin) / ((double)zMax - (double)zMin));
   mProjection[2][3] = -1.0f;
-  mProjection[3][2] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
+  mProjection[3][2] = -((2.0f * ((double)zMax * (double)zMin)) / ((double)zMax - (double)zMin));
   mProjection[3][3] = 0.0f;
 }

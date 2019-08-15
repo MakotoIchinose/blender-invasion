@@ -646,6 +646,16 @@ void mul_v3_mat3_m4v3(float r[3], const float mat[4][4], const float vec[3])
   r[2] = x * mat[0][2] + y * mat[1][2] + mat[2][2] * vec[2];
 }
 
+void mul_v3db_mat3_m4v3(double r[3], const float mat[4][4], const float vec[3])
+{
+  const float x = vec[0];
+  const float y = vec[1];
+
+  r[0] = x * mat[0][0] + y * mat[1][0] + mat[2][0] * vec[2];
+  r[1] = x * mat[0][1] + y * mat[1][1] + mat[2][1] * vec[2];
+  r[2] = x * mat[0][2] + y * mat[1][2] + mat[2][2] * vec[2];
+}
+
 void mul_project_m4_v3(const float mat[4][4], float vec[3])
 {
   /* absolute value to not flip the frustum upside down behind the camera */

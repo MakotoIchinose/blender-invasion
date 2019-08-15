@@ -81,7 +81,7 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
                                                                        float gx,
                                                                        float gy,
                                                                        float gz,
-                                                                       float *normal,
+                                                                       double *normal,
                                                                        char type,
                                                                        int level)
 {
@@ -93,7 +93,7 @@ static LANPR_RenderLineChainItem *lanpr_append_render_line_chain_point(LANPR_Ren
   rlci->gpos[0] = gx;
   rlci->gpos[1] = gy;
   rlci->gpos[2] = gz;
-  copy_v3_v3(rlci->normal, normal);
+  copy_v3fl_v3db(rlci->normal, normal);
   rlci->line_type = type & LANPR_EDGE_FLAG_ALL_TYPE;
   rlci->occlusion = level;
   BLI_addtail(&rlc->chain, rlci);
@@ -206,20 +206,16 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 
     LANPR_RenderLine *new_rl = rl;
     LANPR_RenderVert *new_rv;
-    float N[3] = {0};
+    double N[3] = {0};
 
     if (rl->tl) {
-      N[0] += rl->tl->gn[0];
-      N[1] += rl->tl->gn[1];
-      N[2] += rl->tl->gn[2];
+      add_v3_v3_db(N,rl->tl->gn);
     }
     if (rl->tr) {
-      N[0] += rl->tr->gn[0];
-      N[1] += rl->tr->gn[1];
-      N[2] += rl->tr->gn[2];
+      add_v3_v3_db(N,rl->tr->gn);
     }
     if (rl->tl || rl->tr) {
-      normalize_v3(N);
+      normalize_v3_d(N);
     }
 
     /*  step 1: grow left */
@@ -242,12 +238,12 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
         if (new_rl->tl) {
-          add_v3_v3(N,new_rl->tl->gn);
+          add_v3_v3_db(N,new_rl->tl->gn);
         }
         if (new_rl->tr) {
-          add_v3_v3(N,new_rl->tr->gn);
+          add_v3_v3_db(N,new_rl->tr->gn);
         }
-        normalize_v3(N);
+        normalize_v3_d(N);
       }
 
       if (new_rv == new_rl->l) {
@@ -306,12 +302,12 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
     if (rl->tl || rl->tr) {
       zero_v3(N);
       if (rl->tl) {
-        add_v3_v3(N,rl->tl->gn);
+        add_v3_v3_db(N,rl->tl->gn);
       }
       if (rl->tr) {
-        add_v3_v3(N,rl->tr->gn);
+        add_v3_v3_db(N,rl->tr->gn);
       }
-      normalize_v3(N);
+      normalize_v3_d(N);
     }
     /*  step 2: this line */
     rls = rl->segments.first;
@@ -347,12 +343,12 @@ void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
       if (new_rl->tl || new_rl->tr) {
         zero_v3(N);
         if (new_rl->tl) {
-          add_v3_v3(N,new_rl->tl->gn);
+          add_v3_v3_db(N,new_rl->tl->gn);
         }
         if (new_rl->tr) {
-          add_v3_v3(N,new_rl->tr->gn);
+          add_v3_v3_db(N,new_rl->tr->gn);
         }
-        normalize_v3(N);
+        normalize_v3_d(N);
       }
 
       /*  fix leading vertex type */

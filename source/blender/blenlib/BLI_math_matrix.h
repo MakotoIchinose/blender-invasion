@@ -178,6 +178,7 @@ void mul_v2_m2v2(float r[2], const float M[2][2], const float v[2]);
 void mul_m2v2(const float M[2][2], float v[2]);
 void mul_mat3_m4_v3(const float M[4][4], float r[3]);
 void mul_v3_mat3_m4v3(float r[3], const float M[4][4], const float v[3]);
+void mul_v3db_mat3_m4v3(double r[3], const float M[4][4], const float v[3]);
 void mul_m4_v4(const float M[4][4], float r[4]);
 void mul_v4_m4v4(float r[4], const float M[4][4], const float v[4]);
 void mul_v4_m4v3(float r[4], const float M[4][4], const float v[3]); /* v has implicit w = 1.0f */
