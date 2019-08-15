@@ -1646,19 +1646,26 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
 #  endif
   return v2;
 #else
+#  define COLLAPSE_EDGE_DEBUG 0
+#  if COLLAPSE_EDGE_DEBUG
   printf("Started collapsing an edge\n");
+#  endif
   BMVert *n1 = cloth_remeshing_edge_vert(e, which);
   BMVert *n2 = cloth_remeshing_edge_vert(e, 1 - which);
   /* Done: Need to remove n1 */
   BMEdge *adj_e;
   BMIter eiter;
+#  if COLLAPSE_EDGE_DEBUG
   printf("adj_e count: %d\n", BM_vert_edge_count(n1));
+#  endif
   BM_ITER_ELEM (adj_e, &eiter, n1, BM_EDGES_OF_VERT) {
     /* Done: Need to remove adj_e */
     BMVert *n3 = adj_e->v1 == n1 ? adj_e->v2 : adj_e->v1;
     if (n3 != n2 && !BM_edge_exists(n2, n3)) {
-      /* Done: Need to create edge between n2 and n3 */
+/* Done: Need to create edge between n2 and n3 */
+#  if COLLAPSE_EDGE_DEBUG
       printf("Creating edge between n2 and n3\n");
+#  endif
       BM_edge_create(bm, n2, n3, adj_e, BM_CREATE_NO_DOUBLE);
     }
     /* edge_kill kills even the verts of the edge, so killing the
@@ -1676,7 +1683,9 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
     /* Done: Need to remove v1 */
     BMFace *f;
     BMIter fiter;
+#  if COLLAPSE_EDGE_DEBUG
     printf("f count: %d\n", BM_vert_face_count(v1));
+#  endif
     BM_ITER_ELEM (f, &fiter, v1, BM_FACES_OF_VERT) {
       /* Done: Need to remove f */
       if (!BM_vert_in_face(v2, f)) {
@@ -1688,8 +1697,10 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
             vs[i] = v2;
           }
         }
+#  if COLLAPSE_EDGE_DEBUG
         /* Done: Need to create face between vs[0], vs[1], vs[2] */
         printf("Creating face between vs[0] vs[1] vs[2]\n");
+#  endif
         BM_face_create_verts(bm, vs, 3, f, BM_CREATE_NO_DOUBLE, true);
       }
       /* printf("Killing face f\n"); */
@@ -1698,10 +1709,14 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
     /* printf("Killing vertex v1\n"); */
     /* BM_vert_kill(bm, v1); */
   }
+#  if COLLAPSE_EDGE_DEBUG
   printf("Killing vertex n1\n");
+#  endif
   BM_vert_kill(bm, n1);
   cloth_remeshing_remove_vertex_from_cloth(n1, cvm);
+#  if COLLAPSE_EDGE_DEBUG
   printf("Finished collapsing edge\n");
+#  endif
   return n2;
 #endif
 }
