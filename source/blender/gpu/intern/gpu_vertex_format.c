@@ -31,6 +31,8 @@
 #include <string.h>
 
 #include "BLI_utildefines.h"
+#include "BLI_string.h"
+#include "BLI_ghash.h"
 
 #define PACK_DEBUG 0
 
@@ -149,9 +151,9 @@ uint GPU_vertformat_attr_add(GPUVertFormat *format,
                              GPUVertFetchMode fetch_mode)
 {
 #if TRUST_NO_ONE
-  assert(format->name_len < GPU_VERT_ATTR_MAX_LEN); /* there's room for more */
-  assert(format->attr_len < GPU_VERT_ATTR_MAX_LEN); /* there's room for more */
-  assert(!format->packed);                          /* packed means frozen/locked */
+  assert(format->name_len < GPU_VERT_FORMAT_MAX_NAMES); /* there's room for more */
+  assert(format->attr_len < GPU_VERT_ATTR_MAX_LEN);     /* there's room for more */
+  assert(!format->packed);                              /* packed means frozen/locked */
   assert((comp_len >= 1 && comp_len <= 4) || comp_len == 8 || comp_len == 12 || comp_len == 16);
 
   switch (comp_type) {
@@ -197,7 +199,7 @@ void GPU_vertformat_alias_add(GPUVertFormat *format, const char *alias)
 {
   GPUVertAttr *attr = &format->attrs[format->attr_len - 1];
 #if TRUST_NO_ONE
-  assert(format->name_len < GPU_VERT_ATTR_MAX_LEN); /* there's room for more */
+  assert(format->name_len < GPU_VERT_FORMAT_MAX_NAMES); /* there's room for more */
   assert(attr->name_len < GPU_VERT_ATTR_MAX_NAMES);
 #endif
   format->name_len++; /* multiname support */
@@ -216,6 +218,56 @@ int GPU_vertformat_attr_id_get(const GPUVertFormat *format, const char *name)
     }
   }
   return -1;
+}
+
+/* Encode 8 original bytes into 11 safe bytes. */
+static void safe_bytes(char out[11], const char data[8])
+{
+  char safe_chars[63] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+
+  uint64_t in = *(uint64_t *)data;
+  for (int i = 0; i < 11; i++) {
+    /* Encoding in base63 */
+    out[i] = safe_chars[in % 63lu];
+    in /= 63lu;
+  }
+}
+
+/* Warning: Always add a prefix to the result of this function as
+ * the generated string can start with a number and not be a valid attribute name. */
+void GPU_vertformat_safe_attrib_name(const char *attrib_name,
+                                     char *r_safe_name,
+                                     uint UNUSED(max_len))
+{
+  char data[8] = {0};
+  uint len = strlen(attrib_name);
+
+  if (len > 8) {
+    /* Start with the first 4 chars of the name; */
+    for (int i = 0; i < 4; i++) {
+      data[i] = attrib_name[i];
+    }
+    /* We use a hash to identify each data layer based on its name.
+     * NOTE: This is still prone to hash collision but the risks are very low.*/
+    /* Start hashing after the first 2 chars. */
+    *(uint *)&data[4] = BLI_ghashutil_strhash_p_murmur(attrib_name + 4);
+  }
+  else {
+    /* Copy the whole name. Collision is barelly possible
+     * (hash would have to be equal to the last 4 bytes). */
+    for (int i = 0; i < 8 && attrib_name[i] != '\0'; i++) {
+      data[i] = attrib_name[i];
+    }
+  }
+  /* Convert to safe bytes characters. */
+  safe_bytes(r_safe_name, data);
+  /* End the string */
+  r_safe_name[11] = '\0';
+
+  BLI_assert(GPU_MAX_SAFE_ATTRIB_NAME >= 12);
+#if 0 /* For debugging */
+  printf("%s > %lx > %s\n", attrib_name, *(uint64_t *)data, r_safe_name);
+#endif
 }
 
 /* Make attribute layout non-interleaved.

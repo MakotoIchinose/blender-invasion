@@ -1,4 +1,6 @@
 /*
+ * Copyright 2019, Blender Foundation.
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -13,28 +15,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Copyright 2016, Blender Foundation.
+ * Contributor:
+ *      Stefan Werner
  */
 
-/** \file
- * \ingroup draw
+#ifndef __COM_DENOISENODE_H__
+#define __COM_DENOISENODE_H__
+
+#include "COM_Node.h"
+
+/**
+ * \brief DenoiseNode
+ * \ingroup Node
  */
+class DenoiseNode : public Node {
+ public:
+  DenoiseNode(bNode *editorNode);
+  void convertToOperations(NodeConverter &converter, const CompositorContext &context) const;
+};
 
-#ifndef __DRAW_MANAGER_PROFILING_H__
-#define __DRAW_MANAGER_PROFILING_H__
-
-struct rcti;
-
-void DRW_stats_free(void);
-void DRW_stats_begin(void);
-void DRW_stats_reset(void);
-
-void DRW_stats_group_start(const char *name);
-void DRW_stats_group_end(void);
-
-void DRW_stats_query_start(const char *name);
-void DRW_stats_query_end(void);
-
-void DRW_stats_draw(const rcti *rect);
-
-#endif /* __DRAW_MANAGER_PROFILING_H__ */
+#endif
