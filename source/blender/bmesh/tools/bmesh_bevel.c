@@ -59,7 +59,7 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-#define DEBUG_CUSTOM_PROFILE_CUTOFF
+//#define DEBUG_CUSTOM_PROFILE_CUTOFF
 
 #if defined(DEBUG_PROFILE_ORIENTATION_DRAW) || defined(DEBUG_CUSTOM_PROFILE_PIPE)
 static float debug_color_red[4] = {1.0f, 0.0f, 0.0f, 1.0f};
@@ -276,6 +276,16 @@ typedef enum {
   /** Reconstructed original face with some new verts */
   F_RECON,
 } FKind;
+
+/** Helper for keeping track of angle kind. */
+enum {
+  /** Angle less than 180 degrees */
+  ANGLE_SMALLER = -1,
+  /** 180 degree angle */
+  ANGLE_STRAIGHT = 0,
+  /** Angle greater than 180 degrees */
+  ANGLE_LARGER = 1,
+};
 
 #if 0
 static const char* fkind_names[] = {"F_NONE", "F_ORIG", "F_VERT", "F_EDGE", "F_RECON"}; /* DEBUG */
@@ -940,13 +950,13 @@ static int edges_angle_kind(EdgeHalf *e1, EdgeHalf *e2, BMVert *v)
   }
   dot = dot_v3v3(cross, no);
   if (fabsf(dot) < BEVEL_EPSILON_BIG) {
-    return 0;
+    return ANGLE_STRAIGHT;
   }
   else if (dot < 0.0f) {
-    return 1;
+    return ANGLE_LARGER;
   }
   else {
-    return -1;
+    return ANGLE_SMALLER;
   }
 }
 
@@ -2599,7 +2609,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
   BoundVert *v, *v1, *v2, *v3;
   VMesh *vm;
   float co[3], r;
-  int nip, nnip, miter_outer, miter_inner;
+  int in_plane, not_in_plane, miter_outer, miter_inner;
   int ang_kind;
 
   /* Current bevel does nothing if only one edge into a vertex */
@@ -2631,7 +2641,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
   /* keep track of the first beveled edge of an outside miter (there can be at most 1 per bv */
   emiter = NULL;
 
-  /* Here: there is more than one beveled edge.
+  /* There is more than one beveled edge.
    * We make BoundVerts to connect the sides of the beveled edges.
    * Non-beveled edges in between will just join to the appropriate juncture point. */
   e = efirst;
@@ -2641,26 +2651,26 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
     /* Make the BoundVert for the right side of e; other side will be made
      * when the beveled edge to the left of e is handled.
      * Analyze edges until next beveled edge.
-     * They are either "in plane" (preceding and subsequent faces are coplanar)
-     * or not. The "non-in-plane" edges effect silhouette and we prefer to slide
-     * along one of those if possible. */
-    nip = nnip = 0;    /* counts of in-plane / not-in-plane */
+     * They are either "in plane" (preceding and subsequent faces are coplanar) or not.
+     * The "non-in-plane" edges affect the silhouette and we prefer to slide along one of those if
+     * possible. */
+    in_plane = not_in_plane = 0; /* Counts of in-plane / not-in-plane */
     enip = eip = NULL; /* representatives of each */
     for (e2 = e->next; !e2->is_bev; e2 = e2->next) {
       if (eh_on_plane(e2)) {
-        nip++;
+        in_plane++;
         eip = e2;
       }
       else {
-        nnip++;
+        not_in_plane++;
         enip = e2;
       }
     }
-    if (nip == 0 && nnip == 0) {
+    if (in_plane == 0 && not_in_plane == 0) {
       offset_meet(e, e2, bv->v, e->fnext, false, co);
     }
-    else if (nnip > 0) {
-      if (bp->loop_slide && nnip == 1 && good_offset_on_edge_between(e, e2, enip, bv->v)) {
+    else if (not_in_plane > 0) {
+      if (bp->loop_slide && not_in_plane == 1 && good_offset_on_edge_between(e, e2, enip, bv->v)) {
         if (offset_on_edge_between(e, e2, enip, bv->v, co, &r)) {
           eon = enip;
         }
@@ -2670,8 +2680,8 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
       }
     }
     else {
-      /* nip > 0 and nnip == 0 */
-      if (bp->loop_slide && nip == 1 && good_offset_on_edge_between(e, e2, eip, bv->v)) {
+      /* n_in_plane > 0 and n_not_in_plane == 0 */
+      if (bp->loop_slide && in_plane == 1 && good_offset_on_edge_between(e, e2, eip, bv->v)) {
         if (offset_on_edge_between(e, e2, eip, bv->v, co, &r)) {
           eon = eip;
         }
@@ -2701,16 +2711,15 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
        * There can only be one outer reflex angle, so only one outer miter,
        * and emiter will be set to the first edge of such an edge.
        * A miter kind of BEVEL_MITER_SHARP means no special miter */
-
-      if ((miter_outer != BEVEL_MITER_SHARP && !emiter && ang_kind == 1) ||
-          (miter_inner != BEVEL_MITER_SHARP && ang_kind == -1)) {
-        if (ang_kind == 1) {
+      if ((miter_outer != BEVEL_MITER_SHARP && !emiter && ang_kind == ANGLE_LARGER) ||
+          (miter_inner != BEVEL_MITER_SHARP && ang_kind == ANGLE_SMALLER)) {
+        if (ang_kind == ANGLE_LARGER) {
           emiter = e;
         }
         /* make one or two more boundverts; for now all will have same co */
         v1 = v;
         v1->ebev = NULL;
-        if (ang_kind == 1 && miter_outer == BEVEL_MITER_PATCH) {
+        if (ang_kind == ANGLE_LARGER && miter_outer == BEVEL_MITER_PATCH) {
           v2 = add_new_bound_vert(mem_arena, vm, co);
         }
         else {
@@ -2722,7 +2731,7 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
         v3->elast = e2;
         v3->eon = NULL;
         e2->leftv = v3;
-        if (ang_kind == 1 && miter_outer == BEVEL_MITER_PATCH) {
+        if (ang_kind == ANGLE_LARGER && miter_outer == BEVEL_MITER_PATCH) {
           v1->is_patch_start = true;
           v2->eon = v1->eon;
           v2->sinratio = v1->sinratio;
@@ -2749,12 +2758,11 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
             v1->elast = v1->efirst;
           }
           else {
-            int between = nip + nnip;
+            int between = in_plane + not_in_plane;
             int bet2 = between / 2;
             bool betodd = (between % 2) == 1;
             int i = 0;
-            /* Put first half of in-between edges at index 0,
-             * second half at index bp->seg.
+            /* Put first half of in-between edges at index 0, second half at index bp->seg.
              * If between is odd, put middle one at midindex */
             for (e3 = e->next; e3 != e2; e3 = e3->next) {
               v1->elast = e3;
@@ -2775,13 +2783,13 @@ static void build_boundary(BevelParams *bp, BevVert *bv, bool construct)
     }
     else { /* construct == false */
       ang_kind = edges_angle_kind(e, e2, bv->v);
-      if ((miter_outer != BEVEL_MITER_SHARP && !emiter && ang_kind == 1) ||
-          (miter_inner != BEVEL_MITER_SHARP && ang_kind == -1)) {
-        if (ang_kind == 1) {
+      if ((miter_outer != BEVEL_MITER_SHARP && !emiter && ang_kind == ANGLE_LARGER) ||
+          (miter_inner != BEVEL_MITER_SHARP && ang_kind == ANGLE_SMALLER)) {
+        if (ang_kind == ANGLE_LARGER) {
           emiter = e;
         }
         v1 = e->rightv;
-        if (ang_kind == 1 && miter_outer == BEVEL_MITER_PATCH) {
+        if (ang_kind == ANGLE_LARGER && miter_outer == BEVEL_MITER_PATCH) {
           v2 = v1->next;
           v3 = v2->next;
         }
@@ -4784,7 +4792,7 @@ static void closer_v3_v3v3v3(float r[3], float a[3], float b[3], float v[3])
  */
 static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
 {
-  int n_bndv, ns, ns2, odd, i, j, k, ikind, im1, clstride, iprev, akind;
+  int n_bndv, ns, ns2, odd, i, j, k, ikind, im1, clstride, iprev, ang_kind;
   float bndco[3], dir1[3], dir2[3], co1[3], co2[3], meet1[3], meet2[3], v1co[3], v2co[3];
   float *on_edge_cur, *on_edge_prev, *p;
   float ns2inv, finalfrac, ang;
@@ -4811,9 +4819,9 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
     copy_v3_v3(bndco, bndv->nv.co);
     e1 = bndv->efirst;
     e2 = bndv->elast;
-    akind = 0;
+    ang_kind = ANGLE_STRAIGHT;
     if (e1 && e2) {
-      akind = edges_angle_kind(e1, e2, bv->v);
+      ang_kind = edges_angle_kind(e1, e2, bv->v);
     }
     if (bndv->is_patch_start) {
       mid_v3_v3v3(centerline + clstride * i, bndv->nv.co, bndv->next->nv.co);
@@ -4835,7 +4843,7 @@ static VMesh *square_out_adj_vmesh(BevelParams *bp, BevVert *bv)
       i++;
       /* leave cset[i] where it was - probably false, unless i == n - 1 */
     }
-    else if (akind < 0) {
+    else if (ang_kind == ANGLE_SMALLER) {
       sub_v3_v3v3(dir1, e1->e->v1->co, e1->e->v2->co);
       sub_v3_v3v3(dir2, e2->e->v1->co, e2->e->v2->co);
       add_v3_v3v3(co1, bndco, dir1);
@@ -5395,8 +5403,6 @@ static BMFace *bevel_build_poly(BevelParams *bp, BMesh *bm, BevVert *bv)
   BMVert **bmverts = NULL;
   BMEdge **bmedges = NULL;
   BMFace **bmfaces = NULL;
-  /* HANS-QUESTION: Why the same number of verts faces and edges? Why even declare an array of the
-   * faces and edges if we're only providing the vertices*/
   BLI_array_staticdeclare(bmverts, BM_DEFAULT_NGON_STACK_SIZE);
   BLI_array_staticdeclare(bmedges, BM_DEFAULT_NGON_STACK_SIZE);
   BLI_array_staticdeclare(bmfaces, BM_DEFAULT_NGON_STACK_SIZE);
