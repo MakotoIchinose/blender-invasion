@@ -120,6 +120,8 @@ enum {
   BEV_MODAL_MARK_SHARP_TOGGLE,
   BEV_MODAL_OUTER_MITER_CHANGE,
   BEV_MODAL_INNER_MITER_CHANGE,
+  BEV_MODAL_CUSTOM_PROFILE_TOGGLE,
+  BEV_MODAL_VERTEX_MESH_CHANGE,
 };
 
 static float get_bevel_offset(wmOperator *op)
@@ -135,15 +137,15 @@ static float get_bevel_offset(wmOperator *op)
   return val;
 }
 
-static void edbm_bevel_update_header(bContext *C, wmOperator *op)
+static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 {
-  char header[UI_MAX_DRAW_STR];
+  char status_text[UI_MAX_DRAW_STR];
   char buf[UI_MAX_DRAW_STR];
   char *p = buf;
   int available_len = sizeof(buf);
   Scene *sce = CTX_data_scene(C);
   char offset_str[NUM_STR_REP_LEN];
-  const char *mode_str, *omiter_str, *imiter_str;
+  const char *mode_str, *omiter_str, *imiter_str, *vmesh_str;
   PropertyRNA *prop;
 
 #define WM_MODALKEY(_id) \
@@ -154,40 +156,40 @@ static void edbm_bevel_update_header(bContext *C, wmOperator *op)
     BLI_snprintf(offset_str, NUM_STR_REP_LEN, "%.1f%%", RNA_float_get(op->ptr, "offset_pct"));
   }
   else {
-    bUnit_AsString2(offset_str,
-                    NUM_STR_REP_LEN,
-                    (double)RNA_float_get(op->ptr, "offset"),
-                    3,
-                    B_UNIT_LENGTH,
-                    &sce->unit,
-                    true);
+    bUnit_AsString2(offset_str, NUM_STR_REP_LEN, (double)RNA_float_get(op->ptr, "offset"), 3,
+                    B_UNIT_LENGTH, &sce->unit, true);
   }
 
   prop = RNA_struct_find_property(op->ptr, "offset_type");
-  RNA_property_enum_name_gettexted(
-      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &mode_str);
+  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
+                                   &mode_str);
   prop = RNA_struct_find_property(op->ptr, "miter_outer");
-  RNA_property_enum_name_gettexted(
-      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &omiter_str);
+  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
+                                   &omiter_str);
   prop = RNA_struct_find_property(op->ptr, "miter_inner");
-  RNA_property_enum_name_gettexted(
-      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &imiter_str);
+  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
+                                   &imiter_str);
+  prop = RNA_struct_find_property(op->ptr, "vmesh_method");
+  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
+                                   &vmesh_str);
 
-  BLI_snprintf(header,
-               sizeof(header),
-               TIP_("%s: confirm, "
-                    "%s: cancel, "
-                    "%s: mode (%s), "
-                    "%s: width (%s), "
-                    "%s: segments (%d), "
-                    "%s: profile (%.3f), "
-                    "%s: clamp overlap (%s), "
-                    "%s: vertex only (%s), "
-                    "%s: outer miter (%s), "
-                    "%s: inner miter (%s), "
-                    "%s: harden normals (%s), "
-                    "%s: mark seam (%s), "
-                    "%s: mark sharp (%s)"),
+  BLI_snprintf(status_text,
+               sizeof(status_text),
+               TIP_("%s: Confirm, "
+                    "%s: Cancel, "
+                    "%s: Mode (%s), "
+                    "%s: Width (%s), "
+                    "%s: Segments (%d), "
+                    "%s: Profile (%.3f), "
+                    "%s: Clamp Overlap (%s), "
+                    "%s: Vertex Only (%s), "
+                    "%s: Outer Miter (%s), "
+                    "%s: Inner Miter (%s), "
+                    "%s: Harden Normals (%s), "
+                    "%s: Mark Seam (%s), "
+                    "%s: Mark Sharp (%s), "
+                    "%s: Custom Profile (%s), "
+                    "%s: Intersection (%s)"),
                WM_MODALKEY(BEV_MODAL_CONFIRM),
                WM_MODALKEY(BEV_MODAL_CANCEL),
                WM_MODALKEY(BEV_MODAL_OFFSET_MODE_CHANGE),
@@ -211,11 +213,15 @@ static void edbm_bevel_update_header(bContext *C, wmOperator *op)
                WM_MODALKEY(BEV_MODAL_MARK_SEAM_TOGGLE),
                WM_bool_as_string(RNA_boolean_get(op->ptr, "mark_seam")),
                WM_MODALKEY(BEV_MODAL_MARK_SHARP_TOGGLE),
-               WM_bool_as_string(RNA_boolean_get(op->ptr, "mark_sharp")));
+               WM_bool_as_string(RNA_boolean_get(op->ptr, "mark_sharp")),
+               WM_MODALKEY(BEV_MODAL_CUSTOM_PROFILE_TOGGLE),
+               WM_bool_as_string(RNA_boolean_get(op->ptr, "use_custom_profile")),
+               WM_MODALKEY(BEV_MODAL_VERTEX_MESH_CHANGE),
+               vmesh_str);
 
 #undef WM_MODALKEY
 
-  ED_workspace_status_text(C, header);
+  ED_workspace_status_text(C, status_text);
 }
 
 static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
@@ -514,7 +520,7 @@ static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   edbm_bevel_calc_initial_length(op, event, false);
 
-//  edbm_bevel_update_header(C, op);
+  edbm_bevel_update_status_text(C, op);
 
   if (!edbm_bevel_calc(op)) {
     edbm_bevel_cancel(C, op);
@@ -612,9 +618,9 @@ wmKeyMap *bevel_modal_keymap(wmKeyConfig *keyconf)
   static const EnumPropertyItem modal_items[] = {
       {BEV_MODAL_CANCEL, "CANCEL", 0, "Cancel", "Cancel bevel"},
       {BEV_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", "Confirm bevel"},
-      {BEV_MODAL_VALUE_OFFSET, "VALUE_OFFSET", 0, "Value is offset", "Value changes offset"},
-      {BEV_MODAL_VALUE_PROFILE, "VALUE_PROFILE", 0, "Value is profile", "Value changes profile"},
-      {BEV_MODAL_VALUE_SEGMENTS, "VALUE_SEGMENTS", 0, "Value is segments",
+      {BEV_MODAL_VALUE_OFFSET, "VALUE_OFFSET", 0, "Change offset", "Value changes offset"},
+      {BEV_MODAL_VALUE_PROFILE, "VALUE_PROFILE", 0, "Change profile", "Value changes profile"},
+      {BEV_MODAL_VALUE_SEGMENTS, "VALUE_SEGMENTS", 0, "Change segments",
        "Value changes segments"},
       {BEV_MODAL_SEGMENTS_UP, "SEGMENTS_UP", 0, "Increase segments", "Increase segments"},
       {BEV_MODAL_SEGMENTS_DOWN, "SEGMENTS_DOWN", 0, "Decrease segments", "Decrease segments"},
@@ -634,12 +640,15 @@ wmKeyMap *bevel_modal_keymap(wmKeyConfig *keyconf)
        "Cycle through outer miter kinds"},
       {BEV_MODAL_INNER_MITER_CHANGE, "INNER_MITER_CHANGE", 0, "Change inner miter",
        "Cycle through inner miter kinds"},
+      {BEV_MODAL_CUSTOM_PROFILE_TOGGLE, "CUSTOM_PROFILE_TOGGLE", 0, "Toggle custom profile", ""},
+      {BEV_MODAL_VERTEX_MESH_CHANGE, "VERTEX_MESH_CHANGE", 0, "Change intersection method",
+      "Cycle through intersection methods"},
       {0, NULL, 0, NULL, NULL},
   };
 
   wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Bevel Modal Map");
 
-  /* this function is called for each spacetype, only needs to add map once */
+  /* This function is called for each spacetype, only needs to add map once */
   if (keymap && keymap->modal_items) {
     return NULL;
   }
@@ -669,14 +678,14 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
       handleNumInput(C, &opdata->num_input[opdata->value_mode], event)) {
     edbm_bevel_numinput_set_value(op);
     edbm_bevel_calc(op);
-//    edbm_bevel_update_header(C, op);
+    edbm_bevel_update_status_text(C, op);
     return OPERATOR_RUNNING_MODAL;
   }
   else if (etype == MOUSEMOVE) {
     if (!has_numinput) {
       edbm_bevel_mouse_set_value(op, event);
       edbm_bevel_calc(op);
-//      edbm_bevel_update_header(C, op);
+      edbm_bevel_update_status_text(C, op);
       handled = true;
     }
   }
@@ -690,7 +699,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
     RNA_int_set(op->ptr, "segments", (int)opdata->segments);
     edbm_bevel_calc(op);
-//    edbm_bevel_update_header(C, op);
+    edbm_bevel_update_status_text(C, op);
     handled = true;
   }
   else if (etype == EVT_MODAL_MAP) {
@@ -710,7 +719,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         opdata->segments = opdata->segments + 1;
         RNA_int_set(op->ptr, "segments", (int)opdata->segments);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
 
@@ -718,7 +727,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         opdata->segments = max_ff(opdata->segments - 1, 1);
         RNA_int_set(op->ptr, "segments", (int)opdata->segments);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
 
@@ -745,7 +754,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
           edbm_bevel_mouse_set_value(op, event);
         }
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
 
@@ -753,7 +762,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         bool clamp_overlap = RNA_boolean_get(op->ptr, "clamp_overlap");
         RNA_boolean_set(op->ptr, "clamp_overlap", !clamp_overlap);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -777,7 +786,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         bool vertex_only = RNA_boolean_get(op->ptr, "vertex_only");
         RNA_boolean_set(op->ptr, "vertex_only", !vertex_only);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -786,7 +795,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         bool mark_seam = RNA_boolean_get(op->ptr, "mark_seam");
         RNA_boolean_set(op->ptr, "mark_seam", !mark_seam);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -795,7 +804,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         bool mark_sharp = RNA_boolean_get(op->ptr, "mark_sharp");
         RNA_boolean_set(op->ptr, "mark_sharp", !mark_sharp);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -811,7 +820,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         }
         RNA_enum_set(op->ptr, "miter_inner", miter_inner);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -824,7 +833,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         }
         RNA_enum_set(op->ptr, "miter_outer", miter_outer);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -833,7 +842,29 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
         bool harden_normals = RNA_boolean_get(op->ptr, "harden_normals");
         RNA_boolean_set(op->ptr, "harden_normals", !harden_normals);
         edbm_bevel_calc(op);
-//        edbm_bevel_update_header(C, op);
+        edbm_bevel_update_status_text(C, op);
+        handled = true;
+        break;
+      }
+
+      case BEV_MODAL_CUSTOM_PROFILE_TOGGLE: {
+        bool use_custom_profile = RNA_boolean_get(op->ptr, "use_custom_profile");
+        RNA_boolean_set(op->ptr, "use_custom_profile", !use_custom_profile);
+        edbm_bevel_calc(op);
+        edbm_bevel_update_status_text(C, op);
+        handled = true;
+        break;
+      }
+
+      case BEV_MODAL_VERTEX_MESH_CHANGE: {
+        int vmesh_method = RNA_enum_get(op->ptr, "vmesh_method");
+        vmesh_method++;
+        if (vmesh_method > BEVEL_VMESH_CUTOFF) {
+          vmesh_method = BEVEL_VMESH_ADJ;
+        }
+        RNA_enum_set(op->ptr, "vmesh_method", vmesh_method);
+        edbm_bevel_calc(op);
+        edbm_bevel_update_status_text(C, op);
         handled = true;
         break;
       }
@@ -845,7 +876,7 @@ static int edbm_bevel_modal(bContext *C, wmOperator *op, const wmEvent *event)
       handleNumInput(C, &opdata->num_input[opdata->value_mode], event)) {
     edbm_bevel_numinput_set_value(op);
     edbm_bevel_calc(op);
-//    edbm_bevel_update_header(C, op);
+    edbm_bevel_update_status_text(C, op);
     return OPERATOR_RUNNING_MODAL;
   }
 
@@ -857,9 +888,8 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayout *row, *col, *split;
   PointerRNA ptr, toolsettings_ptr;
+  PropertyRNA *prop;
   const char *offset_name;
-
-
 
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
@@ -878,6 +908,9 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
         offset_name = "Offset";
         break;
     }
+    prop = RNA_struct_find_property(op->ptr, "offset_type");
+    RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
+                                     &offset_name);
     uiItemR(layout, &ptr, "offset", 0, offset_name, ICON_NONE);
   }
   row = uiLayoutRow(layout, true);
