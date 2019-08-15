@@ -1863,6 +1863,31 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
           sprintf(file_name, "/tmp/objs/collapse_edge_debug_after_collapse.obj");
           cloth_remeshing_export_obj(clmd->clothObject->bm, file_name);
 #endif
+#if 0
+          /* Fix for when collapse edges leaves behind an extra
+           * triangle */
+          BMFace *f;
+          BMIter fiter;
+          BM_ITER_ELEM (f, &fiter, temp_e, BM_FACES_OF_EDGE) {
+            BMVert *vs[3];
+            BM_face_as_array_vert_tri(f, vs);
+            bool should_break = false;
+            for (int i = 0; i < 3; i++) {
+              /* if (!BM_vert_is_manifold(vs[i])) { */
+              if (cloth_remeshing_vert_on_seam_or_boundary_test(
+                      clmd->clothObject->bm, vs[i], cd_loop_uv_offset) &&
+                  !BM_vert_is_manifold(vs[i])) {
+                BM_vert_kill(clmd->clothObject->bm, vs[i]);
+                printf("Killed vert because of non manifold vert\n");
+                should_break = true;
+                break;
+              }
+            }
+            if (should_break) {
+              break;
+            }
+          }
+#endif
         }
         BLI_assert(BM_edge_face_count(temp_e) <= 2);
       }
