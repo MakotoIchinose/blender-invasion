@@ -105,8 +105,3 @@ if(WITH_AUDASPACE AND NOT WITH_SYSTEM_AUDASPACE)
   set(AUDASPACE_CMAKE_CFG ${CMAKE_CURRENT_SOURCE_DIR}/audaspace/blender_config.cmake)
   add_subdirectory(audaspace)
 endif()
-
-if(WITH_OPENXR AND OPENXR_USE_BUNDLED_SRC)
-  add_subdirectory(jsoncpp)
-  add_subdirectory(openxr)
-endif()

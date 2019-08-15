@@ -362,24 +362,8 @@ if(WITH_OPENXR)
     intern/GHOST_IXrGraphicsBinding.h
     intern/GHOST_XrSession.h
   )
-  list(APPEND INC
-  )
-  list(APPEND INC_SYS
-    ${OPENXR_SDK_INCLUDES}
-  )
 
   include(xr_platform_defines)
-
-  if(OPENXR_USE_BUNDLED_SRC)
-    if(WIN32)
-      set(OPENXR_LOADER_NAME openxr_loader-1_0)
-    else()
-      set(OPENXR_LOADER_NAME openxr_loader)
-    endif()
-
-    list(APPEND LIB ${OPENXR_LOADER_NAME})
-    list(APPEND INC ../../extern/openxr/include)
-  endif()
 
   add_definitions(-DWITH_OPENXR)
 endif()
