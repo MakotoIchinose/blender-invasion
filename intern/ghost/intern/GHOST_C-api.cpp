@@ -939,7 +939,7 @@ void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_contexthandle)
 
 int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_contexthandle)
 {
-  const GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  const GHOST_IXrContext *xr_context = (const GHOST_IXrContext *)xr_contexthandle;
   GHOST_XR_CAPI_CALL_RET(xr_context->isSessionRunning(), xr_context);
   return 0;  // Only reached if exception is thrown.
 }
