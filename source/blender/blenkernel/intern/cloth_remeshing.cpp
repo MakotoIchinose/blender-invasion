@@ -1607,8 +1607,9 @@ static bool cloth_remeshing_vert_on_seam_test(BMesh *bm, BMVert *v, const int cd
 
 static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, ClothVertMap &cvm)
 {
+#if 0
   BMVert *v1 = cloth_remeshing_edge_vert(e, which);
-#if 1
+#  if 1
   float uv_01[2], uv_02[2];
   cloth_remeshing_uv_of_vert_in_edge(bm, e, v1, uv_01);
   cloth_remeshing_uv_of_vert_in_edge(bm, e, cloth_remeshing_edge_vert(e, 1 - which), uv_02);
@@ -1619,22 +1620,22 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
   char file_name[100];
   sprintf(file_name, "/tmp/objs/collapse_edge_debug_before_collapse.obj");
   cloth_remeshing_export_obj(bm, file_name);
-#endif
+#  endif
   /* Need to store the value of vertex v1 which will be killed */
   BMVert *v = v1;
   BMVert *v2 = BM_edge_collapse(bm, e, v1, true, true);
 
   if (v2) {
     cloth_remeshing_remove_vertex_from_cloth(v, cvm);
-#if 1
+#  if 1
     BMFace *f;
     BMIter fiter;
     BM_ITER_ELEM (f, &fiter, v2, BM_FACES_OF_VERT) {
       BLI_assert(f->len == 3);
     }
-#endif
+#  endif
   }
-#if COLLAPSE_EDGES_DEBUG
+#  if COLLAPSE_EDGES_DEBUG
   printf("killed %f %f %f into %f %f %f\n",
          v.co[0],
          v.co[1],
@@ -1642,8 +1643,67 @@ static BMVert *cloth_remeshing_collapse_edge(BMesh *bm, BMEdge *e, int which, Cl
          v2->co[0],
          v2->co[1],
          v2->co[2]);
-#endif
+#  endif
   return v2;
+#else
+  printf("Started collapsing an edge\n");
+  BMVert *n1 = cloth_remeshing_edge_vert(e, which);
+  BMVert *n2 = cloth_remeshing_edge_vert(e, 1 - which);
+  /* Done: Need to remove n1 */
+  BMEdge *adj_e;
+  BMIter eiter;
+  printf("adj_e count: %d\n", BM_vert_edge_count(n1));
+  BM_ITER_ELEM (adj_e, &eiter, n1, BM_EDGES_OF_VERT) {
+    /* Done: Need to remove adj_e */
+    BMVert *n3 = adj_e->v1 == n1 ? adj_e->v2 : adj_e->v1;
+    if (n3 != n2 && !BM_edge_exists(n2, n3)) {
+      /* Done: Need to create edge between n2 and n3 */
+      printf("Creating edge between n2 and n3\n");
+      BM_edge_create(bm, n2, n3, adj_e, BM_CREATE_NO_DOUBLE);
+    }
+    /* edge_kill kills even the verts of the edge, so killing the
+     * vertex n1 should be enough */
+    /* printf("Killing edge adj_e\n"); */
+    /* BM_edge_kill(bm, adj_e); */
+  }
+  for (int s = 0; s < 2; s++) {
+    BMVert *v1 = cloth_remeshing_edge_vert(bm, e, s, which, NULL);
+    BMVert *v2 = cloth_remeshing_edge_vert(bm, e, s, 1 - which, NULL);
+
+    if (!v1 || (s == 1 && v1 == cloth_remeshing_edge_vert(bm, e, 0, 1 - which, NULL))) {
+      continue;
+    }
+    /* Done: Need to remove v1 */
+    BMFace *f;
+    BMIter fiter;
+    printf("f count: %d\n", BM_vert_face_count(v1));
+    BM_ITER_ELEM (f, &fiter, v1, BM_FACES_OF_VERT) {
+      /* Done: Need to remove f */
+      if (!BM_vert_in_face(v2, f)) {
+        BMVert *vs[3];
+        BM_face_as_array_vert_tri(f, vs);
+        /* Replacing v1 with v2 in vs */
+        for (int i = 0; i < 3; i++) {
+          if (vs[i] == v1) {
+            vs[i] = v2;
+          }
+        }
+        /* Done: Need to create face between vs[0], vs[1], vs[2] */
+        printf("Creating face between vs[0] vs[1] vs[2]\n");
+        BM_face_create_verts(bm, vs, 3, f, BM_CREATE_NO_DOUBLE, true);
+      }
+      /* printf("Killing face f\n"); */
+      /* BM_face_kill(bm, f); */
+    }
+    /* printf("Killing vertex v1\n"); */
+    /* BM_vert_kill(bm, v1); */
+  }
+  printf("Killing vertex n1\n");
+  BM_vert_kill(bm, n1);
+  cloth_remeshing_remove_vertex_from_cloth(n1, cvm);
+  printf("Finished collapsing edge\n");
+  return n2;
+#endif
 }
 
 static bool cloth_remeshing_has_labeled_edges(BMVert *v)
@@ -1851,7 +1911,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       BMIter temp_e_iter;
       BM_ITER_ELEM (temp_e, &temp_e_iter, temp_vert, BM_EDGES_OF_VERT) {
         if (BM_edge_face_count(temp_e) > 2) {
-#if 1
+#if 0
           float uv_01[2], uv_02[2];
           cloth_remeshing_uv_of_vert_in_edge(clmd->clothObject->bm, temp_e, temp_e->v1, uv_01);
           cloth_remeshing_uv_of_vert_in_edge(clmd->clothObject->bm, temp_e, temp_e->v2, uv_02);
