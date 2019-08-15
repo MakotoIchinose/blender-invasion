@@ -33,13 +33,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_delaunay_2d.h"
-#include "BLI_utildefines.h"
-#include "BLI_memarena.h"
 #include "BLI_alloca.h"
-
+#include "BLI_delaunay_2d.h"
 #include "BLI_linklist.h"
+#include "BLI_math.h"
+#include "BLI_memarena.h"
+#include "BLI_utildefines.h"
+
 
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
@@ -85,6 +85,19 @@ typedef struct BoolState {
 static void dump_cluster(Cluster *cl, const char *label);
 static void dump_clusterset(ClusterSet *clset, const char *label);
 #endif
+
+/**
+ * Make ngon from verts alone.
+ * Use facerep as example for attributes of new face.
+ * TODO: make this an similar bev_create_ngon in bmesh_bevel.c into a BMesh utility.
+ */
+static BMFace *bool_create_ngon(BMesh *bm, BMVert **vert_arr, const int vert_len, BMFace *facerep)
+{
+  BMFace *f;
+
+  f = BM_face_create_verts(bm, vert_arr, vert_len, facerep, BM_CREATE_NOP, true);
+  return f;
+}
 
 /* Make clusterset by empty. */
 static void init_clusterset(ClusterSet *clusterset)
@@ -207,8 +220,13 @@ static void intersect_planar_geometry(BoolState *bs,
   BMVert *v;
   BMIter iter;
   float mat_2d[3][3];
-  float xy[2];
+  float mat_2d_inv[3][3];
+  float xyz[3], save_z, p[3];
   int i, faces_index, vert_coords_index, faces_table_index, v_index;
+  int j, start, len;
+  bool ok;
+  BMVert **face_v;
+  BMVert **all_v;
 
   nverts = 0;
   nfaceverts = 0;
@@ -234,11 +252,16 @@ static void intersect_planar_geometry(BoolState *bs,
   in.epsilon = bs->eps;
 
   axis_dominant_v3_to_m3(mat_2d, plane);
+  ok = invert_m3_m3(mat_2d_inv, mat_2d);
+  BLI_assert(ok);
   vert_coords_index = 0;
   for (ln = vertlist; ln; ln = ln->next) {
     v = (BMVert *)ln->link;
-    mul_v2_m3v3(xy, mat_2d, v->co);
-    copy_v2_v2(in.vert_coords[vert_coords_index], xy);
+    mul_v3_m3v3(xyz, mat_2d, v->co);
+    copy_v2_v2(in.vert_coords[vert_coords_index], xyz);
+    if (vert_coords_index == 0) {
+      save_z = xyz[2];
+    }
     vert_coords_index++;
   }
 
@@ -258,32 +281,53 @@ static void intersect_planar_geometry(BoolState *bs,
     faces_table_index++;
   }
 
-  printf("cdt input:\n");
-  printf("verts_len=%d, edges_len=%d, faces_len=%d\n", in.verts_len, in.edges_len, in.faces_len);
-  printf("vert_coord: ");
-  for (i = 0; i < in.verts_len; i++) {
-    printf("(%.3f,%.3f) ", F2(in.vert_coords[i]));
-  }
-  printf("\nfaces: ");
-  for (i = 0; i < in.faces_start_table[in.faces_len - 1] + in.faces_len_table[in.faces_len -1]; i++) {
-    printf("%d ", in.faces[i]);
-  }
-  printf("\nfaces_start_table: ");
-  for (i = 0; i < in.faces_len; i++) {
-    printf("%d ", in.faces_start_table[i]);
-  }
-  printf("\nfaces_len_table: ");
-  for (i = 0; i < in.faces_len; i++) {
-    printf("%d ", in.faces_len_table[i]);
-  }
-  printf("\n");
-
   out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
 
-  printf("out stats: verts_len=%d, edges_len=%d, faces_len=%d\n",
-         out->verts_len,
-         out->edges_len,
-         out->faces_len);
+  /* Gather BMVerts corresponding to output vertices into all_v. */
+  all_v = BLI_array_alloca(face_v, (size_t)out->verts_len);
+  for (i = 0; i < out->verts_len; i++) {
+    if (out->verts_orig_len_table[i] > 0) {
+      /* choose first input vert in orig list as representative */
+      v_index = out->verts_orig[out->verts_orig_start_table[i]];
+      ln = BLI_linklist_find(vertlist, v_index);
+      BLI_assert(ln != NULL);
+      v = (BMVert *)ln->link;
+      all_v[i] = v;
+    }
+    else {
+      copy_v2_v2(xyz, out->vert_coords[i]);
+      xyz[2] = save_z;
+      mul_v3_m3v3(p, mat_2d_inv, xyz);
+      /* TODO: figure out example vert to copy attributes from */
+      v = BM_vert_create(bs->bm, p, NULL, BM_CREATE_NOP);
+      all_v[i] = v;
+    }
+  }
+
+  /* Make the new faces. out-verts_len is upper bound on max face length. */
+  face_v = BLI_array_alloca(face_v, (size_t)out->verts_len);
+  for (faces_index = 0; faces_index < out->faces_len; faces_index++) {
+    start = out->faces_start_table[faces_index];
+    len = out->faces_len_table[faces_index];
+    if (len >= 3) {
+      for (j = 0; j < len; j++) {
+        v_index = out->faces[start + j];
+        BLI_assert(v_index >= 0 && v_index < out->verts_len);
+        v = all_v[v_index];
+        BLI_assert(j < out->verts_len);
+        face_v[j] = v;
+      }
+      /* TODO: figure out example face for this face */
+      bool_create_ngon(bs->bm, face_v, len, NULL);
+    }
+  }
+
+  /* Delete the original faces */
+  for (faces_index = 0; faces_index < faces_len; faces_index++) {
+    BM_face_kill(bs->bm, faces[faces_index]);
+  }
+ 
+  BLI_delaunay_2d_cdt_free(out);
 }
 
 static void intersect_clusters(BoolState *bs, Cluster *cla, Cluster *clb)
