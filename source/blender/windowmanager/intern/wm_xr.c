@@ -125,7 +125,9 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
       create_info.context_flag |= GHOST_kXrContextDebugTime;
     }
 
-    wm->xr_context = GHOST_XrContextCreate(&create_info);
+    if (!(wm->xr_context = GHOST_XrContextCreate(&create_info))) {
+      return false;
+    }
 
     /* Set up context callbacks */
     GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
@@ -133,8 +135,9 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
                                      wm_xr_session_gpu_binding_context_destroy);
     GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view);
   }
+  BLI_assert(wm->xr_context != NULL);
 
-  return wm->xr_context != NULL;
+  return true;
 }
 
 void wm_xr_context_destroy(wmWindowManager *wm)
