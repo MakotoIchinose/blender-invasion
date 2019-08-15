@@ -4633,10 +4633,16 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
     /* Sharp / Smooth */
     bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_LINCURVE, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL,
                       0.0, 0.0, 0.0, 0.0, TIP_("Set the point's handle type to sharp."));
+    if (point_last_or_first) {
+      UI_but_flag_enable(bt, UI_BUT_DISABLED);
+    }
     UI_but_funcN_set(bt, profilewidget_buttons_setsharp, MEM_dupallocN(cb), prwdgt);
     bt = uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_SMOOTHCURVE, 0, 0, UI_UNIT_X, UI_UNIT_X, NULL,
                       0.0, 0.0, 0.0, 0.0, TIP_("Set the point's handle type to sharp."));
     UI_but_funcN_set(bt, profilewidget_buttons_setcurved, MEM_dupallocN(cb), prwdgt);
+    if (point_last_or_first) {
+      UI_but_flag_enable(bt, UI_BUT_DISABLED);
+    }
 
     /* Position */
     bt = uiDefButF(block, UI_BTYPE_NUM, 0, "X:", 0, 2 * UI_UNIT_Y, UI_UNIT_X * 10, UI_UNIT_Y,
