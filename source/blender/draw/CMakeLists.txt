@@ -134,7 +134,6 @@ set(SRC
 	# engines/lanpr/lanpr_snake.c  deprecated for now.
 	engines/lanpr/lanpr_cpu.c
   engines/lanpr/lanpr_chain_draw.c
-  engines/select/select_engine.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
 
