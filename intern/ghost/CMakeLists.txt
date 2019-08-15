@@ -362,6 +362,12 @@ if(WITH_OPENXR)
     intern/GHOST_IXrGraphicsBinding.h
     intern/GHOST_XrSession.h
   )
+  list(APPEND INC_SYS
+    ${OPENXR_SDK_INCLUDE_DIR}
+  )
+  list(APPEND LIB
+    shlwapi
+  )
 
   include(xr_platform_defines)
 
