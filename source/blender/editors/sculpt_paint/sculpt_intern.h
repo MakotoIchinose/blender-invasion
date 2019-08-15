@@ -228,6 +228,10 @@ typedef struct SculptThreadedTaskData {
   float nearest_vertex_search_co[3];
   int nearest_vertex_index;
 
+  float *pose_origin;
+  float *pose_initial_co;
+  float (*transform_rot)[4], (*transform_trans)[4], (*transform_trans_inv)[4];
+
   ThreadMutex mutex;
 
 } SculptThreadedTaskData;
@@ -423,6 +427,11 @@ typedef struct StrokeCache {
 
   float paint_color[3];
   float paint_color_secondary[3];
+
+  float *pose_factor;
+  float (*pose_orco)[3];
+  float pose_initial_co[3];
+  float pose_origin[3];
 
 } StrokeCache;
 
