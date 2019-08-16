@@ -336,7 +336,7 @@ static void parent_drop_set_parents(
   Scene *scene = (Scene *)outliner_search_back(soops, te, ID_SCE);
 
   if (scene == NULL) {
-    /* currently outlier organized in a way, that if there's no parent scene
+    /* currently outliner organized in a way, that if there's no parent scene
      * element for object it means that all displayed objects belong to
      * active scene and parenting them is allowed (sergey)
      */
@@ -345,13 +345,15 @@ static void parent_drop_set_parents(
   }
 
   bool parent_set = false;
+  bool linked_objects = false;
+
   for (wmDragID *drag_id = drag; drag_id; drag_id = drag_id->next) {
     if (GS(drag_id->id->name) == ID_OB) {
       Object *object = (Object *)drag_id->id;
 
       /* Do nothing to linked data */
       if (ID_IS_LINKED(object)) {
-        BKE_report(reports, RPT_INFO, "Can't edit library linked object");
+        linked_objects = true;
         continue;
       }
 
@@ -362,215 +364,15 @@ static void parent_drop_set_parents(
     }
   }
 
+  if (linked_objects) {
+    BKE_report(reports, RPT_INFO, "Can't edit library linked object(s)");
+  }
+
   if (parent_set) {
     DEG_relations_tag_update(bmain);
     WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
     WM_event_add_notifier(C, NC_OBJECT | ND_PARENT, NULL);
   }
-}
-
-typedef struct ParentDropData {
-  Object *parent;
-  ListBase *drag_items;
-  short type;
-} ParentDropData;
-
-static void parent_drop_menu_callback(bContext *C, void *data, int event)
-{
-  ParentDropData *drag_data = (ParentDropData *)data;
-
-  wmDragID *drag = drag_data->drag_items->first;
-  parent_drop_set_parents(C, NULL, drag, drag_data->parent, event);
-
-  BLI_freelistN(drag_data->drag_items);
-  MEM_freeN(drag_data->drag_items);
-  MEM_freeN(drag_data);
-}
-
-static uiBlock *parent_drop_menu(bContext *C, ARegion *ar, void *data)
-{
-  uiBlock *block;
-  ParentDropData *drag_data = (ParentDropData *)data;
-
-  block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
-  UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
-  UI_block_func_butmenu_set(block, parent_drop_menu_callback, drag_data);
-
-  short menu_width = 10 * UI_UNIT_X;
-  short y_position = 0;
-
-  uiDefBut(block,
-           UI_BTYPE_LABEL,
-           0,
-           IFACE_("Set Parent To"),
-           0,
-           y_position,
-           menu_width,
-           UI_UNIT_Y,
-           NULL,
-           0.0,
-           0.0,
-           0,
-           0,
-           "");
-
-  uiDefBut(block,
-           UI_BTYPE_BUT_MENU,
-           0,
-           IFACE_("Object"),
-           0,
-           y_position -= UI_UNIT_Y,
-           menu_width,
-           UI_UNIT_Y,
-           NULL,
-           0.0,
-           0.0,
-           0,
-           PAR_OBJECT,
-           "");
-
-  if (drag_data->type == OB_ARMATURE) {
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Armature Deform"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_ARMATURE,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("   With Empty Groups"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_ARMATURE_NAME,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("   With Envelope Weights"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_ARMATURE_ENVELOPE,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("   With Automatic Weights"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_ARMATURE_AUTO,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Bone"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_BONE,
-             "");
-  }
-  else if (drag_data->type == OB_CURVE) {
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Curve Deform"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_CURVE,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Follow Path"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_FOLLOW,
-             "");
-
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Path Constraint"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_PATH_CONST,
-             "");
-  }
-  else if (drag_data->type == OB_LATTICE) {
-    uiDefBut(block,
-             UI_BTYPE_BUT_MENU,
-             0,
-             IFACE_("Lattice Deform"),
-             0,
-             y_position -= UI_UNIT_Y,
-             menu_width,
-             UI_UNIT_Y,
-             NULL,
-             0.0,
-             0.0,
-             0,
-             PAR_LATTICE,
-             "");
-  }
-
-  UI_block_bounds_set_popup(block, 6, (const int[2]){0, 0});
-
-  return block;
 }
 
 static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -599,21 +401,7 @@ static int parent_drop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   ListBase *lb = event->customdata;
   wmDrag *drag = lb->first;
 
-  if (par->type != OB_ARMATURE && par->type != OB_CURVE && par->type != OB_LATTICE) {
-    parent_drop_set_parents(C, op->reports, drag->ids.first, par, PAR_OBJECT);
-  }
-  else {
-    ParentDropData *data = MEM_callocN(sizeof(ParentDropData), "parent_drop_data");
-    data->parent = par;
-    data->type = par->type;
-
-    data->drag_items = MEM_callocN(sizeof(ListBase), "drag_items");
-    BLI_duplicatelist(data->drag_items, &drag->ids);
-
-    UI_popup_block_invoke(C, parent_drop_menu, data, NULL);
-
-    return OPERATOR_INTERFACE;
-  }
+  parent_drop_set_parents(C, op->reports, drag->ids.first, par, PAR_OBJECT);
 
   return OPERATOR_FINISHED;
 }
