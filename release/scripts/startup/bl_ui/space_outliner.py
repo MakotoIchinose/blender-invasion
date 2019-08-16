@@ -48,7 +48,7 @@ class OUTLINER_HT_header(Header):
 
         if display_mode == 'SEQUENCE':
             row = layout.row(align=True)
-            row.prop(space, "use_sync_select", text="")
+            row.prop(space, "use_sync_select", icon="UV_SYNC_SELECT", text="")
 
         row = layout.row(align=True)
         if display_mode in {'SCENES', 'VIEW_LAYER'}:
@@ -307,10 +307,6 @@ class OUTLINER_PT_filter(Panel):
         space = context.space_data
         display_mode = space.display_mode
 
-        row = layout.row(align=True)
-        row.prop(space, "use_sync_select", text="Sync Selection")
-        layout.separator()
-
         if display_mode == 'VIEW_LAYER':
             layout.label(text="Restriction Toggles:")
             row = layout.row(align=True)
@@ -335,6 +331,10 @@ class OUTLINER_PT_filter(Panel):
             col = layout.column(align=True)
             col.prop(space, "use_sort_alpha")
             layout.separator()
+
+        row = layout.row(align=True)
+        row.prop(space, "use_sync_select", text="Sync Selection")
+        layout.separator()
 
         col = layout.column(align=True)
         col.label(text="Search:")
