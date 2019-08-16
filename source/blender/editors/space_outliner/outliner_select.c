@@ -1313,7 +1313,7 @@ static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *soops,
 }
 
 /**
- * A version of #outliner_item_do_acticate_from_cursor that takes the tree element directly.
+ * A version of #outliner_item_do_activate_from_cursor that takes the tree element directly.
  * and doesn't depend on the pointer position.
  *
  * This allows us to simulate clicking on an item without dealing with the mouse cursor.
@@ -1625,46 +1625,6 @@ static TreeElement *outliner_find_next_element(SpaceOutliner *soops, TreeElement
   return walk_element;
 }
 
-/* Walk the element left, or close the element */
-static TreeElement *outliner_walk_left(SpaceOutliner *soops,
-                                       TreeElement *walk_element,
-                                       TreeStoreElem *tselem,
-                                       bool toggle_all)
-{
-  if (TSELEM_OPEN(tselem, soops)) {
-    if (toggle_all) {
-      TREESTORE(walk_element)->flag |= TSE_CLOSED;
-      outliner_flag_set(&walk_element->subtree, TSE_CLOSED, true);
-    }
-    else {
-      outliner_item_openclose(walk_element, false);
-    }
-  }
-  else if (!toggle_all && walk_element->parent) {
-    return walk_element->parent;
-  }
-
-  return walk_element;
-}
-
-/* Walk the element right or expand the element */
-static TreeElement *outliner_walk_right(SpaceOutliner *soops,
-                                        TreeElement *walk_element,
-                                        TreeStoreElem *tselem,
-                                        bool toggle_all)
-{
-  if (!toggle_all && TSELEM_OPEN(tselem, soops)) {
-    return walk_element->subtree.first;
-  }
-  else if ((!TSELEM_OPEN(tselem, soops) ||
-            outliner_flag_is_any_test(&walk_element->subtree, TSE_CLOSED, 1)) &&
-           walk_element->subtree.first) {
-    outliner_item_openclose(walk_element, toggle_all);
-  }
-
-  return walk_element;
-}
-
 static TreeElement *do_outliner_select_walk(SpaceOutliner *soops,
                                             TreeElement *walk_element,
                                             const int direction,
@@ -1686,11 +1646,10 @@ static TreeElement *do_outliner_select_walk(SpaceOutliner *soops,
       walk_element = outliner_find_next_element(soops, walk_element);
       break;
     case OUTLINER_SELECT_WALK_LEFT:
-      /* Close open element or walk to parent */
-      walk_element = outliner_walk_left(soops, walk_element, tselem, toggle_all);
+      outliner_item_openclose(walk_element, false, toggle_all);
       break;
     case OUTLINER_SELECT_WALK_RIGHT:
-      walk_element = outliner_walk_right(soops, walk_element, tselem, toggle_all);
+      outliner_item_openclose(walk_element, true, toggle_all);
       break;
   }
 
