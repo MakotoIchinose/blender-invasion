@@ -487,8 +487,8 @@ void BVHEmbree::build(Progress &progress, Stats *stats_)
 
   progress.set_substatus("Packing geometry");
   if(this->bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
-    BVHEmbreeConverter conv(scene, objects, this->params);
-    conv.fillPack(this->pack, this->objects);
+    BVHEmbreeConverter conv(this->scene, this->objects, this->params);
+    conv.fillPack(this->pack);
   } else {
     pack_primitives();
 
@@ -817,7 +817,7 @@ void BVHEmbree::add_curves(Object *ob, int i)
   rtcReleaseGeometry(geom_id);
 }
 
-void BVHEmbree::pack_nodes(const BVHNode *r)
+void BVHEmbree::pack_nodes(const BVHNode *)
 {
   /* Quite a bit of this code is for compatibility with Cycles' native BVH. */
   if (!params.top_level) {
