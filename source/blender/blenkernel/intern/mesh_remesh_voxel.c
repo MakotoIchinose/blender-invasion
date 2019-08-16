@@ -43,14 +43,14 @@
 #include "BKE_library.h"
 #include "BKE_customdata.h"
 #include "BKE_bvhutils.h"
-#include "BKE_remesh.h"
+#include "BKE_mesh_remesh_voxel.h" /* own include */
 
 #ifdef WITH_OPENVDB
 #  include "openvdb_capi.h"
 #endif
 
 #ifdef WITH_OPENVDB
-struct OpenVDBLevelSet *BKE_remesh_voxel_ovdb_mesh_to_level_set_create(
+struct OpenVDBLevelSet *BKE_mesh_remesh_voxel_ovdb_mesh_to_level_set_create(
     Mesh *mesh, struct OpenVDBTransform *transform)
 {
   BKE_mesh_runtime_looptri_recalc(mesh);
@@ -90,10 +90,10 @@ struct OpenVDBLevelSet *BKE_remesh_voxel_ovdb_mesh_to_level_set_create(
   return level_set;
 }
 
-Mesh *BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_set,
-                                                  double isovalue,
-                                                  double adaptivity,
-                                                  bool relax_disoriented_triangles)
+Mesh *BKE_mesh_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_set,
+                                                       double isovalue,
+                                                       double adaptivity,
+                                                       bool relax_disoriented_triangles)
 {
 #  ifdef WITH_OPENVDB
   struct OpenVDBVolumeToMeshData output_mesh;
@@ -101,34 +101,38 @@ Mesh *BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_
       level_set, &output_mesh, isovalue, adaptivity, relax_disoriented_triangles);
 #  endif
 
-  Mesh *mesh = BKE_mesh_new_nomain(
-      output_mesh.totvertices, 0, output_mesh.totquads + output_mesh.tottriangles, 0, 0);
-  int q = output_mesh.totquads;
+  Mesh *mesh = BKE_mesh_new_nomain(output_mesh.totvertices,
+                                   0,
+                                   0,
+                                   (output_mesh.totquads * 4) + (output_mesh.tottriangles * 3),
+                                   output_mesh.totquads + output_mesh.tottriangles);
 
   for (int i = 0; i < output_mesh.totvertices; i++) {
-    float vco[3] = {output_mesh.vertices[i * 3],
-                    output_mesh.vertices[i * 3 + 1],
-                    output_mesh.vertices[i * 3 + 2]};
-    copy_v3_v3(mesh->mvert[i].co, vco);
+    copy_v3_v3(mesh->mvert[i].co, &output_mesh.vertices[i * 3]);
   }
 
-  for (int i = 0; i < output_mesh.totquads; i++) {
-    mesh->mface[i].v4 = output_mesh.quads[i * 4];
-    mesh->mface[i].v3 = output_mesh.quads[i * 4 + 1];
-    mesh->mface[i].v2 = output_mesh.quads[i * 4 + 2];
-    mesh->mface[i].v1 = output_mesh.quads[i * 4 + 3];
+  MPoly *mp = mesh->mpoly;
+  MLoop *ml = mesh->mloop;
+  for (int i = 0; i < output_mesh.totquads; i++, mp++, ml += 4) {
+    mp->loopstart = (int)(ml - mesh->mloop);
+    mp->totloop = 4;
+
+    ml[0].v = output_mesh.quads[i * 4 + 3];
+    ml[1].v = output_mesh.quads[i * 4 + 2];
+    ml[2].v = output_mesh.quads[i * 4 + 1];
+    ml[3].v = output_mesh.quads[i * 4];
   }
 
-  for (int i = 0; i < output_mesh.tottriangles; i++) {
-    mesh->mface[i + q].v4 = 0;
-    mesh->mface[i + q].v3 = output_mesh.triangles[i * 3];
-    mesh->mface[i + q].v2 = output_mesh.triangles[i * 3 + 1];
-    mesh->mface[i + q].v1 = output_mesh.triangles[i * 3 + 2];
+  for (int i = 0; i < output_mesh.tottriangles; i++, mp++, ml += 3) {
+    mp->loopstart = (int)(ml - mesh->mloop);
+    mp->totloop = 3;
+
+    ml[0].v = output_mesh.triangles[i * 3 + 2];
+    ml[1].v = output_mesh.triangles[i * 3 + 1];
+    ml[2].v = output_mesh.triangles[i * 3];
   }
 
-  BKE_mesh_calc_edges_tessface(mesh);
-  BKE_mesh_convert_mfaces_to_mpolys(mesh);
-  BKE_mesh_tessface_clear(mesh);
+  BKE_mesh_calc_edges(mesh, false, false);
   BKE_mesh_calc_normals(mesh);
 
   MEM_freeN(output_mesh.quads);
@@ -142,15 +146,15 @@ Mesh *BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLevelSet *level_
 }
 #endif
 
-Mesh *BKE_remesh_voxel_to_mesh_nomain(Mesh *mesh, float voxel_size)
+Mesh *BKE_mesh_remesh_voxel_to_mesh_nomain(Mesh *mesh, float voxel_size)
 {
   Mesh *new_mesh = NULL;
 #ifdef WITH_OPENVDB
   struct OpenVDBLevelSet *level_set;
   struct OpenVDBTransform *xform = OpenVDBTransform_create();
   OpenVDBTransform_create_linear_transform(xform, (double)voxel_size);
-  level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
-  new_mesh = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, 0.0, 0.0, false);
+  level_set = BKE_mesh_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
+  new_mesh = BKE_mesh_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, 0.0, 0.0, false);
   OpenVDBLevelSet_free(level_set);
   OpenVDBTransform_free(xform);
 #else

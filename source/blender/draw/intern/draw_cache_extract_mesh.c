@@ -505,7 +505,7 @@ static void extract_tris_looptri_mesh(const MeshRenderData *mr,
                                       void *_data)
 {
   const MPoly *mpoly = &mr->mpoly[mlt->poly];
-  if (!(mpoly->flag & ME_HIDE)) {
+  if (!(mr->use_hide && (mpoly->flag & ME_HIDE))) {
     MeshExtract_Tri_Data *data = _data;
     int *mat_tri_ofs = data->tri_mat_end;
     GPU_indexbuf_set_tri_verts(
@@ -919,7 +919,7 @@ static void *extract_lines_adjacency_init(const MeshRenderData *mr, void *UNUSED
 {
   /* Similar to poly_to_tri_count().
    * There is always loop + tri - 1 edges inside a polygon.
-   * Cummulate for all polys and you get : */
+   * Accumulate for all polys and you get : */
   uint tess_edge_len = mr->loop_len + mr->tri_len - mr->poly_len;
 
   size_t vert_to_loop_size = sizeof(uint) * mr->vert_len;
@@ -1554,39 +1554,28 @@ const MeshExtract extract_lnor = {extract_lnor_init,
 /** \} */
 
 /* ---------------------------------------------------------------------- */
-/** \name Extract UV / Tangent layers
+/** \name Extract UV  layers
  * \{ */
 
-static void *extract_uv_tan_init(const MeshRenderData *mr, void *buf)
+static void *extract_uv_init(const MeshRenderData *mr, void *buf)
 {
   GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);
 
   CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
-  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
   uint32_t uv_layers = mr->cache->cd_used.uv;
-  uint32_t tan_layers = mr->cache->cd_used.tan;
-  float(*orco)[3] = CustomData_get_layer(cd_vdata, CD_ORCO);
-  bool orco_allocated = false;
-  const bool use_orco_tan = mr->cache->cd_used.tan_orco != 0;
 
-  /* XXX FIXME XXX */
-  /* We use a hash to identify each data layer based on its name.
-   * Gawain then search for this name in the current shader and bind if it exists.
-   * NOTE : This is prone to hash collision.
-   * One solution to hash collision would be to format the cd layer name
-   * to a safe glsl var name, but without name clash.
-   * NOTE 2 : Replicate changes to code_generate_vertex_new() in gpu_codegen.c */
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (uv_layers & (1 << i)) {
-      char attr_name[32];
+      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTRIB_NAME];
       const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPUV, i);
-      uint hash = BLI_ghashutil_strhash_p(layer_name);
+
+      GPU_vertformat_safe_attrib_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTRIB_NAME);
       /* UV layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "u%u", hash);
+      BLI_snprintf(attr_name, sizeof(attr_name), "u%s", attr_safe_name);
       GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       /* Auto layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "a%u", hash);
+      BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
       GPU_vertformat_alias_add(&format, attr_name);
       /* Active render layer name. */
       if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPUV)) {
@@ -1605,16 +1594,75 @@ static void *extract_uv_tan_init(const MeshRenderData *mr, void *buf)
     }
   }
 
+  int v_len = mr->loop_len;
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    /* VBO will not be used, only allocate minimum of memory. */
+    v_len = 1;
+  }
+
+  GPUVertBuf *vbo = buf;
+  GPU_vertbuf_init_with_format(vbo, &format);
+  GPU_vertbuf_data_alloc(vbo, v_len);
+
+  float(*uv_data)[2] = (float(*)[2])vbo->data;
+  for (int i = 0; i < MAX_MTFACE; i++) {
+    if (uv_layers & (1 << i)) {
+      if (mr->extract_type == MR_EXTRACT_BMESH) {
+        int cd_ofs = CustomData_get_n_offset(cd_ldata, CD_MLOOPUV, i);
+        BMIter f_iter, l_iter;
+        BMFace *efa;
+        BMLoop *loop;
+        BM_ITER_MESH (efa, &f_iter, mr->bm, BM_FACES_OF_MESH) {
+          BM_ITER_ELEM (loop, &l_iter, efa, BM_LOOPS_OF_FACE) {
+            MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(loop, cd_ofs);
+            memcpy(uv_data, luv->uv, sizeof(*uv_data));
+            uv_data++;
+          }
+        }
+      }
+      else {
+        MLoopUV *layer_data = CustomData_get_layer_n(cd_ldata, CD_MLOOPUV, i);
+        for (int l = 0; l < mr->loop_len; l++, uv_data++, layer_data++) {
+          memcpy(uv_data, layer_data->uv, sizeof(*uv_data));
+        }
+      }
+    }
+  }
+
+  return NULL;
+}
+
+const MeshExtract extract_uv = {
+    extract_uv_init, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, false};
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Extract Tangent layers
+ * \{ */
+
+static void *extract_tan_init(const MeshRenderData *mr, void *buf)
+{
+  GPUVertFormat format = {0};
+  GPU_vertformat_deinterleave(&format);
+
+  CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
+  CustomData *cd_vdata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->vdata : &mr->me->vdata;
+  uint32_t tan_layers = mr->cache->cd_used.tan;
+  float(*orco)[3] = CustomData_get_layer(cd_vdata, CD_ORCO);
+  bool orco_allocated = false;
+  const bool use_orco_tan = mr->cache->cd_used.tan_orco != 0;
+
   int tan_len = 0;
   char tangent_names[MAX_MTFACE][MAX_CUSTOMDATA_LAYER_NAME];
 
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (tan_layers & (1 << i)) {
-      char attr_name[32];
+      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTRIB_NAME];
       const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPUV, i);
-      uint hash = BLI_ghashutil_strhash_p(layer_name);
+      GPU_vertformat_safe_attrib_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTRIB_NAME);
       /* Tangent layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "t%u", hash);
+      BLI_snprintf(attr_name, sizeof(attr_name), "t%s", attr_safe_name);
       GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
       /* Active render layer name. */
       if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPUV)) {
@@ -1687,10 +1735,10 @@ static void *extract_uv_tan_init(const MeshRenderData *mr, void *buf)
   }
 
   if (use_orco_tan) {
-    char attr_name[32];
+    char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTRIB_NAME];
     const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_TANGENT, 0);
-    uint hash = BLI_ghashutil_strhash_p(layer_name);
-    BLI_snprintf(attr_name, sizeof(*attr_name), "t%u", hash);
+    GPU_vertformat_safe_attrib_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTRIB_NAME);
+    BLI_snprintf(attr_name, sizeof(*attr_name), "t%s", attr_safe_name);
     GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_alias_add(&format, "t");
     GPU_vertformat_alias_add(&format, "at");
@@ -1711,32 +1759,7 @@ static void *extract_uv_tan_init(const MeshRenderData *mr, void *buf)
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, v_len);
 
-  float(*uv_data)[2] = (float(*)[2])vbo->data;
-  for (int i = 0; i < MAX_MTFACE; i++) {
-    if (uv_layers & (1 << i)) {
-      if (mr->extract_type == MR_EXTRACT_BMESH) {
-        int cd_ofs = CustomData_get_n_offset(cd_ldata, CD_MLOOPUV, i);
-        BMIter f_iter, l_iter;
-        BMFace *efa;
-        BMLoop *loop;
-        BM_ITER_MESH (efa, &f_iter, mr->bm, BM_FACES_OF_MESH) {
-          BM_ITER_ELEM (loop, &l_iter, efa, BM_LOOPS_OF_FACE) {
-            MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(loop, cd_ofs);
-            memcpy(uv_data, luv->uv, sizeof(*uv_data));
-            uv_data++;
-          }
-        }
-      }
-      else {
-        MLoopUV *layer_data = CustomData_get_layer_n(cd_ldata, CD_MLOOPUV, i);
-        for (int l = 0; l < mr->loop_len; l++, uv_data++, layer_data++) {
-          memcpy(uv_data, layer_data->uv, sizeof(*uv_data));
-        }
-      }
-    }
-  }
-  /* Start tan_data after uv_data. */
-  float(*tan_data)[4] = (float(*)[4])uv_data;
+  float(*tan_data)[4] = (float(*)[4])vbo->data;
   for (int i = 0; i < tan_len; i++) {
     void *layer_data = CustomData_get_layer_named(cd_ldata, CD_TANGENT, tangent_names[i]);
     memcpy(tan_data, layer_data, sizeof(*tan_data) * mr->loop_len);
@@ -1752,18 +1775,18 @@ static void *extract_uv_tan_init(const MeshRenderData *mr, void *buf)
   return NULL;
 }
 
-const MeshExtract extract_uv_tan = {extract_uv_tan_init,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    MR_DATA_POLY_NOR | MR_DATA_TAN_LOOP_NOR | MR_DATA_LOOPTRI,
-                                    false};
+const MeshExtract extract_tan = {extract_tan_init,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 MR_DATA_POLY_NOR | MR_DATA_TAN_LOOP_NOR | MR_DATA_LOOPTRI,
+                                 false};
 
 /** \} */
 
@@ -1779,20 +1802,13 @@ static void *extract_vcol_init(const MeshRenderData *mr, void *buf)
   CustomData *cd_ldata = &mr->me->ldata;
   uint32_t vcol_layers = mr->cache->cd_used.vcol;
 
-  /* XXX FIXME XXX */
-  /* We use a hash to identify each data layer based on its name.
-   * Gawain then search for this name in the current shader and bind if it exists.
-   * NOTE : This is prone to hash collision.
-   * One solution to hash collision would be to format the cd layer name
-   * to a safe glsl var name, but without name clash.
-   * NOTE 2 : Replicate changes to code_generate_vertex_new() in gpu_codegen.c */
   for (int i = 0; i < 8; i++) {
     if (vcol_layers & (1 << i)) {
-      char attr_name[32];
+      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTRIB_NAME];
       const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPCOL, i);
-      uint hash = BLI_ghashutil_strhash_p(layer_name);
+      GPU_vertformat_safe_attrib_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTRIB_NAME);
 
-      BLI_snprintf(attr_name, sizeof(attr_name), "c%u", hash);
+      BLI_snprintf(attr_name, sizeof(attr_name), "c%s", attr_safe_name);
       GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
       if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPCOL)) {
@@ -1804,7 +1820,7 @@ static void *extract_vcol_init(const MeshRenderData *mr, void *buf)
       /* Gather number of auto layers. */
       /* We only do vcols that are not overridden by uvs */
       if (CustomData_get_named_layer_index(cd_ldata, CD_MLOOPUV, layer_name) == -1) {
-        BLI_snprintf(attr_name, sizeof(attr_name), "a%u", hash);
+        BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
         GPU_vertformat_alias_add(&format, attr_name);
       }
     }
@@ -1843,8 +1859,8 @@ static void *extract_orco_init(const MeshRenderData *mr, void *buf)
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* FIXME(fclem): We use the last component as a way to differentiate from generic vertex
-     * attribs. This is a substential waste of Vram and should be done another way.
-     * Unfortunately, at the time of writting, I did not found any other "non disruptive"
+     * attribs. This is a substantial waste of Vram and should be done another way.
+     * Unfortunately, at the time of writing, I did not found any other "non disruptive"
      * alternative. */
     GPU_vertformat_attr_add(&format, "orco", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   }
@@ -4162,7 +4178,8 @@ void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
 
   TEST_ASSIGN(VBO, vbo, pos_nor);
   TEST_ASSIGN(VBO, vbo, lnor);
-  TEST_ASSIGN(VBO, vbo, uv_tan);
+  TEST_ASSIGN(VBO, vbo, uv);
+  TEST_ASSIGN(VBO, vbo, tan);
   TEST_ASSIGN(VBO, vbo, vcol);
   TEST_ASSIGN(VBO, vbo, orco);
   TEST_ASSIGN(VBO, vbo, edge_fac);
@@ -4227,7 +4244,8 @@ void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
 
   EXTRACT(vbo, pos_nor);
   EXTRACT(vbo, lnor);
-  EXTRACT(vbo, uv_tan);
+  EXTRACT(vbo, uv);
+  EXTRACT(vbo, tan);
   EXTRACT(vbo, vcol);
   EXTRACT(vbo, orco);
   EXTRACT(vbo, edge_fac);
