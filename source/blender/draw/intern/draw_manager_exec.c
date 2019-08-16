@@ -416,10 +416,9 @@ void DRW_state_reset(void)
 /** \name Culling (DRW_culling)
  * \{ */
 
-static bool draw_call_is_culled(DRWResourceHandle handle, DRWView *view)
+static bool draw_call_is_culled(const DRWResourceHandle *handle, DRWView *view)
 {
-  DRWCullingState *culling = BLI_memblock_elem_get(
-      DST.vmempool->cullstates, handle.chunk, handle.id);
+  DRWCullingState *culling = DRW_memblock_elem_from_handle(DST.vmempool->cullstates, handle);
   return (culling->mask & view->culling_mask) != 0;
 }
 
@@ -600,13 +599,13 @@ static void draw_compute_culling(DRWView *view)
  * \{ */
 
 BLI_INLINE void draw_legacy_matrix_update(DRWShadingGroup *shgroup,
-                                          DRWResourceHandle handle,
+                                          DRWResourceHandle *handle,
                                           float obmat_loc,
                                           float obinv_loc,
                                           float mvp_loc)
 {
   /* Still supported for compatibility with gpu_shader_* but should be forbidden. */
-  DRWObjectMatrix *ob_mats = BLI_memblock_elem_get(DST.vmempool->obmats, handle.chunk, handle.id);
+  DRWObjectMatrix *ob_mats = DRW_memblock_elem_from_handle(DST.vmempool->obmats, handle);
   if (obmat_loc != -1) {
     GPU_shader_uniform_vector(shgroup->shader, obmat_loc, 16, 1, (float *)ob_mats->model);
   }
@@ -833,8 +832,8 @@ static bool ubo_bindings_validate(DRWShadingGroup *shgroup)
         valid = false;
       }
 
-      DRWPass *parent_pass = BLI_memblock_elem_get(
-          DST.vmempool->passes, shgroup->pass_handle.chunk, shgroup->pass_handle.id);
+      DRWPass *parent_pass = DRW_memblock_elem_from_handle(DST.vmempool->passes,
+                                                           &shgroup->pass_handle);
 
       printf("Pass : %s, Shader : %s, Block : %s\n",
              parent_pass->name,
@@ -972,7 +971,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
 BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
                                    DRWCommandsState *state,
                                    GPUBatch *batch,
-                                   DRWResourceHandle handle)
+                                   const DRWResourceHandle *handle)
 {
   const bool is_instancing = (batch->inst != NULL);
   int start = 0;
@@ -998,7 +997,8 @@ BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
       draw_geometry_execute(shgroup, batch, 0, 0, start, count, state->baseinst_loc);
     }
     else {
-      draw_geometry_execute(shgroup, batch, start, count, handle.id, 0, state->baseinst_loc);
+      draw_geometry_execute(
+          shgroup, batch, start, count, DRW_handle_id_get(handle), 0, state->baseinst_loc);
     }
     start += count;
   }
@@ -1032,27 +1032,29 @@ static DRWCommand *draw_command_iter_step(DRWCommandIterator *iter, eDRWCommandT
   return NULL;
 }
 
-static void draw_call_resource_bind(DRWCommandsState *state, DRWResourceHandle handle)
+static void draw_call_resource_bind(DRWCommandsState *state, const DRWResourceHandle *handle)
 {
   /* Front face is not a resource but it is inside the resource handle. */
-  if (handle.negative_scale != state->neg_scale) {
-    glFrontFace((handle.negative_scale) ? GL_CW : GL_CCW);
-    state->neg_scale = handle.negative_scale;
+  bool neg_scale = DRW_handle_negative_scale_get(handle);
+  if (neg_scale != state->neg_scale) {
+    glFrontFace((neg_scale) ? GL_CW : GL_CCW);
+    state->neg_scale = neg_scale;
   }
 
-  if (state->resource_chunk != handle.chunk) {
+  int chunk = DRW_handle_chunk_get(handle);
+  if (state->resource_chunk != chunk) {
     if (state->chunkid_loc != -1) {
-      GPU_shader_uniform_int(NULL, state->chunkid_loc, handle.chunk);
+      GPU_shader_uniform_int(NULL, state->chunkid_loc, chunk);
     }
     if (state->obmats_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->matrices_ubo[state->resource_chunk]);
-      GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[handle.chunk], 0);
+      GPU_uniformbuffer_bind(DST.vmempool->matrices_ubo[chunk], 0);
     }
     if (state->obinfos_loc != -1) {
       GPU_uniformbuffer_unbind(DST.vmempool->obinfos_ubo[state->resource_chunk]);
-      GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[handle.chunk], 1);
+      GPU_uniformbuffer_bind(DST.vmempool->obinfos_ubo[chunk], 1);
     }
-    state->resource_chunk = handle.chunk;
+    state->resource_chunk = chunk;
   }
 }
 
@@ -1076,17 +1078,18 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
 {
   draw_call_batching_flush(shgroup, state);
 
-  draw_call_resource_bind(state, handle);
+  draw_call_resource_bind(state, &handle);
 
   /* TODO This is Legacy. Need to be removed. */
   if (state->obmats_loc == -1 &&
       (state->obmat_loc != -1 || state->obinv_loc != -1 || state->mvp_loc != -1)) {
-    draw_legacy_matrix_update(shgroup, handle, state->obmat_loc, state->obinv_loc, state->mvp_loc);
+    draw_legacy_matrix_update(
+        shgroup, &handle, state->obmat_loc, state->obinv_loc, state->mvp_loc);
   }
 
   if (G.f & G_FLAG_PICKSEL) {
     if (state->select_buf != NULL) {
-      draw_select_buffer(shgroup, state, batch, handle);
+      draw_select_buffer(shgroup, state, batch, &handle);
       return;
     }
     else {
@@ -1094,8 +1097,13 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
     }
   }
 
-  draw_geometry_execute(
-      shgroup, batch, vert_first, vert_count, handle.id, inst_count, state->baseinst_loc);
+  draw_geometry_execute(shgroup,
+                        batch,
+                        vert_first,
+                        vert_count,
+                        DRW_handle_id_get(&handle),
+                        inst_count,
+                        state->baseinst_loc);
 }
 
 static void draw_call_batching_start(DRWCommandsState *state)
@@ -1117,9 +1125,12 @@ static void draw_call_batching_do(DRWShadingGroup *shgroup,
                                   DRWCommandDraw *call)
 {
   /* If any condition requires to interupt the merging. */
-  if ((call->handle.negative_scale != state->neg_scale) || /* Need to change state. */
-      (call->handle.chunk != state->resource_chunk) ||     /* Need to change UBOs. */
-      (call->batch != state->batch)                        /* Need to change VAO. */
+  bool neg_scale = DRW_handle_negative_scale_get(&call->handle);
+  int chunk = DRW_handle_chunk_get(&call->handle);
+  int id = DRW_handle_id_get(&call->handle);
+  if ((state->neg_scale != neg_scale) ||  /* Need to change state. */
+      (state->resource_chunk != chunk) || /* Need to change UBOs. */
+      (state->batch != call->batch)       /* Need to change VAO. */
   ) {
     draw_call_batching_flush(shgroup, state);
 
@@ -1128,18 +1139,18 @@ static void draw_call_batching_do(DRWShadingGroup *shgroup,
     state->v_count = (call->batch->elem) ? call->batch->elem->index_len :
                                            call->batch->verts[0]->vertex_len;
     state->inst_count = 1;
-    state->base_inst = call->handle.id;
+    state->base_inst = id;
 
-    draw_call_resource_bind(state, call->handle);
+    draw_call_resource_bind(state, &call->handle);
 
     GPU_draw_list_init(DST.draw_list, state->batch);
   }
   /* Is the id consecutive? */
-  else if (call->handle.id != state->base_inst + state->inst_count) {
+  else if (id != state->base_inst + state->inst_count) {
     /* We need to add a draw command for the pending instances. */
     draw_indirect_call(shgroup, state);
     state->inst_count = 1;
-    state->base_inst = call->handle.id;
+    state->base_inst = id;
   }
   /* We avoid a drawcall by merging with the precedent
    * drawcall using instancing. */
@@ -1224,7 +1235,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         case DRW_CMD_DRAW:
         case DRW_CMD_DRAW_PROCEDURAL:
         case DRW_CMD_DRAW_INSTANCE:
-          if (draw_call_is_culled(cmd->instance.handle, DST.view_active)) {
+          if (draw_call_is_culled(&cmd->instance.handle, DST.view_active)) {
             continue;
           }
           break;
@@ -1275,7 +1286,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
           draw_call_single_do(shgroup,
                               &state,
                               cmd->range.batch,
-                              (DRWResourceHandle){.value = 0},
+                              (DRWResourceHandle)0,
                               cmd->range.vert_first,
                               cmd->range.vert_count,
                               1);

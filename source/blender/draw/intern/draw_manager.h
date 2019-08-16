@@ -31,6 +31,7 @@
 #include "BLI_assert.h"
 #include "BLI_linklist.h"
 #include "BLI_threads.h"
+#include "BLI_memblock.h"
 
 #include "GPU_batch.h"
 #include "GPU_context.h"
@@ -103,35 +104,60 @@ typedef struct DRWCullingState {
   void *user_data;
 } DRWCullingState;
 
-/* We count on the fact that unsigned integers wrap around whe overflowing. */
-#define INCREMENT_RESOURCE_HANDLE(handle) \
-  do { \
-    if ((handle).id++ == 511) { \
-      (handle).chunk++; \
-    } \
-  } while (0)
-
 /* Minimum max UBO size is 64KiB. We take the largest
  * UBO struct and alloc the max number.
  * ((1 << 16) / sizeof(DRWObjectMatrix)) = 512
  * Keep in sync with common_view_lib.glsl */
 #define DRW_RESOURCE_CHUNK_LEN 512
 
-typedef struct DRWResourceHandle {
-  union {
-    /* TODO order correctly and make sure
-     * endianness does not change anything. */
-    struct {
-      uint32_t negative_scale : 1;
-      uint32_t id : 9;
-      uint32_t chunk : 22;
-    };
-    /** Use this to read the whole handle value as one 32bit uint.
-     *  Useful for sorting and test.
-     */
-    uint32_t value;
-  };
-} DRWResourceHandle;
+/**
+ * Identifier used to sort similar drawcalls together.
+ * Also used to reference elements inside memory blocks.
+ *
+ * From MSB to LSB
+ * 1 bit for negative scale.
+ * 22 bits for chunk id.
+ * 9 bits for resource id inside the chunk. (can go up to 511)
+ * |-|----------------------|---------|
+ *
+ * Use manual bitsift and mask instead of bitfields to avoid
+ * compiler dependant behavior that would mess the ordering of
+ * the members thus changing the sorting order.
+ */
+typedef uint32_t DRWResourceHandle;
+
+BLI_INLINE uint32_t DRW_handle_negative_scale_get(const DRWResourceHandle *handle)
+{
+  return (*handle & 0x80000000) != 0;
+}
+
+BLI_INLINE uint32_t DRW_handle_chunk_get(const DRWResourceHandle *handle)
+{
+  return (*handle & 0x7FFFFFFF) >> 9;
+}
+
+BLI_INLINE uint32_t DRW_handle_id_get(const DRWResourceHandle *handle)
+{
+  return (*handle & 0x000001FF);
+}
+
+BLI_INLINE void DRW_handle_increment(DRWResourceHandle *handle)
+{
+  *handle += 1;
+}
+
+BLI_INLINE void DRW_handle_negative_scale_enable(DRWResourceHandle *handle)
+{
+  *handle |= 0x80000000;
+}
+
+BLI_INLINE void *DRW_memblock_elem_from_handle(struct BLI_memblock *memblock,
+                                               const DRWResourceHandle *handle)
+{
+  int elem = DRW_handle_id_get(handle);
+  int chunk = DRW_handle_chunk_get(handle);
+  return BLI_memblock_elem_get(memblock, chunk, elem);
+}
 
 typedef struct DRWObjectMatrix {
   float model[4][4];

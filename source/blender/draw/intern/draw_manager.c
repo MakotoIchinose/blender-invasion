@@ -612,7 +612,7 @@ static void draw_unit_state_create(void)
   culling->bsphere.radius = -1.0f;
   culling->user_data = NULL;
 
-  INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
+  DRW_handle_increment(&DST.resource_handle);
 }
 
 /* It also stores viewport variable to an immutable place: DST
@@ -675,8 +675,8 @@ static void drw_viewport_var_init(void)
       DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *));
     }
 
-    DST.resource_handle.value = 0;
-    DST.pass_handle.value = 0;
+    DST.resource_handle = 0;
+    DST.pass_handle = 0;
 
     draw_unit_state_create();
 
@@ -1121,7 +1121,7 @@ static void drw_engines_world_update(Scene *scene)
 
 static void drw_engines_cache_populate(Object *ob)
 {
-  DST.ob_handle.value = 0;
+  DST.ob_handle = 0;
 
   /* HACK: DrawData is copied by COW from the duplicated object.
    * This is valid for IDs that cannot be instantiated but this
@@ -2085,7 +2085,7 @@ void DRW_render_object_iter(
     if ((object_type_exclude_viewport & (1 << ob->type)) == 0) {
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
-      DST.ob_handle.value = 0;
+      DST.ob_handle = 0;
       drw_duplidata_load(DST.dupli_source);
 
       if (!DST.dupli_source) {

@@ -98,7 +98,9 @@ void DRW_uniformbuffer_free(GPUUniformBuffer *ubo)
 
 void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
 {
-  int ubo_len = 1 + DST.resource_handle.chunk - ((DST.resource_handle.id == 0) ? 1 : 0);
+  int chunk_id = DRW_handle_chunk_get(&DST.resource_handle);
+  int elem_id = DRW_handle_id_get(&DST.resource_handle);
+  int ubo_len = 1 + chunk_id - ((elem_id == 0) ? 1 : 0);
   size_t list_size = sizeof(GPUUniformBuffer *) * ubo_len;
 
   /* TODO find a better system. currently a lot of obinfos UBO are going to be unused
@@ -538,9 +540,11 @@ static DRWResourceHandle drw_resource_handle_new(float (*obmat)[4], Object *ob)
   UNUSED_VARS(ob_infos);
 
   DRWResourceHandle handle = DST.resource_handle;
-  INCREMENT_RESOURCE_HANDLE(DST.resource_handle);
+  DRW_handle_increment(&DST.resource_handle);
 
-  handle.negative_scale = (ob && (ob->transflag & OB_NEG_SCALE)) ? 1 : 0;
+  if (ob && (ob->transflag & OB_NEG_SCALE)) {
+    DRW_handle_negative_scale_enable(&handle);
+  }
 
   drw_call_matrix_init(ob_mats, ob, obmat);
   drw_call_culling_init(culling, ob);
@@ -555,7 +559,7 @@ static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,
 {
   if (ob == NULL) {
     if (obmat == NULL) {
-      DRWResourceHandle handle = {.value = 0};
+      DRWResourceHandle handle = 0;
       return handle;
     }
     else {
@@ -563,7 +567,7 @@ static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,
     }
   }
   else {
-    if (DST.ob_handle.value == 0) {
+    if (DST.ob_handle == 0) {
       DST.ob_handle = drw_resource_handle_new(obmat, ob);
       DST.ob_state_obinfo_init = false;
     }
@@ -571,9 +575,8 @@ static DRWResourceHandle drw_resource_handle(DRWShadingGroup *shgroup,
     if (shgroup->objectinfo) {
       if (!DST.ob_state_obinfo_init) {
         DST.ob_state_obinfo_init = true;
-
-        DRWObjectInfos *ob_infos = BLI_memblock_elem_get(
-            DST.vmempool->obinfos, DST.ob_handle.chunk, DST.ob_handle.id);
+        DRWObjectInfos *ob_infos = DRW_memblock_elem_from_handle(DST.vmempool->obinfos,
+                                                                 &DST.ob_handle);
 
         drw_call_obinfos_init(ob_infos, ob);
       }
@@ -700,8 +703,8 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
 
   /* Culling data. */
   if (user_data || bypass_culling) {
-    DRWCullingState *culling = BLI_memblock_elem_get(
-        DST.vmempool->cullstates, handle.chunk, handle.id);
+    DRWCullingState *culling = DRW_memblock_elem_from_handle(DST.vmempool->cullstates,
+                                                             &DST.ob_handle);
 
     if (user_data) {
       culling->user_data = user_data;
@@ -1248,7 +1251,7 @@ DRWShadingGroup *DRW_shgroup_get_next(DRWShadingGroup *shgroup)
 
 /* This is a workaround function waiting for the clearing operation to be available inside the
  * shgroups. */
-uint DRW_shgroup_stencil_mask_get(DRWShadingGroup *shgroup)
+uint DRW_shgroup_stencil_mask_get(DRWShadingGroup *UNUSED(shgroup))
 {
   /* TODO remove. This is broken. */
   return 0;
@@ -1263,8 +1266,8 @@ DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
   shgroup_new->cmd.first = NULL;
   shgroup_new->cmd.last = NULL;
 
-  DRWPass *parent_pass = BLI_memblock_elem_get(
-      DST.vmempool->passes, shgroup->pass_handle.chunk, shgroup->pass_handle.id);
+  DRWPass *parent_pass = DRW_memblock_elem_from_handle(DST.vmempool->passes,
+                                                       &shgroup->pass_handle);
 
   BLI_LINKS_INSERT_AFTER(&parent_pass->shgroups, shgroup, shgroup_new);
 
@@ -1762,7 +1765,7 @@ DRWPass *DRW_pass_create(const char *name, DRWState state)
   pass->shgroups.first = NULL;
   pass->shgroups.last = NULL;
   pass->handle = DST.pass_handle;
-  INCREMENT_RESOURCE_HANDLE(DST.pass_handle);
+  DRW_handle_increment(&DST.pass_handle);
 
   return pass;
 }
@@ -1854,20 +1857,20 @@ void DRW_pass_sort_shgroup_z(DRWPass *pass)
   uint index = 0;
   DRWShadingGroup *shgroup = pass->shgroups.first;
   do {
-    DRWResourceHandle handle = {.value = 0};
+    DRWResourceHandle handle = 0;
     /* Find first DRWCommandDraw. */
     DRWCommandChunk *cmd_chunk = shgroup->cmd.first;
-    for (; cmd_chunk && handle.value == 0; cmd_chunk = cmd_chunk->next) {
-      for (int i = 0; i < cmd_chunk->command_used && handle.value == 0; i++) {
+    for (; cmd_chunk && handle == 0; cmd_chunk = cmd_chunk->next) {
+      for (int i = 0; i < cmd_chunk->command_used && handle == 0; i++) {
         if (DRW_CMD_DRAW == command_type_get(cmd_chunk->command_type, i)) {
           handle = cmd_chunk->commands[i].draw.handle;
         }
       }
     }
     /* To be sorted a shgroup needs to have at least one draw command.  */
-    BLI_assert(handle.value != 0);
+    BLI_assert(handle != 0);
 
-    DRWObjectMatrix *obmats = BLI_memblock_elem_get(DST.vmempool->obmats, handle.chunk, handle.id);
+    DRWObjectMatrix *obmats = DRW_memblock_elem_from_handle(DST.vmempool->obmats, &handle);
 
     /* Compute distance to camera. */
     float tmp[3];
