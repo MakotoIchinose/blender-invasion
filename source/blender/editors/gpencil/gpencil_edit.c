@@ -3333,7 +3333,7 @@ typedef enum eGP_ReprojectModes {
   GP_REPROJECT_FRONT = 0,
   GP_REPROJECT_SIDE,
   GP_REPROJECT_TOP,
-  /* On same plane, parallel to viewplane */
+  /* On same plane, parallel to view-plane. */
   GP_REPROJECT_VIEW,
   /* Reprojected on to the scene geometry */
   GP_REPROJECT_SURFACE,
@@ -4499,7 +4499,7 @@ static int gpencil_cutter_lasso_select(bContext *C,
       if ((pt->flag & GP_SPOINT_SELECT) || (pt->flag & GP_SPOINT_TAG)) {
         continue;
       }
-      /* convert point coords to screenspace */
+      /* convert point coords to screen-space */
       const bool is_inside = is_inside_fn(gps, pt, &gsc, gpstroke_iter.diff_mat, user_data);
       if (is_inside) {
         tot_inside++;
