@@ -23,8 +23,6 @@
 
 #include <stdio.h>
 
-#include "MEM_guardedalloc.h"
-
 #include "DNA_armature_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_outliner_types.h"
