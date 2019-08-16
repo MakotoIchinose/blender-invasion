@@ -253,9 +253,7 @@ static eOLDrawState active_viewlayer(bContext *C,
 }
 
 /**
- * Select object tree:
- * ALT+LMB: Select/Deselect object and all children.
- * CTRL+ALT+LMB: Add/Remove object and all children.
+ * Select object tree
  */
 static void do_outliner_object_select_recursive(ViewLayer *view_layer,
                                                 Object *ob_parent,
@@ -1271,13 +1269,14 @@ static void do_outliner_range_select_recursive(ListBase *lb,
 }
 
 /* Select a range of items between cursor and active element */
-static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
+static void do_outliner_range_select(bContext *C, SpaceOutliner *soops, TreeElement *cursor)
 {
   TreeElement *active = outliner_find_element_with_flag(&soops->tree, TSE_ACTIVE);
   outliner_flag_set(&soops->tree, TSE_ACTIVE_WALK, false);
 
   if (!active) {
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_ACTIVE_WALK;
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
     return;
   }
 
@@ -1294,8 +1293,8 @@ static void do_outliner_range_select(SpaceOutliner *soops, TreeElement *cursor)
 
   /* If active is not selected, just select the element under the cursor */
   if (!active_selected || !outliner_is_element_visible(active)) {
-    tselem->flag &= ~TSE_ACTIVE;
-    TREESTORE(cursor)->flag |= TSE_SELECTED | TSE_ACTIVE | TSE_ACTIVE_WALK;
+    outliner_item_select(soops, cursor, false, false);
+    outliner_item_do_activate_from_tree_element(C, cursor, TREESTORE(cursor), false, false);
     return;
   }
 
@@ -1381,7 +1380,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     TreeStoreElem *activate_tselem = TREESTORE(activate_te);
 
     if (use_range) {
-      do_outliner_range_select(soops, activate_te);
+      do_outliner_range_select(C, soops, activate_te);
     }
     else {
       outliner_item_select(soops, activate_te, extend, extend);
