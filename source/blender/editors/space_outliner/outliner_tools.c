@@ -63,6 +63,7 @@
 
 #include "ED_armature.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_scene.h"
 #include "ED_screen.h"
 #include "ED_sequencer.h"
@@ -493,14 +494,19 @@ static void merged_element_search_cb_recursive(
   int iconid;
 
   for (TreeElement *te = tree->first; te; te = te->next) {
-    if (tree_element_id_type_to_index(te) == type && tselem_type == TREESTORE(te)->type) {
+    TreeStoreElem *tselem = TREESTORE(te);
+
+    if (tree_element_id_type_to_index(te) == type && tselem_type == tselem->type) {
       if (BLI_strcasestr(te->name, str)) {
         BLI_strncpy(name, te->name, 64);
 
-        iconid = tree_element_get_icon(TREESTORE(te), te).icon;
+        iconid = tree_element_get_icon(tselem, te).icon;
 
-        if (!UI_search_item_add(items, name, te, iconid)) {
-          break;
+        /* Don't allow duplicate named items */
+        if (UI_search_items_find_index(items, name) == -1) {
+          if (!UI_search_item_add(items, name, te, iconid)) {
+            break;
+          }
         }
       }
     }
@@ -527,9 +533,15 @@ static void merged_element_search_cb(const bContext *UNUSED(C),
 /* Activate an element from the merged element search menu */
 static void merged_element_search_call_cb(struct bContext *C, void *UNUSED(arg1), void *element)
 {
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
   TreeElement *te = (TreeElement *)element;
 
+  outliner_item_select(soops, te, false, false);
   outliner_item_do_activate_from_tree_element(C, te, te->store_elem, false, false);
+
+  if (soops->flag & SO_SYNC_SELECT) {
+    ED_outliner_select_sync_from_outliner(C, soops);
+  }
 }
 
 /** Merged element search menu
