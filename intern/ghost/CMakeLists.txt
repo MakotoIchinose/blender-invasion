@@ -365,9 +365,11 @@ if(WITH_OPENXR)
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDE_DIR}
   )
-  list(APPEND LIB
-    shlwapi
-  )
+  if(WIN32)
+    list(APPEND LIB
+      shlwapi
+    )
+  endif()
 
   include(xr_platform_defines)
 
