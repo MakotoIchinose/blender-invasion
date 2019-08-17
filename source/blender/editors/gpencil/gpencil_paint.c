@@ -3371,6 +3371,11 @@ static void gpencil_add_missing_events(bContext *C,
   }
   float factor = ((thickness * dot_factor) / scale) * samples;
 
+  /* If samples are more than 33%, divide the factor. */
+  if (input_samples > (GP_MAX_INPUT_SAMPLES / 3)) {
+    factor *= 0.5f;
+  }
+
   copy_v2_v2(a, p->mvalo);
   b[0] = (float)event->mval[0] + 1.0f;
   b[1] = (float)event->mval[1] + 1.0f;
