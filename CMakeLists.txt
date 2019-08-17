@@ -182,6 +182,8 @@ if(UNIX AND NOT APPLE)
   set(_init_SDL                            OFF)
   set(_init_FFTW3                          OFF)
   set(_init_OPENSUBDIV                     OFF)
+  set(_init_OPENVDB                        OFF)
+  set(_init_OPENIMAGEDENOISE               OFF)
 elseif(WIN32)
   set(_init_JACK                           OFF)
 elseif(APPLE)
@@ -245,11 +247,12 @@ endif()
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
+option(WITH_OPENIMAGEDENOISE   "Enable the OpenImageDenoise compositing node" ${_init_OPENIMAGEDENOISE})
 
 option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" ${_init_OPENSUBDIV})
 
-option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
-option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
+option(WITH_OPENVDB       "Enable features relying on OpenVDB" ${_init_OPENVDB})
+option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" ${_init_OPENVDB})
 option(WITH_OPENVDB_3_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 3 ABI compatibility" OFF)
 mark_as_advanced(WITH_OPENVDB_3_ABI_COMPATIBLE)
 
@@ -1769,6 +1772,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_FREESTYLE)
   info_cfg_option(WITH_OPENCOLORIO)
   info_cfg_option(WITH_OPENXR)
+  info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
 

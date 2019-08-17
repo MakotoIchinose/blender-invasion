@@ -125,8 +125,8 @@ static void do_version_workspaces_create_from_screens(Main *bmain)
     }
 
     if (screen_parent) {
-      /* fullscreen with "Back to Previous" option, don't create
-       * a new workspace, add layout workspace containing parent */
+      /* Full-screen with "Back to Previous" option, don't create
+       * a new workspace, add layout workspace containing parent. */
       workspace = BLI_findstring(
           &bmain->workspaces, screen_parent->id.name + 2, offsetof(ID, name) + 2);
     }
@@ -735,12 +735,9 @@ static void do_versions_seq_alloc_transform_and_crop(ListBase *seqbase)
 }
 
 /* Return true if there is something to convert. */
-static bool do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree,
-                                                           char blend_method,
-                                                           GSet *nodegrp_tree_set)
+static void do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree, char blend_method)
 {
   bool need_update = false;
-  bool do_conversion = false;
 
   /* Iterate backwards from end so we don't encounter newly added links. */
   bNodeLink *prevlink;
@@ -753,29 +750,6 @@ static bool do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree,
     bNode *tonode = link->tonode;
     bNodeSocket *tosock = link->tosock;
 
-    if (nodegrp_tree_set) {
-      if (fromnode->type == NODE_GROUP && fromnode->id != NULL) {
-        bNodeTree *group_ntree = (bNodeTree *)fromnode->id;
-        if (BLI_gset_add(nodegrp_tree_set, group_ntree)) {
-          /* Recursive but not convert (blend_method = -1). Conversion happens after. */
-          if (!do_versions_material_convert_legacy_blend_mode(group_ntree, -1, nodegrp_tree_set)) {
-            /* There is no output to convert in the tree, remove it. */
-            BLI_gset_remove(nodegrp_tree_set, group_ntree, NULL);
-          }
-        }
-      }
-      if (tonode->type == NODE_GROUP && tonode->id != NULL) {
-        bNodeTree *group_ntree = (bNodeTree *)tonode->id;
-        if (BLI_gset_add(nodegrp_tree_set, group_ntree)) {
-          /* Recursive but not convert (blend_method = -1). Conversion happens after. */
-          if (!do_versions_material_convert_legacy_blend_mode(group_ntree, -1, nodegrp_tree_set)) {
-            /* There is no output to convert in the tree, remove it. */
-            BLI_gset_remove(nodegrp_tree_set, group_ntree, NULL);
-          }
-        }
-      }
-    }
-
     if (!(tonode->type == SH_NODE_OUTPUT_MATERIAL && STREQ(tosock->identifier, "Surface"))) {
       continue;
     }
@@ -784,8 +758,6 @@ static bool do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree,
     if (!ELEM(tonode->custom1, SHD_OUTPUT_ALL, SHD_OUTPUT_EEVEE)) {
       continue;
     }
-
-    do_conversion = true;
 
     if (blend_method == 1 /* MA_BM_ADD */) {
       nodeRemLink(ntree, link);
@@ -851,11 +823,9 @@ static bool do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree,
   if (need_update) {
     ntreeUpdateTree(NULL, ntree);
   }
-
-  return do_conversion;
 }
 
-void do_versions_after_linking_280(Main *bmain, ReportList *reports)
+void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
 {
   bool use_collection_compat_28 = true;
 
@@ -1256,61 +1226,20 @@ void do_versions_after_linking_280(Main *bmain, ReportList *reports)
      * now that we use dualsource blending. */
     /* We take care of doing only nodetrees that are always part of materials
      * with old blending modes. */
-    GSet *ntrees_additive = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
-    GSet *ntrees_multiply = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
-    GSet *ntrees_nolegacy = BLI_gset_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, __func__);
     for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
       bNodeTree *ntree = ma->nodetree;
       if (ma->blend_method == 1 /* MA_BM_ADD */) {
         if (ma->use_nodes) {
-          do_versions_material_convert_legacy_blend_mode(ntree, ma->blend_method, ntrees_additive);
+          do_versions_material_convert_legacy_blend_mode(ntree, 1 /* MA_BM_ADD */);
         }
         ma->blend_method = MA_BM_BLEND;
       }
       else if (ma->blend_method == 2 /* MA_BM_MULTIPLY */) {
         if (ma->use_nodes) {
-          do_versions_material_convert_legacy_blend_mode(ntree, ma->blend_method, ntrees_multiply);
+          do_versions_material_convert_legacy_blend_mode(ntree, 2 /* MA_BM_MULTIPLY */);
         }
         ma->blend_method = MA_BM_BLEND;
       }
-      else {
-        /* Still tag the group nodes as not using legacy blend modes. */
-        if (ma->use_nodes) {
-          do_versions_material_convert_legacy_blend_mode(ntree, -1, ntrees_nolegacy);
-        }
-      }
-    }
-    /* Remove group nodetree that are used by material using non-legacy blend mode. */
-    GHashIterState iter = {0};
-    bNodeTree *ntree;
-    bool error = false;
-    while (BLI_gset_pop(ntrees_nolegacy, (GSetIterState *)&iter, (void **)&ntree)) {
-      if (BLI_gset_remove(ntrees_additive, ntree, NULL)) {
-        error = true;
-      }
-      if (BLI_gset_remove(ntrees_multiply, ntree, NULL)) {
-        error = true;
-      }
-    }
-    BLI_gset_free(ntrees_nolegacy, NULL);
-    /* Convert remaining group nodetree. */
-    GHashIterState iter_add = {0};
-    GHashIterState iter_mul = {0};
-    while (BLI_gset_pop(ntrees_additive, (GSetIterState *)&iter_add, (void **)&ntree)) {
-      do_versions_material_convert_legacy_blend_mode(ntree, 1 /* MA_BM_ADD */, NULL);
-    }
-    while (BLI_gset_pop(ntrees_multiply, (GSetIterState *)&iter_mul, (void **)&ntree)) {
-      do_versions_material_convert_legacy_blend_mode(ntree, 2 /* MA_BM_MULTIPLY */, NULL);
-    }
-    BLI_gset_free(ntrees_additive, NULL);
-    BLI_gset_free(ntrees_multiply, NULL);
-
-    if (error) {
-      BKE_report(reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
-      printf(
-          "One or more group nodetrees containing a material output were found"
-          " in both a material using deprecated blend mode and a normal one.\n"
-          "Nothing in these nodetrees was changed and manual update is required.\n");
     }
   }
 }
@@ -3715,6 +3644,19 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
       arm->flag &= ~(ARM_FLAG_UNUSED_6);
     }
+
+    /* Marks each outliner as dirty so a sync will occur as an outliner draws. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+          if (space->spacetype == SPACE_OUTLINER) {
+            SpaceOutliner *soutliner = (SpaceOutliner *)space;
+            soutliner->sync_select_dirty |= WM_OUTLINER_SYNC_SELECT_FROM_ALL;
+            soutliner->flag |= SO_SYNC_SELECT;
+          }
+        }
+      }
+    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 1)) {
@@ -3750,6 +3692,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
           }
         }
+      }
+    }
+    for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
+      if (mesh->remesh_voxel_size == 0.0f) {
+        mesh->remesh_voxel_size = 0.1f;
       }
     }
   }

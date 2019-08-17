@@ -3452,7 +3452,7 @@ bool clip_segment_v3_plane(
     }
   }
 
-  /* incase input/output values match (above also) */
+  /* In case input/output values match (above also). */
   const float p1_copy[3] = {UNPACK3(p1)};
   copy_v3_v3(r_p2, p2);
   copy_v3_v3(r_p1, p1_copy);
@@ -3511,7 +3511,7 @@ bool clip_segment_v3_plane_n(const float p1[3],
     }
   }
 
-  /* incase input/output values match */
+  /* In case input/output values match. */
   const float p1_copy[3] = {UNPACK3(p1)};
 
   madd_v3_v3v3fl(r_p1, p1_copy, dp, p1_fac);
@@ -5754,6 +5754,27 @@ float form_factor_hemi_poly(
   }
 
   return contrib;
+}
+
+/**
+ * Check if the edge is convex or concave
+ * (depends on face winding)
+ * Copied from BM_edge_is_convex().
+ */
+bool is_edge_convex_v3(const float v1[3],
+                       const float v2[3],
+                       const float f1_no[3],
+                       const float f2_no[3])
+{
+  if (!equals_v3v3(f1_no, f2_no)) {
+    float cross[3];
+    float l_dir[3];
+    cross_v3_v3v3(cross, f1_no, f2_no);
+    /* we assume contiguous normals, otherwise the result isn't meaningful */
+    sub_v3_v3v3(l_dir, v2, v1);
+    return (dot_v3v3(l_dir, cross) > 0.0f);
+  }
+  return false;
 }
 
 /**

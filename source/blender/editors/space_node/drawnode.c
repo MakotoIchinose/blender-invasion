@@ -2691,6 +2691,15 @@ static void node_composit_buts_brightcontrast(uiLayout *layout,
   uiItemR(layout, ptr, "use_premultiply", 0, NULL, ICON_NONE);
 }
 
+static void node_composit_buts_denoise(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+{
+#ifndef WITH_OPENIMAGEDENOISE
+  uiItemL(layout, IFACE_("Disabled, built without OpenImageDenoise"), ICON_ERROR);
+#endif
+
+  uiItemR(layout, ptr, "use_hdr", 0, NULL, ICON_NONE);
+}
+
 /* only once called */
 static void node_composit_set_butfunc(bNodeType *ntype)
 {
@@ -2924,6 +2933,10 @@ static void node_composit_set_butfunc(bNodeType *ntype)
       break;
     case CMP_NODE_BRIGHTCONTRAST:
       ntype->draw_buttons = node_composit_buts_brightcontrast;
+      break;
+    case CMP_NODE_DENOISE:
+      ntype->draw_buttons = node_composit_buts_denoise;
+      break;
   }
 }
 
@@ -3345,8 +3358,13 @@ static void std_node_socket_draw(
         uiTemplateComponentMenu(layout, ptr, "default_value", text);
       }
       else {
-        uiLayout *column = uiLayoutColumn(layout, true);
-        uiItemR(column, ptr, "default_value", 0, text, 0);
+        if (sock->typeinfo->subtype == PROP_DIRECTION) {
+          uiItemR(layout, ptr, "default_value", 0, "", ICON_NONE);
+        }
+        else {
+          uiLayout *column = uiLayoutColumn(layout, true);
+          uiItemR(column, ptr, "default_value", 0, text, ICON_NONE);
+        }
       }
       break;
     case SOCK_RGBA:
