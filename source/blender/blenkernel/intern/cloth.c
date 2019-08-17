@@ -425,9 +425,16 @@ Mesh *clothModifier_do(
   clmd->sim_parms->timescale = 1.0f;
 #endif
 
+  if (!(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING)) {
+    printf("Currently no remeshing\n");
+  }
+  else {
+    printf("Currently remeshing\n");
+  }
+
   if (clmd->sim_parms->reset ||
       (clmd->clothObject && mesh_result->totvert != clmd->clothObject->mvert_num &&
-       clmd->sim_parms->flags & ~CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING)) {
+       !(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING))) {
     printf("this is called\n");
     clmd->sim_parms->reset = 0;
     clmd->sim_parms->remeshing_reset = 1;
