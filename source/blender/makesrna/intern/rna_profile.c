@@ -89,6 +89,20 @@ static void rna_ProfileWidget_sample_straight_set(PointerRNA *ptr, bool value)
   BKE_profilewidget_changed(prwdgt, false);
 }
 
+static void rna_ProfileWidget_sample_even_set(PointerRNA *ptr, bool value)
+{
+  ProfileWidget *prwdgt = (ProfileWidget *)ptr->data;
+
+  if (value) {
+    prwdgt->flag |= PROF_SAMPLE_EVEN_LENGTHS;
+  }
+  else {
+    prwdgt->flag &= ~PROF_SAMPLE_EVEN_LENGTHS;
+  }
+
+  BKE_profilewidget_changed(prwdgt, false);
+}
+
 static void rna_ProfileWidget_remove_point(ProfileWidget *prwdgt,
                                            ReportList *reports,
                                            PointerRNA *point_ptr)
@@ -221,8 +235,13 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Sample Straight Edges", "Sample edges with vector handles");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_sample_straight_set");
 
+  prop = RNA_def_property(srna, "sample_even_lengths", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_SAMPLE_EVEN_LENGTHS);
+  RNA_def_property_ui_text(prop, "Sample Even Lengths", "Sample edges with even lengths");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_ProfileWidget_sample_even_set");
+
   func = RNA_def_function(srna, "update", "rna_ProfileWidget_changed");
-  RNA_def_function_ui_description(func, "Update profile widget after making changes");
+  RNA_def_function_ui_description(func, "Update the profile widget");
 
   func = RNA_def_function(srna, "initialize", "rna_ProfileWidget_initialize");
   parm = RNA_def_int(func, "totsegments", 1, 1, 1000, "", "The number of segment values to"

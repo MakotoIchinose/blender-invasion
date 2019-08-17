@@ -64,9 +64,9 @@ void BKE_profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doub
 /* Need to find the total length of the curve to sample a portion of it */
 float BKE_profilewidget_total_length(const struct ProfileWidget *prwdgt);
 
-void BKE_profilewidget_create_samples_even_spacing(const struct ProfileWidget *prwdgt,
-                                                   double *x_table_out,
-                                                   double *y_table_out);
+void BKE_profilewidget_create_samples_even_spacing(struct ProfileWidget *prwdgt,
+                                                   int n_segments,
+                                                   struct ProfilePoint *r_samples);
 
 /* Length portion is the fraction of the total path length where we want the location */
 void BKE_profilewidget_evaluate_length_portion(const struct ProfileWidget *prwdgt,

@@ -41,8 +41,6 @@
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-#define DEBUG_PRWDGT_EVALUATE
-
 void BKE_profilewidget_free_data(ProfileWidget *prwdgt)
 {
   if (prwdgt->path) {
@@ -508,11 +506,6 @@ static float bezt_edge_handle_angle(const BezTriple *bezt, int i_edge)
   sub_v2_v2v2(end_handle_direction, bezt[i_edge + 1].vec[1], bezt[i_edge + 1].vec[0]);
 
   float angle = angle_v2v2(start_handle_direction, end_handle_direction);
-//  printf("bezt_edge_handle_angle: i: %d, angle:%.2f\n", i_edge, RAD2DEGF(angle));
-//  printf("  first point:         (%.2f, %.2f)\n", bezt[i_edge].vec[1][0], bezt[i_edge].vec[1][1]);
-//  printf("  first inner handle:  (%.2f, %.2f)\n", bezt[i_edge].vec[2][0], bezt[i_edge].vec[2][1]);
-//  printf("  second inner handle: (%.2f, %.2f)\n", bezt[i_edge + 1].vec[0][0], bezt[i_edge + 1].vec[0][1]);
-//  printf("  second point:        (%.2f, %.2f)\n", bezt[i_edge + 1].vec[1][0], bezt[i_edge + 1].vec[1][1]);
   return angle;
 }
 
@@ -745,13 +738,20 @@ static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
   ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
                                         "samples table");
 
-  BKE_profilewidget_create_samples(prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES,
-                               new_table);
+  if (prwdgt->flag & PROF_SAMPLE_EVEN_LENGTHS) {
+    /* Even length sampling incompatible with only straight edge sampling for now. */
+    BKE_profilewidget_create_samples_even_spacing(prwdgt, n_samples, new_table);
+  }
+  else {
+    BKE_profilewidget_create_samples(prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES,
+                                     new_table);
+  }
 
   if (prwdgt->segments) {
     MEM_freeN(prwdgt->segments);
   }
   prwdgt->segments = new_table;
+
 }
 
 /** Sets the default settings and clip range for the profile widget. Does not generate either
@@ -863,81 +863,83 @@ void BKE_profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
 {
   prwdgt->totsegments = nsegments;
 
-  /* Calculate the higher resolution tables for display and evaluation. */
+  /* Calculate the higher resolution / segments tables for display and evaluation. */
   BKE_profilewidget_changed(prwdgt, false);
 }
 
 /** Gives the distance to the next point in the widget's sampled table, in other words the length
  * of the ith edge of the table.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table. */
-static float profilewidget_distance_to_next_point(const ProfileWidget *prwdgt, int i)
+static float profilewidget_distance_to_next_table_point(const ProfileWidget *prwdgt, int i)
 {
-  BLI_assert(prwdgt != NULL);
-  BLI_assert(i >= 0);
-  BLI_assert(i < prwdgt->totpoint);
+  BLI_assert(i < PROF_N_TABLE(prwdgt->totpoint));
 
-  float x = prwdgt->table[i].x;
-  float y = prwdgt->table[i].y;
-  float x_next = prwdgt->table[i + 1].x;
-  float y_next = prwdgt->table[i + 1].y;
-
-  return sqrtf(powf(y_next - y, 2) + powf(x_next - x, 2));
+  return len_v2v2(&prwdgt->table[i].x, &prwdgt->table[i + 1].x);
 }
 
 /** Calculates the total length of the profile from the curves sampled in the table.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table. */
 float BKE_profilewidget_total_length(const ProfileWidget *prwdgt)
 {
-  float loc1[2], loc2[2];
   float total_length = 0;
-
-  for (int i = 0; i < PROF_N_TABLE(prwdgt->totpoint); i++) {
-    loc1[0] = prwdgt->table[i].x;
-    loc1[1] = prwdgt->table[i].y;
-    loc2[0] = prwdgt->table[i].x;
-    loc2[1] = prwdgt->table[i].y;
-    total_length += len_v2v2(loc1, loc2);
+  for (int i = 0; i < PROF_N_TABLE(prwdgt->totpoint) - 1; i++) {
+    total_length += len_v2v2(&prwdgt->table[i].x, &prwdgt->table[i + 1].x);
   }
   return total_length;
 }
 
 /** Samples evenly spaced positions along the profile widget's table (generated from path). Fills
  * an entire table at once for a speedup if all of the results are going to be used anyway.
- * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table. */
-/* HANS-TODO: Enable this for an "even length sampling" option (and debug it). */
-void BKE_profilewidget_create_samples_even_spacing(const ProfileWidget *prwdgt,
-                                                   double *x_table_out,
-                                                   double *y_table_out)
+ * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table.
+ * \note Working, but would conflict with "Sample Straight Edges" option, so this is unused for now. */
+void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
+                                                   int n_segments,
+                                                   ProfilePoint *r_samples)
 {
   const float total_length = BKE_profilewidget_total_length(prwdgt);
-  const float segment_length = total_length / prwdgt->totsegments;
+  const float segment_length = total_length / n_segments;
   float length_travelled = 0.0f;
-  float distance_to_next_point = profilewidget_distance_to_next_point(prwdgt, 0);
-  float distance_to_previous_point = 0.0f;
-  float travelled_since_last_point = 0.0f;
-  float segment_left = segment_length;
-  float f;
-  int i_point = 0;
+  float distance_to_next_table_point = profilewidget_distance_to_next_table_point(prwdgt, 0);
+  float distance_to_previous_table_point = 0.0f;
+  float segment_left, factor;
+  int i_table = 0;
+
+  /* Set the location for the first point. */
+  r_samples[0].x = prwdgt->table[0].x;
+  r_samples[0].y = prwdgt->table[0].y;
 
   /* Travel along the path, recording the locations of segments as we pass them. */
-  for (int i = 0; i < prwdgt->totsegments; i++) {
-    /* Travel over all of the points that could be inside this segment. */
-    while (distance_to_next_point > segment_length * (i + 1) - length_travelled) {
-      length_travelled += distance_to_next_point;
-      segment_left -= distance_to_next_point;
-      travelled_since_last_point += distance_to_next_point;
-      i_point++;
-      distance_to_next_point = profilewidget_distance_to_next_point(prwdgt, i_point);
-      distance_to_previous_point = 0.0f;
+  segment_left = segment_length;
+  for (int i = 1; i < n_segments; i++) {
+    /* Travel over all of the points that fit inside this segment. */
+    while (distance_to_next_table_point < segment_left) {
+      length_travelled += distance_to_next_table_point;
+      segment_left -= distance_to_next_table_point;
+      i_table++;
+      distance_to_next_table_point = profilewidget_distance_to_next_table_point(prwdgt, i_table);
+      distance_to_previous_table_point = 0.0f;
     }
-    /* We're now at the last point that fits inside the current segment. */
-    f = segment_left / (distance_to_previous_point + distance_to_next_point);
-    x_table_out[i] = (double)interpf(prwdgt->table[i_point].x, prwdgt->table[i_point + 1].x, f);
-    y_table_out[i] = (double)interpf(prwdgt->table[i_point].x, prwdgt->table[i_point + 1].x, f);
-    distance_to_next_point -= segment_left;
-    distance_to_previous_point += segment_left;
+    /* We're at the last table point that fits inside the current segment, use interpolation. */
+    factor = (distance_to_previous_table_point + segment_left) / (distance_to_previous_table_point + distance_to_next_table_point);
+    r_samples[i].x = interpf(prwdgt->table[i_table + 1].x, prwdgt->table[i_table].x, factor);
+    r_samples[i].y = interpf(prwdgt->table[i_table + 1].y, prwdgt->table[i_table].y, factor);
+#ifdef DEBUG_PRWDGT_EVALUATE
+    BLI_assert(factor <= 1.0f && factor >= 0.0f);
+    printf("segment_left: %.3f\n", segment_left);
+    printf("i_table: %d\n", i_table);
+    printf("distance_to_previous_table_point: %.3f\n", distance_to_previous_table_point);
+    printf("distance_to_next_table_point: %.3f\n", distance_to_next_table_point);
+    printf("Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)\n\n",
+           factor,
+           prwdgt->table[i_table].x, prwdgt->table[i_table].y,
+           prwdgt->table[i_table + 1].x, prwdgt->table[i_table + 1].y);
+#endif
 
+    /* We sampled in between this table point and the next, so the next travel step is smaller. */
+    distance_to_next_table_point -= segment_left;
+    distance_to_previous_table_point += segment_left;
     length_travelled += segment_left;
+    segment_left = segment_length;
   }
 }
 
@@ -964,7 +966,7 @@ void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
     if (i == PROF_N_TABLE(prwdgt->totpoint) - 2) {
       break;
     }
-    float new_length = profilewidget_distance_to_next_point(prwdgt, i);
+    float new_length = profilewidget_distance_to_next_table_point(prwdgt, i);
     if (length_travelled + new_length >= requested_length) {
       break;
     }
@@ -974,7 +976,7 @@ void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
 
   /* Now travel the remaining distance of length portion down the path to the next point and
    * find the location where we stop. */
-  float distance_to_next_point = profilewidget_distance_to_next_point(prwdgt, i);
+  float distance_to_next_point = profilewidget_distance_to_next_table_point(prwdgt, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
 #ifdef DEBUG_PRWDGT_EVALUATE

@@ -4551,14 +4551,11 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   uiLayoutRow(layout, false);
 
   /* Preset selector */
+  /* There is probably potential to use simpler "uiItemR" functions here, but the automatic
+   * updating after a preset is selected would be more complicated. */
   bt = uiDefBlockBut(block, profilewidget_buttons_presets, prwdgt, "Preset", 0, 0,
                              UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
-
-  /* HANS-QUESTION: I'm guessing this is the newer way to do this. I'd be happy to switch
-   * everythingn here to this method, as it seems simpler, more elegant, and more linked to the RNA
-   * system anyway, but this doesn't redraw the widget
-  uiItemR(layout, ptr, "preset", 0, "Preset", ICON_NONE);*/
 
   row = uiLayoutRow(layout, false);
 
@@ -4667,6 +4664,8 @@ static void profilewidget_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAU
   }
 
   uiItemR(layout, ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "sample_even_lengths", 0, NULL, ICON_NONE);
+
 
   UI_block_funcN_set(block, NULL, NULL, NULL);
 }
@@ -4698,9 +4697,7 @@ void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *prop
     return;
   }
 
-  /* HANS-QUESTION: I don't quite know what the goal of this is. It looks like it was created for
-   * the CurveMapping struct, but it's probably still useful here. It looks like it enables
-   * updating the property with the pointer? */
+  /* Share update functionality with the CurveMapping widget template. */
   cb = MEM_callocN(sizeof(RNAUpdateCb), "RNAUpdateCb");
   cb->ptr = *ptr;
   cb->prop = prop;
