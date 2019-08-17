@@ -6860,8 +6860,13 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   return changed;
 }
 
-static int ui_do_but_PROFILE(
-    bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
+/** Interaction for profile widget.
+ * \note Uses hardcoded keys rather than the keymap. */
+static int ui_do_but_PROFILE(bContext *C,
+                             uiBlock *block,
+                             uiBut *but,
+                             uiHandleButtonData *data,
+                             const wmEvent *event)
 {
   int mx, my, i;
 
@@ -6869,7 +6874,7 @@ static int ui_do_but_PROFILE(
   my = event->y;
   ui_window_to_block(data->region, block, &mx, &my);
 
-  /* Move selected control points (hardcoded keymap) */
+  /* Move selected control points. */
   if (event->type == GKEY && event->val == KM_RELEASE) {
     data->dragstartx = mx;
     data->dragstarty = my;
@@ -6881,18 +6886,18 @@ static int ui_do_but_PROFILE(
 
   ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
 
-  /* Delete selected control points (hardcoded keymap) */
+  /* Delete selected control points. */
   if (event->type == XKEY && event->val == KM_RELEASE) {
     BKE_profilewidget_remove(prwdgt, PROF_SELECT);
     BKE_profilewidget_changed(prwdgt, false);
-    ED_region_tag_redraw(data->region);
+    button_activate_state(C, but, BUTTON_STATE_EXIT);
     return WM_UI_HANDLER_BREAK;
   }
 
-  /* Selecting, adding, and starting point movements */
+  /* Selecting, adding, and starting point movements. */
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
     if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
-      ProfilePoint *pts; /* Path or table */
+      ProfilePoint *pts; /* Path or table. */
       const float m_xy[2] = {mx, my};
       float dist_min_sq;
       int i_selected = -1;
@@ -6905,9 +6910,9 @@ static int ui_do_but_PROFILE(
         BKE_profilewidget_changed(prwdgt, false);
       }
 
-      /* Check for selecting of a point by finding closest point in radius */
-      dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius for selecting points */
-      pts = prwdgt->path;                      /* ctrl adds point, new malloc */
+      /* Check for selecting of a point by finding closest point in radius. */
+      dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius for selecting points. */
+      pts = prwdgt->path;
       for (i = 0; i < prwdgt->totpoint; i++) {
         float f_xy[2];
         BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[i].x);
@@ -6918,13 +6923,13 @@ static int ui_do_but_PROFILE(
         }
       }
 
-      /* Add a point if the click was close to the path but not a control point */
-      if (i_selected == -1) {
+      /* Add a point if the click was close to the path but not a control point. */
+      if (i_selected == -1) { /* No control point selected. */
         float f_xy[2], f_xy_prev[2];
         pts = prwdgt->table;
         BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[0].x);
 
-        dist_min_sq = SQUARE(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point */
+        dist_min_sq = SQUARE(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point. */
 
         /* Loop through the path's high resolution table and find what's near the click. */
         for (i = 1; i <= PROF_N_TABLE(prwdgt->totpoint); i++) {
@@ -6937,10 +6942,10 @@ static int ui_do_but_PROFILE(
             ProfilePoint *new_pt = BKE_profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
             BKE_profilewidget_changed(prwdgt, false);
 
-            /* reset pts back to the control points */
+            /* reset pts back to the control points. */
             pts = prwdgt->path;
 
-            /* Get the index of the newly added point */
+            /* Get the index of the newly added point. */
             for (i = 0; i < prwdgt->totpoint; i++) {
               if (&pts[i] == new_pt) {
                 i_selected = i;
@@ -6951,9 +6956,9 @@ static int ui_do_but_PROFILE(
         }
       }
 
-      /* Change the flag for the point(s) if one was selected */
+      /* Change the flag for the point(s) if one was selected. */
       if (i_selected != -1) {
-        /* deselect all if this one is deselect. except if we hold shift */
+        /* Deselect all if this one is deselected, except if we hold shift. */
         if (!event->shift) {
           for (i = 0; i < prwdgt->totpoint; i++) {
             pts[i].flag &= ~PROF_SELECT;
@@ -6965,7 +6970,7 @@ static int ui_do_but_PROFILE(
         }
       }
       else {
-        /* move the view */ /* HANS-QUESTION: Where is this done? */
+        /* Move the view. */
         data->cancel = true;
       }
 
@@ -6980,7 +6985,7 @@ static int ui_do_but_PROFILE(
       return WM_UI_HANDLER_BREAK;
     }
   }
-  else if (data->state == BUTTON_STATE_NUM_EDITING) { /* Do control point movement */
+  else if (data->state == BUTTON_STATE_NUM_EDITING) { /* Do control point movement. */
     if (event->type == MOUSEMOVE) {
       if (mx != data->draglastx || my != data->draglasty) {
         if (ui_numedit_but_PROFILE(
@@ -6990,11 +6995,12 @@ static int ui_do_but_PROFILE(
       }
     }
     else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
+      /* Finish move. */
       if (data->dragsel != -1) {
         ProfilePoint *pts = prwdgt->path;
 
         if (data->dragchange == false) {
-          /* deselect all, select one */
+          /* Deselect all, select one. */
           if (!event->shift) {
             for (i = 0; i < prwdgt->totpoint; i++) {
               pts[i].flag &= ~PROF_SELECT;
@@ -7003,7 +7009,7 @@ static int ui_do_but_PROFILE(
           }
         }
         else {
-          BKE_profilewidget_changed(prwdgt, true); /* remove doubles */
+          BKE_profilewidget_changed(prwdgt, true); /* Remove doubles after move. */
         }
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);

@@ -1790,9 +1790,6 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   immUnbindProgram();
 }
 
-/* HANS-TODO: There is an existing crash here with the immEnd assert that happens when clipping is
- * on and the view is moved a ways below the center. This function always adds two fewer points
- * than it tells the GP it will add. */
 static void ui_draw_but_curve_grid(
     uint pos, const rcti *rect, float zoomx, float zoomy, float offsx, float offsy, float step)
 {
@@ -1822,6 +1819,8 @@ static void ui_draw_but_curve_grid(
     immVertex2f(pos, rect->xmax, fy);
     fy += dy;
   }
+  /* Note: Assertion fails with here when the view is moved farther below the center.
+   * Missing two points from the number given with immBegin. */
   immEnd();
 }
 
