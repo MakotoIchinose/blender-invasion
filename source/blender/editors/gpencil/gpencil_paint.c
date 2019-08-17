@@ -3338,7 +3338,9 @@ static void gpencil_add_missing_events(bContext *C,
 
   RegionView3D *rv3d = p->ar->regiondata;
   float defaultpixsize = rv3d->pixsize * 1000.0f;
-  int samples = (GP_MAX_INPUT_SAMPLES - input_samples + 1);
+  /* Use square values to keep UI in a reasonable range. */
+  int samples = ((GP_MAX_INPUT_SAMPLES * GP_MAX_INPUT_SAMPLES) - (input_samples * input_samples) +
+                 1);
   float thickness = (float)brush->size;
 
   float pt[2], a[2], b[2];
@@ -3356,25 +3358,8 @@ static void gpencil_add_missing_events(bContext *C,
   }
 
   /* The thickness of the brush is reduced of thickness to get overlap dots */
-  float dot_factor = 0.50f;
-  if (samples < 2) {
-    dot_factor = 0.05f;
-  }
-  else if (samples < 4) {
-    dot_factor = 0.10f;
-  }
-  else if (samples < 7) {
-    dot_factor = 0.3f;
-  }
-  else if (samples < 10) {
-    dot_factor = 0.4f;
-  }
-  float factor = ((thickness * dot_factor) / scale) * samples;
-
-  /* If samples are more than 33%, divide the factor. */
-  if (input_samples > (GP_MAX_INPUT_SAMPLES / 3)) {
-    factor *= 0.5f;
-  }
+  float dot_factor = 0.05f;
+  float factor = (((thickness * dot_factor) / scale) * samples) * 0.25f;
 
   copy_v2_v2(a, p->mvalo);
   b[0] = (float)event->mval[0] + 1.0f;
@@ -3391,7 +3376,7 @@ static void gpencil_add_missing_events(bContext *C,
     gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1]);
   }
   else if (dist >= factor) {
-    int slices = 2 + (int)((dist - 1.0) / factor);
+    int slices = 2 + (int)(dist / factor);
     float n = 1.0f / slices;
     for (int i = 1; i < slices; i++) {
       interp_v2_v2v2(pt, a, b, n * i);
