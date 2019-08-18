@@ -612,6 +612,54 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
   ptc->pressure = interpf(ptc->pressure, pressure, inf);
 }
 
+/* Apply subdivide to buffer while drawing
+ *
+ * \param p: Temp data
+ * \param step: Number of steps
+ */
+static void gp_subdivide_buffer(tGPsdata *p, int step)
+{
+  bGPdata *gpd = p->gpd;
+  const int idx = gpd->runtime.sbuffer_used - 1;
+
+  /* Do nothing if not enough points to subdivide out */
+  if (gpd->runtime.sbuffer_used < 2) {
+    return;
+  }
+
+  tGPspoint *pt_prev = ((tGPspoint *)(gpd->runtime.sbuffer) + idx - 1);
+  tGPspoint *pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx);
+
+  /* Increase used points. */
+  gpd->runtime.sbuffer_used += step;
+
+  /* check if still room in buffer or add more */
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+
+  /* Copy values of current point to last point. */
+  tGPspoint *pt_last = ((tGPspoint *)(gpd->runtime.sbuffer) + idx + step);
+  copy_v2_v2(&pt_last->x, &pt_cur->x);
+  pt_last->pressure = pt_cur->pressure;
+  pt_last->strength = pt_cur->strength;
+  pt_last->time = pt_cur->time;
+  pt_last->uv_fac = pt_cur->uv_fac;
+  pt_last->uv_rot = pt_cur->uv_fac;
+
+  /* Interpolate points in the midle. */
+  float const ifactor = 1.0f / (float)(step + 1);
+  for (int i = 0; i < step; i++) {
+    pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx + i);
+    float f = ifactor * (i + 1);
+    interp_v2_v2v2(&pt_cur->x, &pt_prev->x, &pt_last->x, f);
+    pt_cur->pressure = interpf(pt_prev->pressure, pt_last->pressure, f);
+    pt_cur->strength = interpf(pt_prev->strength, pt_last->strength, f);
+    pt_cur->time = interpf(pt_prev->time, pt_last->time, f);
+    pt_cur->uv_fac = interpf(pt_prev->uv_fac, pt_last->uv_fac, f);
+    pt_cur->uv_rot = interpf(pt_prev->uv_rot, pt_last->uv_rot, f);
+  }
+}
+
 /* add current stroke-point to buffer (returns whether point was successfully added) */
 static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure, double curtime)
 {
@@ -793,7 +841,12 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     /* increment counters */
     gpd->runtime.sbuffer_used++;
 
-    /* smooth while drawing previous points with a reduction factor for previous */
+    /* Subdivide while drawing two last points (current and previous). */
+    if (brush->gpencil_settings->active_subdivide > 0) {
+      gp_subdivide_buffer(p, brush->gpencil_settings->active_subdivide);
+    }
+
+    /* Smooth while drawing previous points with a reduction factor for previous. */
     if (brush->gpencil_settings->active_smooth > 0.0f) {
       for (int s = 0; s < 3; s++) {
         gp_smooth_buffer(p,
