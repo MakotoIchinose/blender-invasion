@@ -1,0 +1,402 @@
+From 4a3ec5e090fa208eef6900bd9217b93e62111168 Mon Sep 17 00:00:00 2001
+From: MATILLAT Quentin <qmatillat@gmail.com>
+Date: Sun, 18 Aug 2019 15:29:34 +0200
+Subject: [PATCH] Add ability to export curve from BVH
+
+---
+ include/embree3/rtcore_builder.h  |  22 +++
+ include/embree3/rtcore_common.h   |   7 +
+ kernels/bvh/bvh_builder_hair.cpp  |   3 +-
+ kernels/common/rtcore_builder.cpp | 297 ++++++++++++++++++++++--------
+ 4 files changed, 251 insertions(+), 78 deletions(-)
+
+diff --git a/include/embree3/rtcore_builder.h b/include/embree3/rtcore_builder.h
+index af84035b0..77e754f7e 100644
+--- a/include/embree3/rtcore_builder.h
++++ b/include/embree3/rtcore_builder.h
+@@ -131,6 +131,28 @@ RTC_API void rtcRetainBVH(RTCBVH bvh);
+ /* Releases the BVH (decrements reference count). */
+ RTC_API void rtcReleaseBVH(RTCBVH bvh);
+ 
++struct BVHPrimitive {
++    unsigned int geomID;
++    unsigned int primID;
++};
++
++struct RTCBVHExtractFunction
++{
++  // Leaf creator function
++  void* (*createLeaf) (unsigned int nbPrim, const BVHPrimitive prims[], void *userData);
++  void* (*createInstance) (unsigned int nbPrim, const unsigned int geomID[], void *userData);
++  void* (*createCurve) (unsigned int nbPrim, const BVHPrimitive prims[], void *userData);
++
++  // InnerNode creator function
++  void* (*createInnerNode) (unsigned int nbChild, void* children[], void *userData);
++
++  void (*setAlignedBounds) (void *node, const RTCBounds &bounds, void *userData);
++  void (*setLinearBounds) (void *node, const RTCLinearBounds &lbounds, void *userData);
++  void (*setUnalignedBounds) (void *node, const RTCAffineSpace &affSpace, void *userData);
++};
++
++RTC_API void *rtcExtractBVH(RTCScene hscene, RTCBVHExtractFunction args, void *userData);
++
+ #if defined(__cplusplus)
+ }
+ #endif
+diff --git a/include/embree3/rtcore_common.h b/include/embree3/rtcore_common.h
+index 29dfcba11..7eb21c28c 100644
+--- a/include/embree3/rtcore_common.h
++++ b/include/embree3/rtcore_common.h
+@@ -191,6 +191,13 @@ struct RTC_ALIGN(16) RTCLinearBounds
+   struct RTCBounds bounds1;
+ };
+ 
++/* AffineSpace representation */
++struct RTC_ALIGN(16) RTCAffineSpace
++{
++  float linear[3*3];
++  float affine[3];
++};
++
+ /* Intersection context flags */
+ enum RTCIntersectContextFlags
+ {
+diff --git a/kernels/bvh/bvh_builder_hair.cpp b/kernels/bvh/bvh_builder_hair.cpp
+index 14273787f..cad238123 100644
+--- a/kernels/bvh/bvh_builder_hair.cpp
++++ b/kernels/bvh/bvh_builder_hair.cpp
+@@ -135,8 +135,9 @@ namespace embree
+ #if defined(__AVX__)
+     Builder* BVH8Curve8vBuilder_OBB_New   (void* bvh, Scene* scene, size_t mode) { return new BVHNHairBuilderSAH<8,Curve8v,Line8i>((BVH8*)bvh,scene); }
+     Builder* BVH4Curve8iBuilder_OBB_New   (void* bvh, Scene* scene, size_t mode) { return new BVHNHairBuilderSAH<4,Curve8i,Line8i>((BVH4*)bvh,scene); }
+-#endif
+ 
++    unsigned int getLine8iPrimId(Line8i *line, unsigned int i) { return line->primID(i); }
++#endif
+   }
+ }
+ #endif
+diff --git a/kernels/common/rtcore_builder.cpp b/kernels/common/rtcore_builder.cpp
+index 56858294c..9ef862979 100644
+--- a/kernels/common/rtcore_builder.cpp
++++ b/kernels/common/rtcore_builder.cpp
+@@ -29,8 +29,17 @@
+ #include "../builders/bvh_builder_sah.h"
+ #include "../builders/bvh_builder_morton.h"
+ 
++#include "../bvh/bvh.h"
++#include "../geometry/instance.h"
++#include "../geometry/trianglev.h"
++#include "../geometry/trianglei.h"
++#include "../geometry/curveNi.h"
++#include "../geometry/linei.h"
++
+ namespace embree
+ { 
++  DECLARE_ISA_FUNCTION(unsigned int, getLine8iPrimId, Line8i* COMMA unsigned int);
++
+   namespace isa // FIXME: support more ISAs for builders
+   {
+     struct BVH : public RefCount
+@@ -334,92 +343,226 @@ namespace embree
+       return root;
+     }
+ 
+-    RTC_API void* rtcBuildBVH(const RTCBuildArguments* arguments)
+-    {
+-      BVH* bvh = (BVH*) arguments->bvh;
+-      RTC_CATCH_BEGIN;
+-      RTC_TRACE(rtcBuildBVH);
+-      RTC_VERIFY_HANDLE(bvh);
+-      RTC_VERIFY_HANDLE(arguments);
+-      RTC_VERIFY_HANDLE(arguments->createNode);
+-      RTC_VERIFY_HANDLE(arguments->setNodeChildren);
+-      RTC_VERIFY_HANDLE(arguments->setNodeBounds);
+-      RTC_VERIFY_HANDLE(arguments->createLeaf);
+-
+-      if (arguments->primitiveArrayCapacity < arguments->primitiveCount)
+-        throw_RTCError(RTC_ERROR_INVALID_ARGUMENT,"primitiveArrayCapacity must be greater or equal to primitiveCount")
+-
+-      /* initialize the allocator */
+-      bvh->allocator.init_estimate(arguments->primitiveCount*sizeof(BBox3fa));
+-      bvh->allocator.reset();
+-
+-      /* switch between differnet builders based on quality level */
+-      if (arguments->buildQuality == RTC_BUILD_QUALITY_LOW)
+-        return rtcBuildBVHMorton(arguments);
+-      else if (arguments->buildQuality == RTC_BUILD_QUALITY_MEDIUM)
+-        return rtcBuildBVHBinnedSAH(arguments);
+-      else if (arguments->buildQuality == RTC_BUILD_QUALITY_HIGH) {
+-        if (arguments->splitPrimitive == nullptr || arguments->primitiveArrayCapacity <= arguments->primitiveCount)
+-          return rtcBuildBVHBinnedSAH(arguments);
+-        else
+-          return rtcBuildBVHSpatialSAH(arguments);
++    void* createLeaf(const BVH4::NodeRef node,
++                     const PrimitiveType *leafType,
++                     const RTCBVHExtractFunction args,
++                     void *userData) {
++        size_t nb;
++        if(leafType == &Triangle4v::type) {
++            Triangle4v *prims = reinterpret_cast<Triangle4v *>(node.leaf(nb));
++            BVHPrimitive primsArray[4*nb];
++            unsigned int realNum = 0;
++            for(int i = 0; i < nb; ++i) {
++                for(size_t j = 0; j < prims[i].size(); j++) {
++                    primsArray[realNum].geomID = prims[i].geomID(j);
++                    primsArray[realNum].primID = prims[i].primID(j);
++                    ++realNum;
++                }
++            }
++
++            return args.createLeaf(realNum, primsArray, userData);
++        } else if(leafType == &Triangle4i::type) {
++            Triangle4i *prims = reinterpret_cast<Triangle4i *>(node.leaf(nb));
++            BVHPrimitive primsArray[4*nb];
++            unsigned int realNum = 0;
++            for(int i = 0; i < nb; ++i) {
++                for(size_t j = 0; j < prims[i].size(); j++) {
++                    primsArray[realNum].geomID = prims[i].geomID(j);
++                    primsArray[realNum].primID = prims[i].primID(j);
++                    ++realNum;
++                }
++            }
++
++            return args.createLeaf(realNum, primsArray, userData);
++        } else if(leafType == &InstancePrimitive::type) {
++            InstancePrimitive *prims = reinterpret_cast<InstancePrimitive *>(node.leaf(nb));
++            uint geomIDs[nb];
++            for(int i = 0; i < nb; ++i)
++                geomIDs[i] = prims[i].instance->geomID;
++
++            return args.createInstance(nb, geomIDs, userData);
++        } else if(leafType == &Curve8i::type) {
++            typedef unsigned char Primitive;
++
++            Primitive* prim = (Primitive*)node.leaf(nb);
++            if(nb == 0) return nullptr;
++
++            assert(nb == 1);
++            Geometry::GType ty = (Geometry::GType)(*prim);
++
++            BVHPrimitive primsArray[8];
++            unsigned int realNum = 0;
++
++            switch(ty) {
++            case Geometry::GTY_FLAT_LINEAR_CURVE: {
++                // Access to PrimID from right ISA, otherwise lead to allignement issue
++                DEFINE_ISA_FUNCTION(unsigned int, getLine8iPrimId, Line8i* COMMA unsigned int)
++                SELECT_SYMBOL_INIT_AVX(getCPUFeatures(), getLine8iPrimId)
++
++                Line8i *line = reinterpret_cast<Line8i*>(prim);
++
++                for(size_t i = 0; i < line->m; i++) {
++                    primsArray[realNum].geomID = line->geomID();
++                    primsArray[realNum].primID = getLine8iPrimId(line, i);
++                    ++realNum;
++                }
++            } break;
++            case Geometry::GTY_ROUND_HERMITE_CURVE: {
++                Curve8i *curve = reinterpret_cast<Curve8i*>(prim);
++                const auto N = curve->N;
++                for(size_t i = 0; i < N; i++) {
++                    primsArray[realNum].geomID = curve->geomID(N);
++                    primsArray[realNum].primID = curve->primID(N)[i];
++                    ++realNum;
++                }
++            } break;
++            default:
++                throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unexpected geom type");
++            }
++
++            return args.createCurve(realNum, primsArray, userData);
++        } else {
++            throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unexpected primitive type");
++        }
++    }
++
++    inline RTCBounds boundsToRTC(const BBox3fa &bounds) {
++        RTCBounds bb;
++        bb.lower_x = bounds.lower.x;
++        bb.lower_y = bounds.lower.y;
++        bb.lower_z = bounds.lower.z;
++
++        bb.upper_x = bounds.upper.x;
++        bb.upper_y = bounds.upper.y;
++        bb.upper_z = bounds.upper.z;
++
++        bb.align0 = 0;
++        bb.align1 = 1;
++
++        return bb;
++    }
++
++    void* recurse(const BVH4::NodeRef node,
++                  const PrimitiveType *leafType,
++                  const RTCBVHExtractFunction args,
++                  void *userData) {
++      if(node.isLeaf())
++          return createLeaf(node, leafType, args, userData);
++
++      const BVH4::BaseNode *bnode = nullptr;
++      const BVH4::AlignedNode *anode = nullptr;
++      const BVH4::AlignedNodeMB *anodeMB = nullptr;
++      const BVH4::AlignedNodeMB4D *anodeMB4D = nullptr;
++
++      const BVH4::UnalignedNode *unanode = nullptr;
++
++      if(node.isAlignedNode()) {
++          anode = node.alignedNode();
++          bnode = anode;
++      } else if(node.isAlignedNodeMB()) {
++          anodeMB = node.alignedNodeMB();
++          bnode = anodeMB;
++      } else if (node.isAlignedNodeMB4D()) {
++          anodeMB4D = node.alignedNodeMB4D();
++          anodeMB = anodeMB4D;
++          bnode = anodeMB;
++      } else if (node.isUnalignedNode()) {
++          unanode = node.unalignedNode();
++          bnode = unanode;
++      } else {
++          throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Node type is unknown");
++          return nullptr;
+       }
+-      else
+-        throw_RTCError(RTC_ERROR_INVALID_OPERATION,"invalid build quality");
+ 
+-      /* if we are in dynamic mode, then do not clear temporary data */
+-      if (!(arguments->buildFlags & RTC_BUILD_FLAG_DYNAMIC))
+-      {
+-        bvh->morton_src.clear();
+-        bvh->morton_tmp.clear();
++      unsigned int nb = 0;
++      void *children[4];
++      for(uint i = 0; i < 4; i++) {
++          void *child = recurse(bnode->child(i), leafType, args, userData);
++          if(child == nullptr) continue;
++
++          if(anode != nullptr) {
++              args.setAlignedBounds(child, boundsToRTC(anode->bounds(i)), userData);
++          } else if (anodeMB != nullptr) {
++              RTCLinearBounds lb;
++              lb.bounds0 = boundsToRTC(anodeMB->bounds0(i));
++              lb.bounds1 = boundsToRTC(anodeMB->bounds1(i) - anodeMB->bounds0(i));
++
++              if (anodeMB4D != nullptr) {
++                  lb.bounds0.align0 = anodeMB4D->timeRange(i).lower;
++                  lb.bounds0.align1 = anodeMB4D->timeRange(i).upper;
++              }
++
++              args.setLinearBounds(child, lb, userData);
++          } else if(unanode != nullptr) {
++              RTCAffineSpace affSpace;
++              affSpace.affine[0] = unanode->naabb.p.x[i];
++              affSpace.affine[1] = unanode->naabb.p.y[i];
++              affSpace.affine[2] = unanode->naabb.p.z[i];
++
++              affSpace.linear[0] = unanode->naabb.l.vx.x[i];
++              affSpace.linear[1] = unanode->naabb.l.vx.y[i];
++              affSpace.linear[2] = unanode->naabb.l.vx.z[i];
++              affSpace.linear[3] = unanode->naabb.l.vy.x[i];
++              affSpace.linear[4] = unanode->naabb.l.vy.y[i];
++              affSpace.linear[5] = unanode->naabb.l.vy.z[i];
++              affSpace.linear[6] = unanode->naabb.l.vz.x[i];
++              affSpace.linear[7] = unanode->naabb.l.vz.y[i];
++              affSpace.linear[8] = unanode->naabb.l.vz.z[i];
++
++              args.setUnalignedBounds(child, affSpace, userData);
++          }
++
++          children[nb++] = child;
+       }
+ 
+-      RTC_CATCH_END(bvh->device);
+-      return nullptr;
++      return args.createInnerNode(nb, children, userData);
+     }
+ 
+-    RTC_API void* rtcThreadLocalAlloc(RTCThreadLocalAllocator localAllocator, size_t bytes, size_t align)
+-    {
+-      FastAllocator::CachedAllocator* alloc = (FastAllocator::CachedAllocator*) localAllocator;
++    RTC_API void *rtcExtractBVH(RTCScene hscene, RTCBVHExtractFunction args, void *userData) {
++      Scene* scene = (Scene*) hscene;
+       RTC_CATCH_BEGIN;
+-      RTC_TRACE(rtcThreadLocalAlloc);
+-      return alloc->malloc0(bytes,align);
+-      RTC_CATCH_END(alloc->alloc->getDevice());
+-      return nullptr;
+-    }
++      RTC_TRACE(rtcSampleTry);
++#if defined(DEBUG)
++      RTC_VERIFY_HANDLE(hscene);
++#endif
+ 
+-    RTC_API void rtcMakeStaticBVH(RTCBVH hbvh)
+-    {
+-      BVH* bvh = (BVH*) hbvh;
+-      RTC_CATCH_BEGIN;
+-      RTC_TRACE(rtcStaticBVH);
+-      RTC_VERIFY_HANDLE(hbvh);
+-      bvh->morton_src.clear();
+-      bvh->morton_tmp.clear();
+-      RTC_CATCH_END(bvh->device);
+-    }
++      std::vector<void*> nodes;
+ 
+-    RTC_API void rtcRetainBVH(RTCBVH hbvh)
+-    {
+-      BVH* bvh = (BVH*) hbvh;
+-      Device* device = bvh ? bvh->device : nullptr;
+-      RTC_CATCH_BEGIN;
+-      RTC_TRACE(rtcRetainBVH);
+-      RTC_VERIFY_HANDLE(hbvh);
+-      bvh->refInc();
+-      RTC_CATCH_END(device);
+-    }
+-    
+-    RTC_API void rtcReleaseBVH(RTCBVH hbvh)
+-    {
+-      BVH* bvh = (BVH*) hbvh;
+-      Device* device = bvh ? bvh->device : nullptr;
+-      RTC_CATCH_BEGIN;
+-      RTC_TRACE(rtcReleaseBVH);
+-      RTC_VERIFY_HANDLE(hbvh);
+-      bvh->refDec();
+-      RTC_CATCH_END(device);
++      for (Accel *a : scene->accels) {
++        AccelData *ad = a->intersectors.ptr;
++        if(ad->type != AccelData::TY_BVH4) {
++          throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unable to extract non BVH4 tree")
++          continue;
++        }
++
++        BVH4 *bvh = dynamic_cast<BVH4 *>(ad);
++
++        BVH4::NodeRef root = bvh->root;
++        void *node = recurse(root, bvh->primTy, args, userData);
++        args.setAlignedBounds(node, boundsToRTC(bvh->bounds.bounds()), userData);
++        nodes.push_back(node);
++      }
++
++      if(nodes.size() == 0)
++        return nullptr;
++
++      if(nodes.size() == 1)
++        return nodes[0];
++
++      RTCBounds bounds;
++      rtcGetSceneBounds(hscene, &bounds);
++
++      void *root = args.createInnerNode(nodes.size(), nodes.data(), userData);
++      args.setAlignedBounds(root, bounds, userData);
++      return root;
++
++      RTC_CATCH_END2(scene);
++      return nullptr;
+     }
+   }
+ }
+-
+-- 
+2.22.1
+

@@ -2477,7 +2477,7 @@ compile_Embree() {
   fi
 
   # To be changed each time we make edits that would modify the compiled results!
-  embree_magic=9
+  embree_magic=10
   _init_embree
 
   # Clean install if needed!
@@ -2511,6 +2511,9 @@ compile_Embree() {
       git checkout $EMBREE_REPO_UID
       git reset --hard
     fi
+
+    INFO "Applying patch on to of Embree sources"
+    git apply $SCRIPT_DIR/patches/embree.diff
 
     # Always refresh the whole build!
     if [ -d build ]; then
