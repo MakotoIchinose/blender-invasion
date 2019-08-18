@@ -702,9 +702,6 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene, bool background)
   case 2:
       params.bvh_layout = BVH_LAYOUT_EMBREE_CONVERTED;
       break;
-  case 3:
-      params.bvh_layout = BVH_LAYOUT_EMBREE_GPU;
-      break;
   }
 #endif
   return params;

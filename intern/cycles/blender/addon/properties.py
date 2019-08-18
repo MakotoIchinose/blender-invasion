@@ -61,7 +61,6 @@ enum_bvh_builder = (
     ('INTERNAL', "Internal", "Use old internal BVH builder"),
     ('EMBREE', "Embree", "Use full featured embree (only on CPU)"),
     ('EMBREE_CONVERT', "Embree, then convert", "Use embree, then convert it to BVH2"),
-    ('EMBREE_BUILDER', "Embree builder", "Use Embree BVH Builder"),
 )
 
 enum_bvh_types = (

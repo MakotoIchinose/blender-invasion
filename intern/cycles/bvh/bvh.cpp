@@ -28,7 +28,6 @@
 
 #ifdef WITH_EMBREE
 #  include "bvh/bvh_embree.h"
-#  include "bvh/bvh_embree_gpu.h"
 #endif
 
 #include "util/util_foreach.h"
@@ -54,8 +53,6 @@ const char *bvh_layout_name(BVHLayout layout)
       return "EMBREE";
     case BVH_LAYOUT_EMBREE_CONVERTED:
       return "EMBREE_CONVERTED";
-    case BVH_LAYOUT_EMBREE_GPU:
-      return "EMBREE_GPU";
     case BVH_LAYOUT_ALL:
       return "ALL";
   }
@@ -114,10 +111,6 @@ BVH *BVH::create(const BVHParams &params, const vector<Object *> &objects)
     case BVH_LAYOUT_EMBREE_CONVERTED:
 #ifdef WITH_EMBREE
       return new BVHEmbree(params, objects);
-#endif
-    case BVH_LAYOUT_EMBREE_GPU:
-#ifdef WITH_EMBREE
-      return new BVHEmbreeGPU(params, objects);
 #endif
     case BVH_LAYOUT_NONE:
     case BVH_LAYOUT_ALL:
