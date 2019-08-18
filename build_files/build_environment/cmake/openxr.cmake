@@ -1,0 +1,55 @@
+# ***** BEGIN GPL LICENSE BLOCK *****
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ***** END GPL LICENSE BLOCK *****
+
+
+set(OPENXR_SDK_EXTRA_ARGS
+  -DBUILD_API_LAYERS=ON
+  -DBUILD_FORCE_GENERATION=ON
+  -DBUILD_LOADER=ON
+  -DBUILD_SPECIFICATION=OFF
+  -DBUILD_TESTS=OFF
+  -DDYNAMIC_LOADER=OFF
+)
+
+ExternalProject_Add(external_openxr_sdk
+  URL ${OPENXR_SDK_URI}
+  DOWNLOAD_DIR ${DOWNLOAD_DIR}
+  URL_HASH MD5=${OPENXR_SDK_HASH}
+  PREFIX ${BUILD_DIR}/openxr_sdk
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openxr_sdk ${DEFAULT_CMAKE_FLAGS} ${OPENXR_SDK_EXTRA_ARGS}
+  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d ${BUILD_DIR}/openxr_sdk/src/external_openxr_sdk < ${PATCH_DIR}/openxr_sdk.diff
+  INSTALL_DIR ${LIBDIR}/openxr_sdk
+)
+
+add_dependencies(external_openxr_sdk)
+
+if(WIN32)
+  if(BUILD_MODE STREQUAL Release)
+    ExternalProject_Add_Step(external_openxr_sdk after_install
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/openxr_sdk/include/openxr ${HARVEST_TARGET}/openxr_sdk/include/openxr
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-*.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-*.lib
+      DEPENDEES install
+    )
+  endif()
+  if(BUILD_MODE STREQUAL Debug)
+    ExternalProject_Add_Step(external_openxr_sdk after_install
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-*.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-*.lib
+      DEPENDEES install
+    )
+  endif()
+endif()

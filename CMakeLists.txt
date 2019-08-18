@@ -237,13 +237,6 @@ option(WITH_SYSTEM_BULLET "Use the systems bullet library (currently unsupported
 mark_as_advanced(WITH_SYSTEM_BULLET)
 option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLORIO})
 option(WITH_OPENXR        "Enable VR features through the OpenXR specification" ON)
-if(WITH_OPENXR)
-  find_package(OpenXR-SDK)
-  if(NOT OPENXR_SDK_FOUND)
-    message(WARNING "OpenXR-SDK was not found, disabling WITH_OPENXR")
-    set(WITH_OPENXR OFF)
-  endif()
-endif()
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)

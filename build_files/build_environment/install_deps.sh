@@ -312,7 +312,7 @@ ARGUMENTS_INFO="\"COMMAND LINE ARGUMENTS:
         Unconditionally skip OpenImageDenoise installation/building.
 
     --skip-ffmpeg
-        Unconditionally skip FFMpeg installation/building.\""
+        Unconditionally skip FFMpeg installation/building.
 
     --skip-openxr
         Unconditionally skip OpenXR-SDK installation/building.\""

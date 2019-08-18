@@ -416,6 +416,15 @@ if(WITH_OPENSUBDIV)
   endif()
 endif()
 
+if(WITH_OPENXR)
+  find_package(OpenXR-SDK)
+  if(NOT OPENXR_SDK_FOUND)
+    message(WARNING "OpenXR-SDK was not found, disabling WITH_OPENXR")
+    set(WITH_OPENXR OFF)
+  endif()
+endif()
+
+
 # OpenSuse needs lutil, ArchLinux not, for now keep, can avoid by using --as-needed
 if(HAIKU)
   list(APPEND PLATFORM_LINKLIBS -lnetwork)
