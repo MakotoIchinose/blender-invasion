@@ -287,7 +287,7 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 
     ED_area_initialize(wm, win, sa);
   }
-  if (sa && BKE_area_find_region_type(sa, RGN_TYPE_TOOL_PROPS) == NULL) {
+  if (sa && sfile->op && BKE_area_find_region_type(sa, RGN_TYPE_TOOL_PROPS) == NULL) {
     /* Create TOOL_PROPS region. */
     ARegion *region_props = file_tool_props_region(sa);
 
