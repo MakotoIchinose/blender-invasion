@@ -627,15 +627,15 @@ static void gp_subdivide_buffer(tGPsdata *p, int step)
     return;
   }
 
-  tGPspoint *pt_prev = ((tGPspoint *)(gpd->runtime.sbuffer) + idx - 1);
-  tGPspoint *pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx);
-
   /* Increase used points. */
   gpd->runtime.sbuffer_used += step;
 
   /* check if still room in buffer or add more */
   gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
       gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+
+  tGPspoint *pt_prev = ((tGPspoint *)(gpd->runtime.sbuffer) + idx - 1);
+  tGPspoint *pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx);
 
   /* Copy values of current point to last point. */
   tGPspoint *pt_last = ((tGPspoint *)(gpd->runtime.sbuffer) + idx + step);
@@ -842,10 +842,20 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     gpd->runtime.sbuffer_used++;
 
     /* Subdivide while drawing two last points (current and previous). */
-    if (brush->gpencil_settings->active_subdivide > 0) {
-      gp_subdivide_buffer(p, brush->gpencil_settings->active_subdivide);
+    if ((brush->gpencil_settings->active_subdivide > 0) && (gpd->runtime.sbuffer_used > 1)) {
+      const int idx = gpd->runtime.sbuffer_used - 1;
+      tGPspoint *pt_prev = ((tGPspoint *)(gpd->runtime.sbuffer) + idx - 1);
+      tGPspoint *pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx);
+      /* Calc distance to determine how many subdivisions. */
+      float dist = len_v2v2(&pt_prev->x, &pt_cur->x);
+      const float segment_dist = GP_MAX_ACTIVE_SUBDIV - brush->gpencil_settings->active_subdivide +
+                                 1;
+      if (dist > segment_dist) {
+        float steps = (dist / segment_dist) + 1.0f;
+        CLAMP_MIN(steps, 1.0f);
+        gp_subdivide_buffer(p, (int)steps);
+      }
     }
-
     /* Smooth while drawing previous points with a reduction factor for previous. */
     if (brush->gpencil_settings->active_smooth > 0.0f) {
       for (int s = 0; s < 3; s++) {
@@ -882,7 +892,8 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       bGPDspoint *pts;
       MDeformVert *dvert = NULL;
 
-      /* first time point is adding to temporary buffer -- need to allocate new point in stroke */
+      /* first time point is adding to temporary buffer -- need to allocate new point in stroke
+       */
       if (gpd->runtime.sbuffer_used == 0) {
         gps->points = MEM_reallocN(gps->points, sizeof(bGPDspoint) * (gps->totpoints + 1));
         if (gps->dvert != NULL) {
@@ -3230,7 +3241,8 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   /* TODO: set any additional settings that we can take from the events?
    * TODO? if tablet is erasing, force eraser to be on? */
 
-  /* TODO: move cursor setting stuff to stroke-start so that paintmode can be changed midway... */
+  /* TODO: move cursor setting stuff to stroke-start so that paintmode can be changed midway...
+   */
 
   /* if eraser is on, draw radial aid */
   if (p->paintmode == GP_PAINTMODE_ERASER) {
@@ -3578,7 +3590,8 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   /* toggle painting mode upon mouse-button movement
-   * - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox only)
+   * - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
+   * only)
    * - RIGHTMOUSE = polyline (hotkey) / eraser (all)
    *   (Disabling RIGHTMOUSE case here results in bugs like [#32647])
    * also making sure we have a valid event value, to not exit too early

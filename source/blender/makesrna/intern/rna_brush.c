@@ -1298,7 +1298,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   /* active subdivide factor while drawing */
   prop = RNA_def_property(srna, "active_subdivide_steps", PROP_INT, PROP_FACTOR);
   RNA_def_property_int_sdna(prop, NULL, "active_subdivide");
-  RNA_def_property_range(prop, 0, 20);
+  RNA_def_property_range(prop, 0, GP_MAX_ACTIVE_SUBDIV);
   RNA_def_property_ui_text(prop, "Active Subdivide", "Amount of subdividing while drawing");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
