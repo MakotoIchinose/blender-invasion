@@ -605,10 +605,10 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
     pressure += ptd->pressure * average_fac;
   }
 
-  /* Based on influence factor, blend between original and optimal smoothed coordinate */
+  /* Based on influence factor, blend between original and optimal smoothed coordinate. */
   interp_v2_v2v2(c, c, sco, inf);
   copy_v2_v2(&ptc->x, c);
-  /* Interpolate pressure */
+  /* Interpolate pressure. */
   ptc->pressure = interpf(ptc->pressure, pressure, inf);
 }
 
