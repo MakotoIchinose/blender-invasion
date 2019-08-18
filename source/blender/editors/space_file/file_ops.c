@@ -2314,7 +2314,7 @@ ARegion *file_tools_region(ScrArea *sa)
   ar = MEM_callocN(sizeof(ARegion), "tool props for file");
   BLI_insertlinkafter(&sa->regionbase, arnew, ar);
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
-  ar->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
+  ar->alignment = RGN_ALIGN_RIGHT;
 
   return arnew;
 }

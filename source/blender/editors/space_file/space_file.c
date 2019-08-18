@@ -89,7 +89,7 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   ar = MEM_callocN(sizeof(ARegion), "tool props region for file");
   BLI_addtail(&sfile->regionbase, ar);
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
-  ar->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
+  ar->alignment = RGN_ALIGN_RIGHT;
 
   /* Execute region */
   ar = MEM_callocN(sizeof(ARegion), "execute region for file");
@@ -728,8 +728,8 @@ void ED_spacetype_file(void)
   /* regions: tool properties */
   art = MEM_callocN(sizeof(ARegionType), "spacetype file operator region");
   art->regionid = RGN_TYPE_TOOL_PROPS;
-  art->prefsizex = 0;
-  art->prefsizey = 360;
+  art->prefsizex = 240;
+  art->prefsizey = 60;
   art->keymapflag = ED_KEYMAP_UI;
   art->listener = file_tools_region_listener;
   art->init = file_tools_region_init;
