@@ -2311,10 +2311,29 @@ ARegion *file_tools_region(ScrArea *sa)
   arnew->regiontype = RGN_TYPE_TOOLS;
   arnew->alignment = RGN_ALIGN_LEFT;
 
-  ar = MEM_callocN(sizeof(ARegion), "tool props for file");
-  BLI_insertlinkafter(&sa->regionbase, arnew, ar);
-  ar->regiontype = RGN_TYPE_TOOL_PROPS;
-  ar->alignment = RGN_ALIGN_RIGHT;
+  return arnew;
+}
+
+ARegion *file_tool_props_region(ScrArea *sa)
+{
+  ARegion *ar, *arnew;
+
+  if ((ar = BKE_area_find_region_type(sa, RGN_TYPE_TOOL_PROPS)) != NULL) {
+    return ar;
+  }
+
+  /* add subdiv level; after execute region */
+  ar = BKE_area_find_region_type(sa, RGN_TYPE_EXECUTE);
+
+  /* is error! */
+  if (ar == NULL) {
+    return NULL;
+  }
+
+  arnew = MEM_callocN(sizeof(ARegion), "tool props for file");
+  BLI_insertlinkafter(&sa->regionbase, ar, arnew);
+  arnew->regiontype = RGN_TYPE_TOOL_PROPS;
+  arnew->alignment = RGN_ALIGN_RIGHT;
 
   return arnew;
 }

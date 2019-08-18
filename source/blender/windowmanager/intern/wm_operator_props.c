@@ -67,12 +67,12 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
        "Automatically determine display type for files"},
       {FILE_VERTICALDISPLAY,
        "LIST_VERTICAL",
-       ICON_SHORTDISPLAY, // * Name of deprecated Short List*
+       ICON_SHORTDISPLAY, /* Name of deprecated short list */
        "Short List",
        "Display files as short list"},
       {FILE_HORIZONTALDISPLAY,
        "LIST_HORIZONTAL",
-       ICON_LONGDISPLAY, // * Name of deprecated Long List*
+       ICON_LONGDISPLAY, /* Name of deprecated long list */
        "Long List",
        "Display files as a detailed list"},
       {FILE_IMGDISPLAY, "THUMBNAIL", ICON_IMGDISPLAY, "Thumbnails", "Display files as thumbnails"},
@@ -96,6 +96,15 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
   if (flag & WM_FILESEL_FILES) {
     prop = RNA_def_collection_runtime(
         ot->srna, "files", &RNA_OperatorFileListElement, "Files", "");
+    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  }
+
+  if ((flag & WM_FILESEL_SHOW_PROPS) == 0) {
+    prop = RNA_def_boolean(ot->srna,
+                           "hide_props_region",
+                           true,
+                           "Hide Operator Properties",
+                           "Collapse the region displaying the operator settings");
     RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   }
 

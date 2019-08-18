@@ -165,6 +165,10 @@ short ED_fileselect_set_params(SpaceFile *sfile)
       params->flag &= ~FILE_DIRSEL_ONLY;
     }
 
+    if (prop = RNA_struct_find_property(op->ptr, "hide_props_region")) {
+      params->flag |= RNA_property_boolean_get(op->ptr, prop) ? FILE_HIDE_TOOL_PROPS : 0;
+    }
+
     params->filter = 0;
     if ((prop = RNA_struct_find_property(op->ptr, "filter_blender"))) {
       params->filter |= RNA_property_boolean_get(op->ptr, prop) ? FILE_TYPE_BLENDER : 0;

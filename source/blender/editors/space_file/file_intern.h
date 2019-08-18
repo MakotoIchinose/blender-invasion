@@ -34,6 +34,7 @@ struct View2D;
 
 /* file_ops.c */
 struct ARegion *file_tools_region(struct ScrArea *sa);
+struct ARegion *file_tool_props_region(struct ScrArea *sa);
 
 /* file_draw.c */
 #define TILE_BORDER_X (UI_UNIT_X / 4)

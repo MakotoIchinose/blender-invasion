@@ -797,7 +797,8 @@ typedef enum eFileSel_Params_Flag {
   FILE_FILTER = (1 << 8),
   FILE_PARAMS_FLAG_UNUSED_9 = (1 << 9), /* cleared */
   FILE_GROUP_INSTANCE = (1 << 10),
-  FILE_SORT_INVERT = (1 << 11)
+  FILE_SORT_INVERT = (1 << 11),
+  FILE_HIDE_TOOL_PROPS = (1 << 12)
 } eFileSel_Params_Flag;
 
 /* sfile->params->rename_flag */

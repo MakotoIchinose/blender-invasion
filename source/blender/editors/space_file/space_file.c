@@ -92,11 +92,14 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   ar->alignment = RGN_ALIGN_BOTTOM;
   ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
+  /* Tool props region is added as needed. */
+#if 0
   /* Tool props (aka operator) region */
   ar = MEM_callocN(sizeof(ARegion), "tool props region for file");
   BLI_addtail(&sfile->regionbase, ar);
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
   ar->alignment = RGN_ALIGN_RIGHT;
+#endif
 
   /* main region */
   ar = MEM_callocN(sizeof(ARegion), "main region for file");
@@ -212,6 +215,7 @@ static SpaceLink *file_duplicate(SpaceLink *sl)
 static void file_refresh(const bContext *C, ScrArea *sa)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = CTX_wm_window(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   FileSelectParams *params = ED_fileselect_get_params(sfile);
   struct FSMenu *fsmenu = ED_fsmenu_get();
@@ -263,7 +267,7 @@ static void file_refresh(const bContext *C, ScrArea *sa)
   else {
     filelist_cache_previews_set(sfile->files, false);
     if (sfile->previews_timer) {
-      WM_event_remove_timer_notifier(wm, CTX_wm_window(C), sfile->previews_timer);
+      WM_event_remove_timer_notifier(wm, win, sfile->previews_timer);
       sfile->previews_timer = NULL;
     }
   }
@@ -278,10 +282,20 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 
   /* Might be called with NULL sa, see file_main_region_draw() below. */
   if (sa && BKE_area_find_region_type(sa, RGN_TYPE_TOOLS) == NULL) {
-    /* Create TOOLS/TOOL_PROPS regions. */
+    /* Create TOOLS region. */
     file_tools_region(sa);
 
-    ED_area_initialize(wm, CTX_wm_window(C), sa);
+    ED_area_initialize(wm, win, sa);
+  }
+  if (sa && BKE_area_find_region_type(sa, RGN_TYPE_TOOL_PROPS) == NULL) {
+    /* Create TOOL_PROPS region. */
+    ARegion *region_props = file_tool_props_region(sa);
+
+    if (params->flag & FILE_HIDE_TOOL_PROPS) {
+      region_props->flag |= RGN_FLAG_HIDDEN;
+    }
+
+    ED_area_initialize(wm, win, sa);
   }
 
   ED_area_tag_redraw(sa);
