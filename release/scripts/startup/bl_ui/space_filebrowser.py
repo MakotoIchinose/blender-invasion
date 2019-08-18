@@ -115,10 +115,12 @@ class FILEBROWSER_PT_filter(Panel):
         else:
             row = col.row()
             row.label(icon='FILE_BLEND')
-            row.prop(params, "use_filter_blender", text=".blend Files", toggle=0)
+            row.prop(params, "use_filter_blender",
+                     text=".blend Files", toggle=0)
             row = col.row()
             row.label(icon='FILE_BACKUP')
-            row.prop(params, "use_filter_backup", text="Backup .blend Files", toggle=0)
+            row.prop(params, "use_filter_backup",
+                     text="Backup .blend Files", toggle=0)
             row = col.row()
             row.label(icon='FILE_IMAGE')
             row.prop(params, "use_filter_image", text="Image Files", toggle=0)
@@ -127,7 +129,8 @@ class FILEBROWSER_PT_filter(Panel):
             row.prop(params, "use_filter_movie", text="Movie Files", toggle=0)
             row = col.row()
             row.label(icon='FILE_SCRIPT')
-            row.prop(params, "use_filter_script", text="Script Files", toggle=0)
+            row.prop(params, "use_filter_script",
+                     text="Script Files", toggle=0)
             row = col.row()
             row.label(icon='FILE_FONT')
             row.prop(params, "use_filter_font", text="Font Files", toggle=0)
@@ -143,7 +146,8 @@ class FILEBROWSER_PT_filter(Panel):
         if is_lib_browser:
             row = col.row()
             row.label(icon='BLANK1')  # Indentation
-            row.prop(params, "use_filter_blendid", text="Blender IDs", toggle=0)
+            row.prop(params, "use_filter_blendid",
+                     text="Blender IDs", toggle=0)
             if params.use_filter_blendid:
                 row = col.row()
                 row.label(icon='BLANK1')  # Indentation
@@ -152,6 +156,11 @@ class FILEBROWSER_PT_filter(Panel):
                 col.separator()
 
         layout.prop(params, "show_hidden")
+
+
+def panel_poll_is_upper_region(region):
+    # The upper region is left-aligned, the lower is split into it then.
+    return region.alignment == 'LEFT'
 
 
 class FILEBROWSER_UL_dir(UIList):
@@ -189,6 +198,10 @@ class FILEBROWSER_PT_bookmarks_volumes(Panel):
     bl_category = "Bookmarks"
     bl_label = "Volumes"
 
+    @classmethod
+    def poll(cls, context):
+        return panel_poll_is_upper_region(context.region)
+
     def draw(self, context):
         layout = self.layout
         space = context.space_data
@@ -207,7 +220,7 @@ class FILEBROWSER_PT_bookmarks_system(Panel):
 
     @classmethod
     def poll(cls, context):
-        return not context.preferences.filepaths.hide_system_bookmarks
+        return not context.preferences.filepaths.hide_system_bookmarks and panel_poll_is_upper_region(context.region)
 
     def draw(self, context):
         layout = self.layout
@@ -227,8 +240,10 @@ class FILEBROWSER_MT_bookmarks_context_menu(Menu):
         layout.operator("file.bookmark_cleanup", icon='X', text="Cleanup")
 
         layout.separator()
-        layout.operator("file.bookmark_move", icon='TRIA_UP_BAR', text="Move To Top").direction = 'TOP'
-        layout.operator("file.bookmark_move", icon='TRIA_DOWN_BAR', text="Move To Bottom").direction = 'BOTTOM'
+        layout.operator("file.bookmark_move", icon='TRIA_UP_BAR',
+                        text="Move To Top").direction = 'TOP'
+        layout.operator("file.bookmark_move", icon='TRIA_DOWN_BAR',
+                        text="Move To Bottom").direction = 'BOTTOM'
 
 
 class FILEBROWSER_PT_bookmarks_favorites(Panel):
@@ -236,6 +251,10 @@ class FILEBROWSER_PT_bookmarks_favorites(Panel):
     bl_region_type = 'TOOLS'
     bl_category = "Bookmarks"
     bl_label = "Favorites"
+
+    @classmethod
+    def poll(cls, context):
+        return panel_poll_is_upper_region(context.region)
 
     def draw(self, context):
         layout = self.layout
@@ -251,12 +270,15 @@ class FILEBROWSER_PT_bookmarks_favorites(Panel):
             col = row.column(align=True)
             col.operator("file.bookmark_add", icon='ADD', text="")
             col.operator("file.bookmark_delete", icon='REMOVE', text="")
-            col.menu("FILEBROWSER_MT_bookmarks_context_menu", icon='DOWNARROW_HLT', text="")
+            col.menu("FILEBROWSER_MT_bookmarks_context_menu",
+                     icon='DOWNARROW_HLT', text="")
 
             if num_rows > 1:
                 col.separator()
-                col.operator("file.bookmark_move", icon='TRIA_UP', text="").direction = 'UP'
-                col.operator("file.bookmark_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+                col.operator("file.bookmark_move", icon='TRIA_UP',
+                             text="").direction = 'UP'
+                col.operator("file.bookmark_move", icon='TRIA_DOWN',
+                             text="").direction = 'DOWN'
         else:
             layout.operator("file.bookmark_add", icon='ADD')
 
@@ -269,7 +291,7 @@ class FILEBROWSER_PT_bookmarks_recents(Panel):
 
     @classmethod
     def poll(cls, context):
-        return not context.preferences.filepaths.hide_recent_locations
+        return not context.preferences.filepaths.hide_recent_locations and panel_poll_is_upper_region(context.region)
 
     def draw(self, context):
         layout = self.layout
@@ -293,7 +315,7 @@ class FILEBROWSER_PT_advanced_filter(Panel):
     @classmethod
     def poll(cls, context):
         # only useful in append/link (library) context currently...
-        return context.space_data.params.use_library_browsing
+        return context.space_data.params.use_library_browsing and panel_poll_is_upper_region(context.region)
 
     def draw(self, context):
         layout = self.layout
@@ -306,6 +328,36 @@ class FILEBROWSER_PT_advanced_filter(Panel):
                 layout.separator()
                 col = layout.column()
                 col.prop(params, "filter_id")
+
+
+class FILEBROWSER_PT_options_toggle(Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOLS'
+    bl_label = "Options Toggle"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        return context.region.alignment == 'BOTTOM' and sfile.active_operator
+
+    def is_option_region_visible(self, context):
+        for region in context.area.regions:
+            if region.type == 'TOOL_PROPS' and region.width <= 1:
+                return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        label = "Hide Options" if self.is_option_region_visible(
+            context) else "Options"
+
+        layout.scale_x = 1.3
+        layout.scale_y = 1.3
+
+        layout.operator("screen.region_toggle",
+                        text=label).region_type = 'TOOL_PROPS'
 
 
 class FILEBROWSER_PT_directory_path(Panel):
@@ -343,7 +395,7 @@ class FILEBROWSER_PT_directory_path(Panel):
 
         subrow = row.row()
         subrow.prop(params, "directory", text="")
-        
+
         subrow = row.row()
         subrow.scale_x = 0.5
         subrow.prop(params, "filter_search", text="", icon='VIEWZOOM')
@@ -398,7 +450,6 @@ class FILEBROWSER_PT_file_operation(Panel):
         # subsub.operator("file.filenum", text="", icon='ADD').increment = 1
         # subsub.operator("file.filenum", text="", icon='REMOVE').increment = -1
 
-
         # organize buttons according to the OS standard
         if sys.platform != "win":
             sub.operator("FILE_OT_cancel", text="Cancel")
@@ -445,13 +496,15 @@ class FILEBROWSER_MT_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("file.filenum", text="Increase Number", icon='ADD').increment = 1
-        layout.operator("file.filenum", text="Decrease Number", icon='REMOVE').increment = -1
+        layout.operator("file.filenum", text="Increase Number",
+                        icon='ADD').increment = 1
+        layout.operator("file.filenum", text="Decrease Number",
+                        icon='REMOVE').increment = -1
 
         layout.separator()
 
         layout.operator("file.rename", text="Rename")
-        #layout.operator("file.delete")
+        # layout.operator("file.delete")
         layout.operator("file.directory_new", text="New Folder")
         layout.operator("file.bookmark_add", text="Add Bookmark")
 
@@ -477,6 +530,7 @@ classes = (
     FILEBROWSER_PT_advanced_filter,
     FILEBROWSER_PT_directory_path,
     FILEBROWSER_PT_file_operation,
+    FILEBROWSER_PT_options_toggle,
     FILEBROWSER_MT_view,
     FILEBROWSER_MT_context_menu,
 )
