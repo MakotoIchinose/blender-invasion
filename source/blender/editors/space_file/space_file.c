@@ -85,18 +85,18 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   ar->regiontype = RGN_TYPE_TOOLS;
   ar->alignment = RGN_ALIGN_LEFT;
 
-  /* Tool props (aka operator) region */
-  ar = MEM_callocN(sizeof(ARegion), "tool props region for file");
-  BLI_addtail(&sfile->regionbase, ar);
-  ar->regiontype = RGN_TYPE_TOOL_PROPS;
-  ar->alignment = RGN_ALIGN_RIGHT;
-
   /* Execute region */
   ar = MEM_callocN(sizeof(ARegion), "execute region for file");
   BLI_addtail(&sfile->regionbase, ar);
   ar->regiontype = RGN_TYPE_EXECUTE;
   ar->alignment = RGN_ALIGN_BOTTOM;
   ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
+
+  /* Tool props (aka operator) region */
+  ar = MEM_callocN(sizeof(ARegion), "tool props region for file");
+  BLI_addtail(&sfile->regionbase, ar);
+  ar->regiontype = RGN_TYPE_TOOL_PROPS;
+  ar->alignment = RGN_ALIGN_RIGHT;
 
   /* main region */
   ar = MEM_callocN(sizeof(ARegion), "main region for file");
