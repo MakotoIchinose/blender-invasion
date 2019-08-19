@@ -3880,8 +3880,6 @@ static bool region_toggle_poll(bContext *C)
 
 static void SCREEN_OT_region_toggle(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Toggle Region";
   ot->idname = "SCREEN_OT_region_toggle";
@@ -3892,12 +3890,12 @@ static void SCREEN_OT_region_toggle(wmOperatorType *ot)
   ot->poll = region_toggle_poll;
   ot->flag = 0;
 
-  prop = RNA_def_enum(ot->srna,
-                      "region_type",
-                      rna_enum_region_type_items,
-                      0,
-                      "Region Type",
-                      "Type of the region to toggle");
+  RNA_def_enum(ot->srna,
+               "region_type",
+               rna_enum_region_type_items,
+               0,
+               "Region Type",
+               "Type of the region to toggle");
 }
 
 /** \} */
