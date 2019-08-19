@@ -54,6 +54,9 @@ MODULE_SYS_PATHS = {
 if not bpy.app.build_options.freestyle:
     BLACKLIST.add("render_freestyle_svg")
 
+if not bpy.app.build_options.openxr:
+    BLACKLIST.add("viewport_vr_preview")
+
 BLACKLIST_DIRS = (
     os.path.join(bpy.utils.resource_path('USER'), "scripts"),
 ) + tuple(addon_utils.paths()[1:])
@@ -201,7 +204,8 @@ def load_modules():
     # check which filepaths we didn't load
     source_files = []
     for mod_dir in module_paths:
-        source_files.extend(source_list(mod_dir, filename_check=lambda f: f.endswith(".py")))
+        source_files.extend(source_list(
+            mod_dir, filename_check=lambda f: f.endswith(".py")))
 
     source_files = list(set(source_files))
     source_files.sort()
