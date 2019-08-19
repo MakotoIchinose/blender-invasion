@@ -3353,6 +3353,8 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = wm_xr_session_toggle_exec;
+
+  ot->flag = OPTYPE_INTERNAL;
 }
 #endif /* WITH_OPENXR */
 
