@@ -102,6 +102,7 @@
 #include "RE_engine.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "view3d_intern.h" /* own include */
 
@@ -161,6 +162,7 @@ static void validate_object_select_id(
   Object *obact_eval = DEG_get_evaluated_object(depsgraph, obact);
 
   BLI_assert(ar->regiontype == RGN_TYPE_WINDOW);
+  UNUSED_VARS_NDEBUG(ar);
 
   if (obact_eval && (obact_eval->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT) ||
                      BKE_paint_select_face_test(obact_eval))) {
@@ -184,7 +186,8 @@ static void validate_object_select_id(
   }
 
   if (obact_eval && ((obact_eval->base_flag & BASE_VISIBLE) != 0)) {
-    DRW_draw_select_id_object(depsgraph, view_layer, ar, v3d, obact, -1);
+    Base *base = BKE_view_layer_base_find(view_layer, obact);
+    DRW_select_buffer_context_create(&base, 1, -1);
   }
 
   /* TODO: Create a flag in `DRW_manager` because the drawing is no longer
@@ -236,22 +239,6 @@ void ED_view3d_backbuf_depth_validate(ViewContext *vc)
 
     vc->v3d->flag &= ~V3D_INVALID_BACKBUF;
   }
-}
-
-uint *ED_view3d_select_id_read_rect(const rcti *clip, uint *r_buf_len)
-{
-  uint width = BLI_rcti_size_x(clip);
-  uint height = BLI_rcti_size_y(clip);
-  uint buf_len = width * height;
-  uint *buf = MEM_mallocN(buf_len * sizeof(*buf), __func__);
-
-  DRW_framebuffer_select_id_read(clip, buf);
-
-  if (r_buf_len) {
-    *r_buf_len = buf_len;
-  }
-
-  return buf;
 }
 
 /**

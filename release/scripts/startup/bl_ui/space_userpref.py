@@ -44,9 +44,11 @@ class USERPREF_HT_header(Header):
         if prefs.use_preferences_save and (not bpy.app.use_userpref_skip_save_on_exit):
             pass
         else:
-            sub = row.row(align=True)
-            sub.active = prefs.is_dirty
-            sub.operator("wm.save_userpref")
+            # Show '*' to let users know the preferences have been modified.
+            row.operator(
+                "wm.save_userpref",
+                text="Save Preferences{:s}".format(" *" if prefs.is_dirty else ""),
+            )
 
     def draw(self, context):
         layout = self.layout
@@ -84,7 +86,9 @@ class USERPREF_MT_save_load(Menu):
 
         prefs = context.preferences
 
-        layout.prop(prefs, "use_preferences_save", text="Auto-Save Preferences")
+        row = layout.row()
+        row.active = not bpy.app.use_userpref_skip_save_on_exit
+        row.prop(prefs, "use_preferences_save", text="Auto-Save Preferences")
 
         layout.separator()
 
@@ -427,7 +431,6 @@ class USERPREF_PT_edit_annotations(PreferencePanel, Panel):
 
         flow.prop(edit, "grease_pencil_default_color", text="Default Color")
         flow.prop(edit, "grease_pencil_eraser_radius", text="Eraser Radius")
-        flow.prop(edit, "use_grease_pencil_simplify_stroke", text="Simplify Stroke")
 
 
 class USERPREF_PT_edit_weight_paint(PreferencePanel, Panel):
@@ -1741,6 +1744,7 @@ class USERPREF_PT_addons(Panel):
         row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
 
         row = layout.row()
+        row.prop(context.preferences.view, "show_addons_enabled_only")
         row.prop(context.window_manager, "addon_filter", text="")
         row.prop(context.window_manager, "addon_search", text="", icon='VIEWZOOM')
 
@@ -1767,6 +1771,7 @@ class USERPREF_PT_addons(Panel):
                 "(see console for details)",
             )
 
+        show_enabled_only = context.preferences.view.show_addons_enabled_only
         filter = context.window_manager.addon_filter
         search = context.window_manager.addon_search.lower()
         support = context.window_manager.addon_support
@@ -1783,13 +1788,15 @@ class USERPREF_PT_addons(Panel):
                 continue
 
             # check if addon should be visible with current filters
-            if (
-                    (filter == "All") or
-                    (filter == info["category"]) or
-                    (filter == "Enabled" and is_enabled) or
-                    (filter == "Disabled" and not is_enabled) or
-                    (filter == "User" and (mod.__file__.startswith(addon_user_dirs)))
-            ):
+            is_visible = (
+                (filter == "All") or
+                (filter == info["category"]) or
+                (filter == "User" and (mod.__file__.startswith(addon_user_dirs)))
+            )
+            if show_enabled_only:
+                is_visible = is_visible and is_enabled
+
+            if is_visible:
                 if search and search not in info["name"].lower():
                     if info["author"]:
                         if search not in info["author"].lower():

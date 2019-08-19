@@ -1733,10 +1733,10 @@ bool BKE_id_new_name_validate(ListBase *lb, ID *id, const char *tname)
   result = check_for_dupid(lb, id, name);
   strcpy(id->name + 2, name);
 
-/* This was in 2.43 and previous releases
- * however all data in blender should be sorted, not just duplicate names
- * sorting should not hurt, but noting just incase it alters the way other
- * functions work, so sort every time */
+  /* This was in 2.43 and previous releases
+   * however all data in blender should be sorted, not just duplicate names
+   * sorting should not hurt, but noting just in case it alters the way other
+   * functions work, so sort every time. */
 #if 0
   if (result) {
     id_sort_by_name(lb, id);
@@ -1824,7 +1824,7 @@ static int id_refcount_recompute_callback(void *user_data,
   return IDWALK_RET_NOP;
 }
 
-void BLE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_only)
+void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_only)
 {
   ID *id;
 

@@ -868,6 +868,7 @@ typedef enum eUserPref_Flag {
   USER_NONEGFRAMES = (1 << 24),
   USER_TXT_TABSTOSPACES_DISABLE = (1 << 25),
   USER_TOOLTIPS_PYTHON = (1 << 26),
+  USER_ADDONS_ENABLED_ONLY = (1 << 27),
 } eUserPref_Flag;
 
 typedef enum eUserPref_PrefFlag {
@@ -1069,7 +1070,6 @@ typedef enum eText_Draw_Options {
  * #UserDef.gp_settings */
 typedef enum eGP_UserdefSettings {
   GP_PAINT_UNUSED_0 = (1 << 0),
-  GP_PAINT_DOSIMPLIFY = (1 << 1),
 } eGP_UserdefSettings;
 
 enum {

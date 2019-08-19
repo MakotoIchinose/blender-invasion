@@ -2009,19 +2009,18 @@ static void drawTransformView(const struct bContext *C, ARegion *ar, void *arg)
  * to warn that autokeying is enabled */
 static void drawAutoKeyWarning(TransInfo *UNUSED(t), ARegion *ar)
 {
-  rcti rect;
   const char *printable = IFACE_("Auto Keying On");
   float printable_size[2];
   int xco, yco;
 
-  ED_region_visible_rect(ar, &rect);
+  const rcti *rect = ED_region_visible_rect(ar);
 
   const int font_id = BLF_default();
   BLF_width_and_height(
       font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-  xco = (rect.xmax - U.widget_unit) - (int)printable_size[0];
-  yco = (rect.ymax - U.widget_unit);
+  xco = (rect->xmax - U.widget_unit) - (int)printable_size[0];
+  yco = (rect->ymax - U.widget_unit);
 
   /* warning text (to clarify meaning of overlays)
    * - original color was red to match the icon, but that clashes badly with a less nasty border
@@ -6602,7 +6601,7 @@ static void slide_origdata_interp_data_vert(SlideOrigData *sod,
      * and we do not want to mess up other shape keys */
     BM_loop_interp_from_face(bm, l, f_copy, false, false);
 
-    /* make sure face-attributes are correct (e.g. MTexPoly) */
+    /* make sure face-attributes are correct (e.g. #MLoopUV, #MLoopCol) */
     BM_elem_attrs_copy_ex(sod->bm_origfaces, bm, f_copy, l->f, 0x0, CD_MASK_NORMAL);
 
     /* weight the loop */
@@ -9649,20 +9648,17 @@ static void headerTimeSlide(TransInfo *t, const float sval, char str[UI_MAX_DRAW
   BLI_snprintf(str, UI_MAX_DRAW_STR, TIP_("TimeSlide: %s"), &tvec[0]);
 }
 
-static void applyTimeSlideValue(TransInfo *t, float sval)
+static void applyTimeSlideValue(TransInfo *t, float sval, float cval)
 {
   int i;
   const float *range = t->custom.mode.data;
   float minx = range[0];
   float maxx = range[1];
-  t->values_final[0] = t->values[0];
 
   /* set value for drawing black line */
   if (t->spacetype == SPACE_ACTION) {
     SpaceAction *saction = (SpaceAction *)t->sa->spacedata.first;
-    float cvalf = t->values_final[0];
-
-    saction->timeslide = cvalf;
+    saction->timeslide = cval;
   }
 
   /* It doesn't matter whether we apply to t->data or
@@ -9675,7 +9671,6 @@ static void applyTimeSlideValue(TransInfo *t, float sval)
        * (this is only valid when not in NLA)
        */
       AnimData *adt = (t->spacetype != SPACE_NLA) ? td->extra : NULL;
-      float cval = t->values_final[0];
 
       /* only apply to data if in range */
       if ((sval > minx) && (sval < maxx)) {
@@ -9736,7 +9731,7 @@ static void applyTimeSlide(TransInfo *t, const int mval[2])
   t->values_final[0] = (maxx - minx) * t->vec[0] / 2.0f + sval[0];
 
   headerTimeSlide(t, sval[0], str);
-  applyTimeSlideValue(t, sval[0]);
+  applyTimeSlideValue(t, sval[0], t->values_final[0]);
 
   recalcData(t);
 
@@ -9808,14 +9803,13 @@ static void headerTimeScale(TransInfo *t, char str[UI_MAX_DRAW_STR])
   BLI_snprintf(str, UI_MAX_DRAW_STR, TIP_("ScaleX: %s"), &tvec[0]);
 }
 
-static void applyTimeScaleValue(TransInfo *t)
+static void applyTimeScaleValue(TransInfo *t, float value)
 {
   Scene *scene = t->scene;
   int i;
 
   const short autosnap = getAnimEdit_SnapMode(t);
   const double secf = FPS;
-  t->values_final[0] = t->values[0];
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
@@ -9827,7 +9821,7 @@ static void applyTimeScaleValue(TransInfo *t)
        */
       AnimData *adt = (t->spacetype != SPACE_NLA) ? td->extra : NULL;
       float startx = CFRA;
-      float fac = t->values_final[0];
+      float fac = value;
 
       if (autosnap == SACTSNAP_TSTEP) {
         fac = (float)(floor((double)fac / secf + 0.5) * secf);
@@ -9863,7 +9857,7 @@ static void applyTimeScale(TransInfo *t, const int UNUSED(mval[2]))
   t->values_final[0] = t->vec[0];
   headerTimeScale(t, str);
 
-  applyTimeScaleValue(t);
+  applyTimeScaleValue(t, t->values_final[0]);
 
   recalcData(t);
 

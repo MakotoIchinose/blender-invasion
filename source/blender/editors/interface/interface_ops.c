@@ -27,7 +27,7 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_text_types.h"   /* for UI_OT_reports_to_text */
+#include "DNA_text_types.h"
 #include "DNA_object_types.h" /* for OB_DATA_SUPPORT_ID */
 
 #include "BLI_blenlib.h"
@@ -45,7 +45,7 @@
 #include "BKE_node.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
-#include "BKE_text.h" /* for UI_OT_reports_to_text */
+#include "BKE_text.h"
 
 #include "IMB_colormanagement.h"
 
@@ -172,7 +172,8 @@ static bool copy_as_driver_button_poll(bContext *C)
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
   if (ptr.id.data && ptr.data && prop &&
-      ELEM(RNA_property_type(prop), PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+      ELEM(RNA_property_type(prop), PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM) &&
+      (index >= 0 || !RNA_property_array_check(prop))) {
     path = RNA_path_from_ID_to_property(&ptr, prop);
 
     if (path) {
@@ -1095,60 +1096,6 @@ static void UI_OT_jump_to_target_button(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Reports to Textblock Operator
- * \{ */
-
-/* FIXME: this is just a temporary operator so that we can see all the reports somewhere
- * when there are too many to display...
- */
-
-static bool reports_to_text_poll(bContext *C)
-{
-  return CTX_wm_reports(C) != NULL;
-}
-
-static int reports_to_text_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  ReportList *reports = CTX_wm_reports(C);
-  Main *bmain = CTX_data_main(C);
-  Text *txt;
-  char *str;
-
-  /* create new text-block to write to */
-  txt = BKE_text_add(bmain, "Recent Reports");
-
-  /* convert entire list to a display string, and add this to the text-block
-   * - if commandline debug option enabled, show debug reports too
-   * - otherwise, up to info (which is what users normally see)
-   */
-  str = BKE_reports_string(reports, (G.debug & G_DEBUG) ? RPT_DEBUG : RPT_INFO);
-
-  if (str) {
-    BKE_text_write(txt, str);
-    MEM_freeN(str);
-
-    return OPERATOR_FINISHED;
-  }
-  else {
-    return OPERATOR_CANCELLED;
-  }
-}
-
-static void UI_OT_reports_to_textblock(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Reports to Text Block";
-  ot->idname = "UI_OT_reports_to_textblock";
-  ot->description = "Write the reports ";
-
-  /* callbacks */
-  ot->poll = reports_to_text_poll;
-  ot->exec = reports_to_text_exec;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Edit Python Source Operator
  * \{ */
 
@@ -1749,7 +1696,6 @@ void ED_operatortypes_ui(void)
   WM_operatortype_append(UI_OT_override_remove_button);
   WM_operatortype_append(UI_OT_copy_to_selected_button);
   WM_operatortype_append(UI_OT_jump_to_target_button);
-  WM_operatortype_append(UI_OT_reports_to_textblock); /* XXX: temp? */
   WM_operatortype_append(UI_OT_drop_color);
 #ifdef WITH_PYTHON
   WM_operatortype_append(UI_OT_editsource);

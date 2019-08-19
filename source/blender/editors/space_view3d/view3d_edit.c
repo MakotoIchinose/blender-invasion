@@ -201,7 +201,7 @@ static void calctrackballvec(const rcti *rect, const int event_xy[2], float r_di
 
   /* Normalize x and y. */
   r_dir[0] = (event_xy[0] - BLI_rcti_cent_x(rect)) / ((size[0] * aspect[0]) / 2.0);
-  r_dir[1] = (event_xy[1] - BLI_rcti_cent_x(rect)) / ((size[1] * aspect[1]) / 2.0);
+  r_dir[1] = (event_xy[1] - BLI_rcti_cent_y(rect)) / ((size[1] * aspect[1]) / 2.0);
   const float d = len_v2(r_dir);
   if (d < t) {
     /* Inside sphere. */
@@ -404,9 +404,7 @@ static void viewops_data_create(bContext *C,
   if (viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE) {
     if (ED_view3d_persp_ensure(depsgraph, vod->v3d, vod->ar)) {
       /* If we're switching from camera view to the perspective one,
-       * need to tag viewport update, so camera vuew and borders
-       * are properly updated.
-       */
+       * need to tag viewport update, so camera view and borders are properly updated. */
       ED_region_tag_redraw(vod->ar);
     }
   }
@@ -517,9 +515,6 @@ static void viewops_data_create(bContext *C,
 static void viewops_data_free(bContext *C, wmOperator *op)
 {
   ARegion *ar;
-#if 0
-  Paint *p = BKE_paint_get_active_from_context(C);
-#endif
   if (op->customdata) {
     ViewOpsData *vod = op->customdata;
     ar = vod->ar;
@@ -536,12 +531,9 @@ static void viewops_data_free(bContext *C, wmOperator *op)
     ar = CTX_wm_region(C);
   }
 
-#if 0
-  if (p && (p->flags & PAINT_FAST_NAVIGATE))
-#endif
-  {
-    ED_region_tag_redraw(ar);
-  }
+  /* Need to redraw because drawing code uses RV3D_NAVIGATING to draw
+   * faster while navigation operator runs. */
+  ED_region_tag_redraw(ar);
 }
 
 /** \} */
@@ -1959,6 +1951,8 @@ static float viewzoom_scale_value(const rcti *winrct,
       fac = (float)(xy_init[1] - xy_curr[1]);
     }
 
+    fac /= U.pixelsize;
+
     if (zoom_invert != zoom_invert_force) {
       fac = -fac;
     }
@@ -1974,8 +1968,8 @@ static float viewzoom_scale_value(const rcti *winrct,
         BLI_rcti_cent_x(winrct),
         BLI_rcti_cent_y(winrct),
     };
-    float len_new = 5 + len_v2v2_int(ctr, xy_curr);
-    float len_old = 5 + len_v2v2_int(ctr, xy_init);
+    float len_new = (5 * U.pixelsize) + ((float)len_v2v2_int(ctr, xy_curr) / U.pixelsize);
+    float len_old = (5 * U.pixelsize) + ((float)len_v2v2_int(ctr, xy_init) / U.pixelsize);
 
     /* intentionally ignore 'zoom_invert' for scale */
     if (zoom_invert_force) {
@@ -1985,16 +1979,16 @@ static float viewzoom_scale_value(const rcti *winrct,
     zfac = val_orig * (len_old / max_ff(len_new, 1.0f)) / val;
   }
   else { /* USER_ZOOM_DOLLY */
-    float len_new = 5;
-    float len_old = 5;
+    float len_new = 5 * U.pixelsize;
+    float len_old = 5 * U.pixelsize;
 
     if (U.uiflag & USER_ZOOM_HORIZ) {
-      len_new += (winrct->xmax - (xy_curr[0]));
-      len_old += (winrct->xmax - (xy_init[0]));
+      len_new += (winrct->xmax - (xy_curr[0])) / U.pixelsize;
+      len_old += (winrct->xmax - (xy_init[0])) / U.pixelsize;
     }
     else {
-      len_new += (winrct->ymax - (xy_curr[1]));
-      len_old += (winrct->ymax - (xy_init[1]));
+      len_new += (winrct->ymax - (xy_curr[1])) / U.pixelsize;
+      len_old += (winrct->ymax - (xy_init[1])) / U.pixelsize;
     }
 
     if (zoom_invert != zoom_invert_force) {

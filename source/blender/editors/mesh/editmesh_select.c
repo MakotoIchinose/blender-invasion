@@ -53,7 +53,6 @@
 #include "ED_mesh.h"
 #include "ED_screen.h"
 #include "ED_transform.h"
-#include "ED_select_buffer_utils.h"
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
 
@@ -69,6 +68,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "mesh_intern.h" /* own include */
 
@@ -203,7 +203,7 @@ static BMElem *edbm_select_id_bm_elem_get(Base **bases, const uint sel_id, uint 
 {
   uint elem_id;
   char elem_type = 0;
-  bool success = DRW_select_elem_get(sel_id, &elem_id, r_base_index, &elem_type);
+  bool success = DRW_select_buffer_elem_get(sel_id, &elem_id, r_base_index, &elem_type);
 
   if (success) {
     Object *obedit = bases[*r_base_index]->object;
@@ -317,9 +317,10 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_VERTEX);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_VERTEX);
 
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(
+          vc->depsgraph, vc->ar, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
         eve = (BMVert *)edbm_select_id_bm_elem_get(bases, index, &base_index);
@@ -539,9 +540,10 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_EDGE);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_EDGE);
 
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(
+          vc->depsgraph, vc->ar, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
         eed = (BMEdge *)edbm_select_id_bm_elem_get(bases, index, &base_index);
@@ -745,9 +747,9 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
     BMFace *efa;
 
     {
-      DRW_draw_select_id(vc->depsgraph, vc->ar, vc->v3d, bases, bases_len, SCE_SELECT_FACE);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_FACE);
 
-      index = ED_select_buffer_sample_point(vc->mval);
+      index = DRW_select_buffer_sample_point(vc->depsgraph, vc->ar, vc->v3d, vc->mval);
 
       if (index) {
         efa = (BMFace *)edbm_select_id_bm_elem_get(bases, index, &base_index);

@@ -2386,8 +2386,8 @@ static void ui_but_copy_curvemapping(uiBut *but)
 {
   if (but->poin != NULL) {
     but_copypaste_curve_alive = true;
-    curvemapping_free_data(&but_copypaste_curve);
-    curvemapping_copy_data(&but_copypaste_curve, (CurveMapping *)but->poin);
+    BKE_curvemapping_free_data(&but_copypaste_curve);
+    BKE_curvemapping_copy_data(&but_copypaste_curve, (CurveMapping *)but->poin);
   }
 }
 
@@ -2399,8 +2399,8 @@ static void ui_but_paste_curvemapping(bContext *C, uiBut *but)
     }
 
     button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-    curvemapping_free_data((CurveMapping *)but->poin);
-    curvemapping_copy_data((CurveMapping *)but->poin, &but_copypaste_curve);
+    BKE_curvemapping_free_data((CurveMapping *)but->poin);
+    BKE_curvemapping_copy_data((CurveMapping *)but->poin, &but_copypaste_curve);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
   }
 }
@@ -2588,7 +2588,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
 void ui_but_clipboard_free(void)
 {
-  curvemapping_free_data(&but_copypaste_curve);
+  BKE_curvemapping_free_data(&but_copypaste_curve);
 }
 
 /** \} */
@@ -4001,6 +4001,11 @@ static int ui_do_but_HOTKEYEVT(bContext *C,
       return WM_UI_HANDLER_CONTINUE;
     }
     else if (event->type == UNKNOWNKEY) {
+      WM_report(RPT_WARNING, "Unsupported key: Unknown");
+      return WM_UI_HANDLER_CONTINUE;
+    }
+    else if (event->type == CAPSLOCKKEY) {
+      WM_report(RPT_WARNING, "Unsupported key: CapsLock");
       return WM_UI_HANDLER_CONTINUE;
     }
 
@@ -4795,37 +4800,24 @@ static int ui_do_but_NUM(
   if (click) {
     /* we can click on the side arrows to increment/decrement,
      * or click inside to edit the value directly */
-    float tempf, softmin, softmax;
-    int temp;
-
-    softmin = but->softmin;
-    softmax = but->softmax;
+    const float softmin = but->softmin;
+    const float softmax = but->softmax;
 
     if (!ui_but_is_float(but)) {
-      if (but->drawflag & UI_BUT_ACTIVE_LEFT) {
+      /* Integer Value. */
+      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-
-        temp = (int)data->value - 1;
-        if (temp >= softmin && temp <= softmax) {
-          data->value = (double)temp;
+        const int value_step = (int)but->a1;
+        BLI_assert(value_step > 0);
+        const double value_test = (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+                                      (double)max_ii((int)softmin, (int)data->value - value_step) :
+                                      (double)min_ii((int)softmax, (int)data->value + value_step);
+        if (value_test != data->value) {
+          data->value = (double)value_test;
         }
         else {
           data->cancel = true;
         }
-
-        button_activate_state(C, but, BUTTON_STATE_EXIT);
-      }
-      else if (but->drawflag & UI_BUT_ACTIVE_RIGHT) {
-        button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-
-        temp = (int)data->value + 1;
-        if (temp >= softmin && temp <= softmax) {
-          data->value = (double)temp;
-        }
-        else {
-          data->cancel = true;
-        }
-
         button_activate_state(C, but, BUTTON_STATE_EXIT);
       }
       else {
@@ -4833,26 +4825,20 @@ static int ui_do_but_NUM(
       }
     }
     else {
-      if (but->drawflag & UI_BUT_ACTIVE_LEFT) {
+      /* Float Value. */
+      if (but->drawflag & (UI_BUT_ACTIVE_LEFT | UI_BUT_ACTIVE_RIGHT)) {
         button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-
-        tempf = (float)data->value - (UI_PRECISION_FLOAT_SCALE * but->a1);
-        if (tempf < softmin) {
-          tempf = softmin;
+        const double value_step = (double)but->a1 * UI_PRECISION_FLOAT_SCALE;
+        BLI_assert(value_step > 0.0f);
+        const double value_test = (but->drawflag & UI_BUT_ACTIVE_LEFT) ?
+                                      (double)max_ff(softmin, (float)(data->value - value_step)) :
+                                      (double)min_ff(softmax, (float)(data->value + value_step));
+        if (value_test != data->value) {
+          data->value = value_test;
         }
-        data->value = tempf;
-
-        button_activate_state(C, but, BUTTON_STATE_EXIT);
-      }
-      else if (but->drawflag & UI_BUT_ACTIVE_RIGHT) {
-        button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-
-        tempf = (float)data->value + (UI_PRECISION_FLOAT_SCALE * but->a1);
-        if (tempf > softmax) {
-          tempf = softmax;
+        else {
+          data->cancel = true;
         }
-        data->value = tempf;
-
         button_activate_state(C, but, BUTTON_STATE_EXIT);
       }
       else {
@@ -6479,7 +6465,7 @@ static bool ui_numedit_but_CURVE(uiBlock *block,
       }
     }
 
-    curvemapping_changed(cumap, false);
+    BKE_curvemapping_changed(cumap, false);
 
     if (moved_point) {
       data->draglastx = evtx;
@@ -6559,8 +6545,8 @@ static int ui_do_but_CURVE(
         float f_xy[2];
         BLI_rctf_transform_pt_v(&cumap->curr, &but->rect, f_xy, m_xy);
 
-        curvemap_insert(cuma, f_xy[0], f_xy[1]);
-        curvemapping_changed(cumap, false);
+        BKE_curvemap_insert(cuma, f_xy[0], f_xy[1]);
+        BKE_curvemapping_changed(cumap, false);
         changed = true;
       }
 
@@ -6597,8 +6583,8 @@ static int ui_do_but_CURVE(
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
             BLI_rctf_transform_pt_v(&cumap->curr, &but->rect, f_xy, m_xy);
 
-            curvemap_insert(cuma, f_xy[0], f_xy[1]);
-            curvemapping_changed(cumap, false);
+            BKE_curvemap_insert(cuma, f_xy[0], f_xy[1]);
+            BKE_curvemapping_changed(cumap, false);
 
             changed = true;
 
@@ -6672,7 +6658,7 @@ static int ui_do_but_CURVE(
           }
         }
         else {
-          curvemapping_changed(cumap, true); /* remove doubles */
+          BKE_curvemapping_changed(cumap, true); /* remove doubles */
           BKE_paint_invalidate_cursor_overlay(scene, view_layer, cumap);
         }
       }
@@ -8198,7 +8184,7 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
           else {
             /* Do this so we can still mouse-up, closing the menu and running the button.
              * This is nice to support but there are times when the button gets left pressed.
-             * Keep disavled for now. */
+             * Keep disabled for now. */
             WM_event_remove_timer(data->wm, data->window, data->hold_action_timer);
             data->hold_action_timer = NULL;
           }
