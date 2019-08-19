@@ -3395,11 +3395,11 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
       for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
         float xy[2];
 
-        /* 3D to Screenspace */
-        /* Note: We can't use gp_point_to_xy() here because that uses ints for the
-         * screenspace coordinates, resulting in lost precision, which in turn causes
-         * stairstepping artifacts in the final points.
-         */
+        /* 3D to Screen-space */
+        /* Note: We can't use gp_point_to_xy() here because that uses ints for the screen-space
+         * coordinates, resulting in lost precision, which in turn causes stair-stepping
+         * artifacts in the final points. */
+
         bGPDspoint pt2;
         gp_point_to_parent_space(pt, gpstroke_iter.diff_mat, &pt2);
         gp_point_to_xy_fl(&gsc, gps, &pt2, &xy[0], &xy[1]);
@@ -3448,11 +3448,10 @@ static int gp_strokes_reproject_exec(bContext *C, wmOperator *op)
           /* apply parent again */
           gp_apply_parent_point(depsgraph, ob, gpd, gpl, pt);
         }
-        /* Project screenspace back to 3D space (from current perspective)
-         * so that all points have been treated the same way
-         */
+        /* Project screen-space back to 3D space (from current perspective)
+         * so that all points have been treated the same way. */
         else if (mode == GP_REPROJECT_VIEW) {
-          /* Planar - All on same plane parallel to the viewplane */
+          /* Planar - All on same plane parallel to the view-plane. */
           gp_point_xy_to_3d(&gsc, scene, xy, &pt->x);
         }
         else {
