@@ -364,7 +364,17 @@ static Mesh *do_step_cloth(
   }
 
   /* Support for dynamic vertex groups, changing from frame to frame */
+
+#if 0
+  if (clmd->mesh) {
+    cloth_apply_vgroup(clmd, clmd->mesh);
+  }
+  else {
+    cloth_apply_vgroup(clmd, result);
+  }
+#else
   cloth_apply_vgroup(clmd, result);
+#endif
 
   if ((clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_DYNAMIC_BASEMESH) ||
       (clmd->sim_parms->vgroup_shrink > 0) || (clmd->sim_parms->shrink_min > 0.0f)) {
@@ -388,6 +398,10 @@ static Mesh *do_step_cloth(
   if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_ADAPTIVE_REMESHING) {
     mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, result);
   }
+
+#if 0
+  BKE_id_copy_ex(NULL, (ID *)mesh_result, (ID **)&clmd->mesh, LIB_ID_COPY_LOCALIZE);
+#endif
 
   if (!ret) {
     return NULL;
@@ -834,6 +848,30 @@ int cloth_uses_vgroup(ClothModifierData *clmd)
  */
 void cloth_apply_vgroup(ClothModifierData *clmd, Mesh *mesh)
 {
+#if 0
+  {
+    printf("mesh in %s totvert: %d\n", __func__, mesh->totvert);
+    MDeformVert *dvert = NULL;
+    for (int i = 0; i < mesh->totvert; i++) {
+      dvert = (MDeformVert *)CustomData_get(&mesh->vdata, i, CD_MDEFORMVERT);
+      if (dvert) {
+        printf("v: %f %f %f weights: ",
+               mesh->mvert[i].co[0],
+               mesh->mvert[i].co[1],
+               mesh->mvert[i].co[2]);
+        for (int j = 0; j < dvert->totweight; j++) {
+          if (dvert->dw[j].def_nr == (clmd->sim_parms->vgroup_mass - 1)) {
+            printf("%f ", pow4f(dvert->dw[j].weight));
+            if (dvert->dw[j].weight < 0.9999f) {
+              dvert->totweight = 0;
+            }
+          }
+        }
+        printf("\n");
+      }
+    }
+  }
+#endif
   /* Can be optimized to do all groups in one loop. */
   int i = 0;
   int j = 0;

@@ -1970,6 +1970,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       /* update active_faces */
       cloth_remeshing_update_active_faces(active_faces, clmd->clothObject->bm, temp_vert);
 
+#if 0
       /* run cloth_remeshing_fix_mesh on newly created faces by
        * cloth_remeshing_try_edge_collapse */
       vector<BMFace *> fix_active;
@@ -1982,6 +1983,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
 
       /* update active_faces */
       cloth_remeshing_update_active_faces(active_faces, fix_active);
+#endif
 
       count++;
       return true;
@@ -2912,6 +2914,32 @@ static void cloth_remeshing_compute_vertex_sizing(ClothModifierData *clmd,
   }
 }
 
+static bool cloth_remeshing_find_in_mesh(Mesh *mesh, float a[3])
+{
+  for (int i = 0; i < mesh->totvert; i++) {
+    if (equals_v3v3(mesh->mvert[i].co, a, ALMOST_ZERO)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void cloth_remeshing_reset_pin_weights(Mesh *old_mesh, Mesh *new_mesh)
+{
+  MDeformVert *dvert = NULL;
+  for (int i = 0; i < new_mesh->totvert; i++) {
+    dvert = (MDeformVert *)CustomData_get(&new_mesh->vdata, i, CD_MDEFORMVERT);
+    if (dvert) {
+      /* if vert is in old mesh, then leave it as is, otherwise
+       * set weight to 0 */
+      if (!cloth_remeshing_find_in_mesh(old_mesh, new_mesh->mvert[i].co)) {
+        print_v3("didn't find", new_mesh->mvert[i].co);
+        dvert->totweight = 0;
+      }
+    }
+  }
+}
+
 Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *clmd, Mesh *mesh)
 {
   ClothVertMap cvm;
@@ -2940,6 +2968,28 @@ Mesh *cloth_remeshing_step(Depsgraph *depsgraph, Object *ob, ClothModifierData *
   /*        mesh_result->totvert, */
   /*        mesh_result->totedge, */
   /*        mesh_result->totpoly); */
+
+#if 0
+  MDeformVert *dvert = NULL;
+  cloth_remeshing_reset_pin_weights(mesh, mesh_result);
+  printf("mesh->totvert: %d\n", mesh->totvert);
+  printf("mesh_result->totvert: %d\n", mesh_result->totvert);
+  for (int i = 0; i < mesh_result->totvert; i++) {
+    dvert = (MDeformVert *)CustomData_get(&mesh_result->vdata, i, CD_MDEFORMVERT);
+    if (dvert) {
+      printf("v: %f %f %f weights: ",
+             mesh_result->mvert[i].co[0],
+             mesh_result->mvert[i].co[1],
+             mesh_result->mvert[i].co[2]);
+      for (int j = 0; j < dvert->totweight; j++) {
+        if (dvert->dw[j].def_nr == (clmd->sim_parms->vgroup_mass - 1)) {
+          printf("%f ", pow4f(dvert->dw[j].weight));
+        }
+      }
+      printf("\n");
+    }
+  }
+#endif
 
   cvm.clear();
   return mesh_result;
