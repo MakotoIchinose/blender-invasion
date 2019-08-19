@@ -29,7 +29,6 @@ ccl_device_forceinline Transform bvh_unaligned_node_fetch_space(KernelGlobals *k
 }
 
 #if !defined(__KERNEL_SSE2__)
-
 ccl_device_forceinline int bvh_aligned_node_intersect(KernelGlobals *kg,
                                                       const float3 P,
                                                       const float3 idir,

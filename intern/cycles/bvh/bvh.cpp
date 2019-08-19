@@ -99,7 +99,6 @@ BVH::BVH(const BVHParams &params_, const vector<Object *> &objects_)
 
 BVH *BVH::create(const BVHParams &params, const vector<Object *> &objects)
 {
-  std::cout << "Using layout : " << bvh_layout_name(params.bvh_layout) << std::endl;
   switch (params.bvh_layout) {
     case BVH_LAYOUT_BVH2:
       return new BVH2(params, objects);
@@ -121,12 +120,6 @@ BVH *BVH::create(const BVHParams &params, const vector<Object *> &objects)
 }
 
 /* Building */
-
-void BVH::buildTimed(Progress &p, Stats *s) {
-    auto start = std::chrono::steady_clock::now();
-    this->build(p, s);
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-start).count() << "ms" << std::endl;
-}
 
 void BVH::build(Progress &progress, Stats *)
 {
@@ -155,7 +148,6 @@ void BVH::build(Progress &progress, Stats *)
   if (root != bvh2_root) {
     bvh2_root->deleteSubtree();
   }
-  std::cout << "SAH " << root->computeSubtreeSAHCost(this->params) << std::endl;
 
   if (progress.get_cancel()) {
     if (root != NULL) {

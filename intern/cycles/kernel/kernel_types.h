@@ -321,10 +321,10 @@ enum PathRayFlag {
   /* Path and shader is being evaluated for direct lighting emission. */
   PATH_RAY_EMISSION = (1 << 22),
 
-  /* Special flag to tag 4D BVH nodes (they also cary time bounds). */
+  /* Special flag to tag 4D BVH nodes (they also carry time bounds). */
   PATH_RAY_NODE_4D = (1 << 23),
 
-  /* Special flag to tag 4D BVH nodes (they also cary time bounds). */
+  /* Special flag to tag nodes that can be linearly interpolated */
   PATH_RAY_NODE_MB = (1 << 24),
 
   PATH_RAY_NODE_CLEAR = (PATH_RAY_NODE_4D | PATH_RAY_NODE_UNALIGNED | PATH_RAY_NODE_MB),

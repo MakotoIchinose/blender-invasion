@@ -1,4 +1,4 @@
-From 4a3ec5e090fa208eef6900bd9217b93e62111168 Mon Sep 17 00:00:00 2001
+From 1bd1456d289b3587e6c532085375c83bafccadf4 Mon Sep 17 00:00:00 2001
 From: MATILLAT Quentin <qmatillat@gmail.com>
 Date: Sun, 18 Aug 2019 15:29:34 +0200
 Subject: [PATCH] Add ability to export curve from BVH
@@ -7,8 +7,8 @@ Subject: [PATCH] Add ability to export curve from BVH
  include/embree3/rtcore_builder.h  |  22 +++
  include/embree3/rtcore_common.h   |   7 +
  kernels/bvh/bvh_builder_hair.cpp  |   3 +-
- kernels/common/rtcore_builder.cpp | 297 ++++++++++++++++++++++--------
- 4 files changed, 251 insertions(+), 78 deletions(-)
+ kernels/common/rtcore_builder.cpp | 290 ++++++++++++++++++++++--------
+ 4 files changed, 244 insertions(+), 78 deletions(-)
 
 diff --git a/include/embree3/rtcore_builder.h b/include/embree3/rtcore_builder.h
 index af84035b0..77e754f7e 100644
@@ -77,7 +77,7 @@ index 14273787f..cad238123 100644
  }
  #endif
 diff --git a/kernels/common/rtcore_builder.cpp b/kernels/common/rtcore_builder.cpp
-index 56858294c..9ef862979 100644
+index 56858294c..94d2e211f 100644
 --- a/kernels/common/rtcore_builder.cpp
 +++ b/kernels/common/rtcore_builder.cpp
 @@ -29,8 +29,17 @@
@@ -98,7 +98,7 @@ index 56858294c..9ef862979 100644
    namespace isa // FIXME: support more ISAs for builders
    {
      struct BVH : public RefCount
-@@ -334,92 +343,226 @@ namespace embree
+@@ -334,92 +343,219 @@ namespace embree
        return root;
      }
  
@@ -205,12 +205,12 @@ index 56858294c..9ef862979 100644
 +                }
 +            } break;
 +            default:
-+                throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unexpected geom type");
++                throw_RTCError(RTC_ERROR_INVALID_OPERATION, "Unexpected curve geom type");
 +            }
 +
 +            return args.createCurve(realNum, primsArray, userData);
 +        } else {
-+            throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unexpected primitive type");
++            throw_RTCError(RTC_ERROR_INVALID_OPERATION, "Unsupported primitive");
 +        }
 +    }
 +
@@ -258,8 +258,7 @@ index 56858294c..9ef862979 100644
 +          unanode = node.unalignedNode();
 +          bnode = unanode;
 +      } else {
-+          throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Node type is unknown");
-+          return nullptr;
++          throw_RTCError(RTC_ERROR_INVALID_OPERATION, "Unknown node type");
        }
 -      else
 -        throw_RTCError(RTC_ERROR_INVALID_OPERATION,"invalid build quality");
@@ -366,12 +365,11 @@ index 56858294c..9ef862979 100644
 +      for (Accel *a : scene->accels) {
 +        AccelData *ad = a->intersectors.ptr;
 +        if(ad->type != AccelData::TY_BVH4) {
-+          throw_RTCError(RTC_ERROR_INVALID_OPERATION,"Unable to extract non BVH4 tree")
++          throw_RTCError(RTC_ERROR_INVALID_OPERATION, "Unable to extract non BVH4 tree");
 +          continue;
 +        }
 +
 +        BVH4 *bvh = dynamic_cast<BVH4 *>(ad);
-+
 +        BVH4::NodeRef root = bvh->root;
 +        void *node = recurse(root, bvh->primTy, args, userData);
 +        args.setAlignedBounds(node, boundsToRTC(bvh->bounds.bounds()), userData);

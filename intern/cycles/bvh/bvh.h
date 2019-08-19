@@ -88,7 +88,6 @@ class BVH {
   {
   }
 
-  void buildTimed(Progress &p, Stats *s);
   virtual void build(Progress &progress, Stats *stats = NULL);
   void refit(Progress &progress);
 

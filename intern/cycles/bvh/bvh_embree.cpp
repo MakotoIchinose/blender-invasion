@@ -55,10 +55,10 @@
 #  include "util/util_logging.h"
 #  include "util/util_progress.h"
 #  include "bvh_embree_converter.h"
+
 CCL_NAMESPACE_BEGIN
 
 #  define IS_HAIR(x) (x & 1)
-
 
 /* This gets called by Embree at every valid ray/object intersection.
  * Things like recording subsurface or shadow hits for later evaluation
@@ -303,7 +303,7 @@ BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
   thread_scoped_lock lock(rtc_shared_mutex);
   if (rtc_shared_users == 0) {
-    rtc_shared_device = rtcNewDevice("verbose=0;tri_accel=bvh4.triangle4v");
+    rtc_shared_device = rtcNewDevice("verbose=0");
     /* Check here if Embree was built with the correct flags. */
     ssize_t ret = rtcGetDeviceProperty(rtc_shared_device, RTC_DEVICE_PROPERTY_RAY_MASK_SUPPORTED);
     if (ret != 1) {
@@ -527,8 +527,6 @@ void BVHEmbree::add_instance(Object *ob, int i)
     assert(0);
     return;
   }
-  ob->pack_index = pack.prim_index.size();
-
   BVHEmbree *instance_bvh = (BVHEmbree *)(ob->mesh->bvh);
 
   if (instance_bvh->top_level != this) {
@@ -924,7 +922,7 @@ void BVHEmbree::pack_nodes(const BVHNode *)
         else {
           pack_prim_index[pack_prim_index_offset] = bvh_prim_index[i] + mesh_tri_offset;
           pack_prim_tri_index[pack_prim_index_offset] = bvh_prim_tri_index[i] +
-            pack_prim_tri_verts_offset;
+                                                        pack_prim_tri_verts_offset;
         }
 
         pack_prim_type[pack_prim_index_offset] = bvh_prim_type[i];
@@ -938,8 +936,8 @@ void BVHEmbree::pack_nodes(const BVHNode *)
     if (bvh->pack.prim_tri_verts.size()) {
       const size_t prim_tri_size = bvh->pack.prim_tri_verts.size();
       memcpy(pack_prim_tri_verts + pack_prim_tri_verts_offset,
-          &bvh->pack.prim_tri_verts[0],
-          prim_tri_size * sizeof(float4));
+             &bvh->pack.prim_tri_verts[0],
+             prim_tri_size * sizeof(float4));
       pack_prim_tri_verts_offset += prim_tri_size;
     }
 
@@ -967,7 +965,6 @@ void BVHEmbree::refit_nodes()
   }
   rtcCommitScene(scene);
 }
-
 CCL_NAMESPACE_END
 
 #endif /* WITH_EMBREE */
