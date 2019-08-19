@@ -647,7 +647,7 @@ static void gp_subdivide_buffer(tGPsdata *p, int step)
   pt_last->uv_rot = pt_cur->uv_fac;
 
   /* Interpolate points in the midle. */
-  float const ifactor = 1.0f / (float)(step + 1);
+  float const ifactor = 1.0f / (float)(step);
   for (int i = 0; i < step; i++) {
     pt_cur = ((tGPspoint *)(gpd->runtime.sbuffer) + idx + i);
     float f = ifactor * (i + 1);
