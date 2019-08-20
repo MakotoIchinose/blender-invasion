@@ -3027,7 +3027,7 @@ static void gpencil_convert_spline(Main *bmain,
     Material *ma_stroke = NULL;
     mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
     /* If object has more than 1 material, use second material for stroke color. */
-    if (ob_cu->totcol > 1) {
+    if ((ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
       ma_stroke = give_current_material(ob_cu, 2);
       linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
       mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
