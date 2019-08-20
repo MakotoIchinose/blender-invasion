@@ -2875,9 +2875,11 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
   /* Stroke color. */
   if (gpencil_lines) {
     ARRAY_SET_ITEMS(gp_style->stroke_rgba, 0.0f, 0.0f, 0.0f, 1.0f);
+    gp_style->flag |= GP_STYLE_STROKE_SHOW;
   }
   else {
     linearrgb_to_srgb_v4(gp_style->stroke_rgba, cu_color);
+    gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
   }
 
   /* Fill color. */
@@ -3029,7 +3031,9 @@ static void gpencil_convert_spline(Main *bmain,
       ma_stroke = give_current_material(ob_cu, 1);
       linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
       mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
-      /* set fill to off. */
+      /* Set stroke to on. */
+      mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+      /* Set fill to off. */
       mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
     }
   }
