@@ -36,7 +36,7 @@ void OpenVDBLevelSet::mesh_to_level_set(const float *vertices,
                                         const unsigned int *faces,
                                         const unsigned int totvertices,
                                         const unsigned int totfaces,
-                                        openvdb::math::Transform::Ptr &xform)
+                                        const openvdb::math::Transform::Ptr &xform)
 {
   std::vector<openvdb::Vec3s> points(totvertices);
   std::vector<openvdb::Vec3I> triangles(totfaces);
@@ -136,16 +136,18 @@ void OpenVDBLevelSet::filter(OpenVDBLevelSet_FilterType filter_type,
       filter.laplacian();
       break;
     case OPENVDB_LEVELSET_FILTER_DILATE:
-      filter.offset(-distance);
+      filter.offset(distance);
       break;
     case OPENVDB_LEVELSET_FILTER_ERODE:
       filter.offset(distance);
       break;
+    case OPENVDB_LEVELSET_FILTER_NONE:
+      break;
   }
 }
 openvdb::FloatGrid::Ptr OpenVDBLevelSet::CSG_operation_apply(
-    openvdb::FloatGrid::Ptr &gridA,
-    openvdb::FloatGrid::Ptr &gridB,
+    const openvdb::FloatGrid::Ptr &gridA,
+    const openvdb::FloatGrid::Ptr &gridB,
     OpenVDBLevelSet_CSGOperation operation)
 {
   switch (operation) {
@@ -163,12 +165,12 @@ openvdb::FloatGrid::Ptr OpenVDBLevelSet::CSG_operation_apply(
   return gridA;
 }
 
-openvdb::FloatGrid::Ptr &OpenVDBLevelSet::get_grid()
+const openvdb::FloatGrid::Ptr &OpenVDBLevelSet::get_grid()
 {
   return this->grid;
 }
 
-void OpenVDBLevelSet::set_grid(openvdb::FloatGrid::Ptr grid)
+void OpenVDBLevelSet::set_grid(const openvdb::FloatGrid::Ptr &grid)
 {
   this->grid = grid;
 }

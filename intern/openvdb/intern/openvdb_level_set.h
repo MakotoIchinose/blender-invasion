@@ -35,14 +35,14 @@ struct OpenVDBLevelSet {
  public:
   OpenVDBLevelSet();
   ~OpenVDBLevelSet();
-  openvdb::FloatGrid::Ptr &get_grid();
-  void set_grid(openvdb::FloatGrid::Ptr);
+  const openvdb::FloatGrid::Ptr &get_grid();
+  void set_grid(const openvdb::FloatGrid::Ptr &grid);
 
   void mesh_to_level_set(const float *vertices,
                          const unsigned int *faces,
                          const unsigned int totvertices,
                          const unsigned int totfaces,
-                         openvdb::math::Transform::Ptr &transform);
+                         const openvdb::math::Transform::Ptr &transform);
 
   void volume_to_mesh(struct OpenVDBVolumeToMeshData *mesh,
                       const double isovalue,
@@ -52,8 +52,8 @@ struct OpenVDBLevelSet {
               int width,
               float distance,
               OpenVDBLevelSet_FilterBias filter_bias);
-  openvdb::FloatGrid::Ptr CSG_operation_apply(openvdb::FloatGrid::Ptr &gridA,
-                                              openvdb::FloatGrid::Ptr &gridB,
+  openvdb::FloatGrid::Ptr CSG_operation_apply(const openvdb::FloatGrid::Ptr &gridA,
+                                              const openvdb::FloatGrid::Ptr &gridB,
                                               OpenVDBLevelSet_CSGOperation operation);
 };
 

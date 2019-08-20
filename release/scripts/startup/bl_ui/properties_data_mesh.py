@@ -457,12 +457,13 @@ class DATA_PT_vertex_colors(MeshButtonsPanel, Panel):
 
         col = row.column(align=True)
         col.operator("mesh.vertex_color_add", icon='ADD', text="")
-        col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")
-
+        col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")    
+        
         row = layout.row()
         col = row.column()
         col.operator("object.vertex_to_loop_colors", text="Store sculpt color")
         col.operator("object.loop_to_vertex_colors", text="Load sculpt color")
+
 
 class DATA_PT_remesh(MeshButtonsPanel, Panel):
     bl_label = "Remesh"
@@ -475,11 +476,11 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         col = layout.column()
 
         mesh = context.mesh
-        col.prop(mesh, "voxel_size")
-        col.prop(mesh, "smooth_normals")
+        col.prop(mesh, "remesh_voxel_size")
+        col.prop(mesh, "remesh_smooth_normals")
         col.prop(mesh, "reproject_vertex_paint")
-        col.prop(mesh, "reproject_paint_mask")
-        col.operator("object.remesh", text="Remesh")
+        col.prop(mesh, "remesh_preserve_paint_mask")
+        col.operator("object.voxel_remesh", text="Voxel Remesh")
 
 
 class DATA_PT_customdata(MeshButtonsPanel, Panel):
@@ -531,10 +532,10 @@ classes = (
     DATA_PT_uv_texture,
     DATA_PT_vertex_colors,
     DATA_PT_face_maps,
-    DATA_PT_remesh,
     DATA_PT_normals,
     DATA_PT_normals_auto_smooth,
     DATA_PT_texture_space,
+    DATA_PT_remesh,
     DATA_PT_customdata,
     DATA_PT_custom_props_mesh,
 )

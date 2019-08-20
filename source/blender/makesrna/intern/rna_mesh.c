@@ -2789,6 +2789,7 @@ static void rna_def_mesh(BlenderRNA *brna)
   prop = RNA_def_property(srna, "texture_mesh", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "texcomesh");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop,
       "Texture Mesh",
@@ -2998,20 +2999,7 @@ static void rna_def_mesh(BlenderRNA *brna)
   rna_def_paint_mask(brna, prop);
   /* End paint mask */
 
-  /* Remesher */
-  prop = RNA_def_property(srna, "voxel_size", PROP_FLOAT, PROP_DISTANCE);
-  RNA_def_property_float_sdna(prop, NULL, "voxel_size");
-  RNA_def_property_float_default(prop, 0.1f);
-  RNA_def_property_range(prop, 0.001f, 1.0f);
-  RNA_def_property_ui_range(prop, 0.001f, 1.0f, 0.01, 4);
-  RNA_def_property_ui_text(prop, "Voxel size", "Size of the voxel used for OpenVDB evaluation");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
-
-  prop = RNA_def_property(srna, "smooth_normals", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_SMOOTH_NORMALS);
-  RNA_def_property_ui_text(prop, "Smooth normals", "Smooth the normals of the remesher result");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
-
+  /* Remesh */
   prop = RNA_def_property(srna, "reproject_vertex_paint", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_VERTEX_PAINT);
   RNA_def_property_boolean_default(prop, false);
@@ -3019,12 +3007,34 @@ static void rna_def_mesh(BlenderRNA *brna)
       prop, "Reproject Vertex Paint", "Keep the current vertex paint on the new mesh");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
 
+  prop = RNA_def_property(srna, "remesh_voxel_size", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "remesh_voxel_size");
+  RNA_def_property_float_default(prop, 0.1f);
+  RNA_def_property_range(prop, 0.00001f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0001f, FLT_MAX, 0.01, 4);
+  RNA_def_property_ui_text(prop,
+                           "Voxel size",
+                           "Size of the voxel in object space used for volume evaluation. Lower "
+                           "values preserve finer details");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "remesh_smooth_normals", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_SMOOTH_NORMALS);
+  RNA_def_property_ui_text(prop, "Smooth normals", "Smooth the normals of the remesher result");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
   prop = RNA_def_property(srna, "reproject_paint_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_PAINT_MASK);
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(prop, "Reproject Mask", "Keep the current mask on the new mesh");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data");
-  /* End remesher */
+
+  prop = RNA_def_property(srna, "remesh_preserve_paint_mask", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_PAINT_MASK);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(prop, "Preserve Paint Mask", "Keep the current mask on the new mesh");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+  /* End remesh */
 
   prop = RNA_def_property(srna, "use_auto_smooth", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_AUTOSMOOTH);

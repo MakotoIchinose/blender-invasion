@@ -32,12 +32,12 @@ void OpenVDBTransform::create_linear_transform(double voxel_size)
   this->transform = openvdb::math::Transform::createLinearTransform(voxel_size);
 }
 
-openvdb::math::Transform::Ptr &OpenVDBTransform::get_transform()
+const openvdb::math::Transform::Ptr &OpenVDBTransform::get_transform()
 {
   return this->transform;
 }
 
-void OpenVDBTransform::set_transform(openvdb::math::Transform::Ptr transform)
+void OpenVDBTransform::set_transform(const openvdb::math::Transform::Ptr &transform)
 {
   this->transform = transform;
 }

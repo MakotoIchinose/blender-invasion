@@ -258,7 +258,6 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_hide_view_set);
   WM_operatortype_append(OBJECT_OT_hide_collection);
 
-  WM_operatortype_append(OBJECT_OT_remesh);
   WM_operatortype_append(OBJECT_OT_vertex_to_loop_colors);
   WM_operatortype_append(OBJECT_OT_loop_to_vertex_colors);
 
@@ -270,6 +269,8 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(REMESH_OT_csg_move_up);
 
   WM_operatortype_append(OBJECT_OT_blueprint);
+
+  WM_operatortype_append(OBJECT_OT_voxel_remesh);
 }
 
 void ED_operatormacros_object(void)

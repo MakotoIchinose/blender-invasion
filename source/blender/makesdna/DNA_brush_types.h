@@ -343,6 +343,8 @@ typedef struct Brush {
 
   float texture_sample_bias;
 
+  char _pad1[8];
+
   /* overlay */
   int texture_overlay_alpha;
   int mask_overlay_alpha;

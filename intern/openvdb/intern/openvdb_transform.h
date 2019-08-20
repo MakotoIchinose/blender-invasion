@@ -30,8 +30,8 @@ struct OpenVDBTransform {
   OpenVDBTransform();
   ~OpenVDBTransform();
   void create_linear_transform(double voxel_size);
-  openvdb::math::Transform::Ptr &get_transform();
-  void set_transform(openvdb::math::Transform::Ptr transform);
+  const openvdb::math::Transform::Ptr &get_transform();
+  void set_transform(const openvdb::math::Transform::Ptr &transform);
 };
 
 #endif  // OPENVDB_TRANSFORM_H

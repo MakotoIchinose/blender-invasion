@@ -280,7 +280,7 @@ void OpenVDBLevelSet_mesh_to_level_set_transform(struct OpenVDBLevelSet *level_s
                                                  const unsigned int *faces,
                                                  const unsigned int totvertices,
                                                  const unsigned int totfaces,
-                                                 struct OpenVDBTransform *transform)
+                                                 OpenVDBTransform *transform)
 {
   level_set->mesh_to_level_set(vertices, faces, totvertices, totfaces, transform->get_transform());
 }
@@ -359,7 +359,6 @@ OpenVDBLevelSet *OpenVDBLevelSet_transform_and_resample(struct OpenVDBLevelSet *
       break;
 
     case OPENVDB_LEVELSET_GRIDSAMPLER_NONE:
-      // targetGrid = sourceGrid->deepCopy();
       break;
   }
 

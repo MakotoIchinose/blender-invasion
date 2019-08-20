@@ -245,7 +245,6 @@ typedef struct SculptSession {
 
   /* PBVH acceleration structure */
   struct PBVH *pbvh;
-  bool show_diffuse_color;
   bool show_mask;
 
   /* Painting on deformed mesh */
@@ -285,6 +284,8 @@ typedef struct SculptSession {
 
   int *preview_vert_index_list;
   int preview_vert_index_count;
+
+  int active_vertex_index;
 
   union {
     struct {
