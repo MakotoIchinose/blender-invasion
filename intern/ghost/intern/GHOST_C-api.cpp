@@ -30,7 +30,9 @@
 #include "GHOST_ISystem.h"
 #include "GHOST_IEvent.h"
 #include "GHOST_IEventConsumer.h"
-#include "GHOST_IXrContext.h"
+#ifdef WITH_OPENXR
+#  include "GHOST_IXrContext.h"
+#endif
 #include "intern/GHOST_CallbackEventConsumer.h"
 #include "intern/GHOST_XrException.h"
 

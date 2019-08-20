@@ -78,7 +78,6 @@ set(SRC
   intern/wm_uilist_type.c
   intern/wm_utils.c
   intern/wm_window.c
-  intern/wm_xr.c
   gizmo/intern/wm_gizmo.c
   gizmo/intern/wm_gizmo_group.c
   gizmo/intern/wm_gizmo_group_type.c
@@ -180,6 +179,9 @@ endif()
 
 if(WITH_OPENXR)
   add_definitions(-DWITH_OPENXR)
+  list(APPEND SRC
+    intern/wm_xr.c
+  )
 endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
