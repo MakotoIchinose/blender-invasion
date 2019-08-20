@@ -40,7 +40,6 @@
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
-
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
 
@@ -48,30 +47,79 @@
 
 #include "BLI_strict_flags.h"
 
-/* A cluster is a set of coplanar faces (within eps) */
-typedef struct Cluster {
-  float plane[4];  /* first 3 are normal, 4th is signed distance to plane */
-  LinkNode *faces; /* list where links are BMFace* */
-} Cluster;
+/* A Mesh Interface.
+ * This would be an abstract interface in C++,
+ * but similate that effect in C.
+ * Idea is to write the rest of the code so that
+ * it will work with either Mesh or BMesh as the
+ * concrete representation.
+ * Thus, editmesh and modifier can use the same
+ * code but without need to convert to BMesh (or Mesh).
+ *
+ * Exactly one of bm and me should be non-null.
+ */
+typedef struct IMesh {
+  BMesh *bm;
+  struct Mesh *me;
+} IMesh;
 
-/* A cluster set is a set of Clusters.
+/* A MeshPart is a subset of the geometry of an IndexMesh.
+ * The indices refer to vertex, edges, and faces in the IndexMesh
+ * that this part is based on (which will be known by context).
+ * Unlike for IndexMesh, the edges implied by faces need not be explicitly
+ * represented here.
+ * Commonly a MeshPart will contain geometry that shares a plane,
+ * and when that is so, the plane member says which plane,
+ * TODO: faster structure for looking up verts, edges, faces.
+ */
+typedef struct MeshPart {
+  float plane[4];  /* first 3 are normal, 4th is signed distance to plane */
+  LinkNode *verts; /* links are ints (vert indices) */
+  LinkNode *edges; /* links are ints (edge indices) */
+  LinkNode *faces; /* links are ints (face indices) */
+} MeshPart;
+
+/* A MeshPartSet set is a set of MeshParts.
  * For any two distinct elements of the set, either they are not
  * coplanar or if they are, they are known not to intersect.
  * TODO: faster structure for looking up by plane.
  */
-typedef struct ClusterSet {
-  LinkNode *clusters; /* list where links are Cluster* */
-} ClusterSet;
+typedef struct MeshPartSet {
+  LinkNode *meshparts; /* list where links are MeshParts* */
+  int tot_part;
+} MeshPartSet;
+
+/* A set of integers, where each member gets an index
+ * that can be used to access the member.
+ * TODO: faster structure for lookup.
+ */
+typedef struct IndexedIntSet {
+  LinkNodePair listhead;
+  int size;
+} IndexedIntSet;
+
+/* A result of intersectings parts.
+ * The coordinates in the cdt_result should be turned
+ * back into 3d coords by multplying them by mat_2d_inv,
+ * after putting z_for_inverse into the 3rd component.
+ */
+typedef struct IntersectOutput {
+  CDT_result *cdt_result;
+  float mat_2d_inv[3][3];
+  float z_for_inverse;
+} IntersectOutput;
 
 typedef struct BoolState {
   MemArena *mem_arena;
-  BLI_mempool *listpool;
-  BMesh *bm;
+  IMesh im;
   int boolean_mode;
   float eps;
-  int (*test_fn)(BMFace *f, void *user_data);
+  int (*test_fn)(void *elem, void *user_data);
   void *test_fn_user_data;
 } BoolState;
+
+/* test_fn results used to distinguish parts of mesh */
+enum { TEST_B = -1, TEST_NONE = 0, TEST_A = 1, TEST_ALL = 2 };
 
 #define BOOLDEBUG
 #ifdef BOOLDEBUG
@@ -82,10 +130,110 @@ typedef struct BoolState {
 #  define F4(v) (v)[0], (v)[1], (v)[2], (v)[3]
 #  define BMI(e) BM_elem_index_get(e)
 
-static void dump_cluster(Cluster *cl, const char *label);
-static void dump_clusterset(ClusterSet *clset, const char *label);
+static void dump_part(MeshPart *part, const char *label);
+static void dump_partset(MeshPartSet *pset, const char *label);
 #endif
 
+static void init_imesh_from_bmesh(IMesh *im, BMesh *bm)
+{
+  im->bm = bm;
+  im->me = NULL;
+  BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+}
+
+static int imesh_totface(const IMesh *im)
+{
+  if (im->bm) {
+    return im->bm->totface;
+  }
+  else {
+    return 0; /* TODO */
+  }
+}
+
+static int imesh_facelen(const IMesh *im, int f)
+{
+  int ans = 0;
+
+  if (im->bm) {
+    BMFace *bmf = BM_face_at_index(im->bm, f);
+    if (bmf) {
+      ans = bmf->len;
+    }
+  }
+  else {
+    ; /* TODO */
+  }
+  return ans;
+}
+
+static int imesh_face_vert(IMesh *im, int f, int index)
+{
+  int i;
+  int ans = -1;
+
+  if (im->bm) {
+    BMFace *bmf = BM_face_at_index(im->bm, f);
+    if (bmf) {
+      BMLoop *l = bmf->l_first;
+      for (i = 0; i < index; i++) {
+        l = l->next;
+      }
+      BMVert *bmv = l->v;
+      ans = BM_elem_index_get(bmv);
+    }
+  }
+  else {
+    ; /* TODO */
+  }
+  return ans;
+}
+
+static void imesh_get_vert_co(const IMesh *im, int v, float *r_coords)
+{
+  if (im->bm) {
+    BMVert *bmv = BM_vert_at_index(im->bm, v);
+    if (bmv) {
+      copy_v3_v3(r_coords, bmv->co);
+      return;
+    }
+    else {
+      zero_v3(r_coords);
+    }
+  }
+  else {
+    ; /* TODO */
+  }
+}
+
+static void imesh_get_face_plane(const IMesh *im, int f, float r_plane[4])
+{
+  zero_v4(r_plane);
+  if (im->bm) {
+    BMFace *bmf = BM_face_at_index(im->bm, f);
+    if (bmf) {
+      plane_from_point_normal_v3(r_plane, bmf->l_first->v->co, bmf->no);
+    }
+  }
+}
+
+static int imesh_test_face(const IMesh *im, int (*test_fn)(void *, void *), void *user_data, int f)
+{
+  if (im->bm) {
+    BMFace *bmf = BM_face_at_index(im->bm, f);
+    if (bmf) {
+      return test_fn(bmf, user_data);
+    }
+    return 0;
+  }
+  else {
+    /* TODO */
+    return 0;
+  }
+}
+
+
+#if 0
 /**
  * Make ngon from verts alone.
  * Use facerep as example for attributes of new face.
@@ -98,17 +246,54 @@ static BMFace *bool_create_ngon(BMesh *bm, BMVert **vert_arr, const int vert_len
   f = BM_face_create_verts(bm, vert_arr, vert_len, facerep, BM_CREATE_NOP, true);
   return f;
 }
+#endif
 
-/* Make clusterset by empty. */
-static void init_clusterset(ClusterSet *clusterset)
+static void init_meshpartset(MeshPartSet *partset)
 {
-  clusterset->clusters = NULL;
+  partset->meshparts = NULL;
+  partset->tot_part = 0;
 }
 
-/* Fill r_plane with the 4d representation of f's plane. */
-static inline void fill_face_plane(float r_plane[4], BMFace *f)
+static void add_part_to_partset(BoolState *bs, MeshPartSet *partset, MeshPart *part)
 {
-  plane_from_point_normal_v3(r_plane, f->l_first->v->co, f->no);
+  BLI_linklist_prepend_arena(&partset->meshparts, part, bs->mem_arena);
+  partset->tot_part++;
+}
+
+static MeshPart *partset_part(MeshPartSet *partset, int index)
+{
+  LinkNode *ln = BLI_linklist_find(partset->meshparts, index);
+  if (ln) {
+    return (MeshPart *)ln->link;
+  }
+  return NULL;
+}
+
+static void init_meshpart(MeshPart *part)
+{
+  zero_v4(part->plane);
+  part->verts = NULL;
+  part->edges = NULL;
+  part->faces = NULL;
+}
+
+static int part_totface(MeshPart *part)
+{
+  return BLI_linklist_count(part->faces);
+}
+
+static int part_face(MeshPart *part, int index)
+{
+  LinkNode *ln = BLI_linklist_find(part->faces, index);
+  if (ln) {
+    return POINTER_AS_INT(ln->link);
+  }
+  return -1;
+}
+
+static bool parts_may_intersect(MeshPart *part1, MeshPart *part2)
+{
+  return (part1 && part2); /* Placeholder test, uses args */
 }
 
 /* Return true if a_plane and b_plane are the same plane, to within eps. */
@@ -120,96 +305,260 @@ static bool planes_are_coplanar(const float a_plane[4], const float b_plane[4], 
   return fabsf(dot_v3v3(a_plane, b_plane) - 1.0f) <= eps;
 }
 
-/* Return the cluster in clusterset for plane face_plane, if it exists, else NULL. */
-static Cluster *find_cluster_for_plane(BoolState *bs,
-                                       ClusterSet *clusterset,
-                                       const float face_plane[4])
+/* Return the MeshPart in partset for plane.
+ * If none exists, make a new one for the plane and add
+ * it to partset.
+ */
+static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const float plane[4])
 {
   LinkNode *ln;
+  MeshPart *new_part;
 
-  for (ln = clusterset->clusters; ln; ln = ln->next) {
-    Cluster *cl = (Cluster *)ln->link;
-    if (planes_are_coplanar(face_plane, cl->plane, bs->eps)) {
-      return cl;
+  for (ln = partset->meshparts; ln; ln = ln->next) {
+    MeshPart *p = (MeshPart *)ln->link;
+    if (planes_are_coplanar(plane, p->plane, bs->eps)) {
+      return p;
     }
   }
-  return NULL;
+  new_part = BLI_memarena_alloc(bs->mem_arena, sizeof(MeshPart));
+  init_meshpart(new_part);
+  copy_v4_v4(new_part->plane, plane);
+  add_part_to_partset(bs, partset, new_part);
+  return new_part;
 }
 
-/* Add face f to cluster. */
-static void add_face_to_cluster(BoolState *bs, Cluster *cluster, BMFace *f)
+static void add_face_to_part(BoolState *bs, MeshPart *meshpart, int f)
 {
-  BLI_linklist_prepend_arena(&cluster->faces, f, bs->mem_arena);
+  BLI_linklist_prepend_arena(&meshpart->faces, POINTER_FROM_INT(f), bs->mem_arena);
 }
 
-/* Make a new cluster containing face f, then add it to clusterset. */
-static void add_new_cluster_to_clusterset(BoolState *bs,
-                                          ClusterSet *clusterset,
-                                          BMFace *f,
-                                          const float plane[4])
+static void init_indexed_intset(IndexedIntSet *intset)
 {
-  Cluster *new_cluster;
-
-  new_cluster = BLI_memarena_alloc(bs->mem_arena, sizeof(Cluster));
-  copy_v4_v4(new_cluster->plane, plane);
-  new_cluster->faces = NULL;
-  BLI_linklist_prepend_arena(&new_cluster->faces, f, bs->mem_arena);
-  BLI_linklist_prepend_arena(&clusterset->clusters, new_cluster, bs->mem_arena);
+  intset->listhead.list = NULL;
+  intset->listhead.last_node = NULL;
+  intset->size = 0;
 }
 
-/* Add face f to a cluster in clusterset with the same face, else a new cluster for f */
-static void add_face_to_clusterset(BoolState *bs, ClusterSet *clusterset, BMFace *f)
+static int add_int_to_intset(BoolState *bs, IndexedIntSet *intset, int value)
 {
-  Cluster *matching_cluster;
-  float face_plane[4];
+  int index;
 
-  fill_face_plane(face_plane, f);
-  matching_cluster = find_cluster_for_plane(bs, clusterset, face_plane);
-  if (matching_cluster) {
-    add_face_to_cluster(bs, matching_cluster, f);
+  index = BLI_linklist_index(intset->listhead.list, POINTER_FROM_INT(value));
+  if (index == -1) {
+    BLI_linklist_append_arena(&intset->listhead, POINTER_FROM_INT(value), bs->mem_arena);
+    index = intset->size;
+    intset->size++;
   }
-  else {
-    add_new_cluster_to_clusterset(bs, clusterset, f, face_plane);
-  }
+  return index;
 }
 
-/* Fill clusterset with clusters for mesh faces, putting them into
- * clusterset_a or clusterset_b as bs->test_fn returns 1 or 0.
+static int intset_get_value_by_index(const IndexedIntSet *intset, int index)
+{
+  LinkNode *ln;
+  int i;
+
+  if (index < 0 || index >= intset->size) {
+    return -1;
+  }
+  ln = intset->listhead.list;
+  for (i = 0; i < index; i++) {
+    BLI_assert(ln != NULL);
+    ln = ln->next;
+  }
+  BLI_assert(ln != NULL);
+  return POINTER_AS_INT(ln->link);
+}
+
+static int intset_get_index_for_value(const IndexedIntSet *intset, int value)
+{
+  return BLI_linklist_index(intset->listhead.list, POINTER_FROM_INT(value));
+}
+
+#define COPY_ARRAY_TO_ARENA(dst, src, len, arena)  { \
+  dst = BLI_memarena_alloc(arena, len); \
+  memmove(dst, src, len); \
+  }
+
+/* Return a copy of res, with memory allocated from bs->mem_arena. */
+static CDT_result *copy_cdt_result(BoolState *bs, const CDT_result *res)
+{
+  CDT_result *ans;
+  size_t nv, ne, nf, n;
+  MemArena *arena = bs->mem_arena;
+
+  nv = (size_t)res->verts_len;
+  ne = (size_t)res->edges_len;
+  nf = (size_t)res->faces_len;
+  ans = BLI_memarena_calloc(arena, sizeof(*ans));
+  ans->verts_len = res->verts_len;
+  ans->edges_len = res->edges_len;
+  ans->faces_len = res->faces_len;
+  ans->face_edge_offset = res->face_edge_offset;
+  if (nv > 0) {
+    COPY_ARRAY_TO_ARENA(ans->vert_coords, res->vert_coords, nv * sizeof(ans->vert_coords[0]), arena);
+    COPY_ARRAY_TO_ARENA(ans->verts_orig_len_table, res->verts_orig_len_table, nv * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(ans->verts_orig_start_table, res->verts_orig_start_table, nv * sizeof(int), arena);
+    n = (size_t)(res->verts_orig_start_table[nv - 1] + res->verts_orig_len_table[nv - 1]);
+    COPY_ARRAY_TO_ARENA(ans->verts_orig, res->verts_orig, n * sizeof(int), arena);
+  }
+  if (ne > 0) {
+    COPY_ARRAY_TO_ARENA(ans->edges, res->edges, ne * sizeof(ans->edges[0]), arena);
+    COPY_ARRAY_TO_ARENA(ans->edges_orig_len_table, res->edges_orig_len_table, ne * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(ans->edges_orig_start_table, res->edges_orig_start_table, ne * sizeof(int), arena);
+    n = (size_t)(res->edges_orig_start_table[ne - 1] + res->edges_orig_len_table[ne - 1]);
+    COPY_ARRAY_TO_ARENA(ans->edges_orig, res->edges_orig, n * sizeof(int), arena);
+  }
+  if (nf > 0) {
+    COPY_ARRAY_TO_ARENA(ans->faces_len_table, res->faces_len_table, nf * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(ans->faces_start_table, res->faces_start_table, nf * sizeof(int), arena);
+    n = (size_t)(res->faces_start_table[nf - 1] + res->faces_len_table[nf - 1]);
+    COPY_ARRAY_TO_ARENA(ans->faces, res->faces, n * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(ans->faces_orig_len_table, res->faces_orig_len_table, nf * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(ans->faces_orig_start_table, res->faces_orig_start_table, nf * sizeof(int), arena);
+    n = (size_t)(res->faces_orig_start_table[nf - 1] + res->faces_orig_len_table[nf - 1]);
+    COPY_ARRAY_TO_ARENA(ans->faces_orig, res->faces_orig, n * sizeof(int), arena);
+  }
+  return ans;
+}
+
+#undef COPY_ARRAY_TO_ARENA
+
+/* Fill partset with parts for each plane for which there is a face
+ * in bs->im.
+ * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the result.
  */
-static void find_clusters(BoolState *bs, ClusterSet *clusterset_a, ClusterSet *clusterset_b)
+static void find_coplanar_parts(BoolState *bs, MeshPartSet *partset, int test_val)
 {
-  BMesh *bm = bs->bm;
-  BMFace *f;
-  BMIter iter;
-  int testval;
+  IMesh *im = &bs->im;
+  MeshPart *part;
+  int im_nf, f, test;
+  float plane[4];
 
-  if (clusterset_a) {
-    init_clusterset(clusterset_a);
-  }
-  if (clusterset_b) {
-    init_clusterset(clusterset_b);
-  }
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    testval = bs->test_fn(f, bs->test_fn_user_data);
-    if (testval == 1 && clusterset_a) {
-      add_face_to_clusterset(bs, clusterset_a, f);
+  init_meshpartset(partset);
+  im_nf = imesh_totface(im);
+  for (f = 0; f < im_nf; f++) {
+    if (test_val != TEST_ALL) {
+      test = imesh_test_face(im, bs->test_fn, bs->test_fn_user_data, f);
+      if (test != test_val) {
+        continue;
+      }
     }
-    else if (testval == 0 && clusterset_b) {
-      add_face_to_clusterset(bs, clusterset_b, f);
-    }
+    imesh_get_face_plane(im, f, plane);
+    part = find_part_for_plane(bs, partset, plane);
+    add_face_to_part(bs, part, f);
   }
+  /* TODO: look for loose verts and wire edges to add to each partset */
 }
 
 /*
- * Intersect all of the faces, assumed to be BMFaces in bs->bm.
- * The faces are assumed to lie in the same plane, given by the plane arg.
- * Original faces may be deleted and replaced with one or more newly built ones.
- * Some BMVerts may be merged (one will be used as representative).
+ * Intersect all the geometry in part, assumed to be in one plane.
+ * Return an IntersectOuput that gives the new geometry that should
+ * replace the geometry in part.
+ * If no output is needed, return NULL.
  */
-static void intersect_planar_geometry(BoolState *bs,
-                                      const float plane[4],
-                                      BMFace **faces,
-                                      int faces_len)
+static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
+{
+  CDT_input in;
+  CDT_result *out;
+  IntersectOutput *isect_out;
+  int i, j, part_nf, f, face_len, v;
+  int nfaceverts, v_index, faces_index;
+  IMesh *im = &bs->im;
+  IndexedIntSet verts_needed;
+  float mat_2d[3][3];
+  float mat_2d_inv[3][3];
+  float xyz[3], save_z, p[3];
+  bool ok;
+
+  dump_part(part, "self_intersect_part");
+  /* Find which vertices are needed for CDT input */
+  part_nf = part_totface(part);
+  if (part_nf <= 1) {
+    printf("trivial 1 face case\n");
+    return NULL;
+  }
+  init_indexed_intset(&verts_needed);
+  nfaceverts = 0;
+  for (i = 0; i < part_nf; i++) {
+    f = part_face(part, i);
+    BLI_assert(f != -1);
+    face_len = imesh_facelen(im, f);
+    nfaceverts += face_len;
+    for (j = 0; j < face_len; j++) {
+      v = imesh_face_vert(im, f, j);
+      BLI_assert(v != -1);
+      v_index = add_int_to_intset(bs, &verts_needed, v);
+    }
+  }
+  /* TODO: find vertices needed for loose verts and edges */
+
+  in.verts_len = verts_needed.size;
+  in.edges_len = 0;
+  in.faces_len = part_nf;
+  in.vert_coords = BLI_array_alloca(in.vert_coords, (size_t)in.verts_len);
+  in.edges = NULL;
+  in.faces = BLI_array_alloca(in.faces, (size_t)nfaceverts);
+  in.faces_start_table = BLI_array_alloca(in.faces_start_table, (size_t)part_nf);
+  in.faces_len_table = BLI_array_alloca(in.faces_len_table, (size_t)part_nf);
+  in.epsilon = bs->eps;
+
+  /* Fill in the vert_coords of CDT input */
+
+  /* Find mat_2d: matrix to rotate so that plane normal moves to z axis */
+  axis_dominant_v3_to_m3(mat_2d, part->plane);
+  ok = invert_m3_m3(mat_2d_inv, mat_2d);
+  BLI_assert(ok);
+
+  for (i = 0; i < in.verts_len; i++) {
+    v = intset_get_value_by_index(&verts_needed, i);
+    BLI_assert(v != -1);
+    imesh_get_vert_co(im, v, p);
+    mul_v3_m3v3(xyz, mat_2d, p);
+    copy_v2_v2(in.vert_coords[i], xyz);
+    if (i == 0) {
+      /* If part is truly coplanar, all z components of rotated v should be the same.
+       * Save it so that can rotate back to correct place when done.
+       */
+      save_z = xyz[2];
+    }
+  }
+
+  /* Fill in the face data of CDT input */
+  faces_index = 0;
+  for (i = 0; i < part_nf; i++) {
+    f = part_face(part, i);
+    BLI_assert(f != -1);
+    face_len = imesh_facelen(im, f);
+    in.faces_start_table[i] = faces_index;
+    for (j = 0; j < face_len; j++) {
+      v = imesh_face_vert(im, f, j);
+      BLI_assert(v != -1);
+      v_index = intset_get_index_for_value(&verts_needed, v);
+      in.faces[faces_index++] = v_index;
+    }
+    in.faces_len_table[i] = faces_index - in.faces_start_table[i];
+  }
+
+  out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
+
+  printf("cdt output, %d faces\n", out->faces_len);
+
+  isect_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*isect_out));
+
+  /* Need to copy cdt result because BLI_delaunay_2d_cdt_free will free it.
+   * TODO: have option to BLI_delaunay_2d_cdt to use another arena for answer alloc,
+   * then won't need to copy here.
+   */
+  isect_out->cdt_result = copy_cdt_result(bs, out);
+  isect_out->z_for_inverse = save_z;
+  copy_m3_m3(isect_out->mat_2d_inv, mat_2d_inv);
+
+  BLI_delaunay_2d_cdt_free(out);
+  return isect_out;
+}
+
+#if 0
+static void oldfun()
 {
   CDT_input in;
   CDT_result *out;
@@ -228,59 +577,7 @@ static void intersect_planar_geometry(BoolState *bs,
   BMVert **face_v;
   BMVert **all_v;
 
-  nverts = 0;
-  nfaceverts = 0;
-  for (i = 0; i < faces_len; i++) {
-    f = faces[i];
-    BM_ITER_ELEM (v, &iter, f, BM_VERTS_OF_FACE) {
-      nfaceverts++;
-      /* TODO: faster lookup structure to hold verts and their indices */
-      if (BLI_linklist_index(vertlist, v) == -1) {
-        BLI_linklist_prepend_arena(&vertlist, v, bs->mem_arena);
-        nverts++;
-      }
-    }
-  }
-  in.verts_len = nverts;
-  in.edges_len = 0;
-  in.faces_len = faces_len;
-  in.vert_coords = BLI_array_alloca(in.vert_coords, (size_t)nverts);
-  in.edges = NULL;
-  in.faces = BLI_array_alloca(in.faces, (size_t)nfaceverts);
-  in.faces_start_table = BLI_array_alloca(in.faces_start_table, (size_t)faces_len);
-  in.faces_len_table = BLI_array_alloca(in.faces_len_table, (size_t)faces_len);
-  in.epsilon = bs->eps;
-
-  axis_dominant_v3_to_m3(mat_2d, plane);
-  ok = invert_m3_m3(mat_2d_inv, mat_2d);
-  BLI_assert(ok);
-  vert_coords_index = 0;
-  for (ln = vertlist; ln; ln = ln->next) {
-    v = (BMVert *)ln->link;
-    mul_v3_m3v3(xyz, mat_2d, v->co);
-    copy_v2_v2(in.vert_coords[vert_coords_index], xyz);
-    if (vert_coords_index == 0) {
-      save_z = xyz[2];
-    }
-    vert_coords_index++;
-  }
-
-  faces_index = 0;
-  faces_table_index = 0;
-  for (i = 0; i < faces_len; i++) {
-    f = faces[i];
-    BLI_assert(faces_table_index < faces_len);
-    in.faces_start_table[faces_table_index] = faces_index;
-    BM_ITER_ELEM (v, &iter, f, BM_VERTS_OF_FACE) {
-      v_index = BLI_linklist_index(vertlist, v);
-      BLI_assert(v_index >= 0 && v_index < nverts);
-      in.faces[faces_index] = v_index;
-      faces_index++;
-    }
-    in.faces_len_table[faces_table_index] = faces_index - in.faces_start_table[faces_table_index];
-    faces_table_index++;
-  }
-
+  /* leaving out old part that gets in ready */
   out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
 
   /* Gather BMVerts corresponding to output vertices into all_v. */
@@ -329,52 +626,73 @@ static void intersect_planar_geometry(BoolState *bs,
  
   BLI_delaunay_2d_cdt_free(out);
 }
+#endif
 
-static void intersect_clusters(BoolState *bs, Cluster *cla, Cluster *clb)
+/* Intersect part with all the parts in partset, except the part with
+ * exclude_index, if that is not -1.
+ */
+static IntersectOutput *intersect_part_with_partset(BoolState *bs,
+                                                    MeshPart *part,
+                                                    MeshPartSet *partset,
+                                                    int exclude_index)
 {
-  BMFace **faces, **fp;
-  int i, totfaces;
-  LinkNode *ln;
-  Cluster *cl;
-  Cluster *clab[2] = {cla, clb};
+  int i, tot_part;
+  MeshPart *otherpart;
+  IntersectOutput *isect_out;
 
-  totfaces = 0;
-  for (i = 0; i < 2; i++) {
-    cl = clab[i];
-    if (cl) {
-      totfaces += BLI_linklist_count(cl->faces);
-    }
-  }
-  fp = faces = BLI_array_alloca(faces, (size_t)totfaces);
-  for (i = 0; i < 2; i++) {
-    cl = clab[i];
-    if (cl) {
-      for (ln = cl->faces; ln; ln = ln->next) {
-        *fp = (BMFace *)ln->link;
-        fp++;
+  tot_part = partset->tot_part;
+  /* TODO: Make a copy of part */
+  for (i = 0; i < tot_part; i++) {
+    if (i != exclude_index) {
+      otherpart = partset_part(partset, i);
+      if (parts_may_intersect(part, otherpart)) {
+        /* TODO: add any intersects between parts to copy of part */
       }
     }
   }
-  intersect_planar_geometry(bs, cla->plane, faces, totfaces);
+  /* TODO: self intersect the part copy and make an edit from it */
+  isect_out = self_intersect_part(bs, part);
+  return isect_out;
 }
 
-/* Intersect all pairs of clusters (a,b) where a is in clusterset_a
- * and b is in clusterset_b, and where a and b are for the same plane.
+/* Intersect all parts.
  */
-static void intersect_clustersets(BoolState *bs,
-                                  ClusterSet *clusterset_a,
-                                  ClusterSet *clusterset_b)
+static void intersect_all_parts(BoolState *bs, MeshPartSet *partset)
 {
-  Cluster *cla, *clb;
-  LinkNode *ln;
+  int i, tot_part;
+  MeshPart *part;
+  IntersectOutput **isect_out;
 
-  for (ln = clusterset_a->clusters; ln; ln = ln->next) {
-    cla = (Cluster *)ln->link;
-    clb = find_cluster_for_plane(bs, clusterset_b, cla->plane);
-    if (clb) {
-      intersect_clusters(bs, cla, clb);
-    }
+  tot_part = partset->tot_part;
+  isect_out = BLI_memarena_alloc(bs->mem_arena, (size_t)tot_part * sizeof(*isect_out));
+  for (i = 0; i < tot_part; i++) {
+    part = partset_part(partset, i);
+    isect_out[i] = intersect_part_with_partset(bs, part, partset, i);
   }
+  /* TODO: apply the union of outputs */
+}
+
+/* Intersect all parts of a_partset with all parts of b_partset.
+ */
+static void intersect_parts_pair(BoolState *bs, MeshPartSet *a_partset, MeshPartSet *b_partset)
+{
+  int a_index, b_index, tot_part_a, tot_part_b, tot;
+  MeshPart *part;
+  IntersectOutput **isect_out;
+
+  tot_part_a = a_partset->tot_part;
+  tot_part_b = b_partset->tot_part;
+  tot = tot_part_a + tot_part_b;
+  isect_out = BLI_memarena_alloc(bs->mem_arena, (size_t)tot * sizeof(IntersectOutput *));
+  for (a_index = 0; a_index < tot_part_a; a_index++) {
+    part = partset_part(a_partset, a_index);
+    isect_out[a_index] = intersect_part_with_partset(bs, part, b_partset, -1);
+  }
+  for (b_index = 0; b_index < tot_part_b; b_index++) {
+    part = partset_part(b_partset, b_index);
+    isect_out[tot_part_a + b_index] = intersect_part_with_partset(bs, part, a_partset, -1);
+  }
+  /* TODO: apply the union of outputs */
 }
 
 /**
@@ -388,61 +706,74 @@ static void intersect_clustersets(BoolState *bs,
 bool BM_mesh_boolean(BMesh *bm,
                      int (*test_fn)(BMFace *f, void *user_data),
                      void *user_data,
-                     const bool UNUSED(use_self),
+                     const bool use_self,
                      const bool UNUSED(use_separate),
                      const int boolean_mode,
                      const float eps)
 {
   BoolState bs = {NULL};
-  ClusterSet a_clusters, b_clusters;
+  MeshPartSet all_parts, a_parts, b_parts;
 
-  bs.bm = bm;
+  init_imesh_from_bmesh(&bs.im, bm);
   bs.boolean_mode = boolean_mode;
   bs.eps = eps;
-  bs.test_fn = test_fn;
+  bs.test_fn = (int (*)(void *, void *))test_fn;
   bs.test_fn_user_data = user_data;
   bs.mem_arena = BLI_memarena_new(MEM_SIZE_OPTIMAL(1 << 16), __func__);
-  bs.listpool = BLI_mempool_create(sizeof(LinkNode), 128, 128, 0);
 
   printf("\n\nBOOLEAN\n");
-  find_clusters(&bs, &a_clusters, &b_clusters);
 
-  dump_clusterset(&a_clusters, "A");
-  dump_clusterset(&b_clusters, "B");
+  if (use_self) {
+    find_coplanar_parts(&bs, &all_parts, TEST_ALL);
+    dump_partset(&all_parts, "all coplanar parts");
+    intersect_all_parts(&bs, &all_parts);
+  }
+  else {
+    find_coplanar_parts(&bs, &a_parts, TEST_A);
+    find_coplanar_parts(&bs, &b_parts, TEST_B);
+    intersect_parts_pair(&bs, &a_parts, &b_parts);
+  }
 
-  intersect_clustersets(&bs, &a_clusters, &b_clusters);
-
-  BLI_mempool_destroy(bs.listpool);
   BLI_memarena_free(bs.mem_arena);
   return true;
 }
 
 #ifdef BOOLDEBUG
-static void dump_cluster(Cluster *cl, const char *label)
+static void dump_part(MeshPart *part, const char *label)
 {
   LinkNode *ln;
-  BMFace *f;
+  int i;
+  struct namelist {
+    const char *name;
+    LinkNode *list;
+  } nl[3] = {{"verts", part->verts}, {"edges", part->edges}, {"faces", part->faces}};
 
-  printf("%s: (%.3f,%.3f,%.3f),%.3f: {", label, F4(cl->plane));
-  for (ln = cl->faces; ln; ln = ln->next) {
-    f = (BMFace *)ln->link;
-    printf("f%d", BMI(f));
-    if (ln->next) {
-      printf(", ");
+  printf("%s: (%.3f,%.3f,%.3f),%.3f:\n", label, F4(part->plane));
+  for (i = 0; i < 3; i++) {
+    if (nl[i].list) {
+      printf("  %s: ", nl[i].name);
+      for (ln = nl[i].list; ln; ln = ln->next) {
+        printf("%d ", POINTER_AS_INT(ln->link));
+      }
+      printf("\n");
     }
   }
-  printf("}\n");
 }
 
-static void dump_clusterset(ClusterSet *clset, const char *label)
+static void dump_partset(MeshPartSet *partset, const char *label)
 {
-  LinkNode *ln;
-  Cluster *cl;
+  int i;
+  MeshPart *part;
 
   printf("%s:\n", label);
-  for (ln = clset->clusters; ln; ln = ln->next) {
-    cl = (Cluster *)ln->link;
-    dump_cluster(cl, "  ");
+  for (i = 0; i < partset->tot_part; i++) {
+    part = partset_part(partset, i);
+    if (!part) {
+      printf("<NULL PART>\n");
+    }
+    else {
+      dump_part(part, "");
+    }
   }
 }
 #endif
