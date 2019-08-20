@@ -1,4 +1,4 @@
-From 1bd1456d289b3587e6c532085375c83bafccadf4 Mon Sep 17 00:00:00 2001
+From cb61d8802827da68b3627af66bc4421573668985 Mon Sep 17 00:00:00 2001
 From: MATILLAT Quentin <qmatillat@gmail.com>
 Date: Sun, 18 Aug 2019 15:29:34 +0200
 Subject: [PATCH] Add ability to export curve from BVH
@@ -7,8 +7,8 @@ Subject: [PATCH] Add ability to export curve from BVH
  include/embree3/rtcore_builder.h  |  22 +++
  include/embree3/rtcore_common.h   |   7 +
  kernels/bvh/bvh_builder_hair.cpp  |   3 +-
- kernels/common/rtcore_builder.cpp | 290 ++++++++++++++++++++++--------
- 4 files changed, 244 insertions(+), 78 deletions(-)
+ kernels/common/rtcore_builder.cpp | 298 ++++++++++++++++++++++--------
+ 4 files changed, 252 insertions(+), 78 deletions(-)
 
 diff --git a/include/embree3/rtcore_builder.h b/include/embree3/rtcore_builder.h
 index af84035b0..77e754f7e 100644
@@ -77,7 +77,7 @@ index 14273787f..cad238123 100644
  }
  #endif
 diff --git a/kernels/common/rtcore_builder.cpp b/kernels/common/rtcore_builder.cpp
-index 56858294c..94d2e211f 100644
+index 56858294c..7c26c4193 100644
 --- a/kernels/common/rtcore_builder.cpp
 +++ b/kernels/common/rtcore_builder.cpp
 @@ -29,8 +29,17 @@
@@ -98,7 +98,7 @@ index 56858294c..94d2e211f 100644
    namespace isa // FIXME: support more ISAs for builders
    {
      struct BVH : public RefCount
-@@ -334,92 +343,219 @@ namespace embree
+@@ -334,92 +343,227 @@ namespace embree
        return root;
      }
  
@@ -195,7 +195,15 @@ index 56858294c..94d2e211f 100644
 +                    ++realNum;
 +                }
 +            } break;
-+            case Geometry::GTY_ROUND_HERMITE_CURVE: {
++            case Geometry::GTY_FLAT_BEZIER_CURVE:
++            case Geometry::GTY_ROUND_BEZIER_CURVE:
++            case Geometry::GTY_ORIENTED_BEZIER_CURVE:
++            case Geometry::GTY_FLAT_BSPLINE_CURVE:
++            case Geometry::GTY_ROUND_BSPLINE_CURVE:
++            case Geometry::GTY_ORIENTED_BSPLINE_CURVE:
++            case Geometry::GTY_FLAT_HERMITE_CURVE:
++            case Geometry::GTY_ROUND_HERMITE_CURVE:
++            case Geometry::GTY_ORIENTED_HERMITE_CURVE: {
 +                Curve8i *curve = reinterpret_cast<Curve8i*>(prim);
 +                const auto N = curve->N;
 +                for(size_t i = 0; i < N; i++) {
@@ -396,5 +404,5 @@ index 56858294c..94d2e211f 100644
  }
 -
 -- 
-2.22.1
+2.23.0
 

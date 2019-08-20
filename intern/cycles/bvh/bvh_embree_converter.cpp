@@ -110,7 +110,7 @@ BVHNode *makeBVHTreeFromList(std::deque<BVHNode *> nodes)
 BVHNode *bvh_shrink(BVHNode *root)
 {
   if(root->is_leaf()) {
-  if(root->num_triangles() == 0) // Remove empty leafs
+    if(root->num_triangles() == 0) // Remove empty leafs
       return nullptr;
     else
       return root;
