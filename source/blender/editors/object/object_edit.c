@@ -1838,12 +1838,12 @@ static int remesh_exec(bContext *C, wmOperator *op)
     Mesh *mesh = ob->data;
     Mesh *newMesh;
 
-    if (mesh->voxel_size <= 0.0f) {
+    if (mesh->remesh_voxel_size <= 0.0f) {
       return OPERATOR_CANCELLED;
     }
 
     if (ob->mode == OB_MODE_SCULPT) {
-      Depsgraph *depsgraph = CTX_data_depsgraph(C);
+      Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
       BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true);
       PBVH *pbvh;
       PBVHNode **nodes;
@@ -1856,7 +1856,7 @@ static int remesh_exec(bContext *C, wmOperator *op)
 
     struct OpenVDBLevelSet *level_set;
     struct OpenVDBTransform *xform = OpenVDBTransform_create();
-    OpenVDBTransform_create_linear_transform(xform, (double)mesh->voxel_size);
+    OpenVDBTransform_create_linear_transform(xform, (double)mesh->remesh_voxel_size);
     level_set = BKE_remesh_voxel_ovdb_mesh_to_level_set_create(mesh, xform);
     newMesh = BKE_remesh_voxel_ovdb_volume_to_mesh_nomain(level_set, 0.0, 0.0, false);
     OpenVDBLevelSet_free(level_set);

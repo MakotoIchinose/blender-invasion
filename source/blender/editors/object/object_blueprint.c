@@ -1000,7 +1000,7 @@ int blueprint_update_step(bContext *C,
 
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   if (event->type == ESCKEY && event->val == KM_PRESS) {
     blueprint_end(C, op);

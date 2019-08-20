@@ -2551,7 +2551,7 @@ static bool remesh_update_check(bContext *C, wmOperator *op)
 
 static bool remesh_csg_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_RemeshModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_RemeshModifier, 0, false);
 }
 
 static int remesh_csg_add_exec(bContext *C, wmOperator *op)

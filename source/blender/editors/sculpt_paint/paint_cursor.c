@@ -1357,7 +1357,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
         GPU_matrix_push_projection();
         GPU_matrix_push();
         ED_view3d_draw_setup_view(CTX_wm_window(C),
-                                  CTX_data_depsgraph(C),
+                                  CTX_data_depsgraph_pointer(C),
                                   CTX_data_scene(C),
                                   ar,
                                   CTX_wm_view3d(C),
@@ -1407,7 +1407,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
             GPU_matrix_push_projection();
             GPU_matrix_push();
             ED_view3d_draw_setup_view(CTX_wm_window(C),
-                                      CTX_data_depsgraph(C),
+                                      CTX_data_depsgraph_pointer(C),
                                       CTX_data_scene(C),
                                       ar,
                                       CTX_wm_view3d(C),

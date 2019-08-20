@@ -3231,7 +3231,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_elem_find(fd->filesdna, "Mesh", "float", "voxel_size")) {
       for (Mesh *me = bmain->meshes.first; me; me = me->id.next) {
-        me->voxel_size = 0.1f;
+        me->remesh_voxel_size = 0.1f;
       }
     }
 

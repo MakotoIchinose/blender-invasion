@@ -102,7 +102,6 @@ static void make_prim_finish(bContext *C,
     // TODO: Find a better place to init this
     Mesh *me;
     me = obedit->data;
-    me->voxel_size = 0.1f;
   }
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obedit);
 }

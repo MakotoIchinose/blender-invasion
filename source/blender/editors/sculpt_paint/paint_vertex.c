@@ -2289,7 +2289,7 @@ static void wpaint_do_symmetrical_brush_actions(
 static void wpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, PointerRNA *itemptr)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   VPaint *wp = ts->wpaint;
   Brush *brush = BKE_paint_brush(&wp->paint);
@@ -3301,7 +3301,7 @@ static void vpaint_do_symmetrical_brush_actions(
 static void vpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, PointerRNA *itemptr)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   struct VPaintData *vpd = paint_stroke_mode_data(stroke);
   VPaint *vp = ts->vpaint;
