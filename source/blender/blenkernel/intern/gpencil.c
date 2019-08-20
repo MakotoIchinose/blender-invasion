@@ -2884,9 +2884,15 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 
   /* Fill color. */
   linearrgb_to_srgb_v4(gp_style->fill_rgba, cu_color);
-  /* Fill is false if the original curva hasn't material assigned. */
+  /* Fill is false if the original curve hasn't material assigned. */
   if (fill) {
     gp_style->flag |= GP_STYLE_FILL_SHOW;
+  }
+
+  /* Check at least one is enabled. */
+  if (((gp_style->flag & GP_STYLE_STROKE_SHOW) == 0) &&
+      ((gp_style->flag & GP_STYLE_FILL_SHOW) == 0)) {
+    gp_style->flag |= GP_STYLE_STROKE_SHOW;
   }
 
   return mat_gp;
