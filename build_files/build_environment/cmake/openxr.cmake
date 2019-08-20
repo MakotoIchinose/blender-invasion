@@ -36,19 +36,17 @@ ExternalProject_Add(external_openxr_sdk
   INSTALL_DIR ${LIBDIR}/openxr_sdk
 )
 
-add_dependencies(external_openxr_sdk)
-
 if(WIN32)
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(external_openxr_sdk after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/openxr_sdk/include/openxr ${HARVEST_TARGET}/openxr_sdk/include/openxr
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-*.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-*.lib
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/openxr_sdk/lib ${HARVEST_TARGET}/openxr_sdk/lib
       DEPENDEES install
     )
   endif()
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(external_openxr_sdk after_install
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-*.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-*.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-1_0.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-1_0_d.lib
       DEPENDEES install
     )
   endif()

@@ -308,5 +308,5 @@ set(OIDN_URI https://github.com/OpenImageDenoise/oidn/releases/download/v${OIDN_
 set(OIDN_HASH 19fe67b0164e8f020ac8a4f520defe60)
 
 set(OPENXR_SDK_VERSION 1.0.0)
-set(OPENXR_SDK_URI https://github.com/KhronosGroup/OpenXR-SDK-Source/archive/release-${OPENXR_VERSION}.tar.gz)
-set(OPENXR_SDK_HASH 348912bf9bfaf445ac2974bda19fd0d50496460b)
+set(OPENXR_SDK_URI https://github.com/KhronosGroup/OpenXR-SDK-Source/archive/release-${OPENXR_SDK_VERSION}.tar.gz)
+set(OPENXR_SDK_HASH 260bdc87b5a9b7ef35a540e39f875d79)
