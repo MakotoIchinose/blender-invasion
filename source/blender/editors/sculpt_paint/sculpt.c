@@ -8945,11 +8945,13 @@ static void mask_filter_task_cb(void *__restrict userdata,
   const int mode = data->filter_type;
 
   PBVHVertexIter vd;
+  bool update = false;
 
   BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
   {
     float val;
-    float contrast, delta, gain, offset, max, min;
+    float contrast, delta, gain, offset, max, min, prev_val;
+    prev_val = *vd.mask;
     SculptVertexNeighborIter ni;
     switch (mode) {
       case MASK_FILTER_BLUR:
@@ -9021,12 +9023,17 @@ static void mask_filter_task_cb(void *__restrict userdata,
         *vd.mask = gain * (*vd.mask) + offset;
         break;
     }
+    if (*vd.mask != prev_val) {
+      update = true;
+    }
     if (vd.mvert)
       vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_redraw(node);
+  if (update) {
+    BKE_pbvh_node_mark_redraw(node);
+  }
 }
 
 static int sculpt_mask_filter_invoke(bContext *C, wmOperator *op)
