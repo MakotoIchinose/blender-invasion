@@ -129,17 +129,14 @@ class GHOST_ContextD3D : public GHOST_Context {
 
  private:
   GHOST_TSuccess setupD3DLib();
-  GHOST_TSuccess updateSwapchain(GHOST_TUns32 width, GHOST_TUns32 height);
 
   static HMODULE s_d3d_lib;
-  static PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN s_D3D11CreateDeviceAndSwapChainFn;
+  static PFN_D3D11_CREATE_DEVICE s_D3D11CreateDeviceFn;
 
   HWND m_hWnd;
 
   ID3D11Device *m_device;
   ID3D11DeviceContext *m_device_ctx;
-  IDXGISwapChain *m_swapchain;
-  ID3D11RenderTargetView *m_backbuffer_view;
 };
 
 #endif /* __GHOST_CONTEXTD3D_H__ */

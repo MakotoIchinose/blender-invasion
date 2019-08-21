@@ -30,7 +30,7 @@
 //#define USE_DRAW_D3D_TEST_TRIANGLE
 
 HMODULE GHOST_ContextD3D::s_d3d_lib = NULL;
-PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN GHOST_ContextD3D::s_D3D11CreateDeviceAndSwapChainFn = NULL;
+PFN_D3D11_CREATE_DEVICE GHOST_ContextD3D::s_D3D11CreateDeviceFn = NULL;
 
 #ifdef USE_DRAW_D3D_TEST_TRIANGLE
 static void drawTestTriangle(ID3D11Device *m_device,
@@ -46,8 +46,6 @@ GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd)
 
 GHOST_ContextD3D::~GHOST_ContextD3D()
 {
-  m_swapchain->Release();
-  m_backbuffer_view->Release();
   m_device->Release();
   m_device_ctx->ClearState();
   m_device_ctx->Release();
@@ -55,8 +53,7 @@ GHOST_ContextD3D::~GHOST_ContextD3D()
 
 GHOST_TSuccess GHOST_ContextD3D::swapBuffers()
 {
-  HRESULT res = m_swapchain->Present(0, 0);
-  return (res == S_OK) ? GHOST_kSuccess : GHOST_kFailure;
+  return GHOST_kSuccess;
 }
 
 GHOST_TSuccess GHOST_ContextD3D::activateDrawingContext()
@@ -98,43 +95,6 @@ GHOST_TSuccess GHOST_ContextD3D::setDefaultFramebufferSize(GHOST_TUns32 width, G
   return GHOST_kSuccess;
 }
 
-GHOST_TSuccess GHOST_ContextD3D::updateSwapchain(GHOST_TUns32 width, GHOST_TUns32 height)
-{
-  HRESULT hres;
-  DXGI_SWAP_CHAIN_DESC swapchain_desc;
-
-  m_swapchain->GetDesc(&swapchain_desc);
-
-  if ((swapchain_desc.BufferDesc.Width == width) && (swapchain_desc.BufferDesc.Height == height)) {
-    // Nothing to do.
-    return GHOST_kSuccess;
-  }
-
-#define CHECK_HRES \
-  if (hres != S_OK) { \
-    printf("Error updating swapchain (error code %x): %s line %i\n", hres, __FILE__, __LINE__); \
-  } \
-  (void)0
-
-  m_device_ctx->OMSetRenderTargets(0, nullptr, nullptr);
-
-  m_backbuffer_view->Release();
-  m_device_ctx->ClearState();
-
-  hres = m_swapchain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
-  CHECK_HRES;
-
-  ID3D11Texture2D *buf;
-  hres = m_swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&buf);
-  CHECK_HRES;
-
-  hres = m_device->CreateRenderTargetView(buf, NULL, &m_backbuffer_view);
-  CHECK_HRES;
-  buf->Release();
-
-  return GHOST_kSuccess;
-}
-
 GHOST_TSuccess GHOST_ContextD3D::setupD3DLib()
 {
   if (s_d3d_lib == NULL) {
@@ -148,14 +108,14 @@ GHOST_TSuccess GHOST_ContextD3D::setupD3DLib()
     }
   }
 
-  if (s_D3D11CreateDeviceAndSwapChainFn == NULL) {
-    s_D3D11CreateDeviceAndSwapChainFn = (PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN)GetProcAddress(
-        s_d3d_lib, "D3D11CreateDeviceAndSwapChain");
+  if (s_D3D11CreateDeviceFn == NULL) {
+    s_D3D11CreateDeviceFn = (PFN_D3D11_CREATE_DEVICE)GetProcAddress(s_d3d_lib,
+                                                                    "D3D11CreateDevice");
 
-    WIN32_CHK(s_D3D11CreateDeviceAndSwapChainFn != NULL);
+    WIN32_CHK(s_D3D11CreateDeviceFn != NULL);
 
-    if (s_D3D11CreateDeviceAndSwapChainFn == NULL) {
-      fprintf(stderr, "GetProcAddress(s_d3d_lib, \"D3D11CreateDeviceAndSwapChain\") failed!\n");
+    if (s_D3D11CreateDeviceFn == NULL) {
+      fprintf(stderr, "GetProcAddress(s_d3d_lib, \"D3D11CreateDevice\") failed!\n");
       return GHOST_kFailure;
     }
   }
@@ -169,38 +129,19 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
     return GHOST_kFailure;
   }
 
-  DXGI_SWAP_CHAIN_DESC sd{};
+  HRESULT hres = s_D3D11CreateDeviceFn(NULL,
+                                       D3D_DRIVER_TYPE_HARDWARE,
+                                       NULL,
+                                       // D3D11_CREATE_DEVICE_DEBUG,
+                                       0,
+                                       NULL,
+                                       0,
+                                       D3D11_SDK_VERSION,
+                                       &m_device,
+                                       NULL,
+                                       &m_device_ctx);
 
-  sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  sd.SampleDesc.Count = 1;
-  sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  sd.BufferCount = 3;
-  sd.OutputWindow = m_hWnd;
-  sd.Windowed = TRUE;
-  sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-  HRESULT hres = s_D3D11CreateDeviceAndSwapChainFn(NULL,
-                                                   D3D_DRIVER_TYPE_HARDWARE,
-                                                   NULL,
-                                                   // D3D11_CREATE_DEVICE_DEBUG,
-                                                   0,
-                                                   NULL,
-                                                   0,
-                                                   D3D11_SDK_VERSION,
-                                                   &sd,
-                                                   &m_swapchain,
-                                                   &m_device,
-                                                   NULL,
-                                                   &m_device_ctx);
   WIN32_CHK(hres == S_OK);
-
-  ID3D11Texture2D *back_buffer;
-  m_swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&back_buffer);
-
-  m_device->CreateRenderTargetView(back_buffer, nullptr, &m_backbuffer_view);
-  back_buffer->Release();
-
-  m_swapchain->Present(0, 0);
 
   return GHOST_kSuccess;
 }
@@ -214,14 +155,12 @@ GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context * /*of
                                                             GHOST_TInt32 width,
                                                             GHOST_TInt32 height)
 {
-  if (updateSwapchain(width, height) == GHOST_kSuccess) {
-    GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(width, height);
+  GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(width, height);
 
-    if (shared_res) {
-      GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
-      disposeSharedOpenGLResource(shared_res);
-      return ret;
-    }
+  if (shared_res) {
+    GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
+    disposeSharedOpenGLResource(shared_res);
+    return ret;
   }
 
   return GHOST_kFailure;
