@@ -1708,7 +1708,6 @@ class USERPREF_PT_addons(Panel):
     def draw(self, context):
         import os
         import addon_utils
-        from bl_ui_utils.bug_report_url import url_prefill_from_blender
 
         layout = self.layout
 
@@ -1744,6 +1743,7 @@ class USERPREF_PT_addons(Panel):
         row.operator("preferences.addon_refresh", icon='FILE_REFRESH', text="Refresh")
 
         row = layout.row()
+        row.prop(context.preferences.view, "show_addons_enabled_only")
         row.prop(context.window_manager, "addon_filter", text="")
         row.prop(context.window_manager, "addon_search", text="", icon='VIEWZOOM')
 
@@ -1770,6 +1770,7 @@ class USERPREF_PT_addons(Panel):
                 "(see console for details)",
             )
 
+        show_enabled_only = context.preferences.view.show_addons_enabled_only
         filter = context.window_manager.addon_filter
         search = context.window_manager.addon_search.lower()
         support = context.window_manager.addon_support
@@ -1786,13 +1787,15 @@ class USERPREF_PT_addons(Panel):
                 continue
 
             # check if addon should be visible with current filters
-            if (
-                    (filter == "All") or
-                    (filter == info["category"]) or
-                    (filter == "Enabled" and is_enabled) or
-                    (filter == "Disabled" and not is_enabled) or
-                    (filter == "User" and (mod.__file__.startswith(addon_user_dirs)))
-            ):
+            is_visible = (
+                (filter == "All") or
+                (filter == info["category"]) or
+                (filter == "User" and (mod.__file__.startswith(addon_user_dirs)))
+            )
+            if show_enabled_only:
+                is_visible = is_visible and is_enabled
+
+            if is_visible:
                 if search and search not in info["name"].lower():
                     if info["author"]:
                         if search not in info["author"].lower():
@@ -1883,13 +1886,18 @@ class USERPREF_PT_addons(Panel):
                             ).url = info["wiki_url"]
                         # Only add "Report a Bug" button if tracker_url is set
                         # or the add-on is bundled (use official tracker then).
-                        if info.get("tracker_url") or not user_addon:
+                        if info.get("tracker_url"):
                             sub.operator(
                                 "wm.url_open", text="Report a Bug", icon='URL',
-                            ).url = info.get(
-                                "tracker_url",
-                                url_prefill_from_blender(info),
+                            ).url = info["tracker_url"]
+                        elif not user_addon:
+                            addon_info = ("Name: {} {}\nAuthor: {}\n").format(
+                                info["name"], info["version"], info["author"])
+                            props = sub.operator(
+                                "wm.url_open_preset", text="Report a Bug", icon='URL',
                             )
+                            props.type = 'BUG_ADDON'
+                            props.id = addon_info
                         if user_addon:
                             sub.operator(
                                 "preferences.addon_remove", text="Remove", icon='CANCEL',

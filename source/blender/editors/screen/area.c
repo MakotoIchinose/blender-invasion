@@ -875,10 +875,9 @@ static void fullscreen_azone_initialize(ScrArea *sa, ARegion *ar)
   az->alpha = 0.0f;
 
   if (U.uiflag2 & USER_REGION_OVERLAP) {
-    rcti rect_visible;
-    ED_region_visible_rect(ar, &rect_visible);
-    az->x2 = ar->winrct.xmin + rect_visible.xmax;
-    az->y2 = ar->winrct.ymin + rect_visible.ymax;
+    const rcti *rect_visible = ED_region_visible_rect(ar);
+    az->x2 = ar->winrct.xmin + rect_visible->xmax;
+    az->y2 = ar->winrct.ymin + rect_visible->ymax;
   }
   else {
     az->x2 = ar->winrct.xmax;
@@ -1053,16 +1052,11 @@ static void region_azones_scrollbars_initialize(ScrArea *sa, ARegion *ar)
 }
 
 /* *************************************************************** */
-
-static void region_azones_add(const bScreen *screen, ScrArea *sa, ARegion *ar, const int alignment)
+static void region_azones_add_edge(ScrArea *sa,
+                                   ARegion *ar,
+                                   const int alignment,
+                                   const bool is_fullscreen)
 {
-  const bool is_fullscreen = screen->state == SCREENFULL;
-
-  /* Only display tab or icons when the header region is hidden
-   * (not the tool header - they overlap). */
-  if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
-    return;
-  }
 
   /* edge code (t b l r) is along which area edge azone will be drawn */
   if (alignment == RGN_ALIGN_TOP) {
@@ -1076,6 +1070,25 @@ static void region_azones_add(const bScreen *screen, ScrArea *sa, ARegion *ar, c
   }
   else if (alignment == RGN_ALIGN_LEFT) {
     region_azone_edge_initialize(sa, ar, AE_RIGHT_TO_TOPLEFT, is_fullscreen);
+  }
+}
+
+static void region_azones_add(const bScreen *screen, ScrArea *sa, ARegion *ar)
+{
+  const bool is_fullscreen = screen->state == SCREENFULL;
+
+  /* Only display tab or icons when the header region is hidden
+   * (not the tool header - they overlap). */
+  if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
+    return;
+  }
+
+  region_azones_add_edge(sa, ar, RGN_ALIGN_ENUM_FROM_MASK(ar->alignment), is_fullscreen);
+
+  /* For a split region also continue the azone edge from the next region if this region is aligned
+   * with the next */
+  if ((ar->alignment & RGN_SPLIT_PREV) && ar->prev) {
+    region_azones_add_edge(sa, ar, RGN_ALIGN_ENUM_FROM_MASK(ar->prev->alignment), is_fullscreen);
   }
 
   if (is_fullscreen) {
@@ -1492,6 +1505,9 @@ static void region_rect_recursive(
   if (ar->winx != prev_winx || ar->winy != prev_winy) {
     ED_region_tag_redraw(ar);
   }
+
+  /* Clear, initialize on demand. */
+  memset(&ar->runtime.visible_rect, 0, sizeof(ar->runtime.visible_rect));
 }
 
 static void area_calc_totrct(ScrArea *sa, const rcti *window_rect)
@@ -1693,7 +1709,7 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
     }
 
     /* Some AZones use View2D data which is only updated in region init, so call that first! */
-    region_azones_add(screen, area, ar, RGN_ALIGN_ENUM_FROM_MASK(ar->alignment));
+    region_azones_add(screen, area, ar);
   }
   ED_area_azones_update(area, &win->eventstate->x);
 
@@ -1764,7 +1780,7 @@ void ED_area_initialize(wmWindowManager *wm, wmWindow *win, ScrArea *sa)
     }
 
     /* Some AZones use View2D data which is only updated in region init, so call that first! */
-    region_azones_add(screen, sa, ar, RGN_ALIGN_ENUM_FROM_MASK(ar->alignment));
+    region_azones_add(screen, sa, ar);
   }
 
   /* Avoid re-initializing tools while resizing the window. */
@@ -2786,11 +2802,10 @@ void ED_region_info_draw_multiline(ARegion *ar,
   uiStyle *style = UI_style_get_dpi();
   int fontid = style->widget.uifont_id;
   int scissor[4];
-  rcti rect;
   int num_lines = 0;
 
   /* background box */
-  ED_region_visible_rect(ar, &rect);
+  rcti rect = *ED_region_visible_rect(ar);
 
   /* Box fill entire width or just around text. */
   if (!full_redraw) {
@@ -3268,7 +3283,7 @@ void ED_region_grid_draw(ARegion *ar, float zoomx, float zoomy)
 
 /* If the area has overlapping regions, it returns visible rect for Region *ar */
 /* rect gets returned in local region coordinates */
-void ED_region_visible_rect(ARegion *ar, rcti *rect)
+static void region_visible_rect_calc(ARegion *ar, rcti *rect)
 {
   ARegion *arn = ar;
 
@@ -3313,6 +3328,15 @@ void ED_region_visible_rect(ARegion *ar, rcti *rect)
     }
   }
   BLI_rcti_translate(rect, -ar->winrct.xmin, -ar->winrct.ymin);
+}
+
+const rcti *ED_region_visible_rect(ARegion *ar)
+{
+  rcti *rect = &ar->runtime.visible_rect;
+  if (rect->xmin == 0 && rect->ymin == 0 && rect->xmax == 0 && rect->ymax == 0) {
+    region_visible_rect_calc(ar, rect);
+  }
+  return rect;
 }
 
 /* Cache display helpers */

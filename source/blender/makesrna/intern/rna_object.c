@@ -1432,8 +1432,8 @@ bool rna_Object_constraints_override_apply(Main *UNUSED(bmain),
   Object *ob_src = (Object *)ptr_src->id.data;
 
   /* Remember that insertion operations are defined and stored in correct order, which means that
-   * even if we insert several items in a row, we alays insert first one, then second one, etc.
-   * So we should always find 'anchor' constraint in both _src *and* _dst> */
+   * even if we insert several items in a row, we always insert first one, then second one, etc.
+   * So we should always find 'anchor' constraint in both _src *and* _dst. */
   bConstraint *con_anchor = NULL;
   if (opop->subitem_local_name && opop->subitem_local_name[0]) {
     con_anchor = BLI_findstring(
@@ -1520,8 +1520,8 @@ bool rna_Object_modifiers_override_apply(Main *UNUSED(bmain),
   Object *ob_src = (Object *)ptr_src->id.data;
 
   /* Remember that insertion operations are defined and stored in correct order, which means that
-   * even if we insert several items in a row, we alays insert first one, then second one, etc.
-   * So we should always find 'anchor' constraint in both _src *and* _dst> */
+   * even if we insert several items in a row, we always insert first one, then second one, etc.
+   * So we should always find 'anchor' constraint in both _src *and* _dst. */
   ModifierData *mod_anchor = NULL;
   if (opop->subitem_local_name && opop->subitem_local_name[0]) {
     mod_anchor = BLI_findstring(
@@ -2480,10 +2480,12 @@ static void rna_def_object(BlenderRNA *brna)
 
   /* proxy */
   prop = RNA_def_property(srna, "proxy", PROP_POINTER, PROP_NONE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop, "Proxy", "Library object this proxy object controls");
 
   prop = RNA_def_property(srna, "proxy_collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "proxy_group");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(
       prop, "Proxy Collection", "Library collection duplicator object this proxy object controls");
 
@@ -2954,6 +2956,7 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_pointer_sdna(prop, NULL, "instance_collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_pointer_funcs(prop, NULL, "rna_Object_dup_collection_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Instance Collection", "Instance an existing collection");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_dependency_update");

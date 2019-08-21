@@ -642,8 +642,7 @@ static void rna_IDMaterials_append_id(ID *id, Main *bmain, Material *ma)
   WM_main_add_notifier(NC_OBJECT | ND_OB_SHADING, id);
 }
 
-static Material *rna_IDMaterials_pop_id(
-    ID *id, Main *bmain, ReportList *reports, int index_i, bool remove_material_slot)
+static Material *rna_IDMaterials_pop_id(ID *id, Main *bmain, ReportList *reports, int index_i)
 {
   Material *ma;
   short *totcol = give_totcolp_id(id);
@@ -657,7 +656,7 @@ static Material *rna_IDMaterials_pop_id(
     return NULL;
   }
 
-  ma = BKE_material_pop_id(bmain, id, index_i, remove_material_slot);
+  ma = BKE_material_pop_id(bmain, id, index_i);
 
   if (*totcol == totcol_orig) {
     BKE_report(reports, RPT_ERROR, "No material to removed");
@@ -671,9 +670,9 @@ static Material *rna_IDMaterials_pop_id(
   return ma;
 }
 
-static void rna_IDMaterials_clear_id(ID *id, Main *bmain, bool remove_material_slot)
+static void rna_IDMaterials_clear_id(ID *id, Main *bmain)
 {
-  BKE_material_clear_id(bmain, id, remove_material_slot);
+  BKE_material_clear_id(bmain, id);
 
   DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, id);
@@ -1116,16 +1115,12 @@ static void rna_def_ID_materials(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Remove a material from the data-block");
   parm = RNA_def_int(
       func, "index", -1, -MAXMAT, MAXMAT, "", "Index of material to remove", 0, MAXMAT);
-  RNA_def_boolean(
-      func, "update_data", 0, "", "Update data by re-adjusting the material slots assigned");
   parm = RNA_def_pointer(func, "material", "Material", "", "Material to remove");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "clear", "rna_IDMaterials_clear_id");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Remove all materials from the data-block");
-  RNA_def_boolean(
-      func, "update_data", 0, "", "Update data by re-adjusting the material slots assigned");
 }
 
 static void rna_def_image_preview(BlenderRNA *brna)
@@ -1455,6 +1450,7 @@ static void rna_def_ID(BlenderRNA *brna)
       "Actual data-block from .blend file (Main database) that generated that evaluated one");
   RNA_def_property_pointer_funcs(prop, "rna_ID_original_get", NULL, NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE | PROP_PTR_NO_OWNERSHIP);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   prop = RNA_def_property(srna, "users", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "us");
@@ -1483,6 +1479,7 @@ static void rna_def_ID(BlenderRNA *brna)
   prop = RNA_def_property(srna, "library", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "lib");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop, "Library", "Library file the data-block is linked from");
 
   prop = RNA_def_pointer(
@@ -1607,6 +1604,7 @@ static void rna_def_library(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Library");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop, "Parent", "");
 
   prop = RNA_def_property(srna, "packed_file", PROP_POINTER, PROP_NONE);
