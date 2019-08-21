@@ -111,10 +111,6 @@ class GHOST_ContextD3D : public GHOST_Context {
   GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
                                             GHOST_TInt32 width,
                                             GHOST_TInt32 height);
-  GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
-                                            ID3D11RenderTargetView *render_target,
-                                            GHOST_TInt32 width,
-                                            GHOST_TInt32 height);
 
   class GHOST_SharedOpenGLResource *createSharedOpenGLResource(
       unsigned int width, unsigned int height, ID3D11RenderTargetView *render_target);

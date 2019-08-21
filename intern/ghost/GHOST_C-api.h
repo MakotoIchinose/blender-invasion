@@ -197,15 +197,6 @@ GHOST_TSuccess GHOST_DisposeDirectXContext(GHOST_SystemHandle systemhandle,
                                            GHOST_ContextHandle contexthandle);
 #endif
 
-GHOST_TSuccess GHOST_BlitOpenGLOffscreenContext(GHOST_WindowHandle windowhandle,
-                                                GHOST_ContextHandle offscreen_contexthandle);
-
-extern GHOST_TSuccess GHOST_ContextBlitOpenGLOffscreenContext(
-    GHOST_ContextHandle onscreen_contexthandle,
-    GHOST_ContextHandle offscreen_contexthandle,
-    GHOST_TInt32 width,
-    GHOST_TInt32 height);
-
 extern GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle);
 
 /**

@@ -114,16 +114,6 @@ unsigned int GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
-GHOST_TSuccess GHOST_Window::blitOpenGLOffscreenContext(GHOST_IContext *offscreen_ctx)
-{
-  GHOST_Rect rect;
-
-  getWindowBounds(rect);
-
-  return m_context->blitOpenGLOffscreenContext(
-      (GHOST_Context *)offscreen_ctx, rect.getWidth(), rect.getHeight());
-}
-
 bool GHOST_Window::isUpsideDown() const
 {
   return m_context->isUpsideDown();

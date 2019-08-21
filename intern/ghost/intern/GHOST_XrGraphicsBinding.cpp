@@ -258,23 +258,25 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
         swapchain_image);
 
     ogl_ctx->activateDrawingContext();
+    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
 
 #  if 0
     /* Ideally we'd just create a render target view for the OpenXR swapchain image texture and
      * blit from the OpenGL context into it. The NV_DX_interop extension doesn't want to work with
      * this though. At least not with Optimus hardware. See:
      * https://github.com/mpv-player/mpv/issues/2949#issuecomment-197262807.
-     * Note: Even if this worked, the blitting code only supports one shared resource by now, we'd
-     * need at least two (for each eye). We could also entirely re-register shared resources all
-     * the time. Also, the runtime might recreate the swapchain image so the shared resource would
-     * have to be re-registered then as well. */
+     */
 
     ID3D11RenderTargetView *rtv;
     CD3D11_RENDER_TARGET_VIEW_DESC rtv_desc(D3D11_RTV_DIMENSION_TEXTURE2D,
                                             DXGI_FORMAT_R8G8B8A8_UNORM);
 
     m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture, &rtv_desc, &rtv);
-    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, rtv, draw_info->width, draw_info->height);
+    if (!m_shared_resource) {
+      m_shared_resource = m_ghost_ctx->createSharedOpenGLResource(
+          draw_info->width, draw_info->height, rtv);
+    }
+    m_ghost_ctx->blitFromOpenGLContext(m_shared_resource, draw_info->width, draw_info->height);
 #  else
     if (!m_shared_resource) {
       m_shared_resource = m_ghost_ctx->createSharedOpenGLResource(draw_info->width,

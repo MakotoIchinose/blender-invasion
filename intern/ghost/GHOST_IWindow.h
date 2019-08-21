@@ -79,8 +79,6 @@ class GHOST_IWindow {
 
   virtual class GHOST_IContext *getDrawingContext() = 0;
 
-  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_IContext *offscreen) = 0;
-
   /**
    * Sets the title displayed in the title bar.
    * \param title The title to display in the title bar.

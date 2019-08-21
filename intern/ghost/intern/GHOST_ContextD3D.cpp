@@ -210,29 +210,19 @@ GHOST_TSuccess GHOST_ContextD3D::releaseNativeHandles()
   return GHOST_kFailure;
 }
 
-GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
-                                                            ID3D11RenderTargetView *render_target,
-                                                            GHOST_TInt32 width,
-                                                            GHOST_TInt32 height)
-{
-  GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(
-      width, height, render_target);
-
-  if (shared_res) {
-    GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
-    disposeSharedOpenGLResource(shared_res);
-    return ret;
-  }
-
-  return GHOST_kFailure;
-}
-
-GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context *offscreen_ctx,
+GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context * /*offscreen_ctx*/,
                                                             GHOST_TInt32 width,
                                                             GHOST_TInt32 height)
 {
   if (updateSwapchain(width, height) == GHOST_kSuccess) {
-    return blitOpenGLOffscreenContext(offscreen_ctx, m_backbuffer_view, width, height);
+    GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(
+        width, height, m_backbuffer_view);
+
+    if (shared_res) {
+      GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
+      disposeSharedOpenGLResource(shared_res);
+      return ret;
+    }
   }
 
   return GHOST_kFailure;
@@ -274,11 +264,12 @@ class GHOST_SharedOpenGLResource {
       renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
       renderTargetViewDesc.Texture2D.MipSlice = 0;
 
-      device->CreateRenderTargetView(tex, &renderTargetViewDesc, &m_render_target);
+      device->CreateRenderTargetView(tex, &renderTargetViewDesc, &render_target);
 
       tex->Release();
     }
 
+    m_render_target = render_target;
     m_render_target->GetResource(&backbuffer_res);
     backbuffer_res->QueryInterface<ID3D11Texture2D>(&m_render_target_tex);
     backbuffer_res->Release();
