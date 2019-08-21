@@ -30,6 +30,7 @@ SET(_openxr_sdk_SEARCH_DIRS
   /usr/local
   /sw # Fink
   /opt/local # DarwinPorts
+  /opt/lib/openxr-sdk
 )
 
 FIND_PATH(OPENXR_SDK_INCLUDE_DIR
