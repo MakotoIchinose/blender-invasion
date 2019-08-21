@@ -116,6 +116,16 @@ class GHOST_ContextD3D : public GHOST_Context {
                                             GHOST_TInt32 width,
                                             GHOST_TInt32 height);
 
+  class GHOST_SharedOpenGLResource *createSharedOpenGLResource(
+      unsigned int width, unsigned int height, ID3D11RenderTargetView *render_target);
+  class GHOST_SharedOpenGLResource *createSharedOpenGLResource(unsigned int width,
+                                                               unsigned int height);
+  void disposeSharedOpenGLResource(class GHOST_SharedOpenGLResource *shared_res);
+  GHOST_TSuccess blitFromOpenGLContext(class GHOST_SharedOpenGLResource *shared_res,
+                                       unsigned int width,
+                                       unsigned int height);
+  ID3D11Texture2D *getSharedTexture2D(class GHOST_SharedOpenGLResource *shared_res);
+
   bool isUpsideDown() const
   {
     return true;
@@ -134,8 +144,6 @@ class GHOST_ContextD3D : public GHOST_Context {
   ID3D11DeviceContext *m_device_ctx;
   IDXGISwapChain *m_swapchain;
   ID3D11RenderTargetView *m_backbuffer_view;
-
-  class SharedOpenGLContext *glshared{nullptr};
 };
 
 #endif /* __GHOST_CONTEXTD3D_H__ */

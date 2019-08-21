@@ -184,6 +184,13 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #ifdef WIN32
 class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
  public:
+  ~GHOST_XrGraphicsBindingD3D()
+  {
+    if (m_shared_resource) {
+      m_ghost_ctx->disposeSharedOpenGLResource(m_shared_resource);
+    }
+  }
+
   bool checkVersionRequirements(GHOST_Context *ghost_ctx,
                                 XrInstance instance,
                                 XrSystemId system_id,
@@ -250,6 +257,8 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
 
+    ogl_ctx->activateDrawingContext();
+
 #  if 0
     /* Ideally we'd just create a render target view for the OpenXR swapchain image texture and
      * blit from the OpenGL context into it. The NV_DX_interop extension doesn't want to work with
@@ -267,25 +276,22 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     m_ghost_ctx->m_device->CreateRenderTargetView(d3d_swapchain_image->texture, &rtv_desc, &rtv);
     m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, rtv, draw_info->width, draw_info->height);
 #  else
-    ID3D11Resource *res;
-    ID3D11Texture2D *tex;
-
-    ogl_ctx->activateDrawingContext();
-    m_ghost_ctx->blitOpenGLOffscreenContext(ogl_ctx, draw_info->width, draw_info->height);
-
-    m_ghost_ctx->m_backbuffer_view->GetResource(&res);
-    res->QueryInterface<ID3D11Texture2D>(&tex);
+    if (!m_shared_resource) {
+      m_shared_resource = m_ghost_ctx->createSharedOpenGLResource(draw_info->width,
+                                                                  draw_info->height);
+    }
+    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
+    m_ghost_ctx->blitFromOpenGLContext(m_shared_resource, draw_info->width, draw_info->height);
 
     m_ghost_ctx->m_device_ctx->OMSetRenderTargets(0, nullptr, nullptr);
-    m_ghost_ctx->m_device_ctx->CopyResource(d3d_swapchain_image->texture, tex);
-
-    res->Release();
-    tex->Release();
+    m_ghost_ctx->m_device_ctx->CopyResource(d3d_swapchain_image->texture,
+                                            m_ghost_ctx->getSharedTexture2D(m_shared_resource));
 #  endif
   }
 
  private:
   GHOST_ContextD3D *m_ghost_ctx;
+  GHOST_SharedOpenGLResource *m_shared_resource;
   std::list<std::vector<XrSwapchainImageD3D11KHR>> m_image_cache;
 };
 #endif  // WIN32
