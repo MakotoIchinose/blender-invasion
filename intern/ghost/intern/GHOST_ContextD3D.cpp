@@ -215,8 +215,7 @@ GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context * /*of
                                                             GHOST_TInt32 height)
 {
   if (updateSwapchain(width, height) == GHOST_kSuccess) {
-    GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(
-        width, height, m_backbuffer_view);
+    GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(width, height);
 
     if (shared_res) {
       GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
