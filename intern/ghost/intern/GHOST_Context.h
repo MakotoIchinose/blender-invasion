@@ -120,6 +120,9 @@ class GHOST_Context : public GHOST_IContext {
     return m_stereoVisual;
   }
 
+  /**
+   * Returns if the window is rendered upside down compared to OpenGL.
+   */
   inline bool isUpsideDown() const
   {
     return false;

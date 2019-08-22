@@ -197,8 +197,6 @@ GHOST_TSuccess GHOST_DisposeDirectXContext(GHOST_SystemHandle systemhandle,
                                            GHOST_ContextHandle contexthandle);
 #endif
 
-extern GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle);
-
 /**
  * Returns the window user data.
  * \param windowhandle The handle to the window
@@ -672,13 +670,6 @@ extern GHOST_TSuccess GHOST_SetWindowOrder(GHOST_WindowHandle windowhandle,
  * \return A success indicator.
  */
 extern GHOST_TSuccess GHOST_SwapWindowBuffers(GHOST_WindowHandle windowhandle);
-
-/**
- * Swaps front and back buffers of a context.
- * \param contexthandle The handle to the context
- * \return A success indicator.
- */
-extern GHOST_TSuccess GHOST_SwapContextBuffers(GHOST_ContextHandle contexthandle);
 
 /**
  * Sets the swap interval for swapBuffers.

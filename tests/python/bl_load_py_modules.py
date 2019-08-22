@@ -204,8 +204,7 @@ def load_modules():
     # check which filepaths we didn't load
     source_files = []
     for mod_dir in module_paths:
-        source_files.extend(source_list(
-            mod_dir, filename_check=lambda f: f.endswith(".py")))
+        source_files.extend(source_list(mod_dir, filename_check=lambda f: f.endswith(".py")))
 
     source_files = list(set(source_files))
     source_files.sort()

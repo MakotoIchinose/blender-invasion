@@ -16,6 +16,10 @@
 
 /** \file
  * \ingroup wm
+ *
+ * \name WM-Surface
+ *
+ * Container to manage painting in an offscreen context.
  */
 
 #ifndef __WM_SURFACE_H__

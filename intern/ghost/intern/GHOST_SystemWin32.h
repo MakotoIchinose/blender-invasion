@@ -242,6 +242,11 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   GHOST_TSuccess exit();
 
+  /**
+   * Create a new offscreen DirectX context.
+   * Never explicitly delete the window, use disposeContext() instead.
+   * \return  The new context (or 0 if creation failed).
+   */
   GHOST_IContext *createOffscreenContextD3D();
 
   /**

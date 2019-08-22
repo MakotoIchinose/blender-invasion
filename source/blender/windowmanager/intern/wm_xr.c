@@ -16,6 +16,10 @@
 
 /** \file
  * \ingroup wm
+ *
+ * \name Window-Manager XR API
+ *
+ * Implements Blender specific functionality for the GHOST_Xr API.
  */
 
 #include "BKE_context.h"
@@ -75,6 +79,10 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Context
+ *
+ * All XR functionality is accessed through a #GHOST_XrContext handle.
+ * The lifetime of this context also determines the lifetime of the OpenXR instance, which is the
+ * representation of the OpenXR runtime connection within the application.
  *
  * \{ */
 
@@ -209,8 +217,18 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 /* -------------------------------------------------------------------- */
 /** \name XR-Session Surface
  *
+ * A wmSurface is used to manage drawing of the VR viewport. It's created and destroyed with the
+ * session.
+ *
  * \{ */
 
+/**
+ * \brief Call Ghost-XR to draw a frame
+ *
+ * Draw callback for the XR-session surface. It's expected to be called on each main loop iteration
+ * and tells Ghost-XR to submit a new frame by drawing its views. Note that for drawing each view,
+ * #wm_xr_draw_view() will be called through Ghost-XR (see GHOST_XrDrawViewFunc()).
+ */
 static void wm_xr_session_surface_draw(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -336,6 +354,11 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
  *
  * \{ */
 
+/**
+ * Proper reference space set up is not supported yet. We simply hand OpenXR the global space as
+ * reference space and apply its pose onto the active camera matrix to get a basic viewing
+ * experience going. If there's no active camera with stick to the world origin.
+ */
 static void wm_xr_draw_matrices_create(const Scene *scene,
                                        const GHOST_XrDrawViewInfo *draw_view,
                                        const float clip_start,
@@ -371,6 +394,12 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
   }
 }
 
+/**
+ * \brief Draw a viewport for a single eye.
+ *
+ * This is the main viewport drawing function for VR sessions. It's assigned to Ghost-XR as a
+ * callback (see GHOST_XrDrawViewFunc()) and executed for each view (read: eye).
+ */
 GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
   bContext *C = customdata;

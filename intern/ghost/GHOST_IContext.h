@@ -60,6 +60,9 @@ class GHOST_IContext {
 
   virtual GHOST_TSuccess swapBuffers() = 0;
 
+  /**
+   * Returns if the window is rendered upside down compared to OpenGL.
+   */
   virtual bool isUpsideDown() const = 0;
 
 #ifdef WITH_CXX_GUARDEDALLOC

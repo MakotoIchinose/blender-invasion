@@ -150,13 +150,6 @@ GHOST_TSuccess GHOST_DisposeDirectXContext(GHOST_SystemHandle systemhandle,
 
 #endif
 
-GHOST_ContextHandle GHOST_GetWindowContext(GHOST_WindowHandle windowhandle)
-{
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-
-  return (GHOST_ContextHandle)window->getDrawingContext();
-}
-
 GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                       const char *title,
                                       GHOST_TInt32 left,
@@ -621,13 +614,6 @@ GHOST_TSuccess GHOST_SwapWindowBuffers(GHOST_WindowHandle windowhandle)
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
 
   return window->swapBuffers();
-}
-
-GHOST_TSuccess GHOST_SwapContextBuffers(GHOST_ContextHandle contexthandle)
-{
-  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
-
-  return context->swapBuffers();
 }
 
 GHOST_TSuccess GHOST_SetSwapInterval(GHOST_WindowHandle windowhandle, int interval)

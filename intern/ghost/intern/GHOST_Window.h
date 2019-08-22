@@ -221,11 +221,6 @@ class GHOST_Window : public GHOST_IWindow {
    */
   virtual bool getModifiedState();
 
-  inline GHOST_IContext *getDrawingContext()
-  {
-    return (GHOST_IContext *)m_context;
-  }
-
   /**
    * Returns the type of drawing context used in this window.
    * \return The current type of drawing context.
@@ -284,6 +279,9 @@ class GHOST_Window : public GHOST_IWindow {
     m_userData = userData;
   }
 
+  /**
+   * Returns if the window is rendered upside down compared to OpenGL.
+   */
   bool isUpsideDown() const;
 
   float getNativePixelSize(void)
