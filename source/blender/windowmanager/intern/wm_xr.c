@@ -187,8 +187,16 @@ static void wm_xr_session_begin_info_create(const Scene *scene,
 {
   if (scene->camera) {
     copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
-    /* TODO will only work if rotmode is euler */
-    eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
+    if (ELEM(scene->camera->rotmode, ROT_MODE_AXISANGLE, ROT_MODE_QUAT)) {
+      axis_angle_to_quat(
+          begin_info->base_pose.orientation_quat, scene->camera->rotAxis, scene->camera->rotAngle);
+    }
+    else if (scene->camera->rotmode == ROT_MODE_QUAT) {
+      copy_v4_v4(begin_info->base_pose.orientation_quat, scene->camera->quat);
+    }
+    else {
+      eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
+    }
   }
   else {
     copy_v3_fl(begin_info->base_pose.position, 0.0f);
@@ -404,8 +412,8 @@ GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void 
 {
   bContext *C = customdata;
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
-  const float clip_start = 0.01, clip_end = 500.0f;
-  const float lens = 50.0f; /* TODO get from OpenXR */
+  const float clip_start = 0.01f, clip_end = 500.0f;
+  const float lens = 50.0f;
   const rcti rect = {
       .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
 

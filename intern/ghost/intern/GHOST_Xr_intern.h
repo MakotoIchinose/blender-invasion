@@ -32,7 +32,15 @@
     if (XR_FAILED(_res)) { \
       throw GHOST_XrException(error_msg, __FILE__, __LINE__, _res); \
     } \
-  }
+  } \
+  (void)0
+
+#define CHECK_XR_ASSERT(call) \
+  { \
+    XrResult _res = call; \
+    assert(_res == XR_SUCCESS); \
+  } \
+  (void)0
 
 #define THROW_XR(error_msg) throw GHOST_XrException(error_msg, __FILE__, __LINE__);
 
