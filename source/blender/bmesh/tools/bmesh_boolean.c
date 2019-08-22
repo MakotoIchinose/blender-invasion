@@ -17,18 +17,14 @@
 /** \file
  * \ingroup bmesh
  *
- * Cut meshes along intersections.
- *
- * Boolean-like modeling operation (without calculating inside/outside).
+ * Cut meshes along intersections and boolean operations on the intersections.
  *
  * Supported:
  * - Concave faces.
  * - Non-planar faces.
+ * - Coplanar intersections
  * - Custom-data (UV's etc).
  *
- * Unsupported:
- * - Intersecting between different meshes.
- * - No support for holes (cutting a hole into a single face).
  */
 
 #include "MEM_guardedalloc.h"
@@ -46,6 +42,11 @@
 #include "bmesh_boolean.h" /* own include */
 
 #include "BLI_strict_flags.h"
+
+/* NOTE: Work in progress. Initial implementation using slow data structures and algorithms
+ * just to get the correct calculations down. After that, will replace data structures with
+ * faster-lookup versions (hash tables, kd-trees, bvh structures) and will parallelize.
+ */
 
 /* A Mesh Interface.
  * This would be an abstract interface in C++,
@@ -85,7 +86,7 @@ typedef struct MeshPart {
  * TODO: faster structure for looking up by plane.
  */
 typedef struct MeshPartSet {
-  LinkNode *meshparts; /* list where links are MeshParts* */
+  LinkNode *meshparts; /* links are MeshParts* */
   int tot_part;
 } MeshPartSet;
 
@@ -94,19 +95,68 @@ typedef struct MeshPartSet {
  * TODO: faster structure for lookup.
  */
 typedef struct IndexedIntSet {
-  LinkNodePair listhead;
+  LinkNodePair listhead; /* links are ints */
   int size;
 } IndexedIntSet;
 
-/* A result of intersectings parts.
- * The coordinates in the cdt_result should be turned
- * back into 3d coords by multplying them by mat_2d_inv,
- * after putting z_for_inverse into the 3rd component.
+/* A set of 3d coords, where each member gets an index
+ * that can be used to access the member.
+ * Comparisons for equality will be fuzzy (within epsilon).
+ * TODO: faster structure for lookup.
+ */
+typedef struct IndexedCoordSet {
+  LinkNodePair listhead; /* Links are pointers to 3 floats, allocated from arena. */
+  int index_offset;      /* "index" of an element will be position in above list plus offset. */
+  int size;
+} IndexedCoordSet;
+
+/* A map from int -> int.
+ * TODO: faster structure for lookup.
+ */
+typedef struct IntIntMap {
+  LinkNodePair listhead; /* Links are pointers to IntPair, allocated from arena. */
+} IntIntMap;
+
+typedef struct IntPair {
+  int first;
+  int second;
+} IntPair;
+
+/* A result of intersectings parts of an implict IMesh.
+ * Designed so that can combine these in pairs, eventually ending up
+ * with a single IntersectOutput that can be turned into an edit on the
+ * underlying original IMesh.
  */
 typedef struct IntersectOutput {
-  CDT_result *cdt_result;
-  float mat_2d_inv[3][3];
-  float z_for_inverse;
+  /* All the individual CDT_results. Links are CDT_result pointers. */
+  LinkNodePair cdt_outputs;
+
+  /* Parallel to cdt_outputs list. The corresponding map link is
+   * a pointer to an IntInt map, where the key is a vert index in the
+   * output vert space of the CDT_result, and the value is a vert index
+   * in the original IMesh, or, if greater than orig_mesh_verts_tot,
+   * then an index in new_verts.
+   * Links are pointers to IntIntMap, allocated from arena.
+   */
+  LinkNodePair vertmaps;
+
+  /* Set of new vertices (not in original mesh) in resulting intersection.
+   * They get an index in the range from orig_mesh_verts_tot to that
+   * number plus the size of new_verts - 1.
+   * This should be a de-duplicated set of coordinates.
+   */
+  IndexedCoordSet new_verts;
+
+  /* A map recording which verts in the original mesh get merged to
+   * other verts in that mesh.
+   * If there is an entry for an index v (< orig_mesh_verts_tot), then
+   * v is merged to the value of the map at v.
+   * Otherwise v is not merged to anything.
+   */
+  IntIntMap merge_to;
+
+  /* Number of verts in the original IMesh that this is based on. */
+  int orig_mesh_verts_tot;
 } IntersectOutput;
 
 typedef struct BoolState {
@@ -134,11 +184,26 @@ static void dump_part(MeshPart *part, const char *label);
 static void dump_partset(MeshPartSet *pset, const char *label);
 #endif
 
+static CDT_result *copy_cdt_result(BoolState *bs, const CDT_result *res);
+static int min_int_in_array(int *array, int len);
+
+/** IMesh functions. */
+
 static void init_imesh_from_bmesh(IMesh *im, BMesh *bm)
 {
   im->bm = bm;
   im->me = NULL;
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+}
+
+static int imesh_totvert(const IMesh *im)
+{
+  if (im->bm) {
+    return im->bm->totvert;
+  }
+  else {
+    return 0; /* TODO */
+  }
 }
 
 static int imesh_totface(const IMesh *im)
@@ -232,21 +297,7 @@ static int imesh_test_face(const IMesh *im, int (*test_fn)(void *, void *), void
   }
 }
 
-
-#if 0
-/**
- * Make ngon from verts alone.
- * Use facerep as example for attributes of new face.
- * TODO: make this an similar bev_create_ngon in bmesh_bevel.c into a BMesh utility.
- */
-static BMFace *bool_create_ngon(BMesh *bm, BMVert **vert_arr, const int vert_len, BMFace *facerep)
-{
-  BMFace *f;
-
-  f = BM_face_create_verts(bm, vert_arr, vert_len, facerep, BM_CREATE_NOP, true);
-  return f;
-}
-#endif
+/** MeshPartSet functions. */
 
 static void init_meshpartset(MeshPartSet *partset)
 {
@@ -268,6 +319,8 @@ static MeshPart *partset_part(MeshPartSet *partset, int index)
   }
   return NULL;
 }
+
+/** MeshPart functions. */
 
 static void init_meshpart(MeshPart *part)
 {
@@ -332,7 +385,9 @@ static void add_face_to_part(BoolState *bs, MeshPart *meshpart, int f)
   BLI_linklist_prepend_arena(&meshpart->faces, POINTER_FROM_INT(f), bs->mem_arena);
 }
 
-static void init_indexed_intset(IndexedIntSet *intset)
+/** IndexedIntSet functions. */
+
+static void init_intset(IndexedIntSet *intset)
 {
   intset->listhead.list = NULL;
   intset->listhead.last_node = NULL;
@@ -374,9 +429,147 @@ static int intset_get_index_for_value(const IndexedIntSet *intset, int value)
   return BLI_linklist_index(intset->listhead.list, POINTER_FROM_INT(value));
 }
 
-#define COPY_ARRAY_TO_ARENA(dst, src, len, arena)  { \
-  dst = BLI_memarena_alloc(arena, len); \
-  memmove(dst, src, len); \
+/** IndexedCoordSet functions. */
+
+static void init_coordset(IndexedCoordSet *coordset, int index_offset)
+{
+  coordset->listhead.list = NULL;
+  coordset->listhead.last_node = NULL;
+  coordset->index_offset = index_offset;
+  coordset->size = 0;
+}
+
+static int add_to_coordset(BoolState *bs,
+                           IndexedCoordSet *coordset,
+                           const float p[3],
+                           bool do_dup_check)
+{
+  LinkNode *ln;
+  float *q;
+  int i;
+  int index = -1;
+
+  if (do_dup_check) {
+    i = coordset->index_offset;
+    for (ln = coordset->listhead.list; ln; ln = ln->next) {
+      q = (float *)ln->link;
+      /* Note: compare_v3v3 checks if all three coords are within (<=) eps of each other. */
+      if (compare_v3v3(p, q, bs->eps)) {
+        index = i;
+        break;
+      }
+      i++;
+    }
+    if (index != -1) {
+      return index;
+    }
+  }
+  q = BLI_memarena_alloc(bs->mem_arena, 3 * sizeof(float));
+  copy_v3_v3(q, p);
+  BLI_linklist_append_arena(&coordset->listhead, q, bs->mem_arena);
+  index = coordset->index_offset + coordset->size;
+  coordset->size++;
+  return index;
+}
+
+/** IntIntMap functions. */
+
+static void init_intintmap(IntIntMap *intintmap)
+{
+  intintmap->listhead.list = NULL;
+  intintmap->listhead.last_node = NULL;
+}
+
+static void add_to_intintmap(BoolState *bs, IntIntMap *map, int key, int val)
+{
+  IntPair *keyvalpair;
+
+  keyvalpair = BLI_memarena_alloc(bs->mem_arena, sizeof(*keyvalpair));
+  keyvalpair->first = key;
+  keyvalpair->second = val;
+  BLI_linklist_append_arena(&map->listhead, keyvalpair, bs->mem_arena);
+}
+
+/** IntersectOutput functions. */
+
+static void init_isect_out(BoolState *bs, IntersectOutput *isect_out)
+{
+  isect_out->orig_mesh_verts_tot = imesh_totvert(&bs->im);
+  isect_out->cdt_outputs.list = NULL;
+  isect_out->cdt_outputs.last_node = NULL;
+
+  isect_out->vertmaps.list = NULL;
+  isect_out->vertmaps.last_node = NULL;
+
+  init_coordset(&isect_out->new_verts, isect_out->orig_mesh_verts_tot);
+
+  init_intintmap(&isect_out->merge_to);
+}
+
+static void isect_add_cdt_result(BoolState *bs, IntersectOutput *isect_out, CDT_result *res)
+{
+  BLI_linklist_append_arena(&isect_out->cdt_outputs, res, bs->mem_arena);
+}
+
+static IntIntMap *isect_add_vertmap(BoolState *bs, IntersectOutput *isect_out)
+{
+  IntIntMap *ans;
+
+  ans = BLI_memarena_alloc(bs->mem_arena, sizeof(*ans));
+  init_intintmap(ans);
+  BLI_linklist_append_arena(&isect_out->vertmaps, ans, bs->mem_arena);
+  return ans;
+}
+
+static IntersectOutput *isect_out_from_cdt(BoolState *bs,
+                                                const CDT_result *cout,
+                                                const float rot_inv[3][3],
+                                                const float z_for_inverse)
+{
+  IntersectOutput *isect_out;
+  CDT_result *cout_copy;
+  int out_v, in_v, start, new_v;
+  IntIntMap *vmap;
+  float p[3], q[3];
+
+  isect_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*isect_out));
+  init_isect_out(bs, isect_out);
+
+  /* Need to copy cdt result to arena because caller will soon call BLI_delaunay_2d_cdt_free(cout).
+   */
+  cout_copy = copy_cdt_result(bs, cout);
+  isect_add_cdt_result(bs, isect_out, cout_copy);
+
+  vmap = isect_add_vertmap(bs, isect_out);
+
+  for (out_v = 0; out_v < cout->verts_len; out_v++) {
+    if (cout->verts_orig_len_table[out_v] > 0) {
+      /* out_v maps to an original vertex. */
+      start = cout->verts_orig_start_table[out_v];
+      /* Choose min index in orig list, to make for a stable algorithm. */
+      in_v = min_int_in_array(&cout->verts_orig[start], cout->verts_orig_len_table[out_v]);
+      add_to_intintmap(bs, vmap, out_v, in_v);
+    }
+    else {
+      /* out_v needs a new vertex. Need to convert coords from 2d to 3d. */
+      copy_v2_v2(q, cout->vert_coords[out_v]);
+      q[3] = z_for_inverse;
+      mul_v3_m3v3(p, rot_inv, q);
+      new_v = add_to_coordset(bs, &isect_out->new_verts, p, false);
+      BLI_assert(new_v >= imesh_totvert(&bs->im));
+      add_to_intintmap(bs, vmap, out_v, new_v);
+    }
+  }
+
+  return isect_out;
+}
+
+/** Miscellaneous utility functions. */
+
+#define COPY_ARRAY_TO_ARENA(dst, src, len, arena) \
+  { \
+    dst = BLI_memarena_alloc(arena, len); \
+    memmove(dst, src, len); \
   }
 
 /* Return a copy of res, with memory allocated from bs->mem_arena. */
@@ -395,16 +588,21 @@ static CDT_result *copy_cdt_result(BoolState *bs, const CDT_result *res)
   ans->faces_len = res->faces_len;
   ans->face_edge_offset = res->face_edge_offset;
   if (nv > 0) {
-    COPY_ARRAY_TO_ARENA(ans->vert_coords, res->vert_coords, nv * sizeof(ans->vert_coords[0]), arena);
-    COPY_ARRAY_TO_ARENA(ans->verts_orig_len_table, res->verts_orig_len_table, nv * sizeof(int), arena);
-    COPY_ARRAY_TO_ARENA(ans->verts_orig_start_table, res->verts_orig_start_table, nv * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->vert_coords, res->vert_coords, nv * sizeof(ans->vert_coords[0]), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->verts_orig_len_table, res->verts_orig_len_table, nv * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->verts_orig_start_table, res->verts_orig_start_table, nv * sizeof(int), arena);
     n = (size_t)(res->verts_orig_start_table[nv - 1] + res->verts_orig_len_table[nv - 1]);
     COPY_ARRAY_TO_ARENA(ans->verts_orig, res->verts_orig, n * sizeof(int), arena);
   }
   if (ne > 0) {
     COPY_ARRAY_TO_ARENA(ans->edges, res->edges, ne * sizeof(ans->edges[0]), arena);
-    COPY_ARRAY_TO_ARENA(ans->edges_orig_len_table, res->edges_orig_len_table, ne * sizeof(int), arena);
-    COPY_ARRAY_TO_ARENA(ans->edges_orig_start_table, res->edges_orig_start_table, ne * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->edges_orig_len_table, res->edges_orig_len_table, ne * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->edges_orig_start_table, res->edges_orig_start_table, ne * sizeof(int), arena);
     n = (size_t)(res->edges_orig_start_table[ne - 1] + res->edges_orig_len_table[ne - 1]);
     COPY_ARRAY_TO_ARENA(ans->edges_orig, res->edges_orig, n * sizeof(int), arena);
   }
@@ -413,19 +611,36 @@ static CDT_result *copy_cdt_result(BoolState *bs, const CDT_result *res)
     COPY_ARRAY_TO_ARENA(ans->faces_start_table, res->faces_start_table, nf * sizeof(int), arena);
     n = (size_t)(res->faces_start_table[nf - 1] + res->faces_len_table[nf - 1]);
     COPY_ARRAY_TO_ARENA(ans->faces, res->faces, n * sizeof(int), arena);
-    COPY_ARRAY_TO_ARENA(ans->faces_orig_len_table, res->faces_orig_len_table, nf * sizeof(int), arena);
-    COPY_ARRAY_TO_ARENA(ans->faces_orig_start_table, res->faces_orig_start_table, nf * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->faces_orig_len_table, res->faces_orig_len_table, nf * sizeof(int), arena);
+    COPY_ARRAY_TO_ARENA(
+        ans->faces_orig_start_table, res->faces_orig_start_table, nf * sizeof(int), arena);
     n = (size_t)(res->faces_orig_start_table[nf - 1] + res->faces_orig_len_table[nf - 1]);
     COPY_ARRAY_TO_ARENA(ans->faces_orig, res->faces_orig, n * sizeof(int), arena);
   }
   return ans;
 }
-
 #undef COPY_ARRAY_TO_ARENA
+
+static int min_int_in_array(int *array, int len)
+{
+  int min = INT_MIN;
+  int i;
+
+  for (i = 0; i < len; i++) {
+    if (array[i] < min) {
+      min = array[i];
+    }
+  }
+  return min;
+}
+
+/** Intersection Algorithm functions. */
 
 /* Fill partset with parts for each plane for which there is a face
  * in bs->im.
- * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the result.
+ * Use bs->test_fn to check elements against test_val, to see whether or not it should be in the
+ * result.
  */
 static void find_coplanar_parts(BoolState *bs, MeshPartSet *partset, int test_val)
 {
@@ -477,7 +692,7 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
     printf("trivial 1 face case\n");
     return NULL;
   }
-  init_indexed_intset(&verts_needed);
+  init_intset(&verts_needed);
   nfaceverts = 0;
   for (i = 0; i < part_nf; i++) {
     f = part_face(part, i);
@@ -543,90 +758,11 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
 
   printf("cdt output, %d faces\n", out->faces_len);
 
-  isect_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*isect_out));
-
-  /* Need to copy cdt result because BLI_delaunay_2d_cdt_free will free it.
-   * TODO: have option to BLI_delaunay_2d_cdt to use another arena for answer alloc,
-   * then won't need to copy here.
-   */
-  isect_out->cdt_result = copy_cdt_result(bs, out);
-  isect_out->z_for_inverse = save_z;
-  copy_m3_m3(isect_out->mat_2d_inv, mat_2d_inv);
+  isect_out = isect_out_from_cdt(bs, out, mat_2d_inv, save_z);
 
   BLI_delaunay_2d_cdt_free(out);
   return isect_out;
 }
-
-#if 0
-static void oldfun()
-{
-  CDT_input in;
-  CDT_result *out;
-  int nverts, nfaceverts;
-  LinkNode *ln;
-  LinkNode *vertlist = NULL;
-  BMFace *f;
-  BMVert *v;
-  BMIter iter;
-  float mat_2d[3][3];
-  float mat_2d_inv[3][3];
-  float xyz[3], save_z, p[3];
-  int i, faces_index, vert_coords_index, faces_table_index, v_index;
-  int j, start, len;
-  bool ok;
-  BMVert **face_v;
-  BMVert **all_v;
-
-  /* leaving out old part that gets in ready */
-  out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
-
-  /* Gather BMVerts corresponding to output vertices into all_v. */
-  all_v = BLI_array_alloca(face_v, (size_t)out->verts_len);
-  for (i = 0; i < out->verts_len; i++) {
-    if (out->verts_orig_len_table[i] > 0) {
-      /* choose first input vert in orig list as representative */
-      v_index = out->verts_orig[out->verts_orig_start_table[i]];
-      ln = BLI_linklist_find(vertlist, v_index);
-      BLI_assert(ln != NULL);
-      v = (BMVert *)ln->link;
-      all_v[i] = v;
-    }
-    else {
-      copy_v2_v2(xyz, out->vert_coords[i]);
-      xyz[2] = save_z;
-      mul_v3_m3v3(p, mat_2d_inv, xyz);
-      /* TODO: figure out example vert to copy attributes from */
-      v = BM_vert_create(bs->bm, p, NULL, BM_CREATE_NOP);
-      all_v[i] = v;
-    }
-  }
-
-  /* Make the new faces. out-verts_len is upper bound on max face length. */
-  face_v = BLI_array_alloca(face_v, (size_t)out->verts_len);
-  for (faces_index = 0; faces_index < out->faces_len; faces_index++) {
-    start = out->faces_start_table[faces_index];
-    len = out->faces_len_table[faces_index];
-    if (len >= 3) {
-      for (j = 0; j < len; j++) {
-        v_index = out->faces[start + j];
-        BLI_assert(v_index >= 0 && v_index < out->verts_len);
-        v = all_v[v_index];
-        BLI_assert(j < out->verts_len);
-        face_v[j] = v;
-      }
-      /* TODO: figure out example face for this face */
-      bool_create_ngon(bs->bm, face_v, len, NULL);
-    }
-  }
-
-  /* Delete the original faces */
-  for (faces_index = 0; faces_index < faces_len; faces_index++) {
-    BM_face_kill(bs->bm, faces[faces_index]);
-  }
- 
-  BLI_delaunay_2d_cdt_free(out);
-}
-#endif
 
 /* Intersect part with all the parts in partset, except the part with
  * exclude_index, if that is not -1.
