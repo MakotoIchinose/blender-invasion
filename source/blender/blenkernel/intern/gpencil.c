@@ -2850,7 +2850,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
     float hsv2[4];
     rgb_to_hsv_v(gp_style->fill_rgba, hsv2);
     hsv2[3] = gp_style->fill_rgba[3];
-    if (compare_v4v4(hsv1, hsv2, 0.01f)) {
+    if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) && (compare_v4v4(hsv1, hsv2, 0.01f))) {
       r_mat = ma;
       return i - 1;
     }
