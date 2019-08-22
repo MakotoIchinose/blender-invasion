@@ -3024,19 +3024,30 @@ static void gpencil_convert_spline(Main *bmain,
 
   int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
   if (r_idx < 0) {
-    Material *ma_stroke = NULL;
+    Material *mat_curve = give_current_material(ob_cu, 1);
     mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
+
+    if ((mat_curve) && (mat_curve->gp_style != NULL)) {
+      MaterialGPencilStyle *gp_style_cur = mat_curve->gp_style;
+      MaterialGPencilStyle *gp_style_gp = mat_gp->gp_style;
+
+      copy_v4_v4(gp_style_gp->mix_rgba, gp_style_cur->mix_rgba);
+      gp_style_gp->fill_style = gp_style_cur->fill_style;
+      gp_style_gp->mix_factor = gp_style_cur->mix_factor;
+      gp_style_gp->gradient_angle = gp_style_cur->gradient_angle;
+    }
+
     /* If object has more than 1 material, use second material for stroke color. */
     if ((ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
-      ma_stroke = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
-      mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
+      mat_curve = give_current_material(ob_cu, 2);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+      mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
     }
     else if (only_stroke) {
       /* Also use the first color if the fill is none for stroke color. */
-      ma_stroke = give_current_material(ob_cu, 1);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &ma_stroke->r);
-      mat_gp->gp_style->stroke_rgba[3] = ma_stroke->a;
+      mat_curve = give_current_material(ob_cu, 1);
+      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+      mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
       /* Set stroke to on. */
       mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
       /* Set fill to off. */
