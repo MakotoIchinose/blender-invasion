@@ -3354,6 +3354,8 @@ static void WM_OT_xr_session_toggle(wmOperatorType *ot)
   /* callbacks */
   ot->exec = wm_xr_session_toggle_exec;
 
+  /* XXX INTERNAL just to hide it from the search menu by default, an Add-on will expose it in the
+   * UI instead. Not meant as a permanent solution. */
   ot->flag = OPTYPE_INTERNAL;
 }
 #endif /* WITH_OPENXR */

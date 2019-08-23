@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# These defines are required as per the OpenXR specification. We can
+# just take them from the OpenXR-SDK's src/CMakeLists.txt. Not all of
+# them are needed (e.g. XCB and Wayland), but we just copy them anyway.
 
 if(WIN32)
   add_definitions(-DXR_OS_WINDOWS)
