@@ -55,8 +55,6 @@ class GHOST_ContextD3D : public GHOST_Context {
    */
   GHOST_TSuccess releaseDrawingContext();
 
-  GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height);
-
   /**
    * Call immediately after new to initialize.  If this fails then immediately delete the object.
    * \return Indication as to whether initialization has succeeded.

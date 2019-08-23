@@ -66,35 +66,6 @@ GHOST_TSuccess GHOST_ContextD3D::releaseDrawingContext()
   return GHOST_kFailure;
 }
 
-GHOST_TSuccess GHOST_ContextD3D::setDefaultFramebufferSize(GHOST_TUns32 width, GHOST_TUns32 height)
-{
-  RECT rect = {0, 0, (long)width, (long)height};
-  RECT winrect;
-
-  /* To use swapchain buffers/textures with custom size, the hidden window has to be resized. */
-
-  GetWindowRect(m_hWnd, &winrect);
-
-  WIN32_CHK(AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, 0));
-
-  width = rect.right - rect.left;
-  height = rect.bottom - rect.top;
-
-  if (((winrect.right - winrect.left) != width) || ((winrect.bottom - winrect.top) != height)) {
-    return SetWindowPos(m_hWnd,
-                        HWND_TOP,
-                        0,
-                        0,
-                        width,
-                        height,
-                        SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOMOVE | SWP_NOZORDER) ?
-               GHOST_kSuccess :
-               GHOST_kFailure;
-  }
-
-  return GHOST_kSuccess;
-}
-
 GHOST_TSuccess GHOST_ContextD3D::setupD3DLib()
 {
   if (s_d3d_lib == NULL) {

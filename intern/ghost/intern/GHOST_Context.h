@@ -137,18 +137,6 @@ class GHOST_Context : public GHOST_IContext {
     return 0;
   }
 
-  /**
-   * For offscreen rendering, we create an invisible window. So this can be used to update the
-   * offscreen buffer size by changing the size of this context's window.
-   *
-   * \note This actually changes the window size! That is the only way to change the default
-   *       framebuffer size. Better only use for offscreen contexts.
-   */
-  virtual GHOST_TSuccess setDefaultFramebufferSize(GHOST_TUns32 /*width*/, GHOST_TUns32 /*height*/)
-  {
-    return GHOST_kFailure;
-  }
-
  protected:
   void initContextGLEW();
 

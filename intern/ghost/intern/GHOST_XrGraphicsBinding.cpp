@@ -154,7 +154,6 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
         swapchain_image);
 
     ogl_ctx->activateDrawingContext();
-    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
@@ -258,7 +257,6 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
         swapchain_image);
 
     ogl_ctx->activateDrawingContext();
-    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
 
 #  if 0
     /* Ideally we'd just create a render target view for the OpenXR swapchain image texture and
