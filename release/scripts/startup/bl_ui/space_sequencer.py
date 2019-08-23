@@ -200,7 +200,7 @@ class SEQUENCER_MT_preview_zoom(Menu):
 
             layout.operator(
                 "sequencer.view_zoom_ratio",
-                text=iface_(f"Zoom {a:d}:{b:d}"),
+                text=iface_("Zoom %d:%d") % (a, b),
                 translate=False,
             ).ratio = a / b
         layout.operator_context = 'INVOKE_DEFAULT'
@@ -265,7 +265,6 @@ class SEQUENCER_MT_view(Menu):
             layout.separator()
             layout.operator_context = 'INVOKE_DEFAULT'
 
-#           layout.prop(st, "show_frame_indicator") #Do not have any function and do not work.
             layout.prop(st, "show_strip_offset")
             layout.prop(st, "show_marker_lines")
 
