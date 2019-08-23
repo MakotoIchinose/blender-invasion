@@ -282,9 +282,9 @@ static ClothVertex cloth_remeshing_mean_cloth_vert(ClothVertex *v1, ClothVertex 
   ClothVertex new_vert;
 
   new_vert.flags = 0;
-  if ((v1->flags & CLOTH_VERT_FLAG_PINNED) && (v2->flags & CLOTH_VERT_FLAG_PINNED)) {
-    new_vert.flags |= CLOTH_VERT_FLAG_PINNED;
-  }
+  /* if ((v1->flags & CLOTH_VERT_FLAG_PINNED) && (v2->flags & CLOTH_VERT_FLAG_PINNED)) { */
+  /*   new_vert.flags |= CLOTH_VERT_FLAG_PINNED; */
+  /* } */
   if ((v1->flags & CLOTH_VERT_FLAG_NOSELFCOLL) && (v2->flags & CLOTH_VERT_FLAG_NOSELFCOLL)) {
     new_vert.flags |= CLOTH_VERT_FLAG_NOSELFCOLL;
   }
@@ -1042,6 +1042,14 @@ static void cloth_remeshing_add_vertex_to_cloth(BMVert *v1,
                                                         "New Vertex ClothSizing");
   *temp_sizing = cloth_remeshing_find_average_sizing(*cvm[v1].sizing, *cvm[v2].sizing);
   cvm[new_vert].sizing = temp_sizing;
+#if 1
+  if (new_vert->head.data) {
+    MDeformVert *dvert = (MDeformVert *)new_vert->head.data;
+    if (dvert) {
+      dvert->totweight = 0;
+    }
+  }
+#endif
 }
 
 static BMEdge *cloth_remeshing_find_next_loose_edge(BMVert *v)
@@ -1970,7 +1978,7 @@ static bool cloth_remeshing_collapse_edges(ClothModifierData *clmd,
       /* update active_faces */
       cloth_remeshing_update_active_faces(active_faces, clmd->clothObject->bm, temp_vert);
 
-#if 0
+#if 1
       /* run cloth_remeshing_fix_mesh on newly created faces by
        * cloth_remeshing_try_edge_collapse */
       vector<BMFace *> fix_active;

@@ -365,7 +365,7 @@ static Mesh *do_step_cloth(
 
   /* Support for dynamic vertex groups, changing from frame to frame */
 
-#if 0
+#if 1
   if (clmd->mesh) {
     cloth_apply_vgroup(clmd, clmd->mesh);
   }
@@ -399,7 +399,7 @@ static Mesh *do_step_cloth(
     mesh_result = cloth_remeshing_step(depsgraph, ob, clmd, result);
   }
 
-#if 0
+#if 1
   BKE_id_copy_ex(NULL, (ID *)mesh_result, (ID **)&clmd->mesh, LIB_ID_COPY_LOCALIZE);
 #endif
 
