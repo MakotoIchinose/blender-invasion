@@ -768,7 +768,8 @@ static int apply_objects_internal(bContext *C,
       BKE_mesh_calc_normals(me);
     }
     else if (ob->type == OB_ARMATURE) {
-      ED_armature_transform_apply(bmain, ob, mat, do_props);
+      bArmature *arm = ob->data;
+      BKE_armature_transform(arm, mat, do_props);
     }
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = ob->data;
@@ -1354,11 +1355,6 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
               invert_m4_m4(inverse_diff_mat, diff_mat);
               for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
                 for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-                  /* skip strokes that are invalid for current view */
-                  if (ED_gpencil_stroke_can_use(C, gps) == false) {
-                    continue;
-                  }
-
                   for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
                     float mpt[3];
                     mul_v3_m4v3(mpt, inverse_diff_mat, &pt->x);
