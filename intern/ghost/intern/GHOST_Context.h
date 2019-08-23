@@ -38,8 +38,8 @@ class GHOST_Context : public GHOST_IContext {
    * Constructor.
    * \param stereoVisual      Stereo visual for quad buffered stereo.
    */
-  GHOST_Context(GHOST_TDrawingContextType type, bool stereoVisual)
-      : m_type(type), m_stereoVisual(stereoVisual)
+  GHOST_Context(bool stereoVisual)
+      : m_stereoVisual(stereoVisual)
   {
   }
 
@@ -149,14 +149,9 @@ class GHOST_Context : public GHOST_IContext {
     return GHOST_kFailure;
   }
 
-  virtual GHOST_TSuccess blitOpenGLOffscreenContext(GHOST_Context *offscreen,
-                                                    GHOST_TInt32 width,
-                                                    GHOST_TInt32 height);
-
  protected:
   void initContextGLEW();
 
-  GHOST_TDrawingContextType m_type;
   bool m_stereoVisual;
 
   static void initClearGL();

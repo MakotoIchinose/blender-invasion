@@ -55,7 +55,7 @@ GHOST_ContextCGL::GHOST_ContextCGL(bool stereoVisual,
                                    NSView *metalView,
                                    CAMetalLayer *metalLayer,
                                    NSOpenGLView *openGLView)
-    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
+    : GHOST_Context(stereoVisual),
       m_metalView(metalView),
       m_metalLayer(metalLayer),
       m_metalCmdQueue(nil),

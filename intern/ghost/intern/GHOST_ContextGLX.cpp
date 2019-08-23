@@ -52,7 +52,7 @@ GHOST_ContextGLX::GHOST_ContextGLX(bool stereoVisual,
                                    int contextMinorVersion,
                                    int contextFlags,
                                    int contextResetNotificationStrategy)
-    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
+    : GHOST_Context(stereoVisual),
       m_display(display),
       m_fbconfig(fbconfig),
       m_window(window),

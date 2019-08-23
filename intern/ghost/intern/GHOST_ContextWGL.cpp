@@ -52,7 +52,7 @@ GHOST_ContextWGL::GHOST_ContextWGL(bool stereoVisual,
                                    int contextMinorVersion,
                                    int contextFlags,
                                    int contextResetNotificationStrategy)
-    : GHOST_Context(GHOST_kDrawingContextTypeOpenGL, stereoVisual),
+    : GHOST_Context(stereoVisual),
       m_hWnd(hWnd),
       m_hDC(hDC),
       m_contextProfileMask(contextProfileMask),

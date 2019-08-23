@@ -40,7 +40,7 @@ static void drawTestTriangle(ID3D11Device *m_device,
 #endif
 
 GHOST_ContextD3D::GHOST_ContextD3D(bool stereoVisual, HWND hWnd)
-    : GHOST_Context(GHOST_kDrawingContextTypeD3D, stereoVisual), m_hWnd(hWnd)
+    : GHOST_Context(stereoVisual), m_hWnd(hWnd)
 {
 }
 
@@ -148,21 +148,6 @@ GHOST_TSuccess GHOST_ContextD3D::initializeDrawingContext()
 
 GHOST_TSuccess GHOST_ContextD3D::releaseNativeHandles()
 {
-  return GHOST_kFailure;
-}
-
-GHOST_TSuccess GHOST_ContextD3D::blitOpenGLOffscreenContext(GHOST_Context * /*offscreen_ctx*/,
-                                                            GHOST_TInt32 width,
-                                                            GHOST_TInt32 height)
-{
-  GHOST_SharedOpenGLResource *shared_res = createSharedOpenGLResource(width, height);
-
-  if (shared_res) {
-    GHOST_TSuccess ret = blitFromOpenGLContext(shared_res, width, height);
-    disposeSharedOpenGLResource(shared_res);
-    return ret;
-  }
-
   return GHOST_kFailure;
 }
 
