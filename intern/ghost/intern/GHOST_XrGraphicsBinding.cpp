@@ -148,14 +148,11 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
   }
   void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
                    const GHOST_XrDrawViewInfo *draw_info,
-                   GHOST_Context *ogl_ctx) override
+                   GHOST_Context * /*ogl_ctx*/) override
   {
     XrSwapchainImageOpenGLKHR *ogl_swapchain_image = reinterpret_cast<XrSwapchainImageOpenGLKHR *>(
         swapchain_image);
 
-    ogl_ctx->activateDrawingContext();
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
 
     glFramebufferTexture2D(
@@ -255,8 +252,6 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
   {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
-
-    ogl_ctx->activateDrawingContext();
 
 #  if 0
     /* Ideally we'd just create a render target view for the OpenXR swapchain image texture and

@@ -240,11 +240,16 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 static void wm_xr_session_surface_draw(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
+  wmXrSurfaceData *surface_data = g_xr_surface->customdata;
 
   if (!GHOST_XrSessionIsRunning(wm->xr_context)) {
     return;
   }
   GHOST_XrSessionDrawViews(wm->xr_context, C);
+  if (surface_data->viewport) {
+    /* Still bound from view drawing. */
+    GPU_viewport_unbind(surface_data->viewport);
+  }
 }
 
 static void wm_xr_session_free_data(wmSurface *surface)
@@ -474,7 +479,9 @@ GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void 
   else {
     GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
   }
-  GPU_viewport_unbind(viewport);
+  /* Leave viewport bound so GHOST_Xr can use its context/framebuffer, its unbound in
+   * wm_xr_session_surface_draw(). */
+  // GPU_viewport_unbind(viewport);
 
   return g_xr_surface->ghost_ctx;
 }
