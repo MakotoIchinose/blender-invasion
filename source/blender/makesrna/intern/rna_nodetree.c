@@ -63,10 +63,13 @@ const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {
     {SOCK_IN, "IN", 0, "Input", ""}, {SOCK_OUT, "OUT", 0, "Output", ""}, {0, NULL, 0, NULL, NULL}};
 
 #ifndef RNA_RUNTIME
-static const EnumPropertyItem rna_enum_node_socket_draw_shape_items[] = {
-    {SOCK_DRAW_SHAPE_CIRCLE, "CIRCLE", 0, "Circle", ""},
-    {SOCK_DRAW_SHAPE_SQUARE, "SQUARE", 0, "Square", ""},
-    {SOCK_DRAW_SHAPE_DIAMOND, "DIAMOND", 0, "Diamond", ""},
+static const EnumPropertyItem rna_enum_node_socket_display_shape_items[] = {
+    {SOCK_DISPLAY_SHAPE_CIRCLE, "CIRCLE", 0, "Circle", ""},
+    {SOCK_DISPLAY_SHAPE_SQUARE, "SQUARE", 0, "Square", ""},
+    {SOCK_DISPLAY_SHAPE_DIAMOND, "DIAMOND", 0, "Diamond", ""},
+    {SOCK_DISPLAY_SHAPE_CIRCLE_DOT, "CIRCLE_DOT", 0, "Circle with inner dot", ""},
+    {SOCK_DISPLAY_SHAPE_SQUARE_DOT, "SQUARE_DOT", 0, "Square with inner dot", ""},
+    {SOCK_DISPLAY_SHAPE_DIAMOND_DOT, "DIAMOND_DOT", 0, "Diamond with inner dot", ""},
     {0, NULL, 0, NULL, NULL}};
 
 static const EnumPropertyItem node_socket_type_items[] = {
@@ -170,7 +173,7 @@ const EnumPropertyItem rna_enum_node_vec_math_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_node_tex_dimensions_items[] = {
+static const EnumPropertyItem rna_enum_node_tex_dimensions_items[] = {
     {1, "1D", 0, "1D", "Use the scalar value W as input"},
     {2, "2D", 0, "2D", "Use the 2D vector (x, y) as input. The z component is ignored"},
     {3, "3D", 0, "3D", "Use the 3D vector Vector as input"},
@@ -757,7 +760,7 @@ static bool rna_NodeTree_check(bNodeTree *ntree, ReportList *reports)
 
 static void rna_NodeTree_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   WM_main_add_notifier(NC_NODE | NA_EDITED, NULL);
@@ -1238,7 +1241,7 @@ static char *rna_Node_path(PointerRNA *ptr)
 
 char *rna_Node_ImageUser_path(PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node;
   char name_esc[sizeof(node->name) * 2];
 
@@ -1743,7 +1746,7 @@ static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
 
 static void rna_Node_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
   ED_node_tag_update_nodetree(bmain, ntree, node);
 }
@@ -1767,7 +1770,7 @@ static void rna_Node_select_set(PointerRNA *ptr, bool value)
 
 static void rna_Node_name_set(PointerRNA *ptr, const char *value)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
   char oldname[sizeof(node->name)];
 
@@ -2119,7 +2122,7 @@ static StructRNA *rna_NodeSocket_refine(PointerRNA *ptr)
 
 static char *rna_NodeSocket_path(PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   bNode *node;
   int socketindex;
@@ -2153,7 +2156,7 @@ static IDProperty *rna_NodeSocket_idprops(PointerRNA *ptr, bool create)
 
 static PointerRNA rna_NodeSocket_node_get(PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   bNode *node;
   PointerRNA r_ptr;
@@ -2166,7 +2169,7 @@ static PointerRNA rna_NodeSocket_node_get(PointerRNA *ptr)
 
 static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   bNode *node;
   nodeFindNode(ntree, sock, &node, NULL);
@@ -2175,7 +2178,7 @@ static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
 
 static void rna_NodeSocket_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   bNode *node;
   if (nodeFindNode(ntree, sock, &node, NULL)) {
@@ -2435,7 +2438,7 @@ static StructRNA *rna_NodeSocketInterface_refine(PointerRNA *ptr)
 
 static char *rna_NodeSocketInterface_path(PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
   int socketindex;
 
@@ -2466,7 +2469,7 @@ static IDProperty *rna_NodeSocketInterface_idprops(PointerRNA *ptr, bool create)
 
 static void rna_NodeSocketInterface_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeSocket *stemp = ptr->data;
 
   if (!stemp->typeinfo) {
@@ -2582,7 +2585,7 @@ static void rna_NodeSocketStandard_value_update(struct bContext *C, PointerRNA *
   /* try to use node from context, faster */
   node = CTX_data_pointer_get(C, "node").data;
   if (!node) {
-    bNodeTree *ntree = ptr->id.data;
+    bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
     bNodeSocket *sock = ptr->data;
 
     /* fall back to searching node in the tree */
@@ -2800,7 +2803,7 @@ static void rna_CompositorNode_tag_need_exec(bNode *node)
 
 static void rna_Node_tex_image_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   ED_node_tag_update_nodetree(bmain, ntree, node);
@@ -2809,7 +2812,7 @@ static void rna_Node_tex_image_update(Main *bmain, Scene *UNUSED(scene), Pointer
 
 static void rna_NodeGroup_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   if (node->id) {
@@ -2823,7 +2826,7 @@ static void rna_NodeGroup_node_tree_set(PointerRNA *ptr,
                                         const PointerRNA value,
                                         struct ReportList *UNUSED(reports))
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = ptr->data;
   bNodeTree *ngroup = value.data;
 
@@ -2841,7 +2844,7 @@ static void rna_NodeGroup_node_tree_set(PointerRNA *ptr,
 
 static bool rna_NodeGroup_node_tree_poll(PointerRNA *ptr, const PointerRNA value)
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNodeTree *ngroup = value.data;
 
   /* only allow node trees of the same type as the group node's tree */
@@ -2868,7 +2871,7 @@ static StructRNA *rna_NodeGroup_interface_typef(PointerRNA *ptr)
 
 static StructRNA *rna_NodeGroupInputOutput_interface_typef(PointerRNA *ptr)
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
 
   if (ntree) {
     StructRNA *srna = ntreeInterfaceTypeGet(ntree, true);
@@ -3203,7 +3206,7 @@ static const EnumPropertyItem *rna_Node_channel_itemf(bContext *UNUSED(C),
 
 static void rna_Image_Node_update_id(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   node->update |= NODE_UPDATE_ID;
@@ -3227,19 +3230,19 @@ static PointerRNA rna_NodeOutputFile_slot_file_get(CollectionPropertyIterator *i
 {
   PointerRNA ptr;
   bNodeSocket *sock = rna_iterator_listbase_get(iter);
-  RNA_pointer_create(iter->parent.id.data, &RNA_NodeOutputFileSlotFile, sock->storage, &ptr);
+  RNA_pointer_create(iter->parent.owner_id, &RNA_NodeOutputFileSlotFile, sock->storage, &ptr);
   return ptr;
 }
 
 static void rna_NodeColorBalance_update_lgg(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  ntreeCompositColorBalanceSyncFromLGG(ptr->id.data, ptr->data);
+  ntreeCompositColorBalanceSyncFromLGG((bNodeTree *)ptr->owner_id, ptr->data);
   rna_Node_update(bmain, scene, ptr);
 }
 
 static void rna_NodeColorBalance_update_cdl(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  ntreeCompositColorBalanceSyncFromCDL(ptr->id.data, ptr->data);
+  ntreeCompositColorBalanceSyncFromCDL((bNodeTree *)ptr->owner_id, ptr->data);
   rna_Node_update(bmain, scene, ptr);
 }
 
@@ -3278,13 +3281,13 @@ static void rna_NodeCryptomatte_matte_set(PointerRNA *ptr, const char *value)
 
 static void rna_NodeCryptomatte_update_add(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  ntreeCompositCryptomatteSyncFromAdd(ptr->id.data, ptr->data);
+  ntreeCompositCryptomatteSyncFromAdd((bNodeTree *)ptr->owner_id, ptr->data);
   rna_Node_update(bmain, scene, ptr);
 }
 
 static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  ntreeCompositCryptomatteSyncFromRemove(ptr->id.data, ptr->data);
+  ntreeCompositCryptomatteSyncFromRemove((bNodeTree *)ptr->owner_id, ptr->data);
   rna_Node_update(bmain, scene, ptr);
 }
 
@@ -3294,7 +3297,7 @@ static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *
 {
   PointerRNA ptr;
   bNodeSocket *sock = rna_iterator_listbase_get(iter);
-  RNA_pointer_create(iter->parent.id.data, &RNA_NodeOutputFileSlotLayer, sock->storage, &ptr);
+  RNA_pointer_create(iter->parent.owner_id, &RNA_NodeOutputFileSlotLayer, sock->storage, &ptr);
   return ptr;
 }
 
@@ -3324,7 +3327,7 @@ static int rna_NodeOutputFileSocket_find_node(bNodeTree *ntree,
 
 static void rna_NodeOutputFileSlotFile_path_set(PointerRNA *ptr, const char *value)
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   NodeImageMultiFileSocket *sockdata = ptr->data;
   bNode *node;
   bNodeSocket *sock;
@@ -3336,7 +3339,7 @@ static void rna_NodeOutputFileSlotFile_path_set(PointerRNA *ptr, const char *val
 
 static void rna_NodeOutputFileSlotLayer_name_set(PointerRNA *ptr, const char *value)
 {
-  bNodeTree *ntree = ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   NodeImageMultiFileSocket *sockdata = ptr->data;
   bNode *node;
   bNodeSocket *sock;
@@ -3457,7 +3460,7 @@ static void rna_ShaderNodeScript_bytecode_set(PointerRNA *ptr, const char *value
 
 static void rna_ShaderNodeScript_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
   RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
 
@@ -3473,7 +3476,7 @@ static void rna_ShaderNodeScript_update(Main *bmain, Scene *scene, PointerRNA *p
 
 static void rna_ShaderNode_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   nodeUpdate(ntree, node);
@@ -3482,7 +3485,7 @@ static void rna_ShaderNode_socket_update(Main *bmain, Scene *scene, PointerRNA *
 
 static void rna_CompositorNodeScale_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  bNodeTree *ntree = (bNodeTree *)ptr->id.data;
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
 
   nodeUpdate(ntree, node);
@@ -3513,7 +3516,7 @@ static void rna_ShaderNodePointDensity_psys_set(PointerRNA *ptr,
   NodeShaderTexPointDensity *shader_point_density = node->storage;
   Object *ob = (Object *)node->id;
 
-  if (ob && value.id.data == ob) {
+  if (ob && value.owner_id == &ob->id) {
     shader_point_density->particle_system = BLI_findindex(&ob->particlesystem, value.data) + 1;
   }
   else {
@@ -7858,10 +7861,10 @@ static void rna_def_node_socket(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Type", "Data type");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
 
-  prop = RNA_def_property(srna, "draw_shape", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "draw_shape");
-  RNA_def_property_enum_items(prop, rna_enum_node_socket_draw_shape_items);
-  RNA_def_property_enum_default(prop, SOCK_DRAW_SHAPE_CIRCLE);
+  prop = RNA_def_property(srna, "display_shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "display_shape");
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_display_shape_items);
+  RNA_def_property_enum_default(prop, SOCK_DISPLAY_SHAPE_CIRCLE);
   RNA_def_property_ui_text(prop, "Shape", "Socket shape");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
 
