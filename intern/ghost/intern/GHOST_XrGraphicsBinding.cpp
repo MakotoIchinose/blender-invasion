@@ -282,7 +282,6 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
       m_shared_resource = m_ghost_ctx->createSharedOpenGLResource(draw_info->width,
                                                                   draw_info->height);
     }
-    ogl_ctx->setDefaultFramebufferSize(draw_info->width, draw_info->height);
     m_ghost_ctx->blitFromOpenGLContext(m_shared_resource, draw_info->width, draw_info->height);
 
     m_ghost_ctx->m_device_ctx->OMSetRenderTargets(0, nullptr, nullptr);
