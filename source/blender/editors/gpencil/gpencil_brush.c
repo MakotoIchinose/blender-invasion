@@ -301,6 +301,20 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
   return influence;
 }
 
+/* Force recal filling data */
+static void gp_recalc_geometry(bGPDstroke *gps)
+{
+  bGPDstroke *gps_orig = gps->runtime.gps_orig;
+  if (gps_orig) {
+    gps_orig->flag |= GP_STROKE_RECALC_GEOMETRY;
+    gps_orig->tot_triangles = 0;
+  }
+  else {
+    gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+    gps->tot_triangles = 0;
+  }
+}
+
 /* ************************************************ */
 /* Brush Callbacks */
 /* This section defines the callbacks used by each brush to perform their magic.
@@ -342,7 +356,7 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
     BKE_gpencil_smooth_stroke_uv(gps, pt_index, inf);
   }
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gp_recalc_geometry(gps);
 
   return true;
 }
@@ -587,7 +601,7 @@ static void gp_brush_grab_apply_cached(tGP_BrushEditData *gso,
     /* compute lock axis */
     gpsculpt_compute_lock_axis(gso, pt, save_pt);
   }
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gp_recalc_geometry(gps);
 }
 
 /* free customdata used for handling this stroke */
@@ -722,7 +736,7 @@ static bool gp_brush_pinch_apply(tGP_BrushEditData *gso,
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gp_recalc_geometry(gps);
 
   /* done */
   return true;
@@ -810,7 +824,7 @@ static bool gp_brush_twist_apply(tGP_BrushEditData *gso,
     }
   }
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gp_recalc_geometry(gps);
 
   /* done */
   return true;
@@ -930,7 +944,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
   }
 
-  gps->flag |= GP_STROKE_RECALC_GEOMETRY;
+  gp_recalc_geometry(gps);
 
   /* done */
   return true;
@@ -1760,10 +1774,7 @@ static bool gpsculpt_brush_do_frame(
         break;
     }
     /* Triangulation must be calculated if changed */
-    if (changed) {
-      gps->flag |= GP_STROKE_RECALC_GEOMETRY;
-      gps->tot_triangles = 0;
-    }
+    gp_recalc_geometry(gps);
   }
 
   return changed;
@@ -1917,7 +1928,7 @@ static void gpsculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *itempt
 
   /* Updates */
   if (changed) {
-    DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
   }
 
