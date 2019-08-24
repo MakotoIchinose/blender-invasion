@@ -240,10 +240,12 @@ class GHOST_SharedOpenGLResource {
     }
   }
 
-  GHOST_TSuccess blit()
+  GHOST_TSuccess blit(unsigned int width, unsigned int height)
   {
     GLint fbo;
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo);
+
+    ensureUpdated(width, height);
 
     const float clear_col[] = {0.8f, 0.5f, 1.0f, 1.0f};
     m_device_ctx->ClearRenderTargetView(m_render_target, clear_col);
@@ -260,17 +262,7 @@ class GHOST_SharedOpenGLResource {
 
     /* No glBlitNamedFramebuffer, gotta be 3.3 compatible. */
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_shared.fbo);
-    glBlitFramebuffer(0,
-                      0,
-                      m_cur_width,
-                      m_cur_height,
-                      0,
-                      0,
-                      m_cur_width,
-                      m_cur_height,
-                      GL_COLOR_BUFFER_BIT,
-                      GL_LINEAR);
+    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -332,8 +324,7 @@ GHOST_TSuccess GHOST_ContextD3D::blitFromOpenGLContext(GHOST_SharedOpenGLResourc
                                                        unsigned int width,
                                                        unsigned int height)
 {
-  shared_res->ensureUpdated(width, height);
-  return shared_res->blit();
+  return shared_res->blit(width, height);
 }
 
 ID3D11Texture2D *GHOST_ContextD3D::getSharedTexture2D(GHOST_SharedOpenGLResource *shared_res)
