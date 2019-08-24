@@ -1812,10 +1812,10 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
     if (gpl->actframe == NULL) {
       continue;
     }
-    /* Get derived frames array data */
-    int derived_idx = BLI_findindex(&gpd->layers, gpl);
-    bGPDframe *derived_gpf = &ob_eval->runtime.derived_frames[derived_idx];
-    if (derived_gpf == NULL) {
+    /* Get evaluated frames array data */
+    int idx_eval = BLI_findindex(&gpd->layers, gpl);
+    bGPDframe *gpf_eval = &ob_eval->runtime.gpencil_evaluated_frames[idx_eval];
+    if (gpf_eval == NULL) {
       continue;
     }
 
@@ -1849,14 +1849,14 @@ static bool gpsculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *gso)
 
           /* affect strokes in this frame */
           changed |= gpsculpt_brush_do_frame(
-              C, gso, gpl, (gpf == gpl->actframe) ? derived_gpf : gpf, diff_mat);
+              C, gso, gpl, (gpf == gpl->actframe) ? gpf_eval : gpf, diff_mat);
         }
       }
     }
     else {
       /* Apply to active frame's strokes */
       gso->mf_falloff = 1.0f;
-      changed |= gpsculpt_brush_do_frame(C, gso, gpl, derived_gpf, diff_mat);
+      changed |= gpsculpt_brush_do_frame(C, gso, gpl, gpf_eval, diff_mat);
     }
   }
   CTX_DATA_END;
