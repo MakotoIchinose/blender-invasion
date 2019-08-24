@@ -39,6 +39,7 @@
   { \
     XrResult _res = call; \
     assert(_res == XR_SUCCESS); \
+    (void)_res; \
   } \
   (void)0
 
