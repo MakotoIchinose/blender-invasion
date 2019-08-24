@@ -1491,7 +1491,7 @@ static void gpsculpt_brush_init_stroke(tGP_BrushEditData *gso)
 /* Apply ----------------------------------------------- */
 
 /* Get angle of the segment relative to the original segment before any transformation
- * For strokes with one point only this is impossible to calculate because there isn' a
+ * For strokes with one point only this is impossible to calculate because there isn't a
  * valid reference point.
  */
 static float gpsculpt_rotation_eval_get(GP_SpaceConversion *gsc,
@@ -1917,7 +1917,7 @@ static void gpsculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *itempt
 
   /* Updates */
   if (changed) {
-    DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
   }
 
