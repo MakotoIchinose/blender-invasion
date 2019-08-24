@@ -400,6 +400,9 @@ static Mesh *do_step_cloth(
   }
 
 #if 1
+  if (clmd->mesh) {
+    BKE_id_free(NULL, (ID *)clmd->mesh);
+  }
   BKE_id_copy_ex(NULL, (ID *)mesh_result, (ID **)&clmd->mesh, LIB_ID_COPY_LOCALIZE);
 #endif
 

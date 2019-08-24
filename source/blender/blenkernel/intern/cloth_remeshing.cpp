@@ -1022,10 +1022,8 @@ static void cloth_remeshing_print_all_verts(ClothVertex *verts, int vert_num)
   }
 }
 
-static void cloth_remeshing_add_vertex_to_cloth(BMVert *v1,
-                                                BMVert *v2,
-                                                BMVert *new_vert,
-                                                ClothVertMap &cvm)
+static void cloth_remeshing_add_vertex_to_cloth(
+    ClothModifierData *clmd, BMVert *v1, BMVert *v2, BMVert *new_vert, ClothVertMap &cvm)
 {
   ClothVertex *cv1, *cv2;
   cv1 = &cvm[v1];
@@ -1046,7 +1044,11 @@ static void cloth_remeshing_add_vertex_to_cloth(BMVert *v1,
   if (new_vert->head.data) {
     MDeformVert *dvert = (MDeformVert *)new_vert->head.data;
     if (dvert) {
-      dvert->totweight = 0;
+      for (int j = 0; j < dvert->totweight; j++) {
+        if (dvert->dw[j].def_nr == (clmd->sim_parms->vgroup_mass - 1)) {
+          dvert->dw[j].weight = 0.0f;
+        }
+      }
     }
   }
 #endif
@@ -1087,7 +1089,7 @@ static void cloth_remeshing_print_all_verts(BMesh *bm)
  **/
 #if 0
 static BMEdge *cloth_remeshing_fix_sewing_verts(
-    Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, ClothVertMap &cvm)
+  ClothModifierData *clmd, Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, ClothVertMap &cvm)
 {
   /* cloth_remeshing_print_all_verts(bm); */
   BMEdge *v3v4 = cloth_remeshing_find_next_loose_edge(v3);
@@ -1127,7 +1129,7 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
     v6 = cloth_remeshing_split_edge_keep_triangles(bm, v4v5, v4, 0.5);
     cloth->verts = (ClothVertex *)MEM_reallocN(cloth->verts,
                                                (cloth->mvert_num + 1) * sizeof(ClothVertex));
-    cloth_remeshing_add_vertex_to_cloth(v4v5_old.v1, v4v5_old.v2, v6, cvm);
+    cloth_remeshing_add_vertex_to_cloth(clmd, v4v5_old.v1, v4v5_old.v2, v6, cvm);
     printf("joining new_vert and v6\n");
     return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
   }
@@ -1149,8 +1151,13 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
   }
 }
 #else
-static BMEdge *cloth_remeshing_fix_sewing_verts(
-    Cloth *cloth, BMesh *bm, BMVert *v1, BMVert *new_vert, BMVert *v3, ClothVertMap &cvm)
+static BMEdge *cloth_remeshing_fix_sewing_verts(ClothModifierData *clmd,
+                                                Cloth *cloth,
+                                                BMesh *bm,
+                                                BMVert *v1,
+                                                BMVert *new_vert,
+                                                BMVert *v3,
+                                                ClothVertMap &cvm)
 {
   BMVert *v4, *v5;
   BMIter iter;
@@ -1180,7 +1187,7 @@ static BMEdge *cloth_remeshing_fix_sewing_verts(
     if (!v6) {
       return NULL;
     }
-    cloth_remeshing_add_vertex_to_cloth(v4v5_old.v1, v4v5_old.v2, v6, cvm);
+    cloth_remeshing_add_vertex_to_cloth(clmd, v4v5_old.v1, v4v5_old.v2, v6, cvm);
     return BM_edge_create(bm, new_vert, v6, v3v4, BM_CREATE_NO_DOUBLE);
   }
   return BM_edge_create(bm, new_vert, v5, v3v4, BM_CREATE_NO_DOUBLE);
@@ -1269,13 +1276,14 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
       continue;
     }
 
-    cloth_remeshing_add_vertex_to_cloth(old_edge.v1, old_edge.v2, new_vert, cvm);
+    cloth_remeshing_add_vertex_to_cloth(clmd, old_edge.v1, old_edge.v2, new_vert, cvm);
 
+#if 1
     vector<BMFace *> active_faces;
     BMFace *af;
     BMIter afiter;
     BM_ITER_ELEM (af, &afiter, new_vert, BM_FACES_OF_VERT) {
-#if 0
+#  if 0
       /* BLI_assert(af->len == 3); */
       if (af->len > 3) {
         MemArena *pf_arena;
@@ -1297,18 +1305,19 @@ static bool cloth_remeshing_split_edges(ClothModifierData *clmd,
         BM_mesh_elem_index_ensure(bm, BM_EDGE | BM_FACE);
         continue;
       }
-#else
+#  else
       BLI_assert(af->len == 3);
-#endif
+#  endif
       active_faces.push_back(af);
     }
     cloth_remeshing_fix_mesh(bm, cvm, active_faces, cd_loop_uv_offset);
+#endif
 
     if (clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_SEW) {
       if (cloth_remeshing_find_next_loose_edge(old_edge.v1) != NULL &&
           cloth_remeshing_find_next_loose_edge(old_edge.v2) != NULL) {
         cloth_remeshing_fix_sewing_verts(
-            clmd->clothObject, bm, old_edge.v1, new_vert, old_edge.v2, cvm);
+            clmd, clmd->clothObject, bm, old_edge.v1, new_vert, old_edge.v2, cvm);
       }
     }
   }
