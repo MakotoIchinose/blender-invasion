@@ -65,8 +65,7 @@
 static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
                                 tGPencilObjectCache *cache_ob,
                                 GpencilBatchCache *cache,
-                                bGPdata *gpd,
-                                int cfra_eval)
+                                bGPdata *gpd)
 {
   if (!cache->is_dirty) {
     return;
@@ -88,13 +87,13 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
 
   cache_ob->tot_vertex = 0;
   cache_ob->tot_triangles = 0;
-  int derived_idx = 0;
+  int eval_idx = 0;
 
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     bGPDframe *init_gpf = NULL;
     const bool is_onion = ((do_onion) && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
     if (gpl->flag & GP_LAYER_HIDE) {
-      derived_idx++;
+      eval_idx++;
       continue;
     }
 
@@ -103,7 +102,7 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
       init_gpf = gpl->frames.first;
     }
     else {
-      init_gpf = &ob->runtime.derived_frames[derived_idx];
+      init_gpf = &ob->runtime.gpencil_evaluated_frames[eval_idx];
     }
 
     if (init_gpf == NULL) {
@@ -119,7 +118,7 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
         break;
       }
     }
-    derived_idx++;
+    eval_idx++;
   }
 
   cache->b_fill.tot_vertex = cache_ob->tot_triangles * 3;
@@ -1797,7 +1796,7 @@ void gpencil_populate_multiedit(GPENCIL_e_data *e_data,
   const bool playing = stl->storage->is_playing;
 
   /* calc max size of VBOs */
-  gpencil_calc_vertex(stl, cache_ob, cache, gpd, cfra_eval);
+  gpencil_calc_vertex(stl, cache_ob, cache, gpd);
 
   /* draw strokes */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -1867,7 +1866,7 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
   View3D *v3d = draw_ctx->v3d;
   int cfra_eval = (int)DEG_get_ctime(draw_ctx->depsgraph);
 
-  bGPDframe *derived_gpf = NULL;
+  bGPDframe *gpf_eval = NULL;
   const bool overlay = v3d != NULL ? (bool)((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) : true;
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
 
@@ -1887,7 +1886,7 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
   }
 
   /* calc max size of VBOs */
-  gpencil_calc_vertex(stl, cache_ob, cache, gpd, cfra_eval);
+  gpencil_calc_vertex(stl, cache_ob, cache, gpd);
 
   /* draw normal strokes */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -1936,9 +1935,9 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
       opacity = opacity * v3d->overlay.gpencil_fade_layer;
     }
 
-    /* Get derived frames array data */
-    int derived_idx = BLI_findindex(&gpd->layers, gpl);
-    derived_gpf = &ob->runtime.derived_frames[derived_idx];
+    /* Get evaluated frames array data */
+    int eval_idx = BLI_findindex(&gpd->layers, gpl);
+    gpf_eval = &ob->runtime.gpencil_evaluated_frames[eval_idx];
 
     /* draw onion skins */
     if (!ID_IS_LINKED(&gpd->id)) {
@@ -1952,17 +1951,8 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
       }
     }
     /* draw normal strokes */
-    gpencil_draw_strokes(cache,
-                         e_data,
-                         vedata,
-                         ob,
-                         gpd,
-                         gpl,
-                         derived_gpf,
-                         opacity,
-                         gpl->tintcolor,
-                         false,
-                         cache_ob);
+    gpencil_draw_strokes(
+        cache, e_data, vedata, ob, gpd, gpl, gpf_eval, opacity, gpl->tintcolor, false, cache_ob);
   }
 
   /* create batchs and shading groups */

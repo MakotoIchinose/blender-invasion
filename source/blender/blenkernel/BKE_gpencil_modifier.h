@@ -27,7 +27,6 @@
 struct BMEditMesh;
 struct DepsNodeHandle;
 struct Depsgraph;
-struct DerivedMesh;
 struct GpencilModifierData;
 struct ID;
 struct ListBase;

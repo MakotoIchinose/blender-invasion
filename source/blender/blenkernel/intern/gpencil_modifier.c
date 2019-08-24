@@ -779,18 +779,18 @@ void BKE_gpencil_subdivide(bGPDstroke *gps, int level, int flag)
 }
 
 /* Copy frame but do not assign new memory */
-static void gpencil_copy_frame(Object *ob, bGPDframe *gpf, bGPDframe *derived_gpf)
+static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gpf_eval)
 {
-  derived_gpf->prev = gpf->prev;
-  derived_gpf->next = gpf->next;
-  derived_gpf->framenum = gpf->framenum;
-  derived_gpf->flag = gpf->flag;
-  derived_gpf->key_type = gpf->key_type;
-  derived_gpf->runtime = gpf->runtime;
-  copy_m4_m4(derived_gpf->runtime.parent_obmat, gpf->runtime.parent_obmat);
+  gpf_eval->prev = gpf->prev;
+  gpf_eval->next = gpf->next;
+  gpf_eval->framenum = gpf->framenum;
+  gpf_eval->flag = gpf->flag;
+  gpf_eval->key_type = gpf->key_type;
+  gpf_eval->runtime = gpf->runtime;
+  copy_m4_m4(gpf_eval->runtime.parent_obmat, gpf->runtime.parent_obmat);
 
   /* copy strokes */
-  BLI_listbase_clear(&derived_gpf->strokes);
+  BLI_listbase_clear(&gpf_eval->strokes);
   for (bGPDstroke *gps_src = gpf->strokes.first; gps_src; gps_src = gps_src->next) {
     /* make copy of source stroke */
     bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps_src);
@@ -808,25 +808,27 @@ static void gpencil_copy_frame(Object *ob, bGPDframe *gpf, bGPDframe *derived_gp
       pt_dst->runtime.idx_orig = i;
     }
 
-    BLI_addtail(&derived_gpf->strokes, gps_dst);
+    BLI_addtail(&gpf_eval->strokes, gps_dst);
   }
 }
 
-/* Ensure there is a derived frame */
-static void gpencil_ensure_derived_frame(
-    int idx, Object *ob, bGPDlayer *gpl, bGPDframe *gpf, bGPDframe **derived_gpf)
+/* Ensure there is a evaluated frame */
+static void gpencil_evaluated_frame_ensure(int idx,
+                                           Object *ob,
+                                           bGPDframe *gpf,
+                                           bGPDframe **gpf_eval)
 {
-  /* create derived frames array data or expand */
-  bGPDframe *derived_frames = ob->runtime.derived_frames;
-  *derived_gpf = &derived_frames[idx];
+  /* Create evaluated frames array data or expand. */
+  bGPDframe *evaluated_frames = ob->runtime.gpencil_evaluated_frames;
+  *gpf_eval = &evaluated_frames[idx];
 
-  /* if derived frame create a new one */
-  if (*derived_gpf != NULL) {
+  /* If already exist a evaluated frame create a new one. */
+  if (*gpf_eval != NULL) {
     /* first clear temp data */
-    BKE_gpencil_free_frame_runtime_data(*derived_gpf);
+    BKE_gpencil_free_frame_runtime_data(*gpf_eval);
   }
-  /* copy data (do not assign new memory)*/
-  gpencil_copy_frame(ob, gpf, *derived_gpf);
+  /* Copy data (do not assign new memory). */
+  gpencil_frame_copy_noalloc(ob, gpf, *gpf_eval);
 }
 
 /* Calculate gpencil modifiers */
@@ -836,21 +838,22 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Object *ob_orig = DEG_get_original_object(ob);
   bGPdata *gpd = (bGPdata *)ob_orig->data;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
-  const bool simplify_modif = GP_SIMPLIFY_MODIF(scene, false);
+  const bool simplify_modif = GPENCIL_SIMPLIFY_MODIF(scene, false);
   const bool is_render = (bool)(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
   const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
-  /* Create array of derived frames equal to number of layers. */
-  ob->runtime.tot_layers = BLI_listbase_count(&gpd->layers);
-  CLAMP_MIN(ob->runtime.tot_layers, 1);
-  if (ob->runtime.derived_frames == NULL) {
-    ob->runtime.derived_frames = MEM_callocN(sizeof(struct bGPDframe) * ob->runtime.tot_layers,
-                                             __func__);
+  /* Create array of evaluated frames equal to number of layers. */
+  ob->runtime.gpencil_tot_layers = BLI_listbase_count(&gpd->layers);
+  CLAMP_MIN(ob->runtime.gpencil_tot_layers, 1);
+  if (ob->runtime.gpencil_evaluated_frames == NULL) {
+    ob->runtime.gpencil_evaluated_frames = MEM_callocN(
+        sizeof(struct bGPDframe) * ob->runtime.gpencil_tot_layers, __func__);
   }
   else {
-    ob->runtime.derived_frames = MEM_recallocN(ob->runtime.derived_frames,
-                                               sizeof(struct bGPDframe) * ob->runtime.tot_layers);
+    ob->runtime.gpencil_evaluated_frames = MEM_recallocN(ob->runtime.gpencil_evaluated_frames,
+                                                         sizeof(struct bGPDframe) *
+                                                             ob->runtime.gpencil_tot_layers);
   }
 
   /* Init general modifiers data. */
@@ -877,8 +880,8 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
     }
 
     /* Create a duplicate data set of stroke to modify. */
-    bGPDframe *derived_gpf = NULL;
-    gpencil_ensure_derived_frame(idx, ob, gpl, gpf, &derived_gpf);
+    bGPDframe *gpf_eval = NULL;
+    gpencil_evaluated_frame_ensure(idx, ob, gpf, &gpf_eval);
 
     /* Skip all if some disable flag is enabled. */
     if ((ob->greasepencil_modifiers.first == NULL) || (is_multiedit) || (simplify_modif)) {
@@ -888,13 +891,13 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
 
     /* Apply geometry modifiers (create new geometry). */
     if (BKE_gpencil_has_geometry_modifiers(ob)) {
-      BKE_gpencil_geometry_modifiers(depsgraph, ob, gpl, derived_gpf, is_render);
+      BKE_gpencil_geometry_modifiers(depsgraph, ob, gpl, gpf_eval, is_render);
     }
 
     /* Loop all strokes and deform them. */
-    for (bGPDstroke *gps = derived_gpf->strokes.first; gps; gps = gps->next) {
+    for (bGPDstroke *gps = gpf_eval->strokes.first; gps; gps = gps->next) {
       /* Apply modifiers that only deform geometry */
-      BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, derived_gpf, gps, is_render);
+      BKE_gpencil_stroke_modifiers(depsgraph, ob, gpl, gpf_eval, gps, is_render);
     }
 
     idx++;

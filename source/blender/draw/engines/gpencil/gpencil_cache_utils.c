@@ -349,13 +349,13 @@ void DRW_gpencil_freecache(struct Object *ob)
     }
   }
 
-  /* clear all frames derived data */
-  for (int i = 0; i < ob->runtime.tot_layers; i++) {
-    bGPDframe *derived_gpf = &ob->runtime.derived_frames[i];
-    BKE_gpencil_free_frame_runtime_data(derived_gpf);
-    derived_gpf = NULL;
+  /* clear all frames evaluated data */
+  for (int i = 0; i < ob->runtime.gpencil_tot_layers; i++) {
+    bGPDframe *gpf_eval = &ob->runtime.gpencil_evaluated_frames[i];
+    BKE_gpencil_free_frame_runtime_data(gpf_eval);
+    gpf_eval = NULL;
   }
 
-  ob->runtime.tot_layers = 0;
-  MEM_SAFE_FREE(ob->runtime.derived_frames);
+  ob->runtime.gpencil_tot_layers = 0;
+  MEM_SAFE_FREE(ob->runtime.gpencil_evaluated_frames);
 }
