@@ -448,7 +448,6 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   XrSwapchainImageBaseHeader *swapchain_image;
   GHOST_XrDrawViewInfo draw_view_info{};
-  GHOST_ContextHandle draw_ctx;
   uint32_t swapchain_idx;
 
   CHECK_XR(xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx),
@@ -474,9 +473,8 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   draw_view_info.height = proj_layer_view.subImage.imageRect.extent.height;
   ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
-  m_gpu_binding->drawViewBegin(swapchain_image);
-  draw_ctx = m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
-  m_gpu_binding->drawViewEnd(swapchain_image, &draw_view_info, (GHOST_Context *)draw_ctx);
+  m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
+  m_gpu_binding->submitToSwapchain(swapchain_image, &draw_view_info);
 
   CHECK_XR(xrReleaseSwapchainImage(swapchain, &release_info),
            "Failed to release swapchain image used to submit VR session frame.");

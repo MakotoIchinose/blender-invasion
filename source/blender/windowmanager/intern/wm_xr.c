@@ -75,7 +75,7 @@ typedef struct {
   bContext *evil_C;
 } wmXrErrorHandlerData;
 
-GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
+void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
 void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
 void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
 wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
@@ -444,7 +444,7 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
  * This is the main viewport drawing function for VR sessions. It's assigned to Ghost-XR as a
  * callback (see GHOST_XrDrawViewFunc()) and executed for each view (read: eye).
  */
-GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
+void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
   bContext *C = customdata;
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
@@ -461,7 +461,7 @@ GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void 
   wm_xr_draw_matrices_create(CTX_data_scene(C), draw_view, clip_start, clip_end, viewmat, winmat);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
-    return NULL;
+    return;
   }
 
   offscreen = surface_data->offscreen;
@@ -512,8 +512,6 @@ GHOST_ContextHandle wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void 
   /* Leave viewport bound so GHOST_Xr can use its context/framebuffer, its unbound in
    * wm_xr_session_surface_draw(). */
   // GPU_viewport_unbind(viewport);
-
-  return g_xr_surface->ghost_ctx;
 }
 
 /** \} */ /* XR Drawing */

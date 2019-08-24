@@ -634,10 +634,7 @@ typedef void (*GHOST_XrErrorHandlerFn)(const GHOST_XrError *);
 typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
 typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
                                                 void *graphics_context);
-/* XXX hacky: returns GHOST_ContextHandle so DirectX binding can get a handle to the OpenGL
- * offscreen context. */
-typedef GHOST_ContextHandle (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view,
-                                                  void *customdata);
+typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
 
 #endif
 

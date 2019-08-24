@@ -57,10 +57,8 @@ class GHOST_IXrGraphicsBinding {
                                      int64_t *r_result) const = 0;
   virtual std::vector<XrSwapchainImageBaseHeader *> createSwapchainImages(
       uint32_t image_count) = 0;
-  virtual void drawViewBegin(XrSwapchainImageBaseHeader *swapchain_image) = 0;
-  virtual void drawViewEnd(XrSwapchainImageBaseHeader *swapchain_image,
-                           const GHOST_XrDrawViewInfo *draw_info,
-                           class GHOST_Context *ogl_ctx) = 0;
+  virtual void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
+                                 const GHOST_XrDrawViewInfo *draw_info) = 0;
 
  protected:
   /* Use GHOST_XrGraphicsBindingCreateFromType */
