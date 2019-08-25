@@ -28,16 +28,10 @@
 struct GPENCIL_Data;
 struct GPENCIL_StorageList;
 struct MaterialGPencilStyle;
-struct ModifierData;
 struct Object;
 struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
-struct tGPspoint;
-struct GpencilBatchCache;
-struct GpencilBatchCacheElem;
-struct GpencilBatchGroup;
-
 struct GPUBatch;
 struct GPUVertBuf;
 struct GPUVertFormat;
