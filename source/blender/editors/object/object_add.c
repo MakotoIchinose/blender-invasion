@@ -103,6 +103,7 @@
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_physics.h"
 #include "ED_render.h"
 #include "ED_screen.h"
@@ -232,29 +233,17 @@ void ED_object_rotation_from_view(bContext *C, float rot[3], const char align_ax
   }
 }
 
-void ED_object_base_init_transform(bContext *C, Base *base, const float loc[3], const float rot[3])
+void ED_object_base_init_transform_on_add(Object *object, const float loc[3], const float rot[3])
 {
-  Object *ob = base->object;
-  Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-
-  if (!scene) {
-    return;
-  }
-
   if (loc) {
-    copy_v3_v3(ob->loc, loc);
+    copy_v3_v3(object->loc, loc);
   }
 
   if (rot) {
-    copy_v3_v3(ob->rot, rot);
+    copy_v3_v3(object->rot, rot);
   }
 
-  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-  Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
-  BKE_object_transform_copy(object_eval, ob);
-  BKE_object_where_is_calc(depsgraph, scene_eval, object_eval);
-  BKE_object_transform_copy(ob, object_eval);
+  BKE_object_to_mat4(object, object->obmat);
 }
 
 /* Uses context to figure out transform for primitive.
@@ -494,7 +483,7 @@ Object *ED_object_add_type(bContext *C,
   ED_object_base_activate(C, view_layer->basact);
 
   /* more editor stuff */
-  ED_object_base_init_transform(C, view_layer->basact, loc, rot);
+  ED_object_base_init_transform_on_add(ob, loc, rot);
 
   /* TODO(sergey): This is weird to manually tag objects for update, better to
    * use DEG_id_tag_update here perhaps.
@@ -513,6 +502,8 @@ Object *ED_object_add_type(bContext *C,
 
   /* TODO(sergey): Use proper flag for tagging here. */
   DEG_id_tag_update(&scene->id, 0);
+
+  ED_outliner_select_sync_from_object_tag(C);
 
   return ob;
 }

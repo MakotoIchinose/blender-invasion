@@ -53,19 +53,15 @@ struct PropertyRNA;
 struct ScrArea;
 struct ViewLayer;
 struct bContext;
-struct bToolRef_Runtime;
 struct rcti;
 struct wmDrag;
 struct wmDropBox;
 struct wmEvent;
-struct wmEventHandler;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
 struct wmGenericUserData;
 struct wmGesture;
 struct wmJob;
-struct wmMsgSubscribeKey;
-struct wmMsgSubscribeValue;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
@@ -162,6 +158,7 @@ enum {
   WM_WINDOW_RENDER = 1,
   WM_WINDOW_USERPREFS,
   WM_WINDOW_DRIVERS,
+  WM_WINDOW_INFO,
   // WM_WINDOW_FILESEL // UNUSED
 };
 
@@ -420,11 +417,14 @@ int WM_operator_call_py(struct bContext *C,
                         struct ReportList *reports,
                         const bool is_undo);
 
+/* Used for keymap and macro items. */
 void WM_operator_properties_alloc(struct PointerRNA **ptr,
                                   struct IDProperty **properties,
-                                  const char *opstring); /* used for keymap and macro items */
-void WM_operator_properties_sanitize(
-    struct PointerRNA *ptr, const bool no_context); /* make props context sensitive or not */
+                                  const char *opstring);
+
+/* Make props context sensitive or not. */
+void WM_operator_properties_sanitize(struct PointerRNA *ptr, const bool no_context);
+
 bool WM_operator_properties_default(struct PointerRNA *ptr, const bool do_update);
 void WM_operator_properties_reset(struct wmOperator *op);
 void WM_operator_properties_create(struct PointerRNA *ptr, const char *opstring);

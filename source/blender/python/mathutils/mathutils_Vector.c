@@ -786,10 +786,8 @@ static PyObject *Vector_to_track_quat(VectorObject *self, PyObject *args)
     return NULL;
   }
 
-  /*
-   * flip vector around, since vectoquat expect a vector from target to tracking object
-   * and the python function expects the inverse (a vector to the target).
-   */
+  /* Flip vector around, since #vec_to_quat expect a vector from target to tracking object
+   * and the python function expects the inverse (a vector to the target). */
   negate_v3_v3(vec, self->vec);
 
   vec_to_quat(quat, vec, track, up);
@@ -1834,7 +1832,7 @@ static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
     mul_vn_vn(vec1->vec, vec2->vec, vec1->size);
 #else
     PyErr_Format(PyExc_TypeError,
-                 "Inplace element-wise multiplication: "
+                 "In place element-wise multiplication: "
                  "not supported between '%.200s' and '%.200s' types",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
@@ -1847,7 +1845,7 @@ static PyObject *Vector_imul(PyObject *v1, PyObject *v2)
   }
   else {
     PyErr_Format(PyExc_TypeError,
-                 "Inplace element-wise multiplication: "
+                 "In place element-wise multiplication: "
                  "not supported between '%.200s' and '%.200s' types",
                  Py_TYPE(v1)->tp_name,
                  Py_TYPE(v2)->tp_name);
@@ -1925,7 +1923,7 @@ static PyObject *Vector_matmul(PyObject *v1, PyObject *v2)
 static PyObject *Vector_imatmul(PyObject *v1, PyObject *v2)
 {
   PyErr_Format(PyExc_TypeError,
-               "Inplace vector multiplication: "
+               "In place vector multiplication: "
                "not supported between '%.200s' and '%.200s' types",
                Py_TYPE(v1)->tp_name,
                Py_TYPE(v2)->tp_name);

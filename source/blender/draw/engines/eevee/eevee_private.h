@@ -30,7 +30,6 @@ struct EEVEE_ShadowCasterBuffer;
 struct GPUFrameBuffer;
 struct Object;
 struct RenderLayer;
-struct RenderResult;
 
 extern struct DrawEngineType draw_engine_eevee_type;
 
@@ -897,7 +896,6 @@ struct GPUMaterial *EEVEE_material_mesh_get(struct Scene *scene,
                                             Material *ma,
                                             EEVEE_Data *vedata,
                                             bool use_blend,
-                                            bool use_multiply,
                                             bool use_refract,
                                             bool use_translucency,
                                             int shadow_method);

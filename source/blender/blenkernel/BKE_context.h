@@ -33,7 +33,6 @@ extern "C" {
 
 struct ARegion;
 struct Base;
-struct Brush;
 struct CacheFile;
 struct Collection;
 struct Depsgraph;
@@ -59,7 +58,6 @@ struct Text;
 struct ToolSettings;
 struct View3D;
 struct ViewLayer;
-struct ViewRender;
 struct bGPDframe;
 struct bGPDlayer;
 struct bGPdata;
@@ -137,8 +135,8 @@ void CTX_store_free(bContextStore *store);
 void CTX_store_free_list(ListBase *contexts);
 
 /* need to store if python is initialized or not */
-int CTX_py_init_get(bContext *C);
-void CTX_py_init_set(bContext *C, int value);
+bool CTX_py_init_get(bContext *C);
+void CTX_py_init_set(bContext *C, bool value);
 
 void *CTX_py_dict_get(const bContext *C);
 void CTX_py_dict_set(bContext *C, void *value);
@@ -239,7 +237,7 @@ bool CTX_data_dir(const char *member);
 
 #define CTX_DATA_BEGIN_WITH_ID(C, Type, instance, member, Type_id, instance_id) \
   CTX_DATA_BEGIN (C, Type, instance, member) \
-    Type_id instance_id = ctx_link->ptr.id.data;
+    Type_id instance_id = (Type_id)ctx_link->ptr.owner_id;
 
 int ctx_data_list_count(const bContext *C, int (*func)(const bContext *, ListBase *));
 

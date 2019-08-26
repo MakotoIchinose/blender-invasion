@@ -531,7 +531,7 @@ void DepsgraphRelationBuilder::build_collection(LayerCollection *from_layer_coll
     /* If we came from layer collection we don't go deeper, view layer
      * builder takes care of going deeper.
      *
-     * NOTE: Do early output before tagging build as done, so possbile
+     * NOTE: Do early output before tagging build as done, so possible
      * subsequent builds from outside of the layer collection properly
      * recurses into all the nested objects and collections. */
     return;
@@ -1384,7 +1384,7 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
    * it. This is necessary to provide more granular dependencies specifically for
    * Bone objects, because the armature data doesn't have per-bone components,
    * and generic add_relation can only add one link. */
-  ID *id_ptr = (ID *)property_entry_key.ptr.id.data;
+  ID *id_ptr = property_entry_key.ptr.owner_id;
   bool is_bone = id_ptr && property_entry_key.ptr.type == &RNA_Bone;
   /* If the Bone property is referenced via obj.pose.bones[].bone,
    * the RNA pointer refers to the Object ID, so skip to data. */
@@ -1433,8 +1433,8 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
       PointerRNA ptr;
       RNA_id_pointer_create(id, &id_ptr);
       if (RNA_path_resolve_full(&id_ptr, fcu->rna_path, &ptr, NULL, NULL)) {
-        if (id_ptr.id.data != ptr.id.data) {
-          ComponentKey cow_key((ID *)ptr.id.data, NodeType::COPY_ON_WRITE);
+        if (id_ptr.owner_id != ptr.owner_id) {
+          ComponentKey cow_key(ptr.owner_id, NodeType::COPY_ON_WRITE);
           add_relation(cow_key, driver_key, "Driven CoW -> Driver", RELATION_CHECK_BEFORE_ADD);
         }
       }
@@ -1531,8 +1531,9 @@ void DepsgraphRelationBuilder::build_driver_id_property(ID *id, const char *rna_
   }
   PointerRNA id_ptr, ptr;
   PropertyRNA *prop;
+  int index;
   RNA_id_pointer_create(id, &id_ptr);
-  if (!RNA_path_resolve_full(&id_ptr, rna_path, &ptr, &prop, NULL)) {
+  if (!RNA_path_resolve_full(&id_ptr, rna_path, &ptr, &prop, &index)) {
     return;
   }
   if (prop == NULL) {

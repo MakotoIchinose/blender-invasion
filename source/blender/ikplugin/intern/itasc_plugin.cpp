@@ -879,7 +879,7 @@ static bool joint_callback(const iTaSC::Timestamp &timestamp,
   bPoseChannel *chan = ikchan->pchan;
   int dof;
 
-  // a channel can be splitted into multiple joints, so we get called multiple
+  // a channel can be split into multiple joints, so we get called multiple
   // times for one channel (this callback is only for 1 joint in the armature)
   // the IK_JointTarget structure is shared between multiple joint constraint
   // and the target joint values is computed only once, remember this in jointValid
@@ -1729,9 +1729,9 @@ static void execute_scene(struct Depsgraph *depsgraph,
   IK_Channel *ikchan;
   if (ikparam->flag & ITASC_SIMULATION) {
     for (i = 0, ikchan = ikscene->channels; i < ikscene->numchan; i++, ++ikchan) {
-      // In simulation mode we don't allow external constraint to change our bones, mark the channel
-      // done also tell Blender that this channel is part of IK tree
-      // (cleared on each BKE_pose_where_is()
+      // In simulation mode we don't allow external constraint to change our bones,
+      // mark the channel done also tell Blender that this channel is part of IK tree.
+      // Cleared on each BKE_pose_where_is()
       ikchan->pchan->flag |= (POSE_DONE | POSE_CHAIN);
       ikchan->jointValid = 0;
     }

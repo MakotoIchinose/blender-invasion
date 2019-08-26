@@ -570,6 +570,8 @@ static void image_zoom_apply(ViewZoomData *vpd,
     delta = x - vpd->origx + y - vpd->origy;
   }
 
+  delta /= U.pixelsize;
+
   if (zoom_invert) {
     delta = -delta;
   }
@@ -1429,7 +1431,7 @@ static int image_open_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
       Image *oldima;
 
       oldptr = RNA_property_pointer_get(&ptr, prop);
-      oldima = (Image *)oldptr.id.data;
+      oldima = (Image *)oldptr.owner_id;
       /* unlikely to fail but better avoid strange crash */
       if (oldima && GS(oldima->id.name) == ID_IM) {
         ima = oldima;
@@ -3217,10 +3219,10 @@ static void image_sample_apply(bContext *C, wmOperator *op, const wmEvent *event
         int point = RNA_enum_get(op->ptr, "point");
 
         if (point == 1) {
-          curvemapping_set_black_white(curve_mapping, NULL, info->linearcol);
+          BKE_curvemapping_set_black_white(curve_mapping, NULL, info->linearcol);
         }
         else if (point == 0) {
-          curvemapping_set_black_white(curve_mapping, info->linearcol, NULL);
+          BKE_curvemapping_set_black_white(curve_mapping, info->linearcol, NULL);
         }
         WM_event_add_notifier(C, NC_WINDOW, NULL);
       }

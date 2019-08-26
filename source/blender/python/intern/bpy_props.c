@@ -1505,6 +1505,10 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
       /* calculate combine string length */
       totbuf += id_str_size + name_str_size + desc_str_size + 3; /* 3 is for '\0's */
     }
+    else if (item == Py_None) {
+      /* Only set since the rest is cleared. */
+      items[i].identifier = "";
+    }
     else {
       MEM_freeN(items);
       PyErr_SetString(PyExc_TypeError,
@@ -2927,8 +2931,8 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
 
     prop = RNA_def_property(srna, id, PROP_STRING, subtype);
     if (maxlen != 0) {
-      RNA_def_property_string_maxlength(prop,
-                                        maxlen + 1); /* +1 since it includes null terminator */
+      /* +1 since it includes null terminator. */
+      RNA_def_property_string_maxlength(prop, maxlen + 1);
     }
     if (def && def[0]) {
       RNA_def_property_string_default(prop, def);
@@ -2978,6 +2982,8 @@ PyDoc_STRVAR(
     "\n"
     "      When an item only contains 4 items they define ``(identifier, name, description, "
     "number)``.\n"
+    "\n"
+    "      Separators may be added using None instead of a tuple."
     "\n"
     "      For dynamic values a callback can be passed which returns a list in\n"
     "      the same format as the static list.\n"
