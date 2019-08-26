@@ -475,6 +475,8 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         col.prop(mesh, "remesh_preserve_paint_mask")
         col.operator("object.voxel_remesh", text="Voxel Remesh")
 
+        col.separator()
+        col.operator("object.quadriflow_remesh", text="Quadriflow Remesh")
 
 class DATA_PT_customdata(MeshButtonsPanel, Panel):
     bl_label = "Geometry Data"

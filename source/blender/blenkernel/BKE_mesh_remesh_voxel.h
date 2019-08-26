@@ -39,6 +39,8 @@ struct Mesh *BKE_mesh_remesh_voxel_ovdb_volume_to_mesh_nomain(struct OpenVDBLeve
                                                               bool relax_disoriented_triangles);
 #endif
 struct Mesh *BKE_mesh_remesh_voxel_to_mesh_nomain(struct Mesh *mesh, float voxel_size);
+struct Mesh *BKE_mesh_remesh_quadriflow_to_mesh_nomain(
+    struct Mesh *mesh, int target_faces, int seed, bool preserve_sharp, bool adaptive_scale);
 
 /* Data reprojection functions */
 void BKE_remesh_reproject_paint_mask(struct Mesh *target, struct Mesh *source);
