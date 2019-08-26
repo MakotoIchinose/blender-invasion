@@ -1246,6 +1246,10 @@ static int fd_read_from_memfile(FileData *filedata, void *buffer, uint size)
       totread += readsize;
       filedata->file_offset += readsize;
       seek += readsize;
+      filedata->are_memchunks_identical &= chunk->is_identical;
+      if (!chunk->is_identical) {
+        printf("%s: found a non-identical memfile chunk...\n", __func__);
+      }
     } while (totread < size);
 
     return totread;
@@ -9142,7 +9146,12 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
   }
 
   /* read libblock */
+  fd->are_memchunks_identical = true;
+  printf("%s: Reading a struct...\n", __func__);
   id = read_struct(fd, bhead, "lib block");
+  printf("\tfor ID %s: are_memchunks_identical: %d\n",
+         id ? id->name : "NONE",
+         fd->are_memchunks_identical);
 
   if (id) {
     const short idcode = GS(id->name);
