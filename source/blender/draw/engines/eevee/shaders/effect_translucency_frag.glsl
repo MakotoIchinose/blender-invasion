@@ -6,6 +6,9 @@ out vec4 FragColor;
 uniform sampler1D sssTexProfile;
 uniform sampler2D sssRadius;
 
+uniform sampler2DArray sssShadowCubes;
+uniform sampler2DArray sssShadowCascades;
+
 #define MAX_SSS_SAMPLES 65
 #define SSS_LUT_SIZE 64.0
 #define SSS_LUT_SCALE ((SSS_LUT_SIZE - 1.0) / float(SSS_LUT_SIZE))
@@ -65,7 +68,6 @@ float light_translucent_power_with_falloff(LightData ld, vec3 N, vec4 l_vector)
 vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, float sss_scale)
 {
   ShadowData data = shadows_data[int(ld.l_shadowid)];
-  float delta;
 
   vec4 L = (ld.l_type != SUN) ? l_vector : vec4(-ld.l_forward, 1.0);
 
@@ -77,8 +79,7 @@ vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, f
   rand.xy *= data.sh_blur;
   W = W + T * rand.x + B * rand.y;
 
-  ShadowSample s;
-  float dist;
+  float s, dist;
   if (ld.l_type == SUN) {
     int scd_id = int(data.sh_data_start);
     vec4 view_z = vec4(dot(W - cameraPos, cameraForward));
@@ -98,15 +99,17 @@ vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, f
     if (shpos.z > 1.0 || shpos.z < 0.0) {
       return vec3(0.0);
     }
-    s = sample_cascade(shpos.xy, data.sh_tex_start + id);
+    s = sample_cascade(sssShadowCascades, shpos.xy, data.sh_tex_start + id).r;
+    s *= range;
   }
   else {
     vec3 cubevec = W - shadows_cube_data[int(data.sh_data_start)].position.xyz;
     dist = length(cubevec);
     cubevec /= dist;
-    s = sample_cube(cubevec, data.sh_tex_start);
+    s = sample_cube(sssShadowCubes, cubevec, data.sh_tex_start).r;
+    s = length(cubevec / max_v3(abs(cubevec))) * linear_depth(true, s, data.sh_far, data.sh_near);
   }
-  delta = get_depth_delta(dist, s);
+  float delta = dist - s;
 
   float power = light_translucent_power_with_falloff(ld, N, l_vector);
 

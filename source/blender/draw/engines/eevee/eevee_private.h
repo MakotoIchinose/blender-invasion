@@ -147,8 +147,8 @@ enum {
   VAR_MAT_PROBE = (1 << 1),
   VAR_MAT_HAIR = (1 << 2),
   VAR_MAT_BLEND = (1 << 3),
-  VAR_MAT_VSM = (1 << 4),
-  VAR_MAT_ESM = (1 << 5),
+  VAR_MAT_VSM = (1 << 4), /* Deprecated Remove */
+  VAR_MAT_ESM = (1 << 5), /* Deprecated Remove */
   VAR_MAT_VOLUME = (1 << 6),
   VAR_MAT_LOOKDEV = (1 << 7),
   /* Max number of variation */
@@ -399,7 +399,7 @@ typedef struct EEVEE_ShadowRender {
   int view_count;
   int base_id;
   float cube_texel_size;
-  float stored_texel_size;
+  float stored_texel_size; /* DEPRECATED TODO remove */
   float clip_near;
   float clip_far;
   float exponent;
@@ -440,7 +440,6 @@ typedef struct EEVEE_LightsInfo {
   int update_flag;
   int shadow_cube_size, shadow_cascade_size, shadow_method;
   bool shadow_high_bitdepth, soft_shadows;
-  int shadow_cube_store_size;
   /* List of lights in the scene. */
   /* XXX This is fragile, can get out of sync quickly. */
   struct Object *light_ref[MAX_LIGHT];
@@ -712,17 +711,8 @@ typedef struct EEVEE_ViewLayerData {
   struct GPUUniformBuffer *shadow_render_ubo;
   struct GPUUniformBuffer *shadow_samples_ubo;
 
-  struct GPUFrameBuffer *shadow_cube_target_fb;
-  struct GPUFrameBuffer *shadow_cube_store_fb;
-  struct GPUFrameBuffer *shadow_cube_copy_fb;
-  struct GPUFrameBuffer *shadow_cascade_target_fb;
-  struct GPUFrameBuffer *shadow_cascade_store_fb;
-  struct GPUFrameBuffer *shadow_cascade_copy_fb;
+  struct GPUFrameBuffer *shadow_fb;
 
-  struct GPUTexture *shadow_cube_target;
-  struct GPUTexture *shadow_cube_blur;
-  struct GPUTexture *shadow_cascade_target;
-  struct GPUTexture *shadow_cascade_blur;
   struct GPUTexture *shadow_cube_pool;
   struct GPUTexture *shadow_cascade_pool;
 
@@ -907,7 +897,7 @@ struct GPUMaterial *EEVEE_material_mesh_depth_get(struct Scene *scene,
                                                   bool is_shadow);
 struct GPUMaterial *EEVEE_material_hair_get(struct Scene *scene, Material *ma, int shadow_method);
 void EEVEE_materials_free(void);
-void EEVEE_draw_default_passes(EEVEE_PassList *psl);
+void EEVEE_materials_draw_opaque(EEVEE_ViewLayerData *sldata, EEVEE_PassList *psl);
 void EEVEE_update_noise(EEVEE_PassList *psl, EEVEE_FramebufferList *fbl, const double offsets[3]);
 void EEVEE_update_viewvecs(float invproj[4][4], float winmat[4][4], float (*r_viewvecs)[4]);
 

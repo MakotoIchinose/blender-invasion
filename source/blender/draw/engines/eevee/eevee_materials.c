@@ -323,12 +323,6 @@ static char *eevee_get_defines(int options)
   if ((options & VAR_MAT_TRANSLUC) != 0) {
     BLI_dynstr_append(ds, "#define USE_TRANSLUCENCY\n");
   }
-  if ((options & VAR_MAT_VSM) != 0) {
-    BLI_dynstr_append(ds, "#define SHADOW_VSM\n");
-  }
-  if ((options & VAR_MAT_ESM) != 0) {
-    BLI_dynstr_append(ds, "#define SHADOW_ESM\n");
-  }
   if ((options & VAR_MAT_LOOKDEV) != 0) {
     /* Auto config shadow method. Avoid more permutation. */
     BLI_assert((options & (VAR_MAT_VSM | VAR_MAT_ESM)) == 0);
@@ -1795,11 +1789,23 @@ void EEVEE_materials_free(void)
   DRW_TEXTURE_FREE_SAFE(e_data.noise_tex);
 }
 
-void EEVEE_draw_default_passes(EEVEE_PassList *psl)
+void EEVEE_materials_draw_opaque(EEVEE_ViewLayerData *sldata, EEVEE_PassList *psl)
 {
+  /* We sample the shadowmaps using shadow sampler. We need to enable Comparison mode.
+   * TODO(fclem) avoid this by using sampler objects.*/
+  GPU_texture_bind(sldata->shadow_cube_pool, 0);
+  GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
+  GPU_texture_unbind(sldata->shadow_cube_pool);
+  GPU_texture_bind(sldata->shadow_cascade_pool, 0);
+  GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
+  GPU_texture_unbind(sldata->shadow_cascade_pool);
+
   for (int i = 0; i < VAR_MAT_MAX; ++i) {
     if (psl->default_pass[i]) {
       DRW_draw_pass(psl->default_pass[i]);
     }
   }
+
+  DRW_draw_pass(psl->material_pass);
+  DRW_draw_pass(psl->material_pass_cull);
 }

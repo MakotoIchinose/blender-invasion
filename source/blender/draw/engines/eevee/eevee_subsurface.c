@@ -65,7 +65,8 @@ static void eevee_create_shader_subsurface(void)
   e_data.sss_sh[0] = DRW_shader_create_fullscreen(frag_str, "#define FIRST_PASS\n");
   e_data.sss_sh[1] = DRW_shader_create_fullscreen(frag_str, "#define SECOND_PASS\n");
   e_data.sss_sh[2] = DRW_shader_create_fullscreen(frag_str, "#define RESULT_ACCUM\n");
-  e_data.sss_sh[3] = DRW_shader_create_fullscreen(frag_translucent_str, SHADER_DEFINES);
+  e_data.sss_sh[3] = DRW_shader_create_fullscreen(frag_translucent_str,
+                                                  "#define EEVEE_TRANSLUCENCY\n" SHADER_DEFINES);
 
   MEM_freeN(frag_translucent_str);
   MEM_freeN(frag_str);
@@ -284,8 +285,8 @@ void EEVEE_subsurface_translucency_add_pass(EEVEE_ViewLayerData *sldata,
   DRW_shgroup_uniform_texture(grp, "sssTexProfile", sss_tex_profile);
   DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", depth_src);
   DRW_shgroup_uniform_texture_ref(grp, "sssRadius", &effects->sss_radius);
-  DRW_shgroup_uniform_texture_ref(grp, "shadowCubeTexture", &sldata->shadow_cube_pool);
-  DRW_shgroup_uniform_texture_ref(grp, "shadowCascadeTexture", &sldata->shadow_cascade_pool);
+  DRW_shgroup_uniform_texture_ref(grp, "sssShadowCubes", &sldata->shadow_cube_pool);
+  DRW_shgroup_uniform_texture_ref(grp, "sssShadowCascades", &sldata->shadow_cascade_pool);
   DRW_shgroup_uniform_block(grp, "sssProfile", sss_profile);
   DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
   DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
@@ -332,7 +333,7 @@ void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   }
 }
 
-void EEVEE_subsurface_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
+void EEVEE_subsurface_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
@@ -354,8 +355,19 @@ void EEVEE_subsurface_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
       GPU_framebuffer_blit(fbl->main_fb, 0, fbl->sss_blur_fb, 0, GPU_STENCIL_BIT);
     }
 
-    GPU_framebuffer_bind(fbl->sss_translucency_fb);
-    DRW_draw_pass(psl->sss_translucency_ps);
+    if (!DRW_pass_is_empty(psl->sss_translucency_ps)) {
+      /* We sample the shadowmaps using normal sampler. We need to disable Comparison mode.
+       * TODO(fclem) avoid this by using sampler objects.*/
+      GPU_texture_bind(sldata->shadow_cube_pool, 0);
+      GPU_texture_compare_mode(sldata->shadow_cube_pool, false);
+      GPU_texture_unbind(sldata->shadow_cube_pool);
+      GPU_texture_bind(sldata->shadow_cascade_pool, 0);
+      GPU_texture_compare_mode(sldata->shadow_cascade_pool, false);
+      GPU_texture_unbind(sldata->shadow_cascade_pool);
+
+      GPU_framebuffer_bind(fbl->sss_translucency_fb);
+      DRW_draw_pass(psl->sss_translucency_ps);
+    }
 
     /* 1. horizontal pass */
     GPU_framebuffer_bind(fbl->sss_blur_fb);

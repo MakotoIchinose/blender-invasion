@@ -269,9 +269,7 @@ static void eevee_draw_background(void *vedata)
     if (DRW_state_draw_background()) {
       DRW_draw_pass(psl->background_pass);
     }
-    EEVEE_draw_default_passes(psl);
-    DRW_draw_pass(psl->material_pass);
-    DRW_draw_pass(psl->material_pass_cull);
+    EEVEE_materials_draw_opaque(sldata, psl);
     EEVEE_subsurface_data_render(sldata, vedata);
     DRW_stats_group_end();
 
