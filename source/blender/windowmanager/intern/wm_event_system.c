@@ -2344,8 +2344,7 @@ static int wm_handler_fileselect_do(bContext *C,
       const int sizey = 600 * UI_DPI_FAC;
 
       if (WM_window_open_temp(
-              C, win->eventstate->x, win->eventstate->y, sizex, sizey, WM_WINDOW_FILESEL) !=
-          NULL) {
+              C, win->sizex / 2, win->sizey / 2, sizex, sizey, WM_WINDOW_FILESEL) != NULL) {
         ScrArea *area = CTX_wm_area(C);
         ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
