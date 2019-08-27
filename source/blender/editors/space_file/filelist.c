@@ -2117,7 +2117,7 @@ int ED_path_extension_type(const char *path)
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
   }
-  else if (BLI_path_extension_check_n(path, ".obj", ".3ds", ".fbx", ".glb", "gltf", NULL)) {
+  else if (BLI_path_extension_check_n(path, ".obj", ".3ds", ".fbx", ".glb", ".gltf", NULL)) {
     return FILE_TYPE_OBJECT_IO;
   }
   else if (BLI_path_extension_check_array(path, imb_ext_image)) {
