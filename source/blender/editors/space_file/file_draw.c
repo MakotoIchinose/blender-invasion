@@ -543,10 +543,15 @@ static const char *filelist_get_details_column_string(FileListColumns column,
       if (!(file->typeflag & FILE_TYPE_BLENDERLIB) && !FILENAME_IS_CURRPAR(file->relpath)) {
         if ((file->entry->datetime_str[0] == '\0') || update_stat_strings) {
           char date[16], time[8];
+          bool date_translate;
+
           BLI_filelist_entry_datetime_to_string(
-              NULL, file->entry->time, small_size, time, date, true);
-          BLI_snprintf(
-              file->entry->datetime_str, sizeof(file->entry->datetime_str), "%s %s", date, time);
+              NULL, file->entry->time, small_size, true, time, date, &date_translate);
+          BLI_snprintf(file->entry->datetime_str,
+                       sizeof(file->entry->datetime_str),
+                       "%s %s",
+                       date_translate ? IFACE_(date) : date,
+                       time);
         }
 
         return file->entry->datetime_str;

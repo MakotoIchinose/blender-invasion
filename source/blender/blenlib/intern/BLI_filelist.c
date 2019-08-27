@@ -347,23 +347,35 @@ void BLI_filelist_entry_owner_to_string(const struct stat *st,
 
 /**
  * Convert given entry's time into human-readable strings.
+ *
+ * \param use_relative_string: Return "Today" and "Yesterday" as date string when applicable.
+ * \param *r_date_needs_translate: optional, \a r_date should be translated if this returns true.
+ *                                 Note that we don't translate in here directly because this
+ *                                 function doesn't know where the string will be displayed (i.e.
+ *                                 IFACE_ vs. TIP_)
  */
 void BLI_filelist_entry_datetime_to_string(const struct stat *st,
                                            const int64_t ts,
                                            const bool compact,
+                                           const bool use_relative_str,
                                            char r_time[FILELIST_DIRENTRY_TIME_LEN],
                                            char r_date[FILELIST_DIRENTRY_DATE_LEN],
-                                           const bool use_relative_str
-  )
+                                           bool *r_date_needs_translate)
 {
   int today_year = 0;
   int today_yday = 0;
   int yesterday_year = 0;
   int yesterday_yday = 0;
+
+  if (r_date_needs_translate) {
+    *r_date_needs_translate = false;
+  }
+
   if (use_relative_str) {
     /* Localtime() has only one buffer so need to get data out before called again. */
     const time_t ts_now = time(NULL);
     struct tm *today = localtime(&ts_now);
+
     today_year = today->tm_year;
     today_yday = today->tm_yday;
     /* Handle a yesterday that spans a year */
@@ -388,10 +400,16 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
   if (r_date) {
     if (use_relative_str && (tm->tm_year == today_year) && (tm->tm_yday == today_yday)) {
       BLI_strncpy(r_date, "Today", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
+      if (r_date_needs_translate) {
+        *r_date_needs_translate = true;
+      }
     }
     else if (use_relative_str && (tm->tm_year == yesterday_year) &&
              (tm->tm_yday == yesterday_yday)) {
       BLI_strncpy(r_date, "Yesterday", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
+      if (r_date_needs_translate) {
+        *r_date_needs_translate = true;
+      }
     }
     else {
       strftime(r_date,
