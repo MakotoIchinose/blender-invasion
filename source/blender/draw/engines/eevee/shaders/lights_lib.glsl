@@ -1,6 +1,6 @@
 
-uniform sampler2DArrayShadow shadowCubeTexture;
-uniform sampler2DArrayShadow shadowCascadeTexture;
+uniform sampler2DArray shadowCubeTexture;
+uniform sampler2DArray shadowCascadeTexture;
 
 #define LAMPS_LIB
 
@@ -38,13 +38,12 @@ float cubeFaceIndexEEVEE(vec3 P)
   }
 }
 
-vec2 cubeFaceCoordEEVEE(vec3 P)
+vec2 cubeFaceCoordEEVEE(vec3 P, float face)
 {
-  vec3 aP = abs(P);
-  if (all(greaterThan(aP.xx, aP.yz))) {
+  if (face < 2.0) {
     return (P.zy / P.x) * vec2(-0.5, -sign(P.x) * 0.5) + 0.5;
   }
-  else if (all(greaterThan(aP.yy, aP.xz))) {
+  else if (face < 4.0) {
     return (P.xz / P.y) * vec2(sign(P.y) * 0.5, 0.5) + 0.5;
   }
   else {
@@ -52,19 +51,25 @@ vec2 cubeFaceCoordEEVEE(vec3 P)
   }
 }
 
+float cubeFaceDepthEEVEE(vec3 P, float face)
+{
+  if (face < 2.0) {
+    return abs(P.x);
+  }
+  else if (face < 4.0) {
+    return abs(P.y);
+  }
+  else {
+    return abs(P.z);
+  }
+}
+
 vec4 sample_cube(sampler2DArray tex, vec3 cubevec, float cube)
 {
   /* Manual Shadow Cube Layer indexing. */
   /* TODO Shadow Cube Array. */
-  vec3 coord = vec3(cubeFaceCoordEEVEE(cubevec), cube * 6.0 + cubeFaceIndexEEVEE(cubevec));
-  return texture(tex, coord);
-}
-
-float sample_cube(sampler2DArrayShadow tex, vec3 cubevec, float dist, float cube)
-{
-  /* Manual Shadow Cube Layer indexing. */
-  /* TODO Shadow Cube Array. */
-  vec4 coord = vec4(cubeFaceCoordEEVEE(cubevec), cube * 6.0 + cubeFaceIndexEEVEE(cubevec), dist);
+  float face = cubeFaceIndexEEVEE(cubevec);
+  vec3 coord = vec3(cubeFaceCoordEEVEE(cubevec, face), cube * 6.0 + face);
   return texture(tex, coord);
 }
 
@@ -73,37 +78,143 @@ vec4 sample_cascade(sampler2DArray tex, vec2 co, float cascade_id)
   return texture(tex, vec3(co, cascade_id));
 }
 
-float sample_cascade(sampler2DArrayShadow tex, vec2 co, float dist, float cascade_id)
+/** Convert screenspace derivatives to texture space derivatives.
+ * As described by John R. Isidoro in GDC 2006 presentation "Shadow Mapping: GPU-based Tips and
+ *Techniques". https://developer.amd.com/wordpress/media/2012/10/Isidoro-ShadowMapping.pdf
+ **/
+vec2 texture_space_derivatives(vec3 duvfdx, vec3 duvfdy)
 {
-  return texture(tex, vec4(co, cascade_id, dist));
+  /* Invert texture Jacobian and use chain rule to compute ddist/du and ddist/dv
+   *  |ddist/du| = |du/dx  du/dy|-T  * |ddist/dx|
+   *  |ddist/dv|   |dv/dx  dv/dy|      |ddist/dy| */
+
+  /* // Multiply ddist/dx and ddist/dy by inverse transpose of Jacobian
+   * float invDet = 1 / ((duvdist_dx.x * duvdist_dy.y) - (duvdist_dx.y * duvdist_dy.x));
+   * // Top row of 2x2
+   * ddist_duv.x = duvdist_dy.y * duvdist_dx.w;  // invJtrans[0][0] * ddist_dx
+   * ddist_duv.x -= duvdist_dx.y * duvdist_dy.w; // invJtrans[0][1] * ddist_dy
+   * // Bottom row of 2x2
+   * ddist_duv.y = duvdist_dx.x * duvdist_dy.w;  // invJtrans[1][1] * ddist_dy
+   * ddist_duv.y -= duvdist_dy.x * duvdist_dx.w; // invJtrans[1][0] * ddist_dx
+   * ddist_duv *= invDet;
+   **/
+
+  /* Optimized version. */
+  vec2 a = duvfdx.xy * duvfdy.yx;
+  vec4 b = duvfdy.yzzx * duvfdx.zyxz;
+  return (b.xz - b.yw) / (a.x - a.y);
+}
+
+/** Returns Receiver Plane Depth Bias
+ * As described by John R. Isidoro in GDC 2006 presentation "Shadow Mapping: GPU-based Tips and
+ * Techniques". https://developer.amd.com/wordpress/media/2012/10/Isidoro-ShadowMapping.pdf
+ */
+float shadowmap_bias(vec2 co, vec2 tap_co, vec2 dwduv)
+{
+  return dot(tap_co - co, dwduv);
+}
+
+/**
+ * Parameters:
+ * shadow_tx : shadowmap to sample.
+ * co        : the original sample position.
+ * ref       : the original depth to test (Depth of the surface in shadowmap space).
+ * co_ofs    : the actual offseted sample position.
+ * dwduv     : result of texture_space_derivatives().
+ **/
+float filtered_and_biased_shadow_test(sampler2DArray shadow_tx,
+                                      vec2 co,
+                                      float layer,
+                                      float ref,
+                                      float max_bias,
+                                      vec2 co_ofs,
+                                      vec2 dwduv)
+{
+  vec4 biases, depths;
+  vec2 texture_size = vec2(textureSize(shadow_tx, 0).xy);
+  vec3 texel_size = vec3(1.0 / texture_size, 0.0);
+  /* Center texel coordinate to match hardware filtering */
+  vec2 texel_uv = co_ofs * texture_size.xy - 0.5;
+  vec2 texel_fract = fract(texel_uv);
+  vec2 texel_floor = (floor(texel_uv) + 0.5) * texel_size.xy;
+  /* Calc bias for each sample */
+  biases.x = shadowmap_bias(co, texel_floor + texel_size.zy, dwduv);
+  biases.y = shadowmap_bias(co, texel_floor + texel_size.xy, dwduv);
+  biases.z = shadowmap_bias(co, texel_floor + texel_size.xz, dwduv);
+  biases.w = shadowmap_bias(co, texel_floor + texel_size.zz, dwduv);
+  /* Gather samples */
+#ifdef GPU_ARB_texture_gather
+  /* Note: To make sure that we get the exact same result we use texel center.
+   * This is because Anisotropic filtering is offsetting the coordinate. */
+  depths = textureGather(shadow_tx, vec3(texel_floor + texel_size.xy * 0.5, layer));
+#else
+  depths.x = texture(shadow_tx, vec3(texel_floor + texel_size.zy, layer)).x;
+  depths.y = texture(shadow_tx, vec3(texel_floor + texel_size.xy, layer)).x;
+  depths.z = texture(shadow_tx, vec3(texel_floor + texel_size.xz, layer)).x;
+  depths.w = texture(shadow_tx, vec3(texel_floor + texel_size.zz, layer)).x;
+#endif
+  /* Take absolute of bias to avoid overshadowing in proximity area.
+   * Also limit the bias in case the geom is almost perpendicular to the shadow source
+   * to avoid light leaking. */
+  vec4 refs = saturate(ref - min(vec4(max_bias), abs(biases)));
+  /* Bilinear PCF. */
+  vec4 tests = step(refs, depths);
+  tests.xy = mix(tests.wz, tests.xy, texel_fract.y);
+  return saturate(mix(tests.x, tests.y, texel_fract.x));
 }
 
 float shadow_cubemap(ShadowData sd, ShadowCubeData scd, float texid, vec3 W)
 {
   vec3 cubevec = W - scd.position.xyz;
-  float dist = max_v3(abs(cubevec));
-  float bias = sd.sh_bias;
 
 #ifndef VOLUMETRICS
   vec3 rand = texelfetch_noise_tex(gl_FragCoord.xy).zwy;
   float ofs_len = fast_sqrt(rand.z) * sd.sh_blur * 0.1;
-  bias *= ofs_len * 400.0;
-  cubevec = normalize(cubevec);
+  vec3 cubevec_nor = normalize(cubevec);
   vec3 T, B;
-  make_orthonormal_basis(cubevec, T, B);
-  cubevec += (T * rand.x + B * rand.y) * ofs_len;
-#endif
-  dist = buffer_depth(true, dist - bias, sd.sh_far, sd.sh_near);
+  make_orthonormal_basis(cubevec_nor, T, B);
+  vec3 cubevec_ofs = cubevec_nor + (T * rand.x + B * rand.y) * ofs_len;
+  /* Use face of the offseted cubevec. */
+  float face_id = cubeFaceIndexEEVEE(cubevec_ofs);
+  vec2 uv_ofs = cubeFaceCoordEEVEE(cubevec_ofs, face_id);
 
-  return sample_cube(shadowCubeTexture, cubevec, dist, texid);
+  /* To avoid derivatives discontinuity, we compute derivatives
+   * on a smooth linear function (unormalized cubevec),
+   * and manually do the derivative of the uv coords. */
+  vec3 duvwdx, duvwdy;
+  vec3 dPdx = cubevec + dFdx(cubevec);
+  vec3 dPdy = cubevec + dFdy(cubevec);
+  vec2 uv = cubeFaceCoordEEVEE(cubevec, face_id);
+  duvwdx.xy = cubeFaceCoordEEVEE(dPdx, face_id) - uv;
+  duvwdy.xy = cubeFaceCoordEEVEE(dPdy, face_id) - uv;
+
+  float dist = cubeFaceDepthEEVEE(cubevec, face_id);
+  duvwdx.z = cubeFaceDepthEEVEE(dPdx, face_id);
+  duvwdy.z = cubeFaceDepthEEVEE(dPdy, face_id);
+
+  dist = buffer_depth(true, dist, sd.sh_far, sd.sh_near);
+  duvwdx.z = buffer_depth(true, duvwdx.z, sd.sh_far, sd.sh_near) - dist;
+  duvwdy.z = buffer_depth(true, duvwdy.z, sd.sh_far, sd.sh_near) - dist;
+
+  vec2 dwduv = texture_space_derivatives(duvwdx, duvwdy);
+
+  float layer = texid * 6.0 + face_id;
+  return filtered_and_biased_shadow_test(
+      shadowCubeTexture, uv, layer, dist, sd.sh_bias * 0.15, uv_ofs, dwduv);
+#else
+  float dist = max_v3(abs(cubevec));
+  dist = buffer_depth(true, dist, sd.sh_far, sd.sh_near);
+  float face_id = cubeFaceIndexEEVEE(cubevec);
+  vec2 uv = cubeFaceCoordEEVEE(cubevec, face_id);
+
+  float layer = texid * 6.0 + face_id;
+  return filtered_and_biased_shadow_test(shadowCubeTexture, uv, layer, dist, 0.0, uv, vec2(0.0));
+#endif
 }
 
 float evaluate_cascade(ShadowData sd, mat4 shadowmat, mat4 shadowmat0, vec3 W, float texid)
 {
   vec4 shpos = shadowmat * vec4(W, 1.0);
-
-  vec2 co = shpos.xy;
-  float bias = sd.sh_bias;
 
 #ifndef VOLUMETRICS
   float fac = length(shadowmat0[0].xyz) / length(shadowmat[0].xyz);
@@ -111,11 +222,16 @@ float evaluate_cascade(ShadowData sd, mat4 shadowmat, mat4 shadowmat0, vec3 W, f
   float ofs_len = fast_sqrt(rand.z) * sd.sh_blur * 0.05 / fac;
   /* This assumes that shadowmap is a square (w == h)
    * and that all cascades are the same dimensions. */
-  bias *= ofs_len * 60.0 * fac;
-  co += rand.xy * ofs_len;
-#endif
+  vec2 uv_ofs = shpos.xy + rand.xy * ofs_len;
 
-  float vis = sample_cascade(shadowCascadeTexture, co, shpos.z - bias, texid);
+  vec2 dwduv = texture_space_derivatives(dFdx(shpos.xyz), dFdy(shpos.xyz));
+
+  float vis = filtered_and_biased_shadow_test(
+      shadowCascadeTexture, shpos.xy, texid, shpos.z, sd.sh_bias * 0.75, uv_ofs, dwduv);
+#else
+  float vis = filtered_and_biased_shadow_test(
+      shadowCascadeTexture, shpos.xy, texid, shpos.z, 0.0, shpos.xy, vec2(0.0));
+#endif
 
   /* If fragment is out of shadowmap range, do not occlude */
   if (shpos.z < 1.0 && shpos.z > 0.0) {

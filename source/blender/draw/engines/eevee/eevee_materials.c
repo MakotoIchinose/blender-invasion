@@ -1791,15 +1791,6 @@ void EEVEE_materials_free(void)
 
 void EEVEE_materials_draw_opaque(EEVEE_ViewLayerData *sldata, EEVEE_PassList *psl)
 {
-  /* We sample the shadowmaps using shadow sampler. We need to enable Comparison mode.
-   * TODO(fclem) avoid this by using sampler objects.*/
-  GPU_texture_bind(sldata->shadow_cube_pool, 0);
-  GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
-  GPU_texture_unbind(sldata->shadow_cube_pool);
-  GPU_texture_bind(sldata->shadow_cascade_pool, 0);
-  GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
-  GPU_texture_unbind(sldata->shadow_cascade_pool);
-
   for (int i = 0; i < VAR_MAT_MAX; ++i) {
     if (psl->default_pass[i]) {
       DRW_draw_pass(psl->default_pass[i]);
