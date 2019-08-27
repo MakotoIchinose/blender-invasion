@@ -390,8 +390,6 @@ class FILEBROWSER_PT_directory_path(Panel):
 
         row.operator("file.directory_new", icon='NEWFOLDER', text="")
 
-        # TODO proper directory input text field
-
         subrow = row.row()
         subrow.prop(params, "directory", text="")
 
@@ -399,8 +397,7 @@ class FILEBROWSER_PT_directory_path(Panel):
         subrow.scale_x = 0.5
         subrow.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
-        # TODO down triangle only created for UI_LAYOUT_HEADER
-
+        # Uses prop_with_popover() as popover() only adds the triangle icon in headers.
         row.prop_with_popover(
             params,
             "display_type",
@@ -408,7 +405,6 @@ class FILEBROWSER_PT_directory_path(Panel):
             text="",
             icon_only=True,
         )
-
         row.prop_with_popover(
             params,
             "display_type",
