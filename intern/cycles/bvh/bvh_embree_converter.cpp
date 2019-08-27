@@ -366,6 +366,7 @@ BVHNode* BVHEmbreeConverter::getBVH4()
 BVHNode* BVHEmbreeConverter::getBVH2()
 {
   BVHNode *root = this->getBVH4();
+  if(root == nullptr) return nullptr;
   return bvh_shrink(root);
 }
 
@@ -777,6 +778,12 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack) {
   this->pack = &pack;
 
   BVHNode *root = this->getBVH2();
+  if(root == nullptr) {
+    pack.root_index = 0;
+    pack.nodes.clear();
+    pack.leaf_nodes.clear();
+    return;
+  }
 
   const size_t num_nodes = root->getSubtreeSize(BVH_STAT_NODE_COUNT);
   const size_t num_leaf_nodes = root->getSubtreeSize(BVH_STAT_LEAF_COUNT);
