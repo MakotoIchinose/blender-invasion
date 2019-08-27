@@ -2142,6 +2142,18 @@ static void rna_SpaceClipEditor_view_type_update(Main *UNUSED(bmain),
 
 /* File browser. */
 
+int rna_FileSelectParams_filename_editable(struct PointerRNA *ptr, const char **r_info)
+{
+  FileSelectParams *params = ptr->data;
+
+  if (params && (params->flag & FILE_DIRSEL_ONLY)) {
+    *r_info = "Only directories can be chosen for the current operation.";
+    return 0;
+  }
+
+  return params ? PROP_EDITABLE : 0;
+}
+
 static bool rna_FileSelectParams_use_lib_get(PointerRNA *ptr)
 {
   FileSelectParams *params = ptr->data;
@@ -5283,6 +5295,7 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   prop = RNA_def_property(srna, "filename", PROP_STRING, PROP_FILENAME);
   RNA_def_property_string_sdna(prop, NULL, "file");
   RNA_def_property_ui_text(prop, "File Name", "Active file in the file browser");
+  RNA_def_property_editable_func(prop, "rna_FileSelectParams_filename_editable");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
   prop = RNA_def_property(srna, "use_library_browsing", PROP_BOOLEAN, PROP_NONE);
