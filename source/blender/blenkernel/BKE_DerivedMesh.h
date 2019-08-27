@@ -79,12 +79,10 @@ struct CustomData_MeshMasks;
 struct Depsgraph;
 struct MEdge;
 struct MFace;
-struct MLoopNorSpaceArray;
 struct MVert;
 struct Mesh;
 struct ModifierData;
 struct Object;
-struct PBVH;
 struct Scene;
 
 /*
@@ -303,14 +301,6 @@ void DM_from_template(DerivedMesh *dm,
  */
 int DM_release(DerivedMesh *dm);
 
-/** utility function to convert a DerivedMesh to a Mesh
- */
-void DM_to_mesh(DerivedMesh *dm,
-                struct Mesh *me,
-                struct Object *ob,
-                const struct CustomData_MeshMasks *mask,
-                bool take_ownership);
-
 void DM_set_only_copy(DerivedMesh *dm, const struct CustomData_MeshMasks *mask);
 
 /* adds a vertex/edge/face custom data layer to a DerivedMesh, optionally
@@ -393,7 +383,7 @@ struct Mesh *editbmesh_get_eval_cage_and_final(struct Depsgraph *depsgraph,
                                                const struct CustomData_MeshMasks *dataMask,
                                                struct Mesh **r_final);
 
-float (*editbmesh_get_vertex_cos(struct BMEditMesh *em, int *r_numVerts))[3];
+float (*editbmesh_vert_coords_alloc(struct BMEditMesh *em, int *r_vert_len))[3];
 bool editbmesh_modifier_is_enabled(struct Scene *scene,
                                    struct ModifierData *md,
                                    bool has_prev_mesh);

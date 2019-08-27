@@ -346,7 +346,7 @@ void math_fraction(float a, float b, out float result)
  */
 void math_modulo(float a, float b, out float result)
 {
-  result = (b != 0.0) ? sign(a) * mod(abs(a), b) : 0.0;
+  result = (b != 0.0 && a != b) ? sign(a) * mod(abs(a), b) : 0.0;
 }
 
 void math_sine(float a, float b, out float result)
@@ -400,46 +400,119 @@ void map_range(
   }
 }
 
-void vec_math_add(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+vec3 safe_divide(vec3 a, vec3 b)
 {
-  outvec = v1 + v2;
-  outval = (abs(outvec[0]) + abs(outvec[1]) + abs(outvec[2])) * 0.333333;
+  return vec3((b.x != 0.0) ? a.x / b.x : 0.0,
+              (b.y != 0.0) ? a.y / b.y : 0.0,
+              (b.z != 0.0) ? a.z / b.z : 0.0);
 }
 
-void vec_math_sub(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vector_math_add(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
 {
-  outvec = v1 - v2;
-  outval = (abs(outvec[0]) + abs(outvec[1]) + abs(outvec[2])) * 0.333333;
+  outVector = a + b;
 }
 
-void vec_math_average(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vector_math_subtract(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
 {
-  outvec = v1 + v2;
-  outval = length(outvec);
-  outvec = normalize(outvec);
-}
-void vec_math_mix(float strength, vec3 v1, vec3 v2, out vec3 outvec)
-{
-  outvec = strength * v1 + (1 - strength) * v2;
+  outVector = a - b;
 }
 
-void vec_math_dot(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vector_math_multiply(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
 {
-  outvec = vec3(0);
-  outval = dot(v1, v2);
+  outVector = a * b;
 }
 
-void vec_math_cross(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
+void vector_math_divide(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
 {
-  outvec = cross(v1, v2);
-  outval = length(outvec);
-  outvec /= outval;
+  outVector = safe_divide(a, b);
 }
 
-void vec_math_normalize(vec3 v, out vec3 outvec, out float outval)
+void vector_math_cross(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
 {
-  outval = length(v);
-  outvec = normalize(v);
+  outVector = cross(a, b);
+}
+
+void vector_math_project(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  float lenSquared = dot(b, b);
+  outVector = (lenSquared != 0.0) ? (dot(a, b) / lenSquared) * b : vec3(0.0);
+}
+
+void vector_math_reflect(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = reflect(a, normalize(b));
+}
+
+void vector_math_dot(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outValue = dot(a, b);
+}
+
+void vector_math_distance(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outValue = distance(a, b);
+}
+
+void vector_math_length(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outValue = length(a);
+}
+
+void vector_math_scale(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = a * scale;
+}
+
+void vector_math_normalize(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = normalize(a);
+}
+
+void vector_math_snap(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = floor(safe_divide(a, b)) * b;
+}
+
+void vector_math_floor(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = floor(a);
+}
+
+void vector_math_ceil(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = ceil(a);
+}
+
+void vector_math_modulo(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  math_modulo(a.x, b.x, outVector.x);
+  math_modulo(a.y, b.y, outVector.y);
+  math_modulo(a.z, b.z, outVector.z);
+}
+
+void vector_math_fraction(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = fract(a);
+}
+
+void vector_math_absolute(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = abs(a);
+}
+
+void vector_math_minimum(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = min(a, b);
+}
+
+void vector_math_maximum(vec3 a, vec3 b, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = max(a, b);
+}
+
+void vector_math_mix(float strength, vec3 a, vec3 b, out vec3 outVector)
+{
+  outVector = strength * a + (1 - strength) * b;
 }
 
 void vec_math_negate(vec3 v, out vec3 outv)
@@ -1094,44 +1167,7 @@ float integer_noise(int n)
   return 0.5 * (float(nn) / 1073741824.0);
 }
 
-uint hash(uint kx, uint ky, uint kz)
-{
-#define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
-#define final(a, b, c) \
-  { \
-    c ^= b; \
-    c -= rot(b, 14); \
-    a ^= c; \
-    a -= rot(c, 11); \
-    b ^= a; \
-    b -= rot(a, 25); \
-    c ^= b; \
-    c -= rot(b, 16); \
-    a ^= c; \
-    a -= rot(c, 4); \
-    b ^= a; \
-    b -= rot(a, 14); \
-    c ^= b; \
-    c -= rot(b, 24); \
-  }
-  // now hash the data!
-  uint a, b, c, len = 3u;
-  a = b = c = 0xdeadbeefu + (len << 2u) + 13u;
-
-  c += kz;
-  b += ky;
-  a += kx;
-  final(a, b, c);
-
-  return c;
-#undef rot
-#undef final
-}
-
-uint hash(int kx, int ky, int kz)
-{
-  return hash(uint(kx), uint(ky), uint(kz));
-}
+/* Cell Noise */
 
 float bits_to_01(uint bits)
 {
@@ -1144,7 +1180,7 @@ float cellnoise(vec3 p)
   int iy = quick_floor(p.y);
   int iz = quick_floor(p.z);
 
-  return bits_to_01(hash(uint(ix), uint(iy), uint(iz)));
+  return hash_uint3_to_float(uint(ix), uint(iy), uint(iz));
 }
 
 vec3 cellnoise_color(vec3 p)
@@ -2058,6 +2094,35 @@ void node_attribute_volume_temperature(
   outcol = vec4(outf, outf, outf, 1.0);
 }
 
+void node_volume_info(sampler3D densitySampler,
+                      sampler3D flameSampler,
+                      vec2 temperature,
+                      out vec4 outColor,
+                      out float outDensity,
+                      out float outFlame,
+                      out float outTemprature)
+{
+#if defined(MESH_SHADER) && defined(VOLUMETRICS)
+  vec3 p = volumeObjectLocalCoord;
+#else
+  vec3 p = vec3(0.0);
+#endif
+
+  vec4 density = texture(densitySampler, p);
+  outDensity = density.a;
+
+  /* Density is premultiplied for interpolation, divide it out here. */
+  if (density.a > 1e-8) {
+    density.rgb /= density.a;
+  }
+  outColor = vec4(density.rgb * volumeColor, 1.0);
+
+  float flame = texture(flameSampler, p).r;
+  outFlame = flame;
+
+  outTemprature = (flame > 0.01) ? temperature.x + flame * (temperature.y - temperature.x) : 0.0;
+}
+
 void node_attribute(vec3 attr, out vec4 outcol, out vec3 outvec, out float outf)
 {
   outcol = vec4(attr, 1.0);
@@ -2728,68 +2793,6 @@ void node_tex_image_empty(vec3 co, out vec4 color, out float alpha)
   alpha = 0.0;
 }
 
-void node_tex_magic(
-    vec3 co, float scale, float distortion, float depth, out vec4 color, out float fac)
-{
-  vec3 p = co * scale;
-  float x = sin((p.x + p.y + p.z) * 5.0);
-  float y = cos((-p.x + p.y - p.z) * 5.0);
-  float z = -cos((-p.x - p.y + p.z) * 5.0);
-
-  if (depth > 0) {
-    x *= distortion;
-    y *= distortion;
-    z *= distortion;
-    y = -cos(x - y + z);
-    y *= distortion;
-    if (depth > 1) {
-      x = cos(x - y - z);
-      x *= distortion;
-      if (depth > 2) {
-        z = sin(-x - y - z);
-        z *= distortion;
-        if (depth > 3) {
-          x = -cos(-x + y - z);
-          x *= distortion;
-          if (depth > 4) {
-            y = -sin(-x + y + z);
-            y *= distortion;
-            if (depth > 5) {
-              y = -cos(-x + y + z);
-              y *= distortion;
-              if (depth > 6) {
-                x = cos(x + y + z);
-                x *= distortion;
-                if (depth > 7) {
-                  z = sin(x + y - z);
-                  z *= distortion;
-                  if (depth > 8) {
-                    x = -cos(-x - y + z);
-                    x *= distortion;
-                    if (depth > 9) {
-                      y = -sin(x - y + z);
-                      y *= distortion;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (distortion != 0.0) {
-    distortion *= 2.0;
-    x /= distortion;
-    y /= distortion;
-    z /= distortion;
-  }
-
-  color = vec4(0.5 - x, 0.5 - y, 0.5 - z, 1.0);
-  fac = (color.x + color.y + color.z) / 3.0;
-}
-
 float noise_fade(float t)
 {
   return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
@@ -2829,22 +2832,24 @@ float noise_perlin(float x, float y, float z)
 
   float noise_u[2], noise_v[2];
 
-  noise_u[0] = noise_nerp(
-      u, noise_grad(hash(X, Y, Z), fx, fy, fz), noise_grad(hash(X + 1, Y, Z), fx - 1.0, fy, fz));
+  noise_u[0] = noise_nerp(u,
+                          noise_grad(hash_int3(X, Y, Z), fx, fy, fz),
+                          noise_grad(hash_int3(X + 1, Y, Z), fx - 1.0, fy, fz));
 
   noise_u[1] = noise_nerp(u,
-                          noise_grad(hash(X, Y + 1, Z), fx, fy - 1.0, fz),
-                          noise_grad(hash(X + 1, Y + 1, Z), fx - 1.0, fy - 1.0, fz));
+                          noise_grad(hash_int3(X, Y + 1, Z), fx, fy - 1.0, fz),
+                          noise_grad(hash_int3(X + 1, Y + 1, Z), fx - 1.0, fy - 1.0, fz));
 
   noise_v[0] = noise_nerp(v, noise_u[0], noise_u[1]);
 
   noise_u[0] = noise_nerp(u,
-                          noise_grad(hash(X, Y, Z + 1), fx, fy, fz - 1.0),
-                          noise_grad(hash(X + 1, Y, Z + 1), fx - 1.0, fy, fz - 1.0));
+                          noise_grad(hash_int3(X, Y, Z + 1), fx, fy, fz - 1.0),
+                          noise_grad(hash_int3(X + 1, Y, Z + 1), fx - 1.0, fy, fz - 1.0));
 
-  noise_u[1] = noise_nerp(u,
-                          noise_grad(hash(X, Y + 1, Z + 1), fx, fy - 1.0, fz - 1.0),
-                          noise_grad(hash(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0));
+  noise_u[1] = noise_nerp(
+      u,
+      noise_grad(hash_int3(X, Y + 1, Z + 1), fx, fy - 1.0, fz - 1.0),
+      noise_grad(hash_int3(X + 1, Y + 1, Z + 1), fx - 1.0, fy - 1.0, fz - 1.0));
 
   noise_v[1] = noise_nerp(v, noise_u[0], noise_u[1]);
 
@@ -3333,14 +3338,17 @@ void node_light_falloff(
 }
 
 void node_object_info(mat4 obmat,
+                      vec4 obcolor,
                       vec4 info,
                       float mat_index,
                       out vec3 location,
+                      out vec4 color,
                       out float object_index,
                       out float material_index,
                       out float random)
 {
   location = obmat[3].xyz;
+  color = obcolor;
   object_index = info.x;
   material_index = mat_index;
   random = info.z;

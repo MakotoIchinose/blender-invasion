@@ -58,8 +58,6 @@ struct MovieClip;
 struct Object;
 struct Scene;
 struct SceneCollection;
-struct SceneStats;
-struct Text;
 struct World;
 struct bGPdata;
 struct bNodeTree;
@@ -1368,6 +1366,12 @@ typedef struct MeshStatVis {
 /* *************************************************************** */
 /* Tool Settings */
 
+/* CurvePaintSettings.surface_plane */
+enum {
+  AUTO_MERGE = 1 << 0,
+  AUTO_MERGE_AND_SPLIT = 1 << 1,
+};
+
 typedef struct ToolSettings {
   /** Vertex paint. */
   VPaint *vpaint;
@@ -2018,6 +2022,7 @@ extern const char *RE_engine_id_CYCLES;
 /* ToolSettings.transform_flag */
 enum {
   SCE_XFORM_AXIS_ALIGN = (1 << 0),
+  SCE_XFORM_DATA_ORIGIN = (1 << 1),
 };
 
 /* ToolSettings.object_flag */
@@ -2049,8 +2054,11 @@ enum {
 #define SCE_SNAP_MODE_EDGE_PERPENDICULAR (1 << 6)
 
 /* ToolSettings.snap_node_mode */
-#define SCE_SNAP_MODE_NODE_X (1 << 6)
-#define SCE_SNAP_MODE_NODE_Y (1 << 7)
+#define SCE_SNAP_MODE_NODE_X (1 << 5)
+#define SCE_SNAP_MODE_NODE_Y (1 << 6)
+
+/* ToolSettings.snap_mode and ToolSettings.snap_node_mode */
+#define SCE_SNAP_MODE_GRID (1 << 7)
 
 /* ToolSettings.snap_mode and ToolSettings.snap_node_mode */
 #define SCE_SNAP_MODE_GRID (1 << 8)
