@@ -2049,7 +2049,6 @@ void FILE_OT_directory_new(struct wmOperatorType *ot)
   ot->idname = "FILE_OT_directory_new";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm;
   ot->exec = file_directory_new_exec;
   ot->poll = ED_operator_file_active; /* <- important, handler is on window level */
 
