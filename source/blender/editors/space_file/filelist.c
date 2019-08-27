@@ -364,6 +364,19 @@ static void filelist_cache_clear(FileListEntryCache *cache, size_t new_size);
 
 /* ********** Sort helpers ********** */
 
+struct FileSortData {
+  bool inverted;
+};
+
+static int compare_apply_inverted(int val, const struct FileSortData *sort_data)
+{
+  return sort_data->inverted ? -val : val;
+}
+
+/**
+ * Handles inverted sorting itself (currently there's nothing to invert), so if this returns non-0,
+ * it should be used as-is and not inverted.
+ */
 static int compare_direntry_generic(const FileListInternEntry *entry1,
                                     const FileListInternEntry *entry2)
 {
@@ -415,10 +428,11 @@ static int compare_direntry_generic(const FileListInternEntry *entry1,
   return 0;
 }
 
-static int compare_name(void *UNUSED(user_data), const void *a1, const void *a2)
+static int compare_name(void *user_data, const void *a1, const void *a2)
 {
   const FileListInternEntry *entry1 = a1;
   const FileListInternEntry *entry2 = a2;
+  const struct FileSortData *sort_data = user_data;
   char *name1, *name2;
   int ret;
 
@@ -429,13 +443,14 @@ static int compare_name(void *UNUSED(user_data), const void *a1, const void *a2)
   name1 = entry1->name;
   name2 = entry2->name;
 
-  return BLI_natstrcmp(name1, name2);
+  return compare_apply_inverted(BLI_natstrcmp(name1, name2), sort_data);
 }
 
-static int compare_date(void *UNUSED(user_data), const void *a1, const void *a2)
+static int compare_date(void *user_data, const void *a1, const void *a2)
 {
   const FileListInternEntry *entry1 = a1;
   const FileListInternEntry *entry2 = a2;
+  const struct FileSortData *sort_data = user_data;
   char *name1, *name2;
   int64_t time1, time2;
   int ret;
@@ -447,22 +462,23 @@ static int compare_date(void *UNUSED(user_data), const void *a1, const void *a2)
   time1 = (int64_t)entry1->st.st_mtime;
   time2 = (int64_t)entry2->st.st_mtime;
   if (time1 < time2) {
-    return 1;
+    return compare_apply_inverted(1, sort_data);
   }
   if (time1 > time2) {
-    return -1;
+    return compare_apply_inverted(-1, sort_data);
   }
 
   name1 = entry1->name;
   name2 = entry2->name;
 
-  return BLI_natstrcmp(name1, name2);
+  return compare_apply_inverted(BLI_natstrcmp(name1, name2), sort_data);
 }
 
-static int compare_size(void *UNUSED(user_data), const void *a1, const void *a2)
+static int compare_size(void *user_data, const void *a1, const void *a2)
 {
   const FileListInternEntry *entry1 = a1;
   const FileListInternEntry *entry2 = a2;
+  const struct FileSortData *sort_data = user_data;
   char *name1, *name2;
   uint64_t size1, size2;
   int ret;
@@ -474,22 +490,23 @@ static int compare_size(void *UNUSED(user_data), const void *a1, const void *a2)
   size1 = entry1->st.st_size;
   size2 = entry2->st.st_size;
   if (size1 < size2) {
-    return 1;
+    return compare_apply_inverted(1, sort_data);
   }
   if (size1 > size2) {
-    return -1;
+    return compare_apply_inverted(-1, sort_data);
   }
 
   name1 = entry1->name;
   name2 = entry2->name;
 
-  return BLI_natstrcmp(name1, name2);
+  return compare_apply_inverted(BLI_natstrcmp(name1, name2), sort_data);
 }
 
-static int compare_extension(void *UNUSED(user_data), const void *a1, const void *a2)
+static int compare_extension(void *user_data, const void *a1, const void *a2)
 {
   const FileListInternEntry *entry1 = a1;
   const FileListInternEntry *entry2 = a2;
+  const struct FileSortData *sort_data = user_data;
   char *name1, *name2;
   int ret;
 
@@ -511,10 +528,10 @@ static int compare_extension(void *UNUSED(user_data), const void *a1, const void
       return -1;
     }
     if (entry1->blentype < entry2->blentype) {
-      return -1;
+      return compare_apply_inverted(-1, sort_data);
     }
     if (entry1->blentype > entry2->blentype) {
-      return 1;
+      return compare_apply_inverted(1, sort_data);
     }
   }
   else {
@@ -534,51 +551,43 @@ static int compare_extension(void *UNUSED(user_data), const void *a1, const void
     }
 
     if ((ret = BLI_strcasecmp(sufix1, sufix2))) {
-      return ret;
+      return compare_apply_inverted(ret, sort_data);
     }
   }
 
   name1 = entry1->name;
   name2 = entry2->name;
 
-  return BLI_natstrcmp(name1, name2);
+  return compare_apply_inverted(BLI_natstrcmp(name1, name2), sort_data);
 }
 
 void filelist_sort(struct FileList *filelist)
 {
   if ((filelist->flags & FL_NEED_SORTING) && (filelist->sort != FILE_SORT_NONE)) {
+    void *sort_cb = NULL;
+
     switch (filelist->sort) {
       case FILE_SORT_ALPHA:
-        BLI_listbase_sort_r(&filelist->filelist_intern.entries, compare_name, NULL);
+        sort_cb = compare_name;
         break;
       case FILE_SORT_TIME:
-        BLI_listbase_sort_r(&filelist->filelist_intern.entries, compare_date, NULL);
+        sort_cb = compare_date;
         break;
       case FILE_SORT_SIZE:
-        BLI_listbase_sort_r(&filelist->filelist_intern.entries, compare_size, NULL);
+        sort_cb = compare_size;
         break;
       case FILE_SORT_EXTENSION:
-        BLI_listbase_sort_r(&filelist->filelist_intern.entries, compare_extension, NULL);
+        sort_cb = compare_extension;
         break;
       case FILE_SORT_NONE: /* Should never reach this point! */
       default:
         BLI_assert(0);
         break;
     }
-
-    /* We could avoid this extra reversal by letting callbacks check for inverted sorting. Would
-     * make return values a bit cryptic though, and it's not like reversal is that expensive. */
-    if (filelist->flags & FL_SORT_INVERT) {
-      FileListInternEntry *current_entry = BLI_pophead(&filelist->filelist_intern.entries);
-      FileListInternEntry *parent_entry = BLI_pophead(&filelist->filelist_intern.entries);
-
-      BLI_listbase_reverse(&filelist->filelist_intern.entries);
-      /* Reinsert '..' item at the top */
-      BLI_assert(FILENAME_IS_CURRENT(current_entry->relpath));
-      BLI_assert(FILENAME_IS_PARENT(parent_entry->relpath));
-      BLI_addhead(&filelist->filelist_intern.entries, parent_entry);
-      BLI_addhead(&filelist->filelist_intern.entries, current_entry);
-    }
+    BLI_listbase_sort_r(
+        &filelist->filelist_intern.entries,
+        sort_cb,
+        &(struct FileSortData){.inverted = (filelist->flags & FL_SORT_INVERT) != 0});
 
     filelist_filter_clear(filelist);
     filelist->flags &= ~FL_NEED_SORTING;
