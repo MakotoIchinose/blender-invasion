@@ -385,7 +385,7 @@ int ED_fileselect_layout_numfiles(FileLayout *layout, ARegion *ar)
     const int y_view = (int)(BLI_rctf_size_y(&ar->v2d.cur)) - layout->offset_top;
     const int y_over = y_item - (y_view % y_item);
     numfiles = (int)((float)(y_view + y_over) / (float)(y_item));
-    return numfiles * layout->columns;
+    return numfiles * layout->flow_columns;
   }
 }
 
@@ -409,15 +409,15 @@ FileSelection ED_fileselect_layout_offset_rect(FileLayout *layout, const rcti *r
   colmax = (rect->xmax) / (layout->tile_w + 2 * layout->tile_border_x);
   rowmax = (rect->ymax - layout->offset_top) / (layout->tile_h + 2 * layout->tile_border_y);
 
-  if (is_inside(colmin, rowmin, layout->columns, layout->rows) ||
-      is_inside(colmax, rowmax, layout->columns, layout->rows)) {
-    CLAMP(colmin, 0, layout->columns - 1);
+  if (is_inside(colmin, rowmin, layout->flow_columns, layout->rows) ||
+      is_inside(colmax, rowmax, layout->flow_columns, layout->rows)) {
+    CLAMP(colmin, 0, layout->flow_columns - 1);
     CLAMP(rowmin, 0, layout->rows - 1);
-    CLAMP(colmax, 0, layout->columns - 1);
+    CLAMP(colmax, 0, layout->flow_columns - 1);
     CLAMP(rowmax, 0, layout->rows - 1);
   }
 
-  if ((colmin > layout->columns - 1) || (rowmin > layout->rows - 1)) {
+  if ((colmin > layout->flow_columns - 1) || (rowmin > layout->rows - 1)) {
     sel.first = -1;
   }
   else {
@@ -425,10 +425,10 @@ FileSelection ED_fileselect_layout_offset_rect(FileLayout *layout, const rcti *r
       sel.first = layout->rows * colmin + rowmin;
     }
     else {
-      sel.first = colmin + layout->columns * rowmin;
+      sel.first = colmin + layout->flow_columns * rowmin;
     }
   }
-  if ((colmax > layout->columns - 1) || (rowmax > layout->rows - 1)) {
+  if ((colmax > layout->flow_columns - 1) || (rowmax > layout->rows - 1)) {
     sel.last = -1;
   }
   else {
@@ -436,7 +436,7 @@ FileSelection ED_fileselect_layout_offset_rect(FileLayout *layout, const rcti *r
       sel.last = layout->rows * colmax + rowmax;
     }
     else {
-      sel.last = colmax + layout->columns * rowmax;
+      sel.last = colmax + layout->flow_columns * rowmax;
     }
   }
 
@@ -455,7 +455,7 @@ int ED_fileselect_layout_offset(FileLayout *layout, int x, int y)
   offsetx = (x) / (layout->tile_w + 2 * layout->tile_border_x);
   offsety = (y - layout->offset_top) / (layout->tile_h + 2 * layout->tile_border_y);
 
-  if (offsetx > layout->columns - 1) {
+  if (offsetx > layout->flow_columns - 1) {
     return -1;
   }
   if (offsety > layout->rows - 1) {
@@ -466,7 +466,7 @@ int ED_fileselect_layout_offset(FileLayout *layout, int x, int y)
     active_file = layout->rows * offsetx + offsety;
   }
   else {
-    active_file = offsetx + layout->columns * offsety;
+    active_file = offsetx + layout->flow_columns * offsety;
   }
   return active_file;
 }
@@ -508,23 +508,27 @@ void ED_fileselect_layout_tilepos(FileLayout *layout, int tile, int *x, int *y)
   }
   else {
     *x = layout->tile_border_x +
-         ((tile) % layout->columns) * (layout->tile_w + 2 * layout->tile_border_x);
+         ((tile) % layout->flow_columns) * (layout->tile_w + 2 * layout->tile_border_x);
     *y = layout->offset_top + layout->tile_border_y +
-         ((tile) / layout->columns) * (layout->tile_h + 2 * layout->tile_border_y);
+         ((tile) / layout->flow_columns) * (layout->tile_h + 2 * layout->tile_border_y);
   }
 }
 
 /**
  * Check if the region coordinate defined by \a x and \a y are inside the column header.
  */
-bool file_column_header_is_inside(const View2D *v2d, const FileLayout *layout, int x, int y)
+bool file_attribute_column_header_is_inside(const View2D *v2d,
+                                            const FileLayout *layout,
+                                            int x,
+                                            int y)
 {
   rcti header_rect = v2d->mask;
-  header_rect.ymin = header_rect.ymax - layout->columnheader_h;
+  header_rect.ymin = header_rect.ymax - layout->attribute_column_header_h;
   return BLI_rcti_isect_pt(&header_rect, x, y);
 }
 
-bool file_column_type_enabled(const FileSelectParams *params, FileListColumns column)
+bool file_attribute_column_type_enabled(const FileSelectParams *params,
+                                        FileAttributeColumnType column)
 {
   switch (column) {
     case COLUMN_NAME:
@@ -542,10 +546,10 @@ bool file_column_type_enabled(const FileSelectParams *params, FileListColumns co
 /**
  * Find the column type at region coordinate given by \a x (y doesn't matter for this).
  */
-FileListColumns file_column_type_find_isect(const View2D *v2d,
-                                            const FileSelectParams *params,
-                                            FileLayout *layout,
-                                            int x)
+FileAttributeColumnType file_attribute_column_type_find_isect(const View2D *v2d,
+                                                              const FileSelectParams *params,
+                                                              FileLayout *layout,
+                                                              int x)
 {
   float mx, my;
   int offset_tile;
@@ -562,11 +566,11 @@ FileListColumns file_column_type_find_isect(const View2D *v2d,
     /* Column header drawing doesn't use left tile border, so subtract it. */
     rel_x = mx - (tile_x - layout->tile_border_x);
 
-    for (FileListColumns column = 0; column < COLUMN_MAX; column++) {
-      if (!file_column_type_enabled(params, column)) {
+    for (FileAttributeColumnType column = 0; column < ATTRIBUTE_COLUMN_MAX; column++) {
+      if (!file_attribute_column_type_enabled(params, column)) {
         continue;
       }
-      const int width = layout->details_columns[column].width;
+      const int width = layout->attribute_columns[column].width;
 
       if (IN_RANGE(rel_x, pos_x, pos_x + width)) {
         return column;
@@ -614,14 +618,14 @@ float file_font_pointsize(void)
 #endif
 }
 
-static void details_columns_widths(const FileSelectParams *params, FileLayout *layout)
+static void file_attribute_columns_widths(const FileSelectParams *params, FileLayout *layout)
 {
-  FileDetailsColumn *columns = layout->details_columns;
+  FileAttributeColumn *columns = layout->attribute_columns;
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
-  const int pad = small_size ? 0 : DETAILS_COLUMN_PADDING * 2;
+  const int pad = small_size ? 0 : ATTRIBUTE_COLUMN_PADDING * 2;
 
-  for (int i = 0; i < COLUMN_MAX; ++i) {
-    layout->details_columns[i].width = 0;
+  for (int i = 0; i < ATTRIBUTE_COLUMN_MAX; ++i) {
+    layout->attribute_columns[i].width = 0;
   }
 
   /* Biggest possible reasonable values... */
@@ -635,8 +639,10 @@ static void details_columns_widths(const FileSelectParams *params, FileLayout *l
   /* Name column uses remaining width */
   else {
     int remwidth = layout->tile_w;
-    for (FileListColumns column_type = COLUMN_MAX - 1; column_type >= 0; column_type--) {
-      if ((column_type == COLUMN_NAME) || !file_column_type_enabled(params, column_type)) {
+    for (FileAttributeColumnType column_type = ATTRIBUTE_COLUMN_MAX - 1; column_type >= 0;
+         column_type--) {
+      if ((column_type == COLUMN_NAME) ||
+          !file_attribute_column_type_enabled(params, column_type)) {
         continue;
       }
       remwidth -= columns[column_type].width;
@@ -645,19 +651,19 @@ static void details_columns_widths(const FileSelectParams *params, FileLayout *l
   }
 }
 
-static void details_columns_init(const FileSelectParams *params, FileLayout *layout)
+static void file_attribute_columns_init(const FileSelectParams *params, FileLayout *layout)
 {
-  details_columns_widths(params, layout);
+  file_attribute_columns_widths(params, layout);
 
-  layout->details_columns[COLUMN_NAME].name = N_("Name");
-  layout->details_columns[COLUMN_NAME].sort_type = FILE_SORT_ALPHA;
-  layout->details_columns[COLUMN_NAME].text_align = UI_STYLE_TEXT_LEFT;
-  layout->details_columns[COLUMN_DATETIME].name = N_("Date Modified");
-  layout->details_columns[COLUMN_DATETIME].sort_type = FILE_SORT_TIME;
-  layout->details_columns[COLUMN_DATETIME].text_align = UI_STYLE_TEXT_LEFT;
-  layout->details_columns[COLUMN_SIZE].name = N_("Size");
-  layout->details_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
-  layout->details_columns[COLUMN_SIZE].text_align = UI_STYLE_TEXT_RIGHT;
+  layout->attribute_columns[COLUMN_NAME].name = N_("Name");
+  layout->attribute_columns[COLUMN_NAME].sort_type = FILE_SORT_ALPHA;
+  layout->attribute_columns[COLUMN_NAME].text_align = UI_STYLE_TEXT_LEFT;
+  layout->attribute_columns[COLUMN_DATETIME].name = N_("Date Modified");
+  layout->attribute_columns[COLUMN_DATETIME].sort_type = FILE_SORT_TIME;
+  layout->attribute_columns[COLUMN_DATETIME].text_align = UI_STYLE_TEXT_LEFT;
+  layout->attribute_columns[COLUMN_SIZE].name = N_("Size");
+  layout->attribute_columns[COLUMN_SIZE].sort_type = FILE_SORT_SIZE;
+  layout->attribute_columns[COLUMN_SIZE].text_align = UI_STYLE_TEXT_RIGHT;
 }
 
 void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
@@ -691,14 +697,14 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->tile_w = layout->prv_w + 2 * layout->prv_border_x;
     layout->tile_h = layout->prv_h + 2 * layout->prv_border_y + textheight;
     layout->width = (int)(BLI_rctf_size_x(&v2d->cur) - 2 * layout->tile_border_x);
-    layout->columns = layout->width / (layout->tile_w + 2 * layout->tile_border_x);
-    layout->columnheader_h = 0;
+    layout->flow_columns = layout->width / (layout->tile_w + 2 * layout->tile_border_x);
+    layout->attribute_column_header_h = 0;
     layout->offset_top = 0;
-    if (layout->columns > 0) {
-      layout->rows = numfiles / layout->columns + 1;  // XXX dirty, modulo is zero
+    if (layout->flow_columns > 0) {
+      layout->rows = numfiles / layout->flow_columns + 1;  // XXX dirty, modulo is zero
     }
     else {
-      layout->columns = 1;
+      layout->flow_columns = 1;
       layout->rows = numfiles + 1;  // XXX dirty, modulo is zero
     }
     layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
@@ -715,12 +721,12 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->tile_h = textheight * 3 / 2;
     layout->width = (int)(BLI_rctf_size_x(&v2d->cur) - 2 * layout->tile_border_x);
     layout->tile_w = layout->width;
-    layout->columns = 1;
-    layout->columnheader_h = layout->tile_h * 1.2f + 2 * layout->tile_border_y;
-    layout->offset_top = layout->columnheader_h;
+    layout->flow_columns = 1;
+    layout->attribute_column_header_h = layout->tile_h * 1.2f + 2 * layout->tile_border_y;
+    layout->offset_top = layout->attribute_column_header_h;
     rowcount = (int)(BLI_rctf_size_y(&v2d->cur) - layout->offset_top - 2 * layout->tile_border_y) /
                (layout->tile_h + 2 * layout->tile_border_y);
-    details_columns_init(params, layout);
+    file_attribute_columns_init(params, layout);
 
     layout->rows = MAX2(rowcount, numfiles);
     BLI_assert(layout->rows != 0);
@@ -734,23 +740,23 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
     layout->tile_border_x = 0.4f * UI_UNIT_X;
     layout->tile_border_y = 0.1f * UI_UNIT_Y;
     layout->tile_h = textheight * 3 / 2;
-    layout->columnheader_h = 0;
-    layout->offset_top = layout->columnheader_h;
+    layout->attribute_column_header_h = 0;
+    layout->offset_top = layout->attribute_column_header_h;
     layout->height = (int)(BLI_rctf_size_y(&v2d->cur) - 2 * layout->tile_border_y);
     /* Padding by full scrollbar H is too much, can overlap tile border Y. */
     layout->rows = (layout->height - V2D_SCROLL_HEIGHT + layout->tile_border_y) /
                    (layout->tile_h + 2 * layout->tile_border_y);
     layout->tile_w = VERTLIST_MAJORCOLUMN_WIDTH;
-    details_columns_init(params, layout);
+    file_attribute_columns_init(params, layout);
 
     if (layout->rows > 0) {
-      layout->columns = numfiles / layout->rows + 1;  // XXX dirty, modulo is zero
+      layout->flow_columns = numfiles / layout->rows + 1;  // XXX dirty, modulo is zero
     }
     else {
       layout->rows = 1;
-      layout->columns = numfiles + 1;  // XXX dirty, modulo is zero
+      layout->flow_columns = numfiles + 1;  // XXX dirty, modulo is zero
     }
-    layout->width = sfile->layout->columns * (layout->tile_w + 2 * layout->tile_border_x) +
+    layout->width = sfile->layout->flow_columns * (layout->tile_w + 2 * layout->tile_border_x) +
                     layout->tile_border_x * 2;
     layout->flag = FILE_LAYOUT_HOR;
   }

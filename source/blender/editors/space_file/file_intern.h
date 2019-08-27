@@ -44,7 +44,7 @@ struct ARegion *file_tool_props_region(struct ScrArea *sa);
 #define IMASEL_BUTTONS_HEIGHT (UI_UNIT_Y * 2)
 #define IMASEL_BUTTONS_MARGIN (UI_UNIT_Y / 6)
 
-#define DETAILS_COLUMN_PADDING (0.5f * UI_UNIT_X)
+#define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
 #define SMALL_SIZE_CHECK(_size) ((_size) < 64) /* Related to FileSelectParams.thumbnail_size. */
 
@@ -116,15 +116,16 @@ void file_operator_to_sfile(bContext *C, struct SpaceFile *sfile, struct wmOpera
 
 /* filesel.c */
 void fileselect_file_set(SpaceFile *sfile, const int index);
-bool file_column_type_enabled(const FileSelectParams *params, FileListColumns column);
-bool file_column_header_is_inside(const struct View2D *v2d,
-                                  const FileLayout *layout,
-                                  int x,
-                                  int y);
-FileListColumns file_column_type_find_isect(const View2D *v2d,
-                                            const FileSelectParams *params,
-                                            FileLayout *layout,
-                                            int x);
+bool file_attribute_column_type_enabled(const FileSelectParams *params,
+                                        FileAttributeColumnType column);
+bool file_attribute_column_header_is_inside(const struct View2D *v2d,
+                                            const FileLayout *layout,
+                                            int x,
+                                            int y);
+FileAttributeColumnType file_attribute_column_type_find_isect(const View2D *v2d,
+                                                              const FileSelectParams *params,
+                                                              FileLayout *layout,
+                                                              int x);
 float file_string_width(const char *str);
 
 float file_font_pointsize(void);

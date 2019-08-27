@@ -34,16 +34,16 @@ struct wmWindowManager;
 #define FILE_LAYOUT_HOR 1
 #define FILE_LAYOUT_VER 2
 
-typedef enum FileListColumns {
+typedef enum FileAttributeColumnType {
   COLUMN_NONE = -1,
   COLUMN_NAME = 0,
   COLUMN_DATETIME,
   COLUMN_SIZE,
 
-  COLUMN_MAX
-} FileListColumns;
+  ATTRIBUTE_COLUMN_MAX
+} FileAttributeColumnType;
 
-typedef struct FileDetailsColumn {
+typedef struct FileAttributeColumn {
   /** UI name for this column */
   const char *name;
 
@@ -53,12 +53,13 @@ typedef struct FileDetailsColumn {
 
   /* Alignment of column texts, header text is always left aligned */
   int text_align; /* eFontStyle_Align */
-} FileDetailsColumn;
+} FileAttributeColumn;
 
 typedef struct FileLayout {
   /* view settings - XXX - move into own struct */
   int offset_top;
-  int columnheader_h;
+  /* Height of the header for the different FileAttributeColumn's. */
+  int attribute_column_header_h;
   int prv_w;
   int prv_h;
   int tile_w;
@@ -68,13 +69,17 @@ typedef struct FileLayout {
   int prv_border_x;
   int prv_border_y;
   int rows;
-  int columns;
+  /* Those are the major layout columns the files are distributed across, not to be confused with
+   * 'attribute_columns' array below. */
+  int flow_columns;
   int width;
   int height;
   int flag;
   int dirty;
   int textheight;
-  FileDetailsColumn details_columns[COLUMN_MAX];
+  /* The columns for each item (name, modification date/time, size). Not to be confused with the
+   * 'flow_columns' above. */
+  FileAttributeColumn attribute_columns[ATTRIBUTE_COLUMN_MAX];
 
   /* When we change display size, we may have to update static strings like size of files... */
   short curr_size;

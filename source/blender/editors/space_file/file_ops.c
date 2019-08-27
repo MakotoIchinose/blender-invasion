@@ -696,7 +696,7 @@ static bool file_walk_select_do(bContext *C,
   if (has_selection) {
     ARegion *ar = CTX_wm_region(C);
     FileLayout *layout = ED_fileselect_get_layout(sfile, ar);
-    const int idx_shift = (layout->flag & FILE_LAYOUT_HOR) ? layout->rows : layout->columns;
+    const int idx_shift = (layout->flag & FILE_LAYOUT_HOR) ? layout->rows : layout->flow_columns;
 
     if ((layout->flag & FILE_LAYOUT_HOR && direction == FILE_SELECT_WALK_UP) ||
         (layout->flag & FILE_LAYOUT_VER && direction == FILE_SELECT_WALK_LEFT)) {
@@ -1246,12 +1246,12 @@ static int file_column_sort_ui_context_invoke(bContext *C,
   const ARegion *ar = CTX_wm_region(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
 
-  if (file_column_header_is_inside(&ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
-    const FileListColumns column_type = file_column_type_find_isect(
+  if (file_attribute_column_header_is_inside(&ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
+    const FileAttributeColumnType column_type = file_attribute_column_type_find_isect(
         &ar->v2d, sfile->params, sfile->layout, event->mval[0]);
 
     if (column_type != COLUMN_NONE) {
-      const FileDetailsColumn *column = &sfile->layout->details_columns[column_type];
+      const FileAttributeColumn *column = &sfile->layout->attribute_columns[column_type];
 
       if (column->sort_type != FILE_SORT_NONE) {
         if (sfile->params->sort == column->sort_type) {
@@ -1764,7 +1764,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator *UNUSED(op), const w
   /* Number of items in a block (i.e. lines in a column in horizontal layout, or columns in a line
    * in vertical layout).
    */
-  const int items_block_size = is_horizontal ? sfile->layout->rows : sfile->layout->columns;
+  const int items_block_size = is_horizontal ? sfile->layout->rows : sfile->layout->flow_columns;
 
   /* Scroll offset is the first file in the row/column we are editing in. */
   if (sfile->scroll_offset == 0) {
