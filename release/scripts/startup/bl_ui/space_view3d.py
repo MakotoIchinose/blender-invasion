@@ -2359,10 +2359,10 @@ class VIEW3D_MT_object_context_menu(Menu):
 
             layout.operator_context = 'INVOKE_REGION_WIN'
 
-            props = layout.operator("wm.context_modal_mouse", text="Energy")
+            props = layout.operator("wm.context_modal_mouse", text="Power")
             props.data_path_iter = "selected_editable_objects"
             props.data_path_item = "data.energy"
-            props.header_text = "Light Energy: %.3f"
+            props.header_text = "Light Power: %.3f"
 
             if light.type == 'AREA':
                 props = layout.operator("wm.context_modal_mouse", text="Size X")
@@ -4389,7 +4389,7 @@ class VIEW3D_MT_gpencil_simplify(Menu):
 
 
 class VIEW3D_MT_paint_gpencil(Menu):
-    bl_label = "Strokes"
+    bl_label = "Draw"
 
     def draw(self, _context):
 
@@ -4400,8 +4400,8 @@ class VIEW3D_MT_paint_gpencil(Menu):
 
         layout.separator()
 
-        layout.operator("gpencil.delete", text="Delete Frame").type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all")
+        layout.menu("VIEW3D_MT_edit_gpencil_showhide")
+        layout.menu("GPENCIL_MT_cleanup")
 
 
 class VIEW3D_MT_assign_material(Menu):
@@ -5251,8 +5251,10 @@ class VIEW3D_PT_shading_options(Panel):
             sub.active = shading.show_object_outline
             sub.prop(shading, "object_outline_color", text="")
 
+        if shading.type == 'SOLID':
             col = layout.column()
-            if (shading.light == 'STUDIO') and (shading.type != 'WIREFRAME'):
+            if shading.light in {'STUDIO', 'MATCAP'}:
+                col.active = shading.selected_studio_light.has_specular_highlight_pass
                 col.prop(shading, "show_specular_highlight", text="Specular Lighting")
 
 
@@ -6387,7 +6389,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.stroke_separate", text="Separate").mode = 'STROKE'
 
             col.separator()
-            
+
             col.operator("gpencil.delete", text="Delete Strokes").type = 'STROKES'
 
             col.separator()
