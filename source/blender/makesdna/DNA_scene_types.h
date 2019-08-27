@@ -1637,7 +1637,7 @@ typedef struct SceneEEVEE {
   int motion_blur_samples;
   float motion_blur_shutter;
 
-  int shadow_method;
+  int shadow_method DNA_DEPRECATED;
   int shadow_cube_size;
   int shadow_cascade_size;
 

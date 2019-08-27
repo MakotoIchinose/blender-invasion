@@ -58,7 +58,9 @@ typedef struct Light {
   char _pad2[2];
 
   float clipsta, clipend;
-  float bias, soft, bleedbias, bleedexp;
+  float bias, soft;
+  float bleedbias DNA_DEPRECATED;
+  float bleedexp DNA_DEPRECATED;
   short bufsize, samp, buffers, filtertype;
   char bufflag, buftype;
 

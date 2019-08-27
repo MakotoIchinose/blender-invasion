@@ -147,14 +147,12 @@ enum {
   VAR_MAT_PROBE = (1 << 1),
   VAR_MAT_HAIR = (1 << 2),
   VAR_MAT_BLEND = (1 << 3),
-  VAR_MAT_VSM = (1 << 4), /* Deprecated Remove */
-  VAR_MAT_ESM = (1 << 5), /* Deprecated Remove */
-  VAR_MAT_VOLUME = (1 << 6),
-  VAR_MAT_LOOKDEV = (1 << 7),
+  VAR_MAT_VOLUME = (1 << 4),
+  VAR_MAT_LOOKDEV = (1 << 5),
   /* Max number of variation */
   /* IMPORTANT : Leave it last and set
    * it's value accordingly. */
-  VAR_MAT_MAX = (1 << 8),
+  VAR_MAT_MAX = (1 << 6),
   /* These are options that are not counted in VAR_MAT_MAX
    * because they are not cumulative with the others above. */
   VAR_MAT_CLIP = (1 << 9),
@@ -376,7 +374,7 @@ typedef struct EEVEE_Light {
 #define LAMPTYPE_AREA_ELLIPSE 100.0f
 
 typedef struct EEVEE_Shadow {
-  float near, far, bias, exp;
+  float near, far, bias, pad;
   float shadow_start, data_start, multi_shadow_count, shadow_blur;
   float contact_dist, contact_bias, contact_spread, contact_thickness;
 } EEVEE_Shadow;
@@ -402,8 +400,7 @@ typedef struct EEVEE_ShadowRender {
   float stored_texel_size; /* DEPRECATED TODO remove */
   float clip_near;
   float clip_far;
-  float exponent;
-  float pad;
+  float _pad[2];
 } EEVEE_ShadowRender;
 
 BLI_STATIC_ASSERT_ALIGN(EEVEE_Light, 16)
@@ -438,7 +435,7 @@ typedef struct EEVEE_LightsInfo {
   int gpu_cube_len, gpu_cascade_len, gpu_shadow_len;
   int cpu_cube_len, cpu_cascade_len;
   int update_flag;
-  int shadow_cube_size, shadow_cascade_size, shadow_method;
+  int shadow_cube_size, shadow_cascade_size;
   bool shadow_high_bitdepth, soft_shadows;
   /* List of lights in the scene. */
   /* XXX This is fragile, can get out of sync quickly. */
@@ -888,14 +885,13 @@ struct GPUMaterial *EEVEE_material_mesh_get(struct Scene *scene,
                                             EEVEE_Data *vedata,
                                             bool use_blend,
                                             bool use_refract,
-                                            bool use_translucency,
-                                            int shadow_method);
+                                            bool use_translucency);
 struct GPUMaterial *EEVEE_material_mesh_volume_get(struct Scene *scene, Material *ma);
 struct GPUMaterial *EEVEE_material_mesh_depth_get(struct Scene *scene,
                                                   Material *ma,
                                                   bool use_hashed_alpha,
                                                   bool is_shadow);
-struct GPUMaterial *EEVEE_material_hair_get(struct Scene *scene, Material *ma, int shadow_method);
+struct GPUMaterial *EEVEE_material_hair_get(struct Scene *scene, Material *ma);
 void EEVEE_materials_free(void);
 void EEVEE_materials_draw_opaque(EEVEE_ViewLayerData *sldata, EEVEE_PassList *psl);
 void EEVEE_update_noise(EEVEE_PassList *psl, EEVEE_FramebufferList *fbl, const double offsets[3]);

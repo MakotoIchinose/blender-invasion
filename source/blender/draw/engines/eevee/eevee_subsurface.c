@@ -333,7 +333,7 @@ void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Dat
   }
 }
 
-void EEVEE_subsurface_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
+void EEVEE_subsurface_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
 {
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;

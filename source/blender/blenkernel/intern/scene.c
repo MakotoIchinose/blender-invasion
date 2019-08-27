@@ -958,7 +958,6 @@ void BKE_scene_init(Scene *sce)
   sce->eevee.motion_blur_samples = 8;
   sce->eevee.motion_blur_shutter = 0.5f;
 
-  sce->eevee.shadow_method = SHADOW_ESM;
   sce->eevee.shadow_cube_size = 512;
   sce->eevee.shadow_cascade_size = 1024;
 

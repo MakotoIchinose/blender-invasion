@@ -56,7 +56,7 @@ struct LightData {
 #endif
 
 struct ShadowData {
-  vec4 near_far_bias_exp;
+  vec4 near_far_bias;
   vec4 shadow_data_start_end;
   vec4 contact_shadow_data;
 };
@@ -72,11 +72,9 @@ struct ShadowCascadeData {
 };
 
 /* convenience aliases */
-#define sh_near near_far_bias_exp.x
-#define sh_far near_far_bias_exp.y
-#define sh_bias near_far_bias_exp.z
-#define sh_exp near_far_bias_exp.w
-#define sh_bleed near_far_bias_exp.w
+#define sh_near near_far_bias.x
+#define sh_far near_far_bias.y
+#define sh_bias near_far_bias.z
 #define sh_tex_start shadow_data_start_end.x
 #define sh_data_start shadow_data_start_end.y
 #define sh_multi_nbr shadow_data_start_end.z

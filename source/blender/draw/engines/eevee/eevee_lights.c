@@ -136,21 +136,20 @@ void EEVEE_lights_init(EEVEE_ViewLayerData *sldata)
        sldata->lights->shcaster_frontbuffer,
        sldata->lights->shcaster_backbuffer);
 
-  const int sh_method = scene_eval->eevee.shadow_method;
   int sh_cube_size = scene_eval->eevee.shadow_cube_size;
   int sh_cascade_size = scene_eval->eevee.shadow_cascade_size;
   const bool sh_high_bitdepth = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_HIGH_BITDEPTH) != 0;
   sldata->lights->soft_shadows = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_SOFT) != 0;
 
   EEVEE_LightsInfo *linfo = sldata->lights;
-  if ((linfo->shadow_cube_size != sh_cube_size) || (linfo->shadow_method != sh_method) ||
+  if ((linfo->shadow_cube_size != sh_cube_size) ||
       (linfo->shadow_high_bitdepth != sh_high_bitdepth)) {
     BLI_assert((sh_cube_size > 0) && (sh_cube_size <= 4096));
     DRW_TEXTURE_FREE_SAFE(sldata->shadow_cube_pool);
     CLAMP(sh_cube_size, 1, 4096);
   }
 
-  if ((linfo->shadow_cascade_size != sh_cascade_size) || (linfo->shadow_method != sh_method) ||
+  if ((linfo->shadow_cascade_size != sh_cascade_size) ||
       (linfo->shadow_high_bitdepth != sh_high_bitdepth)) {
     BLI_assert((sh_cascade_size > 0) && (sh_cascade_size <= 4096));
     DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_pool);
@@ -158,7 +157,6 @@ void EEVEE_lights_init(EEVEE_ViewLayerData *sldata)
   }
 
   linfo->shadow_high_bitdepth = sh_high_bitdepth;
-  linfo->shadow_method = sh_method;
   linfo->shadow_cube_size = sh_cube_size;
   linfo->shadow_cascade_size = sh_cascade_size;
 }
@@ -693,7 +691,6 @@ static void eevee_shadow_cube_setup(Object *ob,
   ubo_data->bias = 0.05f * la->bias;
   ubo_data->near = la->clipsta;
   ubo_data->far = sqrt(1.0f / evli->invsqrdist);
-  ubo_data->exp = (linfo->shadow_method == SHADOW_VSM) ? la->bleedbias : la->bleedexp;
 
   evli->shadowid = (float)(sh_data->shadow_id);
   ubo_data->shadow_start = (float)(sh_data->layer_id);
@@ -992,7 +989,6 @@ static void eevee_shadow_cascade_setup(Object *ob,
   ubo_data->bias = 0.05f * la->bias;
   ubo_data->near = la->clipsta;
   ubo_data->far = la->clipend;
-  ubo_data->exp = (linfo->shadow_method == SHADOW_VSM) ? la->bleedbias : la->bleedexp;
 
   evli->shadowid = (float)(sh_data->shadow_id);
   ubo_data->shadow_start = (float)(sh_data->layer_id);
@@ -1189,7 +1185,6 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
 
     srd->clip_near = la->clipsta;
     srd->clip_far = light_attenuation_radius_get(la, light_threshold);
-    srd->exponent = la->bleedexp;
 
     eevee_ensure_cube_views(
         srd->clip_near, srd->clip_far, cube_data->position, g_data->cube_views);
