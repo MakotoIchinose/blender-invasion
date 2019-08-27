@@ -1295,7 +1295,7 @@ static void rna_def_panel(BlenderRNA *brna)
        0,
        "Hidden",
        "Do not show this panel, only register it for display at a non-default position (e.g. in a "
-       "popup)."},
+       "popup)"},
       {0, NULL, 0, NULL, NULL},
   };
 

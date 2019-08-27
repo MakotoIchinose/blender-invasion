@@ -679,8 +679,8 @@ typedef struct FileSelectParams {
   short display_previous;
   /** Details toggles (file size, creation date, etc.) */
   char details_flags;
-  /** Filter when (flags & FILE_FILTER) is true. */
   char _pad2;
+  /** Filter when (flags & FILE_FILTER) is true. */
   int filter;
 
   /** Max number of levels in dirtree to show at once, 0 to disable recursion. */

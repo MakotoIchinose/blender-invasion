@@ -586,34 +586,6 @@ static void file_ui_region_init(wmWindowManager *wm, ARegion *ar)
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
-#if 0
-static void file_ui_region_draw_ex(const bContext *C, ARegion *ar, bool is_execution_buts)
-{
-  float col[3];
-  /* clear */
-  UI_GetThemeColor3fv(TH_BACK, col);
-  GPU_clear_color(col[0], col[1], col[2], 0.0);
-  GPU_clear(GPU_COLOR_BIT);
-
-  /* scrolling here is just annoying, disable it */
-  ar->v2d.cur.ymax = BLI_rctf_size_y(&ar->v2d.cur);
-  ar->v2d.cur.ymin = 0;
-
-  /* set view2d view matrix for scrolling (without scrollers) */
-  UI_view2d_view_ortho(&ar->v2d);
-
-
-  if (is_execution_buts) {
-    file_draw_execute_buttons(C, ar);
-  }
-  else {
-    file_draw_filepath_buttons(C, ar);
-  }
-
-  UI_view2d_view_restore(C);
-}
-#endif
-
 static void file_ui_region_draw(const bContext *C, ARegion *ar)
 {
   ED_region_panels(C, ar);
