@@ -102,10 +102,10 @@ void BLI_filelist_entry_owner_to_string(const struct stat *st, const bool compac
 void BLI_filelist_entry_datetime_to_string(const struct stat *st,
                                            const int64_t ts,
                                            const bool compact,
-                                           const bool use_relative_str,
                                            char r_time[],
                                            char r_date[],
-                                           bool *r_date_needs_translate);
+                                           bool *r_is_today,
+                                           bool *r_is_yesterday);
 
 /* Files */
 

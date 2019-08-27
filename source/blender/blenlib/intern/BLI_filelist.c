@@ -348,30 +348,23 @@ void BLI_filelist_entry_owner_to_string(const struct stat *st,
 /**
  * Convert given entry's time into human-readable strings.
  *
- * \param use_relative_string: Return "Today" and "Yesterday" as date string when applicable.
- * \param *r_date_needs_translate: optional, \a r_date should be translated if this returns true.
- *                                 Note that we don't translate in here directly because this
- *                                 function doesn't know where the string will be displayed (i.e.
- *                                 IFACE_ vs. TIP_)
+ * \param r_is_today: optional, returns true if the date matches today's.
+ * \param r_is_yesterday: optional, returns true if the date matches yesterday's.
  */
 void BLI_filelist_entry_datetime_to_string(const struct stat *st,
                                            const int64_t ts,
                                            const bool compact,
-                                           const bool use_relative_str,
                                            char r_time[FILELIST_DIRENTRY_TIME_LEN],
                                            char r_date[FILELIST_DIRENTRY_DATE_LEN],
-                                           bool *r_date_needs_translate)
+                                           bool *r_is_today,
+                                           bool *r_is_yesterday)
 {
   int today_year = 0;
   int today_yday = 0;
   int yesterday_year = 0;
   int yesterday_yday = 0;
 
-  if (r_date_needs_translate) {
-    *r_date_needs_translate = false;
-  }
-
-  if (use_relative_str) {
+  if (r_is_today || r_is_yesterday) {
     /* Localtime() has only one buffer so need to get data out before called again. */
     const time_t ts_now = time(NULL);
     struct tm *today = localtime(&ts_now);
@@ -383,6 +376,13 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
     mktime(today);
     yesterday_year = today->tm_year;
     yesterday_yday = today->tm_yday;
+
+    if (r_is_today) {
+      *r_is_today = false;
+    }
+    if (r_is_yesterday) {
+      *r_is_yesterday = false;
+    }
   }
 
   const time_t ts_mtime = ts;
@@ -397,26 +397,19 @@ void BLI_filelist_entry_datetime_to_string(const struct stat *st,
   if (r_time) {
     strftime(r_time, sizeof(*r_time) * FILELIST_DIRENTRY_TIME_LEN, "%H:%M", tm);
   }
+
   if (r_date) {
-    if (use_relative_str && (tm->tm_year == today_year) && (tm->tm_yday == today_yday)) {
-      BLI_strncpy(r_date, "Today", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
-      if (r_date_needs_translate) {
-        *r_date_needs_translate = true;
-      }
-    }
-    else if (use_relative_str && (tm->tm_year == yesterday_year) &&
-             (tm->tm_yday == yesterday_yday)) {
-      BLI_strncpy(r_date, "Yesterday", sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN);
-      if (r_date_needs_translate) {
-        *r_date_needs_translate = true;
-      }
-    }
-    else {
-      strftime(r_date,
-               sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN,
-               compact ? "%d/%m/%y" : "%d %b %Y",
-               tm);
-    }
+    strftime(r_date,
+             sizeof(*r_date) * FILELIST_DIRENTRY_DATE_LEN,
+             compact ? "%d/%m/%y" : "%d %b %Y",
+             tm);
+  }
+
+  if (r_is_today && (tm->tm_year == today_year) && (tm->tm_yday == today_yday)) {
+    *r_is_today = true;
+  }
+  else if (r_is_yesterday && (tm->tm_year == yesterday_year) && (tm->tm_yday == yesterday_yday)) {
+    *r_is_yesterday = true;
   }
 }
 

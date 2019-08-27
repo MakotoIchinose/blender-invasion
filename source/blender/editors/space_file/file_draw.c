@@ -26,6 +26,7 @@
 #include <errno.h>
 
 #include "BLI_blenlib.h"
+#include "BLI_fileops_types.h"
 #include "BLI_utildefines.h"
 #include "BLI_math.h"
 
@@ -492,7 +493,7 @@ static void draw_columnheader_columns(const FileSelectParams *params,
 
     file_draw_string(sx + DETAILS_COLUMN_PADDING,
                      sy - layout->tile_border_y,
-                     column->name,
+                     IFACE_(column->name),
                      column->width - 2 * DETAILS_COLUMN_PADDING,
                      layout->columnheader_h - layout->tile_border_y,
                      UI_STYLE_TEXT_LEFT,
@@ -542,16 +543,17 @@ static const char *filelist_get_details_column_string(FileListColumns column,
     case COLUMN_DATETIME:
       if (!(file->typeflag & FILE_TYPE_BLENDERLIB) && !FILENAME_IS_CURRPAR(file->relpath)) {
         if ((file->entry->datetime_str[0] == '\0') || update_stat_strings) {
-          char date[16], time[8];
-          bool date_translate;
+          char date[FILELIST_DIRENTRY_DATE_LEN], time[FILELIST_DIRENTRY_TIME_LEN];
+          bool is_today, is_yesterday;
 
           BLI_filelist_entry_datetime_to_string(
-              NULL, file->entry->time, small_size, true, time, date, &date_translate);
-          BLI_snprintf(file->entry->datetime_str,
-                       sizeof(file->entry->datetime_str),
-                       "%s %s",
-                       date_translate ? IFACE_(date) : date,
-                       time);
+              NULL, file->entry->time, small_size, time, date, &is_today, &is_yesterday);
+
+          if (is_today || is_yesterday) {
+            BLI_strncpy(date, is_today ? N_("Today") : N_("Yesterday"), sizeof(date));
+          }
+          BLI_snprintf(
+              file->entry->datetime_str, sizeof(file->entry->datetime_str), "%s %s", date, time);
         }
 
         return file->entry->datetime_str;
@@ -604,7 +606,7 @@ static void draw_details_columns(const FileSelectParams *params,
     if (str) {
       file_draw_string(sx + DETAILS_COLUMN_PADDING,
                        sy - layout->tile_border_y,
-                       str,
+                       IFACE_(str),
                        column->width - 2 * DETAILS_COLUMN_PADDING,
                        layout->tile_h,
                        column->text_align,
