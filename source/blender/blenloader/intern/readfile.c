@@ -261,6 +261,7 @@ typedef struct BHeadN {
   off64_t file_offset;
   /** When set, the remainder of this allocation is the data, otherwise it needs to be read. */
   bool has_data;
+  bool is_memchunk_identical;
 #endif
   struct BHead bhead;
 } BHeadN;
@@ -792,7 +793,7 @@ static BHeadN *get_bhead(FileData *fd)
        */
       if (fd->flags & FD_FLAGS_FILE_POINTSIZE_IS_4) {
         bhead4.code = DATA;
-        readsize = fd->read(fd, &bhead4, sizeof(bhead4));
+        readsize = fd->read(fd, &bhead4, sizeof(bhead4), NULL);
 
         if (readsize == sizeof(bhead4) || bhead4.code == ENDB) {
           if (fd->flags & FD_FLAGS_SWITCH_ENDIAN) {
@@ -815,7 +816,7 @@ static BHeadN *get_bhead(FileData *fd)
       }
       else {
         bhead8.code = DATA;
-        readsize = fd->read(fd, &bhead8, sizeof(bhead8));
+        readsize = fd->read(fd, &bhead8, sizeof(bhead8), NULL);
 
         if (readsize == sizeof(bhead8) || bhead8.code == ENDB) {
           if (fd->flags & FD_FLAGS_SWITCH_ENDIAN) {
@@ -880,7 +881,7 @@ static BHeadN *get_bhead(FileData *fd)
 #endif
           new_bhead->bhead = bhead;
 
-          readsize = fd->read(fd, new_bhead + 1, bhead.len);
+          readsize = fd->read(fd, new_bhead + 1, bhead.len, &new_bhead->is_memchunk_identical);
 
           if (readsize != bhead.len) {
             fd->is_eof = true;
@@ -970,7 +971,8 @@ static bool blo_bhead_read_data(FileData *fd, BHead *thisblock, void *buf)
     success = false;
   }
   else {
-    if (fd->read(fd, buf, new_bhead->bhead.len) != new_bhead->bhead.len) {
+    if (fd->read(fd, buf, new_bhead->bhead.len, &new_bhead->is_memchunk_identical) !=
+        new_bhead->bhead.len) {
       success = false;
     }
   }
@@ -1007,7 +1009,7 @@ static void decode_blender_header(FileData *fd)
   int readsize;
 
   /* read in the header data */
-  readsize = fd->read(fd, header, sizeof(header));
+  readsize = fd->read(fd, header, sizeof(header), NULL);
 
   if (readsize == sizeof(header) && STREQLEN(header, "BLENDER", 7) && ELEM(header[7], '_', '-') &&
       ELEM(header[8], 'v', 'V') &&
@@ -1139,7 +1141,10 @@ static int *read_file_thumbnail(FileData *fd)
 
 /* Regular file reading. */
 
-static int fd_read_data_from_file(FileData *filedata, void *buffer, uint size)
+static int fd_read_data_from_file(FileData *filedata,
+                                  void *buffer,
+                                  uint size,
+                                  bool *UNUSED(r_is_memchunck_identical))
 {
   int readsize = read(filedata->filedes, buffer, size);
 
@@ -1161,7 +1166,10 @@ static off64_t fd_seek_data_from_file(FileData *filedata, off64_t offset, int wh
 
 /* GZip file reading. */
 
-static int fd_read_gzip_from_file(FileData *filedata, void *buffer, uint size)
+static int fd_read_gzip_from_file(FileData *filedata,
+                                  void *buffer,
+                                  uint size,
+                                  bool *UNUSED(r_is_memchunck_identical))
 {
   int readsize = gzread(filedata->gzfiledes, buffer, size);
 
@@ -1177,7 +1185,10 @@ static int fd_read_gzip_from_file(FileData *filedata, void *buffer, uint size)
 
 /* Memory reading. */
 
-static int fd_read_from_memory(FileData *filedata, void *buffer, uint size)
+static int fd_read_from_memory(FileData *filedata,
+                               void *buffer,
+                               uint size,
+                               bool *UNUSED(r_is_memchunck_identical))
 {
   /* don't read more bytes then there are available in the buffer */
   int readsize = (int)MIN2(size, (uint)(filedata->buffersize - filedata->file_offset));
@@ -1190,7 +1201,10 @@ static int fd_read_from_memory(FileData *filedata, void *buffer, uint size)
 
 /* MemFile reading. */
 
-static int fd_read_from_memfile(FileData *filedata, void *buffer, uint size)
+static int fd_read_from_memfile(FileData *filedata,
+                                void *buffer,
+                                uint size,
+                                bool *r_is_memchunck_identical)
 {
   static size_t seek = SIZE_MAX; /* the current position */
   static size_t offset = 0;      /* size of previous chunks */
@@ -1246,9 +1260,11 @@ static int fd_read_from_memfile(FileData *filedata, void *buffer, uint size)
       totread += readsize;
       filedata->file_offset += readsize;
       seek += readsize;
-      filedata->are_memchunks_identical &= chunk->is_identical;
-      if (!chunk->is_identical) {
-        printf("%s: found a non-identical memfile chunk...\n", __func__);
+      if (r_is_memchunck_identical != NULL) {
+        *r_is_memchunck_identical = chunk->is_identical;
+      }
+      if (chunk->is_identical) {
+        printf("%s: found an identical memfile chunk...\n", __func__);
       }
     } while (totread < size);
 
@@ -1416,7 +1432,10 @@ static FileData *blo_filedata_from_file_minimal(const char *filepath)
   return NULL;
 }
 
-static int fd_read_gzip_from_memory(FileData *filedata, void *buffer, uint size)
+static int fd_read_gzip_from_memory(FileData *filedata,
+                                    void *buffer,
+                                    uint size,
+                                    bool *UNUSED(r_is_memchunck_identical))
 {
   int err;
 
@@ -2287,6 +2306,10 @@ static void *read_struct(FileData *fd, BHead *bh, const char *blockname)
         memcpy(temp, (bh + 1), bh->len);
 #endif
       }
+    }
+
+    if (!BHEADN_FROM_BHEAD(bh)->is_memchunk_identical) {
+      fd->are_memchunks_identical = false;
     }
 #ifdef USE_BHEAD_READ_ON_DEMAND
     if (bh_orig != bh) {
@@ -9152,6 +9175,7 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
   printf("\tfor ID %s: are_memchunks_identical: %d\n",
          id ? id->name : "NONE",
          fd->are_memchunks_identical);
+  fd->are_memchunks_identical = true;
 
   if (id) {
     const short idcode = GS(id->name);
@@ -9209,6 +9233,9 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
 
   /* read all data into fd->datamap */
   bhead = read_data_into_oldnewmap(fd, bhead, allocname);
+
+  printf(
+      "\tfor data of ID %s: are_memchunks_identical: %d\n", id->name, fd->are_memchunks_identical);
 
   /* init pointers direct data */
   direct_link_id(fd, id);

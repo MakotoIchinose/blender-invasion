@@ -57,7 +57,10 @@ enum eFileDataFlag {
 typedef int64_t off64_t;
 #endif
 
-typedef int(FileDataReadFn)(struct FileData *filedata, void *buffer, unsigned int size);
+typedef int(FileDataReadFn)(struct FileData *filedata,
+                            void *buffer,
+                            unsigned int size,
+                            bool *r_is_memchunk_identical);
 typedef off64_t(FileDataSeekFn)(struct FileData *filedata, off64_t offset, int whence);
 
 typedef struct FileData {
