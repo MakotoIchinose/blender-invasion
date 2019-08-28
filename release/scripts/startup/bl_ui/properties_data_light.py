@@ -175,9 +175,8 @@ class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
 
         col = layout.column()
         sub = col.column(align=True)
-        sub.prop(light, "shadow_buffer_clip_start", text="Clip Start")
-        if light.type == 'SUN':
-            sub.prop(light, "shadow_buffer_clip_end", text="End")
+        if light.type != 'SUN':
+            sub.prop(light, "shadow_buffer_clip_start", text="Clip Start")
 
         col.prop(light, "shadow_buffer_soft", text="Softness")
         col.prop(light, "shadow_buffer_bias", text="Bias")

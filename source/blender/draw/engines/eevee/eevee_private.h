@@ -454,6 +454,10 @@ typedef struct EEVEE_LightsInfo {
   /* Pointers only. */
   struct EEVEE_ShadowCasterBuffer *shcaster_frontbuffer;
   struct EEVEE_ShadowCasterBuffer *shcaster_backbuffer;
+  /* AABB of all shadow casters combined. */
+  struct {
+    float min[3], max[3];
+  } shcaster_aabb;
 } EEVEE_LightsInfo;
 
 /* EEVEE_LightsInfo->shadow_casters_flag */

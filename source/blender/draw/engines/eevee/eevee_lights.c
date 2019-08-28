@@ -184,6 +184,8 @@ void EEVEE_lights_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
          linfo->shcaster_backbuffer->alloc_count);
   memset(linfo->shcaster_frontbuffer->flags, 0x00, linfo->shcaster_frontbuffer->alloc_count);
 
+  INIT_MINMAX(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max);
+
   psl->shadow_cube_store_pass = NULL;
   psl->shadow_cube_store_high_pass = NULL;
   psl->shadow_cascade_store_pass = NULL;
@@ -393,6 +395,9 @@ void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object 
   aabb->halfdim[0] = fabsf(aabb->halfdim[0]);
   aabb->halfdim[1] = fabsf(aabb->halfdim[1]);
   aabb->halfdim[2] = fabsf(aabb->halfdim[2]);
+
+  minmax_v3v3_v3(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max, min);
+  minmax_v3v3_v3(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max, max);
 
   oedata->need_update = false;
 }
@@ -812,6 +817,33 @@ static void eevee_shadow_cascade_setup(Object *ob,
   copy_m4_m4(sh_data->viewinv, viewmat);
   invert_m4(viewmat);
 
+  /* Compute near and far value based on all shadow casters cumulated AABBs. */
+  float sh_near = -1.0e30f, sh_far = 1.0e30f;
+  BoundBox shcaster_bounds;
+  BKE_boundbox_init_from_minmax(
+      &shcaster_bounds, linfo->shcaster_aabb.min, linfo->shcaster_aabb.max);
+#ifdef DEBUG_CSM
+  float dbg_col1[4] = {1.0f, 0.5f, 0.6f, 1.0f};
+  DRW_debug_bbox(&shcaster_bounds, dbg_col1);
+#endif
+  for (int i = 0; i < 8; i++) {
+    mul_m4_v3(viewmat, shcaster_bounds.vec[i]);
+    sh_near = max_ff(sh_near, shcaster_bounds.vec[i][2]);
+    sh_far = min_ff(sh_far, shcaster_bounds.vec[i][2]);
+  }
+#ifdef DEBUG_CSM
+  float dbg_col2[4] = {0.5f, 1.0f, 0.6f, 1.0f};
+  float pts[2][3] = {{0.0, 0.0, sh_near}, {0.0, 0.0, sh_far}};
+  mul_m4_v3(sh_data->viewinv, pts[0]);
+  mul_m4_v3(sh_data->viewinv, pts[1]);
+  DRW_debug_sphere(pts[0], 1.0f, dbg_col1);
+  DRW_debug_sphere(pts[1], 1.0f, dbg_col2);
+#endif
+  /* The rest of the function is assuming inverted Z. */
+  /* Add a little bias to avoid invalid matrices. */
+  sh_far = -(sh_far - 1e-3);
+  sh_near = -sh_near;
+
   /* The technique consists into splitting
    * the view frustum into several sub-frustum
    * that are individually receiving one shadow map */
@@ -975,8 +1007,8 @@ static void eevee_shadow_cascade_setup(Object *ob,
                     rect_cascade.xmax,
                     rect_cascade.ymin,
                     rect_cascade.ymax,
-                    la->clipsta,
-                    la->clipend);
+                    sh_near,
+                    sh_far);
 
     mul_m4_m4m4(sh_data->viewprojmat[c], projmat, viewmat);
     mul_m4_m4m4(cascade_data->shadowmat[c], texcomat, sh_data->viewprojmat[c]);
@@ -987,8 +1019,8 @@ static void eevee_shadow_cascade_setup(Object *ob,
   }
 
   ubo_data->bias = 0.05f * la->bias;
-  ubo_data->near = la->clipsta;
-  ubo_data->far = la->clipend;
+  ubo_data->near = sh_near;
+  ubo_data->far = sh_far;
 
   evli->shadowid = (float)(sh_data->shadow_id);
   ubo_data->shadow_start = (float)(sh_data->layer_id);
