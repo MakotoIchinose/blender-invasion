@@ -261,8 +261,8 @@ typedef struct BHeadN {
   off64_t file_offset;
   /** When set, the remainder of this allocation is the data, otherwise it needs to be read. */
   bool has_data;
-  bool is_memchunk_identical;
 #endif
+  bool is_memchunk_identical;
   struct BHead bhead;
 } BHeadN;
 
@@ -857,6 +857,7 @@ static BHeadN *get_bhead(FileData *fd)
           new_bhead->next = new_bhead->prev = NULL;
           new_bhead->file_offset = fd->file_offset;
           new_bhead->has_data = false;
+          new_bhead->is_memchunk_identical = false;
           new_bhead->bhead = bhead;
           off64_t seek_new = fd->seek(fd, bhead.len, SEEK_CUR);
           if (seek_new == -1) {
@@ -879,6 +880,7 @@ static BHeadN *get_bhead(FileData *fd)
           new_bhead->file_offset = 0; /* don't seek. */
           new_bhead->has_data = true;
 #endif
+          new_bhead->is_memchunk_identical = false;
           new_bhead->bhead = bhead;
 
           readsize = fd->read(fd, new_bhead + 1, bhead.len, &new_bhead->is_memchunk_identical);
@@ -989,6 +991,7 @@ static BHead *blo_bhead_read_full(FileData *fd, BHead *thisblock)
   new_bhead_data->bhead = new_bhead->bhead;
   new_bhead_data->file_offset = new_bhead->file_offset;
   new_bhead_data->has_data = true;
+  new_bhead_data->is_memchunk_identical = false;
   if (!blo_bhead_read_data(fd, thisblock, new_bhead_data + 1)) {
     MEM_freeN(new_bhead_data);
     return NULL;
@@ -1264,7 +1267,7 @@ static int fd_read_from_memfile(FileData *filedata,
         *r_is_memchunck_identical = chunk->is_identical;
       }
       if (chunk->is_identical) {
-        printf("%s: found an identical memfile chunk...\n", __func__);
+        DEBUG_PRINTF("%s: found an identical memfile chunk...\n", __func__);
       }
     } while (totread < size);
 
@@ -9170,20 +9173,70 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
 
   /* read libblock */
   fd->are_memchunks_identical = true;
-  printf("%s: Reading a struct...\n", __func__);
+  DEBUG_PRINTF("%s: Reading a struct...\n", __func__);
   id = read_struct(fd, bhead, "lib block");
-  printf("\tfor ID %s: are_memchunks_identical: %d\n",
-         id ? id->name : "NONE",
-         fd->are_memchunks_identical);
-  fd->are_memchunks_identical = true;
+  DEBUG_PRINTF("\tfor ID %s: are_memchunks_identical: %d\n",
+               id ? id->name : "NONE",
+               fd->are_memchunks_identical);
+
+  BHead *id_bhead = bhead;
 
   if (id) {
     const short idcode = GS(id->name);
+
+    if (id_bhead->code != ID_LINK_PLACEHOLDER) {
+      /* need a name for the mallocN, just for debugging and sane prints on leaks */
+      allocname = dataname(idcode);
+
+      /* read all data into fd->datamap */
+      /* TODO: instead of building oldnewmap here we could just quickly check the bheads... could
+       * save some more ticks. */
+      bhead = read_data_into_oldnewmap(fd, id_bhead, allocname);
+
+      DEBUG_PRINTF("\tfor data of ID %s: are_memchunks_identical: %d\n",
+                   id->name,
+                   fd->are_memchunks_identical);
+
+      if (fd->are_memchunks_identical && !ELEM(idcode, ID_GR, ID_WM, ID_SCR, ID_WS)) {
+        BLI_assert(fd->memfile);
+        Main *old_main = fd->old_mainlist->first;
+        ID *old_id = NULL;
+        if ((old_id = BKE_libblock_find_name(old_main, idcode, id->name + 2))) {
+          BLI_assert(old_id == id_bhead->old);
+          MEM_freeN(id);
+          id = old_id;
+
+          id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
+          id->lib = main->curlib;
+          id->us = ID_FAKE_USERS(id);
+          id->icon_id = 0;
+          id->newid = NULL; /* Needed because .blend may have been saved with crap value here... */
+          id->orig_id = NULL;
+
+          oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
+
+          ListBase *old_lb = which_libbase(old_main, idcode);
+          ListBase *new_lb = which_libbase(main, idcode);
+          BLI_remlink_safe(old_lb, id);
+          BLI_addtail(new_lb, id);
+
+          if (r_id) {
+            *r_id = id;
+          }
+
+          oldnewmap_free_unused(fd->datamap);
+          oldnewmap_clear(fd->datamap);
+
+          return bhead;
+        }
+      }
+    }
+
     /* do after read_struct, for dna reconstruct */
     lb = which_libbase(main, idcode);
     if (lb) {
       /* for ID_LINK_PLACEHOLDER check */
-      oldnewmap_insert(fd->libmap, bhead->old, id, bhead->code);
+      oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
       BLI_addtail(lb, id);
     }
@@ -9199,7 +9252,7 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
     *r_id = id;
   }
   if (!id) {
-    return blo_bhead_next(fd, bhead);
+    return blo_bhead_next(fd, id_bhead);
   }
 
   id->lib = main->curlib;
@@ -9221,27 +9274,18 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
   }
 
   /* this case cannot be direct_linked: it's just the ID part */
-  if (bhead->code == ID_LINK_PLACEHOLDER) {
+  if (id_bhead->code == ID_LINK_PLACEHOLDER) {
     /* That way, we know which data-lock needs do_versions (required currently for linking). */
     id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
 
-    return blo_bhead_next(fd, bhead);
+    return blo_bhead_next(fd, id_bhead);
   }
-
-  /* need a name for the mallocN, just for debugging and sane prints on leaks */
-  allocname = dataname(GS(id->name));
-
-  /* read all data into fd->datamap */
-  bhead = read_data_into_oldnewmap(fd, bhead, allocname);
-
-  printf(
-      "\tfor data of ID %s: are_memchunks_identical: %d\n", id->name, fd->are_memchunks_identical);
 
   /* init pointers direct data */
   direct_link_id(fd, id);
 
   /* That way, we know which data-lock needs do_versions (required currently for linking). */
-  /* Note: doing this after driect_link_id(), which resets that field. */
+  /* Note: doing this after direct_link_id(), which resets that field. */
   id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
 
   switch (GS(id->name)) {
