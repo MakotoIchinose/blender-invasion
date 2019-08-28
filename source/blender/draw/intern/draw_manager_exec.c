@@ -285,7 +285,8 @@ void drw_state_set(DRWState state)
     if ((test = CHANGED_TO(DRW_STATE_SHADOW_OFFSET))) {
       if (test == 1) {
         glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0f, 1.0f);
+        /* 2.0 Seems to be the lowest possible slope bias that works in every case. */
+        glPolygonOffset(2.0f, 1.0f);
       }
       else {
         glDisable(GL_POLYGON_OFFSET_FILL);

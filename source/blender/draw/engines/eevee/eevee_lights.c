@@ -428,7 +428,7 @@ void EEVEE_lights_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
                                                            linfo->shadow_cube_size,
                                                            max_ii(1, linfo->num_cube_layer * 6),
                                                            shadow_pool_format,
-                                                           DRW_TEX_FILTER,
+                                                           DRW_TEX_FILTER | DRW_TEX_COMPARE,
                                                            NULL);
   }
 
@@ -437,7 +437,7 @@ void EEVEE_lights_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
                                                               linfo->shadow_cascade_size,
                                                               max_ii(1, linfo->num_cascade_layer),
                                                               shadow_pool_format,
-                                                              DRW_TEX_FILTER,
+                                                              DRW_TEX_FILTER | DRW_TEX_COMPARE,
                                                               NULL);
   }
 
