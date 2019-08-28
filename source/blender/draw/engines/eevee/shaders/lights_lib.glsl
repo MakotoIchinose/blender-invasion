@@ -80,55 +80,32 @@ float sample_cube_shadow(ShadowData sd, ShadowCubeData scd, float texid, vec3 W)
   return texture(shadowCubeTexture, vec4(coord, texid * 6.0 + face, dist));
 }
 
-float sample_cascade_shadow(ShadowData sd, mat4 shadowmat, mat4 shadowmat0, vec3 W, float texid)
+float sample_cascade_shadow(ShadowData sd, int scd_id, float texid, vec3 W)
 {
-  vec4 coord = shadowmat * vec4(W, 1.0);
-  return texture(shadowCascadeTexture, vec4(coord.xy, texid, coord.z));
-}
+/* Some driver poorly optimize this code. Use direct reference to matrices. */
+#define scd shadows_cascade_data[scd_id]
 
-float shadow_cascade(ShadowData sd, int scd_id, float texid, vec3 W)
-{
   vec4 view_z = vec4(dot(W - cameraPos, cameraForward));
-  vec4 weights = smoothstep(shadows_cascade_data[scd_id].split_end_distances,
-                            shadows_cascade_data[scd_id].split_start_distances.yzwx,
-                            view_z);
+  vec4 weights = 1.0 - smoothstep(scd.split_end_distances, scd.split_start_distances.yzwx, view_z);
+  float tot_weight = dot(weights.xyz, vec3(1.0));
 
-  weights.yzw -= weights.xyz;
+  int cascade = int(clamp(tot_weight, 0.0, 3.0));
+  float blend = fract(tot_weight);
+  float vis = weights.w;
+  vec4 coord, shpos;
+  /* Main cascade. */
+  shpos = scd.shadowmat[cascade] * vec4(W, 1.0);
+  coord = vec4(shpos.xy, texid + float(cascade), shpos.z);
+  vis += texture(shadowCascadeTexture, coord) * (1.0 - blend);
 
-  vec4 vis = vec4(1.0);
+  cascade = min(3, cascade + 1);
+  /* Second cascade. */
+  shpos = scd.shadowmat[cascade] * vec4(W, 1.0);
+  coord = vec4(shpos.xy, texid + float(cascade), shpos.z);
+  vis += texture(shadowCascadeTexture, coord) * blend;
 
-  /* Branching using (weights > 0.0) is reaally slooow on intel so avoid it for now. */
-  /* TODO OPTI: Only do 2 samples and blend. */
-  vis.x = sample_cascade_shadow(sd,
-                                shadows_cascade_data[scd_id].shadowmat[0],
-                                shadows_cascade_data[scd_id].shadowmat[0],
-                                W,
-                                texid + 0);
-  vis.y = sample_cascade_shadow(sd,
-                                shadows_cascade_data[scd_id].shadowmat[1],
-                                shadows_cascade_data[scd_id].shadowmat[0],
-                                W,
-                                texid + 1);
-  vis.z = sample_cascade_shadow(sd,
-                                shadows_cascade_data[scd_id].shadowmat[2],
-                                shadows_cascade_data[scd_id].shadowmat[0],
-                                W,
-                                texid + 2);
-  vis.w = sample_cascade_shadow(sd,
-                                shadows_cascade_data[scd_id].shadowmat[3],
-                                shadows_cascade_data[scd_id].shadowmat[0],
-                                W,
-                                texid + 3);
-
-  float weight_sum = dot(vec4(1.0), weights);
-  if (weight_sum > 0.9999) {
-    float vis_sum = dot(vec4(1.0), vis * weights);
-    return vis_sum / weight_sum;
-  }
-  else {
-    float vis_sum = dot(vec4(1.0), vis * step(0.001, weights));
-    return mix(1.0, vis_sum, weight_sum);
-  }
+#undef scd
+  return saturate(vis);
 }
 
 /* ----------------------------------------------------------- */
@@ -187,7 +164,7 @@ float light_visibility(LightData ld,
     ShadowData data = shadows_data[int(ld.l_shadowid)];
 
     if (ld.l_type == SUN) {
-      vis *= shadow_cascade(data, int(data.sh_data_start), data.sh_tex_start, W);
+      vis *= sample_cascade_shadow(data, int(data.sh_data_start), data.sh_tex_start, W);
     }
     else {
       vis *= sample_cube_shadow(
