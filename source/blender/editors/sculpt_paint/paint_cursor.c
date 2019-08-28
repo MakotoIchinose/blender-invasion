@@ -1355,7 +1355,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
         quat_to_mat4(cursor_rot_mat4, quat);
 
         GPU_matrix_push_projection();
-        GPU_matrix_push();
         ED_view3d_draw_setup_view(CTX_wm_window(C),
                                   CTX_data_depsgraph_pointer(C),
                                   CTX_data_scene(C),
@@ -1364,6 +1363,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
                                   NULL,
                                   NULL,
                                   NULL);
+        GPU_matrix_push();
 
         if (brush->sculpt_tool == SCULPT_TOOL_GRAB && brush->flag2 & BRUSH_GRAB_ACTIVE_VERTEX) {
           if (vc.obact->sculpt) {
@@ -1381,8 +1381,30 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
         immUniformColor3fvAlpha(outline_col, outline_alpha);
         imm_draw_circle_wire_3d(pos3d, 0, 0, rds, 40);
         GPU_matrix_pop();
-        GPU_matrix_pop_projection();
 
+        if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
+          float mat[3][3];
+          float viewNormal[3];
+          float viewDir[3] = {0.0f, 0.0f, 1.0f};
+
+          invert_m4_m4(vc.obact->imat, vc.obact->obmat);
+          copy_m3_m4(mat, vc.rv3d->viewinv);
+          mul_m3_v3(mat, viewDir);
+          copy_m3_m4(mat, vc.obact->imat);
+          mul_m3_v3(mat, viewDir);
+          normalize_v3_v3(viewNormal, viewDir);
+
+          GPU_matrix_push();
+          GPU_matrix_mul(cursor_mat4);
+          GPU_line_width(1.0f);
+          rotation_between_vecs_to_quat(quat, z_axis, viewNormal);
+          quat_to_mat4(cursor_rot_mat4, quat);
+          GPU_matrix_mul(cursor_rot_mat4);
+          imm_draw_circle_wire_3d(pos3d, 0, 0, rds, 40);
+          GPU_matrix_pop();
+        }
+
+        GPU_matrix_pop_projection();
         wmWindowViewport(win);
       }
       else {

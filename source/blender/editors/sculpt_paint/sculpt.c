@@ -6616,7 +6616,8 @@ bool sculpt_stroke_get_geometry_info(bContext *C, StrokeGeometryInfo *out, const
   Object *ob;
   SculptSession *ss;
   float ray_start[3], ray_end[3], ray_normal[3], depth, face_normal[3], sampled_normal[3],
-      viewDir[3], mat[3][3];
+      mat[3][3];
+  float viewDir[3] = {0.0f, 0.0f, 1.0f};
   float nearest_vetex_co[3] = {0.0f};
   int totnode;
   bool original = false, hit = false;
@@ -9724,16 +9725,21 @@ EnumPropertyItem prop_sculpt_pivot_position_types[] = {
 
 static bool check_vertex_pivot_symmetry(float vco[3], float pco[3], char symm)
 {
+  bool is_in_symmetry_area = true;
   for (int i = 0; i < 3; i++) {
     char symm_it = 1 << i;
     if (symm & symm_it) {
       if (pco[i] == 0.0f) {
-        return vco[i] < 0.0f;
+        if (vco[i] > 0.0f) {
+          is_in_symmetry_area = false;
+        }
       }
-      return vco[i] * pco[i] >= 0.0f;
+      if (vco[i] * pco[i] < 0.0f) {
+        is_in_symmetry_area = false;
+      }
     }
   }
-  return true;
+  return is_in_symmetry_area;
 }
 
 static int sculpt_set_pivot_position_invoke(bContext *C, wmOperator *op, const wmEvent *event)
