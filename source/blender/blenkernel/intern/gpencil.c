@@ -2707,7 +2707,8 @@ void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short ta
   }
   else {
     /* just copy all points to keep into a smaller buffer */
-    bGPDspoint *new_points = MEM_callocN(sizeof(bGPDspoint) * tot, "new gp stroke points copy");
+    bGPDspoint *new_points = MEM_callocN(sizeof(bGPDspoint) * tot,
+                                         "new gp stroke coord_array copy");
     bGPDspoint *npt = new_points;
 
     MDeformVert *new_dvert = NULL;
@@ -3061,45 +3062,62 @@ static void gpencil_convert_spline(Main *bmain,
   BLI_addtail(&gpf->strokes, gps);
 
   /* Read all segments of the curve. */
-  int init = 0;
-  resolu = nu->resolu + 1;
-  segments = nu->pntsu;
-  if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
-    segments--;
-  }
-  /* Get all interpolated curve points of Beziert */
+  float *coord_array = NULL;
   float init_co[3];
-  for (int s = 0; s < segments; s++) {
-    int inext = (s + 1) % nu->pntsu;
-    BezTriple *prevbezt = &nu->bezt[s];
-    BezTriple *bezt = &nu->bezt[inext];
-    bool last = (bool)(s == segments - 1);
 
-    float *coord_array = MEM_callocN((size_t)3 * resolu * sizeof(float), __func__);
-
-    for (int j = 0; j < 3; j++) {
-      BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
-                                    prevbezt->vec[2][j],
-                                    bezt->vec[0][j],
-                                    bezt->vec[1][j],
-                                    coord_array + j,
-                                    resolu - 1,
-                                    3 * sizeof(float));
+  if (nu->type == CU_BEZIER) {
+    int init = 0;
+    resolu = nu->resolu + 1;
+    segments = nu->pntsu;
+    if (((nu->flagu & CU_NURB_CYCLIC) == 0) || (nu->pntsu == 2)) {
+      segments--;
     }
-    /* Save first point coordinates. */
-    if (s == 0) {
-      copy_v3_v3(init_co, &coord_array[0]);
-    }
-    /* Add points to the stroke */
-    gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu, init_co, last);
-    /* Free memory. */
-    MEM_SAFE_FREE(coord_array);
+    /* Get all interpolated curve points of Beziert */
+    for (int s = 0; s < segments; s++) {
+      int inext = (s + 1) % nu->pntsu;
+      BezTriple *prevbezt = &nu->bezt[s];
+      BezTriple *bezt = &nu->bezt[inext];
+      bool last = (bool)(s == segments - 1);
 
-    /* As the last point of segment is the first point of next segment, back one array
-     * element to avoid duplicated points on the same location.
-     */
-    init += resolu - 1;
+      coord_array = MEM_callocN((size_t)3 * resolu * sizeof(float), __func__);
+
+      for (int j = 0; j < 3; j++) {
+        BKE_curve_forward_diff_bezier(prevbezt->vec[1][j],
+                                      prevbezt->vec[2][j],
+                                      bezt->vec[0][j],
+                                      bezt->vec[1][j],
+                                      coord_array + j,
+                                      resolu - 1,
+                                      3 * sizeof(float));
+      }
+      /* Save first point coordinates. */
+      if (s == 0) {
+        copy_v3_v3(init_co, &coord_array[0]);
+      }
+      /* Add points to the stroke */
+      gpencil_add_new_points(gps, coord_array, bezt->radius, init, resolu, init_co, last);
+      /* Free memory. */
+      MEM_SAFE_FREE(coord_array);
+
+      /* As the last point of segment is the first point of next segment, back one array
+       * element to avoid duplicated points on the same location.
+       */
+      init += resolu - 1;
+    }
   }
+  else if (nu->type == CU_NURBS) {
+    int pntsu = nu->pntsu;
+    if (nu->pntsv == 1) {
+      coord_array = MEM_callocN(sizeof(float[3]) * pntsu * resolu, __func__);
+
+      BKE_nurb_makeCurve(nu, coord_array, NULL, NULL, NULL, resolu, sizeof(float[3]));
+
+      gpencil_add_new_points(gps, coord_array, 1.0f, 0, totpoints, init_co, false);
+
+      MEM_freeN(coord_array);
+    }
+  }
+
   /* Cyclic curve, close stroke. */
   if ((cyclic) && (!only_stroke)) {
     BKE_gpencil_close_stroke(gps);
@@ -3158,9 +3176,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
 
   /* Read all splines of the curve and create a stroke for each. */
   for (Nurb *nu = cu->nurb.first; nu; nu = nu->next) {
-    if (nu->type == CU_BEZIER) {
-      gpencil_convert_spline(bmain, scene, ob_gp, ob_cu, gpencil_lines, use_collections, gpf, nu);
-    }
+    gpencil_convert_spline(bmain, scene, ob_gp, ob_cu, gpencil_lines, use_collections, gpf, nu);
   }
 
   /* Tag for recalculation */
