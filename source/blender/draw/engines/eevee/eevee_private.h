@@ -388,6 +388,7 @@ typedef struct EEVEE_ShadowCascade {
   float shadowmat[MAX_CASCADE_NUM][4][4];
   float split_start[4];
   float split_end[4];
+  float shadow_vec[3], _pad[1];
 } EEVEE_ShadowCascade;
 
 typedef struct EEVEE_ShadowRender {

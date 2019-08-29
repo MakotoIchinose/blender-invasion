@@ -817,6 +817,8 @@ static void eevee_shadow_cascade_setup(Object *ob,
   copy_m4_m4(sh_data->viewinv, viewmat);
   invert_m4(viewmat);
 
+  copy_v3_v3(cascade_data->shadow_vec, sh_data->viewinv[2]);
+
   /* Compute near and far value based on all shadow casters cumulated AABBs. */
   float sh_near = -1.0e30f, sh_far = 1.0e30f;
   BoundBox shcaster_bounds;

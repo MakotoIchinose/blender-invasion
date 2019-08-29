@@ -152,7 +152,9 @@ float light_visibility(LightData ld,
                        vec3 W,
 #ifndef VOLUMETRICS
                        vec3 viewPosition,
-                       vec3 vN,
+                       float tracing_depth,
+                       vec3 true_normal,
+                       float rand_x,
 #endif
                        vec4 l_vector)
 {
@@ -174,52 +176,35 @@ float light_visibility(LightData ld,
 #  ifndef VOLUMETRICS
     /* Only compute if not already in shadow. */
     if (data.sh_contact_dist > 0.0) {
-      vec4 L = (ld.l_type != SUN) ? l_vector : vec4(-ld.l_forward, 1.0);
-      float trace_distance = (ld.l_type != SUN) ? min(data.sh_contact_dist, l_vector.w) :
-                                                  data.sh_contact_dist;
+      /* Contact Shadows. */
+      vec3 ray_ori, ray_dir;
+      float trace_distance;
 
-      vec3 T, B;
-      make_orthonormal_basis(L.xyz / L.w, T, B);
-
-      vec4 rand = texelfetch_noise_tex(gl_FragCoord.xy);
-      rand.zw *= fast_sqrt(rand.y) * data.sh_contact_spread;
-
-      /* We use the full l_vector.xyz so that the spread is minimize
-       * if the shading point is further away from the light source */
-      vec3 ray_dir = L.xyz + T * rand.z + B * rand.w;
-      ray_dir = transform_direction(ViewMatrix, ray_dir);
-      ray_dir = normalize(ray_dir);
-
-      vec3 ray_ori = viewPosition;
-
-      /* Fix translucency shadowed by contact shadows. */
-      vN = (gl_FrontFacing) ? vN : -vN;
-
-      if (dot(vN, ray_dir) <= 0.0) {
-        return vis;
+      if (ld.l_type == SUN) {
+        trace_distance = data.sh_contact_dist;
+        ray_dir = shadows_cascade_data[int(data.sh_data_start)].shadow_vec.xyz * trace_distance;
+      }
+      else {
+        ray_dir = shadows_cube_data[int(data.sh_data_start)].position.xyz - W;
+        float len = length(ray_dir);
+        trace_distance = min(data.sh_contact_dist, len);
+        ray_dir *= trace_distance / len;
       }
 
-      float bias = 0.5;                    /* Constant Bias */
-      bias += 1.0 - abs(dot(vN, ray_dir)); /* Angle dependent bias */
-      bias *= gl_FrontFacing ? data.sh_contact_offset : -data.sh_contact_offset;
-
-      vec3 nor_bias = vN * bias;
-      ray_ori += nor_bias;
-
-      ray_dir *= trace_distance;
-      ray_dir -= nor_bias;
+      ray_dir = transform_direction(ViewMatrix, ray_dir);
+      ray_ori = vec3(viewPosition.xy, tracing_depth) + true_normal * data.sh_contact_offset;
 
       vec3 hit_pos = raycast(
-          -1, ray_ori, ray_dir, data.sh_contact_thickness, rand.x, 0.1, 0.001, false);
+          -1, ray_ori, ray_dir, data.sh_contact_thickness, rand_x, 0.1, 0.001, false);
 
       if (hit_pos.z > 0.0) {
         hit_pos = get_view_space_from_depth(hit_pos.xy, hit_pos.z);
         float hit_dist = distance(viewPosition, hit_pos);
         float dist_ratio = hit_dist / trace_distance;
-        return vis * saturate(dist_ratio * dist_ratio * dist_ratio);
+        return vis * saturate(dist_ratio * 3.0 - 2.0);
       }
     }
-#  endif
+#  endif /* VOLUMETRICS */
   }
 #endif
 

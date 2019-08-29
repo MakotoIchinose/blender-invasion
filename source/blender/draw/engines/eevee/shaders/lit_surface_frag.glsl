@@ -222,6 +222,16 @@ void CLOSURE_NAME(vec3 N
   vec3 out_spec_clear = vec3(0.0);
 #  endif
 
+  float tracing_depth = gl_FragCoord.z;
+  /* Constant bias (due to depth buffer precision) */
+  /* Magic numbers for 24bits of precision.
+   * From http://terathon.com/gdc07_lengyel.pdf (slide 26) */
+  tracing_depth -= mix(2.4e-7, 4.8e-7, gl_FragCoord.z);
+  /* Convert to view Z. */
+  tracing_depth = get_view_z_from_depth(tracing_depth);
+
+  vec3 true_normal = normalize(cross(dFdx(viewPosition), dFdy(viewPosition)));
+
   for (int i = 0; i < MAX_LIGHT && i < laNumLight; ++i) {
     LightData ld = lights_data[i];
 
@@ -229,7 +239,8 @@ void CLOSURE_NAME(vec3 N
     l_vector.xyz = ld.l_position - worldPosition;
     l_vector.w = length(l_vector.xyz);
 
-    float l_vis = light_visibility(ld, worldPosition, viewPosition, viewNormal, l_vector);
+    float l_vis = light_visibility(
+        ld, worldPosition, viewPosition, tracing_depth, true_normal, rand.x, l_vector);
 
     if (l_vis < 1e-8) {
       continue;

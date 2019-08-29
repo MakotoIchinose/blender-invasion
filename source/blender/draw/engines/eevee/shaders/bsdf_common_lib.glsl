@@ -69,6 +69,7 @@ struct ShadowCascadeData {
   mat4 shadowmat[MAX_CASCADE_NUM];
   vec4 split_start_distances;
   vec4 split_end_distances;
+  vec4 shadow_vec;
 };
 
 /* convenience aliases */
