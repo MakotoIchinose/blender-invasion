@@ -1151,8 +1151,12 @@ static void recalcData_objects(TransInfo *t)
       ED_objects_recalculate_paths(t->context, t->scene, true);
     }
 
-    if (t->flag & T_OBJECT_DATA_IN_OBJECT_MODE) {
+    if (t->options & CTX_OBMODE_XFORM_OBDATA) {
       trans_obdata_in_obmode_update_all(t);
+    }
+
+    if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
+      trans_obchild_in_obmode_update_all(t);
     }
   }
 }
@@ -1923,8 +1927,12 @@ void postTrans(bContext *C, TransInfo *t)
     BLI_rng_free(t->rng);
   }
 
-  if (t->flag & T_OBJECT_DATA_IN_OBJECT_MODE) {
+  if (t->options & CTX_OBMODE_XFORM_OBDATA) {
     trans_obdata_in_obmode_free_all(t);
+  }
+
+  if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
+    trans_obchild_in_obmode_free_all(t);
   }
 
   freeSnapping(t);

@@ -2023,6 +2023,7 @@ extern const char *RE_engine_id_CYCLES;
 enum {
   SCE_XFORM_AXIS_ALIGN = (1 << 0),
   SCE_XFORM_DATA_ORIGIN = (1 << 1),
+  SCE_XFORM_SKIP_CHILDREN = (1 << 2),
 };
 
 /* ToolSettings.object_flag */
@@ -2059,9 +2060,6 @@ enum {
 
 /* ToolSettings.snap_mode and ToolSettings.snap_node_mode */
 #define SCE_SNAP_MODE_GRID (1 << 7)
-
-/* ToolSettings.snap_mode and ToolSettings.snap_node_mode */
-#define SCE_SNAP_MODE_GRID (1 << 8)
 
 /** #ToolSettings.snap_transform_mode_flag */
 enum {
