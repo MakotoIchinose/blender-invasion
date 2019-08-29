@@ -195,7 +195,6 @@ static FileSelect file_select_do(bContext *C, int selected_idx, bool do_diropen)
       const bool is_parent_dir = FILENAME_IS_PARENT(file->relpath);
 
       if (do_diropen == false) {
-        params->file[0] = '\0';
         retval = FILE_SELECT_DIR;
       }
       /* the path is too long and we are not going up! */
@@ -1246,7 +1245,8 @@ static int file_column_sort_ui_context_invoke(bContext *C,
   const ARegion *ar = CTX_wm_region(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
 
-  if (file_attribute_column_header_is_inside(&ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
+  if (file_attribute_column_header_is_inside(
+          &ar->v2d, sfile->layout, event->mval[0], event->mval[1])) {
     const FileAttributeColumnType column_type = file_attribute_column_type_find_isect(
         &ar->v2d, sfile->params, sfile->layout, event->mval[0]);
 
