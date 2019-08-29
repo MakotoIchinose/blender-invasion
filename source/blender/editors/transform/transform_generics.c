@@ -1154,6 +1154,10 @@ static void recalcData_objects(TransInfo *t)
     if (t->options & CTX_OBMODE_XFORM_OBDATA) {
       trans_obdata_in_obmode_update_all(t);
     }
+
+    if (t->options & CTX_OBMODE_XFORM_SKIP_CHILDREN) {
+      trans_obchild_in_obmode_update_all(t);
+    }
   }
 }
 
@@ -1921,10 +1925,6 @@ void postTrans(bContext *C, TransInfo *t)
 
   if (t->rng != NULL) {
     BLI_rng_free(t->rng);
-  }
-
-  if (t->options & CTX_OBMODE_XFORM_OBDATA) {
-    trans_obdata_in_obmode_free_all(t);
   }
 
   freeSnapping(t);
