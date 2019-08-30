@@ -23,20 +23,20 @@
 
 #include "VAMR_Types.h"
 
-class GHOST_IXrContext {
+class VAMR_IContext {
  public:
-  virtual ~GHOST_IXrContext() = default;
+  virtual ~VAMR_IContext() = default;
 
-  virtual void startSession(const GHOST_XrSessionBeginInfo *begin_info) = 0;
+  virtual void startSession(const VAMR_SessionBeginInfo *begin_info) = 0;
   virtual void endSession() = 0;
   virtual bool isSessionRunning() const = 0;
   virtual void drawSessionViews(void *draw_customdata) = 0;
 
-  virtual void dispatchErrorMessage(const class GHOST_XrException *) const = 0;
+  virtual void dispatchErrorMessage(const class VAMR_Exception *) const = 0;
 
-  virtual void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
-                                           GHOST_XrGraphicsContextUnbindFn unbind_fn) = 0;
-  virtual void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) = 0;
+  virtual void setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
+                                           VAMR_GraphicsContextUnbindFn unbind_fn) = 0;
+  virtual void setDrawViewFunc(VAMR_DrawViewFn draw_view_fn) = 0;
 };
 
 #endif  // __VAMR_ICONTEXT_H__

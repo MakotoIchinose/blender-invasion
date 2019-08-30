@@ -49,21 +49,21 @@ PFN_xrCreateDebugUtilsMessengerEXT OpenXRInstanceData::s_xrCreateDebugUtilsMesse
 PFN_xrDestroyDebugUtilsMessengerEXT OpenXRInstanceData::s_xrDestroyDebugUtilsMessengerEXT_fn =
     nullptr;
 
-GHOST_XrErrorHandlerFn GHOST_XrContext::s_error_handler = nullptr;
-void *GHOST_XrContext::s_error_handler_customdata = nullptr;
+VAMR_ErrorHandlerFn VAMR_Context::s_error_handler = nullptr;
+void *VAMR_Context::s_error_handler_customdata = nullptr;
 
 /* -------------------------------------------------------------------- */
 /** \name Create, Initialize and Destruct
  *
  * \{ */
 
-GHOST_XrContext::GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info)
+VAMR_Context::VAMR_Context(const VAMR_ContextCreateInfo *create_info)
     : m_oxr(new OpenXRInstanceData()),
-      m_debug(create_info->context_flag & GHOST_kXrContextDebug),
-      m_debug_time(create_info->context_flag & GHOST_kXrContextDebugTime)
+      m_debug(create_info->context_flag & VAMR_ContextDebug),
+      m_debug_time(create_info->context_flag & VAMR_ContextDebugTime)
 {
 }
-GHOST_XrContext::~GHOST_XrContext()
+VAMR_Context::~VAMR_Context()
 {
   /* Destroy session data first. Otherwise xrDestroyInstance will implicitly do it, before the
    * session had a chance to do so explicitly. */
@@ -79,7 +79,7 @@ GHOST_XrContext::~GHOST_XrContext()
   }
 }
 
-void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
+void VAMR_Context::initialize(const VAMR_ContextCreateInfo *create_info)
 {
   enumerateApiLayers();
   enumerateExtensions();
@@ -94,7 +94,7 @@ void GHOST_XrContext::initialize(const GHOST_XrContextCreateInfo *create_info)
   XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
 }
 
-void GHOST_XrContext::createOpenXRInstance()
+void VAMR_Context::createOpenXRInstance()
 {
   XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
 
@@ -114,9 +114,9 @@ void GHOST_XrContext::createOpenXRInstance()
            "Failed to connect to an OpenXR runtime.");
 }
 
-void GHOST_XrContext::storeInstanceProperties()
+void VAMR_Context::storeInstanceProperties()
 {
-  const std::map<std::string, GHOST_TXrOpenXRRuntimeID> runtime_map{
+  const std::map<std::string, VAMR_OpenXRRuntimeID> runtime_map{
       {"Monado(XRT) by Collabora et al", OPENXR_RUNTIME_MONADO},
       {"Oculus", OPENXR_RUNTIME_OCULUS},
       {"Windows Mixed Reality Runtime", OPENXR_RUNTIME_WMR}};
@@ -139,7 +139,7 @@ void GHOST_XrContext::storeInstanceProperties()
  *
  * \{ */
 
-void GHOST_XrContext::printInstanceInfo()
+void VAMR_Context::printInstanceInfo()
 {
   assert(m_oxr->instance != XR_NULL_HANDLE);
 
@@ -150,7 +150,7 @@ void GHOST_XrContext::printInstanceInfo()
          XR_VERSION_PATCH(m_oxr->instance_properties.runtimeVersion));
 }
 
-void GHOST_XrContext::printAvailableAPILayersAndExtensionsInfo()
+void VAMR_Context::printAvailableAPILayersAndExtensionsInfo()
 {
   puts("Available OpenXR API-layers/extensions:");
   for (XrApiLayerProperties &layer_info : m_oxr->layers) {
@@ -161,7 +161,7 @@ void GHOST_XrContext::printAvailableAPILayersAndExtensionsInfo()
   }
 }
 
-void GHOST_XrContext::printExtensionsAndAPILayersToEnable()
+void VAMR_Context::printExtensionsAndAPILayersToEnable()
 {
   for (const char *layer_name : m_enabled_layers) {
     printf("Enabling OpenXR API-Layer: %s\n", layer_name);
@@ -181,7 +181,7 @@ static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messa
   return XR_FALSE;  // OpenXR spec suggests always returning false.
 }
 
-void GHOST_XrContext::initDebugMessenger()
+void VAMR_Context::initDebugMessenger()
 {
   XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
 
@@ -228,11 +228,11 @@ void GHOST_XrContext::initDebugMessenger()
  *
  * \{ */
 
-void GHOST_XrContext::dispatchErrorMessage(const GHOST_XrException *exception) const
+void VAMR_Context::dispatchErrorMessage(const VAMR_Exception *exception) const
 {
   std::ostringstream stream_err_location;
   std::string str_err_location;
-  GHOST_XrError error;
+  VAMR_Error error;
 
   stream_err_location << exception->m_file << ":" << exception->m_line;
   str_err_location = stream_err_location.str();
@@ -248,11 +248,11 @@ void GHOST_XrContext::dispatchErrorMessage(const GHOST_XrException *exception) c
                              exception->m_res,
                              error.source_location));
 
-  /* Potentially destroys GHOST_XrContext */
+  /* Potentially destroys VAMR_Context */
   s_error_handler(&error);
 }
 
-void GHOST_XrContext::setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata)
+void VAMR_Context::setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata)
 {
   s_error_handler = handler_fn;
   s_error_handler_customdata = customdata;
@@ -268,8 +268,8 @@ void GHOST_XrContext::setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *c
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
-void GHOST_XrContext::enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
-                                            const char *layer_name)
+void VAMR_Context::enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
+                                         const char *layer_name)
 {
   uint32_t extension_count = 0;
 
@@ -292,12 +292,12 @@ void GHOST_XrContext::enumerateExtensionsEx(std::vector<XrExtensionProperties> &
                layer_name, extension_count, &extension_count, extensions.data()),
            "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
 }
-void GHOST_XrContext::enumerateExtensions()
+void VAMR_Context::enumerateExtensions()
 {
   enumerateExtensionsEx(m_oxr->extensions, nullptr);
 }
 
-void GHOST_XrContext::enumerateApiLayers()
+void VAMR_Context::enumerateApiLayers()
 {
   uint32_t layer_count = 0;
 
@@ -350,7 +350,7 @@ static bool openxr_extension_is_available(const std::vector<XrExtensionPropertie
 /**
  * Gather an array of names for the API-layers to enable.
  */
-void GHOST_XrContext::getAPILayersToEnable(std::vector<const char *> &r_ext_names)
+void VAMR_Context::getAPILayersToEnable(std::vector<const char *> &r_ext_names)
 {
   static std::vector<std::string> try_layers;
 
@@ -367,16 +367,16 @@ void GHOST_XrContext::getAPILayersToEnable(std::vector<const char *> &r_ext_name
   }
 }
 
-static const char *openxr_ext_name_from_wm_gpu_binding(GHOST_TXrGraphicsBinding binding)
+static const char *openxr_ext_name_from_wm_gpu_binding(VAMR_GraphicsBindingType binding)
 {
   switch (binding) {
-    case GHOST_kXrGraphicsOpenGL:
+    case VAMR_GraphicsBindingTypeOpenGL:
       return XR_KHR_OPENGL_ENABLE_EXTENSION_NAME;
 #ifdef WIN32
-    case GHOST_kXrGraphicsD3D11:
+    case VAMR_GraphicsBindingTypeD3D11:
       return XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
 #endif
-    case GHOST_kXrGraphicsUnknown:
+    case VAMR_GraphicsBindingTypeUnknown:
       assert(false);
       return nullptr;
   }
@@ -387,9 +387,9 @@ static const char *openxr_ext_name_from_wm_gpu_binding(GHOST_TXrGraphicsBinding 
 /**
  * Gather an array of names for the extensions to enable.
  */
-void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_names)
+void VAMR_Context::getExtensionsToEnable(std::vector<const char *> &r_ext_names)
 {
-  assert(m_gpu_binding_type != GHOST_kXrGraphicsUnknown);
+  assert(m_gpu_binding_type != VAMR_GraphicsBindingTypeUnknown);
 
   const char *gpu_binding = openxr_ext_name_from_wm_gpu_binding(m_gpu_binding_type);
   static std::vector<std::string> try_ext;
@@ -417,16 +417,16 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
 
 /**
  * Decide which graphics binding extension to use based on
- * #GHOST_XrContextCreateInfo.gpu_binding_candidates and available extensions.
+ * #VAMR_ContextCreateInfo.gpu_binding_candidates and available extensions.
  */
-GHOST_TXrGraphicsBinding GHOST_XrContext::determineGraphicsBindingTypeToEnable(
-    const GHOST_XrContextCreateInfo *create_info)
+VAMR_GraphicsBindingType VAMR_Context::determineGraphicsBindingTypeToEnable(
+    const VAMR_ContextCreateInfo *create_info)
 {
   assert(create_info->gpu_binding_candidates != NULL);
   assert(create_info->gpu_binding_candidates_count > 0);
 
   for (uint32_t i = 0; i < create_info->gpu_binding_candidates_count; i++) {
-    assert(create_info->gpu_binding_candidates[i] != GHOST_kXrGraphicsUnknown);
+    assert(create_info->gpu_binding_candidates[i] != VAMR_GraphicsBindingTypeUnknown);
     const char *ext_name = openxr_ext_name_from_wm_gpu_binding(
         create_info->gpu_binding_candidates[i]);
     if (openxr_extension_is_available(m_oxr->extensions, ext_name)) {
@@ -434,7 +434,7 @@ GHOST_TXrGraphicsBinding GHOST_XrContext::determineGraphicsBindingTypeToEnable(
     }
   }
 
-  return GHOST_kXrGraphicsUnknown;
+  return VAMR_GraphicsBindingTypeUnknown;
 }
 
 /** \} */ /* OpenXR API-Layers and Extensions */
@@ -442,28 +442,28 @@ GHOST_TXrGraphicsBinding GHOST_XrContext::determineGraphicsBindingTypeToEnable(
 /* -------------------------------------------------------------------- */
 /** \name Session management
  *
- * Manage session lifetime and delegate public calls to #GHOST_XrSession.
+ * Manage session lifetime and delegate public calls to #VAMR_Session.
  * \{ */
 
-void GHOST_XrContext::startSession(const GHOST_XrSessionBeginInfo *begin_info)
+void VAMR_Context::startSession(const VAMR_SessionBeginInfo *begin_info)
 {
   if (m_session == nullptr) {
-    m_session = std::unique_ptr<GHOST_XrSession>(new GHOST_XrSession(this));
+    m_session = std::unique_ptr<VAMR_Session>(new VAMR_Session(this));
   }
 
   m_session->start(begin_info);
 }
-void GHOST_XrContext::endSession()
+void VAMR_Context::endSession()
 {
   m_session->requestEnd();
 }
 
-bool GHOST_XrContext::isSessionRunning() const
+bool VAMR_Context::isSessionRunning() const
 {
   return m_session && m_session->isRunning();
 }
 
-void GHOST_XrContext::drawSessionViews(void *draw_customdata)
+void VAMR_Context::drawSessionViews(void *draw_customdata)
 {
   m_session->draw(draw_customdata);
 }
@@ -471,10 +471,9 @@ void GHOST_XrContext::drawSessionViews(void *draw_customdata)
 /**
  * Delegates event to session, allowing context to destruct the session if needed.
  */
-void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle)
+void VAMR_Context::handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle)
 {
-  if (m_session &&
-      m_session->handleStateChangeEvent(lifecycle) == GHOST_XrSession::SESSION_DESTROY) {
+  if (m_session && m_session->handleStateChangeEvent(lifecycle) == VAMR_Session::SESSION_DESTROY) {
     m_session = nullptr;
   }
 }
@@ -484,7 +483,7 @@ void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChan
 /* -------------------------------------------------------------------- */
 /** \name Public Accessors and Mutators
  *
- * Public as in, exposed in the Ghost API.
+ * Public as in, exposed in the VAMR API.
  * \{ */
 
 /**
@@ -495,8 +494,8 @@ void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChan
  * \param bind_fn Function to retrieve (possibly create) a graphics context.
  * \param unbind_fn Function to release (possibly free) a graphics context.
  */
-void GHOST_XrContext::setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
-                                                  GHOST_XrGraphicsContextUnbindFn unbind_fn)
+void VAMR_Context::setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
+                                               VAMR_GraphicsContextUnbindFn unbind_fn)
 {
   if (m_session) {
     m_session->unbindGraphicsContext();
@@ -505,7 +504,7 @@ void GHOST_XrContext::setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn 
   m_custom_funcs.gpu_ctx_unbind_fn = unbind_fn;
 }
 
-void GHOST_XrContext::setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn)
+void VAMR_Context::setDrawViewFunc(VAMR_DrawViewFn draw_view_fn)
 {
   m_custom_funcs.draw_view_fn = draw_view_fn;
 }
@@ -513,38 +512,38 @@ void GHOST_XrContext::setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn)
 /** \} */ /* Public Accessors and Mutators */
 
 /* -------------------------------------------------------------------- */
-/** \name Ghost Internal Accessors and Mutators
+/** \name VAMR Internal Accessors and Mutators
  *
  * \{ */
 
-GHOST_TXrOpenXRRuntimeID GHOST_XrContext::getOpenXRRuntimeID() const
+VAMR_OpenXRRuntimeID VAMR_Context::getOpenXRRuntimeID() const
 {
   return m_runtime_id;
 }
 
-const GHOST_XrCustomFuncs *GHOST_XrContext::getCustomFuncs() const
+const VAMR_CustomFuncs *VAMR_Context::getCustomFuncs() const
 {
   return &m_custom_funcs;
 }
 
-GHOST_TXrGraphicsBinding GHOST_XrContext::getGraphicsBindingType() const
+VAMR_GraphicsBindingType VAMR_Context::getGraphicsBindingType() const
 {
   return m_gpu_binding_type;
 }
 
-XrInstance GHOST_XrContext::getInstance() const
+XrInstance VAMR_Context::getInstance() const
 {
   return m_oxr->instance;
 }
 
-bool GHOST_XrContext::isDebugMode() const
+bool VAMR_Context::isDebugMode() const
 {
   return m_debug;
 }
 
-bool GHOST_XrContext::isDebugTimeMode() const
+bool VAMR_Context::isDebugTimeMode() const
 {
   return m_debug_time;
 }
 
-/** \} */ /* Ghost Internal Accessors and Mutators */
+/** \} */ /* VAMR Internal Accessors and Mutators */

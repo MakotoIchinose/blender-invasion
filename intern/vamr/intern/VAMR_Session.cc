@@ -48,7 +48,7 @@ struct OpenXRSessionData {
   int32_t swapchain_image_width, swapchain_image_height;
 };
 
-struct GHOST_XrDrawInfo {
+struct VAMR_DrawInfo {
   XrFrameState frame_state;
 
   /** Time at frame start to benchmark frame render durations. */
@@ -62,12 +62,12 @@ struct GHOST_XrDrawInfo {
  *
  * \{ */
 
-GHOST_XrSession::GHOST_XrSession(GHOST_XrContext *xr_context)
+VAMR_Session::VAMR_Session(VAMR_Context *xr_context)
     : m_context(xr_context), m_oxr(new OpenXRSessionData())
 {
 }
 
-GHOST_XrSession::~GHOST_XrSession()
+VAMR_Session::~VAMR_Session()
 {
   unbindGraphicsContext();
 
@@ -90,7 +90,7 @@ GHOST_XrSession::~GHOST_XrSession()
  * A system in OpenXR the combination of some sort of HMD plus controllers and whatever other
  * devices are managed through OpenXR. So this attempts to init the HMD and the other devices.
  */
-void GHOST_XrSession::initSystem()
+void VAMR_Session::initSystem()
 {
   assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->system_id == XR_NULL_SYSTEM_ID);
@@ -110,7 +110,7 @@ void GHOST_XrSession::initSystem()
  *
  * \{ */
 
-static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *base_pose)
+static void create_reference_space(OpenXRSessionData *oxr, const VAMR_Pose *base_pose)
 {
   XrReferenceSpaceCreateInfo create_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
   create_info.poseInReferenceSpace.orientation.w = 1.0f;
@@ -141,15 +141,15 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
            "Failed to create reference space.");
 }
 
-void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
+void VAMR_Session::start(const VAMR_SessionBeginInfo *begin_info)
 {
   assert(m_context->getInstance() != XR_NULL_HANDLE);
   assert(m_oxr->session == XR_NULL_HANDLE);
   if (m_context->getCustomFuncs()->gpu_ctx_bind_fn == nullptr) {
     THROW_XR(
         "Invalid API usage: No way to bind graphics context to the XR session. Call "
-        "GHOST_XrGraphicsContextBindFuncs() with valid parameters before starting the "
-        "session (through GHOST_XrSessionStart()).");
+        "VAMR_GraphicsContextBindFuncs() with valid parameters before starting the "
+        "session (through VAMR_SessionStart()).");
   }
 
   initSystem();
@@ -158,12 +158,12 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   if (m_gpu_ctx == nullptr) {
     THROW_XR(
         "Invalid API usage: No graphics context returned through the callback set with "
-        "GHOST_XrGraphicsContextBindFuncs(). This is required for session starting (through "
-        "GHOST_XrSessionStart()).");
+        "VAMR_GraphicsContextBindFuncs(). This is required for session starting (through "
+        "VAMR_SessionStart()).");
   }
 
   std::string requirement_str;
-  m_gpu_binding = GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType());
+  m_gpu_binding = VAMR_GraphicsBindingCreateFromType(m_context->getGraphicsBindingType());
   if (!m_gpu_binding->checkVersionRequirements(
           m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
     std::ostringstream strstream;
@@ -188,12 +188,12 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   create_reference_space(m_oxr.get(), &begin_info->base_pose);
 }
 
-void GHOST_XrSession::requestEnd()
+void VAMR_Session::requestEnd()
 {
   xrRequestExitSession(m_oxr->session);
 }
 
-void GHOST_XrSession::end()
+void VAMR_Session::end()
 {
   assert(m_oxr->session != XR_NULL_HANDLE);
 
@@ -202,7 +202,7 @@ void GHOST_XrSession::end()
   m_draw_info = nullptr;
 }
 
-GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
+VAMR_Session::eLifeExpectancy VAMR_Session::handleStateChangeEvent(
     const XrEventDataSessionStateChanged *lifecycle)
 {
   m_oxr->session_state = lifecycle->state;
@@ -241,7 +241,7 @@ GHOST_XrSession::eLifeExpectancy GHOST_XrSession::handleStateChangeEvent(
  * \{ */
 
 static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
-    XrSwapchain swapchain, GHOST_IXrGraphicsBinding *gpu_binding)
+    XrSwapchain swapchain, VAMR_IGraphicsBinding *gpu_binding)
 {
   std::vector<XrSwapchainImageBaseHeader *> images;
   uint32_t image_count;
@@ -256,7 +256,7 @@ static std::vector<XrSwapchainImageBaseHeader *> swapchain_images_create(
 }
 
 static unique_oxr_ptr<XrSwapchain> swapchain_create(const XrSession session,
-                                                    GHOST_IXrGraphicsBinding *gpu_binding,
+                                                    VAMR_IGraphicsBinding *gpu_binding,
                                                     const XrViewConfigurationView *xr_view)
 {
   XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
@@ -291,7 +291,7 @@ static unique_oxr_ptr<XrSwapchain> swapchain_create(const XrSession session,
   return swapchain;
 }
 
-void GHOST_XrSession::prepareDrawing()
+void VAMR_Session::prepareDrawing()
 {
   std::vector<XrViewConfigurationView> view_configs;
   uint32_t view_count;
@@ -324,10 +324,10 @@ void GHOST_XrSession::prepareDrawing()
 
   m_oxr->views.resize(view_count, {XR_TYPE_VIEW});
 
-  m_draw_info = std::unique_ptr<GHOST_XrDrawInfo>(new GHOST_XrDrawInfo());
+  m_draw_info = std::unique_ptr<VAMR_DrawInfo>(new VAMR_DrawInfo());
 }
 
-void GHOST_XrSession::beginFrameDrawing()
+void VAMR_Session::beginFrameDrawing()
 {
   XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
   XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
@@ -347,7 +347,7 @@ void GHOST_XrSession::beginFrameDrawing()
   }
 }
 
-static void print_debug_timings(GHOST_XrDrawInfo *draw_info)
+static void print_debug_timings(VAMR_DrawInfo *draw_info)
 {
   /** Render time of last 8 frames (in ms) to calculate an average. */
   std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() -
@@ -371,7 +371,7 @@ static void print_debug_timings(GHOST_XrDrawInfo *draw_info)
          1000.0 / (avg_ms_tot / draw_info->last_frame_times.size()));
 }
 
-void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers)
+void VAMR_Session::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers)
 {
   XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
 
@@ -387,7 +387,7 @@ void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *
   }
 }
 
-void GHOST_XrSession::draw(void *draw_customdata)
+void VAMR_Session::draw(void *draw_customdata)
 {
   std::vector<XrCompositionLayerProjectionView>
       projection_layer_views;  // Keep alive until xrEndFrame() call!
@@ -404,7 +404,7 @@ void GHOST_XrSession::draw(void *draw_customdata)
   endFrameDrawing(&layers);
 }
 
-static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
+static void vamr_draw_view_info_from_view(const XrView &view, VAMR_DrawViewInfo &r_info)
 {
 #if 0
   /* Set and convert to Blender coodinate space */
@@ -431,23 +431,23 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
   r_info.fov.angle_down = view.fov.angleDown;
 }
 
-static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
+static bool vamr_draw_view_expects_srgb_buffer(const VAMR_Context *context)
 {
   /* WMR seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
    * compensate. */
   return context->getOpenXRRuntimeID() == OPENXR_RUNTIME_WMR;
 }
 
-void GHOST_XrSession::drawView(XrSwapchain swapchain,
-                               XrCompositionLayerProjectionView &proj_layer_view,
-                               XrView &view,
-                               void *draw_customdata)
+void VAMR_Session::drawView(XrSwapchain swapchain,
+                            XrCompositionLayerProjectionView &proj_layer_view,
+                            XrView &view,
+                            void *draw_customdata)
 {
   XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
   XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
   XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   XrSwapchainImageBaseHeader *swapchain_image;
-  GHOST_XrDrawViewInfo draw_view_info{};
+  VAMR_DrawViewInfo draw_view_info{};
   uint32_t swapchain_idx;
 
   CHECK_XR(xrAcquireSwapchainImage(swapchain, &acquire_info, &swapchain_idx),
@@ -466,12 +466,12 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
 
   swapchain_image = m_oxr->swapchain_images[swapchain][swapchain_idx];
 
-  draw_view_info.expects_srgb_buffer = ghost_xr_draw_view_expects_srgb_buffer(m_context);
+  draw_view_info.expects_srgb_buffer = vamr_draw_view_expects_srgb_buffer(m_context);
   draw_view_info.ofsx = proj_layer_view.subImage.imageRect.offset.x;
   draw_view_info.ofsy = proj_layer_view.subImage.imageRect.offset.y;
   draw_view_info.width = proj_layer_view.subImage.imageRect.extent.width;
   draw_view_info.height = proj_layer_view.subImage.imageRect.extent.height;
-  ghost_xr_draw_view_info_from_view(view, draw_view_info);
+  vamr_draw_view_info_from_view(view, draw_view_info);
 
   m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
   m_gpu_binding->submitToSwapchain(swapchain_image, &draw_view_info);
@@ -480,7 +480,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
            "Failed to release swapchain image used to submit VR session frame.");
 }
 
-XrCompositionLayerProjection GHOST_XrSession::drawLayer(
+XrCompositionLayerProjection VAMR_Session::drawLayer(
     std::vector<XrCompositionLayerProjectionView> &proj_layer_views, void *draw_customdata)
 {
   XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
@@ -524,7 +524,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
  *
  * \{ */
 
-bool GHOST_XrSession::isRunning() const
+bool VAMR_Session::isRunning() const
 {
   if (m_oxr->session == XR_NULL_HANDLE) {
     return false;
@@ -552,16 +552,16 @@ bool GHOST_XrSession::isRunning() const
  *
  * \{ */
 
-void GHOST_XrSession::bindGraphicsContext()
+void VAMR_Session::bindGraphicsContext()
 {
-  const GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  const VAMR_CustomFuncs *custom_funcs = m_context->getCustomFuncs();
   assert(custom_funcs->gpu_ctx_bind_fn);
   m_gpu_ctx = static_cast<GHOST_Context *>(
       custom_funcs->gpu_ctx_bind_fn(m_context->getGraphicsBindingType()));
 }
-void GHOST_XrSession::unbindGraphicsContext()
+void VAMR_Session::unbindGraphicsContext()
 {
-  const GHOST_XrCustomFuncs *custom_funcs = m_context->getCustomFuncs();
+  const VAMR_CustomFuncs *custom_funcs = m_context->getCustomFuncs();
   if (custom_funcs->gpu_ctx_unbind_fn) {
     custom_funcs->gpu_ctx_unbind_fn(m_context->getGraphicsBindingType(), m_gpu_ctx);
   }

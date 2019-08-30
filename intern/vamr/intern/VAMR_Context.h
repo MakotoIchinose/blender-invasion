@@ -25,20 +25,20 @@
 #include <vector>
 #include "VAMR_IContext.h"
 
-struct GHOST_XrCustomFuncs {
+struct VAMR_CustomFuncs {
   /** Function to retrieve (possibly create) a graphics context */
-  GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn{nullptr};
+  VAMR_GraphicsContextBindFn gpu_ctx_bind_fn{nullptr};
   /** Function to release (possibly free) a graphics context */
-  GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn{nullptr};
+  VAMR_GraphicsContextUnbindFn gpu_ctx_unbind_fn{nullptr};
 
   /** Custom per-view draw function for Blender side drawing. */
-  GHOST_XrDrawViewFn draw_view_fn{nullptr};
+  VAMR_DrawViewFn draw_view_fn{nullptr};
 };
 
 /**
  * In some occasions, runtime specific handling is needed, e.g. to work around runtime bugs.
  */
-enum GHOST_TXrOpenXRRuntimeID {
+enum VAMR_OpenXRRuntimeID {
   OPENXR_RUNTIME_MONADO,
   OPENXR_RUNTIME_OCULUS,
   OPENXR_RUNTIME_WMR, /* Windows Mixed Reality */
@@ -47,35 +47,35 @@ enum GHOST_TXrOpenXRRuntimeID {
 };
 
 /**
- * \brief Main GHOST container to manage OpenXR through.
+ * \brief Main VAMR container to manage OpenXR through.
  *
- * Creating a context using #GHOST_XrContextCreate involves dynamically connecting to the OpenXR
+ * Creating a context using #VAMR_ContextCreate involves dynamically connecting to the OpenXR
  * runtime, likely reading the OS OpenXR configuration (i.e. active_runtime.json). So this is
  * something that should better be done using lazy-initialization.
  */
-class GHOST_XrContext : public GHOST_IXrContext {
+class VAMR_Context : public VAMR_IContext {
  public:
-  GHOST_XrContext(const GHOST_XrContextCreateInfo *create_info);
-  ~GHOST_XrContext();
-  void initialize(const GHOST_XrContextCreateInfo *create_info);
+  VAMR_Context(const VAMR_ContextCreateInfo *create_info);
+  ~VAMR_Context();
+  void initialize(const VAMR_ContextCreateInfo *create_info);
 
-  void startSession(const GHOST_XrSessionBeginInfo *begin_info) override;
+  void startSession(const VAMR_SessionBeginInfo *begin_info) override;
   void endSession() override;
   bool isSessionRunning() const override;
   void drawSessionViews(void *draw_customdata) override;
 
-  static void setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata);
-  void dispatchErrorMessage(const class GHOST_XrException *exception) const override;
+  static void setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata);
+  void dispatchErrorMessage(const class VAMR_Exception *exception) const override;
 
-  void setGraphicsContextBindFuncs(GHOST_XrGraphicsContextBindFn bind_fn,
-                                   GHOST_XrGraphicsContextUnbindFn unbind_fn) override;
-  void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) override;
+  void setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
+                                   VAMR_GraphicsContextUnbindFn unbind_fn) override;
+  void setDrawViewFunc(VAMR_DrawViewFn draw_view_fn) override;
 
   void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
-  GHOST_TXrOpenXRRuntimeID getOpenXRRuntimeID() const;
-  const GHOST_XrCustomFuncs *getCustomFuncs() const;
-  GHOST_TXrGraphicsBinding getGraphicsBindingType() const;
+  VAMR_OpenXRRuntimeID getOpenXRRuntimeID() const;
+  const VAMR_CustomFuncs *getCustomFuncs() const;
+  VAMR_GraphicsBindingType getGraphicsBindingType() const;
   XrInstance getInstance() const;
   bool isDebugMode() const;
   bool isDebugTimeMode() const;
@@ -83,22 +83,22 @@ class GHOST_XrContext : public GHOST_IXrContext {
  private:
   std::unique_ptr<struct OpenXRInstanceData> m_oxr;
 
-  GHOST_TXrOpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
+  VAMR_OpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
 
-  /* The active GHOST XR Session. Null while no session runs. */
-  std::unique_ptr<class GHOST_XrSession> m_session;
+  /* The active VAMR XR Session. Null while no session runs. */
+  std::unique_ptr<class VAMR_Session> m_session;
 
   /** Active graphics binding type. */
-  GHOST_TXrGraphicsBinding m_gpu_binding_type{GHOST_kXrGraphicsUnknown};
+  VAMR_GraphicsBindingType m_gpu_binding_type{VAMR_GraphicsBindingTypeUnknown};
 
   /** Names of enabled extensions */
   std::vector<const char *> m_enabled_extensions;
   /** Names of enabled API-layers */
   std::vector<const char *> m_enabled_layers;
 
-  static GHOST_XrErrorHandlerFn s_error_handler;
+  static VAMR_ErrorHandlerFn s_error_handler;
   static void *s_error_handler_customdata;
-  GHOST_XrCustomFuncs m_custom_funcs;
+  VAMR_CustomFuncs m_custom_funcs;
 
   /** Enable debug message prints and OpenXR API validation layers */
   bool m_debug{false};
@@ -118,8 +118,8 @@ class GHOST_XrContext : public GHOST_IXrContext {
                              const char *layer_name);
   void getAPILayersToEnable(std::vector<const char *> &r_ext_names);
   void getExtensionsToEnable(std::vector<const char *> &r_ext_names);
-  GHOST_TXrGraphicsBinding determineGraphicsBindingTypeToEnable(
-      const GHOST_XrContextCreateInfo *create_info);
+  VAMR_GraphicsBindingType determineGraphicsBindingTypeToEnable(
+      const VAMR_ContextCreateInfo *create_info);
 };
 
 #endif  // __VAMR_CONTEXT_H__

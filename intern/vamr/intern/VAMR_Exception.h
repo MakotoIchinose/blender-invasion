@@ -23,11 +23,11 @@
 
 #include <exception>
 
-class GHOST_XrException : public std::exception {
-  friend class GHOST_XrContext;
+class VAMR_Exception : public std::exception {
+  friend class VAMR_Context;
 
  public:
-  GHOST_XrException(const char *msg, const char *file, int line, int res = 0)
+  VAMR_Exception(const char *msg, const char *file, int line, int res = 0)
       : std::exception(), m_msg(msg), m_file(file), m_line(line), m_res(res)
   {
   }

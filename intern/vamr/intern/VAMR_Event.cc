@@ -24,7 +24,7 @@
 #include "VAMR_intern.h"
 #include "VAMR_Context.h"
 
-static bool GHOST_XrEventPollNext(XrInstance instance, XrEventDataBuffer &r_event_data)
+static bool VAMR_EventPollNext(XrInstance instance, XrEventDataBuffer &r_event_data)
 {
   /* (Re-)initialize as required by specification */
   r_event_data.type = XR_TYPE_EVENT_DATA_BUFFER;
@@ -33,31 +33,31 @@ static bool GHOST_XrEventPollNext(XrInstance instance, XrEventDataBuffer &r_even
   return (xrPollEvent(instance, &r_event_data) == XR_SUCCESS);
 }
 
-GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_contexthandle)
+VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_contexthandle)
 {
-  GHOST_XrContext *xr_context = (GHOST_XrContext *)xr_contexthandle;
+  VAMR_Context *xr_context = (VAMR_Context *)xr_contexthandle;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
   if (xr_context == NULL) {
-    return GHOST_kFailure;
+    return VAMR_Failure;
   }
 
-  while (GHOST_XrEventPollNext(xr_context->getInstance(), event_buffer)) {
+  while (VAMR_EventPollNext(xr_context->getInstance(), event_buffer)) {
     XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
 
     switch (event->type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
         xr_context->handleSessionStateChange((XrEventDataSessionStateChanged *)event);
-        return GHOST_kSuccess;
+        return VAMR_Success;
 
       case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
-        GHOST_XrContextDestroy(xr_contexthandle);
-        return GHOST_kSuccess;
+        VAMR_ContextDestroy(xr_contexthandle);
+        return VAMR_Success;
       default:
         XR_DEBUG_PRINTF(xr_context, "Unhandled event: %i\n", event->type);
-        return GHOST_kFailure;
+        return VAMR_Failure;
     }
   }
 
-  return GHOST_kFailure;
+  return VAMR_Failure;
 }

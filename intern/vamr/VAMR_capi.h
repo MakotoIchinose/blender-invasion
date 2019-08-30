@@ -11,28 +11,27 @@ extern "C" {
 
 /**
  * Set a custom callback to be executed whenever an error occurs. Should be set before calling
- * #GHOST_XrContextCreate().
+ * #VAMR_ContextCreate().
  */
-void GHOST_XrErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata);
+void VAMR_ErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata);
 
-GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info);
-void GHOST_XrContextDestroy(GHOST_XrContextHandle xr_context);
+VAMR_ContextHandle VAMR_ContextCreate(const VAMR_ContextCreateInfo *create_info);
+void VAMR_ContextDestroy(VAMR_ContextHandle xr_context);
 
-void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContextHandle xr_context,
-                                      GHOST_XrGraphicsContextBindFn bind_fn,
-                                      GHOST_XrGraphicsContextUnbindFn unbind_fn);
+void VAMR_GraphicsContextBindFuncs(VAMR_ContextHandle xr_context,
+                                   VAMR_GraphicsContextBindFn bind_fn,
+                                   VAMR_GraphicsContextUnbindFn unbind_fn);
 
-void GHOST_XrDrawViewFunc(GHOST_XrContextHandle xr_context, GHOST_XrDrawViewFn draw_view_fn);
+void VAMR_DrawViewFunc(VAMR_ContextHandle xr_context, VAMR_DrawViewFn draw_view_fn);
 
 /* sessions */
-int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
-void GHOST_XrSessionStart(GHOST_XrContextHandle xr_context,
-                          const GHOST_XrSessionBeginInfo *begin_info);
-void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_context);
-void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_context, void *customdata);
+int VAMR_SessionIsRunning(const VAMR_ContextHandle xr_context);
+void VAMR_SessionStart(VAMR_ContextHandle xr_context, const VAMR_SessionBeginInfo *begin_info);
+void VAMR_SessionEnd(VAMR_ContextHandle xr_context);
+void VAMR_SessionDrawViews(VAMR_ContextHandle xr_context, void *customdata);
 
 /* events */
-GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_context);
+VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_context);
 
 #ifdef __cplusplus
 }

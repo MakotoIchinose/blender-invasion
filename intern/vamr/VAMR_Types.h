@@ -21,9 +21,9 @@
 #ifndef __VAMR_TYPES_H__
 #define __VAMR_TYPES_H__
 
-typedef struct GHOST_XrContext *GHOST_XrContextHandle;
+typedef struct VAMR_Context *VAMR_ContextHandle;
 
-typedef enum { GHOST_kFailure = 0, GHOST_kSuccess } GHOST_TSuccess;
+typedef enum { VAMR_Failure = 0, VAMR_Success } VAMR_TSuccess;
 
 /**
  * The XR view (i.e. the OpenXR runtime) may require a different graphics library than OpenGL. An
@@ -33,45 +33,45 @@ typedef enum { GHOST_kFailure = 0, GHOST_kSuccess } GHOST_TSuccess;
  * This enum defines the possible graphics bindings to attempt to enable.
  */
 typedef enum {
-  GHOST_kXrGraphicsUnknown = 0,
-  GHOST_kXrGraphicsOpenGL,
+  VAMR_GraphicsBindingTypeUnknown = 0,
+  VAMR_GraphicsBindingTypeOpenGL,
 #ifdef WIN32
-  GHOST_kXrGraphicsD3D11,
+  VAMR_GraphicsBindingTypeD3D11,
 #endif
   /* For later */
-  //  GHOST_kXrGraphicsVulkan,
-} GHOST_TXrGraphicsBinding;
-/* An array of GHOST_TXrGraphicsBinding items defining the candidate bindings to use. The first
+  //  VAMR_GraphicsBindingVulkan,
+} VAMR_GraphicsBindingType;
+/* An array of VAMR_GraphicsBindingType items defining the candidate bindings to use. The first
  * available candidate will be chosen, so order defines priority. */
-typedef const GHOST_TXrGraphicsBinding *GHOST_XrGraphicsBindingCandidates;
+typedef const VAMR_GraphicsBindingType *VAMR_GraphicsBindingCandidates;
 
 typedef struct {
   float position[3];
   /* Blender convention (w, x, y, z) */
   float orientation_quat[4];
-} GHOST_XrPose;
+} VAMR_Pose;
 
 enum {
-  GHOST_kXrContextDebug = (1 << 0),
-  GHOST_kXrContextDebugTime = (1 << 1),
+  VAMR_ContextDebug = (1 << 0),
+  VAMR_ContextDebugTime = (1 << 1),
 };
 
 typedef struct {
-  const GHOST_XrGraphicsBindingCandidates gpu_binding_candidates;
+  const VAMR_GraphicsBindingCandidates gpu_binding_candidates;
   unsigned int gpu_binding_candidates_count;
 
   unsigned int context_flag;
-} GHOST_XrContextCreateInfo;
+} VAMR_ContextCreateInfo;
 
 typedef struct {
-  GHOST_XrPose base_pose;
-} GHOST_XrSessionBeginInfo;
+  VAMR_Pose base_pose;
+} VAMR_SessionBeginInfo;
 
 typedef struct {
   int ofsx, ofsy;
   int width, height;
 
-  GHOST_XrPose pose;
+  VAMR_Pose pose;
 
   struct {
     float angle_left, angle_right;
@@ -80,7 +80,7 @@ typedef struct {
 
   /** Set if the buffer should be submitted with a srgb transfer applied. */
   char expects_srgb_buffer;
-} GHOST_XrDrawViewInfo;
+} VAMR_DrawViewInfo;
 
 typedef struct {
   const char *user_message;
@@ -89,13 +89,13 @@ typedef struct {
   const char *source_location;
 
   void *customdata;
-} GHOST_XrError;
+} VAMR_Error;
 
-typedef void (*GHOST_XrErrorHandlerFn)(const GHOST_XrError *);
+typedef void (*VAMR_ErrorHandlerFn)(const VAMR_Error *);
 
-typedef void *(*GHOST_XrGraphicsContextBindFn)(GHOST_TXrGraphicsBinding graphics_lib);
-typedef void (*GHOST_XrGraphicsContextUnbindFn)(GHOST_TXrGraphicsBinding graphics_lib,
-                                                void *graphics_context);
-typedef void (*GHOST_XrDrawViewFn)(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
+typedef void *(*VAMR_GraphicsContextBindFn)(VAMR_GraphicsBindingType graphics_lib);
+typedef void (*VAMR_GraphicsContextUnbindFn)(VAMR_GraphicsBindingType graphics_lib,
+                                             void *graphics_context);
+typedef void (*VAMR_DrawViewFn)(const VAMR_DrawViewInfo *draw_view, void *customdata);
 
 #endif  // __VAMR_TYPES_H__

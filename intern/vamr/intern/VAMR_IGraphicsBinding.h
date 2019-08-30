@@ -27,9 +27,9 @@
 
 #include "VAMR_openxr_includes.h"
 
-class GHOST_IXrGraphicsBinding {
-  friend std::unique_ptr<GHOST_IXrGraphicsBinding> GHOST_XrGraphicsBindingCreateFromType(
-      GHOST_TXrGraphicsBinding type);
+class VAMR_IGraphicsBinding {
+  friend std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
+      VAMR_GraphicsBindingType type);
 
  public:
   union {
@@ -58,14 +58,14 @@ class GHOST_IXrGraphicsBinding {
   virtual std::vector<XrSwapchainImageBaseHeader *> createSwapchainImages(
       uint32_t image_count) = 0;
   virtual void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
-                                 const GHOST_XrDrawViewInfo *draw_info) = 0;
+                                 const VAMR_DrawViewInfo *draw_info) = 0;
 
  protected:
-  /* Use GHOST_XrGraphicsBindingCreateFromType */
-  GHOST_IXrGraphicsBinding() = default;
+  /* Use VAMR_GraphicsBindingCreateFromType */
+  VAMR_IGraphicsBinding() = default;
 };
 
-std::unique_ptr<GHOST_IXrGraphicsBinding> GHOST_XrGraphicsBindingCreateFromType(
-    GHOST_TXrGraphicsBinding type);
+std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
+    VAMR_GraphicsBindingType type);
 
 #endif /* __VAMR_IGRAPHICSBINDING_H__ */

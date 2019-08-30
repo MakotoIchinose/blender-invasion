@@ -55,9 +55,9 @@ static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_bin
   return true;
 }
 
-class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
+class VAMR_GraphicsBindingOpenGL : public VAMR_IGraphicsBinding {
  public:
-  ~GHOST_XrGraphicsBindingOpenGL()
+  ~VAMR_GraphicsBindingOpenGL()
   {
     if (m_fbo != 0) {
       glDeleteFramebuffers(1, &m_fbo);
@@ -151,7 +151,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
   }
 
   void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
-                         const GHOST_XrDrawViewInfo *draw_info) override
+                         const VAMR_DrawViewInfo *draw_info) override
   {
     XrSwapchainImageOpenGLKHR *ogl_swapchain_image = reinterpret_cast<XrSwapchainImageOpenGLKHR *>(
         swapchain_image);
@@ -181,9 +181,9 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 };
 
 #ifdef WIN32
-class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
+class VAMR_GraphicsBindingD3D : public VAMR_IGraphicsBinding {
  public:
-  ~GHOST_XrGraphicsBindingD3D()
+  ~VAMR_GraphicsBindingD3D()
   {
     if (m_shared_resource) {
       m_ghost_ctx->disposeSharedOpenGLResource(m_shared_resource);
@@ -247,7 +247,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
   }
 
   void submitToSwapchain(XrSwapchainImageBaseHeader *swapchain_image,
-                         const GHOST_XrDrawViewInfo *draw_info) override
+                         const VAMR_DrawViewInfo *draw_info) override
   {
     XrSwapchainImageD3D11KHR *d3d_swapchain_image = reinterpret_cast<XrSwapchainImageD3D11KHR *>(
         swapchain_image);
@@ -289,15 +289,15 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
 };
 #endif  // WIN32
 
-std::unique_ptr<GHOST_IXrGraphicsBinding> GHOST_XrGraphicsBindingCreateFromType(
-    GHOST_TXrGraphicsBinding type)
+std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
+    VAMR_GraphicsBindingType type)
 {
   switch (type) {
-    case GHOST_kXrGraphicsOpenGL:
-      return std::unique_ptr<GHOST_XrGraphicsBindingOpenGL>(new GHOST_XrGraphicsBindingOpenGL());
+    case VAMR_GraphicsBindingTypeOpenGL:
+      return std::unique_ptr<VAMR_GraphicsBindingOpenGL>(new VAMR_GraphicsBindingOpenGL());
 #ifdef WIN32
-    case GHOST_kXrGraphicsD3D11:
-      return std::unique_ptr<GHOST_XrGraphicsBindingD3D>(new GHOST_XrGraphicsBindingD3D());
+    case VAMR_GraphicsBindingTypeD3D11:
+      return std::unique_ptr<VAMR_GraphicsBindingD3D>(new VAMR_GraphicsBindingD3D());
 #endif
     default:
       return nullptr;

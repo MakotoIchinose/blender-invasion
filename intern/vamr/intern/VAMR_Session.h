@@ -24,17 +24,17 @@
 #include <map>
 #include <memory>
 
-class GHOST_XrSession {
+class VAMR_Session {
  public:
   enum eLifeExpectancy {
     SESSION_KEEP_ALIVE,
     SESSION_DESTROY,
   };
 
-  GHOST_XrSession(class GHOST_XrContext *xr_context);
-  ~GHOST_XrSession();
+  VAMR_Session(class VAMR_Context *xr_context);
+  ~VAMR_Session();
 
-  void start(const GHOST_XrSessionBeginInfo *begin_info);
+  void start(const VAMR_SessionBeginInfo *begin_info);
   void requestEnd();
 
   eLifeExpectancy handleStateChangeEvent(const struct XrEventDataSessionStateChanged *lifecycle);
@@ -48,16 +48,16 @@ class GHOST_XrSession {
  private:
   /** Pointer back to context managing this session. Would be nice to avoid, but needed to access
    * custom callbacks set before session start. */
-  class GHOST_XrContext *m_context;
+  class VAMR_Context *m_context;
 
   std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable */
 
-  /** Active Ghost graphic context. Owned by Blender, not GHOST. */
+  /** Active Ghost graphic context. Owned by Blender, not VAMR. */
   class GHOST_Context *m_gpu_ctx{nullptr};
-  std::unique_ptr<class GHOST_IXrGraphicsBinding> m_gpu_binding;
+  std::unique_ptr<class VAMR_IGraphicsBinding> m_gpu_binding;
 
   /** Rendering information. Set when drawing starts. */
-  std::unique_ptr<struct GHOST_XrDrawInfo> m_draw_info;
+  std::unique_ptr<struct VAMR_DrawInfo> m_draw_info;
 
   void initSystem();
   void end();
