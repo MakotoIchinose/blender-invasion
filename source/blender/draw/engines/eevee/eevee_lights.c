@@ -688,11 +688,12 @@ static void eevee_shadow_cube_setup(Object *ob,
   Light *la = (Light *)ob->data;
 
   normalize_m4_m4(cube_data->shadowmat, ob->obmat);
-  copy_v3_v3(cube_data->position, ob->obmat[3]);
 
   if (linfo->soft_shadows) {
     shadow_cube_random_position_set(evli, la, sample_ofs, cube_data->shadowmat[3]);
   }
+
+  copy_v3_v3(cube_data->position, cube_data->shadowmat[3]);
 
   invert_m4(cube_data->shadowmat);
 
@@ -1212,6 +1213,7 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
   /* Render each shadow to one layer of the array */
   for (i = 0; (ob = linfo->shadow_cube_ref[i]) && (i < MAX_SHADOW_CUBE); i++) {
     EEVEE_LightEngineData *led = EEVEE_light_data_ensure(ob);
+    Light *la = (Light *)ob->data;
 
     if (!led->need_update || !cube_visible[i]) {
       continue;
@@ -1233,6 +1235,17 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
      * The only time it's more beneficial is when the CPU culling overhead
      * outweigh the instancing overhead. which is rarely the case. */
     for (int j = 0; j < 6; j++) {
+      /* Optimization: Only render the needed faces. */
+      /* Skip all but -Z face. */
+      if (la->type == LA_SPOT && la->spotsize < DEG2RADF(90.0f) && j != 5)
+        continue;
+      /* Skip +Z face. */
+      if (la->type != LA_LOCAL && j == 4)
+        continue;
+      /* TODO(fclem) some cube sides can be invisible in the main views. Cull them. */
+      // if (frustum_intersect(g_data->cube_views[j], main_view))
+      //   continue;
+
       DRW_view_set_active(g_data->cube_views[j]);
       int layer = i * 6 + j;
       GPU_framebuffer_texture_layer_attach(
