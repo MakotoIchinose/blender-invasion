@@ -424,8 +424,10 @@ void EEVEE_lights_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 
   if (!sldata->shadow_cube_pool) {
-    sldata->shadow_cube_pool = DRW_texture_create_2d_array(linfo->shadow_cube_size,
-                                                           linfo->shadow_cube_size,
+    /* TODO shadowcube array. */
+    int cube_size = linfo->shadow_cube_size + ((true) ? 2 : 0);
+    sldata->shadow_cube_pool = DRW_texture_create_2d_array(cube_size,
+                                                           cube_size,
                                                            max_ii(1, linfo->num_cube_layer * 6),
                                                            shadow_pool_format,
                                                            DRW_TEX_FILTER | DRW_TEX_COMPARE,
@@ -1130,13 +1132,21 @@ void EEVEE_lights_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 }
 
-static void eevee_ensure_cube_views(float near,
-                                    float far,
-                                    const float viewmat[4][4],
-                                    DRWView *view[6])
+static void eevee_ensure_cube_views(
+    float near, float far, int cube_res, const float viewmat[4][4], DRWView *view[6])
 {
   float winmat[4][4];
-  perspective_m4(winmat, -near, near, -near, near, near, far);
+  float side = near;
+
+  /* TODO shadowcube array. */
+  if (true) {
+    /* This half texel offset is used to ensure correct filtering between faces. */
+    /* FIXME: This exhibit float precision issue with lower cube_res.
+     * But it seems to be caused by the perspective_m4. */
+    side *= ((float)cube_res + 1.0f) / (float)(cube_res);
+  }
+
+  perspective_m4(winmat, -side, side, -side, side, near, far);
 
   for (int i = 0; i < 6; i++) {
     float tmp[4][4];
@@ -1227,8 +1237,11 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
     srd->clip_near = ubo_data->near;
     srd->clip_far = ubo_data->far;
 
-    eevee_ensure_cube_views(
-        srd->clip_near, srd->clip_far, cube_data->shadowmat, g_data->cube_views);
+    eevee_ensure_cube_views(srd->clip_near,
+                            srd->clip_far,
+                            linfo->shadow_cube_size,
+                            cube_data->shadowmat,
+                            g_data->cube_views);
 
     /* Render shadow cube */
     /* Render 6 faces separately: seems to be faster for the general case.

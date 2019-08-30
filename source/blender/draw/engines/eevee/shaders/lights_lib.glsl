@@ -38,17 +38,33 @@ float cubeFaceIndexEEVEE(vec3 P)
   }
 }
 
-vec2 cubeFaceCoordEEVEE(vec3 P, float face)
+vec2 cubeFaceCoordEEVEE(vec3 P, float face, float scale)
 {
   if (face < 2.0) {
-    return (P.zy / P.x) * vec2(-0.5, -sign(P.x) * 0.5) + 0.5;
+    return (P.zy / P.x) * scale * vec2(-0.5, -sign(P.x) * 0.5) + 0.5;
   }
   else if (face < 4.0) {
-    return (P.xz / P.y) * vec2(sign(P.y) * 0.5, 0.5) + 0.5;
+    return (P.xz / P.y) * scale * vec2(sign(P.y) * 0.5, 0.5) + 0.5;
   }
   else {
-    return (P.xy / P.z) * vec2(0.5, -sign(P.z) * 0.5) + 0.5;
+    return (P.xy / P.z) * scale * vec2(0.5, -sign(P.z) * 0.5) + 0.5;
   }
+}
+
+vec2 cubeFaceCoordEEVEE(vec3 P, float face, sampler2DArray tex)
+{
+  /* Scaling to compensate the 1px border around the face. */
+  float cube_res = float(textureSize(tex, 0).x);
+  float scale = (cube_res) / (cube_res + 1.0);
+  return cubeFaceCoordEEVEE(P, face, scale);
+}
+
+vec2 cubeFaceCoordEEVEE(vec3 P, float face, sampler2DArrayShadow tex)
+{
+  /* Scaling to compensate the 1px border around the face. */
+  float cube_res = float(textureSize(tex, 0).x);
+  float scale = (cube_res) / (cube_res + 1.0);
+  return cubeFaceCoordEEVEE(P, face, scale);
 }
 
 vec4 sample_cube(sampler2DArray tex, vec3 cubevec, float cube)
@@ -56,7 +72,9 @@ vec4 sample_cube(sampler2DArray tex, vec3 cubevec, float cube)
   /* Manual Shadow Cube Layer indexing. */
   /* TODO Shadow Cube Array. */
   float face = cubeFaceIndexEEVEE(cubevec);
-  vec3 coord = vec3(cubeFaceCoordEEVEE(cubevec, face), cube * 6.0 + face);
+  vec2 uv = cubeFaceCoordEEVEE(cubevec, face, tex);
+
+  vec3 coord = vec3(uv, cube * 6.0 + face);
   return texture(tex, coord);
 }
 
@@ -75,7 +93,7 @@ float sample_cube_shadow(ShadowData sd, ShadowCubeData scd, float texid, vec3 W)
   /* Manual Shadow Cube Layer indexing. */
   /* TODO Shadow Cube Array. */
   float face = cubeFaceIndexEEVEE(cubevec);
-  vec2 coord = cubeFaceCoordEEVEE(cubevec, face);
+  vec2 coord = cubeFaceCoordEEVEE(cubevec, face, shadowCubeTexture);
 
   return texture(shadowCubeTexture, vec4(coord, texid * 6.0 + face, dist));
 }
