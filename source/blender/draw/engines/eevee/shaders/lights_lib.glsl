@@ -67,7 +67,7 @@ vec4 sample_cascade(sampler2DArray tex, vec2 co, float cascade_id)
 
 float sample_cube_shadow(ShadowData sd, ShadowCubeData scd, float texid, vec3 W)
 {
-  vec3 cubevec = W - scd.position.xyz;
+  vec3 cubevec = transform_point(scd.shadowmat, W);
 
   float dist = max_v3(abs(cubevec));
   dist = buffer_depth(true, dist, sd.sh_far, sd.sh_near);

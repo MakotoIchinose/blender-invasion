@@ -103,7 +103,7 @@ vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, f
     s *= range;
   }
   else {
-    vec3 cubevec = W - shadows_cube_data[int(data.sh_data_start)].position.xyz;
+    vec3 cubevec = transform_point(shadows_cube_data[int(data.sh_data_start)].shadowmat, W);
     dist = length(cubevec);
     cubevec /= dist;
     s = sample_cube(sssShadowCubes, cubevec, data.sh_tex_start).r;

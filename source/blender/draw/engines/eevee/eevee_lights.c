@@ -687,15 +687,18 @@ static void eevee_shadow_cube_setup(Object *ob,
   EEVEE_ShadowCube *cube_data = linfo->shadow_cube_data + sh_data->cube_id;
   Light *la = (Light *)ob->data;
 
+  normalize_m4_m4(cube_data->shadowmat, ob->obmat);
   copy_v3_v3(cube_data->position, ob->obmat[3]);
 
   if (linfo->soft_shadows) {
-    shadow_cube_random_position_set(evli, la, sample_ofs, cube_data->position);
+    shadow_cube_random_position_set(evli, la, sample_ofs, cube_data->shadowmat[3]);
   }
 
+  invert_m4(cube_data->shadowmat);
+
   ubo_data->bias = 0.05f * la->bias;
-  ubo_data->near = la->clipsta;
   ubo_data->far = sqrt(1.0f / evli->invsqrdist);
+  ubo_data->near = min_ff(la->clipsta, ubo_data->far - 1e-4);
 
   evli->shadowid = (float)(sh_data->shadow_id);
   ubo_data->shadow_start = (float)(sh_data->layer_id);
@@ -1126,21 +1129,23 @@ void EEVEE_lights_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   }
 }
 
-static void eevee_ensure_cube_views(float near, float far, const float pos[3], DRWView *view[6])
+static void eevee_ensure_cube_views(float near,
+                                    float far,
+                                    const float viewmat[4][4],
+                                    DRWView *view[6])
 {
-  float winmat[4][4], viewmat[4][4];
+  float winmat[4][4];
   perspective_m4(winmat, -near, near, -near, near, near, far);
 
   for (int i = 0; i < 6; i++) {
-    unit_m4(viewmat);
-    negate_v3_v3(viewmat[3], pos);
-    mul_m4_m4m4(viewmat, cubefacemat[i], viewmat);
+    float tmp[4][4];
+    mul_m4_m4m4(tmp, cubefacemat[i], viewmat);
 
     if (view[i] == NULL) {
-      view[i] = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+      view[i] = DRW_view_create(tmp, winmat, NULL, NULL, NULL);
     }
     else {
-      DRW_view_update(view[i], viewmat, winmat, NULL, NULL);
+      DRW_view_update(view[i], tmp, winmat, NULL, NULL);
     }
   }
 }
@@ -1207,7 +1212,6 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
   /* Render each shadow to one layer of the array */
   for (i = 0; (ob = linfo->shadow_cube_ref[i]) && (i < MAX_SHADOW_CUBE); i++) {
     EEVEE_LightEngineData *led = EEVEE_light_data_ensure(ob);
-    Light *la = (Light *)ob->data;
 
     if (!led->need_update || !cube_visible[i]) {
       continue;
@@ -1216,12 +1220,13 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
     EEVEE_ShadowRender *srd = &linfo->shadow_render_data;
     EEVEE_ShadowCubeData *evscd = &led->data.scd;
     EEVEE_ShadowCube *cube_data = linfo->shadow_cube_data + evscd->cube_id;
+    EEVEE_Shadow *ubo_data = linfo->shadow_data + evscd->shadow_id;
 
-    srd->clip_near = la->clipsta;
-    srd->clip_far = light_attenuation_radius_get(la, light_threshold);
+    srd->clip_near = ubo_data->near;
+    srd->clip_far = ubo_data->far;
 
     eevee_ensure_cube_views(
-        srd->clip_near, srd->clip_far, cube_data->position, g_data->cube_views);
+        srd->clip_near, srd->clip_far, cube_data->shadowmat, g_data->cube_views);
 
     /* Render shadow cube */
     /* Render 6 faces separately: seems to be faster for the general case.

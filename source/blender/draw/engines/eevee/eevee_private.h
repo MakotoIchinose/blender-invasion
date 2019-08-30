@@ -39,7 +39,7 @@ extern struct DrawEngineType draw_engine_eevee_type;
 #define MAX_PLANAR 16 /* TODO : find size by dividing UBO max size by grid data size */
 #define MAX_LIGHT 128 /* TODO : find size by dividing UBO max size by light data size */
 #define MAX_CASCADE_NUM 4
-#define MAX_SHADOW 256 /* TODO : Make this depends on GL_MAX_ARRAY_TEXTURE_LAYERS */
+#define MAX_SHADOW 128 /* TODO : Make this depends on GL_MAX_ARRAY_TEXTURE_LAYERS */
 #define MAX_SHADOW_CASCADE 8
 #define MAX_SHADOW_CUBE (MAX_SHADOW - MAX_CASCADE_NUM * MAX_SHADOW_CASCADE)
 #define MAX_BLOOM_STEP 16
@@ -380,7 +380,8 @@ typedef struct EEVEE_Shadow {
 } EEVEE_Shadow;
 
 typedef struct EEVEE_ShadowCube {
-  float position[3], pad;
+  float shadowmat[4][4];
+  float position[3], _pad0[1];
 } EEVEE_ShadowCube;
 
 typedef struct EEVEE_ShadowCascade {
@@ -409,6 +410,12 @@ BLI_STATIC_ASSERT_ALIGN(EEVEE_Shadow, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowCube, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowCascade, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowRender, 16)
+
+BLI_STATIC_ASSERT(sizeof(EEVEE_Shadow) * MAX_SHADOW +
+                          sizeof(EEVEE_ShadowCascade) * MAX_SHADOW_CASCADE +
+                          sizeof(EEVEE_ShadowCube) * MAX_SHADOW_CUBE <
+                      16384,
+                  "Shadow UBO is too big!!!")
 
 /* This is just a really long bitflag with special function to access it. */
 #define MAX_LIGHTBITS_FIELDS (MAX_LIGHT / 8)

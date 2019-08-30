@@ -62,6 +62,7 @@ struct ShadowData {
 };
 
 struct ShadowCubeData {
+  mat4 shadowmat;
   vec4 position;
 };
 
