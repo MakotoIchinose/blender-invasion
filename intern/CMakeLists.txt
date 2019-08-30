@@ -76,3 +76,7 @@ endif()
 if(WITH_OPENVDB)
   add_subdirectory(openvdb)
 endif()
+
+if(WITH_OPENXR)
+  add_subdirectory(vamr)
+endif()
