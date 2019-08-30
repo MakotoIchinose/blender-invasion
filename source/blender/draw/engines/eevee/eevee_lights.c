@@ -22,6 +22,7 @@
 
 #include "DRW_render.h"
 
+#include "BLI_bitmap.h"
 #include "BLI_dynstr.h"
 #include "BLI_rand.h"
 #include "BLI_rect.h"
@@ -32,7 +33,7 @@
 
 #include "eevee_private.h"
 
-#define SHADOW_CASTER_ALLOC_CHUNK 16
+#define SH_CASTER_ALLOC_CHUNK 32
 
 // #define DEBUG_CSM
 // #define DEBUG_SHADOW_DISTRIBUTION
@@ -49,48 +50,6 @@ extern char datatoc_common_view_lib_glsl[];
 /* Prototypes */
 static void eevee_light_setup(Object *ob, EEVEE_Light *evli);
 static float light_attenuation_radius_get(Light *la, float light_threshold);
-
-/* *********** LIGHT BITS *********** */
-static void lightbits_set_single(EEVEE_LightBits *bitf, uint idx, bool val)
-{
-  if (val) {
-    bitf->fields[idx / 8] |= (1 << (idx % 8));
-  }
-  else {
-    bitf->fields[idx / 8] &= ~(1 << (idx % 8));
-  }
-}
-
-static void lightbits_set_all(EEVEE_LightBits *bitf, bool val)
-{
-  memset(bitf, (val) ? 0xFF : 0x00, sizeof(EEVEE_LightBits));
-}
-
-static void lightbits_or(EEVEE_LightBits *r, const EEVEE_LightBits *v)
-{
-  for (int i = 0; i < MAX_LIGHTBITS_FIELDS; ++i) {
-    r->fields[i] |= v->fields[i];
-  }
-}
-
-static bool lightbits_get(const EEVEE_LightBits *r, uint idx)
-{
-  return r->fields[idx / 8] & (1 << (idx % 8));
-}
-
-static void lightbits_convert(EEVEE_LightBits *r,
-                              const EEVEE_LightBits *bitf,
-                              const int *light_bit_conv_table,
-                              uint table_length)
-{
-  for (int i = 0; i < table_length; ++i) {
-    if (lightbits_get(bitf, i) != 0) {
-      if (light_bit_conv_table[i] >= 0) {
-        r->fields[i / 8] |= (1 << (i % 8));
-      }
-    }
-  }
-}
 
 /* *********** FUNCTIONS *********** */
 
@@ -118,15 +77,12 @@ void EEVEE_lights_init(EEVEE_ViewLayerData *sldata)
     sldata->shadow_render_ubo = DRW_uniformbuffer_create(sizeof(EEVEE_ShadowRender), NULL);
 
     for (int i = 0; i < 2; ++i) {
-      sldata->shcasters_buffers[i].shadow_casters = MEM_callocN(
-          sizeof(EEVEE_ShadowCaster) * SHADOW_CASTER_ALLOC_CHUNK, "EEVEE_ShadowCaster buf");
-      sldata->shcasters_buffers[i].flags = MEM_callocN(sizeof(sldata->shcasters_buffers[0].flags) *
-                                                           SHADOW_CASTER_ALLOC_CHUNK,
-                                                       "EEVEE_shcast_buffer flags buf");
-      sldata->shcasters_buffers[i].alloc_count = SHADOW_CASTER_ALLOC_CHUNK;
+      sldata->shcasters_buffers[i].bbox = MEM_callocN(
+          sizeof(EEVEE_BoundBox) * SH_CASTER_ALLOC_CHUNK, __func__);
+      sldata->shcasters_buffers[i].update = BLI_BITMAP_NEW(SH_CASTER_ALLOC_CHUNK, __func__);
+      sldata->shcasters_buffers[i].alloc_count = SH_CASTER_ALLOC_CHUNK;
       sldata->shcasters_buffers[i].count = 0;
     }
-
     sldata->lights->shcaster_frontbuffer = &sldata->shcasters_buffers[0];
     sldata->lights->shcaster_backbuffer = &sldata->shcasters_buffers[1];
   }
@@ -167,7 +123,10 @@ void EEVEE_lights_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_PassList *psl = vedata->psl;
 
-  linfo->shcaster_frontbuffer->count = 0;
+  EEVEE_ShadowCasterBuffer *backbuffer = linfo->shcaster_backbuffer;
+  EEVEE_ShadowCasterBuffer *frontbuffer = linfo->shcaster_frontbuffer;
+
+  frontbuffer->count = 0;
   linfo->num_light = 0;
   linfo->num_cube_layer = 0;
   linfo->num_cascade_layer = 0;
@@ -176,13 +135,11 @@ void EEVEE_lights_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   memset(linfo->light_ref, 0, sizeof(linfo->light_ref));
   memset(linfo->shadow_cube_ref, 0, sizeof(linfo->shadow_cube_ref));
   memset(linfo->shadow_cascade_ref, 0, sizeof(linfo->shadow_cascade_ref));
-  memset(linfo->new_shadow_id, -1, sizeof(linfo->new_shadow_id));
 
   /* Shadow Casters: Reset flags. */
-  memset(linfo->shcaster_backbuffer->flags,
-         (char)SHADOW_CASTER_PRUNED,
-         linfo->shcaster_backbuffer->alloc_count);
-  memset(linfo->shcaster_frontbuffer->flags, 0x00, linfo->shcaster_frontbuffer->alloc_count);
+  BLI_bitmap_set_all(backbuffer->update, true, backbuffer->alloc_count);
+  /* Is this one needed? */
+  BLI_bitmap_set_all(frontbuffer->update, false, frontbuffer->alloc_count);
 
   INIT_MINMAX(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max);
 
@@ -228,12 +185,8 @@ void EEVEE_lights_cache_add(EEVEE_ViewLayerData *sldata, Object *ob)
 
     EEVEE_LightEngineData *led = EEVEE_light_data_ensure(ob);
 
-    /* Save previous shadow id. */
-    int prev_cube_sh_id = led->prev_cube_shadow_id;
-
     /* Default light without shadows */
     led->data.ld.shadow_id = -1;
-    led->prev_cube_shadow_id = -1;
 
     if (la->mode & LA_SHADOW) {
       if (la->type == LA_SUN) {
@@ -261,12 +214,6 @@ void EEVEE_lights_cache_add(EEVEE_ViewLayerData *sldata, Object *ob)
         if ((linfo->gpu_cube_len + 1) <= MAX_SHADOW_CUBE) {
           /* Save Light object. */
           linfo->shadow_cube_ref[linfo->cpu_cube_len] = ob;
-
-          /* For light update tracking. */
-          if ((prev_cube_sh_id >= 0) && (prev_cube_sh_id < linfo->shcaster_backbuffer->count)) {
-            linfo->new_shadow_id[prev_cube_sh_id] = linfo->cpu_cube_len;
-          }
-          led->prev_cube_shadow_id = linfo->cpu_cube_len;
 
           /* Saving light bounds for later. */
           BLI_assert(linfo->cpu_cube_len >= 0 && linfo->cpu_cube_len < MAX_LIGHT);
@@ -338,42 +285,39 @@ void EEVEE_lights_cache_shcaster_material_add(EEVEE_ViewLayerData *sldata,
 /* Make that object update shadow casting lights inside its influence bounding box. */
 void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object *ob)
 {
-  if ((ob->base_flag & BASE_FROM_DUPLI) != 0) {
-    /* TODO: Special case for dupli objects because we cannot save the object pointer. */
-    return;
-  }
-
-  EEVEE_ObjectEngineData *oedata = EEVEE_object_data_ensure(ob);
   EEVEE_LightsInfo *linfo = sldata->lights;
   EEVEE_ShadowCasterBuffer *backbuffer = linfo->shcaster_backbuffer;
   EEVEE_ShadowCasterBuffer *frontbuffer = linfo->shcaster_frontbuffer;
-  int past_id = oedata->shadow_caster_id;
-
-  /* Update flags in backbuffer. */
-  if (past_id > -1 && past_id < backbuffer->count) {
-    backbuffer->flags[past_id] &= ~SHADOW_CASTER_PRUNED;
-
-    if (oedata->need_update) {
-      backbuffer->flags[past_id] |= SHADOW_CASTER_UPDATED;
-    }
-  }
-
-  /* Update id. */
-  oedata->shadow_caster_id = frontbuffer->count++;
+  bool update = true;
+  int id = frontbuffer->count;
 
   /* Make sure shadow_casters is big enough. */
-  if (oedata->shadow_caster_id >= frontbuffer->alloc_count) {
-    frontbuffer->alloc_count += SHADOW_CASTER_ALLOC_CHUNK;
-    frontbuffer->shadow_casters = MEM_reallocN(
-        frontbuffer->shadow_casters, sizeof(EEVEE_ShadowCaster) * frontbuffer->alloc_count);
-    frontbuffer->flags = MEM_reallocN(frontbuffer->flags,
-                                      sizeof(EEVEE_ShadowCaster) * frontbuffer->alloc_count);
+  if (id + 1 >= frontbuffer->alloc_count) {
+    frontbuffer->alloc_count += SH_CASTER_ALLOC_CHUNK;
+    frontbuffer->bbox = MEM_reallocN(frontbuffer->bbox,
+                                     sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count);
+    BLI_BITMAP_RESIZE(frontbuffer->update, frontbuffer->alloc_count);
   }
 
-  EEVEE_ShadowCaster *shcaster = frontbuffer->shadow_casters + oedata->shadow_caster_id;
+  if (ob->base_flag & BASE_FROM_DUPLI) {
+    /* Duplis will always refresh the shadowmaps as if they were deleted each frame. */
+    /* TODO(fclem) fix this. */
+    update = true;
+  }
+  else {
+    EEVEE_ObjectEngineData *oedata = EEVEE_object_data_ensure(ob);
+    int past_id = oedata->shadow_caster_id;
+    oedata->shadow_caster_id = id;
+    /* Update flags in backbuffer. */
+    if (past_id > -1 && past_id < backbuffer->count) {
+      BLI_BITMAP_SET(backbuffer->update, past_id, oedata->need_update);
+    }
+    update = oedata->need_update;
+    oedata->need_update = false;
+  }
 
-  if (oedata->need_update) {
-    frontbuffer->flags[oedata->shadow_caster_id] = SHADOW_CASTER_UPDATED;
+  if (update) {
+    BLI_BITMAP_ENABLE(frontbuffer->update, id);
   }
 
   /* Update World AABB in frontbuffer. */
@@ -387,7 +331,7 @@ void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object 
     minmax_v3v3_v3(min, max, vec);
   }
 
-  EEVEE_BoundBox *aabb = &shcaster->bbox;
+  EEVEE_BoundBox *aabb = &frontbuffer->bbox[id];
   add_v3_v3v3(aabb->center, min, max);
   mul_v3_fl(aabb->center, 0.5f);
   sub_v3_v3v3(aabb->halfdim, aabb->center, max);
@@ -399,7 +343,7 @@ void EEVEE_lights_cache_shcaster_object_add(EEVEE_ViewLayerData *sldata, Object 
   minmax_v3v3_v3(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max, min);
   minmax_v3v3_v3(linfo->shcaster_aabb.min, linfo->shcaster_aabb.max, max);
 
-  oedata->need_update = false;
+  frontbuffer->count++;
 }
 
 void EEVEE_lights_cache_finish(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
@@ -1018,11 +962,12 @@ static void eevee_shadow_cascade_setup(Object *ob,
                     sh_near,
                     sh_far);
 
-    mul_m4_m4m4(sh_data->viewprojmat[c], projmat, viewmat);
-    mul_m4_m4m4(cascade_data->shadowmat[c], texcomat, sh_data->viewprojmat[c]);
+    float viewprojmat[4][4];
+    mul_m4_m4m4(viewprojmat, projmat, viewmat);
+    mul_m4_m4m4(cascade_data->shadowmat[c], texcomat, viewprojmat);
 
 #ifdef DEBUG_CSM
-    DRW_debug_m4_as_bbox(sh_data->viewprojmat[c], dbg_col, true);
+    DRW_debug_m4_as_bbox(viewprojmat, dbg_col, true);
 #endif
   }
 
@@ -1059,76 +1004,78 @@ void EEVEE_lights_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
   EEVEE_EffectsInfo *effects = stl->effects;
   EEVEE_LightsInfo *linfo = sldata->lights;
   Object *ob;
-  int i;
-  char *flag;
-  EEVEE_ShadowCaster *shcaster;
-  EEVEE_BoundSphere *bsphere;
-  EEVEE_ShadowCasterBuffer *frontbuffer = linfo->shcaster_frontbuffer;
   EEVEE_ShadowCasterBuffer *backbuffer = linfo->shcaster_backbuffer;
+  EEVEE_ShadowCasterBuffer *frontbuffer = linfo->shcaster_frontbuffer;
 
-  EEVEE_LightBits update_bits = {{0}};
+  BLI_bitmap *update_bits = BLI_BITMAP_NEW_ALLOCA(MAX_LIGHT);
+
   if ((linfo->update_flag & LIGHT_UPDATE_SHADOW_CUBE) != 0) {
     /* Update all lights. */
-    lightbits_set_all(&update_bits, true);
+    BLI_bitmap_set_all(update_bits, true, MAX_LIGHT);
   }
   else {
-    /* Search for deleted shadow casters and if shcaster WAS in shadow radius. */
-    /* No need to run this if we already update all lights. */
-    EEVEE_LightBits past_bits = {{0}};
-    EEVEE_LightBits curr_bits = {{0}};
-    shcaster = backbuffer->shadow_casters;
-    flag = backbuffer->flags;
-    for (i = 0; i < backbuffer->count; ++i, ++flag, ++shcaster) {
-      /* If the shadowcaster has been deleted or updated. */
-      if (*flag != 0) {
-        /* Add the lights that were intersecting with its BBox. */
-        lightbits_or(&past_bits, &shcaster->bits);
+    /* TODO(fclem) This part can be slow, optimize it. */
+    EEVEE_BoundBox *bbox = backbuffer->bbox;
+    EEVEE_BoundSphere *bsphere = linfo->shadow_bounds;
+    /* Gather all light own update bits. to avoid costly intersection check.  */
+    for (int j = 0; j < linfo->cpu_cube_len; j++) {
+      EEVEE_LightEngineData *led = EEVEE_light_data_ensure(linfo->shadow_cube_ref[j]);
+      if (linfo->soft_shadows || led->need_update) {
+        BLI_BITMAP_ENABLE(update_bits, j);
       }
     }
-    /* Convert old bits to new bits and add result to final update bits. */
-    /* NOTE: This might be overkill since all lights are tagged to refresh if
-     * the light count changes. */
-    lightbits_convert(&curr_bits, &past_bits, linfo->new_shadow_id, MAX_LIGHT);
-    lightbits_or(&update_bits, &curr_bits);
-  }
-
-  /* Search for updates in current shadow casters. */
-  shcaster = frontbuffer->shadow_casters;
-  flag = frontbuffer->flags;
-  for (i = 0; i < frontbuffer->count; i++, flag++, shcaster++) {
-    /* Run intersection checks to fill the bitfields. */
-    bsphere = linfo->shadow_bounds;
-    for (int j = 0; j < linfo->cpu_cube_len; j++, bsphere++) {
-      bool iter = sphere_bbox_intersect(bsphere, &shcaster->bbox);
-      lightbits_set_single(&shcaster->bits, j, iter);
+    /* Search for deleted shadow casters or if shcaster WAS in shadow radius. */
+    for (int i = 0; i < backbuffer->count; ++i) {
+      /* If the shadowcaster has been deleted or updated. */
+      if (BLI_BITMAP_TEST(backbuffer->update, i)) {
+        for (int j = 0; j < linfo->cpu_cube_len; j++) {
+          if (!BLI_BITMAP_TEST(update_bits, j)) {
+            if (sphere_bbox_intersect(&bsphere[j], &bbox[i])) {
+              BLI_BITMAP_ENABLE(update_bits, j);
+            }
+          }
+        }
+      }
     }
-    /* Only add to final bits if objects has been updated. */
-    if (*flag != 0) {
-      lightbits_or(&update_bits, &shcaster->bits);
+    /* Search for updates in current shadow casters. */
+    bbox = frontbuffer->bbox;
+    for (int i = 0; i < frontbuffer->count; i++) {
+      /* If the shadowcaster has been deleted or updated. */
+      if (BLI_BITMAP_TEST(frontbuffer->update, i)) {
+        for (int j = 0; j < linfo->cpu_cube_len; j++) {
+          if (!BLI_BITMAP_TEST(update_bits, j)) {
+            if (sphere_bbox_intersect(&bsphere[j], &bbox[i])) {
+              BLI_BITMAP_ENABLE(update_bits, j);
+            }
+          }
+        }
+      }
     }
   }
 
   /* Setup shadow cube in UBO and tag for update if necessary. */
-  for (i = 0; (i < MAX_SHADOW_CUBE) && (ob = linfo->shadow_cube_ref[i]); i++) {
+  for (int i = 0; (i < MAX_SHADOW_CUBE) && (ob = linfo->shadow_cube_ref[i]); i++) {
     EEVEE_LightEngineData *led = EEVEE_light_data_ensure(ob);
 
     eevee_shadow_cube_setup(ob, linfo, led, effects->taa_current_sample - 1);
-    if (lightbits_get(&update_bits, i) != 0 || linfo->soft_shadows) {
+    if (BLI_BITMAP_TEST(update_bits, i) || linfo->soft_shadows) {
       led->need_update = true;
+
+      DRW_debug_sphere(
+          ob->obmat[3], ((Light *)ob->data)->att_dist, (float[4]){1.0f, 0.0f, 0.0f, 1.0f});
     }
   }
 
   /* Resize shcasters buffers if too big. */
-  if (frontbuffer->alloc_count - frontbuffer->count > SHADOW_CASTER_ALLOC_CHUNK) {
-    frontbuffer->alloc_count = (frontbuffer->count / SHADOW_CASTER_ALLOC_CHUNK) *
-                               SHADOW_CASTER_ALLOC_CHUNK;
-    frontbuffer->alloc_count += (frontbuffer->count % SHADOW_CASTER_ALLOC_CHUNK != 0) ?
-                                    SHADOW_CASTER_ALLOC_CHUNK :
+  if (frontbuffer->alloc_count - frontbuffer->count > SH_CASTER_ALLOC_CHUNK) {
+    frontbuffer->alloc_count = (frontbuffer->count / SH_CASTER_ALLOC_CHUNK) *
+                               SH_CASTER_ALLOC_CHUNK;
+    frontbuffer->alloc_count += (frontbuffer->count % SH_CASTER_ALLOC_CHUNK != 0) ?
+                                    SH_CASTER_ALLOC_CHUNK :
                                     0;
-    frontbuffer->shadow_casters = MEM_reallocN(
-        frontbuffer->shadow_casters, sizeof(EEVEE_ShadowCaster) * frontbuffer->alloc_count);
-    frontbuffer->flags = MEM_reallocN(frontbuffer->flags,
-                                      sizeof(EEVEE_ShadowCaster) * frontbuffer->alloc_count);
+    frontbuffer->bbox = MEM_reallocN(frontbuffer->bbox,
+                                     sizeof(EEVEE_BoundBox) * frontbuffer->alloc_count);
+    BLI_BITMAP_RESIZE(frontbuffer->update, frontbuffer->alloc_count);
   }
 }
 

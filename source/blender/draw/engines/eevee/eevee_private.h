@@ -23,6 +23,8 @@
 #ifndef __EEVEE_PRIVATE_H__
 #define __EEVEE_PRIVATE_H__
 
+#include "BLI_bitmap.h"
+
 #include "DNA_lightprobe_types.h"
 
 struct EEVEE_BoundSphere;
@@ -417,20 +419,9 @@ BLI_STATIC_ASSERT(sizeof(EEVEE_Shadow) * MAX_SHADOW +
                       16384,
                   "Shadow UBO is too big!!!")
 
-/* This is just a really long bitflag with special function to access it. */
-#define MAX_LIGHTBITS_FIELDS (MAX_LIGHT / 8)
-typedef struct EEVEE_LightBits {
-  uchar fields[MAX_LIGHTBITS_FIELDS];
-} EEVEE_LightBits;
-
-typedef struct EEVEE_ShadowCaster {
-  struct EEVEE_LightBits bits;
-  struct EEVEE_BoundBox bbox;
-} EEVEE_ShadowCaster;
-
 typedef struct EEVEE_ShadowCasterBuffer {
-  struct EEVEE_ShadowCaster *shadow_casters;
-  char *flags;
+  struct EEVEE_BoundBox *bbox;
+  BLI_bitmap *update;
   uint alloc_count;
   uint count;
 } EEVEE_ShadowCasterBuffer;
@@ -457,22 +448,14 @@ typedef struct EEVEE_LightsInfo {
   struct EEVEE_ShadowCube shadow_cube_data[MAX_SHADOW_CUBE];
   struct EEVEE_ShadowCascade shadow_cascade_data[MAX_SHADOW_CASCADE];
   /* Lights tracking */
-  int new_shadow_id[MAX_LIGHT]; /* To be able to convert old bitfield to new bitfield */
   struct EEVEE_BoundSphere shadow_bounds[MAX_LIGHT]; /* Tightly packed light bounds  */
-  /* Pointers only. */
-  struct EEVEE_ShadowCasterBuffer *shcaster_frontbuffer;
-  struct EEVEE_ShadowCasterBuffer *shcaster_backbuffer;
+  /* List of bbox and update bitmap. Double buffered. */
+  struct EEVEE_ShadowCasterBuffer *shcaster_frontbuffer, *shcaster_backbuffer;
   /* AABB of all shadow casters combined. */
   struct {
     float min[3], max[3];
   } shcaster_aabb;
 } EEVEE_LightsInfo;
-
-/* EEVEE_LightsInfo->shadow_casters_flag */
-enum {
-  SHADOW_CASTER_PRUNED = (1 << 0),
-  SHADOW_CASTER_UPDATED = (1 << 1),
-};
 
 /* EEVEE_LightsInfo->update_flag */
 enum {
@@ -754,7 +737,6 @@ typedef struct EEVEE_ShadowCubeData {
 typedef struct EEVEE_ShadowCascadeData {
   short light_id, shadow_id, cascade_id, layer_id;
   /* World->Light->NDC : used for rendering the shadow map. */
-  float viewprojmat[MAX_CASCADE_NUM][4][4]; /* Could be removed. */
   float projmat[MAX_CASCADE_NUM][4][4];
   float viewmat[4][4], viewinv[4][4];
   float radius[MAX_CASCADE_NUM];
@@ -767,8 +749,6 @@ typedef struct EEVEE_LightEngineData {
   DrawData dd;
 
   bool need_update;
-  /* This needs to be out of the union to avoid undefined behavior. */
-  short prev_cube_shadow_id;
   union {
     struct EEVEE_LightData ld;
     struct EEVEE_ShadowCubeData scd;
