@@ -795,7 +795,8 @@ void filelist_sort_filter(struct FileList *filelist, FileSelectParams *params)
       const bool need_filtering = filelist_need_filtering(filelist);
       const bool changed = filelist->ae->type->sort_filter(
           filelist->ae, need_sorting, need_filtering, params, &filelist->filelist);
-      //          printf("%s: changed: %d (%d - %d)\n", __func__, changed, need_sorting, need_filtering);
+      //          printf("%s: changed: %d (%d - %d)\n", __func__, changed, need_sorting,
+      //          need_filtering);
       if (changed) {
         filelist_cache_clear(
             &filelist->filelist_cache, filelist->filelist_cache.size, filelist->ae);
@@ -1378,7 +1379,8 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
       preview->index = index;
       preview->flags = entry->typeflag;
       preview->img = NULL;
-      //          printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
+      //          printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path,
+      //          preview->img);
 
       filelist_cache_preview_ensure_running(cache, filelist->ae);
       BLI_task_pool_push_ex(cache->previews_pool,
@@ -2303,18 +2305,19 @@ bool filelist_cache_previews_update(FileList *filelist)
       FileDirEntry *entry = filelist_entry_find_uuid(filelist, uuid->uuid_asset);
 
       if (entry) {
-        /* Due to asynchronous process, a preview for a given image may be generated several times, i.e.
-         * entry->image may already be set at this point. */
+        /* Due to asynchronous process, a preview for a given image may be generated several times,
+         * i.e. entry->image may already be set at this point. */
         if (!(uuid->tag & UUID_TAG_ASSET_NOPREVIEW) && !entry->image) {
           BLI_assert(uuid->ibuff != NULL && !ELEM(0, uuid->width, uuid->height));
 
           entry->image = IMB_allocFromBuffer(
-              (unsigned int *)uuid->ibuff, NULL, uuid->width, uuid->height);
+              (unsigned int *)uuid->ibuff, NULL, uuid->width, uuid->height, 4);
           changed = true;
         }
         else {
           /* We want to avoid re-processing this entry continuously!
-           * Note that, since entries only live in cache, preview will be retried quite often anyway. */
+           * Note that, since entries only live in cache, preview will be retried quite often
+           * anyway. */
           entry->flags |= FILE_ENTRY_INVALID_PREVIEW;
         }
       }
@@ -2640,8 +2643,8 @@ unsigned int filelist_entry_select_index_get(FileList *filelist,
 }
 
 /**
- * Returns a list of selected entries, if use_ae is set also calls asset engine's load_pre callback.
- * Note first item of returned list shall be used as 'active' file.
+ * Returns a list of selected entries, if use_ae is set also calls asset engine's load_pre
+ * callback. Note first item of returned list shall be used as 'active' file.
  */
 FileDirEntryArr *filelist_selection_get(FileList *filelist,
                                         FileCheckType check,
@@ -3322,7 +3325,8 @@ static void filelist_readjob_endjob(void *flrjv)
   FileListReadJob *flrj = flrjv;
 
   /* In case there would be some dangling update.
-   * Do not do this in case of ae job returning AE_JOB_ID_INVALID as job_id (immediate execution). */
+   * Do not do this in case of ae job returning AE_JOB_ID_INVALID as job_id (immediate execution).
+   */
   if (flrj->filelist->ae == NULL || flrj->ae_job_id != AE_JOB_ID_INVALID) {
     filelist_readjob_update(flrjv);
   }

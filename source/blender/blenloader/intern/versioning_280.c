@@ -3694,6 +3694,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 4)) {
+    ID *id;
+    FOREACH_MAIN_ID_BEGIN (bmain, id) {
+      bNodeTree *ntree = ntreeFromID(id);
+      if (ntree) {
+        ntree->id.flag |= LIB_PRIVATE_DATA;
+      }
+    }
+    FOREACH_MAIN_ID_END;
+  }
+
   if (1 ||
       !DNA_struct_find(fd->filesdna,
                        "AssetUUID")) { /* struct_find will have to wait, not working for now... */

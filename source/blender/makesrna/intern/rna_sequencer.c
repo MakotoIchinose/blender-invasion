@@ -1457,7 +1457,7 @@ static const EnumPropertyItem blend_mode_items[] = {
     {0, "", ICON_NONE, NULL, NULL},
     {SEQ_TYPE_DARKEN, "DARKEN", 0, "Darken", ""},
     {SEQ_TYPE_MUL, "MULTIPLY", 0, "Multiply", ""},
-    {SEQ_TYPE_BURN, "BURN", 0, "Burn", ""},
+    {SEQ_TYPE_COLOR_BURN, "BURN", 0, "Color Burn", ""},
     {SEQ_TYPE_LINEAR_BURN, "LINEAR_BURN", 0, "Linear Burn", ""},
     {0, "", ICON_NONE, NULL, NULL},
     {SEQ_TYPE_LIGHTEN, "LIGHTEN", 0, "Lighten", ""},
@@ -2758,14 +2758,16 @@ static void rna_def_text(StructRNA *srna)
   prop = RNA_def_property(srna, "align_x", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "align");
   RNA_def_property_enum_items(prop, text_align_x_items);
-  RNA_def_property_ui_text(prop, "Align X", "Align the text along the X axis");
+  RNA_def_property_ui_text(
+      prop, "Align X", "Align the text along the X axis, relative to the text midpoint");
   RNA_def_property_update(
       prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_preprocessed_update");
 
   prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "align_y");
   RNA_def_property_enum_items(prop, text_align_y_items);
-  RNA_def_property_ui_text(prop, "Align Y", "Align the image along the Y axis");
+  RNA_def_property_ui_text(
+      prop, "Align Y", "Align the image along the Y axis, relative to the text midpoint");
   RNA_def_property_update(
       prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_preprocessed_update");
 
@@ -2792,7 +2794,7 @@ static void rna_def_color_mix(StructRNA *srna)
       {SEQ_TYPE_SCREEN, "SCREEN", 0, "Screen", ""},
       {SEQ_TYPE_OVERLAY, "OVERLAY", 0, "Overlay", ""},
       {SEQ_TYPE_DODGE, "DODGE", 0, "Dodge", ""},
-      {SEQ_TYPE_BURN, "BURN", 0, "Burn", ""},
+      {SEQ_TYPE_COLOR_BURN, "BURN", 0, "Color Burn", ""},
       {SEQ_TYPE_LINEAR_BURN, "LINEAR_BURN", 0, "Linear Burn", ""},
       {SEQ_TYPE_SOFT_LIGHT, "SOFT_LIGHT", 0, "Soft Light", ""},
       {SEQ_TYPE_HARD_LIGHT, "HARD_LIGHT", 0, "Hard Light", ""},

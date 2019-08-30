@@ -169,8 +169,8 @@ class GreasePencilStrokeEditPanel:
         layout.label(text="Edit:")
         row = layout.row(align=True)
         row.operator("gpencil.copy", text="Copy")
-        row.operator("gpencil.paste", text="Paste").type = 'COPY'
-        row.operator("gpencil.paste", text="Paste & Merge").type = 'MERGE'
+        row.operator("gpencil.paste", text="Paste").type = 'ACTIVE'
+        row.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
 
         col = layout.column(align=True)
         col.operator("gpencil.delete")
@@ -507,8 +507,9 @@ class GPENCIL_MT_pie_tools_more(Menu):
         # gpd = context.gpencil_data
 
         col = pie.column(align=True)
-        col.operator("gpencil.copy", icon='COPYDOWN', text="Copy")
-        col.operator("gpencil.paste", icon='PASTEDOWN', text="Paste")
+        col.operator("gpencil.copy", text="Copy", icon='COPYDOWN')
+        col.operator("gpencil.paste", text="Paste", icon='PASTEDOWN').type = 'ACTIVE'
+        col.operator("gpencil.paste", text="Paste by Layer").type = 'LAYER'
 
         col = pie.column(align=True)
         col.operator("gpencil.select_more", icon='ADD')
@@ -591,30 +592,40 @@ class GPENCIL_MT_snap(Menu):
 
 
 class GPENCIL_MT_gpencil_draw_delete(Menu):
-    bl_label = "GPencil Draw Delete"
+    bl_label = "Delete"
 
     def draw(self, _context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.active_frames_delete_all", text="Delete Frame")
+        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
+        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
 
 
 class GPENCIL_MT_cleanup(Menu):
     bl_label = "Clean Up"
 
     def draw(self, _context):
+
+        ob = _context.active_object
+
         layout = self.layout
+
         layout.operator("gpencil.frame_clean_loose", text="Delete Loose Points")
-        layout.operator("gpencil.stroke_merge_by_distance", text="Merge by Distance")
+
+        if ob.mode != 'PAINT_GPENCIL':
+            layout.operator("gpencil.stroke_merge_by_distance", text="Merge by Distance")
+        
         layout.separator()
 
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes").mode = 'ACTIVE'
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes all Frames").mode = 'ALL'
-        layout.separator()
 
-        layout.operator("gpencil.reproject")
+        if ob.mode != 'PAINT_GPENCIL':
+            layout.separator()
+
+            layout.operator("gpencil.reproject")
 
 
 class GPENCIL_UL_annotation_layer(UIList):

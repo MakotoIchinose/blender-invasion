@@ -2757,11 +2757,6 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Display Faces", "Display faces over the image");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
 
-  prop = RNA_def_property(srna, "show_edges", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SI_NO_DRAWEDGES);
-  RNA_def_property_ui_text(prop, "Display Edges", "Display edges in vertex select mode");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
-
   /* todo: move edge and face drawing options here from G.f */
 
   prop = RNA_def_property(srna, "pixel_snap_mode", PROP_ENUM, PROP_NONE);
@@ -3827,7 +3822,7 @@ static void rna_def_space_view3d(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_gizmo_navigate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "gizmo_flag", V3D_GIZMO_HIDE_NAVIGATE);
-  RNA_def_property_ui_text(prop, "Navigate Gizmo", "");
+  RNA_def_property_ui_text(prop, "Navigate Gizmo", "Viewport navigation gizmo");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_gizmo_context", PROP_BOOLEAN, PROP_NONE);
