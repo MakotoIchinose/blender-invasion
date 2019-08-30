@@ -1011,6 +1011,238 @@ static LinkNode *linklist_shallow_copy_arena(LinkNode *list, struct MemArena *ar
   return listhead.list;
 }
 
+/** Functions to move to Blenlib's math_geom when stable. */
+
+/*
+ * Return -1, 0, or 1 as (px,py) is right of, collinear (within epsilon) with, or left of line (l1,l2)
+ */
+static int line_point_side_v2_array_db(double l1x, double l1y, double l2x, double l2y, double px, double py, double epsilon)
+{
+	double det, dx, dy, lnorm;
+
+	dx = l2x - l1x;
+	dy = l2y - l1y;
+	det = dx * (py - l1y) - dy * (px - l1x);
+	lnorm = sqrt(dx * dx + dy * dy);
+	if (fabs(det) < epsilon * lnorm)
+		return 0;
+	else if (det < 0)
+		return -1;
+	else
+		return 1;
+}
+
+/**
+ * Intersect two triangles, allowing for coplanar intersections too.
+ *
+ * The result can be any of: a single point, a segment, or an n-gon (n <= 6),
+ * so can indicate all of these with a return array of coords max size 6 and a returned
+ * length: if length is 1, then intersection is a point; if 2, then a segment;
+ * if 3 or more, a (closed) ngon.
+ * Use double arithmetic, and use consistent ordering of vertices and
+ * segments in tests to make some precision problems less likely.
+ * Algorithm: Tomas Möller's "A Fast Triangle-Triangle Intersection Test"
+ *
+ * \param r_pts, r_npts: Optional arguments to retrieve the intersection points between the 2 triangles.
+ * \return true when the triangles intersect.
+ *
+ */
+static bool UNUSED_FUNCTION(isect_tri_tri_epsilon_v3_db_ex)(
+	const double t_a0[3], const double t_a1[3], const double t_a2[3],
+	const double t_b0[3], const double t_b1[3], const double t_b2[3],
+	double r_pts[6][3], int *r_npts,
+	const double epsilon)
+{
+	const double *tri_pair[2][3] = {{t_a0, t_a1, t_a2}, {t_b0, t_b1, t_b2}};
+	double co[2][3][3];
+	double plane_a[4], plane_b[4];
+	double plane_co[3], plane_no[3];
+	int verti;
+
+	BLI_assert((r_pts != NULL) == (r_npts != NULL));
+
+        /* This is remnant from when input args were floats. TODO: remove this copying. */
+	for (verti = 0; verti < 3; verti++) {
+		copy_v3_v3_db(co[0][verti], tri_pair[0][verti]);
+		copy_v3_v3_db(co[1][verti], tri_pair[1][verti]);
+	}
+	/* normalizing is needed for small triangles T46007 */
+	normal_tri_v3_db(plane_a, UNPACK3(co[0]));
+	normal_tri_v3_db(plane_b, UNPACK3(co[1]));
+
+	plane_a[3] = -dot_v3v3_db(plane_a, co[0][0]);
+	plane_b[3] = -dot_v3v3_db(plane_b, co[1][0]);
+
+	if (isect_plane_plane_v3_db(plane_a, plane_b, plane_co, plane_no) &&
+		(normalize_v3_d(plane_no) > epsilon))
+	{
+		struct {
+			double min, max;
+		} range[2] = {{DBL_MAX, -DBL_MAX}, {DBL_MAX, -DBL_MAX}};
+		int t;
+		double co_proj[3];
+
+		closest_to_plane3_normalized_v3_db(co_proj, plane_no, plane_co);
+
+		/* For both triangles, find the overlap with the line defined by the ray [co_proj, plane_no].
+		 * When the ranges overlap we know the triangles do too. */
+		for (t = 0; t < 2; t++) {
+			int j, j_prev;
+			double tri_proj[3][3];
+
+			closest_to_plane3_normalized_v3_db(tri_proj[0], plane_no, co[t][0]);
+			closest_to_plane3_normalized_v3_db(tri_proj[1], plane_no, co[t][1]);
+			closest_to_plane3_normalized_v3_db(tri_proj[2], plane_no, co[t][2]);
+
+			for (j = 0, j_prev = 2; j < 3; j_prev = j++) {
+				/* note that its important to have a very small nonzero epsilon here
+				 * otherwise this fails for very small faces.
+				 * However if its too small, large adjacent faces will count as intersecting */
+				const double edge_fac = line_point_factor_v3_ex_db(co_proj, tri_proj[j_prev], tri_proj[j], 1e-10, -1.0);
+				if (UNLIKELY(edge_fac == -1.0)) {
+					/* pass */
+				}
+				else if (edge_fac > -epsilon && edge_fac < 1.0 + epsilon) {
+					double ix_tri[3];
+					double span_fac;
+
+					interp_v3_v3v3_db(ix_tri, co[t][j_prev], co[t][j], edge_fac);
+					/* the actual distance, since 'plane_no' is normalized */
+					span_fac = dot_v3v3_db(plane_no, ix_tri);
+
+					range[t].min = min_dd(range[t].min, span_fac);
+					range[t].max = max_dd(range[t].max, span_fac);
+				}
+			}
+
+			if (range[t].min == DBL_MAX) {
+				return false;
+			}
+		}
+
+		if (((range[0].min > range[1].max + epsilon) ||
+			 (range[0].max < range[1].min - epsilon)) == 0)
+		{
+			if (r_pts && r_npts) {
+				double pt1[3], pt2[3];
+				project_plane_normalized_v3_v3v3_db(plane_co, plane_co, plane_no);
+				madd_v3_v3v3db_db(pt1, plane_co, plane_no, max_dd(range[0].min, range[1].min));
+				madd_v3_v3v3db_db(pt2, plane_co, plane_no, min_dd(range[0].max, range[1].max));
+				copy_v3_v3_db(r_pts[0], pt1);
+				copy_v3_v3_db(r_pts[1], pt2);
+				if (len_v3v3_db(pt1, pt2) <= epsilon)
+					*r_npts = 1;
+				else
+					*r_npts = 2;
+			}
+
+			return true;
+		}
+	}
+	else if (fabs(plane_a[3] - plane_b[3]) <= epsilon) {
+		double pts[9][3];
+		int ia, ip, ia_n, ia_nn, ip_prev, npts, same_side[6], ss, ss_prev, j;
+
+		for (ip = 0; ip < 3; ip++)
+			copy_v3_v3_db(pts[ip], co[1][ip]);
+		npts = 3;
+
+		/* a convex polygon vs convex polygon clipping algorithm */
+		for (ia = 0; ia < 3; ia++) {
+			ia_n = (ia + 1) % 3;
+			ia_nn = (ia_n + 1) % 3;
+
+			/* set same_side[i] = 0 if A[ia], A[ia_n], pts[ip] are collinear.
+			 * else same_side[i] =1 if A[ia_nn] and pts[ip] are on same side of A[ia], A[ia_n].
+			 * else same_side[i] = -1
+			 */
+			for (ip = 0; ip < npts; ip++) {
+				double t;
+				const double *l1 = co[0][ia];
+				const double *l2 = co[0][ia_n];
+				const double *p1 = co[0][ia_nn];
+				const double *p2 = pts[ip];
+
+				/* rather than projecting onto plane, do same-side tests projecting onto 3 ortho planes */
+				t = line_point_side_v2_array_db(l1[0], l1[1], l2[0], l2[1], p1[0], p1[1], epsilon);
+				if (t != 0.0) {
+					same_side[ip] = t * line_point_side_v2_array_db(l1[0], l1[1], l2[0], l2[1], p2[0], p2[1], epsilon);
+				}
+				else {
+					t = line_point_side_v2_array_db(l1[1], l1[2], l2[1], l2[2], p1[1], p1[2], epsilon);
+					if (t != 0.0) {
+						same_side[ip] = t * line_point_side_v2_array_db(l1[1], l1[2], l2[1], l2[2], p2[1], p2[2], epsilon);
+					}
+					else {
+						t = line_point_side_v2_array_db(l1[0], l1[2], l2[0], l2[2], p1[0], p1[2], epsilon);
+						same_side[ip] = t * line_point_side_v2_array_db(l1[0], l1[2], l2[0], l2[2], p2[0], p2[2], epsilon);
+					}
+				}
+			}
+			ip_prev = npts - 1;
+			for (ip = 0; ip < (npts > 2 ? npts : npts - 1); ip++) {
+				ss = same_side[ip];
+				ss_prev = same_side[ip_prev];
+				if ((ss_prev == 1 && ss == -1) || (ss_prev == -1 && ss == 1)) {
+					/* do coplanar line-line intersect, specialized verison of isect_line_line_epsilon_v3_db */
+					double *v1 = co[0][ia], *v2 = co[0][ia_n], *v3 = pts[ip_prev], *v4 = pts[ip];
+					double a[3], b[3], c[3], ab[3], cb[3], isect[3], div;
+
+					sub_v3_v3v3_db(c, v3, v1);
+					sub_v3_v3v3_db(a, v2, v1);
+					sub_v3_v3v3_db(b, v4, v3);
+
+					cross_v3_v3v3_db(ab, a, b);
+					div = dot_v3v3_db(ab, ab);
+					if (div == 0.0) {
+						/* shouldn't happen! */
+						printf("div == 0, shouldn't happen\n");
+						continue;
+					}
+					cross_v3_v3v3_db(cb, c, b);
+					mul_v3db_db(a, dot_v3v3_db(cb, ab) / div);
+					add_v3_v3v3_db(isect, v1, a);
+
+					/* insert isect at current location */
+					BLI_assert(npts < 9);
+					for (j = npts; j > ip; j--) {
+						copy_v3_v3_db(pts[j], pts[j - 1]);
+						same_side[j] = same_side[j - 1];
+					}
+					copy_v3_v3_db(pts[ip], isect);
+					same_side[ip] = 0;
+					npts++;
+				}
+				ip_prev = ip;
+			}
+			/* cut out some pts that are no longer in intersection set */
+			for (ip = 0; ip < npts; ) {
+				if (same_side[ip] == -1) {
+					/* remove point at ip */
+					for (j = ip; j < npts - 1; j++) {
+						copy_v3_v3_db(pts[j], pts[j + 1]);
+						same_side[j] = same_side[j + 1];
+					}
+					npts--;
+				}
+				else {
+					ip++;
+				}
+			}
+		}
+
+		*r_npts = npts;
+		/* This copy is remant of old signature that returned floats. TODO: remove this copy. */
+		for (ip = 0; ip < npts; ip++) {
+			copy_v3_v3_db(r_pts[ip], pts[ip]);
+		}
+		return npts > 0;
+	}
+	if (r_npts)
+		*r_npts = 0;
+	return false;
+}
+
 /** Intersection Algorithm functions. */
 
 /* Fill partset with parts for each plane for which there is a face

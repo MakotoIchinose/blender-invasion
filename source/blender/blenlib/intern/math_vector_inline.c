@@ -409,6 +409,13 @@ MINLINE void add_v3_v3v3(float r[3], const float a[3], const float b[3])
   r[2] = a[2] + b[2];
 }
 
+MINLINE void add_v3_v3v3_db(double r[3], const double a[3], const double b[3])
+{
+  r[0] = a[0] + b[0];
+  r[1] = a[1] + b[1];
+  r[2] = a[2] + b[2];
+}
+
 MINLINE void add_v3fl_v3fl_v3i(float r[3], const float a[3], const int b[3])
 {
   r[0] = a[0] + (float)b[0];
@@ -547,6 +554,13 @@ MINLINE void mul_v3_v3fl(float r[3], const float a[3], float f)
   r[2] = a[2] * f;
 }
 
+MINLINE void mul_v3db_v3dbdb(double r[3], const double a[3], double f)
+{
+  r[0] = a[0] * f;
+  r[1] = a[1] * f;
+  r[2] = a[2] * f;
+}
+
 MINLINE void mul_v2_v2(float r[2], const float a[2])
 {
   r[0] *= a[0];
@@ -672,6 +686,13 @@ MINLINE void madd_v3_v3fl(float r[3], const float a[3], float f)
   r[2] += a[2] * f;
 }
 
+MINLINE void madd_v3db_v3dbdb(double r[3], const double a[3], double f)
+{
+  r[0] += a[0] * f;
+  r[1] += a[1] * f;
+  r[2] += a[2] * f;
+}
+
 MINLINE void madd_v3_v3v3(float r[3], const float a[3], const float b[3])
 {
   r[0] += a[0] * b[0];
@@ -686,6 +707,13 @@ MINLINE void madd_v2_v2v2fl(float r[2], const float a[2], const float b[2], floa
 }
 
 MINLINE void madd_v3_v3v3fl(float r[3], const float a[3], const float b[3], float f)
+{
+  r[0] = a[0] + b[0] * f;
+  r[1] = a[1] + b[1] * f;
+  r[2] = a[2] + b[2] * f;
+}
+
+MINLINE void madd_v3_v3v3db_db(double r[3], const double a[3], const double b[3], double f)
 {
   r[0] = a[0] + b[0] * f;
   r[1] = a[1] + b[1] * f;
@@ -964,6 +992,11 @@ MINLINE float len_squared_v3(const float v[3])
   return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 }
 
+MINLINE double len_squared_v3_db(const double v[3])
+{
+  return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+}
+
 MINLINE float len_manhattan_v2(const float v[2])
 {
   return fabsf(v[0]) + fabsf(v[1]);
@@ -1014,6 +1047,11 @@ MINLINE float len_v2v2_int(const int v1[2], const int v2[2])
 MINLINE float len_v3(const float a[3])
 {
   return sqrtf(dot_v3v3(a, a));
+}
+
+MINLINE double len_v3_db(const double a[3])
+{
+  return sqrt(dot_v3v3_db(a, a));
 }
 
 MINLINE float len_squared_v2v2(const float a[2], const float b[2])
@@ -1078,6 +1116,14 @@ MINLINE float len_v3v3(const float a[3], const float b[3])
 
   sub_v3_v3v3(d, b, a);
   return len_v3(d);
+}
+
+MINLINE double len_v3v3_db(const double a[3], const double b[3])
+{
+  double d[3];
+
+  sub_v3_v3v3_db(d, b, a);
+  return len_v3_db(d);
 }
 
 MINLINE float normalize_v2_v2_length(float r[2], const float a[2], const float unit_length)
@@ -1307,6 +1353,11 @@ MINLINE bool compare_len_v3v3(const float v1[3], const float v2[3], const float 
  * (looking from 'l1' -> 'l2').
  */
 MINLINE float line_point_side_v2(const float l1[2], const float l2[2], const float pt[2])
+{
+  return (((l1[0] - pt[0]) * (l2[1] - pt[1])) - ((l2[0] - pt[0]) * (l1[1] - pt[1])));
+}
+
+MINLINE double line_point_side_v2_db(const double l1[2], const double l2[2], const double pt[2])
 {
   return (((l1[0] - pt[0]) * (l2[1] - pt[1])) - ((l2[0] - pt[0]) * (l1[1] - pt[1])));
 }

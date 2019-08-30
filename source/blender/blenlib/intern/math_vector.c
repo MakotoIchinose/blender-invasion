@@ -744,6 +744,16 @@ void project_plane_normalized_v3_v3v3(float out[3], const float p[3], const floa
   out[2] = p[2] - (mul * v_plane[2]);
 }
 
+void project_plane_normalized_v3_v3v3_db(double out[3], const double p[3], const double v_plane[3])
+{
+  BLI_ASSERT_UNIT_V3_DB(v_plane);
+  const double mul = dot_v3v3_db(p, v_plane);
+
+  out[0] = p[0] - (mul * v_plane[0]);
+  out[1] = p[1] - (mul * v_plane[1]);
+  out[2] = p[2] - (mul * v_plane[2]);
+}
+
 void project_plane_normalized_v2_v2v2(float out[2], const float p[2], const float v_plane[2])
 {
   BLI_ASSERT_UNIT_V2(v_plane);

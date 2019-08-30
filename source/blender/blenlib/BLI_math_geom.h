@@ -42,6 +42,7 @@ extern "C" {
 /********************************** Polygons *********************************/
 
 float normal_tri_v3(float r[3], const float a[3], const float b[3], const float c[3]);
+double normal_tri_v3_db(double r[3], const double a[3], const double b[3], const double c[3]);
 float normal_quad_v3(
     float r[3], const float a[3], const float b[3], const float c[3], const float d[3]);
 float normal_poly_v3(float r[3], const float verts[][3], unsigned int nr);
@@ -204,6 +205,7 @@ void closest_to_line_segment_v3(float r_close[3],
 void closest_to_plane_normalized_v3(float r_close[3], const float plane[4], const float pt[3]);
 void closest_to_plane_v3(float r_close[3], const float plane[4], const float pt[3]);
 void closest_to_plane3_normalized_v3(float r_close[3], const float plane[3], const float pt[3]);
+void closest_to_plane3_normalized_v3_db(double r_close[3], const double plane[3], const double pt[3]);
 void closest_to_plane3_v3(float r_close[3], const float plane[3], const float pt[3]);
 
 /* Set 'r' to the point in triangle (t1, t2, t3) closest to point 'p' */
@@ -224,6 +226,11 @@ float line_point_factor_v3_ex(const float p[3],
                               const float l2[3],
                               const float epsilon,
                               const float fallback);
+double line_point_factor_v3_ex_db(const double p[3],
+                              const double l1[3],
+                              const double l2[3],
+                              const double epsilon,
+                              const double fallback);
 float line_point_factor_v3(const float p[3], const float l1[3], const float l2[3]);
 
 float line_point_factor_v2_ex(const float p[2],
@@ -342,6 +349,10 @@ bool isect_plane_plane_v3(const float plane_a[4],
                           const float plane_b[4],
                           float r_isect_co[3],
                           float r_isect_no[3]) ATTR_WARN_UNUSED_RESULT;
+bool isect_plane_plane_v3_db(const double plane_a[4],
+                          const double plane_b[4],
+                          double r_isect_co[3],
+                          double r_isect_no[3]) ATTR_WARN_UNUSED_RESULT;
 
 /* line/ray triangle */
 bool isect_line_segment_tri_v3(const float p1[3],

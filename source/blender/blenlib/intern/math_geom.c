@@ -66,6 +66,23 @@ float normal_tri_v3(float n[3], const float v1[3], const float v2[3], const floa
   return normalize_v3(n);
 }
 
+double normal_tri_v3_db(double n[3], const double v1[3], const double v2[3], const double v3[3])
+{
+  double n1[3], n2[3];
+
+  n1[0] = v1[0] - v2[0];
+  n2[0] = v2[0] - v3[0];
+  n1[1] = v1[1] - v2[1];
+  n2[1] = v2[1] - v3[1];
+  n1[2] = v1[2] - v2[2];
+  n2[2] = v2[2] - v3[2];
+  n[0] = n1[1] * n2[2] - n1[2] * n2[1];
+  n[1] = n1[2] * n2[0] - n1[0] * n2[2];
+  n[2] = n1[0] * n2[1] - n1[1] * n2[0];
+
+  return normalize_v3_d(n);
+}
+
 float normal_quad_v3(
     float n[3], const float v1[3], const float v2[3], const float v3[3], const float v4[3])
 {
@@ -411,6 +428,13 @@ void closest_to_plane3_normalized_v3(float r_close[3], const float plane[3], con
   const float side = dot_v3v3(plane, pt);
   BLI_ASSERT_UNIT_V3(plane);
   madd_v3_v3v3fl(r_close, pt, plane, -side);
+}
+
+void closest_to_plane3_normalized_v3_db(double r_close[3], const double plane[3], const double pt[3])
+{
+  const double side = dot_v3v3_db(plane, pt);
+  BLI_ASSERT_UNIT_V3_DB(plane);
+  madd_v3_v3v3db_db(r_close, pt, plane, -side);
 }
 
 float dist_signed_squared_to_plane_v3(const float pt[3], const float plane[4])
@@ -2289,6 +2313,41 @@ bool isect_plane_plane_v3(const float plane_a[4],
   }
 }
 
+bool isect_plane_plane_v3_db(const double plane_a[4],
+                          const double plane_b[4],
+                          double r_isect_co[3],
+                          double r_isect_no[3])
+{
+  double det, plane_c[3];
+
+  /* direction is simply the cross product */
+  cross_v3_v3v3_db(plane_c, plane_a, plane_b);
+
+  /* in this case we don't need to use 'determinant_m3' */
+  det = len_squared_v3_db(plane_c);
+
+  if (det != 0.0) {
+    double tmp[3];
+
+    /* (plane_b.xyz.cross(plane_c.xyz) * -plane_a[3] +
+     *  plane_c.xyz.cross(plane_a.xyz) * -plane_b[3]) / det; */
+    cross_v3_v3v3_db(tmp, plane_c, plane_b);
+    mul_v3db_v3dbdb(r_isect_co, tmp, plane_a[3]);
+
+    cross_v3_v3v3_db(tmp, plane_a, plane_c);
+    madd_v3db_v3dbdb(r_isect_co, tmp, plane_b[3]);
+
+    mul_v3db_db(r_isect_co, 1.0 / det);
+
+    copy_v3_v3_db(r_isect_no, plane_c);
+
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
 /**
  * Intersect two triangles.
  *
@@ -3303,6 +3362,23 @@ float line_point_factor_v3_ex(const float p[3],
   dot = len_squared_v3(u);
   return (dot > epsilon) ? (dot_v3v3(u, h) / dot) : fallback;
 }
+
+double line_point_factor_v3_ex_db(const double p[3],
+                              const double l1[3],
+                              const double l2[3],
+                              const double epsilon,
+                              const double fallback)
+{
+  double h[3], u[3];
+  double dot;
+  sub_v3_v3v3_db(u, l2, l1);
+  sub_v3_v3v3_db(h, p, l1);
+
+  /* better check for zero */
+  dot = len_squared_v3_db(u);
+  return (dot > epsilon) ? (dot_v3v3_db(u, h) / dot) : fallback;
+}
+
 float line_point_factor_v3(const float p[3], const float l1[3], const float l2[3])
 {
   return line_point_factor_v3_ex(p, l1, l2, 0.0f, 0.0f);
