@@ -1279,7 +1279,7 @@ void transpose_m3(float mat[3][3])
 
 void transpose_m3_db(double mat[3][3])
 {
-  float t;
+  double t;
 
   t = mat[0][1];
   mat[0][1] = mat[1][0];

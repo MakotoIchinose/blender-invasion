@@ -42,7 +42,7 @@
 
 #include "bmesh_boolean.h" /* own include */
 
-#include "BLI_strict_flags.h"
+//#include "BLI_strict_flags.h"
 
 /* NOTE: Work in progress. Initial implementation using slow data structures and algorithms
  * just to get the correct calculations down. After that, will replace data structures with
@@ -202,7 +202,7 @@ static void dump_intintmap(const IntIntMap *map, const char *label, const char *
 static CDT_result *copy_cdt_result(BoolState *bs, const CDT_result *res);
 static int min_int_in_array(int *array, int len);
 static LinkNode *linklist_shallow_copy_arena(LinkNode *list, struct MemArena *arena);
-static void calc_part_bb_eps(BoolState *bs, MeshPart *part, float eps);
+static void calc_part_bb_eps(BoolState *bs, MeshPart *part, double eps);
 static float *coordset_coord(const IndexedCoordSet *coordset, int index);
 static bool find_in_intintmap(const IntIntMap *map, int key, int *r_val);
 
@@ -326,7 +326,6 @@ static void apply_isect_out_to_bmesh(BMesh *bm, const IntersectOutput *isect_out
   int bm_tot_v, tot_new_v, tot_new_e, i, j, v1, v2, v1_out, v2_out;
   int tot_new_f, fstart, flen, v, v_out;
   BMVert **new_bmvs, *bmv, *bmv1, *bmv2;
-  BMFace *bmf;
   float *co;
   LinkNode *ln, *ln_map;
   CDT_result *cdt;
@@ -339,7 +338,7 @@ static void apply_isect_out_to_bmesh(BMesh *bm, const IntersectOutput *isect_out
   bm_tot_v = bm->totvert;
   tot_new_v = isect_out->new_verts.size;
   if (tot_new_v > 0) {
-    new_bmvs = BLI_array_alloca(new_bmvs, tot_new_v);
+    new_bmvs = BLI_array_alloca(new_bmvs, (size_t)tot_new_v);
     for (i = 0; i < tot_new_v; i++) {
       co = coordset_coord(&isect_out->new_verts, bm_tot_v + i);
       /* TODO: use an example vert if there is one */
@@ -418,7 +417,7 @@ static void apply_isect_out_to_bmesh(BMesh *bm, const IntersectOutput *isect_out
       }
       printf("\n");
       /* TODO: use example */
-      bmf = BM_face_create_verts(bm, vv, flen, NULL, BM_CREATE_NOP, false);
+     BM_face_create_verts(bm, vv, flen, NULL, BM_CREATE_NOP, false);
     }
   }
   BLI_array_free(vv);
@@ -482,7 +481,7 @@ static MeshPart *partset_part(const MeshPartSet *partset, int index)
  * Also calculates bbmin and bbmax for each part.
  * Add epsilon buffer on all sides.
  */
-static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, float eps)
+static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, double eps)
 {
   LinkNode *ln;
   MeshPart *part;
@@ -499,8 +498,8 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, float eps)
     part = (MeshPart *)ln->link;
     calc_part_bb_eps(bs, part, eps);
     for (i = 0; i < 3; i++) {
-      partset->bbmin[i] = min_ff(partset->bbmin[i], part->bbmin[i]);
-      partset->bbmax[i] = max_ff(partset->bbmax[i], part->bbmax[i]);
+      partset->bbmin[i] = min_dd(partset->bbmin[i], part->bbmin[i]);
+      partset->bbmax[i] = max_dd(partset->bbmax[i], part->bbmax[i]);
     }
   }
   /* eps padding was already added in calc_part_bb_eps. */
@@ -553,7 +552,7 @@ static int part_face(const MeshPart *part, int index)
  * for the part.
  * Add an epsilon buffer on all sides.
  */
-static void calc_part_bb_eps(BoolState *bs, MeshPart *part, float eps)
+static void calc_part_bb_eps(BoolState *bs, MeshPart *part, double eps)
 {
   IMesh *im = &bs->im;
   LinkNode *ln;
@@ -700,13 +699,14 @@ static int add_to_coordset(BoolState *bs,
   float *q;
   int i;
   int index = -1;
+  float feps = (float)bs->eps;
 
   if (do_dup_check) {
     i = coordset->index_offset;
     for (ln = coordset->listhead.list; ln; ln = ln->next) {
       q = (float *)ln->link;
       /* Note: compare_v3v3 checks if all three coords are within (<=) eps of each other. */
-      if (compare_v3v3(p, q, bs->eps)) {
+      if (compare_v3v3(p, q, feps)) {
         index = i;
         break;
       }
@@ -1099,7 +1099,7 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   in.faces = BLI_array_alloca(in.faces, (size_t)nfaceverts);
   in.faces_start_table = BLI_array_alloca(in.faces_start_table, (size_t)part_nf);
   in.faces_len_table = BLI_array_alloca(in.faces_len_table, (size_t)part_nf);
-  in.epsilon = bs->eps;
+  in.epsilon = (float)bs->eps;
 
   /* Fill in the vert_coords of CDT input */
 
@@ -1275,7 +1275,7 @@ static void change_merge_set_target(BoolState *bs,
   set_intintmap_entry(bs, merge_to, target, new_target);
   for (ln = merge_from->sources.list; ln; ln = ln->next) {
     source = POINTER_AS_INT(ln->link);
-    set_intintmap_entry(bs, merge_to, POINTER_FROM_INT(source), new_target);
+    set_intintmap_entry(bs, merge_to, source, new_target);
   }
 }
 
@@ -1317,11 +1317,11 @@ static void union_merge_to_pair(BoolState *bs, IntIntMap *map_a, IntIntMap *map_
     copy_intintmap_intintmap(map_a, map_b);
     return;
   }
-  merge_from_a = BLI_array_alloca(merge_from_a, map_a_size);
+  merge_from_a = BLI_array_alloca(merge_from_a, (size_t)map_a_size);
   merge_from_a_size = fill_merge_from_array(bs, merge_from_a, map_a_size, map_a);
-  merge_from_b = BLI_array_alloca(merge_from_b, map_b_size);
+  merge_from_b = BLI_array_alloca(merge_from_b, (size_t)map_b_size);
   merge_from_b_size = fill_merge_from_array(bs, merge_from_b, map_b_size, map_b);
-  merge_set_rep = BLI_array_alloca(merge_set_rep, map_b_size + 1);
+  merge_set_rep = BLI_array_alloca(merge_set_rep, (size_t)(map_b_size + 1));
 
   for (i = 0; i < merge_from_b_size; i++) {
     target = apply_merge_to(map_a, merge_from_b[i].target);
@@ -1360,7 +1360,7 @@ static void union_merge_to_pair(BoolState *bs, IntIntMap *map_a, IntIntMap *map_
 
 static void union_isect_out_pair(BoolState *bs, IntersectOutput *ioa, IntersectOutput *iob)
 {
-  int i, next_out_index, im_totv, v, v_moved, merge_target;
+  int i, im_totv, v, v_moved, merge_target;
   int *moveto;
   float *vco;
   LinkNode *ln;
@@ -1378,10 +1378,9 @@ static void union_isect_out_pair(BoolState *bs, IntersectOutput *ioa, IntersectO
    * index number of ioa's new_verts.
    */
   im_totv = imesh_totvert(&bs->im);
-  next_out_index = im_totv + ioa->new_verts.size;
   /* moveto[i] records output index in new iob
    * for iob's output vert im_totv + i */
-  moveto = BLI_array_alloca(moveto, iob->new_verts.size);
+  moveto = BLI_array_alloca(moveto, (size_t)iob->new_verts.size);
   for (i = 0; i < iob->new_verts.size; i++) {
     vco = coordset_coord(&iob->new_verts, i + im_totv);
     BLI_assert(vco != NULL);
