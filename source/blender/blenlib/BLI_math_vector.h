@@ -76,6 +76,8 @@ MINLINE void copy_v3_v3_int(int r[3], const int a[3]);
 MINLINE void copy_v4_v4_int(int r[4], const int a[4]);
 /* double */
 MINLINE void zero_v3_db(double r[3]);
+MINLINE void zero_v4_db(double r[4]);
+MINLINE void copy_v3_db(double r[3], double d);
 MINLINE void copy_v2_v2_db(double r[2], const double a[2]);
 MINLINE void copy_v3_v3_db(double r[3], const double a[3]);
 MINLINE void copy_v4_v4_db(double r[4], const double a[4]);
@@ -209,6 +211,7 @@ MINLINE void star_m3_v3(float rmat[3][3], float a[3]);
 /*********************************** Length **********************************/
 
 MINLINE float len_squared_v2(const float v[2]) ATTR_WARN_UNUSED_RESULT;
+MINLINE double len_squared_v2_db(const double v[2]) ATTR_WARN_UNUSED_RESULT;
 MINLINE float len_squared_v3(const float v[3]) ATTR_WARN_UNUSED_RESULT;
 MINLINE float len_manhattan_v2(const float v[2]) ATTR_WARN_UNUSED_RESULT;
 MINLINE int len_manhattan_v2_int(const int v[2]) ATTR_WARN_UNUSED_RESULT;
@@ -400,6 +403,7 @@ void project_plane_normalized_v2_v2v2(float out[2], const float p[2], const floa
 void project_v3_plane(float out[3], const float plane_no[3], const float plane_co[3]);
 void reflect_v3_v3v3(float out[3], const float vec[3], const float normal[3]);
 void ortho_basis_v3v3_v3(float r_n1[3], float r_n2[3], const float n[3]);
+void ortho_basis_v3v3_v3_db(double r_n1[3], double r_n2[3], const double n[3]);
 void ortho_v3_v3(float out[3], const float v[3]);
 void ortho_v2_v2(float out[2], const float v[2]);
 void bisect_v3_v3v3v3(float r[3], const float a[3], const float b[3], const float c[3]);

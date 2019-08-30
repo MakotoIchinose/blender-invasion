@@ -482,6 +482,10 @@ bool isect_aabb_aabb_v3(const float min1[3],
                         const float max1[3],
                         const float min2[3],
                         const float max2[3]);
+bool isect_aabb_aabb_v3_db(const double min1[3],
+                           const double max1[3],
+                           const double min2[3],
+                           const double max2[3]);
 
 struct IsectRayAABB_Precalc {
   float ray_origin[3];
@@ -762,6 +766,7 @@ float form_factor_hemi_poly(
 
 void axis_dominant_v3_to_m3_negate(float r_mat[3][3], const float normal[3]);
 void axis_dominant_v3_to_m3(float r_mat[3][3], const float normal[3]);
+void axis_dominant_v3_to_m3_db(double r_mat[3][3], const double normal[3]);
 
 MINLINE void axis_dominant_v3(int *r_axis_a, int *r_axis_b, const float axis[3]);
 MINLINE float axis_dominant_v3_max(int *r_axis_a,

@@ -836,6 +836,31 @@ void ortho_basis_v3v3_v3(float r_n1[3], float r_n2[3], const float n[3])
   }
 }
 
+void ortho_basis_v3v3_v3_db(double r_n1[3], double r_n2[3], const double n[3])
+{
+  const double eps = FLT_EPSILON;
+  const double f = len_squared_v2_db(n);
+
+  if (f > eps) {
+    const double d = 1.0 / sqrt(f);
+
+    BLI_assert(isfinite(d));
+
+    r_n1[0] = n[1] * d;
+    r_n1[1] = -n[0] * d;
+    r_n1[2] = 0.0;
+    r_n2[0] = -n[2] * r_n1[1];
+    r_n2[1] = n[2] * r_n1[0];
+    r_n2[2] = n[0] * r_n1[1] - n[1] * r_n1[0];
+  }
+  else {
+    /* degenerate case */
+    r_n1[0] = (n[2] < 0.0f) ? -1.0f : 1.0f;
+    r_n1[1] = r_n1[2] = r_n2[0] = r_n2[2] = 0.0f;
+    r_n2[1] = 1.0;
+  }
+}
+
 /**
  * Calculates \a p - a perpendicular vector to \a v
  *

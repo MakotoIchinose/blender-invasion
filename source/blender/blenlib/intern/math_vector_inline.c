@@ -205,6 +205,21 @@ MINLINE void zero_v3_db(double r[3])
   r[2] = 0.0;
 }
 
+MINLINE void zero_v4_db(double r[4])
+{
+  r[0] = 0.0;
+  r[1] = 0.0;
+  r[2] = 0.0;
+  r[3] = 0.0;
+}
+
+MINLINE void copy_v3_db(double r[3], double d)
+{
+  r[0] = d;
+  r[1] = d;
+  r[2] = d;
+}
+
 MINLINE void copy_v2_v2_db(double r[2], const double a[2])
 {
   r[0] = a[0];
@@ -935,6 +950,11 @@ MINLINE void star_m3_v3(float rmat[3][3], float a[3])
 /*********************************** Length **********************************/
 
 MINLINE float len_squared_v2(const float v[2])
+{
+  return v[0] * v[0] + v[1] * v[1];
+}
+
+MINLINE double len_squared_v2_db(const double v[2])
 {
   return v[0] * v[0] + v[1] * v[1];
 }

@@ -3100,6 +3100,15 @@ bool isect_aabb_aabb_v3(const float min1[3],
           min2[1] < max1[1] && min2[2] < max1[2]);
 }
 
+bool isect_aabb_aabb_v3_db(const double min1[3],
+                           const double max1[3],
+                           const double min2[3],
+                           const double max2[3])
+{
+  return (min1[0] < max2[0] && min1[1] < max2[1] && min1[2] < max2[2] && min2[0] < max1[0] &&
+          min2[1] < max1[1] && min2[2] < max1[2]);
+}
+
 void isect_ray_aabb_v3_precalc(struct IsectRayAABB_Precalc *data,
                                const float ray_origin[3],
                                const float ray_direction[3])
@@ -3632,6 +3641,14 @@ void axis_dominant_v3_to_m3_negate(float r_mat[3][3], const float normal[3])
 
   BLI_assert(!is_negative_m3(r_mat));
   BLI_assert((dot_m3_v3_row_z(r_mat, normal) < BLI_ASSERT_UNIT_EPSILON) || is_zero_v3(normal));
+}
+
+void axis_dominant_v3_to_m3_db(double r_mat[3][3], const double normal[3])
+{
+  copy_v3_v3_db(r_mat[2], normal);
+  ortho_basis_v3v3_v3_db(r_mat[0], r_mat[1], r_mat[2]);
+
+  transpose_m3_db(r_mat);
 }
 
 /****************************** Interpolation ********************************/

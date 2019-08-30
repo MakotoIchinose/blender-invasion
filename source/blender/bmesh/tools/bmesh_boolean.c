@@ -75,9 +75,9 @@ typedef struct IMesh {
  * TODO: faster structure for looking up verts, edges, faces.
  */
 typedef struct MeshPart {
-  float plane[4];  /* first 3 are normal, 4th is signed distance to plane */
-  float bbmin[3];  /* bounding box min, with eps padding */
-  float bbmax[3];  /* bounding box max, with eps padding */
+  double plane[4];  /* first 3 are normal, 4th is signed distance to plane */
+  double bbmin[3];  /* bounding box min, with eps padding */
+  double bbmax[3];  /* bounding box max, with eps padding */
   LinkNode *verts; /* links are ints (vert indices) */
   LinkNode *edges; /* links are ints (edge indices) */
   LinkNode *faces; /* links are ints (face indices) */
@@ -89,8 +89,8 @@ typedef struct MeshPart {
  * TODO: faster structure for looking up by plane.
  */
 typedef struct MeshPartSet {
-  float bbmin[3];
-  float bbmax[3];
+  double bbmin[3];
+  double bbmax[3];
   LinkNode *meshparts; /* links are MeshParts* */
   int tot_part;
   const char *label; /* for debugging */
@@ -175,7 +175,7 @@ typedef struct BoolState {
   MemArena *mem_arena;
   IMesh im;
   int boolean_mode;
-  float eps;
+  double eps;
   int (*test_fn)(void *elem, void *user_data);
   void *test_fn_user_data;
 } BoolState;
@@ -290,13 +290,18 @@ static void imesh_get_vert_co(const IMesh *im, int v, float *r_coords)
   }
 }
 
-static void imesh_get_face_plane(const IMesh *im, int f, float r_plane[4])
+static void imesh_get_face_plane(const IMesh *im, int f, double r_plane[4])
 {
-  zero_v4(r_plane);
+  double plane_co[3];
+
+  zero_v4_db(r_plane);
   if (im->bm) {
     BMFace *bmf = BM_face_at_index(im->bm, f);
     if (bmf) {
-      plane_from_point_normal_v3(r_plane, bmf->l_first->v->co, bmf->no);
+      /* plane_from_point_normal_v3 with mixed arithmetic */
+      copy_v3db_v3fl(r_plane, bmf->no);
+      copy_v3db_v3fl(plane_co, bmf->l_first->v->co);
+      r_plane[3] = -dot_v3v3_db(r_plane, plane_co);
     }
   }
 }
@@ -432,15 +437,17 @@ static void apply_isect_out_to_imesh(IMesh *im, const IntersectOutput *isect_out
   }
 }
 
-static void bb_update(float bbmin[3], float bbmax[3], int v, const IMesh *im)
+static void bb_update(double bbmin[3], double bbmax[3], int v, const IMesh *im)
 {
   int i;
   float vco[3];
+  double vcod[3];
 
   imesh_get_vert_co(im, v, vco);
+  copy_v3db_v3fl(vcod, vco);
   for (i = 0; i < 3; i++) {
-    bbmin[i] = min_ff(vco[i], bbmin[i]);
-    bbmax[i] = max_ff(vco[i], bbmax[i]);
+    bbmin[i] = min_dd(vcod[i], bbmin[i]);
+    bbmax[i] = max_dd(vcod[i], bbmax[i]);
   }
 }
 
@@ -450,8 +457,8 @@ static void init_meshpartset(MeshPartSet *partset, const char *label)
 {
   partset->meshparts = NULL;
   partset->tot_part = 0;
-  zero_v3(partset->bbmin);
-  zero_v3(partset->bbmax);
+  zero_v3_db(partset->bbmin);
+  zero_v3_db(partset->bbmax);
   partset->label = label;
 }
 
@@ -482,12 +489,12 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, float eps)
   int i;
 
   if (partset->meshparts == NULL) {
-    zero_v3(partset->bbmin);
-    zero_v3(partset->bbmax);
+    zero_v3_db(partset->bbmin);
+    zero_v3_db(partset->bbmax);
     return;
   }
-  copy_v3_fl(partset->bbmin, FLT_MAX);
-  copy_v3_fl(partset->bbmax, -FLT_MAX);
+  copy_v3_db(partset->bbmin, DBL_MAX);
+  copy_v3_db(partset->bbmax, -DBL_MAX);
   for (ln = partset->meshparts; ln; ln = ln->next) {
     part = (MeshPart *)ln->link;
     calc_part_bb_eps(bs, part, eps);
@@ -503,9 +510,9 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, float eps)
 
 static void init_meshpart(MeshPart *part)
 {
-  zero_v4(part->plane);
-  zero_v3(part->bbmin);
-  zero_v3(part->bbmax);
+  zero_v4_db(part->plane);
+  zero_v3_db(part->bbmin);
+  zero_v3_db(part->bbmax);
   part->verts = NULL;
   part->edges = NULL;
   part->faces = NULL;
@@ -517,9 +524,9 @@ static MeshPart *copy_part(BoolState *bs, const MeshPart *part)
   MemArena *arena = bs->mem_arena;
 
   copy = BLI_memarena_alloc(bs->mem_arena, sizeof(*copy));
-  copy_v4_v4(copy->plane, part->plane);
-  copy_v3_v3(copy->bbmin, part->bbmin);
-  copy_v3_v3(copy->bbmax, part->bbmax);
+  copy_v4_v4_db(copy->plane, part->plane);
+  copy_v3_v3_db(copy->bbmin, part->bbmin);
+  copy_v3_v3_db(copy->bbmax, part->bbmax);
 
   /* All links in lists are ints, so can use shallow copy. */
   copy->verts = linklist_shallow_copy_arena(part->verts, arena);
@@ -553,12 +560,12 @@ static void calc_part_bb_eps(BoolState *bs, MeshPart *part, float eps)
   int v, e, f, i, flen, j;
 
   if (part->verts == NULL && part->edges == NULL && part->faces == NULL) {
-    zero_v3(part->bbmin);
-    zero_v3(part->bbmax);
+    zero_v3_db(part->bbmin);
+    zero_v3_db(part->bbmax);
     return;
   }
-  copy_v3_fl(part->bbmin, FLT_MAX);
-  copy_v3_fl(part->bbmax, -FLT_MAX);
+  copy_v3_db(part->bbmin, FLT_MAX);
+  copy_v3_db(part->bbmax, -FLT_MAX);
   for (ln = part->verts; ln; ln = ln->next) {
     v = POINTER_AS_INT(ln->link);
     bb_update(part->bbmin, part->bbmax, v, im);
@@ -584,28 +591,28 @@ static void calc_part_bb_eps(BoolState *bs, MeshPart *part, float eps)
 
 static bool parts_may_intersect(const MeshPart *part1, const MeshPart *part2)
 {
-  return isect_aabb_aabb_v3(part1->bbmin, part1->bbmax, part2->bbmin, part2->bbmax);
+  return isect_aabb_aabb_v3_db(part1->bbmin, part1->bbmax, part2->bbmin, part2->bbmax);
 }
 
 static bool part_may_intersect_partset(const MeshPart *part, const MeshPartSet *partset)
 {
-  return isect_aabb_aabb_v3(part->bbmin, part->bbmax, partset->bbmin, partset->bbmax);
+  return isect_aabb_aabb_v3_db(part->bbmin, part->bbmax, partset->bbmin, partset->bbmax);
 }
 
 /* Return true if a_plane and b_plane are the same plane, to within eps. */
-static bool planes_are_coplanar(const float a_plane[4], const float b_plane[4], float eps)
+static bool planes_are_coplanar(const double a_plane[4], const double b_plane[4], double eps)
 {
-  if (fabsf(a_plane[3] - b_plane[3]) > eps) {
+  if (fabs(a_plane[3] - b_plane[3]) > eps) {
     return false;
   }
-  return fabsf(dot_v3v3(a_plane, b_plane) - 1.0f) <= eps;
+  return fabs(dot_v3v3_db(a_plane, b_plane) - 1.0f) <= eps;
 }
 
 /* Return the MeshPart in partset for plane.
  * If none exists, make a new one for the plane and add
  * it to partset.
  */
-static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const float plane[4])
+static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const double plane[4])
 {
   LinkNode *ln;
   MeshPart *new_part;
@@ -618,7 +625,7 @@ static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const 
   }
   new_part = BLI_memarena_alloc(bs->mem_arena, sizeof(MeshPart));
   init_meshpart(new_part);
-  copy_v4_v4(new_part->plane, plane);
+  copy_v4_v4_db(new_part->plane, plane);
   add_part_to_partset(bs, partset, new_part);
   return new_part;
 }
@@ -875,14 +882,15 @@ static IntIntMap *isect_add_vertmap(BoolState *bs, IntersectOutput *isect_out)
 static IntersectOutput *isect_out_from_cdt(BoolState *bs,
                                            const CDT_result *cout,
                                            const IntIntMap *in_to_im_vmap,
-                                           const float rot_inv[3][3],
-                                           const float z_for_inverse)
+                                           const double rot_inv[3][3],
+                                           const double z_for_inverse)
 {
   IntersectOutput *isect_out;
   CDT_result *cout_copy;
   int out_v, in_v, im_v, start, new_v;
   IntIntMap *vmap;
-  float p[3], q[3];
+  double p[3], q[3];
+  float pf[3];
 
   isect_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*isect_out));
   init_isect_out(bs, isect_out);
@@ -908,10 +916,11 @@ static IntersectOutput *isect_out_from_cdt(BoolState *bs,
     }
     else {
       /* out_v needs a new vertex. Need to convert coords from 2d to 3d. */
-      copy_v2_v2(q, cout->vert_coords[out_v]);
+      copy_v2db_v2fl(q, cout->vert_coords[out_v]);
       q[2] = z_for_inverse;
-      mul_v3_m3v3(p, rot_inv, q);
-      new_v = add_to_coordset(bs, &isect_out->new_verts, p, false);
+      mul_v3_m3v3_db(p, rot_inv, q);
+      copy_v3fl_v3db(pf, p);
+      new_v = add_to_coordset(bs, &isect_out->new_verts, pf, false);
       BLI_assert(new_v >= imesh_totvert(&bs->im));
       add_to_intintmap(bs, vmap, out_v, new_v);
     }
@@ -1017,7 +1026,7 @@ static void find_coplanar_parts(BoolState *bs,
   IMesh *im = &bs->im;
   MeshPart *part;
   int im_nf, f, test;
-  float plane[4];
+  double plane[4];
 
   init_meshpartset(partset, label);
   im_nf = imesh_totface(im);
@@ -1052,9 +1061,10 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   IMesh *im = &bs->im;
   IndexedIntSet verts_needed;
   IntIntMap in_to_im_vmap;
-  float mat_2d[3][3];
-  float mat_2d_inv[3][3];
-  float xyz[3], save_z, p[3];
+  double mat_2d[3][3];
+  double mat_2d_inv[3][3];
+  double xyz[3], save_z, p[3];
+  float pf[3];
   bool ok;
 
   dump_part(part, "self_intersect_part");
@@ -1094,16 +1104,17 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   /* Fill in the vert_coords of CDT input */
 
   /* Find mat_2d: matrix to rotate so that plane normal moves to z axis */
-  axis_dominant_v3_to_m3(mat_2d, part->plane);
-  ok = invert_m3_m3(mat_2d_inv, mat_2d);
+  axis_dominant_v3_to_m3_db(mat_2d, part->plane);
+  ok = invert_m3_m3_db(mat_2d_inv, mat_2d);
   BLI_assert(ok);
 
   for (i = 0; i < in.verts_len; i++) {
     v = intset_get_value_by_index(&verts_needed, i);
     BLI_assert(v != -1);
-    imesh_get_vert_co(im, v, p);
-    mul_v3_m3v3(xyz, mat_2d, p);
-    copy_v2_v2(in.vert_coords[i], xyz);
+    imesh_get_vert_co(im, v, pf);
+    copy_v3db_v3fl(p, pf);
+    mul_v3_m3v3_db(xyz, mat_2d, p);
+    copy_v2fl_v2db(in.vert_coords[i], xyz);
     if (i == 0) {
       /* If part is truly coplanar, all z components of rotated v should be the same.
        * Save it so that can rotate back to correct place when done.
