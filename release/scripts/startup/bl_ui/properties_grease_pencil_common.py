@@ -591,31 +591,65 @@ class GPENCIL_MT_snap(Menu):
         layout.operator("view3d.snap_cursor_to_grid", text="Cursor to Grid")
 
 
+class GPENCIL_MT_move_to_layer(Menu):
+    bl_label = "Move to Layer"
+
+    def draw(self, context):
+        layout = self.layout
+        gpd = context.gpencil_data
+        if gpd:
+            gpl_active = context.active_gpencil_layer
+            tot_layers = len(gpd.layers)
+            i = tot_layers - 1
+            while(i >= 0):
+                gpl = gpd.layers[i]
+                if gpl.info == gpl_active.info:
+                    icon='GREASEPENCIL'
+                else:
+                    icon = 'NONE'
+                layout.operator("gpencil.move_to_layer", text=gpl.info, icon=icon).layer=i
+                i -= 1
+
+            layout.separator()
+
+        layout.operator("gpencil.layer_add", text="New Layer", icon='ADD')
+
+
 class GPENCIL_MT_gpencil_draw_delete(Menu):
-    bl_label = "GPencil Draw Delete"
+    bl_label = "Delete"
 
     def draw(self, _context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.active_frames_delete_all", text="Delete Frame")
+        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
+        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
 
 
 class GPENCIL_MT_cleanup(Menu):
     bl_label = "Clean Up"
 
     def draw(self, _context):
+
+        ob = _context.active_object
+
         layout = self.layout
+
         layout.operator("gpencil.frame_clean_loose", text="Delete Loose Points")
-        layout.operator("gpencil.stroke_merge_by_distance", text="Merge by Distance")
+
+        if ob.mode != 'PAINT_GPENCIL':
+            layout.operator("gpencil.stroke_merge_by_distance", text="Merge by Distance")
+        
         layout.separator()
 
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes").mode = 'ACTIVE'
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes all Frames").mode = 'ALL'
-        layout.separator()
 
-        layout.operator("gpencil.reproject")
+        if ob.mode != 'PAINT_GPENCIL':
+            layout.separator()
+
+            layout.operator("gpencil.reproject")
 
 
 class GPENCIL_UL_annotation_layer(UIList):
@@ -924,6 +958,7 @@ classes = (
 
     GPENCIL_MT_snap,
     GPENCIL_MT_cleanup,
+    GPENCIL_MT_move_to_layer,
 
     GPENCIL_MT_gpencil_draw_delete,
 
