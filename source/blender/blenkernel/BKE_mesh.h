@@ -53,13 +53,11 @@ struct MLoopTri;
 struct MLoopUV;
 struct MPoly;
 struct MVert;
-struct MVertTri;
 struct Main;
 struct MemArena;
 struct Mesh;
 struct ModifierData;
 struct Object;
-struct ReportList;
 struct Scene;
 
 #ifdef __cplusplus
@@ -123,6 +121,13 @@ struct Mesh *BKE_mesh_new_nomain_from_template(const struct Mesh *me_src,
                                                int tessface_len,
                                                int loops_len,
                                                int polys_len);
+struct Mesh *BKE_mesh_new_nomain_from_template_ex(const struct Mesh *me_src,
+                                                  int verts_len,
+                                                  int edges_len,
+                                                  int tessface_len,
+                                                  int loops_len,
+                                                  int polys_len,
+                                                  CustomData_MeshMasks mask);
 
 void BKE_mesh_eval_delete(struct Mesh *me_eval);
 
@@ -185,7 +190,7 @@ void BKE_mesh_material_index_remove(struct Mesh *me, short index);
 bool BKE_mesh_material_index_used(struct Mesh *me, short index);
 void BKE_mesh_material_index_clear(struct Mesh *me);
 void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigned int remap_len);
-void BKE_mesh_smooth_flag_set(struct Object *meshOb, int enableSmooth);
+void BKE_mesh_smooth_flag_set(struct Mesh *me, const bool use_smooth);
 
 const char *BKE_mesh_cmp(struct Mesh *me1, struct Mesh *me2, float thresh);
 
@@ -197,16 +202,6 @@ struct BoundBox *BKE_mesh_texspace_get(struct Mesh *me,
 void BKE_mesh_texspace_get_reference(
     struct Mesh *me, short **r_texflag, float **r_loc, float **r_rot, float **r_size);
 void BKE_mesh_texspace_copy_from_object(struct Mesh *me, struct Object *ob);
-
-bool BKE_mesh_uv_cdlayer_rename_index(struct Mesh *me,
-                                      const int loop_index,
-                                      const int face_index,
-                                      const char *new_name,
-                                      const bool do_tessface);
-bool BKE_mesh_uv_cdlayer_rename(struct Mesh *me,
-                                const char *old_name,
-                                const char *new_name,
-                                bool do_tessface);
 
 void BKE_mesh_split_faces(struct Mesh *mesh, bool free_loop_normals);
 
@@ -313,11 +308,6 @@ void BKE_mesh_calc_normals_poly(struct MVert *mverts,
 void BKE_mesh_calc_normals(struct Mesh *me);
 void BKE_mesh_ensure_normals(struct Mesh *me);
 void BKE_mesh_ensure_normals_for_display(struct Mesh *mesh);
-void BKE_mesh_calc_normals_tessface(struct MVert *mverts,
-                                    int numVerts,
-                                    const struct MFace *mfaces,
-                                    int numFaces,
-                                    float (*r_faceNors)[3]);
 void BKE_mesh_calc_normals_looptri(struct MVert *mverts,
                                    int numVerts,
                                    const struct MLoop *mloop,
@@ -542,14 +532,14 @@ void BKE_mesh_tangent_loops_to_tessdata(struct CustomData *fdata,
                                         unsigned int (*loopindices)[4],
                                         const int num_faces,
                                         const char *layer_name);
-int BKE_mesh_recalc_tessellation(struct CustomData *fdata,
-                                 struct CustomData *ldata,
-                                 struct CustomData *pdata,
-                                 struct MVert *mvert,
-                                 int totface,
-                                 int totloop,
-                                 int totpoly,
-                                 const bool do_face_nor_copy);
+int BKE_mesh_tessface_calc_ex(struct CustomData *fdata,
+                              struct CustomData *ldata,
+                              struct CustomData *pdata,
+                              struct MVert *mvert,
+                              int totface,
+                              int totloop,
+                              int totpoly,
+                              const bool do_face_nor_copy);
 void BKE_mesh_recalc_looptri(const struct MLoop *mloop,
                              const struct MPoly *mpoly,
                              const struct MVert *mvert,
