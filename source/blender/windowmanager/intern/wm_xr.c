@@ -19,7 +19,7 @@
  *
  * \name Window-Manager XR API
  *
- * Implements Blender specific functionality for the GHOST_Xr API.
+ * Implements Blender specific functionality for the VAMR API.
  */
 
 #include "BKE_context.h"
@@ -57,10 +57,12 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
+#include "VAMR_capi.h"
+
 static wmSurface *g_xr_surface = NULL;
 
 typedef struct {
-  GHOST_TXrGraphicsBinding gpu_binding_type;
+  VAMR_GraphicsBindingType gpu_binding_type;
   GPUOffScreen *offscreen;
   GPUViewport *viewport;
   GPUFrameBuffer *fbo;
@@ -75,21 +77,21 @@ typedef struct {
   bContext *evil_C;
 } wmXrErrorHandlerData;
 
-void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
-void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
-void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
+void wm_xr_draw_view(const VAMR_DrawViewInfo *, void *);
+void *wm_xr_session_gpu_binding_context_create(VAMR_GraphicsBindingType);
+void wm_xr_session_gpu_binding_context_destroy(VAMR_GraphicsBindingType, void *);
 wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Context
  *
- * All XR functionality is accessed through a #GHOST_XrContext handle.
+ * All XR functionality is accessed through a #VAMR_Context handle.
  * The lifetime of this context also determines the lifetime of the OpenXR instance, which is the
  * representation of the OpenXR runtime connection within the application.
  *
  * \{ */
 
-static void wm_xr_error_handler(const GHOST_XrError *error)
+static void wm_xr_error_handler(const VAMR_Error *error)
 {
   wmXrErrorHandlerData *handler_data = error->customdata;
   wmWindowManager *wm = handler_data->wm;
@@ -101,7 +103,7 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
 
   if (wm->xr_context) {
     /* Just play safe and destroy the entire context. */
-    GHOST_XrContextDestroy(wm->xr_context);
+    VAMR_ContextDestroy(wm->xr_context);
     wm->xr_context = NULL;
   }
 }
@@ -116,35 +118,35 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
   /* Set up error handling */
   error_customdata.wm = wm;
   error_customdata.evil_C = C;
-  GHOST_XrErrorHandler(wm_xr_error_handler, &error_customdata);
+  VAMR_ErrorHandler(wm_xr_error_handler, &error_customdata);
 
   {
-    const GHOST_TXrGraphicsBinding gpu_bindings_candidates[] = {
-        GHOST_kXrGraphicsOpenGL,
+    const VAMR_GraphicsBindingType gpu_bindings_candidates[] = {
+        VAMR_GraphicsBindingTypeOpenGL,
 #ifdef WIN32
-        GHOST_kXrGraphicsD3D11,
+        VAMR_GraphicsBindingTypeD3D11,
 #endif
     };
-    GHOST_XrContextCreateInfo create_info = {
+    VAMR_ContextCreateInfo create_info = {
         .gpu_binding_candidates = gpu_bindings_candidates,
         .gpu_binding_candidates_count = ARRAY_SIZE(gpu_bindings_candidates)};
 
     if (G.debug & G_DEBUG_XR) {
-      create_info.context_flag |= GHOST_kXrContextDebug;
+      create_info.context_flag |= VAMR_ContextDebug;
     }
     if (G.debug & G_DEBUG_XR_TIME) {
-      create_info.context_flag |= GHOST_kXrContextDebugTime;
+      create_info.context_flag |= VAMR_ContextDebugTime;
     }
 
-    if (!(wm->xr_context = GHOST_XrContextCreate(&create_info))) {
+    if (!(wm->xr_context = VAMR_ContextCreate(&create_info))) {
       return false;
     }
 
     /* Set up context callbacks */
-    GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
-                                     wm_xr_session_gpu_binding_context_create,
-                                     wm_xr_session_gpu_binding_context_destroy);
-    GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view);
+    VAMR_GraphicsContextBindFuncs(wm->xr_context,
+                                  wm_xr_session_gpu_binding_context_create,
+                                  wm_xr_session_gpu_binding_context_destroy);
+    VAMR_DrawViewFunc(wm->xr_context, wm_xr_draw_view);
   }
   BLI_assert(wm->xr_context != NULL);
 
@@ -154,7 +156,7 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 void wm_xr_context_destroy(wmWindowManager *wm)
 {
   if (wm->xr_context != NULL) {
-    GHOST_XrContextDestroy(wm->xr_context);
+    VAMR_ContextDestroy(wm->xr_context);
   }
 }
 
@@ -165,7 +167,7 @@ void wm_xr_context_destroy(wmWindowManager *wm)
  *
  * \{ */
 
-void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics_binding)
+void *wm_xr_session_gpu_binding_context_create(VAMR_GraphicsBindingType graphics_binding)
 {
   wmSurface *surface = wm_xr_session_surface_create(G_MAIN->wm.first, graphics_binding);
   wmXrSurfaceData *data = surface->customdata;
@@ -175,7 +177,7 @@ void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics
   return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
 }
 
-void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(graphics_lib),
+void wm_xr_session_gpu_binding_context_destroy(VAMR_GraphicsBindingType UNUSED(graphics_lib),
                                                void *UNUSED(context))
 {
   if (g_xr_surface) { /* Might have been freed already */
@@ -185,8 +187,7 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   wm_window_reset_drawable();
 }
 
-static void wm_xr_session_begin_info_create(const Scene *scene,
-                                            GHOST_XrSessionBeginInfo *begin_info)
+static void wm_xr_session_begin_info_create(const Scene *scene, VAMR_SessionBeginInfo *begin_info)
 {
   if (scene->camera) {
     copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
@@ -209,17 +210,17 @@ static void wm_xr_session_begin_info_create(const Scene *scene,
 
 void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 {
-  GHOST_XrContextHandle xr_context = xr_context_ptr;
+  VAMR_ContextHandle xr_context = xr_context_ptr;
 
-  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
-    GHOST_XrSessionEnd(xr_context);
+  if (xr_context && VAMR_SessionIsRunning(xr_context)) {
+    VAMR_SessionEnd(xr_context);
   }
   else {
-    GHOST_XrSessionBeginInfo begin_info;
+    VAMR_SessionBeginInfo begin_info;
 
     wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
 
-    GHOST_XrSessionStart(xr_context, &begin_info);
+    VAMR_SessionStart(xr_context, &begin_info);
   }
 }
 
@@ -253,17 +254,17 @@ static void wm_xr_surface_viewport_unbind(wmXrSurfaceData *surface_data)
  *
  * Draw callback for the XR-session surface. It's expected to be called on each main loop iteration
  * and tells Ghost-XR to submit a new frame by drawing its views. Note that for drawing each view,
- * #wm_xr_draw_view() will be called through Ghost-XR (see GHOST_XrDrawViewFunc()).
+ * #wm_xr_draw_view() will be called through Ghost-XR (see VAMR_DrawViewFunc()).
  */
 static void wm_xr_session_surface_draw(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
 
-  if (!GHOST_XrSessionIsRunning(wm->xr_context)) {
+  if (!VAMR_SessionIsRunning(wm->xr_context)) {
     return;
   }
-  GHOST_XrSessionDrawViews(wm->xr_context, C);
+  VAMR_SessionDrawViews(wm->xr_context, C);
   if (surface_data->viewport) {
     /* Still bound from view drawing. */
     wm_xr_surface_viewport_unbind(surface_data);
@@ -276,7 +277,7 @@ static void wm_xr_session_free_data(wmSurface *surface)
 
   if (data->secondary_ghost_ctx) {
 #ifdef WIN32
-    if (data->gpu_binding_type == GHOST_kXrGraphicsD3D11) {
+    if (data->gpu_binding_type == VAMR_GraphicsBindingTypeD3D11) {
       WM_directx_context_dispose(data->secondary_ghost_ctx);
     }
 #endif
@@ -303,7 +304,7 @@ static void wm_xr_session_free_data(wmSurface *surface)
   g_xr_surface = NULL;
 }
 
-static bool wm_xr_session_surface_offscreen_ensure(const GHOST_XrDrawViewInfo *draw_view)
+static bool wm_xr_session_surface_offscreen_ensure(const VAMR_DrawViewInfo *draw_view)
 {
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   char err_out[256] = "unknown";
@@ -360,7 +361,7 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
   wmXrSurfaceData *data = MEM_callocN(sizeof(*data), "XrSurfaceData");
 
 #ifndef WIN32
-  BLI_assert(gpu_binding_type == GHOST_kXrGraphicsOpenGL);
+  BLI_assert(gpu_binding_type == VAMR_GraphicsBindingTypeOpenGL);
 #endif
 
   surface->draw = wm_xr_session_surface_draw;
@@ -373,10 +374,10 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
   DRW_opengl_context_enable();
 
   switch (gpu_binding_type) {
-    case GHOST_kXrGraphicsOpenGL:
+    case VAMR_GraphicsBindingTypeOpenGL:
       break;
 #ifdef WIN32
-    case GHOST_kXrGraphicsD3D11:
+    case VAMR_GraphicsBindingTypeD3D11:
       data->secondary_ghost_ctx = WM_directx_context_create();
       break;
 #endif
@@ -404,7 +405,7 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
  * experience going. If there's no active camera with stick to the world origin.
  */
 static void wm_xr_draw_matrices_create(const Scene *scene,
-                                       const GHOST_XrDrawViewInfo *draw_view,
+                                       const VAMR_DrawViewInfo *draw_view,
                                        const float clip_start,
                                        const float clip_end,
                                        float r_view_mat[4][4],
@@ -442,9 +443,9 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
  * \brief Draw a viewport for a single eye.
  *
  * This is the main viewport drawing function for VR sessions. It's assigned to Ghost-XR as a
- * callback (see GHOST_XrDrawViewFunc()) and executed for each view (read: eye).
+ * callback (see VAMR_DrawViewFunc()) and executed for each view (read: eye).
  */
-void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
+void wm_xr_draw_view(const VAMR_DrawViewInfo *draw_view, void *customdata)
 {
   bContext *C = customdata;
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
@@ -509,7 +510,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   else {
     GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
   }
-  /* Leave viewport bound so GHOST_Xr can use its context/framebuffer, its unbound in
+  /* Leave viewport bound so VAMR_ can use its context/framebuffer, its unbound in
    * wm_xr_session_surface_draw(). */
   // GPU_viewport_unbind(viewport);
 }

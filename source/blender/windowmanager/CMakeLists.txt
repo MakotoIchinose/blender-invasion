@@ -179,8 +179,17 @@ endif()
 
 if(WITH_OPENXR)
   add_definitions(-DWITH_OPENXR)
+
+  list(APPEND INC
+    ../../../intern/vamr
+  )
+
   list(APPEND SRC
     intern/wm_xr.c
+  )
+
+  list(APPEND LIB
+    bf_intern_vamr
   )
 endif()
 
