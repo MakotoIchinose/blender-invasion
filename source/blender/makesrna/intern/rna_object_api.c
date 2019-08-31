@@ -704,7 +704,7 @@ bool rna_Object_generate_gpencil_strokes(Object *ob,
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections);
+  BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections, false);
 
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, NULL);
 

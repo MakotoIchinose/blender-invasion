@@ -2831,7 +2831,7 @@ void BKE_gpencil_merge_distance_stroke(bGPDframe *gpf,
   }
 }
 
-/* Helper function to check materials with same color */
+/* Helper: Check materials with same color. */
 static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Material *r_mat)
 {
   Material *ma = NULL;
@@ -2858,7 +2858,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
   return -1;
 }
 
-/* Add gpencil material using curve material as base */
+/* Helper: Add gpencil material using curve material as base. */
 static Material *gpencil_add_from_curve_material(Main *bmain,
                                                  Object *ob_gp,
                                                  float cu_color[4],
@@ -2882,7 +2882,7 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
 
   /* Fill color. */
   linearrgb_to_srgb_v4(gp_style->fill_rgba, cu_color);
-  /* Fill is false if the original curve hasn't material assigned. */
+  /* Fill is false if the original curve hasn't material assigned, so enable it. */
   if (fill) {
     gp_style->flag |= GP_STYLE_FILL_SHOW;
   }
@@ -2896,7 +2896,7 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
   return mat_gp;
 }
 
-/* Helper function to create new stroke section */
+/* Helper: Create new stroke section. */
 static void gpencil_add_new_points(bGPDstroke *gps,
                                    float *coord_array,
                                    float pressure,
@@ -2924,7 +2924,7 @@ static void gpencil_add_new_points(bGPDstroke *gps,
   }
 }
 
-/* Helper function to get the first collection that includes the object. */
+/* Helper: Get the first collection that includes the object. */
 static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
 {
   Collection *mycol = NULL;
@@ -2940,13 +2940,14 @@ static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
   return mycol;
 }
 
-/* Helper function to convert one spline to grease pencil stroke. */
+/* Helper: Convert one spline to grease pencil stroke. */
 static void gpencil_convert_spline(Main *bmain,
                                    Scene *scene,
                                    Object *ob_gp,
                                    Object *ob_cu,
                                    const bool gpencil_lines,
                                    const bool use_collections,
+                                   const bool only_stroke,
                                    bGPDframe *gpf,
                                    Nurb *nu)
 {
@@ -2981,9 +2982,6 @@ static void gpencil_convert_spline(Main *bmain,
   }
   totpoints = (resolu * segments) - (segments - 1);
 
-  /* Allocate memory for storage points, but keep empty. */
-  gps->totpoints = totpoints;
-  gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
   /* Initialize triangle memory to dummy data. */
   gps->tot_triangles = 0;
   gps->triangles = NULL;
@@ -3000,10 +2998,9 @@ static void gpencil_convert_spline(Main *bmain,
     copy_v4_v4(color, &mat_cu->r);
   }
   else {
-    /* Pink (unassigned) */
+    /* Gray (unassigned from SVG add-on) */
     zero_v4(color);
-    color[0] = 1.0f;
-    color[2] = 1.0f;
+    add_v3_fl(color, 0.6f);
     color[3] = 1.0f;
     fill = false;
   }
@@ -3012,16 +3009,16 @@ static void gpencil_convert_spline(Main *bmain,
    * there is only one color, the stroke must not be closed, fill to false and use for
    * stroke the fill color.
    */
-  bool only_stroke = false;
+  bool do_stroke = false;
   if (ob_cu->totcol == 1) {
     Material *ma_stroke = give_current_material(ob_cu, 1);
     if ((ma_stroke) && (strstr(ma_stroke->id.name, "_stroke") != NULL)) {
-      only_stroke = true;
+      do_stroke = true;
     }
   }
 
   int r_idx = gpencil_check_same_material_color(ob_gp, color, mat_gp);
-  if (r_idx < 0) {
+  if ((ob_cu->totcol > 0) && (r_idx < 0)) {
     Material *mat_curve = give_current_material(ob_cu, 1);
     mat_gp = gpencil_add_from_curve_material(bmain, ob_gp, color, gpencil_lines, fill, &r_idx);
 
@@ -3036,22 +3033,26 @@ static void gpencil_convert_spline(Main *bmain,
     }
 
     /* If object has more than 1 material, use second material for stroke color. */
-    if ((ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
+    if ((!only_stroke) && (ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
       mat_curve = give_current_material(ob_cu, 2);
       linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
       mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
     }
-    else if (only_stroke) {
+    else if ((only_stroke) || (do_stroke)) {
       /* Also use the first color if the fill is none for stroke color. */
-      mat_curve = give_current_material(ob_cu, 1);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
-      mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
-      /* Set stroke to on. */
-      mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
-      /* Set fill to off. */
-      mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+      if (ob_cu->totcol > 0) {
+        mat_curve = give_current_material(ob_cu, 1);
+        linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+        mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
+        /* Set stroke to on. */
+        mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+        /* Set fill to off. */
+        mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+      }
     }
   }
+  CLAMP_MIN(r_idx, 0);
+
   /* Assign material index to stroke. */
   gps->mat_nr = r_idx;
 
@@ -3063,6 +3064,10 @@ static void gpencil_convert_spline(Main *bmain,
   float init_co[3];
 
   if (nu->type == CU_BEZIER) {
+    /* Allocate memory for storage points. */
+    gps->totpoints = totpoints;
+    gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+
     int init = 0;
     resolu = nu->resolu + 1;
     segments = nu->pntsu;
@@ -3103,20 +3108,33 @@ static void gpencil_convert_spline(Main *bmain,
     }
   }
   else if (nu->type == CU_NURBS) {
-    int pntsu = nu->pntsu;
     if (nu->pntsv == 1) {
-      coord_array = MEM_callocN(sizeof(float[3]) * pntsu * resolu, __func__);
 
+      int nurb_points;
+      if (nu->flagu & CU_NURB_CYCLIC) {
+        resolu++;
+        nurb_points = nu->pntsu * resolu;
+      }
+      else {
+        nurb_points = (nu->pntsu - 1) * resolu;
+      }
+      /* Get all curve points. */
+      coord_array = MEM_callocN(sizeof(float[3]) * nurb_points, __func__);
       BKE_nurb_makeCurve(nu, coord_array, NULL, NULL, NULL, resolu, sizeof(float[3]));
 
-      gpencil_add_new_points(gps, coord_array, 1.0f, 0, totpoints, init_co, false);
+      /* Allocate memory for storage points. */
+      gps->totpoints = nurb_points - 1;
+      gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
 
-      MEM_freeN(coord_array);
+      /* Add points. */
+      gpencil_add_new_points(gps, coord_array, 1.0f, 0, gps->totpoints, init_co, false);
+
+      MEM_SAFE_FREE(coord_array);
     }
   }
 
   /* Cyclic curve, close stroke. */
-  if ((cyclic) && (!only_stroke)) {
+  if ((cyclic) && (!do_stroke)) {
     BKE_gpencil_close_stroke(gps);
   }
 }
@@ -3129,13 +3147,15 @@ static void gpencil_convert_spline(Main *bmain,
  * \param ob_cu: Curve to convert.
  * \param gpencil_lines: Use lines for strokes.
  * \param use_collections: Create layers using collection names.
+ * \param only_stroke: The material must be only stroke without fill.
  */
 void BKE_gpencil_convert_curve(Main *bmain,
                                Scene *scene,
                                Object *ob_gp,
                                Object *ob_cu,
                                const bool gpencil_lines,
-                               const bool use_collections)
+                               const bool use_collections,
+                               const bool only_stroke)
 {
   if (ELEM(NULL, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == NULL)) {
     return;
@@ -3173,7 +3193,8 @@ void BKE_gpencil_convert_curve(Main *bmain,
 
   /* Read all splines of the curve and create a stroke for each. */
   for (Nurb *nu = cu->nurb.first; nu; nu = nu->next) {
-    gpencil_convert_spline(bmain, scene, ob_gp, ob_cu, gpencil_lines, use_collections, gpf, nu);
+    gpencil_convert_spline(
+        bmain, scene, ob_gp, ob_cu, gpencil_lines, use_collections, only_stroke, gpf, nu);
   }
 
   /* Tag for recalculation */

@@ -252,7 +252,8 @@ void BKE_gpencil_convert_curve(struct Main *bmain,
                                struct Object *ob_gp,
                                struct Object *ob_cu,
                                const bool gpencil_lines,
-                               const bool use_collections);
+                               const bool use_collections,
+                               const bool only_stroke);
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);

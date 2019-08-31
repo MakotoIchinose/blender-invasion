@@ -2144,8 +2144,6 @@ static int convert_exec(bContext *C, wmOperator *op)
   Object *gpencil_ob = NULL;
   const short target = RNA_enum_get(op->ptr, "target");
   bool keep_original = RNA_boolean_get(op->ptr, "keep_original");
-  const bool gpencil_lines = RNA_boolean_get(op->ptr, "gpencil_lines");
-  const bool use_collections = RNA_boolean_get(op->ptr, "use_collections");
   int a, mballConverted = 0;
 
   /* don't forget multiple users! */
@@ -2386,13 +2384,22 @@ static int convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_curve_cache(newob);
       }
       else if (target == OB_GPENCIL) {
-        /* Create a new grease pencil object */
-        if (gpencil_ob == NULL) {
-          const float *cur = scene->cursor.location;
-          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
-          gpencil_ob = ED_gpencil_add_object(C, scene, cur, local_view_bits);
+        if (ob->type != OB_CURVE) {
+          BKE_report(
+              op->reports, RPT_ERROR, "Convert Surfaces to Grease Pencil is not supported.");
         }
-        BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, gpencil_lines, use_collections);
+        else {
+          /* Create a new grease pencil object only if it was not created before.
+           * All curves selected are converted as strokes of the same grease pencil object.
+           * Nurbs Surface are not supported.
+           */
+          if (gpencil_ob == NULL) {
+            const float *cur = scene->cursor.location;
+            ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+            gpencil_ob = ED_gpencil_add_object(C, scene, cur, local_view_bits);
+          }
+          BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, false, false, true);
+        }
       }
     }
     else if (ob->type == OB_MBALL && target == OB_MESH) {
@@ -2537,13 +2544,6 @@ void OBJECT_OT_convert(wmOperatorType *ot)
                   0,
                   "Keep Original",
                   "Keep original objects instead of replacing them");
-  RNA_def_boolean(
-      ot->srna, "gpencil_lines", 0, "GPencil Lines", "Use lines for grease pencil conversion");
-  RNA_def_boolean(ot->srna,
-                  "use_collections",
-                  1,
-                  "Use Collections",
-                  "Use name of collections as name for grease pencil layers");
 }
 
 /** \} */
