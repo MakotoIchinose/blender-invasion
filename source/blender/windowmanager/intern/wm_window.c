@@ -57,6 +57,11 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+/* TODO Call through wm_xr.c */
+#ifdef WITH_OPENXR
+#  include "VAMR_capi.h"
+#endif
+
 #include "WM_api.h"
 #include "WM_types.h"
 #include "wm.h"
@@ -1613,7 +1618,7 @@ void wm_window_process_events(const bContext *C)
   }
   hasevent |= wm_window_timer(C);
 #ifdef WITH_OPENXR
-  hasevent |= GHOST_XrEventsHandle(CTX_wm_manager(C)->xr_context);
+  hasevent |= VAMR_EventsHandle(CTX_wm_manager(C)->xr_context);
 #endif
 
   /* no event, we sleep 5 milliseconds */

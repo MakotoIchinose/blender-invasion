@@ -347,35 +347,6 @@ elseif(WIN32)
 
 endif()
 
-if(WITH_OPENXR)
-  list(APPEND SRC
-    intern/GHOST_Xr.cpp
-    intern/GHOST_XrContext.cpp
-    intern/GHOST_XrEvent.cpp
-    intern/GHOST_XrGraphicsBinding.cpp
-    intern/GHOST_XrSession.cpp
-
-    GHOST_IXrContext.h
-    intern/GHOST_Xr_intern.h
-    intern/GHOST_Xr_openxr_includes.h
-    intern/GHOST_XrContext.h
-    intern/GHOST_IXrGraphicsBinding.h
-    intern/GHOST_XrSession.h
-  )
-  list(APPEND INC_SYS
-    ${OPENXR_SDK_INCLUDE_DIR}
-  )
-  if(WIN32)
-    list(APPEND LIB
-      shlwapi
-    )
-  endif()
-
-  include(xr_platform_defines)
-
-  add_definitions(-DWITH_OPENXR)
-endif()
-
 add_definitions(${GL_DEFINITIONS})
 
 blender_add_lib(bf_intern_ghost "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
