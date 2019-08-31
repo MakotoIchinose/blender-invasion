@@ -23,9 +23,12 @@
 
 #include <memory>
 #include <vector>
+
 #include "VAMR_IContext.h"
 
-struct VAMR_CustomFuncs {
+namespace VAMR {
+
+struct CustomFuncs {
   /** Function to retrieve (possibly create) a graphics context */
   VAMR_GraphicsContextBindFn gpu_ctx_bind_fn{nullptr};
   /** Function to release (possibly free) a graphics context */
@@ -38,7 +41,7 @@ struct VAMR_CustomFuncs {
 /**
  * In some occasions, runtime specific handling is needed, e.g. to work around runtime bugs.
  */
-enum VAMR_OpenXRRuntimeID {
+enum OpenXRRuntimeID {
   OPENXR_RUNTIME_MONADO,
   OPENXR_RUNTIME_OCULUS,
   OPENXR_RUNTIME_WMR, /* Windows Mixed Reality */
@@ -53,10 +56,10 @@ enum VAMR_OpenXRRuntimeID {
  * runtime, likely reading the OS OpenXR configuration (i.e. active_runtime.json). So this is
  * something that should better be done using lazy-initialization.
  */
-class VAMR_Context : public VAMR_IContext {
+class Context : public VAMR::IContext {
  public:
-  VAMR_Context(const VAMR_ContextCreateInfo *create_info);
-  ~VAMR_Context();
+  Context(const VAMR_ContextCreateInfo *create_info);
+  ~Context();
   void initialize(const VAMR_ContextCreateInfo *create_info);
 
   void startSession(const VAMR_SessionBeginInfo *begin_info) override;
@@ -65,7 +68,7 @@ class VAMR_Context : public VAMR_IContext {
   void drawSessionViews(void *draw_customdata) override;
 
   static void setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata);
-  void dispatchErrorMessage(const class VAMR_Exception *exception) const override;
+  void dispatchErrorMessage(const class Exception *exception) const override;
 
   void setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
                                    VAMR_GraphicsContextUnbindFn unbind_fn) override;
@@ -73,8 +76,8 @@ class VAMR_Context : public VAMR_IContext {
 
   void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
-  VAMR_OpenXRRuntimeID getOpenXRRuntimeID() const;
-  const VAMR_CustomFuncs *getCustomFuncs() const;
+  OpenXRRuntimeID getOpenXRRuntimeID() const;
+  const CustomFuncs *getCustomFuncs() const;
   VAMR_GraphicsBindingType getGraphicsBindingType() const;
   XrInstance getInstance() const;
   bool isDebugMode() const;
@@ -83,10 +86,10 @@ class VAMR_Context : public VAMR_IContext {
  private:
   std::unique_ptr<struct OpenXRInstanceData> m_oxr;
 
-  VAMR_OpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
+  OpenXRRuntimeID m_runtime_id{OPENXR_RUNTIME_UNKNOWN};
 
   /* The active VAMR XR Session. Null while no session runs. */
-  std::unique_ptr<class VAMR_Session> m_session;
+  std::unique_ptr<class Session> m_session;
 
   /** Active graphics binding type. */
   VAMR_GraphicsBindingType m_gpu_binding_type{VAMR_GraphicsBindingTypeUnknown};
@@ -98,7 +101,7 @@ class VAMR_Context : public VAMR_IContext {
 
   static VAMR_ErrorHandlerFn s_error_handler;
   static void *s_error_handler_customdata;
-  VAMR_CustomFuncs m_custom_funcs;
+  CustomFuncs m_custom_funcs;
 
   /** Enable debug message prints and OpenXR API validation layers */
   bool m_debug{false};
@@ -121,5 +124,7 @@ class VAMR_Context : public VAMR_IContext {
   VAMR_GraphicsBindingType determineGraphicsBindingTypeToEnable(
       const VAMR_ContextCreateInfo *create_info);
 };
+
+}  // namespace VAMR
 
 #endif  // __VAMR_CONTEXT_H__

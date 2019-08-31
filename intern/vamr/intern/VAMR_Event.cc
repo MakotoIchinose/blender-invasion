@@ -20,9 +20,12 @@
 
 #include <iostream>
 
-#include "VAMR_capi.h"
+#include "VAMR_Types.h"
 #include "VAMR_intern.h"
+#include "VAMR_capi.h"
 #include "VAMR_Context.h"
+
+namespace VAMR {
 
 static bool VAMR_EventPollNext(XrInstance instance, XrEventDataBuffer &r_event_data)
 {
@@ -33,9 +36,8 @@ static bool VAMR_EventPollNext(XrInstance instance, XrEventDataBuffer &r_event_d
   return (xrPollEvent(instance, &r_event_data) == XR_SUCCESS);
 }
 
-VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_contexthandle)
+::VAMR_TSuccess VAMR_EventsHandle(Context *xr_context)
 {
-  VAMR_Context *xr_context = (VAMR_Context *)xr_contexthandle;
   XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
 
   if (xr_context == NULL) {
@@ -51,7 +53,7 @@ VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_contexthandle)
         return VAMR_Success;
 
       case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
-        VAMR_ContextDestroy(xr_contexthandle);
+        VAMR_ContextDestroy((VAMR_ContextHandle)xr_context);
         return VAMR_Success;
       default:
         XR_DEBUG_PRINTF(xr_context, "Unhandled event: %i\n", event->type);
@@ -61,3 +63,5 @@ VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_contexthandle)
 
   return VAMR_Failure;
 }
+
+}  // namespace VAMR

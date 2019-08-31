@@ -23,20 +23,24 @@
 
 #include "VAMR_Types.h"
 
-class VAMR_IContext {
+namespace VAMR {
+
+class IContext {
  public:
-  virtual ~VAMR_IContext() = default;
+  virtual ~IContext() = default;
 
   virtual void startSession(const VAMR_SessionBeginInfo *begin_info) = 0;
   virtual void endSession() = 0;
   virtual bool isSessionRunning() const = 0;
   virtual void drawSessionViews(void *draw_customdata) = 0;
 
-  virtual void dispatchErrorMessage(const class VAMR_Exception *) const = 0;
+  virtual void dispatchErrorMessage(const class Exception *) const = 0;
 
   virtual void setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
                                            VAMR_GraphicsContextUnbindFn unbind_fn) = 0;
   virtual void setDrawViewFunc(VAMR_DrawViewFn draw_view_fn) = 0;
 };
+
+}  // namespace VAMR
 
 #endif  // __VAMR_ICONTEXT_H__

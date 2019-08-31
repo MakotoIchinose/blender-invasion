@@ -510,7 +510,7 @@ void wm_xr_draw_view(const VAMR_DrawViewInfo *draw_view, void *customdata)
   else {
     GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
   }
-  /* Leave viewport bound so VAMR_ can use its context/framebuffer, its unbound in
+  /* Leave viewport bound so VAMR can use its context/framebuffer, its unbound in
    * wm_xr_session_surface_draw(). */
   // GPU_viewport_unbind(viewport);
 }

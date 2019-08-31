@@ -27,7 +27,7 @@
   try { \
     call; \
   } \
-  catch (VAMR_Exception & e) { \
+  catch (VAMR::Exception & e) { \
     (ctx)->dispatchErrorMessage(&e); \
   }
 
@@ -35,33 +35,33 @@
   try { \
     return call; \
   } \
-  catch (VAMR_Exception & e) { \
+  catch (VAMR::Exception & e) { \
     (ctx)->dispatchErrorMessage(&e); \
   }
 
 void VAMR_SessionStart(VAMR_ContextHandle xr_contexthandle,
                        const VAMR_SessionBeginInfo *begin_info)
 {
-  VAMR_IContext *xr_context = (VAMR_IContext *)xr_contexthandle;
+  VAMR::IContext *xr_context = (VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL(xr_context->startSession(begin_info), xr_context);
 }
 
 void VAMR_SessionEnd(VAMR_ContextHandle xr_contexthandle)
 {
-  VAMR_IContext *xr_context = (VAMR_IContext *)xr_contexthandle;
+  VAMR::IContext *xr_context = (VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL(xr_context->endSession(), xr_context);
 }
 
 int VAMR_SessionIsRunning(const VAMR_ContextHandle xr_contexthandle)
 {
-  const VAMR_IContext *xr_context = (const VAMR_IContext *)xr_contexthandle;
+  const VAMR::IContext *xr_context = (const VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL_RET(xr_context->isSessionRunning(), xr_context);
   return 0;  // Only reached if exception is thrown.
 }
 
 void VAMR_SessionDrawViews(VAMR_ContextHandle xr_contexthandle, void *draw_customdata)
 {
-  VAMR_IContext *xr_context = (VAMR_IContext *)xr_contexthandle;
+  VAMR::IContext *xr_context = (VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL(xr_context->drawSessionViews(draw_customdata), xr_context);
 }
 
@@ -69,12 +69,12 @@ void VAMR_GraphicsContextBindFuncs(VAMR_ContextHandle xr_contexthandle,
                                    VAMR_GraphicsContextBindFn bind_fn,
                                    VAMR_GraphicsContextUnbindFn unbind_fn)
 {
-  VAMR_IContext *xr_context = (VAMR_IContext *)xr_contexthandle;
+  VAMR::IContext *xr_context = (VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL(xr_context->setGraphicsContextBindFuncs(bind_fn, unbind_fn), xr_context);
 }
 
 void VAMR_DrawViewFunc(VAMR_ContextHandle xr_contexthandle, VAMR_DrawViewFn draw_view_fn)
 {
-  VAMR_IContext *xr_context = (VAMR_IContext *)xr_contexthandle;
+  VAMR::IContext *xr_context = (VAMR::IContext *)xr_contexthandle;
   VAMR_CAPI_CALL(xr_context->setDrawViewFunc(draw_view_fn), xr_context);
 }

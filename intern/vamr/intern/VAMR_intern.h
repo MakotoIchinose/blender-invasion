@@ -26,11 +26,13 @@
 
 #include "VAMR_openxr_includes.h"
 
+namespace VAMR {
+
 #define CHECK_XR(call, error_msg) \
   { \
     XrResult _res = call; \
     if (XR_FAILED(_res)) { \
-      throw VAMR_Exception(error_msg, __FILE__, __LINE__, _res); \
+      throw VAMR::Exception(error_msg, __FILE__, __LINE__, _res); \
     } \
   } \
   (void)0
@@ -43,7 +45,7 @@
   } \
   (void)0
 
-#define THROW_XR(error_msg) throw VAMR_Exception(error_msg, __FILE__, __LINE__);
+#define THROW_XR(error_msg) throw VAMR::Exception(error_msg, __FILE__, __LINE__);
 
 #define XR_DEBUG_ONLY_BEGIN(ctx) \
   if ((ctx)->isDebugMode()) { \
@@ -128,5 +130,9 @@ template<typename _OXR_HANDLE> class unique_oxr_ptr {
   _OXR_HANDLE m_ptr{XR_NULL_HANDLE};
   xr_destroy_func m_destroy_fn;
 };
+
+::VAMR_TSuccess VAMR_EventsHandle(class Context *xr_context);
+
+}  // namespace VAMR
 
 #endif /* __VAMR_INTERN_H__ */

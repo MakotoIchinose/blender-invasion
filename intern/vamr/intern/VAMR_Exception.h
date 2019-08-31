@@ -23,11 +23,17 @@
 
 #include <exception>
 
-class VAMR_Exception : public std::exception {
-  friend class VAMR_Context;
+namespace VAMR {
+
+/**
+ * For now just a general Exception type (note that it's in namespace VAMR, so name shouldn't cause
+ * conflicts).
+ */
+class Exception : public std::exception {
+  friend class Context;
 
  public:
-  VAMR_Exception(const char *msg, const char *file, int line, int res = 0)
+  Exception(const char *msg, const char *file, int line, int res = 0)
       : std::exception(), m_msg(msg), m_file(file), m_line(line), m_res(res)
   {
   }
@@ -43,5 +49,7 @@ class VAMR_Exception : public std::exception {
   const int m_line;
   int m_res;
 };
+
+}  // namespace VAMR
 
 #endif  // __VAMR_EXCEPTION_H__

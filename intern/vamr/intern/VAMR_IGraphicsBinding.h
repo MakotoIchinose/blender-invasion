@@ -27,8 +27,10 @@
 
 #include "VAMR_openxr_includes.h"
 
-class VAMR_IGraphicsBinding {
-  friend std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
+namespace VAMR {
+
+class IGraphicsBinding {
+  friend std::unique_ptr<IGraphicsBinding> GraphicsBindingCreateFromType(
       VAMR_GraphicsBindingType type);
 
  public:
@@ -61,11 +63,12 @@ class VAMR_IGraphicsBinding {
                                  const VAMR_DrawViewInfo *draw_info) = 0;
 
  protected:
-  /* Use VAMR_GraphicsBindingCreateFromType */
-  VAMR_IGraphicsBinding() = default;
+  /* Use GraphicsBindingCreateFromType */
+  IGraphicsBinding() = default;
 };
 
-std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
-    VAMR_GraphicsBindingType type);
+std::unique_ptr<IGraphicsBinding> GraphicsBindingCreateFromType(VAMR_GraphicsBindingType type);
+
+}  // namespace VAMR
 
 #endif /* __VAMR_IGRAPHICSBINDING_H__ */

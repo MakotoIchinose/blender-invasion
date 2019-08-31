@@ -24,15 +24,17 @@
 #include <map>
 #include <memory>
 
-class VAMR_Session {
+namespace VAMR {
+
+class Session {
  public:
   enum eLifeExpectancy {
     SESSION_KEEP_ALIVE,
     SESSION_DESTROY,
   };
 
-  VAMR_Session(class VAMR_Context *xr_context);
-  ~VAMR_Session();
+  Session(class Context *xr_context);
+  ~Session();
 
   void start(const VAMR_SessionBeginInfo *begin_info);
   void requestEnd();
@@ -48,16 +50,16 @@ class VAMR_Session {
  private:
   /** Pointer back to context managing this session. Would be nice to avoid, but needed to access
    * custom callbacks set before session start. */
-  class VAMR_Context *m_context;
+  class Context *m_context;
 
   std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable */
 
   /** Active Ghost graphic context. Owned by Blender, not VAMR. */
   class GHOST_Context *m_gpu_ctx{nullptr};
-  std::unique_ptr<class VAMR_IGraphicsBinding> m_gpu_binding;
+  std::unique_ptr<class IGraphicsBinding> m_gpu_binding;
 
   /** Rendering information. Set when drawing starts. */
-  std::unique_ptr<struct VAMR_DrawInfo> m_draw_info;
+  std::unique_ptr<struct DrawInfo> m_draw_info;
 
   void initSystem();
   void end();
@@ -74,5 +76,7 @@ class VAMR_Session {
   void beginFrameDrawing();
   void endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *> *layers);
 };
+
+}  // namespace VAMR
 
 #endif /* __VAMR_SESSION_H__ */

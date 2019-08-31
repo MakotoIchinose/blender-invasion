@@ -29,6 +29,8 @@
 #include "VAMR_Context.h"
 #include "VAMR_Exception.h"
 
+using namespace VAMR;
+
 /**
  * \brief Initialize the XR-Context.
  * Includes setting up the OpenXR instance, querying available extensions and API layers,
@@ -36,14 +38,14 @@
  */
 VAMR_ContextHandle VAMR_ContextCreate(const VAMR_ContextCreateInfo *create_info)
 {
-  VAMR_Context *xr_context = new VAMR_Context(create_info);
+  Context *xr_context = new Context(create_info);
 
   // TODO VAMR_Context's should probably be owned by the GHOST_System, which will handle context
   // creation and destruction. Try-catch logic can be moved to C-API then.
   try {
     xr_context->initialize(create_info);
   }
-  catch (VAMR_Exception &e) {
+  catch (Exception &e) {
     xr_context->dispatchErrorMessage(&e);
     delete xr_context;
 
@@ -55,10 +57,15 @@ VAMR_ContextHandle VAMR_ContextCreate(const VAMR_ContextCreateInfo *create_info)
 
 void VAMR_ContextDestroy(VAMR_ContextHandle xr_contexthandle)
 {
-  delete (VAMR_Context *)xr_contexthandle;
+  delete (Context *)xr_contexthandle;
 }
 
 void VAMR_ErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata)
 {
-  VAMR_Context::setErrorHandler(handler_fn, customdata);
+  Context::setErrorHandler(handler_fn, customdata);
+}
+
+VAMR_TSuccess VAMR_EventsHandle(VAMR_ContextHandle xr_contexthandle)
+{
+  return VAMR_EventsHandle((Context *)xr_contexthandle);
 }

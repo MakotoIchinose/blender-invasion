@@ -21,7 +21,9 @@
 #ifndef __VAMR_TYPES_H__
 #define __VAMR_TYPES_H__
 
-typedef struct VAMR_Context *VAMR_ContextHandle;
+typedef struct VAMR_Context__ {
+  int dummy;
+} * VAMR_ContextHandle;
 
 typedef enum { VAMR_Failure = 0, VAMR_Success } VAMR_TSuccess;
 

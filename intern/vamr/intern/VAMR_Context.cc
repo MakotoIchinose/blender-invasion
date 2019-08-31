@@ -31,6 +31,8 @@
 
 #include "VAMR_Context.h"
 
+namespace VAMR {
+
 struct OpenXRInstanceData {
   XrInstance instance{XR_NULL_HANDLE};
   XrInstanceProperties instance_properties;
@@ -49,21 +51,21 @@ PFN_xrCreateDebugUtilsMessengerEXT OpenXRInstanceData::s_xrCreateDebugUtilsMesse
 PFN_xrDestroyDebugUtilsMessengerEXT OpenXRInstanceData::s_xrDestroyDebugUtilsMessengerEXT_fn =
     nullptr;
 
-VAMR_ErrorHandlerFn VAMR_Context::s_error_handler = nullptr;
-void *VAMR_Context::s_error_handler_customdata = nullptr;
+VAMR_ErrorHandlerFn Context::s_error_handler = nullptr;
+void *Context::s_error_handler_customdata = nullptr;
 
 /* -------------------------------------------------------------------- */
 /** \name Create, Initialize and Destruct
  *
  * \{ */
 
-VAMR_Context::VAMR_Context(const VAMR_ContextCreateInfo *create_info)
+Context::Context(const VAMR_ContextCreateInfo *create_info)
     : m_oxr(new OpenXRInstanceData()),
       m_debug(create_info->context_flag & VAMR_ContextDebug),
       m_debug_time(create_info->context_flag & VAMR_ContextDebugTime)
 {
 }
-VAMR_Context::~VAMR_Context()
+Context::~Context()
 {
   /* Destroy session data first. Otherwise xrDestroyInstance will implicitly do it, before the
    * session had a chance to do so explicitly. */
@@ -79,7 +81,7 @@ VAMR_Context::~VAMR_Context()
   }
 }
 
-void VAMR_Context::initialize(const VAMR_ContextCreateInfo *create_info)
+void Context::initialize(const VAMR_ContextCreateInfo *create_info)
 {
   enumerateApiLayers();
   enumerateExtensions();
@@ -94,7 +96,7 @@ void VAMR_Context::initialize(const VAMR_ContextCreateInfo *create_info)
   XR_DEBUG_ONLY_CALL(this, initDebugMessenger());
 }
 
-void VAMR_Context::createOpenXRInstance()
+void Context::createOpenXRInstance()
 {
   XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
 
@@ -114,9 +116,9 @@ void VAMR_Context::createOpenXRInstance()
            "Failed to connect to an OpenXR runtime.");
 }
 
-void VAMR_Context::storeInstanceProperties()
+void Context::storeInstanceProperties()
 {
-  const std::map<std::string, VAMR_OpenXRRuntimeID> runtime_map{
+  const std::map<std::string, OpenXRRuntimeID> runtime_map{
       {"Monado(XRT) by Collabora et al", OPENXR_RUNTIME_MONADO},
       {"Oculus", OPENXR_RUNTIME_OCULUS},
       {"Windows Mixed Reality Runtime", OPENXR_RUNTIME_WMR}};
@@ -139,7 +141,7 @@ void VAMR_Context::storeInstanceProperties()
  *
  * \{ */
 
-void VAMR_Context::printInstanceInfo()
+void Context::printInstanceInfo()
 {
   assert(m_oxr->instance != XR_NULL_HANDLE);
 
@@ -150,7 +152,7 @@ void VAMR_Context::printInstanceInfo()
          XR_VERSION_PATCH(m_oxr->instance_properties.runtimeVersion));
 }
 
-void VAMR_Context::printAvailableAPILayersAndExtensionsInfo()
+void Context::printAvailableAPILayersAndExtensionsInfo()
 {
   puts("Available OpenXR API-layers/extensions:");
   for (XrApiLayerProperties &layer_info : m_oxr->layers) {
@@ -161,7 +163,7 @@ void VAMR_Context::printAvailableAPILayersAndExtensionsInfo()
   }
 }
 
-void VAMR_Context::printExtensionsAndAPILayersToEnable()
+void Context::printExtensionsAndAPILayersToEnable()
 {
   for (const char *layer_name : m_enabled_layers) {
     printf("Enabling OpenXR API-Layer: %s\n", layer_name);
@@ -181,7 +183,7 @@ static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messa
   return XR_FALSE;  // OpenXR spec suggests always returning false.
 }
 
-void VAMR_Context::initDebugMessenger()
+void Context::initDebugMessenger()
 {
   XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
 
@@ -228,7 +230,7 @@ void VAMR_Context::initDebugMessenger()
  *
  * \{ */
 
-void VAMR_Context::dispatchErrorMessage(const VAMR_Exception *exception) const
+void Context::dispatchErrorMessage(const Exception *exception) const
 {
   std::ostringstream stream_err_location;
   std::string str_err_location;
@@ -248,11 +250,11 @@ void VAMR_Context::dispatchErrorMessage(const VAMR_Exception *exception) const
                              exception->m_res,
                              error.source_location));
 
-  /* Potentially destroys VAMR_Context */
+  /* Potentially destroys VAMR-context */
   s_error_handler(&error);
 }
 
-void VAMR_Context::setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata)
+void Context::setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customdata)
 {
   s_error_handler = handler_fn;
   s_error_handler_customdata = customdata;
@@ -268,8 +270,8 @@ void VAMR_Context::setErrorHandler(VAMR_ErrorHandlerFn handler_fn, void *customd
 /**
  * \param layer_name May be NULL for extensions not belonging to a specific layer.
  */
-void VAMR_Context::enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
-                                         const char *layer_name)
+void Context::enumerateExtensionsEx(std::vector<XrExtensionProperties> &extensions,
+                                    const char *layer_name)
 {
   uint32_t extension_count = 0;
 
@@ -292,12 +294,12 @@ void VAMR_Context::enumerateExtensionsEx(std::vector<XrExtensionProperties> &ext
                layer_name, extension_count, &extension_count, extensions.data()),
            "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
 }
-void VAMR_Context::enumerateExtensions()
+void Context::enumerateExtensions()
 {
   enumerateExtensionsEx(m_oxr->extensions, nullptr);
 }
 
-void VAMR_Context::enumerateApiLayers()
+void Context::enumerateApiLayers()
 {
   uint32_t layer_count = 0;
 
@@ -350,7 +352,7 @@ static bool openxr_extension_is_available(const std::vector<XrExtensionPropertie
 /**
  * Gather an array of names for the API-layers to enable.
  */
-void VAMR_Context::getAPILayersToEnable(std::vector<const char *> &r_ext_names)
+void Context::getAPILayersToEnable(std::vector<const char *> &r_ext_names)
 {
   static std::vector<std::string> try_layers;
 
@@ -387,7 +389,7 @@ static const char *openxr_ext_name_from_wm_gpu_binding(VAMR_GraphicsBindingType 
 /**
  * Gather an array of names for the extensions to enable.
  */
-void VAMR_Context::getExtensionsToEnable(std::vector<const char *> &r_ext_names)
+void Context::getExtensionsToEnable(std::vector<const char *> &r_ext_names)
 {
   assert(m_gpu_binding_type != VAMR_GraphicsBindingTypeUnknown);
 
@@ -419,7 +421,7 @@ void VAMR_Context::getExtensionsToEnable(std::vector<const char *> &r_ext_names)
  * Decide which graphics binding extension to use based on
  * #VAMR_ContextCreateInfo.gpu_binding_candidates and available extensions.
  */
-VAMR_GraphicsBindingType VAMR_Context::determineGraphicsBindingTypeToEnable(
+VAMR_GraphicsBindingType Context::determineGraphicsBindingTypeToEnable(
     const VAMR_ContextCreateInfo *create_info)
 {
   assert(create_info->gpu_binding_candidates != NULL);
@@ -442,28 +444,28 @@ VAMR_GraphicsBindingType VAMR_Context::determineGraphicsBindingTypeToEnable(
 /* -------------------------------------------------------------------- */
 /** \name Session management
  *
- * Manage session lifetime and delegate public calls to #VAMR_Session.
+ * Manage session lifetime and delegate public calls to #VAMR::Session.
  * \{ */
 
-void VAMR_Context::startSession(const VAMR_SessionBeginInfo *begin_info)
+void Context::startSession(const VAMR_SessionBeginInfo *begin_info)
 {
   if (m_session == nullptr) {
-    m_session = std::unique_ptr<VAMR_Session>(new VAMR_Session(this));
+    m_session = std::unique_ptr<Session>(new Session(this));
   }
 
   m_session->start(begin_info);
 }
-void VAMR_Context::endSession()
+void Context::endSession()
 {
   m_session->requestEnd();
 }
 
-bool VAMR_Context::isSessionRunning() const
+bool Context::isSessionRunning() const
 {
   return m_session && m_session->isRunning();
 }
 
-void VAMR_Context::drawSessionViews(void *draw_customdata)
+void Context::drawSessionViews(void *draw_customdata)
 {
   m_session->draw(draw_customdata);
 }
@@ -471,9 +473,9 @@ void VAMR_Context::drawSessionViews(void *draw_customdata)
 /**
  * Delegates event to session, allowing context to destruct the session if needed.
  */
-void VAMR_Context::handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle)
+void Context::handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle)
 {
-  if (m_session && m_session->handleStateChangeEvent(lifecycle) == VAMR_Session::SESSION_DESTROY) {
+  if (m_session && m_session->handleStateChangeEvent(lifecycle) == Session::SESSION_DESTROY) {
     m_session = nullptr;
   }
 }
@@ -494,8 +496,8 @@ void VAMR_Context::handleSessionStateChange(const XrEventDataSessionStateChanged
  * \param bind_fn Function to retrieve (possibly create) a graphics context.
  * \param unbind_fn Function to release (possibly free) a graphics context.
  */
-void VAMR_Context::setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
-                                               VAMR_GraphicsContextUnbindFn unbind_fn)
+void Context::setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_fn,
+                                          VAMR_GraphicsContextUnbindFn unbind_fn)
 {
   if (m_session) {
     m_session->unbindGraphicsContext();
@@ -504,7 +506,7 @@ void VAMR_Context::setGraphicsContextBindFuncs(VAMR_GraphicsContextBindFn bind_f
   m_custom_funcs.gpu_ctx_unbind_fn = unbind_fn;
 }
 
-void VAMR_Context::setDrawViewFunc(VAMR_DrawViewFn draw_view_fn)
+void Context::setDrawViewFunc(VAMR_DrawViewFn draw_view_fn)
 {
   m_custom_funcs.draw_view_fn = draw_view_fn;
 }
@@ -516,34 +518,36 @@ void VAMR_Context::setDrawViewFunc(VAMR_DrawViewFn draw_view_fn)
  *
  * \{ */
 
-VAMR_OpenXRRuntimeID VAMR_Context::getOpenXRRuntimeID() const
+OpenXRRuntimeID Context::getOpenXRRuntimeID() const
 {
   return m_runtime_id;
 }
 
-const VAMR_CustomFuncs *VAMR_Context::getCustomFuncs() const
+const CustomFuncs *Context::getCustomFuncs() const
 {
   return &m_custom_funcs;
 }
 
-VAMR_GraphicsBindingType VAMR_Context::getGraphicsBindingType() const
+VAMR_GraphicsBindingType Context::getGraphicsBindingType() const
 {
   return m_gpu_binding_type;
 }
 
-XrInstance VAMR_Context::getInstance() const
+XrInstance Context::getInstance() const
 {
   return m_oxr->instance;
 }
 
-bool VAMR_Context::isDebugMode() const
+bool Context::isDebugMode() const
 {
   return m_debug;
 }
 
-bool VAMR_Context::isDebugTimeMode() const
+bool Context::isDebugTimeMode() const
 {
   return m_debug_time;
 }
 
 /** \} */ /* VAMR Internal Accessors and Mutators */
+
+}  // namespace VAMR

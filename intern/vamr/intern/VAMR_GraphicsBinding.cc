@@ -35,6 +35,8 @@
 
 #include "VAMR_IGraphicsBinding.h"
 
+namespace VAMR {
+
 static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_binding_formats,
                                                     std::vector<int64_t> runtime_formats,
                                                     int64_t *r_result)
@@ -55,9 +57,9 @@ static bool choose_swapchain_format_from_candidates(std::vector<int64_t> gpu_bin
   return true;
 }
 
-class VAMR_GraphicsBindingOpenGL : public VAMR_IGraphicsBinding {
+class GraphicsBindingOpenGL : public IGraphicsBinding {
  public:
-  ~VAMR_GraphicsBindingOpenGL()
+  ~GraphicsBindingOpenGL()
   {
     if (m_fbo != 0) {
       glDeleteFramebuffers(1, &m_fbo);
@@ -181,9 +183,9 @@ class VAMR_GraphicsBindingOpenGL : public VAMR_IGraphicsBinding {
 };
 
 #ifdef WIN32
-class VAMR_GraphicsBindingD3D : public VAMR_IGraphicsBinding {
+class GraphicsBindingD3D : public IGraphicsBinding {
  public:
-  ~VAMR_GraphicsBindingD3D()
+  ~GraphicsBindingD3D()
   {
     if (m_shared_resource) {
       m_ghost_ctx->disposeSharedOpenGLResource(m_shared_resource);
@@ -289,17 +291,18 @@ class VAMR_GraphicsBindingD3D : public VAMR_IGraphicsBinding {
 };
 #endif  // WIN32
 
-std::unique_ptr<VAMR_IGraphicsBinding> VAMR_GraphicsBindingCreateFromType(
-    VAMR_GraphicsBindingType type)
+std::unique_ptr<IGraphicsBinding> GraphicsBindingCreateFromType(VAMR_GraphicsBindingType type)
 {
   switch (type) {
     case VAMR_GraphicsBindingTypeOpenGL:
-      return std::unique_ptr<VAMR_GraphicsBindingOpenGL>(new VAMR_GraphicsBindingOpenGL());
+      return std::unique_ptr<GraphicsBindingOpenGL>(new GraphicsBindingOpenGL());
 #ifdef WIN32
     case VAMR_GraphicsBindingTypeD3D11:
-      return std::unique_ptr<VAMR_GraphicsBindingD3D>(new VAMR_GraphicsBindingD3D());
+      return std::unique_ptr<GraphicsBindingD3D>(new GraphicsBindingD3D());
 #endif
     default:
       return nullptr;
   }
 }
+
+}  // namespace VAMR
