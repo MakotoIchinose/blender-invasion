@@ -26,6 +26,7 @@ set(INC_SYS
 
 set(SRC
   intern/VAMR.cc
+  intern/VAMR_capi.cc
   intern/VAMR_Context.cc
   intern/VAMR_Event.cc
   intern/VAMR_GraphicsBinding.cc
