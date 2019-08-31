@@ -65,49 +65,59 @@ float light_translucent_power_with_falloff(LightData ld, vec3 N, vec4 l_vector)
   return power * saturate(falloff * 2.0);
 }
 
+/* Some driver poorly optimize this code. Use direct reference to matrices. */
+#define sd(x) shadows_data[x]
+#define scube(x) shadows_cube_data[x]
+#define scascade(x) shadows_cascade_data[x]
+
 vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, float sss_scale)
 {
-  ShadowData data = shadows_data[int(ld.l_shadowid)];
+  int shadow_id = int(ld.l_shadowid);
 
   vec4 L = (ld.l_type != SUN) ? l_vector : vec4(-ld.l_forward, 1.0);
 
-  vec3 T, B;
-  make_orthonormal_basis(L.xyz / L.w, T, B);
-
   /* We use the full l_vector.xyz so that the spread is minimize
    * if the shading point is further away from the light source */
-  rand.xy *= data.sh_blur;
-  W = W + T * rand.x + B * rand.y;
+  /* TODO(fclem) do something better than this. */
+  // vec3 T, B;
+  // make_orthonormal_basis(L.xyz / L.w, T, B);
+  // rand.xy *= data.sh_blur;
+  // W = W + T * rand.x + B * rand.y;
 
   float s, dist;
+  int data_id = int(sd(shadow_id).sh_data_index);
   if (ld.l_type == SUN) {
-    int scd_id = int(data.sh_data_start);
     vec4 view_z = vec4(dot(W - cameraPos, cameraForward));
 
-    vec4 weights = step(shadows_cascade_data[scd_id].split_end_distances, view_z);
+    vec4 weights = step(scascade(data_id).split_end_distances, view_z);
     float id = abs(4.0 - dot(weights, weights));
     if (id > 3.0) {
       return vec3(0.0);
     }
 
     /* Same factor as in get_cascade_world_distance(). */
-    float range = abs(data.sh_far - data.sh_near);
+    float range = abs(sd(shadow_id).sh_far - sd(shadow_id).sh_near);
 
-    vec4 shpos = shadows_cascade_data[scd_id].shadowmat[int(id)] * vec4(W, 1.0);
+    vec4 shpos = scascade(data_id).shadowmat[int(id)] * vec4(W, 1.0);
     dist = shpos.z * range;
 
     if (shpos.z > 1.0 || shpos.z < 0.0) {
       return vec3(0.0);
     }
-    s = sample_cascade(sssShadowCascades, shpos.xy, data.sh_tex_start + id).r;
+
+    float tex_id = scascade(data_id).sh_tex_index;
+    s = sample_cascade(sssShadowCascades, shpos.xy, tex_id + id).r;
     s *= range;
   }
   else {
-    vec3 cubevec = transform_point(shadows_cube_data[int(data.sh_data_start)].shadowmat, W);
+    vec3 cubevec = transform_point(scube(data_id).shadowmat, W);
     dist = length(cubevec);
     cubevec /= dist;
-    s = sample_cube(sssShadowCubes, cubevec, data.sh_tex_start).r;
-    s = length(cubevec / max_v3(abs(cubevec))) * linear_depth(true, s, data.sh_far, data.sh_near);
+    /* tex_id == data_id for cube shadowmap */
+    float tex_id = float(data_id);
+    s = sample_cube(sssShadowCubes, cubevec, tex_id).r;
+    s = length(cubevec / max_v3(abs(cubevec))) *
+        linear_depth(true, s, sd(shadow_id).sh_far, sd(shadow_id).sh_near);
   }
   float delta = dist - s;
 
@@ -115,6 +125,10 @@ vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, vec2 rand, f
 
   return power * sss_profile(abs(delta) / sss_scale);
 }
+
+#undef sd
+#undef scube
+#undef scsmd
 
 void main(void)
 {

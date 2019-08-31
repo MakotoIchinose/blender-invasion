@@ -35,7 +35,6 @@ void EEVEE_view_layer_data_free(void *storage)
   MEM_SAFE_FREE(sldata->lights);
   DRW_UBO_FREE_SAFE(sldata->light_ubo);
   DRW_UBO_FREE_SAFE(sldata->shadow_ubo);
-  DRW_UBO_FREE_SAFE(sldata->shadow_render_ubo);
   GPU_FRAMEBUFFER_FREE_SAFE(sldata->shadow_fb);
   DRW_TEXTURE_FREE_SAFE(sldata->shadow_cube_pool);
   DRW_TEXTURE_FREE_SAFE(sldata->shadow_cascade_pool);

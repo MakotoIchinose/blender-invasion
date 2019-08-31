@@ -27,7 +27,6 @@
 
 #include "DNA_lightprobe_types.h"
 
-struct EEVEE_BoundSphere;
 struct EEVEE_ShadowCasterBuffer;
 struct GPUFrameBuffer;
 struct Object;
@@ -185,10 +184,6 @@ typedef struct EEVEE_PlanarReflection {
 } EEVEE_PlanarReflection;
 
 /* --------------------------------------- */
-
-typedef struct EEVEE_BoundSphere {
-  float center[3], radius;
-} EEVEE_BoundSphere;
 
 typedef struct EEVEE_BoundBox {
   float center[3], halfdim[3];
@@ -366,7 +361,7 @@ typedef struct EEVEE_StorageList {
 typedef struct EEVEE_Light {
   float position[3], invsqrdist;
   float color[3], spec;
-  float spotsize, spotblend, radius, shadowid;
+  float spotsize, spotblend, radius, shadow_id;
   float rightvec[3], sizex;
   float upvec[3], sizey;
   float forwardvec[3], light_type;
@@ -376,8 +371,7 @@ typedef struct EEVEE_Light {
 #define LAMPTYPE_AREA_ELLIPSE 100.0f
 
 typedef struct EEVEE_Shadow {
-  float near, far, bias, pad;
-  float shadow_start, data_start, multi_shadow_count, shadow_blur;
+  float near, far, bias, type_data_id;
   float contact_dist, contact_bias, contact_spread, contact_thickness;
 } EEVEE_Shadow;
 
@@ -391,27 +385,24 @@ typedef struct EEVEE_ShadowCascade {
   float shadowmat[MAX_CASCADE_NUM][4][4];
   float split_start[4];
   float split_end[4];
-  float shadow_vec[3], _pad[1];
+  float shadow_vec[3], tex_id;
 } EEVEE_ShadowCascade;
 
-typedef struct EEVEE_ShadowRender {
-  int shadow_samples_len[MAX_CASCADE_NUM];
-  float shadow_samples_len_inv[MAX_CASCADE_NUM];
-  float filter_size[MAX_CASCADE_NUM];
-  int view_count;
-  int base_id;
-  float cube_texel_size;
-  float stored_texel_size; /* DEPRECATED TODO remove */
-  float clip_near;
-  float clip_far;
-  float _pad[2];
-} EEVEE_ShadowRender;
+typedef struct EEVEE_ShadowCascadeRender {
+  /* World->Light->NDC : used for rendering the shadow map. */
+  float projmat[MAX_CASCADE_NUM][4][4];
+  float viewmat[4][4], viewinv[4][4];
+  float radius[MAX_CASCADE_NUM];
+  float cascade_max_dist;
+  float cascade_exponent;
+  float cascade_fade;
+  int cascade_count;
+} EEVEE_ShadowCascadeRender;
 
 BLI_STATIC_ASSERT_ALIGN(EEVEE_Light, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_Shadow, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowCube, 16)
 BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowCascade, 16)
-BLI_STATIC_ASSERT_ALIGN(EEVEE_ShadowRender, 16)
 
 BLI_STATIC_ASSERT(sizeof(EEVEE_Shadow) * MAX_SHADOW +
                           sizeof(EEVEE_ShadowCascade) * MAX_SHADOW_CASCADE +
@@ -431,24 +422,24 @@ typedef struct EEVEE_LightsInfo {
   int num_light, cache_num_light;
   int num_cube_layer, cache_num_cube_layer;
   int num_cascade_layer, cache_num_cascade_layer;
-  int gpu_cube_len, gpu_cascade_len, gpu_shadow_len;
-  int cpu_cube_len, cpu_cascade_len;
+  int cube_len, cascade_len, shadow_len;
   int update_flag;
   int shadow_cube_size, shadow_cascade_size;
   bool shadow_high_bitdepth, soft_shadows;
-  /* List of lights in the scene. */
-  /* XXX This is fragile, can get out of sync quickly. */
-  struct Object *light_ref[MAX_LIGHT];
-  struct Object *shadow_cube_ref[MAX_SHADOW_CUBE];
-  struct Object *shadow_cascade_ref[MAX_SHADOW_CASCADE];
   /* UBO Storage : data used by UBO */
   struct EEVEE_Light light_data[MAX_LIGHT];
-  struct EEVEE_ShadowRender shadow_render_data;
   struct EEVEE_Shadow shadow_data[MAX_SHADOW];
   struct EEVEE_ShadowCube shadow_cube_data[MAX_SHADOW_CUBE];
   struct EEVEE_ShadowCascade shadow_cascade_data[MAX_SHADOW_CASCADE];
+  /* Additionnal rendering info for cascade. */
+  struct EEVEE_ShadowCascadeRender shadow_cascade_render[MAX_SHADOW_CASCADE];
+  /* Back index in light_data. */
+  uchar shadow_cube_light_indices[MAX_SHADOW_CUBE];
+  uchar shadow_cascade_light_indices[MAX_SHADOW_CASCADE];
+  /* Update bitmap. */
+  BLI_bitmap sh_cube_update[BLI_BITMAP_SIZE(MAX_SHADOW_CUBE)];
   /* Lights tracking */
-  struct EEVEE_BoundSphere shadow_bounds[MAX_LIGHT]; /* Tightly packed light bounds  */
+  struct BoundSphere shadow_bounds[MAX_LIGHT]; /* Tightly packed light bounds  */
   /* List of bbox and update bitmap. Double buffered. */
   struct EEVEE_ShadowCasterBuffer *shcaster_frontbuffer, *shcaster_backbuffer;
   /* AABB of all shadow casters combined. */
@@ -700,7 +691,6 @@ typedef struct EEVEE_ViewLayerData {
 
   struct GPUUniformBuffer *light_ubo;
   struct GPUUniformBuffer *shadow_ubo;
-  struct GPUUniformBuffer *shadow_render_ubo;
   struct GPUUniformBuffer *shadow_samples_ubo;
 
   struct GPUFrameBuffer *shadow_fb;
@@ -726,22 +716,6 @@ typedef struct EEVEE_ViewLayerData {
 
 /* ************ OBJECT DATA ************ */
 
-typedef struct EEVEE_LightData {
-  short light_id, shadow_id;
-} EEVEE_LightData;
-
-typedef struct EEVEE_ShadowCubeData {
-  short light_id, shadow_id, cube_id, layer_id;
-} EEVEE_ShadowCubeData;
-
-typedef struct EEVEE_ShadowCascadeData {
-  short light_id, shadow_id, cascade_id, layer_id;
-  /* World->Light->NDC : used for rendering the shadow map. */
-  float projmat[MAX_CASCADE_NUM][4][4];
-  float viewmat[4][4], viewinv[4][4];
-  float radius[MAX_CASCADE_NUM];
-} EEVEE_ShadowCascadeData;
-
 /* These are the structs stored inside Objects.
  * It works even if the object is in multiple layers
  * because we don't get the same "Object *" for each layer. */
@@ -749,11 +723,6 @@ typedef struct EEVEE_LightEngineData {
   DrawData dd;
 
   bool need_update;
-  union {
-    struct EEVEE_LightData ld;
-    struct EEVEE_ShadowCubeData scd;
-    struct EEVEE_ShadowCascadeData scad;
-  } data;
 } EEVEE_LightEngineData;
 
 typedef struct EEVEE_LightProbeEngineData {
