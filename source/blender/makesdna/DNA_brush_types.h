@@ -297,6 +297,8 @@ typedef struct Brush {
 
   float crease_pinch_factor;
 
+  float normal_radius_factor;
+
   float plane_trim;
   /** Affectable height of brush (layer height for layer tool, i.e.). */
   float height;
@@ -304,7 +306,6 @@ typedef struct Brush {
   float texture_sample_bias;
 
   int curve_preset;
-  char _pad1[4];
 
   /* overlay */
   int texture_overlay_alpha;
