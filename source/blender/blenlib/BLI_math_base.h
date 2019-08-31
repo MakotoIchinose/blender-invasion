@@ -139,6 +139,7 @@ MINLINE float clamp_f(float value, float min, float max);
 MINLINE size_t clamp_z(size_t value, size_t min, size_t max);
 
 MINLINE int compare_ff(float a, float b, const float max_diff);
+MINLINE int compare_dd(double a, double b, const double max_diff);
 MINLINE int compare_ff_relative(float a, float b, const float max_diff, const int max_ulps);
 
 MINLINE float signf(float f);

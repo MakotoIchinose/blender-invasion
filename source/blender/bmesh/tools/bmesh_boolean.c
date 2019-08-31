@@ -65,9 +65,12 @@ typedef struct IMesh {
   struct Mesh *me;
 } IMesh;
 
-/* A MeshPart is a subset of the geometry of an IndexMesh.
+/* A MeshPart is a subset of the geometry of an IndexMesh,
+ * with some possible additional geometry.
  * The indices refer to vertex, edges, and faces in the IndexMesh
- * that this part is based on (which will be known by context).
+ * that this part is based on,
+ * or, if the indices are larger than the total in the IndexMesh,
+ * then it is in extra geometry incrementally added.
  * Unlike for IndexMesh, the edges implied by faces need not be explicitly
  * represented here.
  * Commonly a MeshPart will contain geometry that shares a plane,
@@ -75,12 +78,16 @@ typedef struct IMesh {
  * TODO: faster structure for looking up verts, edges, faces.
  */
 typedef struct MeshPart {
-  double plane[4];  /* first 3 are normal, 4th is signed distance to plane */
-  double bbmin[3];  /* bounding box min, with eps padding */
-  double bbmax[3];  /* bounding box max, with eps padding */
-  LinkNode *verts; /* links are ints (vert indices) */
-  LinkNode *edges; /* links are ints (edge indices) */
-  LinkNode *faces; /* links are ints (face indices) */
+  double plane[4];  /* First 3 are normal, 4th is signed distance to plane. */
+  double bbmin[3];  /* Bounding box min, with eps padding. */
+  double bbmax[3];  /* Bounding box max, with eps padding. */
+  IMesh *im; /* The underlying IMesh */
+  LinkNode *im_verts; /* Links are ints (vert indices in im). */
+  LinkNode *im_edges; /* Links are ints (edge indices in im). */
+  LinkNode *im_faces; /* Links are ints (face indices in im). */
+  LinkNode *new_verts; /* Links are pointers to float[3]. */
+  LinkNode *new_edges; /* Links are pointer to IntPair. */
+  LinkNode *new_faces; /* Links are pointers to list of int. */
 } MeshPart;
 
 /* A MeshPartSet set is a set of MeshParts.
@@ -225,6 +232,16 @@ static int imesh_totvert(const IMesh *im)
   }
 }
 
+static int imesh_totedge(const IMesh *im)
+{
+  if (im->bm) {
+    return im->bm->totedge;
+  }
+  else {
+    return 0; /* TODO */
+  }
+}
+
 static int imesh_totface(const IMesh *im)
 {
   if (im->bm) {
@@ -251,7 +268,7 @@ static int imesh_facelen(const IMesh *im, int f)
   return ans;
 }
 
-static int imesh_face_vert(IMesh *im, int f, int index)
+static int imesh_face_vert(const IMesh *im, int f, int index)
 {
   int i;
   int ans = -1;
@@ -283,6 +300,23 @@ static void imesh_get_vert_co(const IMesh *im, int v, float *r_coords)
     }
     else {
       zero_v3(r_coords);
+    }
+  }
+  else {
+    ; /* TODO */
+  }
+}
+
+static void imesh_get_vert_co_db(const IMesh *im, int v, double *r_coords)
+{
+  if (im->bm) {
+    BMVert *bmv = BM_vert_at_index(im->bm, v);
+    if (bmv) {
+      copy_v3db_v3fl(r_coords, bmv->co);
+      return;
+    }
+    else {
+      zero_v3_db(r_coords);
     }
   }
   else {
@@ -507,14 +541,10 @@ static void calc_partset_bb_eps(BoolState *bs, MeshPartSet *partset, double eps)
 
 /** MeshPart functions. */
 
-static void init_meshpart(MeshPart *part)
+static void init_meshpart(BoolState *bs, MeshPart *part)
 {
-  zero_v4_db(part->plane);
-  zero_v3_db(part->bbmin);
-  zero_v3_db(part->bbmax);
-  part->verts = NULL;
-  part->edges = NULL;
-  part->faces = NULL;
+  memset(part, 0, sizeof(*part));
+  part->im = &bs->im;
 }
 
 static MeshPart *copy_part(BoolState *bs, const MeshPart *part)
@@ -527,25 +557,76 @@ static MeshPart *copy_part(BoolState *bs, const MeshPart *part)
   copy_v3_v3_db(copy->bbmin, part->bbmin);
   copy_v3_v3_db(copy->bbmax, part->bbmax);
 
-  /* All links in lists are ints, so can use shallow copy. */
-  copy->verts = linklist_shallow_copy_arena(part->verts, arena);
-  copy->edges = linklist_shallow_copy_arena(part->edges, arena);
-  copy->faces = linklist_shallow_copy_arena(part->faces, arena);
+  copy->im = part->im;
+
+  /* All links in lists are ints, or can be shared, so can use shallow copy. */
+  copy->im_verts = linklist_shallow_copy_arena(part->im_verts, arena);
+  copy->im_edges = linklist_shallow_copy_arena(part->im_edges, arena);
+  copy->im_faces = linklist_shallow_copy_arena(part->im_faces, arena);
+  copy->new_verts = linklist_shallow_copy_arena(part->new_verts, arena);
+  copy->new_edges = linklist_shallow_copy_arena(part->new_edges, arena);
+  copy->new_faces = linklist_shallow_copy_arena(part->new_faces, arena);
   return copy;
+}
+
+static int part_totvert(const MeshPart *part)
+{
+  return BLI_linklist_count(part->im_verts) + BLI_linklist_count(part->new_verts);
+}
+
+static int part_totedge(const MeshPart *part)
+{
+  return BLI_linklist_count(part->im_edges) + BLI_linklist_count(part->new_edges);
 }
 
 static int part_totface(const MeshPart *part)
 {
-  return BLI_linklist_count(part->faces);
+  return BLI_linklist_count(part->im_faces) + BLI_linklist_count(part->new_faces);
 }
 
+/*
+ * Return the index in MeshPart space of the index'th face in part.
+ * "MeshPart space" means that if the f returned is in the range of
+ * face indices in the underlying IMesh, then it represents the face
+ * in the IMesh. If f is greater than or equal to that, then it represents
+ * the face that is (f - im's totf)th in the new_faces list.
+ */
 static int part_face(const MeshPart *part, int index)
 {
-  LinkNode *ln = BLI_linklist_find(part->faces, index);
+  LinkNode *ln;
+
+  ln = BLI_linklist_find(part->im_faces, index);
   if (ln) {
     return POINTER_AS_INT(ln->link);
   }
-  return -1;
+  index -= BLI_linklist_count(part->im_faces);
+  return imesh_totface(part->im) + index;
+}
+
+/* Like part_face, but for vertices. */
+static int part_vert(const MeshPart *part, int index)
+{
+  LinkNode *ln;
+
+  ln = BLI_linklist_find(part->im_verts, index);
+  if (ln) {
+    return POINTER_AS_INT(ln->link);
+  }
+  index -= BLI_linklist_count(part->im_verts);
+  return imesh_totvert(part->im) + index;
+}
+
+/* Like part_face, but for edges. */
+static int part_edge(const MeshPart *part, int index)
+{
+  LinkNode *ln;
+
+  ln = BLI_linklist_find(part->im_edges, index);
+  if (ln) {
+    return POINTER_AS_INT(ln->link);
+  }
+  index -= BLI_linklist_count(part->im_edges);
+  return imesh_totedge(part->im) + index;
 }
 
 /* Fill part->bbmin and part->bbmax with the axis-aligned bounding box
@@ -558,29 +639,33 @@ static void calc_part_bb_eps(BoolState *bs, MeshPart *part, double eps)
   LinkNode *ln;
   int v, e, f, i, flen, j;
 
-  if (part->verts == NULL && part->edges == NULL && part->faces == NULL) {
-    zero_v3_db(part->bbmin);
-    zero_v3_db(part->bbmax);
-    return;
-  }
-  copy_v3_db(part->bbmin, FLT_MAX);
-  copy_v3_db(part->bbmax, -FLT_MAX);
-  for (ln = part->verts; ln; ln = ln->next) {
+  copy_v3_db(part->bbmin, DBL_MAX);
+  copy_v3_db(part->bbmax, -DBL_MAX);
+  for (ln = part->im_verts; ln; ln = ln->next) {
     v = POINTER_AS_INT(ln->link);
     bb_update(part->bbmin, part->bbmax, v, im);
   }
-  for (ln = part->edges; ln; ln = ln->next) {
+  for (ln = part->im_edges; ln; ln = ln->next) {
     e = POINTER_AS_INT(ln->link);
     /* TODO: handle edge verts */
     printf("calc_part_bb_eps please implement edge (%d)\n", e);
   }
-  for (ln = part->faces; ln; ln = ln->next) {
+  for (ln = part->im_faces; ln; ln = ln->next) {
     f = POINTER_AS_INT(ln->link);
     flen = imesh_facelen(im, f);
     for (j = 0; j < flen; j++) {
       v = imesh_face_vert(im, f, j);
       bb_update(part->bbmin, part->bbmax, v, im);
     }
+  }
+  if (part->new_verts || part->new_edges || part->new_faces) {
+    /* TODO (maybe): handle new geometry. Not sure if this will be needed. */
+    printf("calc_part_bb_eps please implement new verts/edges/faces\n");
+  }
+  if (part->bbmin[0] == DBL_MAX) {
+    zero_v3_db(part->bbmin);
+    zero_v3_db(part->bbmax);
+    return;
   }
   for (i = 0; i < 3; i++) {
     part->bbmin[i] -= eps;
@@ -623,15 +708,111 @@ static MeshPart *find_part_for_plane(BoolState *bs, MeshPartSet *partset, const 
     }
   }
   new_part = BLI_memarena_alloc(bs->mem_arena, sizeof(MeshPart));
-  init_meshpart(new_part);
+  init_meshpart(bs, new_part);
   copy_v4_v4_db(new_part->plane, plane);
   add_part_to_partset(bs, partset, new_part);
   return new_part;
 }
 
-static void add_face_to_part(BoolState *bs, MeshPart *meshpart, int f)
+static void UNUSED_FUNCTION(add_im_vert_to_part)(BoolState *bs, MeshPart *part, int v)
 {
-  BLI_linklist_prepend_arena(&meshpart->faces, POINTER_FROM_INT(f), bs->mem_arena);
+  BLI_linklist_prepend_arena(&part->im_verts, POINTER_FROM_INT(v), bs->mem_arena);
+}
+
+static void UNUSED_FUNCTION(add_im_edge_to_part)(BoolState *bs, MeshPart *part, int e)
+{
+  BLI_linklist_prepend_arena(&part->im_verts, POINTER_FROM_INT(e), bs->mem_arena);
+}
+
+static void add_im_face_to_part(BoolState *bs, MeshPart *part, int f)
+{
+  BLI_linklist_prepend_arena(&part->im_faces, POINTER_FROM_INT(f), bs->mem_arena);
+}
+
+static LinkNode *linklist_last(LinkNode *ln, int *r_count)
+{
+  int i;
+
+  if (ln) {
+    i = 1;
+    for ( ; ln->next; ln = ln->next) {
+      i++;
+    }
+    *r_count = i;
+    return ln;
+  }
+  *r_count = 0;
+  return NULL;
+}
+
+/* Add a new vertex coord (converted from double to float) to part.
+ * Return the index in MeshPart space for the new vert index.
+ * No dedup is done.
+ */
+static int add_new_vert_to_part(BoolState *bs, MeshPart *part, const double co[3])
+{
+  LinkNode *lnprev, *ln, **p_ln;
+  float *fco;
+  int index;
+
+  if (part->new_verts) {
+    lnprev = linklist_last(part->new_verts, &index);
+    p_ln = &lnprev->next;
+  }
+  else {
+    p_ln = &part->new_verts;
+    index = 0;
+  }
+  *p_ln = ln = (LinkNode *)BLI_memarena_alloc(bs->mem_arena, sizeof(LinkNode));
+  ln->next = NULL;
+  fco = (float *)BLI_memarena_alloc(bs->mem_arena, 3 * sizeof(float));
+  copy_v3fl_v3db(fco, co);
+  ln->link = fco;
+  index += imesh_totvert(&bs->im);
+  return index;
+}
+
+/* Add a new edge (represented as an index pair) to part.
+ * The vert indices are in MeshPart space.
+ * Return the index in MeshPart space for the new edge index.
+ * No dedup is done.
+ */
+static int add_new_edge_to_part(BoolState *bs, MeshPart *part, int v1, int v2)
+{
+  LinkNode *lnprev, *ln, **p_ln;
+  IntPair *pair;
+  int index;
+
+  if (part->new_edges) {
+    lnprev = linklist_last(part->new_edges, &index);
+    p_ln = &lnprev->next;
+  }
+  else {
+    p_ln = &part->new_edges;
+    index = 0;
+  }
+  *p_ln = ln = (LinkNode *)BLI_memarena_alloc(bs->mem_arena, sizeof(LinkNode));
+  ln->next = NULL;
+  pair = (IntPair *)BLI_memarena_alloc(bs->mem_arena, sizeof(IntPair));
+  pair->first = v1;
+  pair->second = v2;
+  ln->link = pair;
+  index += imesh_totedge(&bs->im);
+  return index;
+}
+
+/* If part consists of only one face from IMesh, return the number of vertices
+ * in the face. Else return 0.
+ */
+static int part_is_one_im_face(BoolState *bs, const MeshPart *part)
+{
+  int f;
+
+  if (part->im_verts == NULL && part->im_edges == NULL && part->new_verts == NULL && part->new_edges == NULL && part->new_faces == NULL && BLI_linklist_count(part->im_faces) == 1) {
+    f = POINTER_AS_INT(part->im_faces->link);
+    return imesh_facelen(&bs->im, f);
+  }
+  return 0;
 }
 
 /** IndexedIntSet functions. */
@@ -1047,7 +1228,7 @@ static int line_point_side_v2_array_db(double l1x, double l1y, double l2x, doubl
  * \return true when the triangles intersect.
  *
  */
-static bool UNUSED_FUNCTION(isect_tri_tri_epsilon_v3_db_ex)(
+static bool isect_tri_tri_epsilon_v3_db_ex(
 	const double t_a0[3], const double t_a1[3], const double t_a2[3],
 	const double t_b0[3], const double t_b1[3], const double t_b2[3],
 	double r_pts[6][3], int *r_npts,
@@ -1271,7 +1452,7 @@ static void find_coplanar_parts(BoolState *bs,
     }
     imesh_get_face_plane(im, f, plane);
     part = find_part_for_plane(bs, partset, plane);
-    add_face_to_part(bs, part, f);
+    add_im_face_to_part(bs, part, f);
   }
   /* TODO: look for loose verts and wire edges to add to each partset */
   calc_partset_bb_eps(bs, partset, bs->eps);
@@ -1288,7 +1469,7 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   CDT_input in;
   CDT_result *out;
   IntersectOutput *isect_out;
-  int i, j, part_nf, f, face_len, v;
+  int i, j, part_nf, part_ne, part_nv, f, face_len, v;
   int nfaceverts, v_index, faces_index;
   IMesh *im = &bs->im;
   IndexedIntSet verts_needed;
@@ -1302,7 +1483,9 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   dump_part(part, "self_intersect_part");
   /* Find which vertices are needed for CDT input */
   part_nf = part_totface(part);
-  if (part_nf <= 1) {
+  part_ne = part_totedge(part);
+  part_nv = part_totvert(part);
+  if (part_nf <= 1 && part_ne == 0 && part_nv == 0) {
     printf("trivial 1 face case\n");
     return NULL;
   }
@@ -1381,6 +1564,68 @@ static IntersectOutput *self_intersect_part(BoolState *bs, MeshPart *part)
   return isect_out;
 }
 
+static void add_tri_tri_intersection_to_part(BoolState *bs, MeshPart *result_part, const MeshPart *part1, const MeshPart *part2)
+{
+  double cos[2][3][3];
+  int vindex[2][3];
+  double isect_pts[6][3];
+  int isect_v[6];
+  int f1, f2, i, j, k, v, npts;
+  const IMesh *im = &bs->im;
+  bool isect;
+
+  f1 = part_face(part1, 0);
+  f2 = part_face(part2, 0);
+  BLI_assert(f1 != -1 && f2 != -1 && imesh_facelen(im, f1) == 3 && imesh_facelen(im, f2) == 3);
+  for (i = 0; i < 3; i++) {
+    v = imesh_face_vert(im, f1, i);
+    vindex[0][i] = v;
+    imesh_get_vert_co_db(im, v, cos[0][i]);
+    v = imesh_face_vert(im, f2, i);
+    vindex[1][i] = v;
+    imesh_get_vert_co_db(im, v, cos[1][i]);
+  }
+  printf("tri tri part intersection\n");
+  printf("  tri1=(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", F3(cos[0][0]), F3(cos[0][1]), F3(cos[0][2]));
+  printf("  tri2=(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", F3(cos[1][0]), F3(cos[1][1]), F3(cos[1][2]));
+  isect = isect_tri_tri_epsilon_v3_db_ex(cos[0][0], cos[0][1], cos[0][2], cos[1][0], cos[1][1], cos[1][2], isect_pts, &npts, bs->eps);
+  if (isect) {
+    printf("intersect result:\n");
+    for (i = 0; i < npts; i++) {
+      /* See if isect_pts[i] is an input point, or epsilon-close to one. */
+      isect_v[i] = -1;
+      for (j = 0; j < 2; j++) {
+        for (k = 0; k < 3; k++) {
+          if (compare_v3v3_db(isect_pts[i], cos[j][k], bs->eps)) {
+            isect_v[i] = vindex[j][k];
+            break;
+		  }
+		}
+	  }
+	  if (isect_v[i] == -1) {
+	    /* TODO: maybe dedup against existing new verts,
+	     * but they should get deduped in later CDT intersect.
+	     */
+	    isect_v[i] = add_new_vert_to_part(bs, result_part, isect_pts[i]);
+	  }
+      printf("    %d: (%.3f,%.3f,%.3f)\n", isect_v[i], F3(isect_pts[i]));
+	}
+	if (npts == 2) {
+	  /* Intersection is an edge. */
+      add_new_edge_to_part(bs, result_part, isect_v[0], isect_v[1]);
+	}
+	else if (npts == 1) {
+	  /* Intersection is a single point. */
+	  /* Nothing to do since we added the vert above, if necessary. */
+	}
+	else {
+	  /* Not expecting this, as do coplanar intersections elsewhere. */
+	  printf("implement face case of tri tri intersection\n");
+	}
+  }
+}
+
+
 /* Add any geometry resulting from intersectiong part1 with part2
  * into result_part.
  * If part1 and part2 have the same planes, all geometry that intersects
@@ -1398,12 +1643,15 @@ static void add_part_intersections_to_part(BoolState *bs,
     for (i = 0; i < nface; i++) {
       f = part_face(part2, i);
       /* TODO: see if f intersects part1's bb */
-      add_face_to_part(bs, result_part, f);
+      add_im_face_to_part(bs, result_part, f);
     }
     /* TODO: loose verts and edges in part2 also go into result_part. */
   }
   else {
-    /* TODO: non-coplanar part intersects. */
+    /* Start with some special cases. */
+    if (part_is_one_im_face(bs, part1) == 3 && part_is_one_im_face(bs, part2) == 3) {
+      add_tri_tri_intersection_to_part(bs, result_part, part1, part2);
+	}
   }
 }
 
@@ -1765,21 +2013,51 @@ bool BM_mesh_boolean(BMesh *bm,
 static void dump_part(const MeshPart *part, const char *label)
 {
   LinkNode *ln;
+  float *co;
+  IntPair *pair;
   int i;
   struct namelist {
     const char *name;
     LinkNode *list;
-  } nl[3] = {{"verts", part->verts}, {"edges", part->edges}, {"faces", part->faces}};
+  } nl[3] = {{"verts", part->im_verts}, {"edges", part->im_edges}, {"faces", part->im_faces}};
 
   printf("PART %s\n", label);
   for (i = 0; i < 3; i++) {
     if (nl[i].list) {
-      printf("  %s:{ ", nl[i].name);
+      printf("  %s:{", nl[i].name);
       for (ln = nl[i].list; ln; ln = ln->next) {
-        printf("%d ", POINTER_AS_INT(ln->link));
+        printf("%d", POINTER_AS_INT(ln->link));
+        if (ln->next) {
+          printf(", ");
+		}
       }
       printf("}\n");
     }
+  }
+  if (part->new_verts) {
+    printf("  new verts:{");
+    for (ln = part->new_verts; ln; ln = ln->next) {
+      co = (float *)ln->link;
+      printf("(%.3f,%.3f,%.3f)", F3(co));
+      if (ln->next) {
+        printf(", ");
+	  }
+	}
+	printf("}\n");
+  }
+  if (part->new_edges) {
+    printf("  new edges:{");
+    for (ln = part->new_edges; ln; ln = ln->next) {
+      pair = (IntPair *)ln->link;
+      printf("(%d,%d)", pair->first, pair->second);
+      if (ln->next) {
+        printf(", ");
+	  }
+	}
+	printf("}\n");
+  }
+  if (part->new_faces) {
+    printf("  new faces: <TODO>\n");
   }
   printf("  plane=(%.3f,%.3f,%.3f),%.3f:\n", F4(part->plane));
   printf("  bb=(%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n", F3(part->bbmin), F3(part->bbmax));

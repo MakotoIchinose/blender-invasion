@@ -1297,6 +1297,12 @@ MINLINE bool compare_v3v3(const float v1[3], const float v2[3], const float limi
           compare_ff(v1[2], v2[2], limit));
 }
 
+MINLINE bool compare_v3v3_db(const double v1[3], const double v2[3], const double limit)
+{
+  return (compare_dd(v1[0], v2[0], limit) && compare_dd(v1[1], v2[1], limit) &&
+          compare_dd(v1[2], v2[2], limit));
+}
+
 MINLINE bool compare_v4v4(const float v1[4], const float v2[4], const float limit)
 {
   return (compare_ff(v1[0], v2[0], limit) && compare_ff(v1[1], v2[1], limit) &&
