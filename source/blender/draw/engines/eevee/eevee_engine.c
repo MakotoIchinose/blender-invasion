@@ -84,7 +84,7 @@ static void eevee_engine_init(void *ved)
   /* EEVEE_effects_init needs to go first for TAA */
   EEVEE_effects_init(sldata, vedata, camera, false);
   EEVEE_materials_init(sldata, stl, fbl);
-  EEVEE_lights_init(sldata);
+  EEVEE_shadows_init(sldata);
   EEVEE_lightprobes_init(sldata, vedata);
 }
 
@@ -139,7 +139,7 @@ void EEVEE_cache_populate(void *vedata, Object *ob)
   }
 
   if (cast_shadow) {
-    EEVEE_lights_cache_shcaster_object_add(sldata, ob);
+    EEVEE_shadows_caster_register(sldata, ob);
   }
 }
 
@@ -223,7 +223,7 @@ static void eevee_draw_background(void *vedata)
 
     /* Refresh shadows */
     DRW_stats_group_start("Shadows");
-    EEVEE_draw_shadows(sldata, vedata, stl->effects->taa_view);
+    EEVEE_shadows_draw(sldata, vedata, stl->effects->taa_view);
     DRW_stats_group_end();
 
     if (((stl->effects->enabled_effects & EFFECT_TAA) != 0) &&
@@ -475,7 +475,7 @@ static void eevee_engine_free(void)
   EEVEE_depth_of_field_free();
   EEVEE_effects_free();
   EEVEE_lightprobes_free();
-  EEVEE_lights_free();
+  EEVEE_shadows_free();
   EEVEE_materials_free();
   EEVEE_mist_free();
   EEVEE_motion_blur_free();

@@ -904,7 +904,7 @@ static void lightbake_render_scene_face(int face, EEVEE_BakeRenderData *user_dat
   struct GPUFrameBuffer **face_fb = user_data->face_fb;
 
   /* Be sure that cascaded shadow maps are updated. */
-  EEVEE_draw_shadows(sldata, user_data->vedata, views[face]);
+  EEVEE_shadows_draw(sldata, user_data->vedata, views[face]);
 
   GPU_framebuffer_bind(face_fb[face]);
   GPU_framebuffer_clear_depth(face_fb[face], 1.0f);
@@ -962,7 +962,7 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
   DRW_stats_group_start("Planar Reflection");
 
   /* Be sure that cascaded shadow maps are updated. */
-  EEVEE_draw_shadows(sldata, vedata, stl->g_data->planar_views[layer]);
+  EEVEE_shadows_draw(sldata, vedata, stl->g_data->planar_views[layer]);
 
   GPU_framebuffer_bind(fbl->planarref_fb);
   GPU_framebuffer_clear_depth(fbl->planarref_fb, 1.0);

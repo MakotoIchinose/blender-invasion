@@ -1582,18 +1582,18 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
           struct GPUMaterial *gpumat;
           switch (ma_array[i]->blend_shadow) {
             case MA_BS_SOLID:
-              EEVEE_lights_cache_shcaster_add(sldata, stl, mat_geom[i], ob);
+              EEVEE_shadows_caster_add(sldata, stl, mat_geom[i], ob);
               *cast_shadow = true;
               break;
             case MA_BS_CLIP:
               gpumat = EEVEE_material_mesh_depth_get(scene, ma_array[i], false, true);
-              EEVEE_lights_cache_shcaster_material_add(
+              EEVEE_shadows_caster_material_add(
                   sldata, psl, gpumat, mat_geom[i], ob, &ma_array[i]->alpha_threshold);
               *cast_shadow = true;
               break;
             case MA_BS_HASHED:
               gpumat = EEVEE_material_mesh_depth_get(scene, ma_array[i], true, true);
-              EEVEE_lights_cache_shcaster_material_add(sldata, psl, gpumat, mat_geom[i], ob, NULL);
+              EEVEE_shadows_caster_material_add(sldata, psl, gpumat, mat_geom[i], ob, NULL);
               *cast_shadow = true;
               break;
             case MA_BS_NONE:

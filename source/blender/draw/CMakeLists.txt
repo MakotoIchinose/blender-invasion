@@ -103,7 +103,11 @@ set(SRC
   engines/eevee/eevee_occlusion.c
   engines/eevee/eevee_render.c
   engines/eevee/eevee_screen_raytrace.c
+  engines/eevee/eevee_sampling.c
   engines/eevee/eevee_shaders.c
+  engines/eevee/eevee_shadows.c
+  engines/eevee/eevee_shadows_cube.c
+  engines/eevee/eevee_shadows_cascade.c
   engines/eevee/eevee_subsurface.c
   engines/eevee/eevee_temporal_sampling.c
   engines/eevee/eevee_volumes.c
