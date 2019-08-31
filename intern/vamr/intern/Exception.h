@@ -18,8 +18,8 @@
  * \ingroup VAMR
  */
 
-#ifndef __VAMR_EXCEPTION_H__
-#define __VAMR_EXCEPTION_H__
+#ifndef __EXCEPTION_H__
+#define __EXCEPTION_H__
 
 #include <exception>
 
@@ -52,4 +52,4 @@ class Exception : public std::exception {
 
 }  // namespace VAMR
 
-#endif  // __VAMR_EXCEPTION_H__
+#endif  // __EXCEPTION_H__

@@ -26,21 +26,21 @@ set(INC_SYS
 
 set(SRC
   intern/VAMR.cc
-  intern/VAMR_capi.cc
-  intern/VAMR_Context.cc
-  intern/VAMR_Event.cc
-  intern/VAMR_GraphicsBinding.cc
-  intern/VAMR_Session.cc
+  intern/CAPI.cc
+  intern/Context.cc
+  intern/Event.cc
+  intern/GraphicsBinding.cc
+  intern/Session.cc
 
   VAMR_capi.h
   VAMR_IContext.h
   VAMR_Types.h
-  intern/VAMR_Context.h
-  intern/VAMR_Exception.h
-  intern/VAMR_intern.h
-  intern/VAMR_IGraphicsBinding.h
-  intern/VAMR_openxr_includes.h
-  intern/VAMR_Session.h
+  intern/Context.h
+  intern/Exception.h
+  intern/utils.h
+  intern/IGraphicsBinding.h
+  intern/openxr_includes.h
+  intern/Session.h
 )
 
 if(WIN32)

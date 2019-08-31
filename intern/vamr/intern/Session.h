@@ -18,8 +18,8 @@
  * \ingroup VAMR
  */
 
-#ifndef __VAMR_SESSION_H__
-#define __VAMR_SESSION_H__
+#ifndef __SESSION_H__
+#define __SESSION_H__
 
 #include <map>
 #include <memory>
@@ -79,4 +79,4 @@ class Session {
 
 }  // namespace VAMR
 
-#endif /* __VAMR_SESSION_H__ */
+#endif /* __SESSION_H__ */

@@ -21,9 +21,12 @@
 #include <iostream>
 
 #include "VAMR_Types.h"
-#include "VAMR_intern.h"
 #include "VAMR_capi.h"
-#include "VAMR_Context.h"
+
+#include "openxr_includes.h"
+
+#include "Context.h"
+#include "utils.h"
 
 namespace VAMR {
 

@@ -18,10 +18,11 @@
  * \ingroup VAMR
  */
 
-#include "VAMR_Exception.h"
-#include "VAMR_IContext.h"
 #include "VAMR_Types.h"
 #include "VAMR_capi.h"
+#include "VAMR_IContext.h"
+
+#include "Exception.h"
 
 #define VAMR_CAPI_CALL(call, ctx) \
   try { \

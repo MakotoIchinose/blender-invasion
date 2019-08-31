@@ -18,14 +18,14 @@
  * \ingroup VAMR
  */
 
-#ifndef __VAMR_IGRAPHICSBINDING_H__
-#define __VAMR_IGRAPHICSBINDING_H__
+#ifndef __IGRAPHICSBINDING_H__
+#define __IGRAPHICSBINDING_H__
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "VAMR_openxr_includes.h"
+#include "openxr_includes.h"
 
 namespace VAMR {
 
@@ -71,4 +71,4 @@ std::unique_ptr<IGraphicsBinding> GraphicsBindingCreateFromType(VAMR_GraphicsBin
 
 }  // namespace VAMR
 
-#endif /* __VAMR_IGRAPHICSBINDING_H__ */
+#endif /* __IGRAPHICSBINDING_H__ */

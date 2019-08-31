@@ -18,13 +18,11 @@
  * \ingroup VAMR
  */
 
-#ifndef __VAMR_INTERN_H__
-#define __VAMR_INTERN_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #include <memory>
 #include <vector>
-
-#include "VAMR_openxr_includes.h"
 
 namespace VAMR {
 
@@ -135,4 +133,4 @@ template<typename _OXR_HANDLE> class unique_oxr_ptr {
 
 }  // namespace VAMR
 
-#endif /* __VAMR_INTERN_H__ */
+#endif /* __UTILS_H__ */

@@ -25,9 +25,11 @@
 
 #include "VAMR_capi.h"
 
-#include "VAMR_intern.h"
-#include "VAMR_Context.h"
-#include "VAMR_Exception.h"
+#include "openxr_includes.h"
+
+#include "Context.h"
+#include "Exception.h"
+#include "utils.h"
 
 using namespace VAMR;
 

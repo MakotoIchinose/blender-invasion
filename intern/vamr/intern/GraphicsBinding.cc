@@ -31,9 +31,9 @@
 #  endif
 #endif
 #include "VAMR_capi.h"
-#include "VAMR_intern.h"
 
-#include "VAMR_IGraphicsBinding.h"
+#include "IGraphicsBinding.h"
+#include "utils.h"
 
 namespace VAMR {
 

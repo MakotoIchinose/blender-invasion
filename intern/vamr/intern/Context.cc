@@ -25,11 +25,13 @@
 #include <string>
 
 #include "VAMR_Types.h"
-#include "VAMR_intern.h"
-#include "VAMR_Exception.h"
-#include "VAMR_Session.h"
 
-#include "VAMR_Context.h"
+#include "openxr_includes.h"
+
+#include "Context.h"
+#include "Exception.h"
+#include "Session.h"
+#include "utils.h"
 
 namespace VAMR {
 

@@ -18,8 +18,8 @@
  * \ingroup VAMR
  */
 
-#ifndef __VAMR_CONTEXT_H__
-#define __VAMR_CONTEXT_H__
+#ifndef __CONTEXT_H__
+#define __CONTEXT_H__
 
 #include <memory>
 #include <vector>
@@ -127,4 +127,4 @@ class Context : public VAMR::IContext {
 
 }  // namespace VAMR
 
-#endif  // __VAMR_CONTEXT_H__
+#endif  // __CONTEXT_H__

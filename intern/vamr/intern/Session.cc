@@ -27,12 +27,13 @@
 
 #include "VAMR_capi.h"
 
-#include "VAMR_IGraphicsBinding.h"
-#include "VAMR_intern.h"
-#include "VAMR_Context.h"
-#include "VAMR_Exception.h"
+#include "openxr_includes.h"
 
-#include "VAMR_Session.h"
+#include "Context.h"
+#include "Exception.h"
+#include "IGraphicsBinding.h"
+#include "Session.h"
+#include "utils.h"
 
 namespace VAMR {
 
