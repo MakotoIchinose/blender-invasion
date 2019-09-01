@@ -32,6 +32,7 @@ struct Object;
 struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
+
 struct GPUBatch;
 struct GPUVertBuf;
 struct GPUVertFormat;
