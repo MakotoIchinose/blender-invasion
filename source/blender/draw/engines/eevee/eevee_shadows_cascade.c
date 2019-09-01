@@ -27,6 +27,8 @@
 
 #include "eevee_private.h"
 
+#include "BLI_rand.h" /* needs to be after for some reason. */
+
 void EEVEE_shadows_cascade_add(EEVEE_LightsInfo *linfo, EEVEE_Light *evli, Object *ob)
 {
   if (linfo->cascade_len >= MAX_SHADOW_CASCADE) {
@@ -137,6 +139,17 @@ static void eevee_shadow_cascade_setup(EEVEE_LightsInfo *linfo,
   float cascade_fade = csm_render->cascade_fade;
   float cascade_max_dist = csm_render->cascade_max_dist;
   float cascade_exponent = csm_render->cascade_exponent;
+
+  float jitter_ofs[2];
+  double ht_point[2];
+  double ht_offset[2] = {0.0, 0.0};
+  uint ht_primes[2] = {2, 3};
+
+  BLI_halton_2d(ht_primes, ht_offset, sample_ofs, ht_point);
+
+  /* Not really sure why we need 4.0 factor here. */
+  jitter_ofs[0] = (ht_point[0] * 2.0 - 1.0) * 4.0 / linfo->shadow_cascade_size;
+  jitter_ofs[1] = (ht_point[1] * 2.0 - 1.0) * 4.0 / linfo->shadow_cascade_size;
 
   /* Camera Matrices */
   float persinv[4][4], vp_projmat[4][4];
@@ -351,6 +364,11 @@ static void eevee_shadow_cascade_setup(EEVEE_LightsInfo *linfo,
                     rect_cascade.ymax,
                     sh_near,
                     sh_far);
+
+    /* Anti-Aliasing */
+    if (linfo->soft_shadows) {
+      add_v2_v2(projmat[3], jitter_ofs);
+    }
 
     float viewprojmat[4][4];
     mul_m4_m4m4(viewprojmat, projmat, viewmat);

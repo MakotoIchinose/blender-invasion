@@ -96,3 +96,16 @@ void EEVEE_sample_ellipse(int sample_ofs,
   madd_v3_v3fl(rsample, x_axis, ht_point[0]);
   madd_v3_v3fl(rsample, y_axis, ht_point[1]);
 }
+
+void EEVEE_random_rotation_m4(int sample_ofs, float scale, float r_mat[4][4])
+{
+  double ht_point[3];
+  double ht_offset[3] = {0.0, 0.0, 0.0};
+  uint ht_primes[3] = {2, 3, 5};
+
+  BLI_halton_3d(ht_primes, ht_offset, sample_ofs, ht_point);
+
+  rotate_m4(r_mat, 'X', ht_point[0] * scale);
+  rotate_m4(r_mat, 'Y', ht_point[1] * scale);
+  rotate_m4(r_mat, 'Z', ht_point[2] * scale);
+}

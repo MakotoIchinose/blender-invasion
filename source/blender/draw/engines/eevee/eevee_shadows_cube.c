@@ -95,14 +95,15 @@ start:
 }
 
 /* Return true if sample has changed and light needs to be updated. */
-bool EEVEE_shadows_cube_setup(EEVEE_LightsInfo *linfo,
-                                     const EEVEE_Light *evli,
-                                     int sample_ofs)
+bool EEVEE_shadows_cube_setup(EEVEE_LightsInfo *linfo, const EEVEE_Light *evli, int sample_ofs)
 {
   EEVEE_Shadow *shdw_data = linfo->shadow_data + (int)evli->shadow_id;
   EEVEE_ShadowCube *cube_data = linfo->shadow_cube_data + (int)shdw_data->type_data_id;
 
   eevee_light_matrix_get(evli, cube_data->shadowmat);
+
+  shdw_data->far = max_ff(sqrt(1.0f / evli->invsqrdist), 3e-4);
+  shdw_data->near = min_ff(shdw_data->near, shdw_data->far - 1e-4);
 
   bool update = false;
 
@@ -111,13 +112,25 @@ bool EEVEE_shadows_cube_setup(EEVEE_LightsInfo *linfo,
     /* Update if position changes (avoid infinite update if soft shadows does not move).
      * Other changes are caught by depsgraph tagging. This one is for update between samples. */
     update = !compare_v3v3(cube_data->shadowmat[3], cube_data->position, 1e-10f);
+    /**
+     * Anti-Aliasing jitter: Add random rotation.
+     *
+     * The 2.0 factor is because texel angular size is not even across the cubemap,
+     * so we make the rotation range a bit bigger.
+     * This will not blur the shadow even if the spread is too big since we are just
+     * rotating the shadow cubemap.
+     * Note that this may be a rough approximation an may not converge to a perfectly
+     * smooth shadow (because sample distribution is quite non-uniform) but is enought
+     * in practice.
+     **/
+    /* NOTE: this has implication for spotlight rendering optimization
+     * (see EEVEE_shadows_draw_cubemap). */
+    float angular_texel_size = 2.0f * DEG2RADF(90) / (float)linfo->shadow_cube_size;
+    EEVEE_random_rotation_m4(sample_ofs, angular_texel_size, cube_data->shadowmat);
   }
 
   copy_v3_v3(cube_data->position, cube_data->shadowmat[3]);
   invert_m4(cube_data->shadowmat);
-
-  shdw_data->far = max_ff(sqrt(1.0f / evli->invsqrdist), 3e-4);
-  shdw_data->near = min_ff(shdw_data->near, shdw_data->far - 1e-4);
 
   return update;
 }
@@ -175,7 +188,7 @@ void EEVEE_shadows_draw_cubemap(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata,
   for (int j = 0; j < 6; j++) {
     /* Optimization: Only render the needed faces. */
     /* Skip all but -Z face. */
-    if (evli->light_type == LA_SPOT && j != 5 && evli->spotsize < cosf(DEG2RADF(90.0f) * 0.5f))
+    if (evli->light_type == LA_SPOT && j != 5 && evli->spotsize > cosf(DEG2RADF(90.0f) * 0.5f))
       continue;
     /* Skip +Z face. */
     if (evli->light_type != LA_LOCAL && j == 4)

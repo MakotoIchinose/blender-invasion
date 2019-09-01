@@ -897,6 +897,7 @@ void EEVEE_sample_ellipse(int sample_ofs,
                           float size_x,
                           float size_y,
                           float rsample[3]);
+void EEVEE_random_rotation_m4(int sample_ofs, float scale, float r_mat[4][4]);
 
 /* eevee_shaders.c */
 void EEVEE_shaders_lightprobe_shaders_init(void);
