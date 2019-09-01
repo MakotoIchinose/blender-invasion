@@ -164,6 +164,19 @@ static void eevee_ensure_cube_views(
   }
 }
 
+/* Does a spot angle fits a single cubeface. */
+static bool spot_angle_fit_single_face(const EEVEE_Light *evli)
+{
+  /* alpha = spot/cone half angle. */
+  /* beta = scaled spot/cone half angle. */
+  float cos_alpha = evli->spotsize;
+  float sin_alpha = sqrtf(max_ff(0.0f, 1.0f - cos_alpha * cos_alpha));
+  float cos_beta = min_ff(cos_alpha / hypotf(cos_alpha, sin_alpha * evli->sizex),
+                          cos_alpha / hypotf(cos_alpha, sin_alpha * evli->sizey));
+  /* Don't use 45 degrees because AA jitter can offset the face. */
+  return cos_beta > cosf(DEG2RADF(42.0f));
+}
+
 void EEVEE_shadows_draw_cubemap(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, int cube_index)
 {
   EEVEE_PassList *psl = vedata->psl;
@@ -188,7 +201,7 @@ void EEVEE_shadows_draw_cubemap(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata,
   for (int j = 0; j < 6; j++) {
     /* Optimization: Only render the needed faces. */
     /* Skip all but -Z face. */
-    if (evli->light_type == LA_SPOT && j != 5 && evli->spotsize > cosf(DEG2RADF(90.0f) * 0.5f))
+    if (evli->light_type == LA_SPOT && j != 5 && spot_angle_fit_single_face(evli))
       continue;
     /* Skip +Z face. */
     if (evli->light_type != LA_LOCAL && j == 4)
