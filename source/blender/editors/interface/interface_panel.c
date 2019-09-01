@@ -245,10 +245,6 @@ static void panels_collapse_all(ScrArea *sa, ARegion *ar, const Panel *from_pa)
   for (pa = ar->panels.first; pa; pa = pa->next) {
     PanelType *pt = pa->type;
 
-    if (pt->flag & PNL_HIDDEN) {
-      continue;
-    }
-
     /* close panels with headers in the same context */
     if (pt && from_pt && !(pt->flag & PNL_NO_HEADER)) {
       if (!pt->context[0] || !from_pt->context[0] || STREQ(pt->context, from_pt->context)) {

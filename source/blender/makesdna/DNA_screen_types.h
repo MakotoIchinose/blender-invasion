@@ -526,13 +526,10 @@ enum {
 
 /* #define PNL_SNAP_DIST        9.0 */
 
-/* PanelType.flag */
-enum {
-  PNL_DEFAULT_CLOSED = (1 << 0),
-  PNL_NO_HEADER = (1 << 1),
-  PNL_LAYOUT_VERT_BAR = (1 << 2),
-  PNL_HIDDEN = (1 << 3),
-};
+/* paneltype flag */
+#define PNL_DEFAULT_CLOSED 1
+#define PNL_NO_HEADER 2
+#define PNL_LAYOUT_VERT_BAR 4
 
 /* Fallback panel category (only for old scripts which need updating) */
 #define PNL_CATEGORY_FALLBACK "Misc"

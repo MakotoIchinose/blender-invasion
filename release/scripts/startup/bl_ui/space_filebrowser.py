@@ -43,9 +43,8 @@ class FILEBROWSER_HT_header(Header):
 
 class FILEBROWSER_PT_display(Panel):
     bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'UI'
+    bl_region_type = 'HEADER'
     bl_label = "Display"
-    bl_options = {'HIDDEN'}
 
     @classmethod
     def poll(cls, context):
@@ -83,9 +82,8 @@ class FILEBROWSER_PT_display(Panel):
 
 class FILEBROWSER_PT_filter(Panel):
     bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'UI'
+    bl_region_type = 'HEADER'
     bl_label = "Filter"
-    bl_options = {'HIDDEN'}
 
     @classmethod
     def poll(cls, context):

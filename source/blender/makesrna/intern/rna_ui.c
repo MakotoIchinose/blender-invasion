@@ -1290,12 +1290,6 @@ static void rna_def_panel(BlenderRNA *brna)
        "Hide Header",
        "If set to False, the panel shows a header, which contains a clickable "
        "arrow to collapse the panel and the label (see bl_label)"},
-      {PNL_HIDDEN,
-       "HIDDEN",
-       0,
-       "Hidden",
-       "Do not show this panel, only register it for display at a non-default position (e.g. in a "
-       "popup)"},
       {0, NULL, 0, NULL, NULL},
   };
 
