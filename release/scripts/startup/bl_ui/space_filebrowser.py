@@ -361,6 +361,7 @@ class FILEBROWSER_PT_directory_path(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'UI'
     bl_label = "Directory Path"
+    bl_category = "Attributes"
     bl_options = {'HIDE_HEADER'}
 
     def is_header_visible(self, context):
