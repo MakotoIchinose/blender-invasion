@@ -7793,7 +7793,7 @@ void trans_obdata_in_obmode_update_all(TransInfo *t)
     invert_m4(dmat);
 
     ED_object_data_xform_by_mat4(xf->xod, dmat);
-    DEG_id_tag_update(id, 0);
+    DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
   }
 }
 
@@ -8075,8 +8075,8 @@ static void createTransObject(bContext *C, TransInfo *t)
 
       /* if base is not selected, not a parent of selection
        * or not a child of selection and it is editable and selectable */
-      if ((base->flag & BASE_SELECTED) == 0 && BASE_EDITABLE(v3d, base) &&
-          BASE_SELECTABLE(v3d, base)) {
+      if ((base->flag_legacy & BA_WAS_SEL) && (base->flag & BASE_SELECTED) == 0 &&
+          BASE_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)) {
 
         Object *ob_parent = ob->parent;
         if (ob_parent != NULL) {

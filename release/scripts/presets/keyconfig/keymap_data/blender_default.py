@@ -409,6 +409,7 @@ def km_window(params):
         items.extend([
             ("wm.doc_view_manual_ui_context", {"type": 'F1', "value": 'PRESS'}, None),
             op_panel("TOPBAR_PT_name", {"type": 'F2', "value": 'PRESS'}, [("keep_open", False)]),
+            ("wm.batch_rename", {"type": 'F2', "value": 'PRESS', "alt": True}, None),
             ("wm.search_menu", {"type": 'F3', "value": 'PRESS'}, None),
             op_menu("TOPBAR_MT_file_context_menu", {"type": 'F4', "value": 'PRESS'}),
         ])
@@ -3063,7 +3064,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         # Isolate layer
         ("gpencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
         # Move to layer
-        ("gpencil.move_to_layer", {"type": 'M', "value": 'PRESS'}, None),
+        op_menu("GPENCIL_MT_move_to_layer", {"type": 'M', "value": 'PRESS'}),
         # Transform tools
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
         ("transform.translate", {"type": params.select_tweak, "value": 'ANY'}, None),

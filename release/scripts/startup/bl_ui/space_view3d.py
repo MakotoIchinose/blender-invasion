@@ -2333,6 +2333,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.separator()
 
             layout.operator("object.convert", text="Convert to Mesh").target = 'MESH'
+            layout.operator("object.convert", text="Convert to Grease Pencil").target = 'GPENCIL'
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
 
             layout.separator()
@@ -4501,7 +4502,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
 
         layout.separator()
 
-        layout.operator_menu_enum("gpencil.move_to_layer", "layer", text="Move to Layer")
+        layout.menu("GPENCIL_MT_move_to_layer")
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
 
@@ -6371,7 +6372,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.separator()
 
             # Layer and Materials operators
-            col.operator_menu_enum("gpencil.move_to_layer", "layer", text="Move to Layer")
+            col.menu("GPENCIL_MT_move_to_layer")            
             col.menu("VIEW3D_MT_assign_material")
             col.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
 
