@@ -58,7 +58,8 @@ typedef struct Light {
   char _pad2[2];
 
   float clipsta, clipend;
-  float bias, soft;
+  float bias;
+  float soft DNA_DEPRECATED;
   float bleedbias DNA_DEPRECATED;
   float bleedexp DNA_DEPRECATED;
   short bufsize, samp, buffers, filtertype;
@@ -84,7 +85,10 @@ typedef struct Light {
   float cascade_fade;
   int cascade_count;
 
-  float contact_dist, contact_bias, contact_spread, contact_thickness;
+  float contact_dist;
+  float contact_bias;
+  float contact_spread DNA_DEPRECATED;
+  float contact_thickness;
 
   float spec_fac, att_dist;
 
