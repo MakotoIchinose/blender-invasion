@@ -77,7 +77,7 @@ static void light_shape_parameters_set(EEVEE_Light *evli, const Light *la, const
     }
   }
   else if (la->type == LA_SUN) {
-    evli->radius = max_ff(0.001f, tanf(la->sun_angle / 2.0f));
+    evli->radius = max_ff(0.001f, tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f));
   }
   else {
     evli->radius = max_ff(0.001f, la->area_size);
