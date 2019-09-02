@@ -92,7 +92,7 @@ float sample_cube_shadow(int shadow_id, vec3 W)
 {
   int data_id = int(sd(shadow_id).sh_data_index);
   vec3 cubevec = transform_point(scube(data_id).shadowmat, W);
-  float dist = max_v3(abs(cubevec));
+  float dist = max_v3(abs(cubevec)) - sd(shadow_id).sh_bias;
   dist = buffer_depth(true, dist, sd(shadow_id).sh_far, sd(shadow_id).sh_near);
   /* Manual Shadow Cube Layer indexing. */
   /* TODO Shadow Cube Array. */
@@ -119,13 +119,13 @@ float sample_cascade_shadow(int shadow_id, vec3 W)
   vec4 coord, shpos;
   /* Main cascade. */
   shpos = scascade(data_id).shadowmat[cascade] * vec4(W, 1.0);
-  coord = vec4(shpos.xy, tex_id + float(cascade), shpos.z);
+  coord = vec4(shpos.xy, tex_id + float(cascade), shpos.z - sd(shadow_id).sh_bias);
   vis += texture(shadowCascadeTexture, coord) * (1.0 - blend);
 
   cascade = min(3, cascade + 1);
   /* Second cascade. */
   shpos = scascade(data_id).shadowmat[cascade] * vec4(W, 1.0);
-  coord = vec4(shpos.xy, tex_id + float(cascade), shpos.z);
+  coord = vec4(shpos.xy, tex_id + float(cascade), shpos.z - sd(shadow_id).sh_bias);
   vis += texture(shadowCascadeTexture, coord) * blend;
 
   return saturate(vis);

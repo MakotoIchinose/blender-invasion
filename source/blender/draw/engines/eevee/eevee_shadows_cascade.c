@@ -40,6 +40,7 @@ void EEVEE_shadows_cascade_add(EEVEE_LightsInfo *linfo, EEVEE_Light *evli, Objec
   EEVEE_ShadowCascade *csm_data = linfo->shadow_cascade_data + linfo->cascade_len;
   EEVEE_ShadowCascadeRender *csm_render = linfo->shadow_cascade_render + linfo->cascade_len;
 
+  sh_data->bias = max_ff(la->bias * 0.05f, 0.0f);
   eevee_contact_shadow_setup(la, sh_data);
 
   linfo->shadow_cascade_light_indices[linfo->cascade_len] = linfo->num_light;

@@ -47,6 +47,7 @@ void EEVEE_shadows_cube_add(EEVEE_LightsInfo *linfo, EEVEE_Light *evli, Object *
   }
 
   sh_data->near = max_ff(la->clipsta, 1e-8f);
+  sh_data->bias = max_ff(la->bias * 0.05f, 0.0f);
   eevee_contact_shadow_setup(la, sh_data);
 
   /* Saving light bounds for later. */
