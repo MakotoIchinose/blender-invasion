@@ -2369,7 +2369,7 @@ static bool file_filenum_poll(bContext *C)
     return false;
   }
 
-  return (sfile->params->action_type == FILE_SAVE);
+  return sfile->params && (sfile->params->action_type == FILE_SAVE);
 }
 
 /**

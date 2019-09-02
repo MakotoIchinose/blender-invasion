@@ -3720,7 +3720,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
             ARegion *ar_ui = do_versions_find_region(regionbase, RGN_TYPE_UI);
             ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
-            ARegion *ar_toolprops = do_versions_find_region(regionbase, RGN_TYPE_TOOL_PROPS);
+            ARegion *ar_toolprops = do_versions_find_region_or_null(regionbase,
+                                                                    RGN_TYPE_TOOL_PROPS);
 
             /* Reinsert UI region so that it spawns entire area width */
             BLI_remlink(regionbase, ar_ui);
@@ -3728,7 +3729,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
             ar_ui->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
-            if (ar_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV)) {
+            if (ar_toolprops && (ar_toolprops->alignment == (RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV))) {
               SpaceType *stype = BKE_spacetype_from_id(sl->spacetype);
 
               /* Remove empty region at old location. */
