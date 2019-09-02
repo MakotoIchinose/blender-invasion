@@ -112,22 +112,7 @@ static void deformStroke(GpencilModifierData *md,
     if (mmd->factor > 1.0f) {
       for (int i = 0; i < gps->totpoints; i++) {
         bGPDspoint *pt = &gps->points[i];
-        MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
-
-        /* verify vertex group */
-        float weight = get_modifier_point_weight(
-            dvert, (mmd->flag & GP_OPACITY_INVERT_VGROUP) != 0, def_nr);
-        if (weight < 0.0f) {
-          continue;
-        }
-        if (def_nr < 0) {
-          pt->strength += mmd->factor - 1.0f;
-        }
-        else {
-          CLAMP(weight, 0.0f, 1.0f);
-          weight = 1.0f - weight;
-          pt->strength += (mmd->factor * weight) - 1.0f;
-        }
+        pt->strength += mmd->factor - 1.0f;
         CLAMP(pt->strength, 0.0f, 1.0f);
       }
     }
@@ -148,14 +133,12 @@ static void deformStroke(GpencilModifierData *md,
         pt->strength += mmd->factor - 1.0f;
       }
       else {
-        CLAMP(weight, 0.0f, 1.0f);
-        weight = 1.0f - weight;
         /* High factor values, change weight too. */
         if ((mmd->factor > 1.0f) && (weight < 1.0f)) {
           weight += mmd->factor - 1.0f;
           CLAMP(weight, 0.0f, 1.0f);
         }
-        pt->strength += (mmd->factor * weight) - 1.0f;
+        pt->strength += (mmd->factor - 1) * weight;
       }
       CLAMP(pt->strength, 0.0f, 1.0f);
     }
@@ -187,8 +170,10 @@ static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData 
 
         deformStroke(md, depsgraph, ob, gpl, gpf, gps);
 
-        gpencil_apply_modifier_material(
-            bmain, ob, mat, gh_color, gps, (bool)(mmd->flag & GP_OPACITY_CREATE_COLORS));
+        if (mmd->opacity_mode == GP_OPACITY_MODE_MATERIAL) {
+          gpencil_apply_modifier_material(
+              bmain, ob, mat, gh_color, gps, (bool)(mmd->flag & GP_OPACITY_CREATE_COLORS));
+        }
       }
     }
   }

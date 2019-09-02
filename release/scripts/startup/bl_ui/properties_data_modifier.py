@@ -1783,7 +1783,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col.label(text="Material:")
         row = col.row(align=True)
-        
+
         row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
         row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
         row = layout.row(align=True)
@@ -2014,17 +2014,17 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row()
         row.prop(md, "opacity_mode", text="Mode")
 
-        row = layout.row()
-        row.prop(md, "create_materials")
-        if md.opacity_mode == 'COLOR':
+        if md.opacity_mode == 'MATERIAL':
+            row = layout.row()
+            row.prop(md, "create_materials")
             row.prop(md, "modify_color", text="Change")
-
-        col = layout.column()
-        col.separator()
-        col.label(text="Vertex Group:")
-        row = col.row(align=True)
-        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
-        row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
+        else:
+            col = layout.column()
+            col.separator()
+            col.label(text="Vertex Group:")
+            row = col.row(align=True)
+            row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+            row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
 
         col = layout.column()
         col.separator()
@@ -2333,7 +2333,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub = row.row(align=True)
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
-        
+
     def GP_LENGTH(self, layout, ob, md):
         sp = layout.split()
         col = sp.column()
@@ -2343,7 +2343,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = sp.column()
         col.label(text="Relative:")
         col.prop(md, "percentage")
-    
+
     def GP_MULTIPLY(self, layout, ob, md):
         sp = layout.split(factor = 0.5)
 
@@ -2353,7 +2353,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
             col.prop(md,"duplications")
             col.prop(md,"distance")
             col.prop(md,"offset", slider=True)
-        
+
             col.prop(md,"enable_fading")
             if md.enable_fading:
                 col.prop(md, "fading_center")
