@@ -163,7 +163,6 @@ enum {
   VAR_MAT_SHADOW = (1 << 12),
   VAR_MAT_REFRACT = (1 << 13),
   VAR_MAT_TRANSLUC = (1 << 15),
-  VAR_MAT_SSSALBED = (1 << 16),
 };
 
 /* ************ PROBE UBO ************* */
@@ -549,8 +548,8 @@ typedef struct EEVEE_EffectsInfo {
   bool swap_double_buffer;
   /* SSSS */
   int sss_sample_count;
-  bool sss_separate_albedo;
-  struct GPUTexture *sss_data; /* Textures from pool */
+  struct GPUTexture *sss_irradiance; /* Textures from pool */
+  struct GPUTexture *sss_radius;
   struct GPUTexture *sss_albedo;
   struct GPUTexture *sss_blur;
   struct GPUTexture *sss_stencil;

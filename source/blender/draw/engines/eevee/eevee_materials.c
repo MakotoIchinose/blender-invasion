@@ -322,9 +322,6 @@ static char *eevee_get_defines(int options)
   if ((options & VAR_MAT_REFRACT) != 0) {
     BLI_dynstr_append(ds, "#define USE_REFRACTION\n");
   }
-  if ((options & VAR_MAT_SSSALBED) != 0) {
-    BLI_dynstr_append(ds, "#define USE_SSS_ALBEDO\n");
-  }
   if ((options & VAR_MAT_TRANSLUC) != 0) {
     BLI_dynstr_append(ds, "#define USE_TRANSLUCENCY\n");
   }
@@ -731,19 +728,17 @@ struct GPUMaterial *EEVEE_material_world_volume_get(struct Scene *scene, World *
 
 struct GPUMaterial *EEVEE_material_mesh_get(struct Scene *scene,
                                             Material *ma,
-                                            EEVEE_Data *vedata,
+                                            EEVEE_Data *UNUSED(vedata),
                                             bool use_blend,
                                             bool use_refract,
                                             bool use_translucency,
                                             int shadow_method)
 {
-  EEVEE_EffectsInfo *effects = vedata->stl->effects;
   const void *engine = &DRW_engine_viewport_eevee_type;
   int options = VAR_MAT_MESH;
 
   SET_FLAG_FROM_TEST(options, use_blend, VAR_MAT_BLEND);
   SET_FLAG_FROM_TEST(options, use_refract, VAR_MAT_REFRACT);
-  SET_FLAG_FROM_TEST(options, effects->sss_separate_albedo, VAR_MAT_SSSALBED);
   SET_FLAG_FROM_TEST(options, use_translucency, VAR_MAT_TRANSLUC);
 
   options |= eevee_material_shadow_option(shadow_method);

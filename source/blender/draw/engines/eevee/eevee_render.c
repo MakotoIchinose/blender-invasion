@@ -478,7 +478,8 @@ static void eevee_render_draw_background(EEVEE_Data *vedata)
                                  GPU_ATTACHMENT_LEAVE,
                                  GPU_ATTACHMENT_TEXTURE(stl->effects->ssr_normal_input),
                                  GPU_ATTACHMENT_TEXTURE(stl->effects->ssr_specrough_input),
-                                 GPU_ATTACHMENT_TEXTURE(stl->effects->sss_data),
+                                 GPU_ATTACHMENT_TEXTURE(stl->effects->sss_irradiance),
+                                 GPU_ATTACHMENT_TEXTURE(stl->effects->sss_radius),
                                  GPU_ATTACHMENT_TEXTURE(stl->effects->sss_albedo)});
   GPU_framebuffer_bind(fbl->main_fb);
 }

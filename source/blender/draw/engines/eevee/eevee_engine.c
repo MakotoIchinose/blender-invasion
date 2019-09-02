@@ -368,11 +368,21 @@ static void eevee_draw_background(void *vedata)
       }
       break;
     case 8:
-      if (effects->sss_data) {
-        DRW_transform_to_display(effects->sss_data, false, false);
+      if (effects->sss_irradiance) {
+        DRW_transform_to_display(effects->sss_irradiance, false, false);
       }
       break;
     case 9:
+      if (effects->sss_radius) {
+        DRW_transform_to_display(effects->sss_radius, false, false);
+      }
+      break;
+    case 10:
+      if (effects->sss_albedo) {
+        DRW_transform_to_display(effects->sss_albedo, false, false);
+      }
+      break;
+    case 11:
       if (effects->velocity_tx) {
         DRW_transform_to_display(effects->velocity_tx, false, false);
       }

@@ -116,24 +116,8 @@ void node_bsdf_principled(vec4 base_color,
 
   closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
 
-  vec3 sss_radiance = (out_diff + out_trans) * alpha;
-#  ifndef USE_SSS
-  result.radiance += sss_radiance * mixed_ss_base_color * (1.0 - transmission);
-#  else
-#    ifdef USE_SSS_ALBEDO
-  vec3 sss_albedo = mixed_ss_base_color;
-#    else
-  sss_radiance *= mixed_ss_base_color;
-#    endif
-  sss_radiance *= (1.0 - transmission);
-  closure_load_sss_data(sss_scalef,
-                        sss_radiance,
-#    ifdef USE_SSS_ALBEDO
-                        sss_albedo,
-#    endif
-                        int(sss_id),
-                        result);
-#  endif /* USE_SSS */
+  vec3 sss_radiance = (out_diff + out_trans) * alpha * (1.0 - transmission);
+  closure_load_sss_data(sss_scalef, sss_radiance, mixed_ss_base_color, int(sss_id), result);
 
   result.radiance += emission.rgb;
   result.radiance *= alpha;
@@ -349,24 +333,8 @@ void node_bsdf_principled_subsurface(vec4 base_color,
   result.radiance = out_spec;
   closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
 
-  vec3 sss_radiance = (out_diff + out_trans) * alpha;
-#  ifndef USE_SSS
-  result.radiance += sss_radiance * mixed_ss_base_color * (1.0 - transmission);
-#  else
-#    ifdef USE_SSS_ALBEDO
-  vec3 sss_albedo = mixed_ss_base_color;
-#    else
-  sss_radiance *= mixed_ss_base_color;
-#    endif
-  sss_radiance *= (1.0 - transmission);
-  closure_load_sss_data(sss_scalef,
-                        sss_radiance,
-#    ifdef USE_SSS_ALBEDO
-                        sss_albedo,
-#    endif
-                        int(sss_id),
-                        result);
-#  endif /* USE_SSS */
+  vec3 sss_radiance = (out_diff + out_trans) * alpha * (1.0 - transmission);
+  closure_load_sss_data(sss_scalef, sss_radiance, mixed_ss_base_color, int(sss_id), result);
 
   result.radiance += out_diff * out_sheen;
   result.radiance += emission.rgb;
