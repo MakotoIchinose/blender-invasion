@@ -9,18 +9,17 @@ void node_subsurface_scattering(vec4 color,
                                 out Closure result)
 {
   N = normalize(N);
-  vec3 out_diff, out_trans;
+  vec3 out_diff;
   vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   closure_load_ssr_data(vec3(0.0), 0.0, N, viewCameraVec, -1, result);
 
-  eevee_closure_subsurface(N, color.rgb, 1.0, scale, out_diff, out_trans);
+  eevee_closure_subsurface(N, color.rgb, 1.0, scale, out_diff);
 
-  vec3 sss_radiance = out_diff + out_trans;
   /* Not perfect for texture_blur not exactly equal to 0.0 or 1.0. */
   vec3 sss_albedo = mix(color.rgb, vec3(1.0), texture_blur);
-  sss_radiance *= mix(vec3(1.0), color.rgb, texture_blur);
-  closure_load_sss_data(scale, sss_radiance, sss_albedo, int(sss_id), result);
+  out_diff *= mix(vec3(1.0), color.rgb, texture_blur);
+  closure_load_sss_data(scale, out_diff, sss_albedo, int(sss_id), result);
 }
 #else
 /* Stub subsurface scattering because it is not compatible with volumetrics. */

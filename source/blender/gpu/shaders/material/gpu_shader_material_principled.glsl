@@ -66,7 +66,7 @@ void node_bsdf_principled(vec4 base_color,
   sheen *= dielectric;
   subsurface_color *= dielectric;
 
-  vec3 diffuse, f0, out_diff, out_spec, out_trans, out_refr, ssr_spec;
+  vec3 diffuse, f0, out_diff, out_spec, out_refr, ssr_spec;
   vec3 ctint = tint_from_color(base_color.rgb);
   convert_metallic_to_specular_tinted(
       base_color.rgb, ctint, metallic, specular, specular_tint, diffuse, f0);
@@ -100,7 +100,6 @@ void node_bsdf_principled(vec4 base_color,
                            sss_scalef,
                            ior,
                            out_diff,
-                           out_trans,
                            out_spec,
                            out_refr,
                            ssr_spec);
@@ -116,8 +115,8 @@ void node_bsdf_principled(vec4 base_color,
 
   closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
 
-  vec3 sss_radiance = (out_diff + out_trans) * alpha * (1.0 - transmission);
-  closure_load_sss_data(sss_scalef, sss_radiance, mixed_ss_base_color, int(sss_id), result);
+  mixed_ss_base_color *= alpha * (1.0 - transmission);
+  closure_load_sss_data(sss_scalef, out_diff, mixed_ss_base_color, int(sss_id), result);
 
   result.radiance += emission.rgb;
   result.radiance *= alpha;
@@ -302,7 +301,7 @@ void node_bsdf_principled_subsurface(vec4 base_color,
   metallic = saturate(metallic);
   N = normalize(N);
 
-  vec3 diffuse, f0, out_diff, out_spec, out_trans, ssr_spec;
+  vec3 diffuse, f0, out_diff, out_spec, ssr_spec;
   vec3 ctint = tint_from_color(base_color.rgb);
   convert_metallic_to_specular_tinted(
       base_color.rgb, ctint, metallic, specular, specular_tint, diffuse, f0);
@@ -325,7 +324,6 @@ void node_bsdf_principled_subsurface(vec4 base_color,
                      1.0,
                      sss_scalef,
                      out_diff,
-                     out_trans,
                      out_spec,
                      ssr_spec);
 
@@ -333,8 +331,8 @@ void node_bsdf_principled_subsurface(vec4 base_color,
   result.radiance = out_spec;
   closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
 
-  vec3 sss_radiance = (out_diff + out_trans) * alpha * (1.0 - transmission);
-  closure_load_sss_data(sss_scalef, sss_radiance, mixed_ss_base_color, int(sss_id), result);
+  mixed_ss_base_color *= alpha * (1.0 - transmission);
+  closure_load_sss_data(sss_scalef, out_diff, mixed_ss_base_color, int(sss_id), result);
 
   result.radiance += out_diff * out_sheen;
   result.radiance += emission.rgb;

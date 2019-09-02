@@ -238,6 +238,7 @@ typedef struct EEVEE_PassList {
   struct DRWPass *sss_blur_ps;
   struct DRWPass *sss_resolve_ps;
   struct DRWPass *sss_accum_ps;
+  struct DRWPass *sss_translucency_ps;
   struct DRWPass *color_downsample_ps;
   struct DRWPass *color_downsample_cube_ps;
   struct DRWPass *velocity_resolve;
@@ -288,6 +289,7 @@ typedef struct EEVEE_FramebufferList {
   struct GPUFrameBuffer *sss_blit_fb;
   struct GPUFrameBuffer *sss_resolve_fb;
   struct GPUFrameBuffer *sss_clear_fb;
+  struct GPUFrameBuffer *sss_translucency_fb;
   struct GPUFrameBuffer *sss_accum_fb;
   struct GPUFrameBuffer *dof_down_fb;
   struct GPUFrameBuffer *dof_scatter_fb;
@@ -1040,6 +1042,11 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
                                EEVEE_Data *vedata,
                                uint sss_id,
                                struct GPUUniformBuffer *sss_profile);
+void EEVEE_subsurface_translucency_add_pass(EEVEE_ViewLayerData *sldata,
+                                            EEVEE_Data *vedata,
+                                            uint sss_id,
+                                            struct GPUUniformBuffer *sss_profile,
+                                            struct GPUTexture *sss_tex_profile);
 void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_subsurface_compute(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);
 void EEVEE_subsurface_output_accumulate(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata);

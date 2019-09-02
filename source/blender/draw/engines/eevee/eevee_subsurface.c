@@ -33,12 +33,18 @@
 #include "GPU_extensions.h"
 
 static struct {
-  struct GPUShader *sss_sh[3];
+  struct GPUShader *sss_sh[4];
 } e_data = {{NULL}}; /* Engine data */
 
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_common_uniforms_lib_glsl[];
+extern char datatoc_lights_lib_glsl[];
+extern char datatoc_raytrace_lib_glsl[];
+extern char datatoc_octahedron_lib_glsl[];
+extern char datatoc_bsdf_sampling_lib_glsl[];
+extern char datatoc_bsdf_common_lib_glsl[];
 extern char datatoc_effect_subsurface_frag_glsl[];
+extern char datatoc_effect_translucency_frag_glsl[];
 
 static void eevee_create_shader_subsurface(void)
 {
@@ -46,10 +52,22 @@ static void eevee_create_shader_subsurface(void)
                                     datatoc_common_uniforms_lib_glsl,
                                     datatoc_effect_subsurface_frag_glsl);
 
+  /* TODO(fclem) remove some of these dependencies. */
+  char *frag_translucent_str = BLI_string_joinN(datatoc_common_view_lib_glsl,
+                                                datatoc_common_uniforms_lib_glsl,
+                                                datatoc_bsdf_common_lib_glsl,
+                                                datatoc_bsdf_sampling_lib_glsl,
+                                                datatoc_raytrace_lib_glsl,
+                                                datatoc_octahedron_lib_glsl,
+                                                datatoc_lights_lib_glsl,
+                                                datatoc_effect_translucency_frag_glsl);
+
   e_data.sss_sh[0] = DRW_shader_create_fullscreen(frag_str, "#define FIRST_PASS\n");
   e_data.sss_sh[1] = DRW_shader_create_fullscreen(frag_str, "#define SECOND_PASS\n");
   e_data.sss_sh[2] = DRW_shader_create_fullscreen(frag_str, "#define RESULT_ACCUM\n");
+  e_data.sss_sh[3] = DRW_shader_create_fullscreen(frag_translucent_str, SHADER_DEFINES);
 
+  MEM_freeN(frag_translucent_str);
   MEM_freeN(frag_str);
 }
 
@@ -110,6 +128,10 @@ void EEVEE_subsurface_draw_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data 
     GPU_framebuffer_ensure_config(
         &fbl->sss_resolve_fb,
         {GPU_ATTACHMENT_TEXTURE(stencil_tex), GPU_ATTACHMENT_TEXTURE(txl->color)});
+
+    GPU_framebuffer_ensure_config(
+        &fbl->sss_translucency_fb,
+        {GPU_ATTACHMENT_TEXTURE(stencil_tex), GPU_ATTACHMENT_TEXTURE(effects->sss_irradiance)});
 
     GPU_framebuffer_ensure_config(&fbl->sss_clear_fb,
                                   {GPU_ATTACHMENT_NONE,
@@ -194,6 +216,7 @@ void EEVEE_subsurface_cache_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
   DRW_PASS_CREATE(psl->sss_blur_ps, state);
   DRW_PASS_CREATE(psl->sss_resolve_ps, state | DRW_STATE_BLEND_ADD);
   DRW_PASS_CREATE(psl->sss_accum_ps, state | DRW_STATE_BLEND_ADD);
+  DRW_PASS_CREATE(psl->sss_translucency_ps, state | DRW_STATE_BLEND_ADD);
 }
 
 void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
@@ -241,6 +264,34 @@ void EEVEE_subsurface_add_pass(EEVEE_ViewLayerData *sldata,
     DRW_shgroup_stencil_mask(grp, sss_id);
     DRW_shgroup_call(grp, quad, NULL);
   }
+}
+
+void EEVEE_subsurface_translucency_add_pass(EEVEE_ViewLayerData *sldata,
+                                            EEVEE_Data *vedata,
+                                            uint sss_id,
+                                            struct GPUUniformBuffer *sss_profile,
+                                            GPUTexture *sss_tex_profile)
+{
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+  EEVEE_PassList *psl = vedata->psl;
+  EEVEE_StorageList *stl = vedata->stl;
+  EEVEE_EffectsInfo *effects = stl->effects;
+  struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
+  GPUTexture **depth_src = GPU_depth_blitting_workaround() ? &effects->sss_stencil : &dtxl->depth;
+
+  DRWShadingGroup *grp = DRW_shgroup_create(e_data.sss_sh[3], psl->sss_translucency_ps);
+  DRW_shgroup_uniform_texture(grp, "utilTex", EEVEE_materials_get_util_tex());
+  DRW_shgroup_uniform_texture(grp, "sssTexProfile", sss_tex_profile);
+  DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", depth_src);
+  DRW_shgroup_uniform_texture_ref(grp, "sssRadius", &effects->sss_radius);
+  DRW_shgroup_uniform_texture_ref(grp, "shadowCubeTexture", &sldata->shadow_cube_pool);
+  DRW_shgroup_uniform_texture_ref(grp, "shadowCascadeTexture", &sldata->shadow_cascade_pool);
+  DRW_shgroup_uniform_block(grp, "sssProfile", sss_profile);
+  DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
+  DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
+  DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
+  DRW_shgroup_stencil_mask(grp, sss_id);
+  DRW_shgroup_call(grp, quad, NULL);
 }
 
 void EEVEE_subsurface_data_render(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
@@ -303,6 +354,9 @@ void EEVEE_subsurface_compute(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *v
       GPU_framebuffer_blit(fbl->main_fb, 0, fbl->sss_blur_fb, 0, GPU_STENCIL_BIT);
     }
 
+    GPU_framebuffer_bind(fbl->sss_translucency_fb);
+    DRW_draw_pass(psl->sss_translucency_ps);
+
     /* 1. horizontal pass */
     GPU_framebuffer_bind(fbl->sss_blur_fb);
     GPU_framebuffer_clear_color(fbl->sss_blur_fb, clear);
@@ -343,4 +397,5 @@ void EEVEE_subsurface_free(void)
   DRW_SHADER_FREE_SAFE(e_data.sss_sh[0]);
   DRW_SHADER_FREE_SAFE(e_data.sss_sh[1]);
   DRW_SHADER_FREE_SAFE(e_data.sss_sh[2]);
+  DRW_SHADER_FREE_SAFE(e_data.sss_sh[3]);
 }

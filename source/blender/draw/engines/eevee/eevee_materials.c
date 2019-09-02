@@ -63,8 +63,6 @@ static struct {
   struct GPUTexture *util_tex;
   struct GPUTexture *noise_tex;
 
-  struct GPUUniformBuffer *dummy_sss_profile;
-
   uint sss_count;
 
   float alpha_hash_offset;
@@ -432,11 +430,6 @@ static void create_default_shader(int options)
   MEM_freeN(frag_str);
 }
 
-static void eevee_init_dummys(void)
-{
-  e_data.dummy_sss_profile = GPU_material_create_sss_profile_ubo();
-}
-
 static void eevee_init_noise_texture(void)
 {
   e_data.noise_tex = DRW_texture_create_2d(64, 64, GPU_RGBA16F, 0, (float *)blue_noise);
@@ -628,7 +621,6 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
 
     eevee_init_util_texture();
     eevee_init_noise_texture();
-    eevee_init_dummys();
   }
 
   if (!DRW_state_is_image_render() && ((stl->effects->enabled_effects & EFFECT_TAA) == 0)) {
@@ -1306,34 +1298,21 @@ static void material_opaque(Material *ma,
               *gpumat, stl->effects->sss_sample_count, &sss_tex_profile);
 
           if (sss_profile) {
-            if (use_translucency) {
-              DRW_shgroup_uniform_block(*shgrp, "sssProfile", sss_profile);
-              DRW_shgroup_uniform_texture(*shgrp, "sssTexProfile", sss_tex_profile);
-            }
-
             /* Limit of 8 bit stencil buffer. ID 255 is refraction. */
             if (e_data.sss_count < 254) {
-              DRW_shgroup_stencil_mask(*shgrp, e_data.sss_count + 1);
-              EEVEE_subsurface_add_pass(sldata, vedata, e_data.sss_count + 1, sss_profile);
+              int sss_id = e_data.sss_count + 1;
+              DRW_shgroup_stencil_mask(*shgrp, sss_id);
+              EEVEE_subsurface_add_pass(sldata, vedata, sss_id, sss_profile);
+              if (use_translucency) {
+                EEVEE_subsurface_translucency_add_pass(
+                    sldata, vedata, sss_id, sss_profile, sss_tex_profile);
+              }
               e_data.sss_count++;
             }
             else {
               /* TODO : display message. */
               printf("Error: Too many different Subsurface shader in the scene.\n");
             }
-          }
-          else {
-            if (use_translucency) {
-              /* NOTE: This is a nasty workaround, because the sss profile might not have been
-               * generated but the UBO is still declared in this case even if not used.
-               * But rendering without a bound UBO might result in crashes on certain platform. */
-              DRW_shgroup_uniform_block(*shgrp, "sssProfile", e_data.dummy_sss_profile);
-            }
-          }
-        }
-        else {
-          if (use_translucency) {
-            DRW_shgroup_uniform_block(*shgrp, "sssProfile", e_data.dummy_sss_profile);
           }
         }
         break;
@@ -1814,7 +1793,6 @@ void EEVEE_materials_free(void)
   DRW_SHADER_FREE_SAFE(e_data.update_noise_sh);
   DRW_TEXTURE_FREE_SAFE(e_data.util_tex);
   DRW_TEXTURE_FREE_SAFE(e_data.noise_tex);
-  DRW_UBO_FREE_SAFE(e_data.dummy_sss_profile);
 }
 
 void EEVEE_draw_default_passes(EEVEE_PassList *psl)

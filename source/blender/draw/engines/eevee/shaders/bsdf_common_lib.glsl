@@ -848,11 +848,11 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
   cl.ssr_normal = (use_cl1_ssr) ? cl1.ssr_normal : cl2.ssr_normal;
 
 #  ifdef USE_SSS
-  cl.sss_irradiance = mix(cl1.sss_irradiance, cl2.sss_irradiance, fac);
+  cl.sss_albedo = mix(cl1.sss_albedo, cl2.sss_albedo, fac);
   bool use_cl1_sss = FLAG_TEST(cl1.flag, CLOSURE_SSS_FLAG);
-  /* It also does not make sense to mix SSS radius or albedo. */
+  /* It also does not make sense to mix SSS radius or irradiance. */
   cl.sss_radius = (use_cl1_sss) ? cl1.sss_radius : cl2.sss_radius;
-  cl.sss_albedo = (use_cl1_sss) ? cl1.sss_albedo : cl2.sss_albedo;
+  cl.sss_irradiance = (use_cl1_sss) ? cl1.sss_irradiance : cl2.sss_irradiance;
 #  endif
   return cl;
 }
@@ -871,11 +871,11 @@ Closure closure_add(Closure cl1, Closure cl2)
   cl.ssr_normal = (use_cl1_ssr) ? cl1.ssr_normal : cl2.ssr_normal;
 
 #  ifdef USE_SSS
-  cl.sss_irradiance = cl1.sss_irradiance + cl2.sss_irradiance;
+  cl.sss_albedo = cl1.sss_albedo + cl2.sss_albedo;
   bool use_cl1_sss = FLAG_TEST(cl1.flag, CLOSURE_SSS_FLAG);
-  /* It also does not make sense to mix SSS radius or albedo. */
+  /* It also does not make sense to mix SSS radius or irradiance. */
   cl.sss_radius = (use_cl1_sss) ? cl1.sss_radius : cl2.sss_radius;
-  cl.sss_albedo = (use_cl1_sss) ? cl1.sss_albedo : cl2.sss_albedo;
+  cl.sss_irradiance = (use_cl1_sss) ? cl1.sss_irradiance : cl2.sss_irradiance;
 #  endif
   return cl;
 }

@@ -148,10 +148,6 @@ void CLOSURE_NAME(vec3 N
                   ,
                   out vec3 out_diff
 #endif
-#ifdef CLOSURE_SUBSURFACE
-                  ,
-                  out vec3 out_trans
-#endif
 #ifdef CLOSURE_GLOSSY
                   ,
                   out vec3 out_spec
@@ -168,10 +164,6 @@ void CLOSURE_NAME(vec3 N
 {
 #ifdef CLOSURE_DIFFUSE
   out_diff = vec3(0.0);
-#endif
-
-#ifdef CLOSURE_SUBSURFACE
-  out_trans = vec3(0.0);
 #endif
 
 #ifdef CLOSURE_GLOSSY
@@ -247,10 +239,6 @@ void CLOSURE_NAME(vec3 N
 
 #  ifdef CLOSURE_DIFFUSE
     out_diff += l_color_vis * light_diffuse(ld, N, V, l_vector);
-#  endif
-
-#  ifdef CLOSURE_SUBSURFACE
-    out_trans += ld.l_color * light_translucent(ld, worldPosition, -N, l_vector, sss_scale);
 #  endif
 
 #  ifdef CLOSURE_GLOSSY

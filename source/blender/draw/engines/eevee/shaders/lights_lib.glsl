@@ -173,16 +173,9 @@ float spot_attenuation(LightData ld, vec3 l_vector)
   return spotmask;
 }
 
-float light_visibility(LightData ld,
-                       vec3 W,
-#ifndef VOLUMETRICS
-                       vec3 viewPosition,
-                       vec3 vN,
-#endif
-                       vec4 l_vector)
+float light_attenuation(LightData ld, vec4 l_vector)
 {
   float vis = 1.0;
-
   if (ld.l_type == SPOT) {
     vis *= spot_attenuation(ld, l_vector.xyz);
   }
@@ -192,6 +185,18 @@ float light_visibility(LightData ld,
   if (ld.l_type != SUN) {
     vis *= distance_attenuation(l_vector.w * l_vector.w, ld.l_influence);
   }
+  return vis;
+}
+
+float light_visibility(LightData ld,
+                       vec3 W,
+#ifndef VOLUMETRICS
+                       vec3 viewPosition,
+                       vec3 vN,
+#endif
+                       vec4 l_vector)
+{
+  float vis = light_attenuation(ld, l_vector);
 
 #if !defined(VOLUMETRICS) || defined(VOLUME_SHADOW)
   /* shadowing */
@@ -325,134 +330,3 @@ float light_specular(LightData ld, vec4 ltc_mat, vec3 N, vec3 V, vec4 l_vector)
   }
 }
 #endif
-
-#define MAX_SSS_SAMPLES 65
-#define SSS_LUT_SIZE 64.0
-#define SSS_LUT_SCALE ((SSS_LUT_SIZE - 1.0) / float(SSS_LUT_SIZE))
-#define SSS_LUT_BIAS (0.5 / float(SSS_LUT_SIZE))
-
-#ifdef USE_TRANSLUCENCY
-layout(std140) uniform sssProfile
-{
-  vec4 kernel[MAX_SSS_SAMPLES];
-  vec4 radii_max_radius;
-  int sss_samples;
-};
-
-uniform sampler1D sssTexProfile;
-
-vec3 sss_profile(float s)
-{
-  s /= radii_max_radius.w;
-  return texture(sssTexProfile, saturate(s) * SSS_LUT_SCALE + SSS_LUT_BIAS).rgb;
-}
-#endif
-
-vec3 light_translucent(LightData ld, vec3 W, vec3 N, vec4 l_vector, float scale)
-{
-#if !defined(USE_TRANSLUCENCY) || defined(VOLUMETRICS)
-  return vec3(0.0);
-#else
-  vec3 vis = vec3(1.0);
-
-  if (ld.l_type == SPOT) {
-    vis *= spot_attenuation(ld, l_vector.xyz);
-  }
-  if (ld.l_type >= SPOT) {
-    vis *= step(0.0, -dot(l_vector.xyz, ld.l_forward));
-  }
-  if (ld.l_type != SUN) {
-    vis *= distance_attenuation(l_vector.w * l_vector.w, ld.l_influence);
-  }
-
-  /* Only shadowed light can produce translucency */
-  if (ld.l_shadowid >= 0.0 && vis.x > 0.001) {
-    ShadowData data = shadows_data[int(ld.l_shadowid)];
-    float delta;
-
-    vec4 L = (ld.l_type != SUN) ? l_vector : vec4(-ld.l_forward, 1.0);
-
-    vec3 T, B;
-    make_orthonormal_basis(L.xyz / L.w, T, B);
-
-    vec4 rand = texelfetch_noise_tex(gl_FragCoord.xy);
-    rand.zw *= fast_sqrt(rand.y) * data.sh_blur;
-
-    /* We use the full l_vector.xyz so that the spread is minimize
-     * if the shading point is further away from the light source */
-    W = W + T * rand.z + B * rand.w;
-
-    if (ld.l_type == SUN) {
-      int scd_id = int(data.sh_data_start);
-      vec4 view_z = vec4(dot(W - cameraPos, cameraForward));
-
-      vec4 weights = step(shadows_cascade_data[scd_id].split_end_distances, view_z);
-      float id = abs(4.0 - dot(weights, weights));
-
-      if (id > 3.0) {
-        return vec3(0.0);
-      }
-
-      /* Same factor as in get_cascade_world_distance(). */
-      float range = abs(data.sh_far - data.sh_near);
-
-      vec4 shpos = shadows_cascade_data[scd_id].shadowmat[int(id)] * vec4(W, 1.0);
-      float dist = shpos.z * range;
-
-      if (shpos.z > 1.0 || shpos.z < 0.0) {
-        return vec3(0.0);
-      }
-
-      ShadowSample s = sample_cascade(shpos.xy, data.sh_tex_start + id);
-      delta = get_depth_delta(dist, s);
-    }
-    else {
-      vec3 cubevec = W - shadows_cube_data[int(data.sh_data_start)].position.xyz;
-      float dist = length(cubevec);
-      cubevec /= dist;
-
-      ShadowSample s = sample_cube(cubevec, data.sh_tex_start);
-      delta = get_depth_delta(dist, s);
-    }
-
-    /* XXX : Removing Area Power. */
-    /* TODO : put this out of the shader. */
-    float falloff;
-    if (ld.l_type == AREA_RECT || ld.l_type == AREA_ELLIPSE) {
-      vis *= (ld.l_sizex * ld.l_sizey * 4.0 * M_PI) * (1.0 / 80.0);
-      if (ld.l_type == AREA_ELLIPSE) {
-        vis *= M_PI * 0.25;
-      }
-      vis *= 0.3 * 20.0 *
-             max(0.0, dot(-ld.l_forward, l_vector.xyz / l_vector.w)); /* XXX ad hoc, empirical */
-      vis /= (l_vector.w * l_vector.w);
-      falloff = dot(N, l_vector.xyz / l_vector.w);
-    }
-    else if (ld.l_type == SUN) {
-      vis /= 1.0f + (ld.l_radius * ld.l_radius * 0.5f);
-      vis *= ld.l_radius * ld.l_radius * M_PI; /* Removing area light power*/
-      vis *= M_2PI * 0.78;                     /* Matching cycles with point light. */
-      vis *= 0.082;                            /* XXX ad hoc, empirical */
-      falloff = dot(N, -ld.l_forward);
-    }
-    else {
-      vis *= (4.0 * ld.l_radius * ld.l_radius) * (1.0 / 10.0);
-      vis *= 1.5; /* XXX ad hoc, empirical */
-      vis /= (l_vector.w * l_vector.w);
-      falloff = dot(N, l_vector.xyz / l_vector.w);
-    }
-    // vis *= M_1_PI; /* Normalize */
-
-    /* Applying profile */
-    vis *= sss_profile(abs(delta) / scale);
-
-    /* No transmittance at grazing angle (hide artifacts) */
-    vis *= saturate(falloff * 2.0);
-  }
-  else {
-    vis = vec3(0.0);
-  }
-
-  return vis;
-#endif
-}
