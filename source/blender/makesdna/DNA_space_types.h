@@ -679,7 +679,8 @@ typedef struct FileSelectParams {
   short display_previous;
   /** Details toggles (file size, creation date, etc.) */
   char details_flags;
-  char _pad2;
+  /* The type of file action (opening or saving) */
+  char action_type; /* eFileSel_Action */
   /** Filter when (flags & FILE_FILTER) is true. */
   int filter;
 

@@ -271,6 +271,10 @@ short ED_fileselect_set_params(SpaceFile *sfile)
       params->sort = FILE_SORT_ALPHA;
     }
 
+    if ((prop = RNA_struct_find_property(op->ptr, "action_type"))) {
+      params->action_type = RNA_property_enum_get(op->ptr, prop);
+    }
+
     if (params->display == FILE_DEFAULTDISPLAY) {
       if (params->display_previous == FILE_DEFAULTDISPLAY) {
         if (U.uiflag & USER_SHOW_THUMBNAILS) {

@@ -2361,6 +2361,17 @@ void FILE_OT_bookmark_toggle(struct wmOperatorType *ot)
   ot->poll = ED_operator_file_active; /* <- important, handler is on window level */
 }
 
+static bool file_filenum_poll(bContext *C)
+{
+  SpaceFile *sfile = CTX_wm_space_file(C);
+
+  if (!ED_operator_file_active(C)) {
+    return false;
+  }
+
+  return (sfile->params->action_type == FILE_SAVE);
+}
+
 /**
  * Looks for a string of digits within name (using BLI_stringdec) and adjusts it by add.
  */
@@ -2418,7 +2429,7 @@ void FILE_OT_filenum(struct wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = file_filenum_exec;
-  ot->poll = ED_operator_file_active; /* <- important, handler is on window level */
+  ot->poll = file_filenum_poll;
 
   /* props */
   RNA_def_int(ot->srna, "increment", 1, -100, 100, "Increment", "", -100, 100);
