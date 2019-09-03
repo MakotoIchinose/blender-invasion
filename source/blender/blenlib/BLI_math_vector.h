@@ -229,6 +229,7 @@ MINLINE float len_v2v2_int(const int v1[2], const int v2[2]);
 MINLINE float len_squared_v2v2(const float a[2], const float b[2]) ATTR_WARN_UNUSED_RESULT;
 MINLINE double len_squared_v2v2_db(const double a[2], const double b[2]) ATTR_WARN_UNUSED_RESULT;
 MINLINE float len_squared_v3v3(const float a[3], const float b[3]) ATTR_WARN_UNUSED_RESULT;
+MINLINE double len_squared_v3v3_db(const double a[3], const double b[3]) ATTR_WARN_UNUSED_RESULT;
 MINLINE float len_squared_v4v4(const float a[4], const float b[4]) ATTR_WARN_UNUSED_RESULT;
 MINLINE float len_manhattan_v2v2(const float a[2], const float b[2]) ATTR_WARN_UNUSED_RESULT;
 MINLINE int len_manhattan_v2v2_int(const int a[2], const int b[2]) ATTR_WARN_UNUSED_RESULT;
@@ -246,7 +247,6 @@ MINLINE double normalize_v3_length_d(double n[3], const double unit_scale);
 
 MINLINE float normalize_v2(float r[2]);
 MINLINE float normalize_v2_v2(float r[2], const float a[2]);
-MINLINE float normalize_v3(float r[3]);
 MINLINE float normalize_v3(float r[3]);
 MINLINE float normalize_v3_v3(float r[3], const float a[3]);
 MINLINE double normalize_v3_d(double n[3]);
@@ -370,8 +370,8 @@ MINLINE float line_point_side_v2(const float l1[2],
                                  const float pt[2]) ATTR_WARN_UNUSED_RESULT;
 
 MINLINE double line_point_side_v2_db(const double l1[2],
-                                 const double l2[2],
-                                 const double pt[2]) ATTR_WARN_UNUSED_RESULT;
+                                     const double l2[2],
+                                     const double pt[2]) ATTR_WARN_UNUSED_RESULT;
 
 /********************************** Angles ***********************************/
 /* - angle with 2 arguments is angle between vector                          */
@@ -410,12 +410,15 @@ void angle_poly_v3(float *angles, const float *verts[3], int len);
 
 void project_v2_v2v2(float out[2], const float p[2], const float v_proj[2]);
 void project_v3_v3v3(float out[3], const float p[3], const float v_proj[3]);
+void project_v3_v3v3_db(double out[3], const double p[3], const double v_proj[3]);
 void project_v2_v2v2_normalized(float out[2], const float p[2], const float v_proj[2]);
 void project_v3_v3v3_normalized(float out[3], const float p[3], const float v_proj[3]);
 void project_plane_v3_v3v3(float out[3], const float p[3], const float v_plane[3]);
 void project_plane_v2_v2v2(float out[2], const float p[2], const float v_plane[2]);
 void project_plane_normalized_v3_v3v3(float out[3], const float p[3], const float v_plane[3]);
-void project_plane_normalized_v3_v3v3_db(double out[3], const double p[3], const double v_plane[3]);
+void project_plane_normalized_v3_v3v3_db(double out[3],
+                                         const double p[3],
+                                         const double v_plane[3]);
 void project_plane_normalized_v2_v2v2(float out[2], const float p[2], const float v_plane[2]);
 void project_v3_plane(float out[3], const float plane_no[3], const float plane_co[3]);
 void reflect_v3_v3v3(float out[3], const float vec[3], const float normal[3]);

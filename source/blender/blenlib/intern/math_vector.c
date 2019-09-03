@@ -679,6 +679,15 @@ void project_v3_v3v3(float out[3], const float p[3], const float v_proj[3])
   out[2] = mul * v_proj[2];
 }
 
+void project_v3_v3v3_db(double out[3], const double p[3], const double v_proj[3])
+{
+  const double mul = dot_v3v3_db(p, v_proj) / dot_v3v3_db(v_proj, v_proj);
+
+  out[0] = mul * v_proj[0];
+  out[1] = mul * v_proj[1];
+  out[2] = mul * v_proj[2];
+}
+
 /**
  * Project \a p onto a unit length \a v_proj
  */

@@ -430,7 +430,9 @@ void closest_to_plane3_normalized_v3(float r_close[3], const float plane[3], con
   madd_v3_v3v3fl(r_close, pt, plane, -side);
 }
 
-void closest_to_plane3_normalized_v3_db(double r_close[3], const double plane[3], const double pt[3])
+void closest_to_plane3_normalized_v3_db(double r_close[3],
+                                        const double plane[3],
+                                        const double pt[3])
 {
   const double side = dot_v3v3_db(plane, pt);
   BLI_ASSERT_UNIT_V3_DB(plane);
@@ -519,6 +521,16 @@ float dist_squared_to_line_v3(const float p[3], const float l1[3], const float l
 
   return len_squared_v3v3(closest, p);
 }
+
+double dist_squared_to_line_v3_db(const double p[3], const double l1[3], const double l2[3])
+{
+  double closest[3];
+
+  closest_to_line_v3_db(closest, p, l1, l2);
+
+  return len_squared_v3v3_db(closest, p);
+}
+
 float dist_to_line_v3(const float p[3], const float l1[3], const float l2[3])
 {
   return sqrtf(dist_squared_to_line_v3(p, l1, l2));
@@ -2314,9 +2326,9 @@ bool isect_plane_plane_v3(const float plane_a[4],
 }
 
 bool isect_plane_plane_v3_db(const double plane_a[4],
-                          const double plane_b[4],
-                          double r_isect_co[3],
-                          double r_isect_no[3])
+                             const double plane_b[4],
+                             double r_isect_co[3],
+                             double r_isect_no[3])
 {
   double det, plane_c[3];
 
@@ -3044,6 +3056,71 @@ int isect_line_line_epsilon_v3(const float v1[3],
   }
 }
 
+int isect_line_line_epsilon_v3_db(const double v1[3],
+                                  const double v2[3],
+                                  const double v3[3],
+                                  const double v4[3],
+                                  double r_i1[3],
+                                  double r_i2[3],
+                                  const double epsilon)
+{
+  double a[3], b[3], c[3], ab[3], cb[3];
+  double d, div;
+
+  sub_v3_v3v3_db(c, v3, v1);
+  sub_v3_v3v3_db(a, v2, v1);
+  sub_v3_v3v3_db(b, v4, v3);
+
+  cross_v3_v3v3_db(ab, a, b);
+  d = dot_v3v3_db(c, ab);
+  div = dot_v3v3_db(ab, ab);
+
+  /* important not to use an epsilon here, see: T45919 */
+  /* test zero length line */
+  if (UNLIKELY(div == 0.0)) {
+    return 0;
+  }
+  /* test if the two lines are coplanar */
+  else if (UNLIKELY(fabs(d) <= epsilon)) {
+    cross_v3_v3v3_db(cb, c, b);
+
+    mul_v3db_db(a, dot_v3v3_db(cb, ab) / div);
+    add_v3_v3v3_db(r_i1, v1, a);
+    copy_v3_v3_db(r_i2, r_i1);
+
+    return 1; /* one intersection only */
+  }
+  /* if not */
+  else {
+    double n[3], t[3];
+    double v3t[3], v4t[3];
+    sub_v3_v3v3_db(t, v1, v3);
+
+    /* offset between both plane where the lines lies */
+    cross_v3_v3v3_db(n, a, b);
+    project_v3_v3v3_db(t, t, n);
+
+    /* for the first line, offset the second line until it is coplanar */
+    add_v3_v3v3_db(v3t, v3, t);
+    add_v3_v3v3_db(v4t, v4, t);
+
+    sub_v3_v3v3_db(c, v3t, v1);
+    sub_v3_v3v3_db(a, v2, v1);
+    sub_v3_v3v3_db(b, v4t, v3t);
+
+    cross_v3_v3v3_db(ab, a, b);
+    cross_v3_v3v3_db(cb, c, b);
+
+    mul_v3db_db(a, dot_v3v3_db(cb, ab) / dot_v3v3_db(ab, ab));
+    add_v3_v3v3_db(r_i1, v1, a);
+
+    /* for the second line, just substract the offset from the first intersection point */
+    sub_v3_v3v3_db(r_i2, r_i1, t);
+
+    return 2; /* two nearest points */
+  }
+}
+
 int isect_line_line_v3(const float v1[3],
                        const float v2[3],
                        const float v3[3],
@@ -3053,6 +3130,17 @@ int isect_line_line_v3(const float v1[3],
 {
   const float epsilon = 0.000001f;
   return isect_line_line_epsilon_v3(v1, v2, v3, v4, r_i1, r_i2, epsilon);
+}
+
+int isect_line_line_v3_db(const double v1[3],
+                          const double v2[3],
+                          const double v3[3],
+                          const double v4[3],
+                          double r_i1[3],
+                          double r_i2[3])
+{
+  const double epsilon = 1e-15;
+  return isect_line_line_epsilon_v3_db(v1, v2, v3, v4, r_i1, r_i2, epsilon);
 }
 
 /** Intersection point strictly between the two lines
@@ -3290,6 +3378,21 @@ float closest_to_line_v3(float r_close[3], const float p[3], const float l1[3], 
   return lambda;
 }
 
+double closest_to_line_v3_db(double r_close[3],
+                             const double p[3],
+                             const double l1[3],
+                             const double l2[3])
+{
+  double h[3], u[3], lambda;
+  sub_v3_v3v3_db(u, l2, l1);
+  sub_v3_v3v3_db(h, p, l1);
+  lambda = dot_v3v3_db(u, h) / dot_v3v3_db(u, u);
+  r_close[0] = l1[0] + u[0] * lambda;
+  r_close[1] = l1[1] + u[1] * lambda;
+  r_close[2] = l1[2] + u[2] * lambda;
+  return lambda;
+}
+
 float closest_to_line_v2(float r_close[2], const float p[2], const float l1[2], const float l2[2])
 {
   float h[2], u[2], lambda;
@@ -3364,10 +3467,10 @@ float line_point_factor_v3_ex(const float p[3],
 }
 
 double line_point_factor_v3_ex_db(const double p[3],
-                              const double l1[3],
-                              const double l2[3],
-                              const double epsilon,
-                              const double fallback)
+                                  const double l1[3],
+                                  const double l2[3],
+                                  const double epsilon,
+                                  const double fallback)
 {
   double h[3], u[3];
   double dot;

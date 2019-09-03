@@ -1078,6 +1078,14 @@ MINLINE float len_squared_v3v3(const float a[3], const float b[3])
   return dot_v3v3(d, d);
 }
 
+MINLINE double len_squared_v3v3_db(const double a[3], const double b[3])
+{
+  double d[3];
+
+  sub_v3_v3v3_db(d, b, a);
+  return dot_v3v3_db(d, d);
+}
+
 MINLINE float len_squared_v4v4(const float a[4], const float b[4])
 {
   float d[4];
