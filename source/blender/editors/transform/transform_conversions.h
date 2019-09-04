@@ -80,7 +80,7 @@ struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struc
 bool FrameOnMouseSide(char side, float frame, float cframe);
 void clear_trans_object_base_flags(TransInfo *t);
 
-/* transform_conversions_actiondata.c */
+/* transform_conversions_action.c */
 void createTransActionData(bContext *C, TransInfo *t);
 
 /* transform_conversions_armature.c */

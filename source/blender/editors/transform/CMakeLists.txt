@@ -41,7 +41,7 @@ set(SRC
   transform.c
   transform_constraints.c
   transform_conversions.c
-  transform_conversions_actiondata.c
+  transform_conversions_action.c
   transform_conversions_armature.c
   transform_conversions_cursor.c
   transform_conversions_curve.c
