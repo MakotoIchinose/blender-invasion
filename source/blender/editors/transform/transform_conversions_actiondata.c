@@ -39,7 +39,7 @@
 
 #include "ED_anim_api.h"
 
-#include "UI_view2d.h" /
+#include "UI_view2d.h"
 
 #include "transform.h"
 #include "transform_conversions.h"

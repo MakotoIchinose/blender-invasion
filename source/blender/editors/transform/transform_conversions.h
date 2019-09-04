@@ -96,6 +96,9 @@ void createTransEditVerts(TransInfo *t);
 void createTransEdge(TransInfo *t);
 void createTransUVs(bContext *C, TransInfo *t);
 
+/* transform_conversions_nla.c */
+void createTransNlaData(bContext *C, TransInfo *t);
+
 /* transform_conversions_particle.c */
 void createTransParticleVerts(bContext *C, TransInfo *t);
 #endif
