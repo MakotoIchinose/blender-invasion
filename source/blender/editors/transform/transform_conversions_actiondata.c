@@ -45,7 +45,7 @@
 #include "transform_conversions.h"
 
 /* -------------------------------------------------------------------- */
-/** \name UVs Transform Creation
+/** \name Action Transform Creation
  *
  * \{ */
 
