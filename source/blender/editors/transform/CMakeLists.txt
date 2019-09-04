@@ -51,6 +51,7 @@ set(SRC
   transform_conversions_mesh.c
   transform_conversions_nla.c
   transform_conversions_particle.c
+  transform_conversions_sequencer.c
   transform_generics.c
   transform_gizmo_2d.c
   transform_gizmo_3d.c

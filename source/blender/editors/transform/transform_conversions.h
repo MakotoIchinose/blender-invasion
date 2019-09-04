@@ -109,4 +109,7 @@ void createTransNlaData(bContext *C, TransInfo *t);
 
 /* transform_conversions_particle.c */
 void createTransParticleVerts(bContext *C, TransInfo *t);
+
+/* transform_conversions_sequencer.c */
+void createTransSeqData(bContext *C, TransInfo *t);
 #endif
