@@ -97,6 +97,26 @@ class OBJECT_PT_transform(ObjectButtonsPanel, Panel):
         row.prop(ob, "lock_scale", text="", emboss=False, icon='DECORATE_UNLOCKED')
 
 
+class OBJECT_PT_transform_dimensions(ObjectButtonsPanel, Panel):
+    bl_label = "Dimensions"
+    bl_parent_id = "OBJECT_PT_transform"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        obj_type = ob.type
+        return obj_type in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'ARMATURE', 'LATTICE'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+
+        layout.prop(ob, "dimensions", text=" ")
+
+
 class OBJECT_PT_delta_transform(ObjectButtonsPanel, Panel):
     bl_label = "Delta Transform"
     bl_parent_id = "OBJECT_PT_transform"
@@ -109,20 +129,18 @@ class OBJECT_PT_delta_transform(ObjectButtonsPanel, Panel):
 
         ob = context.object
 
-        col = flow.column()
-        col.prop(ob, "delta_location")
+        col = layout.column()
+        col.prop(ob, "delta_location", text="Location")
 
-        col = flow.column()
         rotation_mode = ob.rotation_mode
         if rotation_mode == 'QUATERNION':
             col.prop(ob, "delta_rotation_quaternion", text="Rotation")
         elif rotation_mode == 'AXIS_ANGLE':
-            col.label(text="Not for Axis-Angle")
+            pass
         else:
-            col.prop(ob, "delta_rotation_euler", text="Delta Rotation")
+            col.prop(ob, "delta_rotation_euler", text="Rotation")
 
-        col = flow.column()
-        col.prop(ob, "delta_scale")
+        col.prop(ob, "delta_scale", text="Scale")
 
 
 class OBJECT_PT_relations(ObjectButtonsPanel, Panel):
@@ -409,6 +427,7 @@ class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
 classes = (
     OBJECT_PT_context_object,
     OBJECT_PT_transform,
+    OBJECT_PT_transform_dimensions,
     OBJECT_PT_delta_transform,
     OBJECT_PT_relations,
     COLLECTION_MT_context_menu,

@@ -2333,6 +2333,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.separator()
 
             layout.operator("object.convert", text="Convert to Mesh").target = 'MESH'
+            layout.operator("object.convert", text="Convert to Grease Pencil").target = 'GPENCIL'
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
 
             layout.separator()
@@ -3192,7 +3193,7 @@ class BoneOptions:
             "use_deform",
             "use_envelope_multiply",
             "use_inherit_rotation",
-            "use_inherit_scale",
+            "inherit_scale",
         ]
 
         if context.mode == 'EDIT_ARMATURE':
@@ -5056,7 +5057,8 @@ class VIEW3D_PT_shading_lighting(Panel):
     @classmethod
     def poll(cls, context):
         shading = VIEW3D_PT_shading.get_shading(context)
-        return shading.type in {'SOLID', 'MATERIAL'}
+        engine = context.scene.render.engine
+        return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
 
     def draw(self, context):
         layout = self.layout
@@ -5104,7 +5106,6 @@ class VIEW3D_PT_shading_lighting(Panel):
 
             elif shading.light == 'MATCAP':
                 sub.scale_y = 0.6  # smaller matcap preview
-
                 sub.template_icon_view(shading, "studio_light", scale_popup=3.0)
 
                 col = split.column()
@@ -5114,8 +5115,29 @@ class VIEW3D_PT_shading_lighting(Panel):
         elif shading.type == 'MATERIAL':
             col.prop(shading, "use_scene_lights")
             col.prop(shading, "use_scene_world")
+            col = layout.column()
+            split = col.split(factor=0.9)
 
             if not shading.use_scene_world:
+                col = split.column()
+                sub = col.row()
+                sub.scale_y = 0.6
+                sub.template_icon_view(shading, "studio_light", scale_popup=3)
+
+                col = split.column()
+                col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
+
+                split = layout.split(factor=0.9)
+                col = split.column()
+                col.prop(shading, "studiolight_rotate_z", text="Rotation")
+                col.prop(shading, "studiolight_background_alpha")
+                col = split.column()  # to align properly with above
+
+        elif shading.type == 'RENDERED':
+            col.prop(shading, "use_scene_lights_render")
+            col.prop(shading, "use_scene_world_render")
+
+            if not shading.use_scene_world_render:
                 col = layout.column()
                 split = col.split(factor=0.9)
 
@@ -5127,12 +5149,11 @@ class VIEW3D_PT_shading_lighting(Panel):
                 col = split.column()
                 col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
 
-                if shading.selected_studio_light.type == 'WORLD':
-                    split = layout.split(factor=0.9)
-                    col = split.column()
-                    col.prop(shading, "studiolight_rotate_z", text="Rotation")
-                    col.prop(shading, "studiolight_background_alpha")
-                    col = split.column()  # to align properly with above
+                split = layout.split(factor=0.9)
+                col = split.column()
+                col.prop(shading, "studiolight_rotate_z", text="Rotation")
+                col.prop(shading, "studiolight_background_alpha")
+                col = split.column()  # to align properly with above
 
 
 class VIEW3D_PT_shading_color(Panel):
@@ -6371,7 +6392,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.separator()
 
             # Layer and Materials operators
-            col.operator_menu_enum("gpencil.move_to_layer", "layer", text="Move to Layer")
+            col.menu("GPENCIL_MT_move_to_layer")            
             col.menu("VIEW3D_MT_assign_material")
             col.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
 
@@ -6427,7 +6448,11 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
+
+        layout.separator()
+
         layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
         layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
 
@@ -6460,7 +6485,11 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in Active Layer", icon='ADD')
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank in All Layers", icon='ADD').all_layers = True
+
+        layout.separator()
+
         layout.operator("gpencil.frame_duplicate", text="Duplicate Active Layer", icon='DUPLICATE')
         layout.operator("gpencil.frame_duplicate", text="Duplicate All Layers", icon='DUPLICATE').mode = 'ALL'
 

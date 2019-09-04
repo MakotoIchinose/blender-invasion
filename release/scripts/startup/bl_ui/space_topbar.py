@@ -349,7 +349,7 @@ class TOPBAR_MT_app_about(Menu):
         layout.separator()
 
         layout.operator("wm.url_open_preset", text="Blender Website", icon='URL').type = 'BLENDER'
-        layout.operator("wm.url_open", text="Credits", icon='URL').type = 'CREDITS'
+        layout.operator("wm.url_open_preset", text="Credits", icon='URL').type = 'CREDITS'
 
         layout.separator()
 
@@ -504,6 +504,8 @@ class TOPBAR_MT_edit(Menu):
         props = layout.operator("wm.call_panel", text="Rename Active Item...")
         props.name = "TOPBAR_PT_name"
         props.keep_open = False
+
+        layout.operator("wm.batch_rename")
 
         layout.separator()
 

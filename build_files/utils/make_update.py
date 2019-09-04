@@ -18,23 +18,20 @@ from make_utils import call
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only-code", action="store_true")
+    parser.add_argument("--no-libraries", action="store_true")
+    parser.add_argument("--no-blender", action="store_true")
+    parser.add_argument("--no-submodules", action="store_true")
     parser.add_argument("--svn-command", default="svn")
     parser.add_argument("--git-command", default="git")
     return parser.parse_args()
 
 args = parse_arguments()
-only_code = args.only_code
+no_libraries = args.no_libraries
+no_blender = args.no_blender
+no_submodules = args.no_submodules
 git_command = args.git_command
 svn_command = args.svn_command
-
-if shutil.which(git_command) is None:
-    sys.stderr.write("git not found, can't update code\n")
-    sys.exit(1)
-
-if shutil.which(svn_command) is None:
-    sys.stderr.write("svn not found, can't update libraries\n")
-    sys.exit(1)
+svn_non_interactive = [args.svn_command, '--non-interactive']
 
 def print_stage(text):
     print("")
@@ -45,7 +42,7 @@ def print_stage(text):
 release_version = make_utils.git_branch_release_version(git_command)
 
 # Setup for precompiled libraries and tests from svn.
-if not only_code:
+if not no_libraries:
     lib_dirpath = os.path.join('..', 'lib')
     svn_url = make_utils.svn_libraries_base_url(release_version)
 
@@ -67,8 +64,12 @@ if not only_code:
         if not os.path.exists(lib_platform_dirpath):
             print_stage("Checking out Precompiled Libraries")
 
+            if shutil.which(svn_command) is None:
+                sys.stderr.write("svn not found, can't checkout libraries\n")
+                sys.exit(1)
+
             svn_url_platform = svn_url + lib_platform
-            call([svn_command, "checkout", svn_url_platform, lib_platform_dirpath])
+            call(svn_non_interactive + ["checkout", svn_url_platform, lib_platform_dirpath])
 
     # Update precompiled libraries and tests
     print_stage("Updating Precompiled Libraries and Tests")
@@ -84,19 +85,33 @@ if not only_code:
 
         if os.path.isdir(dirpath) and \
            (os.path.exists(svn_dirpath) or os.path.exists(svn_root_dirpath)):
-            call([svn_command, "cleanup", dirpath])
-            call([svn_command, "switch", svn_url + dirname, dirpath])
-            call([svn_command, "update", dirpath])
+            if shutil.which(svn_command) is None:
+                sys.stderr.write("svn not found, can't update libraries\n")
+                sys.exit(1)
+
+            call(svn_non_interactive + ["cleanup", dirpath])
+            call(svn_non_interactive + ["switch", svn_url + dirname, dirpath])
+            call(svn_non_interactive + ["update", dirpath])
 
 # Update blender repository and submodules.
-print_stage("Updating Blender Git Repository and Submodules")
+if not no_blender:
+    print_stage("Updating Blender Git Repository")
+    if shutil.which(git_command) is None:
+        sys.stderr.write("git not found, can't update code\n")
+        sys.exit(1)
 
-call([git_command, "pull", "--rebase"])
-call([git_command, "submodule", "update", "--init", "--recursive"])
+    call([git_command, "pull", "--rebase"])
 
-if not release_version:
-    # Update submodules to latest master if not building a specific release.
-    # In that case submodules are set to a specific revision, which is checked
-    # out by running "git submodule update".
-    call([git_command, "submodule", "foreach", "git", "checkout", "master"])
-    call([git_command, "submodule", "foreach", "git", "pull", "--rebase", "origin", "master"])
+if not no_submodules:
+    print_stage("Updating Submodules")
+    if shutil.which(git_command) is None:
+        sys.stderr.write("git not found, can't update code\n")
+        sys.exit(1)
+
+    call([git_command, "submodule", "update", "--init", "--recursive"])
+    if not release_version:
+        # Update submodules to latest master if not building a specific release.
+        # In that case submodules are set to a specific revision, which is checked
+        # out by running "git submodule update".
+        call([git_command, "submodule", "foreach", "git", "checkout", "master"])
+        call([git_command, "submodule", "foreach", "git", "pull", "--rebase", "origin", "master"])
