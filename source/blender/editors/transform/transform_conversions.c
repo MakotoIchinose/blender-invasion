@@ -30,7 +30,6 @@
 #include "DNA_armature_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meta_types.h"
 #include "DNA_node_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -806,97 +805,6 @@ static void pose_grab_with_ik_clear(Main *bmain, Object *ob)
   if (relations_changed) {
     /* TODO(sergey): Consider doing partial update only. */
     DEG_relations_tag_update(bmain);
-  }
-}
-
-/* ********************* meta elements ********* */
-
-static void createTransMBallVerts(TransInfo *t)
-{
-  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    MetaBall *mb = (MetaBall *)tc->obedit->data;
-    MetaElem *ml;
-    TransData *td;
-    TransDataExtension *tx;
-    float mtx[3][3], smtx[3][3];
-    int count = 0, countsel = 0;
-    const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
-
-    /* count totals */
-    for (ml = mb->editelems->first; ml; ml = ml->next) {
-      if (ml->flag & SELECT) {
-        countsel++;
-      }
-      if (is_prop_edit) {
-        count++;
-      }
-    }
-
-    /* note: in prop mode we need at least 1 selected */
-    if (countsel == 0) {
-      continue;
-    }
-
-    if (is_prop_edit) {
-      tc->data_len = count;
-    }
-    else {
-      tc->data_len = countsel;
-    }
-
-    td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(MBall EditMode)");
-    tx = tc->data_ext = MEM_callocN(tc->data_len * sizeof(TransDataExtension),
-                                    "MetaElement_TransExtension");
-
-    copy_m3_m4(mtx, tc->obedit->obmat);
-    pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
-
-    for (ml = mb->editelems->first; ml; ml = ml->next) {
-      if (is_prop_edit || (ml->flag & SELECT)) {
-        td->loc = &ml->x;
-        copy_v3_v3(td->iloc, td->loc);
-        copy_v3_v3(td->center, td->loc);
-
-        quat_to_mat3(td->axismtx, ml->quat);
-
-        if (ml->flag & SELECT) {
-          td->flag = TD_SELECTED | TD_USEQUAT | TD_SINGLESIZE;
-        }
-        else {
-          td->flag = TD_USEQUAT;
-        }
-
-        copy_m3_m3(td->smtx, smtx);
-        copy_m3_m3(td->mtx, mtx);
-
-        td->ext = tx;
-
-        /* Radius of MetaElem (mass of MetaElem influence) */
-        if (ml->flag & MB_SCALE_RAD) {
-          td->val = &ml->rad;
-          td->ival = ml->rad;
-        }
-        else {
-          td->val = &ml->s;
-          td->ival = ml->s;
-        }
-
-        /* expx/expy/expz determine "shape" of some MetaElem types */
-        tx->size = &ml->expx;
-        tx->isize[0] = ml->expx;
-        tx->isize[1] = ml->expy;
-        tx->isize[2] = ml->expz;
-
-        /* quat is used for rotation of MetaElem */
-        tx->quat = ml->quat;
-        copy_qt_qt(tx->iquat, ml->quat);
-
-        tx->rot = NULL;
-
-        td++;
-        tx++;
-      }
-    }
   }
 }
 

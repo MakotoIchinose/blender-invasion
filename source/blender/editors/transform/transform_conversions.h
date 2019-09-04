@@ -58,6 +58,9 @@ void createTransArmatureVerts(TransInfo *t);
 void createTransCursor_image(TransInfo *t);
 void createTransCursor_view3d(TransInfo *t);
 
+/* transform_conversions_mball.c */
+void createTransMBallVerts(TransInfo *t);
+
 /* transform_conversions_mesh.c */
 void createTransEditVerts(TransInfo *t);
 #endif
