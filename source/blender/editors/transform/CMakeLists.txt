@@ -41,6 +41,7 @@ set(SRC
   transform.c
   transform_constraints.c
   transform_conversions.c
+  transform_conversions_mesh.c
   transform_generics.c
   transform_gizmo_2d.c
   transform_gizmo_3d.c
@@ -52,6 +53,7 @@ set(SRC
   transform_snap_object.c
 
   transform.h
+  transform_conversions.h
 )
 
 set(LIB
