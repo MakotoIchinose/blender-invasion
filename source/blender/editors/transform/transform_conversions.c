@@ -28,7 +28,6 @@
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
 #include "DNA_screen_types.h"
@@ -875,79 +874,6 @@ TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTr
   hdata->ih2 = bezt->h2; /* in case the second is not selected */
   hdata->h2 = &bezt->h2;
   return hdata;
-}
-
-/* ********************* lattice *************** */
-
-static void createTransLatticeVerts(TransInfo *t)
-{
-  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-
-    Lattice *latt = ((Lattice *)tc->obedit->data)->editlatt->latt;
-    TransData *td = NULL;
-    BPoint *bp;
-    float mtx[3][3], smtx[3][3];
-    int a;
-    int count = 0, countsel = 0;
-    const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
-
-    bp = latt->def;
-    a = latt->pntsu * latt->pntsv * latt->pntsw;
-    while (a--) {
-      if (bp->hide == 0) {
-        if (bp->f1 & SELECT) {
-          countsel++;
-        }
-        if (is_prop_edit) {
-          count++;
-        }
-      }
-      bp++;
-    }
-
-    /* note: in prop mode we need at least 1 selected */
-    if (countsel == 0) {
-      return;
-    }
-
-    if (is_prop_edit) {
-      tc->data_len = count;
-    }
-    else {
-      tc->data_len = countsel;
-    }
-    tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransObData(Lattice EditMode)");
-
-    copy_m3_m4(mtx, tc->obedit->obmat);
-    pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
-
-    td = tc->data;
-    bp = latt->def;
-    a = latt->pntsu * latt->pntsv * latt->pntsw;
-    while (a--) {
-      if (is_prop_edit || (bp->f1 & SELECT)) {
-        if (bp->hide == 0) {
-          copy_v3_v3(td->iloc, bp->vec);
-          td->loc = bp->vec;
-          copy_v3_v3(td->center, td->loc);
-          if (bp->f1 & SELECT) {
-            td->flag = TD_SELECTED;
-          }
-          else {
-            td->flag = 0;
-          }
-          copy_m3_m3(td->smtx, smtx);
-          copy_m3_m3(td->mtx, mtx);
-
-          td->ext = NULL;
-          td->val = NULL;
-
-          td++;
-        }
-      }
-      bp++;
-    }
-  }
 }
 
 /* ******************* particle edit **************** */

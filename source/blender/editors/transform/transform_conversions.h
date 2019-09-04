@@ -66,6 +66,9 @@ void createTransCursor_view3d(TransInfo *t);
 /* transform_conversions_curve.c */
 void createTransCurveVerts(TransInfo *t);
 
+/* transform_conversions_lattice.c */
+void createTransLatticeVerts(TransInfo *t);
+
 /* transform_conversions_mball.c */
 void createTransMBallVerts(TransInfo *t);
 
