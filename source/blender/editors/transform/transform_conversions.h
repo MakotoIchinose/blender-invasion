@@ -40,6 +40,11 @@ typedef struct tGPFtransdata {
   int *sdata; /* pointer to gpf->framenum */
 } tGPFtransdata;
 
+typedef struct TransDataGraph {
+  float unit_scale;
+  float offset;
+} TransDataGraph;
+
 /* transform_conversions.c */
 void transform_around_single_fallback(TransInfo *t);
 int count_set_pose_transflags(Object *ob,
@@ -84,6 +89,9 @@ void createTransCursor_view3d(TransInfo *t);
 
 /* transform_conversions_curve.c */
 void createTransCurveVerts(TransInfo *t);
+
+/* transform_conversions_graph.c */
+void createTransGraphEditData(bContext *C, TransInfo *t);
 
 /* transform_conversions_lattice.c */
 void createTransLatticeVerts(TransInfo *t);
