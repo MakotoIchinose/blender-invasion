@@ -26,9 +26,12 @@
 
 struct bKinematicConstraint;
 struct bPoseChannel;
+struct BezTriple;
 struct ListBase;
 struct Object;
+struct TransData;
 struct TransDataContainer;
+struct TransDataCurveHandleFlags;
 struct TransInfo;
 
 /* when transforming islands */
@@ -44,6 +47,8 @@ int count_set_pose_transflags(Object *ob,
                               const short around,
                               bool has_translate_rotate[2]);
 bool constraints_list_needinv(TransInfo *t, ListBase *list);
+void calc_distanceCurveVerts(TransData *head, TransData *tail);
+struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt);
 
 /* transform_conversions_armature.c */
 struct bKinematicConstraint *has_targetless_ik(struct bPoseChannel *pchan);
@@ -57,6 +62,9 @@ void createTransArmatureVerts(TransInfo *t);
 /* transform_conversions_cursor.c */
 void createTransCursor_image(TransInfo *t);
 void createTransCursor_view3d(TransInfo *t);
+
+/* transform_conversions_curve.c */
+void createTransCurveVerts(TransInfo *t);
 
 /* transform_conversions_mball.c */
 void createTransMBallVerts(TransInfo *t);

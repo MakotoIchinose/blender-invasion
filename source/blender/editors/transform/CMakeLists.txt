@@ -43,6 +43,7 @@ set(SRC
   transform_conversions.c
   transform_conversions_armature.c
   transform_conversions_cursor.c
+  transform_conversions_curve.c
   transform_conversions_mball.c
   transform_conversions_mesh.c
   transform_generics.c
