@@ -54,6 +54,10 @@ void restoreBones(TransDataContainer *tc);
 void createTransPose(TransInfo *t);
 void createTransArmatureVerts(TransInfo *t);
 
+/* transform_conversions_cursor.c */
+void createTransCursor_image(TransInfo *t);
+void createTransCursor_view3d(TransInfo *t);
+
 /* transform_conversions_mesh.c */
 void createTransEditVerts(TransInfo *t);
 #endif
