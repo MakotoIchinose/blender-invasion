@@ -55,6 +55,7 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list);
 void calc_distanceCurveVerts(TransData *head, TransData *tail);
 struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt);
 bool FrameOnMouseSide(char side, float frame, float cframe);
+void clear_trans_object_base_flags(TransInfo *t);
 
 void flushTransIntFrameActionData(TransInfo *t);
 void flushTransGraphData(TransInfo *t);
@@ -106,6 +107,11 @@ void createTransUVs(bContext *C, TransInfo *t);
 
 /* transform_conversions_nla.c */
 void createTransNlaData(bContext *C, TransInfo *t);
+
+/* transform_object.c */
+void createTransObject(bContext *C, TransInfo *t);
+void trans_obdata_in_obmode_update_all(struct TransInfo *t);
+void trans_obchild_in_obmode_update_all(struct TransInfo *t);
 
 /* transform_conversions_particle.c */
 void createTransParticleVerts(bContext *C, TransInfo *t);

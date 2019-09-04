@@ -50,6 +50,7 @@ set(SRC
   transform_conversions_mball.c
   transform_conversions_mesh.c
   transform_conversions_nla.c
+  transform_conversions_object.c
   transform_conversions_particle.c
   transform_conversions_sequencer.c
   transform_generics.c
