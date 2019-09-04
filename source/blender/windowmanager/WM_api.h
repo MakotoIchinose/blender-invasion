@@ -53,19 +53,15 @@ struct PropertyRNA;
 struct ScrArea;
 struct ViewLayer;
 struct bContext;
-struct bToolRef_Runtime;
 struct rcti;
 struct wmDrag;
 struct wmDropBox;
 struct wmEvent;
-struct wmEventHandler;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
 struct wmGenericUserData;
 struct wmGesture;
 struct wmJob;
-struct wmMsgSubscribeKey;
-struct wmMsgSubscribeValue;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
@@ -162,7 +158,8 @@ enum {
   WM_WINDOW_RENDER = 1,
   WM_WINDOW_USERPREFS,
   WM_WINDOW_DRIVERS,
-  // WM_WINDOW_FILESEL // UNUSED
+  WM_WINDOW_INFO,
+  WM_WINDOW_FILESEL,
 };
 
 struct wmWindow *WM_window_open(struct bContext *C, const struct rcti *rect);
@@ -496,6 +493,8 @@ bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalPa
 #define WM_FILESEL_FILENAME (1 << 2)
 #define WM_FILESEL_FILEPATH (1 << 3)
 #define WM_FILESEL_FILES (1 << 4)
+/* Show the properties sidebar by default. */
+#define WM_FILESEL_SHOW_PROPS (1 << 5)
 
 /* operator as a python command (resultuing string must be freed) */
 char *WM_operator_pystring_ex(struct bContext *C,

@@ -103,6 +103,7 @@
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_object.h"
+#include "ED_outliner.h"
 #include "ED_physics.h"
 #include "ED_render.h"
 #include "ED_screen.h"
@@ -501,6 +502,8 @@ Object *ED_object_add_type(bContext *C,
 
   /* TODO(sergey): Use proper flag for tagging here. */
   DEG_id_tag_update(&scene->id, 0);
+
+  ED_outliner_select_sync_from_object_tag(C);
 
   return ob;
 }
@@ -2383,13 +2386,22 @@ static int convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_curve_cache(newob);
       }
       else if (target == OB_GPENCIL) {
-        /* Create a new grease pencil object */
-        if (gpencil_ob == NULL) {
-          const float *cur = scene->cursor.location;
-          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
-          gpencil_ob = ED_gpencil_add_object(C, scene, cur, local_view_bits);
+        if (ob->type != OB_CURVE) {
+          BKE_report(
+              op->reports, RPT_ERROR, "Convert Surfaces to Grease Pencil is not supported.");
         }
-        BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, gpencil_lines, use_collections);
+        else {
+          /* Create a new grease pencil object only if it was not created before.
+           * All curves selected are converted as strokes of the same grease pencil object.
+           * Nurbs Surface are not supported.
+           */
+          if (gpencil_ob == NULL) {
+            const float *cur = scene->cursor.location;
+            ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+            gpencil_ob = ED_gpencil_add_object(C, scene, cur, local_view_bits);
+          }
+          BKE_gpencil_convert_curve(bmain, scene, gpencil_ob, ob, false, false, true);
+        }
       }
     }
     else if (ob->type == OB_MBALL && target == OB_MESH) {

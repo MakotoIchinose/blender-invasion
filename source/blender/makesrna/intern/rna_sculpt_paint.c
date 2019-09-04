@@ -319,7 +319,7 @@ static char *rna_ParticleEdit_path(PointerRNA *UNUSED(ptr))
 static bool rna_Brush_mode_poll(PointerRNA *ptr, PointerRNA value)
 {
   const Paint *paint = ptr->data;
-  Brush *brush = value.id.data;
+  Brush *brush = (Brush *)value.owner_id;
   const uint tool_offset = paint->runtime.tool_offset;
   const eObjectMode ob_mode = paint->runtime.ob_mode;
   UNUSED_VARS_NDEBUG(tool_offset);
@@ -350,10 +350,10 @@ static bool paint_contains_brush_slot(const Paint *paint, const PaintToolSlot *t
 
 static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
 {
-  Scene *scene = (Scene *)ptr->id.data;
+  Scene *scene = (Scene *)ptr->owner_id;
   const PaintToolSlot *tslot = ptr->data;
   ToolSettings *ts = scene->toolsettings;
-  Brush *brush = value.id.data;
+  Brush *brush = (Brush *)value.owner_id;
   int mode = 0;
   int slot_index = 0;
 
@@ -438,7 +438,7 @@ static char *rna_Sculpt_path(PointerRNA *UNUSED(ptr))
 
 static char *rna_VertexPaint_path(PointerRNA *ptr)
 {
-  Scene *scene = (Scene *)ptr->id.data;
+  Scene *scene = (Scene *)ptr->owner_id;
   ToolSettings *ts = scene->toolsettings;
   if (ptr->data == ts->vpaint) {
     return BLI_strdup("tool_settings.vertex_paint");
@@ -1419,13 +1419,6 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GPencilSculptGuide");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Guide", "");
-
-  prop = RNA_def_property(srna, "use_select_mask", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_SCULPT_SETT_FLAG_SELECT_MASK);
-  RNA_def_property_ui_text(prop, "Selection Mask", "Only sculpt selected stroke points");
-  RNA_def_property_ui_icon(prop, ICON_GP_ONLY_SELECTED, 0);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "use_edit_position", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_SCULPT_SETT_FLAG_APPLY_POSITION);

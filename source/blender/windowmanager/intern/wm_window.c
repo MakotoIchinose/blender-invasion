@@ -482,8 +482,8 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
     }
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
-     * and to give hint of unsaved changes for a user warning mechanism in case of OS
-     * application terminate request (e.g. OS Shortcut Alt+F4, Cmd+Q, (...), or session end). */
+     * and to give hint of unsaved changes for a user warning mechanism in case of OS application
+     * terminate request (e.g. OS Shortcut Alt+F4, Command+Q, (...), or session end). */
     GHOST_SetWindowModifiedState(win->ghostwin, (GHOST_TUns8)!wm->file_saved);
   }
 }
@@ -658,7 +658,7 @@ void wm_window_ghostwindows_ensure(wmWindowManager *wm)
 
   BLI_assert(G.background == false);
 
-  /* no commandline prefsize? then we set this.
+  /* No command-line prefsize? then we set this.
    * Note that these values will be used only
    * when there is no startup.blend yet.
    */
@@ -807,6 +807,7 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
   ScrArea *sa;
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  eSpace_Type space_type = SPACE_EMPTY;
   const char *title;
 
   /* convert to native OS window coordinates */
@@ -888,14 +889,24 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
   CTX_wm_area_set(C, sa);
 
   if (type == WM_WINDOW_RENDER) {
-    ED_area_newspace(C, sa, SPACE_IMAGE, false);
+    space_type = SPACE_IMAGE;
   }
   else if (type == WM_WINDOW_DRIVERS) {
-    ED_area_newspace(C, sa, SPACE_GRAPH, false);
+    space_type = SPACE_GRAPH;
+  }
+  else if (type == WM_WINDOW_USERPREFS) {
+    space_type = SPACE_USERPREF;
+  }
+  else if (type == WM_WINDOW_FILESEL) {
+    space_type = SPACE_FILE;
+  }
+  else if (type == WM_WINDOW_INFO) {
+    space_type = SPACE_INFO;
   }
   else {
-    ED_area_newspace(C, sa, SPACE_USERPREF, false);
+    BLI_assert(false);
   }
+  ED_area_newspace(C, sa, space_type, false);
 
   ED_screen_change(C, screen);
   ED_screen_refresh(CTX_wm_manager(C), win); /* test scale */
@@ -916,6 +927,9 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
   }
   else if (sa->spacetype == SPACE_GRAPH) {
     title = IFACE_("Blender Drivers Editor");
+  }
+  else if (sa->spacetype == SPACE_INFO) {
+    title = IFACE_("Blender Info Log");
   }
   else {
     title = "Blender";

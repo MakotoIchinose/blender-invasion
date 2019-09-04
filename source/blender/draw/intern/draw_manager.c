@@ -33,6 +33,7 @@
 
 #include "BKE_anim.h"
 #include "BKE_colortools.h"
+#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
@@ -41,6 +42,7 @@
 #include "BKE_main.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_paint.h"
@@ -604,6 +606,7 @@ static DRWCallState *draw_unit_state_create(void)
 
   state->ob_index = 0;
   state->ob_random = 0.0f;
+  copy_v3_fl(state->ob_color, 1.0f);
 
   /* TODO(fclem) get rid of this. */
   state->culling = BLI_memblock_alloc(DST.vmempool->cullstates);
@@ -1865,7 +1868,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
     DRW_opengl_render_context_enable(re_gl_context);
     /* We need to query gpu context after a gl context has been bound. */
     re_gpu_context = RE_gpu_context_get(render);
-    DRW_gawain_render_context_enable(re_gpu_context);
+    DRW_gpu_render_context_enable(re_gpu_context);
   }
   else {
     DRW_opengl_context_enable();
@@ -1950,13 +1953,13 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
     DRW_opengl_render_context_enable(re_gl_context);
     /* We need to query gpu context after a gl context has been bound. */
     re_gpu_context = RE_gpu_context_get(render);
-    DRW_gawain_render_context_enable(re_gpu_context);
+    DRW_gpu_render_context_enable(re_gpu_context);
   }
   else {
     DRW_opengl_context_enable();
   }
 
-  /* IMPORTANT: We dont support immediate mode in render mode!
+  /* IMPORTANT: We don't support immediate mode in render mode!
    * This shall remain in effect until immediate mode supports
    * multiple threads. */
 
@@ -2041,7 +2044,7 @@ void DRW_render_to_image(RenderEngine *engine, struct Depsgraph *depsgraph)
 
   /* Changing Context */
   if (re_gl_context != NULL) {
-    DRW_gawain_render_context_disable(re_gpu_context);
+    DRW_gpu_render_context_disable(re_gpu_context);
     DRW_opengl_render_context_disable(re_gl_context);
   }
   else {
@@ -2204,24 +2207,43 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
   drw_state_prepare_clean_for_draw(&DST);
 
   bool use_obedit = false;
-  int obedit_mode = 0;
+  /* obedit_ctx_mode is used for selecting the right draw engines */
+  eContextObjectMode obedit_ctx_mode;
+  /* object_mode is used for filtering objects in the depsgraph */
+  eObjectMode object_mode;
+  int object_type = 0;
   if (obedit != NULL) {
+    object_type = obedit->type;
+    object_mode = obedit->mode;
     if (obedit->type == OB_MBALL) {
       use_obedit = true;
-      obedit_mode = CTX_MODE_EDIT_METABALL;
+      obedit_ctx_mode = CTX_MODE_EDIT_METABALL;
     }
     else if (obedit->type == OB_ARMATURE) {
       use_obedit = true;
-      obedit_mode = CTX_MODE_EDIT_ARMATURE;
+      obedit_ctx_mode = CTX_MODE_EDIT_ARMATURE;
     }
   }
   if (v3d->overlay.flag & V3D_OVERLAY_BONE_SELECT) {
     if (!(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
       /* Note: don't use "BKE_object_pose_armature_get" here, it breaks selection. */
       Object *obpose = OBPOSE_FROM_OBACT(obact);
+      if (obpose == NULL) {
+        Object *obweight = OBWEIGHTPAINT_FROM_OBACT(obact);
+        if (obweight) {
+          /* Only use Armature pose selection, when connected armature is in pose mode. */
+          Object *ob_armature = modifiers_isDeformedByArmature(obweight);
+          if (ob_armature && ob_armature->mode == OB_MODE_POSE) {
+            obpose = ob_armature;
+          }
+        }
+      }
+
       if (obpose) {
         use_obedit = true;
-        obedit_mode = CTX_MODE_POSE;
+        object_type = obpose->type;
+        object_mode = obpose->mode;
+        obedit_ctx_mode = CTX_MODE_POSE;
       }
     }
   }
@@ -2235,8 +2257,8 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 
   /* Get list of enabled engines */
   if (use_obedit) {
-    drw_engines_enable_from_paint_mode(obedit_mode);
-    drw_engines_enable_from_mode(obedit_mode);
+    drw_engines_enable_from_paint_mode(obedit_ctx_mode);
+    drw_engines_enable_from_mode(obedit_ctx_mode);
   }
   else if (!draw_surface) {
     /* grease pencil selection */
@@ -2283,7 +2305,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_world_update(scene);
 
     if (use_obedit) {
-      FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
+      FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, object_type, object_mode, ob_iter) {
         drw_engines_cache_populate(ob_iter);
       }
       FOREACH_OBJECT_IN_MODE_END;
@@ -2563,7 +2585,6 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, const rc
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
-  DST.buffer_finish_called = true;
 
   /* Instead of 'DRW_context_state_init(C, &DST.draw_ctx)', assign from args */
   DST.draw_ctx = (DRWContextState){
@@ -2601,6 +2622,8 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, const rc
     }
 
     drw_engines_cache_finish();
+
+    DRW_render_instance_buffer_finish();
   }
 
   /* Start Drawing */
@@ -2609,6 +2632,8 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, const rc
   DRW_state_reset();
 
   drw_engines_disable();
+
+  drw_viewport_cache_resize();
 
 #ifdef DEBUG
   /* Avoid accidental reuse. */
@@ -2923,7 +2948,7 @@ void DRW_opengl_context_create(void)
   /* This changes the active context. */
   DST.gl_context = WM_opengl_context_create();
   WM_opengl_context_activate(DST.gl_context);
-  /* Be sure to create gawain.context too. */
+  /* Be sure to create gpu_context too. */
   DST.gpu_context = GPU_context_create(0);
   if (!G.background) {
     immActivate();
@@ -3022,7 +3047,7 @@ void DRW_opengl_render_context_disable(void *re_gl_context)
 }
 
 /* Needs to be called AFTER DRW_opengl_render_context_enable() */
-void DRW_gawain_render_context_enable(void *re_gpu_context)
+void DRW_gpu_render_context_enable(void *re_gpu_context)
 {
   /* If thread is main you should use DRW_opengl_context_enable(). */
   BLI_assert(!BLI_thread_is_main());
@@ -3032,7 +3057,7 @@ void DRW_gawain_render_context_enable(void *re_gpu_context)
 }
 
 /* Needs to be called BEFORE DRW_opengl_render_context_disable() */
-void DRW_gawain_render_context_disable(void *UNUSED(re_gpu_context))
+void DRW_gpu_render_context_disable(void *UNUSED(re_gpu_context))
 {
   DRW_shape_cache_reset(); /* XXX fix that too. */
   GPU_context_active_set(NULL);

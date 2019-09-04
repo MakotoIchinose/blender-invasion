@@ -244,7 +244,7 @@ static Base *rna_Object_local_view_property_helper(
 
 static bool rna_Object_local_view_get(Object *ob, ReportList *reports, PointerRNA *v3d_ptr)
 {
-  bScreen *sc = v3d_ptr->id.data;
+  bScreen *sc = (bScreen *)v3d_ptr->owner_id;
   View3D *v3d = v3d_ptr->data;
   Base *base = rna_Object_local_view_property_helper(sc, v3d, ob, reports, NULL);
   if (base == NULL) {
@@ -258,7 +258,7 @@ static void rna_Object_local_view_set(Object *ob,
                                       PointerRNA *v3d_ptr,
                                       bool state)
 {
-  bScreen *sc = v3d_ptr->id.data;
+  bScreen *sc = (bScreen *)v3d_ptr->owner_id;
   View3D *v3d = v3d_ptr->data;
   Scene *scene;
   Base *base = rna_Object_local_view_property_helper(sc, v3d, ob, reports, &scene);
@@ -704,7 +704,7 @@ bool rna_Object_generate_gpencil_strokes(Object *ob,
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections);
+  BKE_gpencil_convert_curve(bmain, scene, ob_gpencil, ob, gpencil_lines, use_collections, false);
 
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, NULL);
 

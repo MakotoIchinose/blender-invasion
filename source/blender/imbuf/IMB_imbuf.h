@@ -46,8 +46,7 @@
  *
  * IMB needs:
  * - \ref DNA module
- *     The listbase types are used for handling the memory
- *     management.
+ *     The #ListBase types are used for handling the memory management.
  * - \ref blenlib module
  *     blenlib handles guarded memory management in blender-style.
  *     BLI_winstuff.h makes a few windows specific behaviors
@@ -146,7 +145,8 @@ bool IMB_initImBuf(
 struct ImBuf *IMB_allocFromBuffer(const unsigned int *rect,
                                   const float *rectf,
                                   unsigned int w,
-                                  unsigned int h);
+                                  unsigned int h,
+                                  unsigned int channels);
 
 /**
  *

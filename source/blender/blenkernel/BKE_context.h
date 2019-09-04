@@ -33,7 +33,6 @@ extern "C" {
 
 struct ARegion;
 struct Base;
-struct Brush;
 struct CacheFile;
 struct Collection;
 struct Depsgraph;
@@ -59,7 +58,6 @@ struct Text;
 struct ToolSettings;
 struct View3D;
 struct ViewLayer;
-struct ViewRender;
 struct bGPDframe;
 struct bGPDlayer;
 struct bGPdata;
@@ -98,7 +96,7 @@ typedef struct bContextStore {
 
 /* for the context's rna mode enum
  * keep aligned with data_mode_strings in context.c */
-enum eContextObjectMode {
+typedef enum eContextObjectMode {
   CTX_MODE_EDIT_MESH = 0,
   CTX_MODE_EDIT_CURVE,
   CTX_MODE_EDIT_SURFACE,
@@ -117,7 +115,7 @@ enum eContextObjectMode {
   CTX_MODE_EDIT_GPENCIL,
   CTX_MODE_SCULPT_GPENCIL,
   CTX_MODE_WEIGHT_GPENCIL,
-};
+} eContextObjectMode;
 #define CTX_MODE_NUM (CTX_MODE_WEIGHT_GPENCIL + 1)
 
 /* Context */
@@ -239,7 +237,7 @@ bool CTX_data_dir(const char *member);
 
 #define CTX_DATA_BEGIN_WITH_ID(C, Type, instance, member, Type_id, instance_id) \
   CTX_DATA_BEGIN (C, Type, instance, member) \
-    Type_id instance_id = ctx_link->ptr.id.data;
+    Type_id instance_id = (Type_id)ctx_link->ptr.owner_id;
 
 int ctx_data_list_count(const bContext *C, int (*func)(const bContext *, ListBase *));
 

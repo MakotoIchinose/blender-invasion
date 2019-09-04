@@ -637,8 +637,12 @@ struct GP_EditableStrokes_Iter {
   } \
   (void)0
 
+#define GPENCIL_ANY_SCULPT_MASK(flag) \
+  ((flag & (GP_SCULPT_MASK_SELECTMODE_POINT | GP_SCULPT_MASK_SELECTMODE_STROKE | \
+            GP_SCULPT_MASK_SELECTMODE_SEGMENT)))
+
 /**
- * Iterate over all editable strokes using derived data in the current context,
+ * Iterate over all editable strokes using evaluated data in the current context,
  * stopping on each usable layer + stroke pair (i.e. gpl and gps)
  * to perform some operations on the stroke.
  *
@@ -647,15 +651,15 @@ struct GP_EditableStrokes_Iter {
  * \param gps: The identifier to use for current stroke being processed.
  *                    Choose a suitable value to avoid name clashes.
  */
-#define GP_DERIVED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps) \
+#define GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps) \
   { \
     struct GP_EditableStrokes_Iter gpstroke_iter = {{{0}}}; \
-    Depsgraph *depsgraph_ = CTX_data_depsgraph_pointer(C); \
+    Depsgraph *depsgraph_ = CTX_data_ensure_evaluated_depsgraph(C); \
     Object *obact_ = CTX_data_active_object(C); \
     Object *obeval_ = DEG_get_evaluated_object(depsgraph_, obact_); \
     bGPdata *gpd_ = CTX_data_gpencil_data(C); \
     const bool is_multiedit_ = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd_); \
-    int derived_idx = 0; \
+    int idx_eval = 0; \
     for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) { \
       if (gpencil_layer_is_editable(gpl)) { \
         bGPDframe *init_gpf_ = gpl->actframe; \
@@ -665,10 +669,11 @@ struct GP_EditableStrokes_Iter {
         for (bGPDframe *gpf_ = init_gpf_; gpf_; gpf_ = gpf_->next) { \
           if ((gpf_ == gpl->actframe) || ((gpf_->flag & GP_FRAME_SELECT) && is_multiedit_)) { \
             ED_gpencil_parent_location(depsgraph_, obact_, gpd_, gpl, gpstroke_iter.diff_mat); \
-            /* get derived frame with modifiers applied */ \
-            bGPDframe *derived_gpf_ = &obeval_->runtime.derived_frames[derived_idx]; \
+            invert_m4_m4(gpstroke_iter.inverse_diff_mat, gpstroke_iter.diff_mat); \
+            /* get evaluated frame with modifiers applied */ \
+            bGPDframe *gpf_eval_ = &obeval_->runtime.gpencil_evaluated_frames[idx_eval]; \
             /* loop over strokes */ \
-            for (bGPDstroke *gps = derived_gpf_->strokes.first; gps; gps = gps->next) { \
+            for (bGPDstroke *gps = gpf_eval_->strokes.first; gps; gps = gps->next) { \
               /* skip strokes that are invalid for current view */ \
               if (ED_gpencil_stroke_can_use(C, gps) == false) \
                 continue; \
@@ -677,7 +682,7 @@ struct GP_EditableStrokes_Iter {
                 continue; \
     /* ... Do Stuff With Strokes ...  */
 
-#define GP_DERIVED_STROKES_END(gpstroke_iter) \
+#define GP_EVALUATED_STROKES_END(gpstroke_iter) \
   } \
   } \
   if (!is_multiedit_) { \
@@ -685,7 +690,7 @@ struct GP_EditableStrokes_Iter {
   } \
   } \
   } \
-  derived_idx++; \
+  idx_eval++; \
   } \
   } \
   (void)0

@@ -58,8 +58,6 @@ struct MovieClip;
 struct Object;
 struct Scene;
 struct SceneCollection;
-struct SceneStats;
-struct Text;
 struct World;
 struct bGPdata;
 struct bNodeTree;
@@ -1125,7 +1123,7 @@ typedef struct GP_Sculpt_Settings {
 /* GP_Sculpt_Settings.flag */
 typedef enum eGP_Sculpt_SettingsFlag {
   /* only affect selected points */
-  GP_SCULPT_SETT_FLAG_SELECT_MASK = (1 << 0),
+  GP_SCULPT_SETT_FLAG_DEPRECATED = (1 << 0),
   /* apply brush to position */
   GP_SCULPT_SETT_FLAG_APPLY_POSITION = (1 << 1),
   /* apply brush to strength */
@@ -1141,6 +1139,16 @@ typedef enum eGP_Sculpt_SettingsFlag {
   /* apply primitive curve */
   GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 7),
 } eGP_Sculpt_SettingsFlag;
+
+/* GP_Sculpt_Settings.gpencil_selectmode_sculpt */
+typedef enum eGP_Sculpt_SelectMaskFlag {
+  /* only affect selected points */
+  GP_SCULPT_MASK_SELECTMODE_POINT = (1 << 0),
+  /* only affect selected strokes */
+  GP_SCULPT_MASK_SELECTMODE_STROKE = (1 << 1),
+  /* only affect selected segmenst */
+  GP_SCULPT_MASK_SELECTMODE_SEGMENT = (1 << 2),
+} eGP_Sculpt_SelectMaskFlag;
 
 /* Settings for GP Interpolation Operators */
 typedef struct GP_Interpolate_Settings {
@@ -1358,6 +1366,12 @@ typedef struct MeshStatVis {
 /* *************************************************************** */
 /* Tool Settings */
 
+/* CurvePaintSettings.surface_plane */
+enum {
+  AUTO_MERGE = 1 << 0,
+  AUTO_MERGE_AND_SPLIT = 1 << 1,
+};
+
 typedef struct ToolSettings {
   /** Vertex paint. */
   VPaint *vpaint;
@@ -1412,8 +1426,10 @@ typedef struct ToolSettings {
 
   /** Default stroke thickness for annotation strokes. */
   short annotate_thickness;
-  /** Stroke selection mode. */
-  short gpencil_selectmode;
+  /** Stroke selection mode for Edit. */
+  char gpencil_selectmode_edit;
+  /** Stroke selection mode for Sculpt. */
+  char gpencil_selectmode_sculpt;
 
   /* Grease Pencil Sculpt */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -2072,6 +2088,8 @@ extern const char *RE_engine_id_CYCLES;
   (((workspace)->object_mode & OD_MODE_EDIT) ? OBACT(_view_layer) : NULL)
 #define OBEDIT_FROM_OBACT(ob) ((ob) ? (((ob)->mode & OB_MODE_EDIT) ? ob : NULL) : NULL)
 #define OBPOSE_FROM_OBACT(ob) ((ob) ? (((ob)->mode & OB_MODE_POSE) ? ob : NULL) : NULL)
+#define OBWEIGHTPAINT_FROM_OBACT(ob) \
+  ((ob) ? (((ob)->mode & OB_MODE_WEIGHT_PAINT) ? ob : NULL) : NULL)
 #define OBEDIT_FROM_VIEW_LAYER(view_layer) OBEDIT_FROM_OBACT(OBACT(view_layer))
 
 #define V3D_CAMERA_LOCAL(v3d) ((!(v3d)->scenelock && (v3d)->camera) ? (v3d)->camera : NULL)
@@ -2094,6 +2112,8 @@ extern const char *RE_engine_id_CYCLES;
 /* ToolSettings.transform_flag */
 enum {
   SCE_XFORM_AXIS_ALIGN = (1 << 0),
+  SCE_XFORM_DATA_ORIGIN = (1 << 1),
+  SCE_XFORM_SKIP_CHILDREN = (1 << 2),
 };
 
 /* ToolSettings.object_flag */
@@ -2121,11 +2141,15 @@ enum {
 #define SCE_SNAP_MODE_FACE (1 << 2)
 #define SCE_SNAP_MODE_VOLUME (1 << 3)
 #define SCE_SNAP_MODE_INCREMENT (1 << 4)
+#define SCE_SNAP_MODE_EDGE_MIDPOINT (1 << 5)
+#define SCE_SNAP_MODE_EDGE_PERPENDICULAR (1 << 6)
 
 /* ToolSettings.snap_node_mode */
-#define SCE_SNAP_MODE_GRID (1 << 5)
-#define SCE_SNAP_MODE_NODE_X (1 << 6)
-#define SCE_SNAP_MODE_NODE_Y (1 << 7)
+#define SCE_SNAP_MODE_NODE_X (1 << 5)
+#define SCE_SNAP_MODE_NODE_Y (1 << 6)
+
+/* ToolSettings.snap_mode and ToolSettings.snap_node_mode */
+#define SCE_SNAP_MODE_GRID (1 << 7)
 
 /** #ToolSettings.snap_transform_mode_flag */
 enum {

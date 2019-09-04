@@ -28,15 +28,14 @@
 struct GPENCIL_Data;
 struct GPENCIL_StorageList;
 struct MaterialGPencilStyle;
-struct ModifierData;
 struct Object;
 struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
-struct tGPspoint;
-struct GpencilBatchCache;
-struct GpencilBatchCacheElem;
-struct GpencilBatchGroup;
+
+struct GPUBatch;
+struct GPUVertBuf;
+struct GPUVertFormat;
 
 #define GPENCIL_CACHE_BLOCK_SIZE 8
 #define GPENCIL_MAX_SHGROUPS 65536
@@ -327,6 +326,64 @@ typedef struct GPENCIL_e_data {
 
 } GPENCIL_e_data; /* Engine data */
 
+/* GPUBatch Cache Element */
+typedef struct GpencilBatchCacheElem {
+  GPUBatch *batch;
+  GPUVertBuf *vbo;
+  int vbo_len;
+  /* attr ids */
+  GPUVertFormat *format;
+  uint pos_id;
+  uint color_id;
+  uint thickness_id;
+  uint uvdata_id;
+  uint prev_pos_id;
+
+  /* size for VBO alloc */
+  int tot_vertex;
+} GpencilBatchCacheElem;
+
+/* Defines each batch group to define later the shgroup */
+typedef struct GpencilBatchGroup {
+  struct bGPDlayer *gpl;  /* reference to original layer */
+  struct bGPDframe *gpf;  /* reference to original frame */
+  struct bGPDstroke *gps; /* reference to original stroke */
+  short type;             /* type of element */
+  bool onion;             /* the group is part of onion skin */
+  int vertex_idx;         /* index of vertex data */
+} GpencilBatchGroup;
+
+typedef enum GpencilBatchGroup_Type {
+  eGpencilBatchGroupType_Stroke = 1,
+  eGpencilBatchGroupType_Point = 2,
+  eGpencilBatchGroupType_Fill = 3,
+  eGpencilBatchGroupType_Edit = 4,
+  eGpencilBatchGroupType_Edlin = 5,
+} GpencilBatchGroup_Type;
+
+/* Runtime data for GPU and evaluated frames after applying modifiers */
+typedef struct GpencilBatchCache {
+  GpencilBatchCacheElem b_stroke;
+  GpencilBatchCacheElem b_point;
+  GpencilBatchCacheElem b_fill;
+  GpencilBatchCacheElem b_edit;
+  GpencilBatchCacheElem b_edlin;
+
+  /** Cache is dirty */
+  bool is_dirty;
+  /** Edit mode flag */
+  bool is_editmode;
+  /** Last cache frame */
+  int cache_frame;
+
+  /** Total groups in arrays */
+  int grp_used;
+  /** Max size of the array */
+  int grp_size;
+  /** Array of cache elements */
+  struct GpencilBatchGroup *grp_cache;
+} GpencilBatchCache;
+
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_Data *vedata,
                                                       struct DRWPass *pass,
@@ -380,7 +437,7 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
 void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
                             struct bGPDstroke *gps,
                             float alpha,
-                            short dflag);
+                            const bool hide_select);
 
 struct GPUBatch *gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
 struct GPUBatch *gpencil_get_buffer_fill_geom(struct bGPdata *gpd);

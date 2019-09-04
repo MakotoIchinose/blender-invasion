@@ -549,6 +549,7 @@ void DRW_mesh_batch_cache_dirty_tag(Mesh *me, int mode)
       {
         GPU_INDEXBUF_DISCARD_SAFE(mbufcache->ibo.lines_paint_mask);
         GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.pos_nor);
+        GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.lnor);
       }
       GPU_BATCH_DISCARD_SAFE(cache->batch.surface);
       GPU_BATCH_DISCARD_SAFE(cache->batch.wire_loops);
@@ -969,6 +970,7 @@ void DRW_mesh_batch_cache_free_old(Mesh *me, int ctime)
 void DRW_mesh_batch_cache_create_requested(
     Object *ob, Mesh *me, const Scene *scene, const bool is_paint_mode, const bool use_hide)
 {
+  GPUIndexBuf **saved_elem_ranges = NULL;
   const ToolSettings *ts = NULL;
   if (scene) {
     ts = scene->toolsettings;
@@ -1029,6 +1031,17 @@ void DRW_mesh_batch_cache_create_requested(
         }
         if ((cache->cd_used.vcol & cache->cd_needed.vcol) != cache->cd_needed.vcol) {
           GPU_VERTBUF_DISCARD_SAFE(mbuffercache->vbo.vcol);
+        }
+      }
+      /* XXX save element buffer to avoid recreating them.
+       * This is only if the cd_needed changes so it is ok to keep them.*/
+      if (cache->surface_per_mat[0] && cache->surface_per_mat[0]->elem) {
+        saved_elem_ranges = MEM_callocN(sizeof(saved_elem_ranges) * cache->mat_len, __func__);
+        for (int i = 0; i < cache->mat_len; ++i) {
+          saved_elem_ranges[i] = cache->surface_per_mat[i]->elem;
+          /* Avoid deletion as the batch is owner. */
+          cache->surface_per_mat[i]->elem = NULL;
+          cache->surface_per_mat[i]->owns_flag &= ~GPU_BATCH_OWNS_INDEX;
         }
       }
       /* We can't discard batches at this point as they have been
@@ -1128,6 +1141,8 @@ void DRW_mesh_batch_cache_create_requested(
   }
   if (DRW_batch_requested(cache->batch.wire_loops, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache->batch.wire_loops, &mbufcache->ibo.lines_paint_mask);
+    /* Order matters. First ones override latest vbos' attribs. */
+    DRW_vbo_request(cache->batch.wire_loops, &mbufcache->vbo.lnor);
     DRW_vbo_request(cache->batch.wire_loops, &mbufcache->vbo.pos_nor);
   }
   if (DRW_batch_requested(cache->batch.wire_edges, GPU_PRIM_LINES)) {
@@ -1151,7 +1166,13 @@ void DRW_mesh_batch_cache_create_requested(
   /* Per Material */
   for (int i = 0; i < cache->mat_len; ++i) {
     if (DRW_batch_requested(cache->surface_per_mat[i], GPU_PRIM_TRIS)) {
-      DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->ibo.tris);
+      if (saved_elem_ranges && saved_elem_ranges[i]) {
+        /* XXX assign old element buffer range (it did not change).*/
+        GPU_batch_elembuf_set(cache->surface_per_mat[i], saved_elem_ranges[i], true);
+      }
+      else {
+        DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->ibo.tris);
+      }
       /* Order matters. First ones override latest vbos' attribs. */
       DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.lnor);
       DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.pos_nor);
@@ -1169,6 +1190,8 @@ void DRW_mesh_batch_cache_create_requested(
       }
     }
   }
+
+  MEM_SAFE_FREE(saved_elem_ranges);
 
   mbufcache = (do_cage) ? &cache->cage : &cache->final;
 

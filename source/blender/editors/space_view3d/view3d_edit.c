@@ -404,9 +404,7 @@ static void viewops_data_create(bContext *C,
   if (viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE) {
     if (ED_view3d_persp_ensure(depsgraph, vod->v3d, vod->ar)) {
       /* If we're switching from camera view to the perspective one,
-       * need to tag viewport update, so camera vuew and borders
-       * are properly updated.
-       */
+       * need to tag viewport update, so camera view and borders are properly updated. */
       ED_region_tag_redraw(vod->ar);
     }
   }
@@ -4946,6 +4944,7 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
                                                        .use_object_edit_cage = false,
                                                    },
                                                    mval_fl,
+                                                   NULL,
                                                    &dist_px,
                                                    ray_co,
                                                    ray_no,
@@ -5052,7 +5051,7 @@ void ED_view3d_cursor3d_update(bContext *C,
 
   {
     struct wmMsgBus *mbus = CTX_wm_message_bus(C);
-    wmMsgParams_RNA msg_key_params = {{{0}}};
+    wmMsgParams_RNA msg_key_params = {{0}};
     RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
     WM_msg_publish_rna_params(mbus, &msg_key_params);
   }

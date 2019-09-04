@@ -412,11 +412,15 @@ static void graph_id_tag_update_single_flag(Main *bmain,
 
 string stringify_append_bit(const string &str, IDRecalcFlag tag)
 {
+  const char *tag_name = DEG_update_tag_as_string(tag);
+  if (tag_name == NULL) {
+    return str;
+  }
   string result = str;
   if (!result.empty()) {
     result += ", ";
   }
-  result += DEG_update_tag_as_string(tag);
+  result += tag_name;
   return result;
 }
 
@@ -638,7 +642,7 @@ void graph_id_tag_update(
    * This way IDs in the undo steps will have this flag preserved, making it possible to restore
    * all needed tags when new dependency graph is created on redo.
    * This is the only way to ensure modifications to animation data (such as keyframes i.e.)
-   * properly triggers animation update for the newely constructed dependency graph on redo (while
+   * properly triggers animation update for the newly constructed dependency graph on redo (while
    * usually newly created dependency graph skips animation update to avoid loss of unkeyed
    * changes). */
   if (update_source == DEG_UPDATE_SOURCE_USER_EDIT) {
@@ -717,8 +721,7 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
     case ID_RECALC_ALL:
       return "ALL";
   }
-  BLI_assert(!"Unhandled update flag, should never happen!");
-  return "UNKNOWN";
+  return NULL;
 }
 
 /* Data-Based Tagging  */

@@ -592,6 +592,10 @@ static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
     infos[3] = (state->flag & DRW_CALL_NEGSCALE) ? -1.0f : 1.0f;
     GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, (float *)infos);
   }
+  if (shgroup->objectcolor != -1) {
+    GPU_shader_uniform_vector(
+        shgroup->shader, shgroup->objectcolor, 4, 1, (float *)state->ob_color);
+  }
   if (shgroup->orcotexfac != -1) {
     GPU_shader_uniform_vector(
         shgroup->shader, shgroup->orcotexfac, 3, 2, (float *)state->orcotexfac);
@@ -622,12 +626,12 @@ BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
     GPU_batch_bind(geom);
   }
 
-  /* XXX hacking gawain. we don't want to call glUseProgram! (huge performance loss) */
+  /* XXX hacking #GPUBatch. we don't want to call glUseProgram! (huge performance loss) */
   geom->program_in_use = true;
 
   GPU_batch_draw_advanced(geom, vert_first, vert_count, inst_first, inst_count);
 
-  geom->program_in_use = false; /* XXX hacking gawain */
+  geom->program_in_use = false; /* XXX hacking #GPUBatch */
 }
 
 enum {
