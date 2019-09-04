@@ -41,6 +41,7 @@ set(SRC
   transform.c
   transform_constraints.c
   transform_conversions.c
+  transform_conversions_armature.c
   transform_conversions_mesh.c
   transform_generics.c
   transform_gizmo_2d.c

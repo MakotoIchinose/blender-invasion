@@ -24,13 +24,36 @@
 #ifndef __TRANSFORM_CONVERSIONS_H__
 #define __TRANSFORM_CONVERSIONS_H__
 
+struct bKinematicConstraint;
+struct bPoseChannel;
+struct ListBase;
+struct Object;
+struct TransDataContainer;
+struct TransInfo;
+
 /* when transforming islands */
 struct TransIslandData {
   float co[3];
   float axismtx[3][3];
 };
 
+/* transform_conversions.c */
+void transform_around_single_fallback(TransInfo *t);
+int count_set_pose_transflags(Object *ob,
+                              const int mode,
+                              const short around,
+                              bool has_translate_rotate[2]);
+bool constraints_list_needinv(TransInfo *t, ListBase *list);
+
+/* transform_conversions_armature.c */
+struct bKinematicConstraint *has_targetless_ik(struct bPoseChannel *pchan);
+void transform_autoik_update(TransInfo *t, short mode);
+void restoreMirrorPoseBones(TransDataContainer *tc);
+void restoreBones(TransDataContainer *tc);
+
+void createTransPose(TransInfo *t);
+void createTransArmatureVerts(TransInfo *t);
+
 /* transform_conversions_mesh.c */
 void createTransEditVerts(TransInfo *t);
-
 #endif
