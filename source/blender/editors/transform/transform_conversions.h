@@ -89,6 +89,8 @@ void createTransMBallVerts(TransInfo *t);
 
 /* transform_conversions_mesh.c */
 void createTransEditVerts(TransInfo *t);
+void createTransEdge(TransInfo *t);
+void createTransUVs(bContext *C, TransInfo *t);
 
 /* transform_conversions_particle.c */
 void createTransParticleVerts(bContext *C, TransInfo *t);
