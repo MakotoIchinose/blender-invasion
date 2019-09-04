@@ -2108,6 +2108,87 @@ void BKE_gpencil_material_remap(struct bGPdata *gpd,
 #undef MAT_NR_REMAP
 }
 
+/* Load a table with material conversion index for merged materials. */
+bool BKE_gpencil_merge_materials_table_get(Object *ob, float threshold, GHash *r_mat_table)
+{
+  bool changed = false;
+
+  Material *ma_primary = NULL;
+  Material *ma_secondary = NULL;
+  MaterialGPencilStyle *gp_style_primary = NULL;
+  MaterialGPencilStyle *gp_style_secondary = NULL;
+
+  short *totcol = give_totcolp(ob);
+  if (totcol == 0) {
+    return changed;
+  }
+
+  for (int idx_primary = 0; idx_primary < *totcol; idx_primary++) {
+    /* Read primary material to compare. */
+    ma_primary = BKE_material_gpencil_get(ob, idx_primary + 1);
+    if (ma_primary == NULL) {
+      continue;
+    }
+
+    for (int idx_secondary = idx_primary + 1; idx_secondary < *totcol; idx_secondary++) {
+      /* Read secondary material to compare with primary material. */
+      ma_secondary = BKE_material_gpencil_get(ob, idx_secondary + 1);
+      if ((ma_secondary == NULL) ||
+          (BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))) {
+        continue;
+      }
+      gp_style_primary = ma_primary->gp_style;
+      gp_style_secondary = ma_secondary->gp_style;
+
+      if ((gp_style_primary == NULL) || (gp_style_secondary == NULL) ||
+          (gp_style_secondary->flag & GP_STYLE_COLOR_LOCKED)) {
+        continue;
+      }
+
+      /* Check materials have the same mode. */
+      if (gp_style_primary->mode != gp_style_secondary->mode) {
+        continue;
+      }
+
+      /* Check materials have same stroke and fill attributes. */
+      if ((gp_style_primary->flag & GP_STYLE_STROKE_SHOW) !=
+          (gp_style_secondary->flag & GP_STYLE_STROKE_SHOW)) {
+        continue;
+      }
+
+      if ((gp_style_primary->flag & GP_STYLE_FILL_SHOW) !=
+          (gp_style_secondary->flag & GP_STYLE_FILL_SHOW)) {
+        continue;
+      }
+
+      /* Check materials have the same type. */
+      if ((gp_style_primary->stroke_style != gp_style_secondary->stroke_style) ||
+          (gp_style_primary->fill_style != gp_style_secondary->fill_style)) {
+        continue;
+      }
+
+      float stroke_a[4], stroke_b[4], fill_a[4], fill_b[4];
+      copy_v4_v4(stroke_a, gp_style_primary->stroke_rgba);
+      copy_v4_v4(stroke_b, gp_style_secondary->stroke_rgba);
+      copy_v4_v4(fill_a, gp_style_primary->fill_rgba);
+      copy_v4_v4(fill_b, gp_style_secondary->fill_rgba);
+
+      /* Check stroke and fill color. */
+      if ((!compare_v4v4(stroke_a, stroke_b, threshold)) ||
+          (!compare_v4v4(fill_a, fill_b, threshold))) {
+        continue;
+      }
+
+      /* Save conversion indexes. */
+      BLI_ghash_insert(
+          r_mat_table, POINTER_FROM_INT(idx_secondary), POINTER_FROM_INT(idx_primary));
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 /* statistics functions */
 void BKE_gpencil_stats_update(bGPdata *gpd)
 {

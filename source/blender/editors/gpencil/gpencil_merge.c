@@ -37,6 +37,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_report.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -568,4 +569,93 @@ void GPENCIL_OT_stroke_merge(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "cyclic", 0, "Cyclic", "Close new stroke");
   RNA_def_boolean(ot->srna, "clear_point", 0, "Dissolve Points", "Dissolve old selected points");
   RNA_def_boolean(ot->srna, "clear_stroke", 0, "Delete Strokes", "Delete old selected strokes");
+}
+
+/* Merge similar materials. */
+static bool gp_stroke_merge_material_poll(bContext *C)
+{
+  /* only supported with grease pencil objects */
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return false;
+  }
+
+  return true;
+}
+
+static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+
+  /* Review materials. */
+  GHash *mat_table = BLI_ghash_int_new(__func__);
+
+  short *totcol = give_totcolp(ob);
+  if (totcol == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bool changed = BKE_gpencil_merge_materials_table_get(ob, threshold, mat_table);
+
+  int removed = BLI_ghash_len(mat_table);
+
+  /* Update stroke material index. */
+  if (changed) {
+    CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+      for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+        for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
+            continue;
+          }
+          if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
+            continue;
+          }
+
+          if (BLI_ghash_haskey(mat_table, POINTER_FROM_INT(gps->mat_nr))) {
+            int *idx = BLI_ghash_lookup(mat_table, POINTER_FROM_INT(gps->mat_nr));
+            gps->mat_nr = POINTER_AS_INT(idx);
+          }
+        }
+      }
+    }
+    CTX_DATA_END;
+  }
+
+  /* Free hash memory. */
+  BLI_ghash_free(mat_table, NULL, NULL);
+
+  /* notifiers */
+  if (changed) {
+    BKE_reportf(op->reports, RPT_INFO, "Merged %d materiales of %d", removed, *totcol);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  }
+  else {
+    BKE_report(op->reports, RPT_INFO, "Nothing to merge");
+  }
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_stroke_merge_material(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Merge Stroke Materials";
+  ot->idname = "GPENCIL_OT_stroke_merge_material";
+  ot->description = "Replace materials in strokes merging similar";
+
+  /* api callbacks */
+  ot->exec = gp_stroke_merge_material_exec;
+  ot->poll = gp_stroke_merge_material_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  prop = RNA_def_float(ot->srna, "threshold", 0.01f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  /* avoid re-using last var */
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
