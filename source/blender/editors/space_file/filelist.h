@@ -54,7 +54,7 @@ void folderlist_pushdir(struct ListBase *folderlist, const char *dir);
 const char *folderlist_peeklastdir(struct ListBase *folderdist);
 int folderlist_clear_next(struct SpaceFile *sfile);
 
-void filelist_setsorting(struct FileList *filelist, const short sort);
+void filelist_setsorting(struct FileList *filelist, const short sort, bool invert_sort);
 void filelist_setfilter_options(struct FileList *filelist,
                                 const bool do_filter,
                                 const bool hide_dot,
@@ -116,6 +116,10 @@ unsigned int filelist_entry_select_get(struct FileList *filelist,
 unsigned int filelist_entry_select_index_get(struct FileList *filelist,
                                              const int index,
                                              FileCheckType check);
+void filelist_entry_parent_select_set(struct FileList *filelist,
+                                      FileSelType select,
+                                      unsigned int flag,
+                                      FileCheckType check);
 struct FileDirEntryArr *filelist_selection_get(struct FileList *filelist,
                                                FileCheckType check,
                                                const char *name,
