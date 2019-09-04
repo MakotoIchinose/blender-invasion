@@ -909,23 +909,6 @@ void drawPropCircle(const struct bContext *C, TransInfo *t);
 
 struct wmKeyMap *transform_modal_keymap(struct wmKeyConfig *keyconf);
 
-/*********************** transform_conversions.c ********** */
-
-void flushTransIntFrameActionData(TransInfo *t);
-void flushTransGraphData(TransInfo *t);
-void remake_graph_transdata(TransInfo *t, struct ListBase *anim_data);
-void flushTransUVs(TransInfo *t);
-void flushTransParticles(TransInfo *t);
-bool clipUVTransform(TransInfo *t, float vec[2], const bool resize);
-void clipUVData(TransInfo *t);
-void flushTransNodes(TransInfo *t);
-void flushTransSeq(TransInfo *t);
-void flushTransTracking(TransInfo *t);
-void flushTransMasking(TransInfo *t);
-void flushTransPaintCurve(TransInfo *t);
-void restoreMirrorPoseBones(TransDataContainer *tc);
-void restoreBones(TransDataContainer *tc);
-
 /*********************** transform_gizmo.c ********** */
 
 #define GIZMO_AXIS_LINE_WIDTH 2.0f

@@ -50,6 +50,21 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list);
 void calc_distanceCurveVerts(TransData *head, TransData *tail);
 struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt);
 
+void flushTransIntFrameActionData(TransInfo *t);
+void flushTransGraphData(TransInfo *t);
+void remake_graph_transdata(TransInfo *t, struct ListBase *anim_data);
+void flushTransUVs(TransInfo *t);
+void flushTransParticles(TransInfo *t);
+bool clipUVTransform(TransInfo *t, float vec[2], const bool resize);
+void clipUVData(TransInfo *t);
+void flushTransNodes(TransInfo *t);
+void flushTransSeq(TransInfo *t);
+void flushTransTracking(TransInfo *t);
+void flushTransMasking(TransInfo *t);
+void flushTransPaintCurve(TransInfo *t);
+void restoreMirrorPoseBones(TransDataContainer *tc);
+void restoreBones(TransDataContainer *tc);
+
 /* transform_conversions_armature.c */
 struct bKinematicConstraint *has_targetless_ik(struct bPoseChannel *pchan);
 void transform_autoik_update(TransInfo *t, short mode);
