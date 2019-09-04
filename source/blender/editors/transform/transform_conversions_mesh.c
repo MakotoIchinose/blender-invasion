@@ -52,6 +52,12 @@
 #include "transform_conversions.h"
 #include "bmesh.h"
 
+/* when transforming islands */
+struct TransIslandData {
+  float co[3];
+  float axismtx[3][3];
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Edit Mesh Verts Transform Creation
  *

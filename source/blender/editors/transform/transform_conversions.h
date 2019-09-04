@@ -34,11 +34,11 @@ struct TransDataContainer;
 struct TransDataCurveHandleFlags;
 struct TransInfo;
 
-/* when transforming islands */
-struct TransIslandData {
-  float co[3];
-  float axismtx[3][3];
-};
+/* helper struct for gp-frame transforms (only used here) */
+typedef struct tGPFtransdata {
+  float val;  /* where transdata writes transform */
+  int *sdata; /* pointer to gpf->framenum */
+} tGPFtransdata;
 
 /* transform_conversions.c */
 void transform_around_single_fallback(TransInfo *t);
@@ -49,6 +49,7 @@ int count_set_pose_transflags(Object *ob,
 bool constraints_list_needinv(TransInfo *t, ListBase *list);
 void calc_distanceCurveVerts(TransData *head, TransData *tail);
 struct TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt);
+bool FrameOnMouseSide(char side, float frame, float cframe);
 
 void flushTransIntFrameActionData(TransInfo *t);
 void flushTransGraphData(TransInfo *t);
@@ -64,6 +65,9 @@ void flushTransMasking(TransInfo *t);
 void flushTransPaintCurve(TransInfo *t);
 void restoreMirrorPoseBones(TransDataContainer *tc);
 void restoreBones(TransDataContainer *tc);
+
+/* transform_conversions_actiondata.c */
+void createTransActionData(bContext *C, TransInfo *t);
 
 /* transform_conversions_armature.c */
 struct bKinematicConstraint *has_targetless_ik(struct bPoseChannel *pchan);
