@@ -21,6 +21,8 @@
  * \ingroup edtransform
  */
 
+#include "DNA_mesh_types.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_compiler_compat.h"
@@ -32,6 +34,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
+#include "BKE_report.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
@@ -869,6 +872,67 @@ void createTransObject(bContext *C, TransInfo *t)
 
 #undef BASE_XFORM_INDIRECT
   }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Texture Space Transform Creation
+ *
+ * Instead of transforming the selection, move the 2D/3D cursor.
+ *
+ * \{ */
+
+void createTransTexspace(TransInfo *t)
+{
+  ViewLayer *view_layer = t->view_layer;
+  TransData *td;
+  Object *ob;
+  ID *id;
+  short *texflag;
+
+  ob = OBACT(view_layer);
+
+  if (ob == NULL) {  // Shouldn't logically happen, but still...
+    return;
+  }
+
+  id = ob->data;
+  if (id == NULL || !ELEM(GS(id->name), ID_ME, ID_CU, ID_MB)) {
+    BKE_report(t->reports, RPT_ERROR, "Unsupported object type for text-space transform");
+    return;
+  }
+
+  if (BKE_object_obdata_is_libdata(ob)) {
+    BKE_report(t->reports, RPT_ERROR, "Linked data can't text-space transform");
+    return;
+  }
+
+  {
+    BLI_assert(t->data_container_len == 1);
+    TransDataContainer *tc = t->data_container;
+    tc->data_len = 1;
+    td = tc->data = MEM_callocN(sizeof(TransData), "TransTexspace");
+    td->ext = tc->data_ext = MEM_callocN(sizeof(TransDataExtension), "TransTexspace");
+  }
+
+  td->flag = TD_SELECTED;
+  copy_v3_v3(td->center, ob->obmat[3]);
+  td->ob = ob;
+
+  copy_m3_m4(td->mtx, ob->obmat);
+  copy_m3_m4(td->axismtx, ob->obmat);
+  normalize_m3(td->axismtx);
+  pseudoinverse_m3_m3(td->smtx, td->mtx, PSEUDOINVERSE_EPSILON);
+
+  if (BKE_object_obdata_texspace_get(ob, &texflag, &td->loc, &td->ext->size, &td->ext->rot)) {
+    ob->dtx |= OB_TEXSPACE;
+    *texflag &= ~ME_AUTOSPACE;
+  }
+
+  copy_v3_v3(td->iloc, td->loc);
+  copy_v3_v3(td->ext->irot, td->ext->rot);
+  copy_v3_v3(td->ext->isize, td->ext->size);
 }
 
 /** \} */

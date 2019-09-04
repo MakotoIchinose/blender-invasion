@@ -110,6 +110,7 @@ void createTransNlaData(bContext *C, TransInfo *t);
 
 /* transform_object.c */
 void createTransObject(bContext *C, TransInfo *t);
+void createTransTexspace(TransInfo *t);
 void trans_obdata_in_obmode_update_all(struct TransInfo *t);
 void trans_obchild_in_obmode_update_all(struct TransInfo *t);
 
