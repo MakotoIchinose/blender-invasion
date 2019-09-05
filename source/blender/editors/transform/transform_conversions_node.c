@@ -31,6 +31,8 @@
 #include "BKE_node.h"
 #include "BKE_report.h"
 
+#include "ED_node.h"
+
 #include "UI_interface.h"
 
 #include "transform.h"
@@ -137,6 +139,55 @@ void createTransNodeData(bContext *UNUSED(C), TransInfo *t)
   for (node = snode->edittree->nodes.first; node; node = node->next) {
     if (node->flag & NODE_TRANSFORM) {
       NodeToTransData(td++, td2d++, node, dpi_fac);
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Node Transform Creation
+ *
+ * \{ */
+
+void flushTransNodes(TransInfo *t)
+{
+  const float dpi_fac = UI_DPI_FAC;
+
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    int a;
+    TransData *td;
+    TransData2D *td2d;
+
+    applyGridAbsolute(t);
+
+    /* flush to 2d vector from internally used 3d vector */
+    for (a = 0, td = tc->data, td2d = tc->data_2d; a < tc->data_len; a++, td++, td2d++) {
+      bNode *node = td->extra;
+      float locx, locy;
+
+      /* weirdo - but the node system is a mix of free 2d elements and dpi sensitive UI */
+#ifdef USE_NODE_CENTER
+      locx = (td2d->loc[0] - (BLI_rctf_size_x(&node->totr)) * +0.5f) / dpi_fac;
+      locy = (td2d->loc[1] - (BLI_rctf_size_y(&node->totr)) * -0.5f) / dpi_fac;
+#else
+      locx = td2d->loc[0] / dpi_fac;
+      locy = td2d->loc[1] / dpi_fac;
+#endif
+
+      /* account for parents (nested nodes) */
+      if (node->parent) {
+        nodeFromView(node->parent, locx, locy, &node->locx, &node->locy);
+      }
+      else {
+        node->locx = locx;
+        node->locy = locy;
+      }
+    }
+
+    /* handle intersection with noodles */
+    if (tc->data_len == 1) {
+      ED_node_link_intersect_test(t->sa, 1);
     }
   }
 }

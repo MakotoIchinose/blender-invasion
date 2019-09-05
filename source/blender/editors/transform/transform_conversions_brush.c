@@ -36,6 +36,11 @@
 #include "transform.h"
 #include "transform_conversions.h"
 
+typedef struct TransDataPaintCurve {
+  struct PaintCurvePoint *pcp; /* initial curve point */
+  char id;
+} TransDataPaintCurve;
+
 /* -------------------------------------------------------------------- */
 /** \name Paint Curve Transform Creation
  *
@@ -196,6 +201,28 @@ void createTransPaintCurveVerts(bContext *C, TransInfo *t)
         }
       }
     }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Paint Curve Transform Flush
+ *
+ * \{ */
+
+void flushTransPaintCurve(TransInfo *t)
+{
+  int i;
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  TransData2D *td2d = tc->data_2d;
+  TransDataPaintCurve *tdpc = tc->custom.type.data;
+
+  for (i = 0; i < tc->data_len; i++, tdpc++, td2d++) {
+    PaintCurvePoint *pcp = tdpc->pcp;
+    copy_v2_v2(pcp->bez.vec[tdpc->id], td2d->loc);
   }
 }
 

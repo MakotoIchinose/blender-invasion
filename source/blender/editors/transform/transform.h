@@ -918,25 +918,7 @@ bool gimbal_axis(struct Object *ob, float gmat[3][3]);
 void drawDial3d(const TransInfo *t);
 
 /*********************** TransData Creation and General Handling *********** */
-void createTransData(struct bContext *C, TransInfo *t);
-void sort_trans_data_dist(TransInfo *t);
-void special_aftertrans_update(struct bContext *C, TransInfo *t);
-int special_transform_moving(TransInfo *t);
-
 bool transdata_check_local_islands(TransInfo *t, short around);
-
-/* Auto-keyframe applied after transform, returns true if motion paths need to be updated. */
-void autokeyframe_object(struct bContext *C,
-                         struct Scene *scene,
-                         struct ViewLayer *view_layer,
-                         struct Object *ob,
-                         int tmode);
-void autokeyframe_pose(
-    struct bContext *C, struct Scene *scene, struct Object *ob, int tmode, short targetless_ik);
-
-/* Test if we need to update motion paths for a given object. */
-bool motionpath_need_update_object(struct Scene *scene, struct Object *ob);
-bool motionpath_need_update_pose(struct Scene *scene, struct Object *ob);
 
 /*********************** Constraints *****************************/
 

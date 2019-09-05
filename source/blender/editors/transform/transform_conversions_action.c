@@ -44,6 +44,12 @@
 #include "transform.h"
 #include "transform_conversions.h"
 
+/* helper struct for gp-frame transforms */
+typedef struct tGPFtransdata {
+  float val;  /* where transdata writes transform */
+  int *sdata; /* pointer to gpf->framenum */
+} tGPFtransdata;
+
 /* -------------------------------------------------------------------- */
 /** \name Action Transform Creation
  *
@@ -548,6 +554,25 @@ void createTransActionData(bContext *C, TransInfo *t)
 
   /* cleanup temp list */
   ANIM_animdata_freelist(&anim_data);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Action Transform Flush
+ *
+ * \{ */
+
+/* This function helps flush transdata written to tempdata into the gp-frames  */
+void flushTransIntFrameActionData(TransInfo *t)
+{
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+  tGPFtransdata *tfd = tc->custom.type.data;
+
+  /* flush data! */
+  for (int i = 0; i < tc->data_len; i++, tfd++) {
+    *(tfd->sdata) = round_fl_to_int(tfd->val);
+  }
 }
 
 /** \} */

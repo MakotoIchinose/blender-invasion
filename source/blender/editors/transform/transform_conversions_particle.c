@@ -188,3 +188,61 @@ void createTransParticleVerts(bContext *C, TransInfo *t)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Node Transform Creation
+ *
+ * \{ */
+
+void flushTransParticles(TransInfo *t)
+{
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    Scene *scene = t->scene;
+    ViewLayer *view_layer = t->view_layer;
+    Object *ob = OBACT(view_layer);
+    PTCacheEdit *edit = PE_get_current(scene, ob);
+    ParticleSystem *psys = edit->psys;
+    PTCacheEditPoint *point;
+    PTCacheEditKey *key;
+    TransData *td;
+    float mat[4][4], imat[4][4], co[3];
+    int i, k;
+    const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
+
+    /* we do transform in world space, so flush world space position
+     * back to particle local space (only for hair particles) */
+    td = tc->data;
+    for (i = 0, point = edit->points; i < edit->totpoint; i++, point++, td++) {
+      if (!(point->flag & PEP_TRANSFORM)) {
+        continue;
+      }
+
+      if (psys && !(psys->flag & PSYS_GLOBAL_HAIR)) {
+        ParticleSystemModifierData *psmd_eval = edit->psmd_eval;
+        psys_mat_hair_to_global(
+            ob, psmd_eval->mesh_final, psys->part->from, psys->particles + i, mat);
+        invert_m4_m4(imat, mat);
+
+        for (k = 0, key = point->keys; k < point->totkey; k++, key++) {
+          copy_v3_v3(co, key->world_co);
+          mul_m4_v3(imat, co);
+
+          /* optimization for proportional edit */
+          if (!is_prop_edit || !compare_v3v3(key->co, co, 0.0001f)) {
+            copy_v3_v3(key->co, co);
+            point->flag |= PEP_EDIT_RECALC;
+          }
+        }
+      }
+      else {
+        point->flag |= PEP_EDIT_RECALC;
+      }
+    }
+
+    PE_update_object(t->depsgraph, scene, OBACT(view_layer), 1);
+    BKE_particle_batch_cache_dirty_tag(psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
+    DEG_id_tag_update(&ob->id, ID_RECALC_PSYS_REDO);
+  }
+}
+
+/** \} */

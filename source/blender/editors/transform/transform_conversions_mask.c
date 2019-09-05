@@ -38,6 +38,19 @@
 #include "transform.h"
 #include "transform_conversions.h"
 
+typedef struct TransDataMasking {
+  bool is_handle;
+
+  float handle[2], orig_handle[2];
+  float vec[3][3];
+  struct MaskSplinePoint *point;
+  float parent_matrix[3][3];
+  float parent_inverse_matrix[3][3];
+  char orig_handle_type;
+
+  eMaskWhichHandle which_handle;
+} TransDataMasking;
+
 /* -------------------------------------------------------------------- */
 /** \name Masking Transform Creation
  *
@@ -375,6 +388,52 @@ void createTransMaskingData(bContext *C, TransInfo *t)
             }
           }
         }
+      }
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Masking Transform Flush
+ *
+ * \{ */
+
+void flushTransMasking(TransInfo *t)
+{
+  TransData2D *td;
+  TransDataMasking *tdm;
+  int a;
+  float asp[2], inv[2];
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  ED_mask_get_aspect(t->sa, t->ar, &asp[0], &asp[1]);
+  inv[0] = 1.0f / asp[0];
+  inv[1] = 1.0f / asp[1];
+
+  /* flush to 2d vector from internally used 3d vector */
+  for (a = 0, td = tc->data_2d, tdm = tc->custom.type.data; a < tc->data_len; a++, td++, tdm++) {
+    td->loc2d[0] = td->loc[0] * inv[0];
+    td->loc2d[1] = td->loc[1] * inv[1];
+    mul_m3_v2(tdm->parent_inverse_matrix, td->loc2d);
+
+    if (tdm->is_handle) {
+      BKE_mask_point_set_handle(tdm->point,
+                                tdm->which_handle,
+                                td->loc2d,
+                                (t->flag & T_ALT_TRANSFORM) != 0,
+                                tdm->orig_handle,
+                                tdm->vec);
+    }
+
+    if (t->state == TRANS_CANCEL) {
+      if (tdm->which_handle == MASK_WHICH_HANDLE_LEFT) {
+        tdm->point->bezt.h1 = tdm->orig_handle_type;
+      }
+      else if (tdm->which_handle == MASK_WHICH_HANDLE_RIGHT) {
+        tdm->point->bezt.h2 = tdm->orig_handle_type;
       }
     }
   }

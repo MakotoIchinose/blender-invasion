@@ -605,3 +605,167 @@ void createTransSeqData(bContext *C, TransInfo *t)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name UVs Transform Flush
+ *
+ * \{ */
+
+/* commented _only_ because the meta may have animation data which
+ * needs moving too [#28158] */
+
+#define SEQ_TX_NESTED_METAS
+
+BLI_INLINE void trans_update_seq(Scene *sce, Sequence *seq, int old_start, int sel_flag)
+{
+  if (seq->depth == 0) {
+    /* Calculate this strip and all nested strips.
+     * Children are ALWAYS transformed first so we don't need to do this in another loop.
+     */
+    BKE_sequence_calc(sce, seq);
+  }
+  else {
+    BKE_sequence_calc_disp(sce, seq);
+  }
+
+  if (sel_flag == SELECT) {
+    BKE_sequencer_offset_animdata(sce, seq, seq->start - old_start);
+  }
+}
+
+void flushTransSeq(TransInfo *t)
+{
+  /* Editing null check already done */
+  ListBase *seqbasep = BKE_sequencer_editing_get(t->scene, false)->seqbasep;
+
+  int a, new_frame;
+  TransData *td = NULL;
+  TransData2D *td2d = NULL;
+  TransDataSeq *tdsq = NULL;
+  Sequence *seq;
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  /* prevent updating the same seq twice
+   * if the transdata order is changed this will mess up
+   * but so will TransDataSeq */
+  Sequence *seq_prev = NULL;
+  int old_start_prev = 0, sel_flag_prev = 0;
+
+  /* flush to 2d vector from internally used 3d vector */
+  for (a = 0, td = tc->data, td2d = tc->data_2d; a < tc->data_len; a++, td++, td2d++) {
+    int old_start;
+    tdsq = (TransDataSeq *)td->extra;
+    seq = tdsq->seq;
+    old_start = seq->start;
+    new_frame = round_fl_to_int(td2d->loc[0]);
+
+    switch (tdsq->sel_flag) {
+      case SELECT:
+#ifdef SEQ_TX_NESTED_METAS
+        if ((seq->depth != 0 || BKE_sequence_tx_test(seq))) {
+          /* for meta's, their children move */
+          seq->start = new_frame - tdsq->start_offset;
+        }
+#else
+        if (seq->type != SEQ_TYPE_META && (seq->depth != 0 || seq_tx_test(seq))) {
+          /* for meta's, their children move */
+          seq->start = new_frame - tdsq->start_offset;
+        }
+#endif
+        if (seq->depth == 0) {
+          seq->machine = round_fl_to_int(td2d->loc[1]);
+          CLAMP(seq->machine, 1, MAXSEQ);
+        }
+        break;
+      case SEQ_LEFTSEL: /* no vertical transform  */
+        BKE_sequence_tx_set_final_left(seq, new_frame);
+        BKE_sequence_tx_handle_xlimits(seq, tdsq->flag & SEQ_LEFTSEL, tdsq->flag & SEQ_RIGHTSEL);
+
+        /* todo - move this into aftertrans update? - old seq tx needed it anyway */
+        BKE_sequence_single_fix(seq);
+        break;
+      case SEQ_RIGHTSEL: /* no vertical transform  */
+        BKE_sequence_tx_set_final_right(seq, new_frame);
+        BKE_sequence_tx_handle_xlimits(seq, tdsq->flag & SEQ_LEFTSEL, tdsq->flag & SEQ_RIGHTSEL);
+
+        /* todo - move this into aftertrans update? - old seq tx needed it anyway */
+        BKE_sequence_single_fix(seq);
+        break;
+    }
+
+    /* Update *previous* seq! Else, we would update a seq after its first transform,
+     * and if it has more than one (like e.g. SEQ_LEFTSEL and SEQ_RIGHTSEL),
+     * the others are not updated! See T38469.
+     */
+    if (seq != seq_prev) {
+      if (seq_prev) {
+        trans_update_seq(t->scene, seq_prev, old_start_prev, sel_flag_prev);
+      }
+
+      seq_prev = seq;
+      old_start_prev = old_start;
+      sel_flag_prev = tdsq->sel_flag;
+    }
+    else {
+      /* We want to accumulate *all* sel_flags for this seq! */
+      sel_flag_prev |= tdsq->sel_flag;
+    }
+  }
+
+  /* Don't forget to update the last seq! */
+  if (seq_prev) {
+    trans_update_seq(t->scene, seq_prev, old_start_prev, sel_flag_prev);
+  }
+
+  /* originally TFM_TIME_EXTEND, transform changes */
+  if (ELEM(t->mode, TFM_SEQ_SLIDE, TFM_TIME_TRANSLATE)) {
+    /* Special annoying case here, need to calc metas with TFM_TIME_EXTEND only */
+
+    /* calc all meta's then effects [#27953] */
+    for (seq = seqbasep->first; seq; seq = seq->next) {
+      if (seq->type == SEQ_TYPE_META && seq->flag & SELECT) {
+        BKE_sequence_calc(t->scene, seq);
+      }
+    }
+    for (seq = seqbasep->first; seq; seq = seq->next) {
+      if (seq->seq1 || seq->seq2 || seq->seq3) {
+        BKE_sequence_calc(t->scene, seq);
+      }
+    }
+
+    /* update effects inside meta's */
+    for (a = 0, seq_prev = NULL, td = tc->data, td2d = tc->data_2d; a < tc->data_len;
+         a++, td++, td2d++, seq_prev = seq) {
+      tdsq = (TransDataSeq *)td->extra;
+      seq = tdsq->seq;
+      if ((seq != seq_prev) && (seq->depth != 0)) {
+        if (seq->seq1 || seq->seq2 || seq->seq3) {
+          BKE_sequence_calc(t->scene, seq);
+        }
+      }
+    }
+  }
+
+  /* need to do the overlap check in a new loop otherwise adjacent strips
+   * will not be updated and we'll get false positives */
+  seq_prev = NULL;
+  for (a = 0, td = tc->data, td2d = tc->data_2d; a < tc->data_len; a++, td++, td2d++) {
+
+    tdsq = (TransDataSeq *)td->extra;
+    seq = tdsq->seq;
+
+    if (seq != seq_prev) {
+      if (seq->depth == 0) {
+        /* test overlap, displays red outline */
+        seq->flag &= ~SEQ_OVERLAP;
+        if (BKE_sequence_test_overlap(seqbasep, seq)) {
+          seq->flag |= SEQ_OVERLAP;
+        }
+      }
+    }
+    seq_prev = seq;
+  }
+}
+
+/** \} */

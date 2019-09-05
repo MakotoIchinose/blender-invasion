@@ -37,10 +37,35 @@
 #include "transform.h"
 #include "transform_conversions.h"
 
+typedef struct TransDataTracking {
+  int mode, flag;
+
+  /* tracks transformation from main window */
+  int area;
+  const float *relative, *loc;
+  float soffset[2], srelative[2];
+  float offset[2];
+
+  float (*smarkers)[2];
+  int markersnr;
+  MovieTrackingMarker *markers;
+
+  /* marker transformation from curves editor */
+  float *prev_pos, scale;
+  short coord;
+
+  MovieTrackingTrack *track;
+  MovieTrackingPlaneTrack *plane_track;
+} TransDataTracking;
+
+enum transDataTracking_Mode {
+  transDataTracking_ModeTracks = 0,
+  transDataTracking_ModeCurves = 1,
+  transDataTracking_ModePlaneTracks = 2,
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Clip Editor Motion Tracking Transform Creation
- *
- * Instead of transforming the selection, move the 2D/3D cursor.
  *
  * \{ */
 
@@ -577,6 +602,90 @@ void cancelTransTracking(TransInfo *t)
     }
 
     i++;
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Clip Editor Motion Tracking Transform Creation
+ *
+ * \{ */
+
+void flushTransTracking(TransInfo *t)
+{
+  TransData *td;
+  TransData2D *td2d;
+  TransDataTracking *tdt;
+  int a;
+
+  if (t->state == TRANS_CANCEL) {
+    cancelTransTracking(t);
+  }
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  /* flush to 2d vector from internally used 3d vector */
+  for (a = 0, td = tc->data, td2d = tc->data_2d, tdt = tc->custom.type.data; a < tc->data_len;
+       a++, td2d++, td++, tdt++) {
+    if (tdt->mode == transDataTracking_ModeTracks) {
+      float loc2d[2];
+
+      if (t->mode == TFM_ROTATION && tdt->area == TRACK_AREA_SEARCH) {
+        continue;
+      }
+
+      loc2d[0] = td2d->loc[0] / t->aspect[0];
+      loc2d[1] = td2d->loc[1] / t->aspect[1];
+
+      if (t->flag & T_ALT_TRANSFORM) {
+        if (t->mode == TFM_RESIZE) {
+          if (tdt->area != TRACK_AREA_PAT) {
+            continue;
+          }
+        }
+        else if (t->mode == TFM_TRANSLATION) {
+          if (tdt->area == TRACK_AREA_POINT && tdt->relative) {
+            float d[2], d2[2];
+
+            if (!tdt->smarkers) {
+              tdt->smarkers = MEM_callocN(sizeof(*tdt->smarkers) * tdt->markersnr,
+                                          "flushTransTracking markers");
+              for (a = 0; a < tdt->markersnr; a++) {
+                copy_v2_v2(tdt->smarkers[a], tdt->markers[a].pos);
+              }
+            }
+
+            sub_v2_v2v2(d, loc2d, tdt->soffset);
+            sub_v2_v2(d, tdt->srelative);
+
+            sub_v2_v2v2(d2, loc2d, tdt->srelative);
+
+            for (a = 0; a < tdt->markersnr; a++) {
+              add_v2_v2v2(tdt->markers[a].pos, tdt->smarkers[a], d2);
+            }
+
+            negate_v2_v2(td2d->loc2d, d);
+          }
+        }
+      }
+
+      if (tdt->area != TRACK_AREA_POINT || tdt->relative == NULL) {
+        td2d->loc2d[0] = loc2d[0];
+        td2d->loc2d[1] = loc2d[1];
+
+        if (tdt->relative) {
+          sub_v2_v2(td2d->loc2d, tdt->relative);
+        }
+      }
+    }
+    else if (tdt->mode == transDataTracking_ModeCurves) {
+      td2d->loc2d[tdt->coord] = tdt->prev_pos[tdt->coord] + td2d->loc[1] * tdt->scale;
+    }
+    else if (tdt->mode == transDataTracking_ModePlaneTracks) {
+      td2d->loc2d[0] = td2d->loc[0] / t->aspect[0];
+      td2d->loc2d[1] = td2d->loc[1] / t->aspect[1];
+    }
   }
 }
 

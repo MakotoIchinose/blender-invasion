@@ -34,11 +34,17 @@
 #include "BKE_report.h"
 
 #include "ED_anim_api.h"
+#include "ED_markers.h"
 
 #include "UI_view2d.h"
 
 #include "transform.h"
 #include "transform_conversions.h"
+
+typedef struct TransDataGraph {
+  float unit_scale;
+  float offset;
+} TransDataGraph;
 
 /* -------------------------------------------------------------------- */
 /** \name Graph Editor Transform Creation
@@ -583,6 +589,112 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
 
   /* cleanup temp list */
   ANIM_animdata_freelist(&anim_data);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Graph Editor Transform Flush
+ *
+ * \{ */
+
+/* this function is called on recalcData to apply the transforms applied
+ * to the transdata on to the actual keyframe data
+ */
+void flushTransGraphData(TransInfo *t)
+{
+  SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
+  TransData *td;
+  TransData2D *td2d;
+  TransDataGraph *tdg;
+  Scene *scene = t->scene;
+  double secf = FPS;
+  int a;
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  /* flush to 2d vector from internally used 3d vector */
+  for (a = 0, td = tc->data, td2d = tc->data_2d, tdg = tc->custom.type.data; a < tc->data_len;
+       a++, td++, td2d++, tdg++) {
+    /* pointers to relevant AnimData blocks are stored in the td->extra pointers */
+    AnimData *adt = (AnimData *)td->extra;
+
+    float inv_unit_scale = 1.0f / tdg->unit_scale;
+
+    /* handle snapping for time values
+     * - we should still be in NLA-mapping timespace
+     * - only apply to keyframes (but never to handles)
+     * - don't do this when canceling, or else these changes won't go away
+     */
+    if ((t->state != TRANS_CANCEL) && (td->flag & TD_NOTIMESNAP) == 0) {
+      switch (sipo->autosnap) {
+        case SACTSNAP_FRAME: /* snap to nearest frame */
+          td2d->loc[0] = floor((double)td2d->loc[0] + 0.5);
+          break;
+
+        case SACTSNAP_SECOND: /* snap to nearest second */
+          td2d->loc[0] = floor(((double)td2d->loc[0] / secf) + 0.5) * secf;
+          break;
+
+        case SACTSNAP_MARKER: /* snap to nearest marker */
+          td2d->loc[0] = (float)ED_markers_find_nearest_marker_time(&t->scene->markers,
+                                                                    td2d->loc[0]);
+          break;
+      }
+    }
+
+    /* we need to unapply the nla-mapping from the time in some situations */
+    if (adt) {
+      td2d->loc2d[0] = BKE_nla_tweakedit_remap(adt, td2d->loc[0], NLATIME_CONVERT_UNMAP);
+    }
+    else {
+      td2d->loc2d[0] = td2d->loc[0];
+    }
+
+    /** Time-stepping auto-snapping modes don't get applied for Graph Editor transforms,
+     * as these use the generic transform modes which don't account for this sort of thing.
+     * These ones aren't affected by NLA mapping, so we do this after the conversion...
+     *
+     * \note We also have to apply to td->loc,
+     * as that's what the handle-adjustment step below looks to,
+     * otherwise we get "swimming handles".
+     *
+     * \note We don't do this when canceling transforms, or else these changes don't go away.
+     */
+    if ((t->state != TRANS_CANCEL) && (td->flag & TD_NOTIMESNAP) == 0 &&
+        ELEM(sipo->autosnap, SACTSNAP_STEP, SACTSNAP_TSTEP)) {
+      switch (sipo->autosnap) {
+        case SACTSNAP_STEP: /* frame step */
+          td2d->loc2d[0] = floor((double)td2d->loc[0] + 0.5);
+          td->loc[0] = floor((double)td->loc[0] + 0.5);
+          break;
+
+        case SACTSNAP_TSTEP: /* second step */
+          /* XXX: the handle behavior in this case is still not quite right... */
+          td2d->loc[0] = floor(((double)td2d->loc[0] / secf) + 0.5) * secf;
+          td->loc[0] = floor(((double)td->loc[0] / secf) + 0.5) * secf;
+          break;
+      }
+    }
+
+    /* if int-values only, truncate to integers */
+    if (td->flag & TD_INTVALUES) {
+      td2d->loc2d[1] = floorf(td2d->loc[1] * inv_unit_scale - tdg->offset + 0.5f);
+    }
+    else {
+      td2d->loc2d[1] = td2d->loc[1] * inv_unit_scale - tdg->offset;
+    }
+
+    if ((td->flag & TD_MOVEHANDLE1) && td2d->h1) {
+      td2d->h1[0] = td2d->ih1[0] + td->loc[0] - td->iloc[0];
+      td2d->h1[1] = td2d->ih1[1] + (td->loc[1] - td->iloc[1]) * inv_unit_scale;
+    }
+
+    if ((td->flag & TD_MOVEHANDLE2) && td2d->h2) {
+      td2d->h2[0] = td2d->ih2[0] + td->loc[0] - td->iloc[0];
+      td2d->h2[1] = td2d->ih2[1] + (td->loc[1] - td->iloc[1]) * inv_unit_scale;
+    }
+  }
 }
 
 /** \} */
