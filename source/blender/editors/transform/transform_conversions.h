@@ -73,6 +73,33 @@ typedef struct TransDataGraph {
   float offset;
 } TransDataGraph;
 
+typedef struct TransDataTracking {
+  int mode, flag;
+
+  /* tracks transformation from main window */
+  int area;
+  const float *relative, *loc;
+  float soffset[2], srelative[2];
+  float offset[2];
+
+  float (*smarkers)[2];
+  int markersnr;
+  MovieTrackingMarker *markers;
+
+  /* marker transformation from curves editor */
+  float *prev_pos, scale;
+  short coord;
+
+  MovieTrackingTrack *track;
+  MovieTrackingPlaneTrack *plane_track;
+} TransDataTracking;
+
+enum transDataTracking_Mode {
+  transDataTracking_ModeTracks = 0,
+  transDataTracking_ModeCurves = 1,
+  transDataTracking_ModePlaneTracks = 2,
+};
+
 void transform_around_single_fallback(TransInfo *t);
 bool constraints_list_needinv(TransInfo *t, ListBase *list);
 void calc_distanceCurveVerts(TransData *head, TransData *tail);
@@ -119,11 +146,15 @@ void createTransNlaData(bContext *C, TransInfo *t);
 /* transform_conversions_node.c */
 void createTransNodeData(bContext *UNUSED(C), TransInfo *t);
 
+/* transform_conversions_tracking.c */
+void createTransTrackingData(bContext *C, TransInfo *t);
+void cancelTransTracking(TransInfo *t);
+
 /* transform_object.c */
 void createTransObject(bContext *C, TransInfo *t);
 void createTransTexspace(TransInfo *t);
 
-/* Used by `transform_generics.c` (Should be in `transform_conversion.c`) */
+/* Used by `transform_generics.c` (Should be in `transform_conversion.c`?) */
 void trans_obdata_in_obmode_update_all(struct TransInfo *t);
 void trans_obchild_in_obmode_update_all(struct TransInfo *t);
 
