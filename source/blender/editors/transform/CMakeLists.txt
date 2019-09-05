@@ -43,10 +43,12 @@ set(SRC
   transform_conversions.c
   transform_conversions_action.c
   transform_conversions_armature.c
+  transform_conversions_brush.c
   transform_conversions_cursor.c
   transform_conversions_curve.c
   transform_conversions_graph.c
   transform_conversions_lattice.c
+  transform_conversions_mask.c
   transform_conversions_mball.c
   transform_conversions_mesh.c
   transform_conversions_nla.c

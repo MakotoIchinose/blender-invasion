@@ -100,6 +100,24 @@ enum transDataTracking_Mode {
   transDataTracking_ModePlaneTracks = 2,
 };
 
+typedef struct TransDataMasking {
+  bool is_handle;
+
+  float handle[2], orig_handle[2];
+  float vec[3][3];
+  MaskSplinePoint *point;
+  float parent_matrix[3][3];
+  float parent_inverse_matrix[3][3];
+  char orig_handle_type;
+
+  eMaskWhichHandle which_handle;
+} TransDataMasking;
+
+typedef struct TransDataPaintCurve {
+  PaintCurvePoint *pcp; /* initial curve point */
+  char id;
+} TransDataPaintCurve;
+
 void transform_around_single_fallback(TransInfo *t);
 bool constraints_list_needinv(TransInfo *t, ListBase *list);
 void calc_distanceCurveVerts(TransData *head, TransData *tail);
@@ -118,6 +136,9 @@ void restoreBones(TransDataContainer *tc);
 
 void createTransPose(TransInfo *t);
 void createTransArmatureVerts(TransInfo *t);
+
+/* transform_conversions_brush.c */
+void createTransPaintCurveVerts(bContext *C, TransInfo *t);
 
 /* transform_conversions_cursor.c */
 void createTransCursor_image(TransInfo *t);
@@ -150,7 +171,10 @@ void createTransNodeData(bContext *UNUSED(C), TransInfo *t);
 void createTransTrackingData(bContext *C, TransInfo *t);
 void cancelTransTracking(TransInfo *t);
 
-/* transform_object.c */
+/* transform_conversions_mask.c */
+void createTransMaskingData(bContext *C, TransInfo *t);
+
+/* transform_conversions_object.c */
 void createTransObject(bContext *C, TransInfo *t);
 void createTransTexspace(TransInfo *t);
 
