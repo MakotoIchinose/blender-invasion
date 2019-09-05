@@ -91,8 +91,8 @@ typedef struct FileSelection {
   int last;
 } FileSelection;
 
-struct rcti;
 struct View2D;
+struct rcti;
 
 struct FileSelectParams *ED_fileselect_get_params(struct SpaceFile *sfile);
 
