@@ -105,7 +105,7 @@ typedef struct TransDataMasking {
 
   float handle[2], orig_handle[2];
   float vec[3][3];
-  MaskSplinePoint *point;
+  struct MaskSplinePoint *point;
   float parent_matrix[3][3];
   float parent_inverse_matrix[3][3];
   char orig_handle_type;
@@ -149,6 +149,9 @@ void createTransCurveVerts(TransInfo *t);
 
 /* transform_conversions_graph.c */
 void createTransGraphEditData(bContext *C, TransInfo *t);
+
+/* transform_conversions_gpencil.c */
+void createTransGPencil(bContext *C, TransInfo *t);
 
 /* transform_conversions_lattice.c */
 void createTransLatticeVerts(TransInfo *t);

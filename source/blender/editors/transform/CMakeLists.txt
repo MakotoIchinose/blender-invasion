@@ -47,6 +47,7 @@ set(SRC
   transform_conversions_cursor.c
   transform_conversions_curve.c
   transform_conversions_graph.c
+  transform_conversions_gpencil.c
   transform_conversions_lattice.c
   transform_conversions_mask.c
   transform_conversions_mball.c
