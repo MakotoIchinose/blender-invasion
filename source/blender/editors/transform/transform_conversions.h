@@ -114,7 +114,7 @@ typedef struct TransDataMasking {
 } TransDataMasking;
 
 typedef struct TransDataPaintCurve {
-  PaintCurvePoint *pcp; /* initial curve point */
+  struct PaintCurvePoint *pcp; /* initial curve point */
   char id;
 } TransDataPaintCurve;
 
