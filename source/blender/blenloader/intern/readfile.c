@@ -5272,6 +5272,19 @@ static int initialize_meshisland(FractureModifierData* fmd, MeshIsland** mii, MV
 
 	mi->physics_mesh = BKE_shard_create_dm(s, true);
 
+	if (fmd->fracture_mode == MOD_FRACTURE_EXTERNAL) {
+		MVert *pv = mi->physics_mesh->getVertArray(mi->physics_mesh);
+		MVert *v;
+		int totvert = mi->physics_mesh->getNumVerts(mi->physics_mesh);
+		float iquat[4];
+		invert_qt_qt(iquat, mi->rot);
+		for (v = pv, j = 0; j < totvert; j++, v++)
+		{
+			//customrotation into physicsmesh ?
+			mul_qt_v3(iquat, v->co);
+		}
+	}
+
 	for (mv = s->mvert, j = 0; j < s->totvert; j++, mv++)
 	{
 		add_v3_v3(mv->co, s->centroid);
