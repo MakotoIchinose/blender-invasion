@@ -179,10 +179,10 @@ typedef struct MeshPartSet {
  * If the element indices are in range for the IMesh, then functions
  * access those, else they access the MeshAdd.
  */
- typedef struct IMeshPlus {
-   IMesh *im;
-   MeshAdd *meshadd;
- } IMeshPlus;
+typedef struct IMeshPlus {
+  IMesh *im;
+  MeshAdd *meshadd;
+} IMeshPlus;
 
 /* Result of intersecting two MeshParts.
  * This only need identify the thngs that probably intersect,
@@ -213,9 +213,9 @@ enum { TEST_NONE = -1, TEST_B = 0, TEST_A = 1, TEST_ALL = 2 };
 
 /* Decoration to shut up gnu 'unused function' warning. */
 #ifdef __GNUC__
-# define ATTU __attribute__((unused))
+#  define ATTU __attribute__((unused))
 #else
-# define ATTU
+#  define ATTU
 #endif
 
 #define BOOLDEBUG
@@ -232,6 +232,8 @@ ATTU static void dump_partset(const MeshPartSet *pset);
 ATTU static void dump_partpartintersect(const PartPartIntersect *ppi, const char *label);
 ATTU static void dump_meshadd(const MeshAdd *ma, const char *label);
 ATTU static void dump_intintmap(const IntIntMap *map, const char *label, const char *prefix);
+ATTU static void dump_cdt_input(const CDT_input *cdt, const char *label);
+ATTU static void dump_cdt_result(const CDT_result *cdt, const char *label, const char *prefix);
 #endif
 
 /* Forward declarations of some static functions. */
@@ -298,9 +300,9 @@ ATTU static void init_coordset(IndexedCoordSet *coordset, int index_offset)
 }
 
 ATTU static int add_to_coordset(BoolState *bs,
-                           IndexedCoordSet *coordset,
-                           const float p[3],
-                           bool do_dup_check)
+                                IndexedCoordSet *coordset,
+                                const float p[3],
+                                bool do_dup_check)
 {
   LinkNode *ln;
   float *q;
@@ -445,7 +447,7 @@ static inline int intintmap_iter_key(IntIntMapIterator *iter)
   return iter->keyvalue->first;
 }
 
-static inline int *intintmap_iter_valuep(IntIntMapIterator *iter)
+ATTU static inline int *intintmap_iter_valuep(IntIntMapIterator *iter)
 {
   return &iter->keyvalue->second;
 }
@@ -458,7 +460,7 @@ static inline int intintmap_iter_value(IntIntMapIterator *iter)
 /** Miscellaneous utility functions. */
 #pragma mark Miscellaneous utility functions
 
-ATTU static int min_int_in_array(int *array, int len)
+static int min_int_in_array(int *array, int len)
 {
   int min = INT_MAX;
   int i;
@@ -800,8 +802,8 @@ static int isect_line_seg_epsilon_v3_db(const double line_v1[3],
     }
     else {
       madd_v3_v3v3db_db(isect, seg_v1, b_dir, fac_b);
-      *r_lambda = fac_a / len_v3_db(a_dir);
-      *r_mu = fac_b / sqrt(blen_squared);
+      *r_lambda = fac_a;
+      *r_mu = fac_b;
       return 1;
     }
   }
@@ -962,7 +964,7 @@ static int imesh_find_edge(const IMesh *im, int v1, int v2)
       BMEdge *bme = BM_edge_at_index(bm, e);
       int ev1 = BM_elem_index_get(bme->v1);
       int ev2 = BM_elem_index_get(bme->v2);
-      if ((ev1 == v1 && ev2 == v2) || (ev1== v2 && ev2 == v1)) {
+      if ((ev1 == v1 && ev2 == v2) || (ev1 == v2 && ev2 == v1)) {
         return e;
       }
     }
@@ -1195,11 +1197,21 @@ static void init_meshadd(BoolState *bs, MeshAdd *meshadd)
   meshadd->findex_start = imesh_totface(im);
 }
 
-static int meshadd_add_vert(BoolState *bs, MeshAdd *meshadd, const float co[3], int example)
+static int meshadd_add_vert(
+    BoolState *bs, MeshAdd *meshadd, const float co[3], int example, bool checkdup)
 {
   NewVert *newv;
   MemArena *arena = bs->mem_arena;
+  LinkNode *ln;
+  int i;
 
+  if (checkdup) {
+    for (ln = meshadd->verts.list, i = meshadd->vindex_start; ln; ln = ln->next, i++) {
+      if (compare_v3v3((float *)ln->link, co, bs->eps)) {
+        return i;
+      }
+    }
+  }
   newv = BLI_memarena_alloc(arena, sizeof(*newv));
   copy_v3_v3(newv->co, co);
   newv->example = example;
@@ -1207,18 +1219,30 @@ static int meshadd_add_vert(BoolState *bs, MeshAdd *meshadd, const float co[3], 
   return meshadd->vindex_start + BLI_linklist_count(meshadd->verts.list) - 1;
 }
 
-static int meshadd_add_vert_db(BoolState *bs, MeshAdd *meshadd, const double co[3], int example)
+static int meshadd_add_vert_db(
+    BoolState *bs, MeshAdd *meshadd, const double co[3], int example, bool checkdup)
 {
   float fco[3];
   copy_v3fl_v3db(fco, co);
-  return meshadd_add_vert(bs, meshadd, fco, example);
+  return meshadd_add_vert(bs, meshadd, fco, example, checkdup);
 }
 
-static int meshadd_add_edge(BoolState *bs, MeshAdd *meshadd, int v1, int v2, int example)
+static int meshadd_add_edge(
+    BoolState *bs, MeshAdd *meshadd, int v1, int v2, int example, bool checkdup)
 {
   NewEdge *newe;
   MemArena *arena = bs->mem_arena;
+  LinkNode *ln;
+  int i;
 
+  if (checkdup) {
+    for (ln = meshadd->edges.list, i = meshadd->eindex_start; ln; ln = ln->next, i++) {
+      int *pair = (int *)ln->link;
+      if ((pair[0] == v1 && pair[1] == v2) || (pair[0] == v2 && pair[1] == v1)) {
+        return i;
+      }
+    }
+  }
   newe = BLI_memarena_alloc(arena, sizeof(*newe));
   newe->v1 = v1;
   newe->v2 = v2;
@@ -1227,14 +1251,15 @@ static int meshadd_add_edge(BoolState *bs, MeshAdd *meshadd, int v1, int v2, int
   return meshadd->eindex_start + BLI_linklist_count(meshadd->edges.list) - 1;
 }
 
-ATTU static int meshadd_add_face(
-    BoolState *bs, MeshAdd *meshadd, const IntPair *vert_edge, int len, int example)
+/* This assumes that vert_edge is an arena-allocated array that will persist. */
+static int meshadd_add_face(
+    BoolState *bs, MeshAdd *meshadd, IntPair *vert_edge, int len, int example)
 {
   NewFace *newf;
   MemArena *arena = bs->mem_arena;
 
   newf = BLI_memarena_alloc(arena, sizeof(*newf));
-  memcpy(newf->vert_edge_pairs, vert_edge, len * sizeof(IntPair));
+  newf->vert_edge_pairs = vert_edge;
   newf->len = len;
   newf->example = example;
   BLI_linklist_append_arena(&meshadd->faces, newf, arena);
@@ -1309,6 +1334,20 @@ static void meshadd_get_edge_verts(const MeshAdd *meshadd, int e, int *r_v1, int
   }
 }
 
+static int find_edge_by_verts_in_meshadd(const MeshAdd *meshadd, int v1, int v2)
+{
+  LinkNode *ln;
+  NewEdge *ne;
+  int i;
+
+  for (ln = meshadd->edges.list, i = 0; ln; ln = ln->next, i++) {
+    ne = (NewEdge *)ln->link;
+    if ((ne->v1 == v1 && ne->v2 == v2) || (ne->v1 == v2 && ne->v2 == v1)) {
+      return meshadd->eindex_start + i;
+    }
+  }
+  return -1;
+}
 
 /** MeshPartSet functions. */
 #pragma mark MeshPartSet functions
@@ -1559,58 +1598,6 @@ static int part_is_one_im_face(BoolState *bs, const MeshPart *part)
   return 0;
 }
 
-#if 0
-static IntersectOutput *isect_out_from_cdt(BoolState *bs,
-                                           const CDT_result *cout,
-                                           const IntIntMap *in_to_im_vmap,
-                                           const double rot_inv[3][3],
-                                           const double z_for_inverse)
-{
-  IntersectOutput *isect_out;
-  CDT_result *cout_copy;
-  int out_v, in_v, im_v, start, new_v;
-  IntIntMap *vmap;
-  double p[3], q[3];
-  float pf[3];
-
-  isect_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*isect_out));
-  init_isect_out(bs, isect_out);
-
-  /* Need to copy cdt result to arena because caller will soon call BLI_delaunay_2d_cdt_free(cout).
-   */
-  cout_copy = copy_cdt_result(bs, cout);
-  isect_add_cdt_result(bs, isect_out, cout_copy);
-
-  vmap = isect_add_vertmap(bs, isect_out);
-
-  for (out_v = 0; out_v < cout->verts_len; out_v++) {
-    if (cout->verts_orig_len_table[out_v] > 0) {
-      /* out_v maps to an original vertex. */
-      start = cout->verts_orig_start_table[out_v];
-      /* Choose min index in orig list, to make for a stable algorithm. */
-      in_v = min_int_in_array(&cout->verts_orig[start], cout->verts_orig_len_table[out_v]);
-      if (!find_in_intintmap(in_to_im_vmap, in_v, &im_v)) {
-        printf("whoops, didn't find %d in in_to_im_vmap\n", in_v);
-        im_v = in_v;
-      }
-      add_to_intintmap(bs, vmap, out_v, im_v);
-    }
-    else {
-      /* out_v needs a new vertex. Need to convert coords from 2d to 3d. */
-      copy_v2db_v2fl(q, cout->vert_coords[out_v]);
-      q[2] = z_for_inverse;
-      mul_v3_m3v3_db(p, rot_inv, q);
-      copy_v3fl_v3db(pf, p);
-      new_v = add_to_coordset(bs, &isect_out->new_verts, pf, false);
-      BLI_assert(new_v >= imesh_totvert(&bs->im));
-      add_to_intintmap(bs, vmap, out_v, new_v);
-    }
-  }
-
-  return isect_out;
-}
-#endif
-
 /** IMeshPlus functions. */
 #pragma mark IMeshPlus functions
 
@@ -1629,7 +1616,8 @@ static int imeshplus_facelen(const IMeshPlus *imp, int f)
 static int imeshplus_face_vert(const IMeshPlus *imp, int f, int index)
 {
   IMesh *im = imp->im;
-  return (f < imesh_totface(im)) ? imesh_face_vert(im, f, index) : meshadd_face_vert(imp->meshadd, f, index);
+  return (f < imesh_totface(im)) ? imesh_face_vert(im, f, index) :
+                                   meshadd_face_vert(imp->meshadd, f, index);
 }
 
 ATTU static void imeshplus_get_vert_co(const IMeshPlus *imp, int v, float *r_coords)
@@ -1730,15 +1718,22 @@ static void find_coplanar_parts(BoolState *bs,
  * replace the geometry in part. May also add new elements in meshadd.
  * If no output is needed, return NULL.
  */
-static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *part, LinkNodePair *ppis, MeshAdd *meshadd)
+static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs,
+                                                       MeshPart *part,
+                                                       LinkNodePair *ppis,
+                                                       MeshAdd *meshadd)
 {
   CDT_input in;
   CDT_result *out;
   LinkNode *ln, *lnv, *lne, *lnf;
-  PartPartIntersect *ppi;
+  PartPartIntersect *ppi, *ppi_out;
+  MemArena *arena = bs->mem_arena;
   IMeshPlus imp;
-  int i, j, part_nf, part_ne, part_nv, face_len, v, e, f, v1, v2;
+  int i, j, part_nf, part_ne, part_nv, tot_ne, face_len, v, e, f, v1, v2;
   int nfaceverts, v_index, e_index, f_index, faces_index;
+  int in_v, out_v, out_v2, start, in_e, out_e, in_f, out_f, e_eg, f_eg;
+  int *imp_v, *imp_e;
+  IntPair *new_face_data;
   IMesh *im = &bs->im;
   IndexedIntSet verts_needed;
   IndexedIntSet edges_needed;
@@ -1748,7 +1743,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
   IntIntMap in_to_fmap;
   double mat_2d[3][3];
   double mat_2d_inv[3][3];
-  double xyz[3], save_z, p[3];
+  double xyz[3], save_z, p[3], q[3];
   bool ok;
 
   dump_part(part, "self_intersect_part");
@@ -1774,6 +1769,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
   init_imeshplus(&imp, &bs->im, meshadd);
 
   /* nfaceverts will accumulate the total lengths of all faces added. */
+  printf("gathering needed edges and verts\n");
   nfaceverts = 0;
   for (i = 0; i < part_nf; i++) {
     f = part_face(part, i);
@@ -1785,9 +1781,11 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
       BLI_assert(v != -1);
       v_index = add_int_to_intset(bs, &verts_needed, v);
       add_to_intintmap(bs, &in_to_vmap, v_index, v);
+      printf("A. in_to_vmap[%d] = %d\n", v_index, v);
     }
     f_index = add_int_to_intset(bs, &faces_needed, f);
     add_to_intintmap(bs, &in_to_fmap, f_index, f);
+    printf("B. in_to_fmap[%d] = %d\n", f_index, f);
   }
   for (i = 0; i < part_ne; i++) {
     e = part_edge(part, i);
@@ -1796,16 +1794,20 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
     BLI_assert(v1 != -1 && v2 != -1);
     v_index = add_int_to_intset(bs, &verts_needed, v1);
     add_to_intintmap(bs, &in_to_vmap, v_index, v1);
+    printf("C. in_to_vmap[%d] = %d\n", v_index, v1);
     v_index = add_int_to_intset(bs, &verts_needed, v2);
     add_to_intintmap(bs, &in_to_vmap, v_index, v2);
-	e_index = add_int_to_intset(bs, &edges_needed, e);
-    add_to_intintmap(bs, &in_to_emap, e, e_index);
+    printf("D. in_to_vmap[%d] = %d\n", v_index, v2);
+    e_index = add_int_to_intset(bs, &edges_needed, e);
+    add_to_intintmap(bs, &in_to_emap, e_index, e);
+    printf("E. in_to_emap[%d] = %d\n", e_index, e);
   }
-  for (i = 0; i < part_nf; i++) {
-    f = part_face(part, i);
-    BLI_assert(f != -1);
-    f_index = add_int_to_intset(bs, &faces_needed, f);
-    add_to_intintmap(bs, &in_to_fmap, f, f_index);
+  for (i = 0; i < part_nv; i++) {
+    v = part_vert(part, i);
+    BLI_assert(v != -1);
+    v_index = add_int_to_intset(bs, &verts_needed, v);
+    add_to_intintmap(bs, &in_to_vmap, v_index, v);
+    printf("F. in_to_vmap[%d] = %d\n", v_index, v);
   }
   for (ln = ppis->list; ln; ln = ln->next) {
     ppi = (PartPartIntersect *)ln->link;
@@ -1813,6 +1815,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
       v = POINTER_AS_INT(lnv->link);
       v_index = add_int_to_intset(bs, &verts_needed, v);
       add_to_intintmap(bs, &in_to_vmap, v_index, v);
+      printf("G. in_to_vmap[%d] = %d\n", v_index, v);
     }
     for (lne = ppi->edges.list; lne; lne = lne->next) {
       e = POINTER_AS_INT(lne->link);
@@ -1820,18 +1823,36 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
       BLI_assert(v1 != -1 && v2 != -1);
       v_index = add_int_to_intset(bs, &verts_needed, v1);
       add_to_intintmap(bs, &in_to_vmap, v_index, v1);
+      printf("H. in_to_vmap[%d] = %d\n", v_index, v1);
       v_index = add_int_to_intset(bs, &verts_needed, v2);
       add_to_intintmap(bs, &in_to_vmap, v_index, v2);
-	  e_index = add_int_to_intset(bs, &edges_needed, e);
-      add_to_intintmap(bs, &in_to_emap, e, e_index);
+      printf("I. in_to_vmap[%d] = %d\n", v_index, v2);
+      e_index = add_int_to_intset(bs, &edges_needed, e);
+      add_to_intintmap(bs, &in_to_emap, e_index, e);
+      printf("J. in_to_emap[%d] = %d\n", e_index, e);
     }
     for (lnf = ppi->faces.list; lnf; lnf = lnf->next) {
       f = POINTER_AS_INT(lne->link);
       face_len = imeshplus_facelen(&imp, f);
       nfaceverts += face_len;
       f_index = add_int_to_intset(bs, &faces_needed, f);
-      add_to_intintmap(bs, &in_to_fmap, f, f_index);
+      add_to_intintmap(bs, &in_to_fmap, f_index, f);
+      printf("K. in_to_fmap[%d] = %d\n", f_index, f);
     }
+  }
+  /* Edges implicit in faces will come back as orig edges, so handle those. */
+  tot_ne = edges_needed.size;
+  for (i = 0; i < part_nf; i++) {
+    f = part_face(part, i);
+    face_len = imesh_facelen(im, f);
+    for (j = 0; j < face_len; j++) {
+      v1 = imesh_face_vert(im, f, j);
+      v2 = imesh_face_vert(im, f, (j + 1) % face_len);
+      e = imesh_find_edge(im, v1, v2);
+      BLI_assert(e != -1);
+      add_to_intintmap(bs, &in_to_emap, j + tot_ne, e);
+      printf("L. in_to_emap[%d] = %d\n", j + tot_ne, e);
+      }
   }
 
   in.verts_len = verts_needed.size;
@@ -1862,6 +1883,7 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
     imeshplus_get_vert_co_db(&imp, v, p);
     mul_v3_m3v3_db(xyz, mat_2d, p);
     copy_v2fl_v2db(in.vert_coords[i], xyz);
+    printf("in vert %d (needed vert %d) was (%g,%g,%g), rotated (%g,%g,%g)\n", i, v, F3(p), F3(xyz));
     if (i == 0) {
       /* If part is truly coplanar, all z components of rotated v should be the same.
        * Save it so that can rotate back to correct place when done.
@@ -1895,17 +1917,123 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
     in.edges[i][1] = intset_get_index_for_value(&verts_needed, v2);
   }
 
+  /* TODO: fill in loose vert data of CDT input. */
+
+  dump_cdt_input(&in, "input");
   out = BLI_delaunay_2d_cdt_calc(&in, CDT_CONSTRAINTS_VALID_BMESH);
+  dump_cdt_result(out, "output", "");
 
-  printf("cdt output, %d faces\n", out->faces_len);
+  /* Make the PartPartIntersect that represents the output of the CDT. */
+  ppi_out = BLI_memarena_alloc(bs->mem_arena, sizeof(*ppi_out));
+  init_partpartintersect(ppi_out);
 
-#if 0
-  isect_out = isect_out_from_cdt(bs, out, &in_to_im_vmap, mat_2d_inv, save_z);
-#endif
-  UNUSED_VARS(mat_2d_inv, save_z);
+  /* imp_v will map an output vert index to an IMesh + MeshAdd space vertex. */
+  imp_v = BLI_array_alloca(imp_v, (size_t)out->verts_len);
+  for (out_v = 0; out_v < out->verts_len; out_v++) {
+    printf("process out_v=%d\n", out_v);
+    if (out->verts_orig_len_table[out_v] > 0) {
+      /* out_v maps to a vertex we fed in from verts_needed. */
+      start = out->verts_orig_start_table[out_v];
+      /* Choose min index in orig list, to make for a stable algorithm. */
+      in_v = min_int_in_array(&out->verts_orig[start], out->verts_orig_len_table[out_v]);
+      printf("in_v=%d\n", in_v);
+      if (!find_in_intintmap(&in_to_vmap, in_v, &v)) {
+        printf("shouldn't happen, %d not in in_to_vmap\n", in_v);
+        BLI_assert(false);
+      }
+    }
+    else {
+      /* Need a new imp vertex for out_v. */
+      copy_v2db_v2fl(q, out->vert_coords[out_v]);
+      q[2] = save_z;
+      mul_v3_m3v3_db(p, mat_2d_inv, q);
+      /* p should not already be in the IMesh because such verts should have been added to the
+       * input. However, it is possible that the vert might already be in meshadd.  */
+      v = meshadd_add_vert_db(bs, meshadd, p, -1, true);
+      printf("added new v=%d to meshadd\n", v);
+    }
+    imp_v[out_v] = v;
+    add_vert_to_partpartintersect(bs, ppi_out, v);
+    printf("imp_v[%d] = %d\n", out_v, v);
+  }
 
+  /* Similar to above code, but for edges. */
+  imp_e = BLI_array_alloca(imp_e, (size_t)out->edges_len);
+  for (out_e = 0; out_e < out->edges_len; out_e++) {
+    printf("process out_e=%d\n", out_e);
+    e_eg = -1;
+    if (out->edges_orig_len_table[out_e] > 0) {
+      start = out->edges_orig_start_table[out_e];
+      in_e = min_int_in_array(&out->edges_orig[start], out->edges_orig_len_table[out_e]);
+      printf("in_e=%d\n", in_e);
+      if (!find_in_intintmap(&in_to_emap, in_e, &e_eg)) {
+        printf("shouldn't happen, %d not in in_to_emap\n", in_e);
+        BLI_assert(false);
+      }
+    }
+    /* If e_eg != -1 now, out_e may be only a part of e_eg; if so, make a new e but use e_eg as example.
+     */
+    v1 = imp_v[out->edges[out_e][0]];
+    v2 = imp_v[out->edges[out_e][1]];
+    if (e != -1) {
+      int ev1, ev2;
+      imeshplus_get_edge_verts(&imp, e, &ev1, &ev2);
+      if (!((v1 == ev1 && v2 == ev2) || (v1 == ev2 && v2 == ev1))) {
+        e = meshadd_add_edge(bs, meshadd, v1, v2, e_eg, true);
+        printf("added new edge %d=(%d,%d) to meshadd\n", e, v1, v2);
+      }
+    }
+    else {
+      e = meshadd_add_edge(bs, meshadd, v1, v2, e_eg, true);
+      printf("added new edge' %d=(%d,%d) to meshadd\n", e, v1, v2);
+    }
+    imp_e[out_e] = e;
+    printf("imp_e[%d]=%d\n", out_e, e);
+    add_edge_to_partpartintersect(bs, ppi_out, e);
+  }
+
+  /* Now for the faces. */
+  for (out_f = 0; out_f < out->faces_len; out_f++) {
+    printf("process out_f = %d\n", out_f);
+    in_f = -1;
+    f_eg = -1;
+    if (out->faces_orig_len_table[out_f] > 0) {
+      start = out->faces_orig_start_table[out_f];
+      in_f = min_int_in_array(&out->faces_orig[start], out->faces_orig_len_table[out_f]);
+      printf("in_f = %d\n", in_f);
+      if (!find_in_intintmap(&in_to_fmap, in_f, &f_eg)) {
+        printf("shouldn't happen, %d not in in_to_fmap\n", in_f);
+        BLI_assert(false);
+      }
+    }
+    /* Even if f is same as an existing face, we make a new one, to simplify "what to delete" bookkeeping later. */
+    face_len = out->faces_len_table[out_f];
+    start = out->faces_start_table[out_f];
+    new_face_data = (IntPair *)BLI_memarena_alloc(arena, (size_t)face_len * sizeof(new_face_data[0]));
+    for (i = 0; i < face_len; i++) {
+      out_v = out->faces[start + i];
+      v = imp_v[out_v];
+      new_face_data[i].first = v;
+      out_v2 = out->faces[start + ((i + 1) % face_len)];
+      v2 = imp_v[out_v2];
+      /* Edge (v, v2) should be an edge already added to ppi_out. Also e is either in im or meshadd. */
+      e = find_edge_by_verts_in_meshadd(meshadd, v, v2);
+      if (e == -1) {
+        e = imesh_find_edge(&bs->im, v, v2);
+      }
+      if (e == -1) {
+        printf("shouldn't happen: couldn't find e=(%d,%d)\n", v, v2);
+        BLI_assert(false);
+      }
+      new_face_data[i].second = e;
+    }
+    f = meshadd_add_face(bs, meshadd, new_face_data, face_len, f_eg);
+    printf("added new face %d\n", f);
+    add_face_to_partpartintersect(bs, ppi_out, f);
+  }
+  
   BLI_delaunay_2d_cdt_free(out);
-  return NULL;
+  return ppi_out;
 }
 
 /* Add any geometry resulting from intersectiong part1 with part2
@@ -1914,9 +2042,9 @@ static PartPartIntersect *self_intersect_part_and_ppis(BoolState *bs, MeshPart *
  * the bounding box of part1 will be added to result_part.
  */
 ATTU static void add_part_intersections_to_part(BoolState *bs,
-                                           MeshPart *result_part,
-                                           const MeshPart *part1,
-                                           const MeshPart *part2)
+                                                MeshPart *result_part,
+                                                const MeshPart *part1,
+                                                const MeshPart *part2)
 {
   int i, nface, f;
 
@@ -2176,7 +2304,7 @@ static void find_face_line_intersects(BoolState *bs,
   intervals[0].list = NULL;
   intervals[0].last_node = NULL;
   printf("intersecting face %d with line\n", f);
-  printf("line: (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f)\n", F3(line_co1), F3(line_co2));
+  printf("line: (%.5f,%.5f,%.5f) (%.5f,%.5f,%.5f)\n", F3(line_co1), F3(line_co2));
   flen = imesh_facelen(im, f);
   finfo = BLI_array_alloca(finfo, (size_t)flen);
   for (i = 0; i < flen; i++) {
@@ -2200,7 +2328,7 @@ static void find_face_line_intersects(BoolState *bs,
       fi->isect_ok = true;
       fi->e_on = (is == 2);
     }
-    printf(" (%d,%d) co=(%.3f,%.3f,%.3f) v=%d v_on=%d e_on=%d isect_ok=%d\n",
+    printf(" (%d,%d) co=(%.5f,%.5f,%.5f) v=%d v_on=%d e_on=%d isect_ok=%d\n",
            i,
            (i + 1) % flen,
            F3(fi->co),
@@ -2209,7 +2337,7 @@ static void find_face_line_intersects(BoolState *bs,
            fi->e_on,
            fi->isect_ok);
     if (fi->isect_ok) {
-      printf("  isect=(%.3f,%.3f,%.3f) lambda=%f\n", F3(fi->isect), fi->dist_along_line);
+      printf("  isect=(%.5f,%.5f,%.5f) lambda=%f\n", F3(fi->isect), fi->dist_along_line);
     }
   }
   /* For now just handle case of convex faces, which should be one of the following
@@ -2370,7 +2498,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
               v = imesh_find_co_db(im, co_close1, eps);
               if (v == -1) {
                 /* A new point. Need to add to meshadd. */
-                v = meshadd_add_vert_db(bs, meshadd, co, -1);
+                v = meshadd_add_vert_db(bs, meshadd, co, -1, true);
               }
               add_vert_to_partpartintersect(bs, ppi, v);
             }
@@ -2438,7 +2566,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
         else {
           madd_v3_v3v3db_db(co, line_co1, line_dir, facstart);
           madd_v3_v3v3db_db(co2, line_co1, line_dir, facend);
-          printf("  interval result: (%f,%f) = (%.3f,%.3f,%.3f)(%.3f,%.3f,%.3f)\n",
+          printf("  interval result: (%f,%f) = (%.5f,%.5f,%.5f)(%.5f,%.5f,%.5f)\n",
                  facstart,
                  facend,
                  F3(co),
@@ -2448,7 +2576,7 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
             v = imesh_find_co_db(im, co, eps);
             if (v == -1) {
               /* A new point. Need to add to meshadd. */
-              v = meshadd_add_vert_db(bs, meshadd, co, -1);
+              v = meshadd_add_vert_db(bs, meshadd, co, -1, true);
             }
             add_vert_to_partpartintersect(bs, ppi, v);
           }
@@ -2457,16 +2585,16 @@ static PartPartIntersect *non_coplanar_part_part_intersect(
             v1 = imesh_find_co_db(im, co, eps);
             if (v1 == -1) {
               /* A new point. Need to add to meshadd. */
-              v1 = meshadd_add_vert_db(bs, meshadd, co, -1);
+              v1 = meshadd_add_vert_db(bs, meshadd, co, -1, true);
             }
             v2 = imesh_find_co_db(im, co2, eps);
             if (v2 == -1) {
-              v2 = meshadd_add_vert_db(bs, meshadd, co2, -1);
+              v2 = meshadd_add_vert_db(bs, meshadd, co2, -1, true);
             }
             e = imesh_find_edge(im, v1, v2);
             if (e == -1) {
               /* TODO: if overlaps an existing edge, use as example. */
-              e = meshadd_add_edge(bs, meshadd, v1, v2, -1);
+              e = meshadd_add_edge(bs, meshadd, v1, v2, -1, true);
             }
             add_edge_to_partpartintersect(bs, ppi, e);
           }
@@ -2551,7 +2679,8 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
       isect = self_intersect_part_and_ppis(bs, part_a, a_isects, &meshadd);
       if (isect) {
         dump_partpartintersect(isect, "after self intersect");
-	  }
+        dump_meshadd(&meshadd, "after self intersect");
+      }
     }
     if (!same_partsets) {
       for (b_index = 0; b_index < tot_part_b; b_index++) {
@@ -2559,7 +2688,8 @@ static void intersect_partset_pair(BoolState *bs, MeshPartSet *a_partset, MeshPa
         isect = self_intersect_part_and_ppis(bs, part_b, b_isects, &meshadd);
         if (isect) {
           dump_partpartintersect(isect, "after self intersect");
-		}
+          dump_meshadd(&meshadd, "after self intersect");
+        }
       }
     }
   }
@@ -2692,7 +2822,7 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
   NewVert *nv;
   NewEdge *ne;
   NewFace *nf;
-  int i;
+  int i, j;
 
   printf("MESHADD %s\n", label);
   if (ma->verts.list) {
@@ -2714,11 +2844,15 @@ ATTU static void dump_meshadd(const MeshAdd *ma, const char *label)
     }
   }
   if (ma->faces.list) {
-    printf("edges:\n");
+    printf("faces:\n");
     i = ma->findex_start;
     for (ln = ma->faces.list; ln; ln = ln->next) {
       nf = (NewFace *)ln->link;
-      printf("  %d: face of length %d, example %d", i, nf->len, nf->example);
+      printf("  %d: face of length %d, example %d\n     ", i, nf->len, nf->example);
+      for (j = 0; j < nf->len; j++) {
+        printf("(v=%d,e=%d)", nf->vert_edge_pairs[j].first, nf->vert_edge_pairs[j].second);
+      }
+      printf("\n");
       i++;
     }
   }
@@ -2735,9 +2869,9 @@ ATTU static void dump_intintmap(const IntIntMap *map, const char *label, const c
 }
 
 ATTU static void dump_intlist_from_tables(const int *table,
-                                     const int *start_table,
-                                     const int *len_table,
-                                     int index)
+                                          const int *start_table,
+                                          const int *len_table,
+                                          int index)
 {
   int start, len, i;
 
@@ -2748,6 +2882,27 @@ ATTU static void dump_intlist_from_tables(const int *table,
     if (i < len - 1) {
       printf(" ");
     }
+  }
+}
+
+ATTU static void dump_cdt_input(const CDT_input *cdt, const char *label)
+{
+  int i;
+
+  printf("cdt input %s\n", label);
+  printf("  verts\n");
+  for (i = 0; i < cdt->verts_len; i++) {
+    printf("  %d: (%.3f,%.3f)\n", i, F2(cdt->vert_coords[i]));
+  }
+  printf("  edges\n");
+  for (i = 0; i < cdt->edges_len; i++) {
+    printf("  %d: (%d,%d)\n", i, cdt->edges[i][0], cdt->edges[i][1]);
+  }
+  printf("  faces\n");
+  for (i = 0; i < cdt->faces_len; i++) {
+    printf("  %d: ", i);
+    dump_intlist_from_tables(cdt->faces, cdt->faces_start_table, cdt->faces_len_table, i);
+    printf("\n");
   }
 }
 
@@ -2765,14 +2920,14 @@ ATTU static void dump_cdt_result(const CDT_result *cdt, const char *label, const
   }
   printf("%s  edges\n", prefix);
   for (i = 0; i < cdt->edges_len; i++) {
-    printf("%s (%d,%d) orig=[", prefix, cdt->edges[i][0], cdt->edges[i][1]);
+    printf("%s  %d: (%d,%d) orig=[", prefix, i, cdt->edges[i][0], cdt->edges[i][1]);
     dump_intlist_from_tables(
         cdt->edges_orig, cdt->edges_orig_start_table, cdt->edges_orig_len_table, i);
     printf("]\n");
   }
   printf("%s  faces\n", prefix);
   for (i = 0; i < cdt->faces_len; i++) {
-    printf("%s ", prefix);
+    printf("%s  %d: ", prefix, i);
     dump_intlist_from_tables(cdt->faces, cdt->faces_start_table, cdt->faces_len_table, i);
     printf(" orig=[");
     dump_intlist_from_tables(
