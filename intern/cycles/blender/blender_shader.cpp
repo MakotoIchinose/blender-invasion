@@ -778,7 +778,7 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexNoise)) {
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = new NoiseTextureNode();
-    noise->dimensions = b_noise_node.dimensions();
+    noise->dimensions = b_noise_node.noise_dimensions();
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(&noise->tex_mapping, b_texture_mapping);
     node = noise;
@@ -831,7 +831,7 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexWhiteNoise)) {
     BL::ShaderNodeTexWhiteNoise b_tex_white_noise_node(b_node);
     WhiteNoiseTextureNode *white_noise_node = new WhiteNoiseTextureNode();
-    white_noise_node->dimensions = b_tex_white_noise_node.dimensions();
+    white_noise_node->dimensions = b_tex_white_noise_node.noise_dimensions();
     node = white_noise_node;
   }
   else if (b_node.is_a(&RNA_ShaderNodeNormalMap)) {
@@ -1347,6 +1347,14 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
       texture_environment->filename = new_viewport_parameters.studiolight_path;
       graph->add(texture_environment);
 
+      MixNode *mix_intensity = new MixNode();
+      mix_intensity->type = NODE_MIX_MUL;
+      mix_intensity->fac = 1.0f;
+      mix_intensity->color2 = make_float3(new_viewport_parameters.studiolight_intensity,
+                                          new_viewport_parameters.studiolight_intensity,
+                                          new_viewport_parameters.studiolight_intensity);
+      graph->add(mix_intensity);
+
       TextureCoordinateNode *texture_coordinate = new TextureCoordinateNode();
       graph->add(texture_coordinate);
 
@@ -1359,10 +1367,10 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
 
       graph->connect(texture_coordinate->output("Generated"),
                      texture_environment->input("Vector"));
+      graph->connect(texture_environment->output("Color"), mix_intensity->input("Color1"));
       graph->connect(light_path->output("Is Camera Ray"), mix_scene_with_background->input("Fac"));
-      graph->connect(texture_environment->output("Color"),
-                     mix_scene_with_background->input("Color1"));
-      graph->connect(texture_environment->output("Color"),
+      graph->connect(mix_intensity->output("Color"), mix_scene_with_background->input("Color1"));
+      graph->connect(mix_intensity->output("Color"),
                      mix_background_with_environment->input("Color2"));
       graph->connect(mix_background_with_environment->output("Color"),
                      mix_scene_with_background->input("Color2"));

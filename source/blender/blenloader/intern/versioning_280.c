@@ -55,6 +55,7 @@
 #include "DNA_curve_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_text_types.h"
+#include "DNA_world_types.h"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
@@ -723,6 +724,17 @@ static void do_version_constraints_copy_scale_power(ListBase *lb)
     if (con->type == CONSTRAINT_TYPE_SIZELIKE) {
       bSizeLikeConstraint *data = (bSizeLikeConstraint *)con->data;
       data->power = 1.0f;
+    }
+  }
+}
+
+static void do_version_constraints_copy_rotation_mix_mode(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_ROTLIKE) {
+      bRotateLikeConstraint *data = (bRotateLikeConstraint *)con->data;
+      data->mix_mode = (data->flag & ROTLIKE_OFFSET) ? ROTLIKE_MIX_OFFSET : ROTLIKE_MIX_REPLACE;
+      data->flag &= ~ROTLIKE_OFFSET;
     }
   }
 }
@@ -1442,7 +1454,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           ToolSettings *ts = scene->toolsettings;
           /* sculpt brushes */
           GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; ++i) {
+          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
             gp_brush = &gset->brush[i];
             gp_brush->flag |= GP_SCULPT_FLAG_ENABLE_CURSOR;
             copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
@@ -3756,7 +3768,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   {
     /* Versioning code until next subversion bump goes here. */
-
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -3795,6 +3806,32 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "Bone", "char", "inherit_scale_mode")) {
       LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
         do_version_bones_inherit_scale(&arm->bonebase);
+      }
+    }
+
+    /* Convert the Offset flag to the mix mode enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bRotateLikeConstraint", "char", "mix_mode")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        do_version_constraints_copy_rotation_mix_mode(&ob->constraints);
+        if (ob->pose) {
+          LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+            do_version_constraints_copy_rotation_mix_mode(&pchan->constraints);
+          }
+        }
+      }
+    }
+
+    /* Added studiolight intensity */
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "studiolight_intensity")) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->shading.studiolight_intensity = 1.0f;
+            }
+          }
+        }
       }
     }
   }

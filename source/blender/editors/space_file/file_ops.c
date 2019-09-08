@@ -239,7 +239,7 @@ static bool file_is_any_selected(struct FileList *files)
   int i;
 
   /* Is any file selected ? */
-  for (i = 0; i < numfiles; ++i) {
+  for (i = 0; i < numfiles; i++) {
     if (filelist_entry_select_index_get(files, i, CHECK_ALL)) {
       return true;
     }
@@ -1744,7 +1744,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator *UNUSED(op), const w
 
   /* check if we are editing a name */
   int edit_idx = -1;
-  for (i = 0; i < numfiles; ++i) {
+  for (i = 0; i < numfiles; i++) {
     if (filelist_entry_select_index_get(sfile->files, i, CHECK_ALL) &
         (FILE_SEL_EDITING | FILE_SEL_HIGHLIGHTED)) {
       edit_idx = i;
@@ -1976,6 +1976,7 @@ int file_directory_new_exec(bContext *C, wmOperator *op)
   wmWindowManager *wm = CTX_wm_manager(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   ScrArea *sa = CTX_wm_area(C);
+  const bool do_diropen = RNA_boolean_get(op->ptr, "open");
 
   if (!sfile->params) {
     BKE_report(op->reports, RPT_WARNING, "No parent directory given");
@@ -2024,9 +2025,11 @@ int file_directory_new_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* now remember file to jump into editing */
-  BLI_strncpy(sfile->params->renamefile, name, FILE_MAXFILE);
-  sfile->params->rename_flag = FILE_PARAMS_RENAME_PENDING;
+  /* If we don't enter the directory directly, remember file to jump into editing. */
+  if (do_diropen == false) {
+    BLI_strncpy(sfile->params->renamefile, name, FILE_MAXFILE);
+    sfile->params->rename_flag = FILE_PARAMS_RENAME_PENDING;
+  }
 
   /* set timer to smoothly view newly generated file */
   /* max 30 frs/sec */
@@ -2039,7 +2042,7 @@ int file_directory_new_exec(bContext *C, wmOperator *op)
   /* reload dir to make sure we're seeing what's in the directory */
   ED_fileselect_clear(wm, sa, sfile);
 
-  if (RNA_boolean_get(op->ptr, "open")) {
+  if (do_diropen) {
     BLI_strncpy(sfile->params->dir, path, sizeof(sfile->params->dir));
     ED_file_change_dir(C);
   }
@@ -2059,6 +2062,7 @@ void FILE_OT_directory_new(struct wmOperatorType *ot)
   ot->idname = "FILE_OT_directory_new";
 
   /* api callbacks */
+  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = file_directory_new_exec;
   ot->poll = ED_operator_file_active; /* <- important, handler is on window level */
 
@@ -2067,6 +2071,7 @@ void FILE_OT_directory_new(struct wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna, "open", false, "Open", "Open new directory");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /* TODO This should go to BLI_path_utils. */
@@ -2198,6 +2203,8 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
         WM_operator_properties_create_ptr(&ptr, ot);
         RNA_string_set(&ptr, "directory", sfile->params->dir);
         RNA_boolean_set(&ptr, "open", true);
+        /* Enable confirmation prompt, else it's too easy to accidentaly create new directories. */
+        RNA_boolean_set(&ptr, "confirm", true);
 
         if (lastdir) {
           BLI_strncpy(sfile->params->dir, lastdir, sizeof(sfile->params->dir));

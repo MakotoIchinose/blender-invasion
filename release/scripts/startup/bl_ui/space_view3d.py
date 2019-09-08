@@ -5131,6 +5131,7 @@ class VIEW3D_PT_shading_lighting(Panel):
                 split = layout.split(factor=0.9)
                 col = split.column()
                 col.prop(shading, "studiolight_rotate_z", text="Rotation")
+                col.prop(shading, "studiolight_intensity")
                 col.prop(shading, "studiolight_background_alpha")
                 col = split.column()  # to align properly with above
 
@@ -5153,6 +5154,7 @@ class VIEW3D_PT_shading_lighting(Panel):
                 split = layout.split(factor=0.9)
                 col = split.column()
                 col.prop(shading, "studiolight_rotate_z", text="Rotation")
+                col.prop(shading, "studiolight_intensity")
                 col.prop(shading, "studiolight_background_alpha")
                 col = split.column()  # to align properly with above
 
@@ -6075,7 +6077,7 @@ class VIEW3D_PT_gpencil_guide(Panel):
         col.active = settings.use_guide
         col.prop(settings, "type", expand=True)
 
-        if settings.type == 'PARALLEL':
+        if settings.type in {'ISO', 'PARALLEL', 'RADIAL'}:
             col.prop(settings, "angle")
             row = col.row(align=True)
 
@@ -6087,7 +6089,7 @@ class VIEW3D_PT_gpencil_guide(Panel):
             else:
                 col.prop(settings, "spacing")
 
-        if settings.type in {'CIRCULAR', 'RADIAL'}:
+        if settings.type in {'CIRCULAR', 'RADIAL'} or settings.use_snapping:
             col.label(text="Reference Point")
             row = col.row(align=True)
             row.prop(settings, "reference_point", expand=True)
@@ -6135,9 +6137,10 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
 
         row = col.row()
         row.prop(overlay, "use_gpencil_paper", text="")
-        sub = row.row()
+        sub = row.row(align=True)
         sub.active = overlay.use_gpencil_paper
-        sub.prop(overlay, "gpencil_paper_opacity", text="Fade 3D Objects", slider=True)
+        sub.prop(overlay, "gpencil_paper_opacity", text="Fade Objects", slider=True)
+        sub.prop(overlay, "use_gpencil_fade_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
         if context.object.mode == 'PAINT_GPENCIL':
             row = col.row()
