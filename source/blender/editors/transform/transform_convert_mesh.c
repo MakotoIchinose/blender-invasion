@@ -437,19 +437,19 @@ static TransDataMirror *editmesh_mirror_data_calc(BMEditMesh *em,
 
   int quadrant[3];
   {
-    float mirror_sum[3] = {0};
+    float select_sum[3] = {0};
     BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
       if (BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
         continue;
       }
       if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
-        add_v3_v3(mirror_sum, eve->co);
+        add_v3_v3(select_sum, eve->co);
       }
     }
 
     for (i = 0; i < 3; i++) {
       if (mirror_axis[i]) {
-        quadrant[i] = mirror_sum[i] >= 0.0f ? 1 : -1;
+        quadrant[i] = select_sum[i] >= 0.0f ? 1 : -1;
       }
       else {
         quadrant[i] = 0;
@@ -507,11 +507,11 @@ static TransDataMirror *editmesh_mirror_data_calc(BMEditMesh *em,
     }
   }
 
-  /* Count the mirror elements. */
+  /* Count mirror elements. */
   uint mirror_elem_len = 0;
   BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, i) {
     if (BM_elem_flag_test(eve, BM_ELEM_HIDDEN | BM_ELEM_TAG)) {
-      /* These are not mirror elements. */
+      /* Not a mirror element. */
       BM_elem_index_set(eve, -1);
       continue;
     }
