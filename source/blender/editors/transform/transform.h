@@ -311,10 +311,6 @@ typedef struct SlideOrigData {
   /** Array size of 'layer_math_map_num'
    * maps TransDataVertSlideVert.cd_group index to absolute CustomData layer index */
   int *layer_math_map;
-
-  /** Array of slide vert data especially for mirror verts. */
-  TransDataGenericSlideVert *sv_mirror;
-  int totsv_mirror;
 } SlideOrigData;
 
 typedef struct EdgeSlideData {
@@ -449,6 +445,15 @@ typedef struct TransData {
   short protectflag;
 } TransData;
 
+typedef struct TransDataMirror {
+  /** location of mirrored reference data. */
+  float *loc_ref;
+  /** Location of the data to transform. */
+  float *loc;
+  short sign[3];
+  void *extra;
+} TransDataMirror;
+
 typedef struct MouseInput {
   void (*apply)(struct TransInfo *t, struct MouseInput *mi, const double mval[2], float output[3]);
   void (*post)(struct TransInfo *t, float values[3]);
@@ -549,10 +554,18 @@ typedef struct TransDataContainer {
    * Mirror option
    */
   struct {
-    /* Currently for mesh X mirror only. */
-    int axis_flag;
-    /** Set to -1.0f or 1.0 when use_mirror is set. */
-    float sign;
+    union {
+      struct {
+        /* For easy access. */
+        uint axis_x : 1;
+        uint axis_y : 1;
+        uint axis_z : 1;
+      };
+      short axis_flag;
+    };
+    /** Mirror data array. */
+    TransDataMirror *data;
+    int data_len;
   } mirror;
 
   TransCustomDataContainer custom;
@@ -860,16 +873,18 @@ enum {
   /** For Graph Editor - curves that can only have int-values
    * need their keyframes tagged with this. */
   TD_INTVALUES = 1 << 15,
-  /** For editmode mirror, clamp to x = 0 */
-  TD_MIRROR_EDGE = 1 << 16,
+  /** For editmode mirror, clamp axis to 0 */
+  TD_MIRROR_EDGE_X = 1 << 16,
+  TD_MIRROR_EDGE_Y = 1 << 17,
+  TD_MIRROR_EDGE_Z = 1 << 18,
   /** For fcurve handles, move them along with their keyframes */
-  TD_MOVEHANDLE1 = 1 << 17,
-  TD_MOVEHANDLE2 = 1 << 18,
+  TD_MOVEHANDLE1 = 1 << 19,
+  TD_MOVEHANDLE2 = 1 << 20,
   /** Exceptional case with pose bone rotating when a parent bone has 'Local Location'
    * option enabled and rotating also transforms it. */
-  TD_PBONE_LOCAL_MTX_P = 1 << 19,
+  TD_PBONE_LOCAL_MTX_P = 1 << 21,
   /** Same as above but for a child bone. */
-  TD_PBONE_LOCAL_MTX_C = 1 << 20,
+  TD_PBONE_LOCAL_MTX_C = 1 << 22,
 };
 
 /** #TransSnap.status */

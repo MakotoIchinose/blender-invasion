@@ -6503,37 +6503,6 @@ static void slide_origdata_create_data(TransDataContainer *tc,
     for (i = 0, sv = sv_array; i < v_num; i++, sv = POINTER_OFFSET(sv, v_stride)) {
       slide_origdata_create_data_vert(bm, sod, sv);
     }
-
-    if (tc->mirror.axis_flag) {
-      TransData *td = tc->data;
-      TransDataGenericSlideVert *sv_mirror;
-
-      sod->sv_mirror = MEM_callocN(sizeof(*sv_mirror) * tc->data_len, __func__);
-      sod->totsv_mirror = tc->data_len;
-
-      sv_mirror = sod->sv_mirror;
-
-      for (i = 0; i < tc->data_len; i++, td++) {
-        BMVert *eve = td->extra;
-        /* Check the vertex has been used since both sides
-         * of the mirror may be selected & sliding. */
-        if (eve && !BLI_ghash_haskey(sod->origverts, eve)) {
-          sv_mirror->v = eve;
-          copy_v3_v3(sv_mirror->co_orig_3d, eve->co);
-
-          slide_origdata_create_data_vert(bm, sod, sv_mirror);
-          sv_mirror++;
-        }
-        else {
-          sod->totsv_mirror--;
-        }
-      }
-
-      if (sod->totsv_mirror == 0) {
-        MEM_freeN(sod->sv_mirror);
-        sod->sv_mirror = NULL;
-      }
-    }
   }
 }
 
@@ -6693,15 +6662,6 @@ static void slide_origdata_interp_data(Object *obedit,
         slide_origdata_interp_data_vert(sod, bm, is_final, sv);
       }
     }
-
-    if (sod->sv_mirror) {
-      sv = sod->sv_mirror;
-      for (i = 0; i < v_num; i++, sv++) {
-        if (sv->cd_loop_groups || has_mdisps) {
-          slide_origdata_interp_data_vert(sod, bm, is_final, sv);
-        }
-      }
-    }
   }
 }
 
@@ -6729,8 +6689,6 @@ static void slide_origdata_free_date(SlideOrigData *sod)
     }
 
     MEM_SAFE_FREE(sod->layer_math_map);
-
-    MEM_SAFE_FREE(sod->sv_mirror);
   }
 }
 
