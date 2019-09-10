@@ -245,9 +245,9 @@ static void transform_apply_to_mirror(TransInfo *t)
 
       TransDataMirror *tdm;
       for (i = 0, tdm = tc->mirror.data; i < tc->mirror.data_len; i++, tdm++) {
-        tdm->loc[0] = tdm->loc_ref[0] * tdm->sign[0];
-        tdm->loc[1] = tdm->loc_ref[1] * tdm->sign[1];
-        tdm->loc[2] = tdm->loc_ref[2] * tdm->sign[2];
+        tdm->loc_dst[0] = tdm->loc_src[0] * tdm->sign_x;
+        tdm->loc_dst[1] = tdm->loc_src[1] * tdm->sign_y;
+        tdm->loc_dst[2] = tdm->loc_src[2] * tdm->sign_z;
       }
     }
   }

@@ -447,11 +447,14 @@ typedef struct TransData {
 
 typedef struct TransDataMirror {
   /** location of mirrored reference data. */
-  float *loc_ref;
+  float *loc_src;
   /** Location of the data to transform. */
-  float *loc;
-  short sign[3];
+  float *loc_dst;
   void *extra;
+  /* `sign` can be -2, -1, 0 or 1. */
+  int sign_x : 2;
+  int sign_y : 2;
+  int sign_z : 2;
 } TransDataMirror;
 
 typedef struct MouseInput {

@@ -531,13 +531,13 @@ static TransDataMirror *editmesh_mirror_data_calc(BMEditMesh *em,
     BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, i) {
       int elem_index = BM_elem_index_get(eve);
       if (elem_index != -1) {
-        BMVert *v_ref = BM_vert_at_index(bm, elem_index);
+        BMVert *v_src = BM_vert_at_index(bm, elem_index);
 
-        mirror_data_iter->loc_ref = v_ref->co;
-        mirror_data_iter->loc = eve->co;
-        mirror_data_iter->sign[0] = index[0] && index[0][i] == -2 ? -1 : 1;
-        mirror_data_iter->sign[1] = index[1] && index[1][i] == -2 ? -1 : 1;
-        mirror_data_iter->sign[2] = index[2] && index[2][i] == -2 ? -1 : 1;
+        mirror_data_iter->loc_src = v_src->co;
+        mirror_data_iter->loc_dst = eve->co;
+        mirror_data_iter->sign_x = index[0] && index[0][i] == -2 ? -1 : 1;
+        mirror_data_iter->sign_y = index[1] && index[1][i] == -2 ? -1 : 1;
+        mirror_data_iter->sign_z = index[2] && index[2][i] == -2 ? -1 : 1;
         mirror_data_iter->extra = eve;
 
         mirror_data_iter++;
