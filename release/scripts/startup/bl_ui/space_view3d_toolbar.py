@@ -376,6 +376,15 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
                 row = col.row()
                 row.prop(brush, "elastic_deform_compressibility", slider=True)
 
+            col.separator()
+            row = col.row()
+            row.prop(brush, "use_automasking_topology")
+
+            if brush.sculpt_tool == 'GRAB':
+                col.separator()
+                row = col.row()
+                row.prop(brush, "use_grab_active_vertex")
+
             # topology_rake_factor
             if (
                     capabilities.has_topology_rake and
@@ -1154,6 +1163,7 @@ class VIEW3D_PT_sculpt_dyntopo_remesh(Panel, View3DPaintPanel):
             col = flow.column()
             col.operator("sculpt.detail_flood_fill")
 
+
 class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
     bl_context = ".sculpt_mode"  # dot on purpose (access from topbar)
     bl_label = "Remesh"
@@ -1186,6 +1196,7 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         col.operator("object.voxel_remesh", text="Remesh")
 
 # TODO, move to space_view3d.py
+
 
 class VIEW3D_PT_sculpt_options(Panel, View3DPaintPanel):
     bl_context = ".sculpt_mode"  # dot on purpose (access from topbar)

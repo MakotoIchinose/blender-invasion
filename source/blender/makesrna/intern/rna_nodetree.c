@@ -4389,11 +4389,17 @@ static void def_sh_tex_musgrave(StructRNA *srna)
   RNA_def_struct_sdna_from(srna, "NodeTexMusgrave", "storage");
   def_sh_tex(srna);
 
+  prop = RNA_def_property(srna, "musgrave_dimensions", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "dimensions");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
+  RNA_def_property_ui_text(prop, "Dimensions", "");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
   prop = RNA_def_property(srna, "musgrave_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "musgrave_type");
   RNA_def_property_enum_items(prop, prop_musgrave_type);
   RNA_def_property_ui_text(prop, "Type", "");
-  RNA_def_property_update(prop, 0, "rna_Node_update");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 }
 
 static void def_sh_tex_voronoi(StructRNA *srna)
@@ -5723,7 +5729,7 @@ static void def_cmp_inpaint(StructRNA *srna)
 
   prop = RNA_def_property(srna, "distance", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "custom2");
-  RNA_def_property_range(prop, 1, 10000);
+  RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Distance", "Distance to inpaint (number of iterations)");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }

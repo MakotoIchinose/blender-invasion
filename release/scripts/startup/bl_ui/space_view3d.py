@@ -605,7 +605,7 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "gpencil_selectmode_edit", text="", expand=True)
 
             # Select mode for Sculpt
-            if gpd.is_stroke_sculpt_mode :
+            if gpd.is_stroke_sculpt_mode:
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
@@ -2099,7 +2099,7 @@ class VIEW3D_MT_object_relations(Menu):
         layout = self.layout
 
         layout.operator("object.proxy_make", text="Make Proxy...")
-        
+
         if bpy.app.use_override_library:
             layout.operator("object.make_override_library", text="Make Library Override...")
 
@@ -2654,7 +2654,6 @@ class VIEW3D_MT_make_links(Menu):
         layout.operator("object.join_uvs")  # stupid place to add this!
 
 
-
 class VIEW3D_MT_brush_paint_modes(Menu):
     bl_label = "Enabled Modes"
 
@@ -2844,6 +2843,54 @@ class VIEW3D_MT_sculpt(Menu):
 
         props = layout.operator("view3d.select_box", text="Box Mask")
         props = layout.operator("paint.mask_lasso_gesture", text="Lasso Mask")
+
+        layout.separator()
+
+        props = layout.operator("sculpt.mask_filter", text='Smooth Mask')
+        props.filter_type = 'SMOOTH'
+        props.auto_iteration_count = True
+
+        props = layout.operator("sculpt.mask_filter", text='Sharpen Mask')
+        props.filter_type = 'SHARPEN'
+        props.auto_iteration_count = True
+
+        props = layout.operator("sculpt.mask_filter", text='Grow Mask')
+        props.filter_type = 'GROW'
+        props.auto_iteration_count = True
+
+        props = layout.operator("sculpt.mask_filter", text='Shrink Mask')
+        props.filter_type = 'SHRINK'
+        props.auto_iteration_count = True
+
+        props = layout.operator("sculpt.mask_filter", text='Increase Contrast')
+        props.filter_type = 'CONTRAST_INCREASE'
+        props.auto_iteration_count = False
+
+        props = layout.operator("sculpt.mask_filter", text='Decrease Contrast')
+        props.filter_type = 'CONTRAST_DECREASE'
+        props.auto_iteration_count = False
+
+        layout.separator()
+
+        props = layout.operator("sculpt.mask_expand", text="Expand Mask By Topology")
+        props.use_normals = False
+        props.keep_previous_mask = False
+        props.invert = True
+        props.smooth_iterations = 2
+
+        props = layout.operator("sculpt.mask_expand", text="Expand Mask By Curvature")
+        props.use_normals = True
+        props.keep_previous_mask = True
+        props.invert = False
+        props.smooth_iterations = 0
+
+        layout.separator()
+
+        props = layout.operator("mesh.paint_mask_extract", text="Mask Extract")
+
+        layout.separator()
+
+        props = layout.operator("sculpt.dirty_mask", text='Dirty Mask')
 
 
 class VIEW3D_MT_particle(Menu):
@@ -4784,6 +4831,37 @@ class VIEW3D_MT_proportional_editing_falloff_pie(Menu):
         pie.prop(tool_settings, "proportional_edit_falloff", expand=True)
 
 
+class VIEW3D_MT_sculpt_mask_edit_pie(Menu):
+    bl_label = "Mask Edit"
+
+    def draw(self, _context):
+        layout = self.layout
+        pie = layout.menu_pie()
+
+        op = pie.operator("paint.mask_flood_fill", text='Invert Mask')
+        op.mode = 'INVERT'
+        op = pie.operator("paint.mask_flood_fill", text='Clear Mask')
+        op.mode = 'VALUE'
+        op = pie.operator("sculpt.mask_filter", text='Smooth Mask')
+        op.filter_type = 'SMOOTH'
+        op.auto_iteration_count = True
+        op = pie.operator("sculpt.mask_filter", text='Sharpen Mask')
+        op.filter_type = 'SHARPEN'
+        op.auto_iteration_count = True
+        op = pie.operator("sculpt.mask_filter", text='Grow Mask')
+        op.filter_type = 'GROW'
+        op.auto_iteration_count = True
+        op = pie.operator("sculpt.mask_filter", text='Shrink Mask')
+        op.filter_type = 'SHRINK'
+        op.auto_iteration_count = True
+        op = pie.operator("sculpt.mask_filter", text='Increase Contrast')
+        op.filter_type = 'CONTRAST_INCREASE'
+        op.auto_iteration_count = False
+        op = pie.operator("sculpt.mask_filter", text='Decrease Contrast')
+        op.filter_type = 'CONTRAST_DECREASE'
+        op.auto_iteration_count = False
+
+
 # ********** Panel **********
 
 
@@ -5553,6 +5631,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         layout = self.layout
 
         view = context.space_data
+        shading = view.shading
         overlay = view.overlay
         display_all = overlay.show_overlays
 
@@ -5562,6 +5641,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         split = col.split()
 
         sub = split.column()
+        sub.active = not ((shading.type == 'WIREFRAME') or shading.show_xray)
         sub.prop(overlay, "show_edges", text="Edges")
         sub = split.column()
         sub.prop(overlay, "show_faces", text="Faces")
@@ -6766,6 +6846,7 @@ classes = (
     VIEW3D_MT_snap_pie,
     VIEW3D_MT_orientations_pie,
     VIEW3D_MT_proportional_editing_falloff_pie,
+    VIEW3D_MT_sculpt_mask_edit_pie,
     VIEW3D_PT_active_tool,
     VIEW3D_PT_active_tool_duplicate,
     VIEW3D_PT_view3d_properties,
