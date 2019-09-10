@@ -108,7 +108,7 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
       mloop_uv = CustomData_get_layer_named(&mesh->ldata, CD_MLOOPUV, uvname);
 
       /* verts are given the UV from the first face that uses them */
-      for (i = 0, mp = mpoly; i < numPolys; ++i, ++mp) {
+      for (i = 0, mp = mpoly; i < numPolys; i++, mp++) {
         unsigned int fidx = mp->totloop - 1;
 
         do {
@@ -135,7 +135,7 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
   }
 
   MVert *mv = mesh->mvert;
-  for (i = 0; i < numVerts; ++i, ++mv, ++r_texco) {
+  for (i = 0; i < numVerts; i++, mv++, r_texco++) {
     switch (texmapping) {
       case MOD_DISP_MAP_LOCAL:
         copy_v3_v3(*r_texco, cos != NULL ? *cos : mv->co);
@@ -198,7 +198,7 @@ Mesh *MOD_deform_mesh_eval_get(Object *ob,
     /* TODO(sybren): after modifier conversion of DM to Mesh is done, check whether
      * we really need vertexCos here. */
     if (vertexCos) {
-      BKE_mesh_apply_vert_coords(mesh, vertexCos);
+      BKE_mesh_vert_coords_apply(mesh, vertexCos);
       mesh->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
     }
 

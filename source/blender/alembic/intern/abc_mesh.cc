@@ -116,7 +116,7 @@ static void get_vertices(struct Mesh *mesh, std::vector<Imath::V3f> &points)
 
   MVert *verts = mesh->mvert;
 
-  for (int i = 0, e = mesh->totvert; i < e; ++i) {
+  for (int i = 0, e = mesh->totvert; i < e; i++) {
     copy_yup_from_zup(points[i].getValue(), verts[i].co);
   }
 }
@@ -137,7 +137,7 @@ static void get_topology(struct Mesh *mesh,
   loop_counts.reserve(num_poly);
 
   /* NOTE: data needs to be written in the reverse order. */
-  for (int i = 0; i < num_poly; ++i) {
+  for (int i = 0; i < num_poly; i++) {
     MPoly &poly = mpoly[i];
     loop_counts.push_back(poly.totloop);
 
@@ -145,7 +145,7 @@ static void get_topology(struct Mesh *mesh,
 
     MLoop *loop = mloop + poly.loopstart + (poly.totloop - 1);
 
-    for (int j = 0; j < poly.totloop; ++j, --loop) {
+    for (int j = 0; j < poly.totloop; j++, loop--) {
       poly_verts.push_back(loop->v);
     }
   }
@@ -164,7 +164,7 @@ static void get_creases(struct Mesh *mesh,
 
   MEdge *edge = mesh->medge;
 
-  for (int i = 0, e = mesh->totedge; i < e; ++i) {
+  for (int i = 0, e = mesh->totedge; i < e; i++) {
     const float sharpness = static_cast<float>(edge[i].crease) * factor;
 
     if (sharpness != 0.0f) {
@@ -185,7 +185,7 @@ static void get_vertex_normals(struct Mesh *mesh, std::vector<Imath::V3f> &norma
   MVert *verts = mesh->mvert;
   float no[3];
 
-  for (int i = 0, e = mesh->totvert; i < e; ++i) {
+  for (int i = 0, e = mesh->totvert; i < e; i++) {
     normal_short_to_float_v3(no, verts[i].no);
     copy_yup_from_zup(normals[i].getValue(), no);
   }
@@ -209,8 +209,8 @@ static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals
   int abc_index = 0;
 
   if (lnors) {
-    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-      for (int j = mp->totloop - 1; j >= 0; --j, ++abc_index) {
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
+      for (int j = mp->totloop - 1; j >= 0; j--, abc_index++) {
         int blender_index = mp->loopstart + j;
         copy_yup_from_zup(normals[abc_index].getValue(), lnors[blender_index]);
       }
@@ -219,20 +219,20 @@ static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals
   else {
     float no[3];
 
-    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
       ml = mloop + mp->loopstart + (mp->totloop - 1);
 
       /* Flat shaded, use common normal for all verts. */
       if ((mp->flag & ME_SMOOTH) == 0) {
         BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1), verts, no);
 
-        for (int j = 0; j < mp->totloop; --ml, ++j, ++abc_index) {
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
           copy_yup_from_zup(normals[abc_index].getValue(), no);
         }
       }
       else {
         /* Smooth shaded, use individual vert normals. */
-        for (int j = 0; j < mp->totloop; --ml, ++j, ++abc_index) {
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
           normal_short_to_float_v3(no, verts[ml->v].no);
           copy_yup_from_zup(normals[abc_index].getValue(), no);
         }
@@ -615,7 +615,7 @@ void AbcGenericMeshWriter::getVelocities(struct Mesh *mesh, std::vector<Imath::V
   if (fss->meshVelocities) {
     float *mesh_vels = reinterpret_cast<float *>(fss->meshVelocities);
 
-    for (int i = 0; i < totverts; ++i) {
+    for (int i = 0; i < totverts; i++) {
       copy_yup_from_zup(vels[i].getValue(), mesh_vels);
       mesh_vels += 3;
     }
@@ -631,7 +631,7 @@ void AbcGenericMeshWriter::getGeoGroups(struct Mesh *mesh,
   const int num_poly = mesh->totpoly;
   MPoly *polygons = mesh->mpoly;
 
-  for (int i = 0; i < num_poly; ++i) {
+  for (int i = 0; i < num_poly; i++) {
     MPoly &current_poly = polygons[i];
     short mnr = current_poly.mat_nr;
 
@@ -658,7 +658,7 @@ void AbcGenericMeshWriter::getGeoGroups(struct Mesh *mesh,
 
     std::vector<int32_t> faceArray;
 
-    for (int i = 0, e = mesh->totface; i < e; ++i) {
+    for (int i = 0, e = mesh->totface; i < e; i++) {
       faceArray.push_back(i);
     }
 
@@ -707,7 +707,7 @@ static void assign_materials(Main *bmain,
   std::map<std::string, int>::const_iterator it = mat_index_map.begin();
 
   int matcount = 0;
-  for (; it != mat_index_map.end(); ++it, ++matcount) {
+  for (; it != mat_index_map.end(); ++it, matcount++) {
     if (!BKE_object_material_slot_add(bmain, ob)) {
       can_assign = false;
       break;
@@ -770,7 +770,7 @@ static void read_mverts_interp(MVert *mverts,
                                const float weight)
 {
   float tmp[3];
-  for (int i = 0; i < positions->size(); ++i) {
+  for (int i = 0; i < positions->size(); i++) {
     MVert &mvert = mverts[i];
     const Imath::V3f &floor_pos = (*positions)[i];
     const Imath::V3f &ceil_pos = (*ceil_positions)[i];
@@ -801,7 +801,7 @@ void read_mverts(MVert *mverts,
                  const P3fArraySamplePtr &positions,
                  const N3fArraySamplePtr &normals)
 {
-  for (int i = 0; i < positions->size(); ++i) {
+  for (int i = 0; i < positions->size(); i++) {
     MVert &mvert = mverts[i];
     Imath::V3f pos_in = (*positions)[i];
 
@@ -839,7 +839,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
   unsigned int rev_loop_index = 0;
   unsigned int uv_index = 0;
 
-  for (int i = 0; i < face_counts->size(); ++i) {
+  for (int i = 0; i < face_counts->size(); i++) {
     const int face_size = (*face_counts)[i];
 
     MPoly &poly = mpolys[i];
@@ -856,7 +856,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
     /* NOTE: Alembic data is stored in the reverse order. */
     rev_loop_index = loop_index + (face_size - 1);
 
-    for (int f = 0; f < face_size; ++f, ++loop_index, --rev_loop_index) {
+    for (int f = 0; f < face_size; f++, loop_index++, rev_loop_index--) {
       MLoop &loop = mloops[rev_loop_index];
       loop.v = (*face_indices)[loop_index];
 
@@ -899,9 +899,9 @@ static void process_normals(CDStreamConfig &config, const AbcMeshData &mesh_data
 
   MPoly *mpoly = mesh->mpoly;
   int abc_index = 0;
-  for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mpoly) {
+  for (int i = 0, e = mesh->totpoly; i < e; i++, mpoly++) {
     /* As usual, ABC orders the loops in reverse. */
-    for (int j = mpoly->totloop - 1; j >= 0; --j, ++abc_index) {
+    for (int j = mpoly->totloop - 1; j >= 0; j--, abc_index++) {
       int blender_index = mpoly->loopstart + j;
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
@@ -1131,6 +1131,31 @@ bool AbcMeshReader::accepts_object_type(
   return true;
 }
 
+bool AbcMeshReader::topology_changed(Mesh *existing_mesh, const ISampleSelector &sample_sel)
+{
+  IPolyMeshSchema::Sample sample;
+  try {
+    sample = m_schema.getValue(sample_sel);
+  }
+  catch (Alembic::Util::Exception &ex) {
+    printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
+           m_iobject.getFullName().c_str(),
+           m_schema.getName().c_str(),
+           sample_sel.getRequestedTime(),
+           ex.what());
+    // A similar error in read_mesh() would just return existing_mesh.
+    return false;
+  }
+
+  const P3fArraySamplePtr &positions = sample.getPositions();
+  const Alembic::Abc::Int32ArraySamplePtr &face_indices = sample.getFaceIndices();
+  const Alembic::Abc::Int32ArraySamplePtr &face_counts = sample.getFaceCounts();
+
+  return positions->size() != existing_mesh->totvert ||
+         face_counts->size() != existing_mesh->totpoly ||
+         face_indices->size() != existing_mesh->totloop;
+}
+
 Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
                                const ISampleSelector &sample_sel,
                                int read_flag,
@@ -1162,10 +1187,7 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
   ImportSettings settings;
   settings.read_flag |= read_flag;
 
-  bool topology_changed = positions->size() != existing_mesh->totvert ||
-                          face_counts->size() != existing_mesh->totpoly ||
-                          face_indices->size() != existing_mesh->totloop;
-  if (topology_changed) {
+  if (topology_changed(existing_mesh, sample_sel)) {
     new_mesh = BKE_mesh_new_nomain_from_template(
         existing_mesh, positions->size(), 0, 0, face_indices->size(), face_counts->size());
 
@@ -1224,7 +1246,7 @@ void AbcMeshReader::assign_facesets_to_mpoly(const ISampleSelector &sample_sel,
 
   int current_mat = 0;
 
-  for (int i = 0; i < face_sets.size(); ++i) {
+  for (int i = 0; i < face_sets.size(); i++) {
     const std::string &grp_name = face_sets[i];
 
     if (r_mat_map.find(grp_name) == r_mat_map.end()) {
@@ -1270,7 +1292,7 @@ void AbcMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const ISampleSel
 
 ABC_INLINE MEdge *find_edge(MEdge *edges, int totedge, int v1, int v2)
 {
-  for (int i = 0, e = totedge; i < e; ++i) {
+  for (int i = 0, e = totedge; i < e; i++) {
     MEdge &edge = edges[i];
 
     if (edge.v1 == v1 && edge.v2 == v2) {
@@ -1314,7 +1336,7 @@ static void read_subd_sample(const std::string &iobject_full_name,
 
   if ((settings->read_flag & MOD_MESHSEQ_READ_POLY) != 0) {
     /* Alembic's 'SubD' scheme is used to store subdivision surfaces, i.e. the pre-subdivision
-     * mesh. Currently we don't add a subdivison modifier when we load such data. This code is
+     * mesh. Currently we don't add a subdivision modifier when we load such data. This code is
      * assuming that the subdivided surface should be smooth, and sets a flag that will eventually
      * mark all polygons as such. */
     abc_mesh_data.poly_flag_smooth = true;
@@ -1397,7 +1419,7 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
   MEdge *edges = mesh->medge;
 
   if (indices && sharpnesses) {
-    for (int i = 0, s = 0, e = indices->size(); i < e; i += 2, ++s) {
+    for (int i = 0, s = 0, e = indices->size(); i < e; i += 2, s++) {
       MEdge *edge = find_edge(edges, mesh->totedge, (*indices)[i], (*indices)[i + 1]);
 
       if (edge) {

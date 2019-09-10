@@ -652,7 +652,7 @@ void workbench_deferred_engine_free(void)
   for (int index = 0; index < MAX_COMPOSITE_SHADERS; index++) {
     DRW_SHADER_FREE_SAFE(e_data.composite_sh_cache[index]);
   }
-  for (int index = 0; index < MAX_CAVITY_SHADERS; ++index) {
+  for (int index = 0; index < MAX_CAVITY_SHADERS; index++) {
     DRW_SHADER_FREE_SAFE(e_data.cavity_sh[index]);
   }
   DRW_SHADER_FREE_SAFE(e_data.ghost_resolve_sh);
@@ -694,16 +694,22 @@ static void workbench_composite_uniforms(WORKBENCH_PrivateData *wpd, DRWShadingG
   if (CAVITY_ENABLED(wpd)) {
     DRW_shgroup_uniform_texture_ref(grp, "cavityBuffer", &e_data.cavity_buffer_tx);
   }
-  if (SPECULAR_HIGHLIGHT_ENABLED(wpd) || STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
+  if (workbench_is_specular_highlight_enabled(wpd) || STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
     DRW_shgroup_uniform_vec4(grp, "viewvecs[0]", (float *)wpd->viewvecs, 3);
   }
-  if (SPECULAR_HIGHLIGHT_ENABLED(wpd) || STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
+  if (workbench_is_specular_highlight_enabled(wpd) || STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
     DRW_shgroup_uniform_vec2(grp, "invertedViewportSize", DRW_viewport_invert_size_get(), 1);
   }
   if (STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)) {
-    BKE_studiolight_ensure_flag(wpd->studio_light, STUDIOLIGHT_EQUIRECT_RADIANCE_GPUTEXTURE);
+    BKE_studiolight_ensure_flag(wpd->studio_light,
+                                STUDIOLIGHT_MATCAP_DIFFUSE_GPUTEXTURE |
+                                    STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE);
     DRW_shgroup_uniform_texture(
-        grp, "matcapImage", wpd->studio_light->equirect_radiance_gputexture);
+        grp, "matcapDiffuseImage", wpd->studio_light->matcap_diffuse.gputexture);
+    if (workbench_is_specular_highlight_enabled(wpd)) {
+      DRW_shgroup_uniform_texture(
+          grp, "matcapSpecularImage", wpd->studio_light->matcap_specular.gputexture);
+    }
   }
 }
 
@@ -1099,7 +1105,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
       if (use_sculpt_pbvh) {
         struct DRWShadingGroup **shgrps = BLI_array_alloca(shgrps, materials_len);
 
-        for (int i = 0; i < materials_len; ++i) {
+        for (int i = 0; i < materials_len; i++) {
           struct Material *mat = give_current_material(ob, i + 1);
           if (mat != NULL && mat->a < 1.0f) {
             material = workbench_forward_get_or_create_material_data(
@@ -1121,7 +1127,7 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 
         geoms = DRW_cache_object_surface_material_get(
             ob, gpumat_array, materials_len, NULL, NULL, NULL);
-        for (int i = 0; i < materials_len; ++i) {
+        for (int i = 0; i < materials_len; i++) {
           if (geoms != NULL && geoms[i] != NULL) {
             Material *mat = give_current_material(ob, i + 1);
             if (mat != NULL && mat->a < 1.0f) {

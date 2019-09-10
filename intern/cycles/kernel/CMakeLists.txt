@@ -179,6 +179,7 @@ set(SRC_SVM_HEADERS
   svm/svm_blackbody.h
   svm/svm_bump.h
   svm/svm_camera.h
+  svm/svm_clamp.h
   svm/svm_closure.h
   svm/svm_convert.h
   svm/svm_checker.h
@@ -198,7 +199,9 @@ set(SRC_SVM_HEADERS
   svm/svm_invert.h
   svm/svm_light_path.h
   svm/svm_magic.h
+  svm/svm_map_range.h
   svm/svm_mapping.h
+  svm/svm_mapping_util.h
   svm/svm_math.h
   svm/svm_math_util.h
   svm/svm_mix.h
@@ -212,13 +215,14 @@ set(SRC_SVM_HEADERS
   svm/svm_sepcomb_vector.h
   svm/svm_sky.h
   svm/svm_tex_coord.h
-  svm/svm_texture.h
+  svm/svm_fractal_noise.h
   svm/svm_types.h
   svm/svm_value.h
   svm/svm_vector_transform.h
   svm/svm_voronoi.h
   svm/svm_voxel.h
   svm/svm_wave.h
+  svm/svm_white_noise.h
 )
 
 set(SRC_GEOM_HEADERS
@@ -486,15 +490,17 @@ endif()
 include_directories(${INC})
 include_directories(SYSTEM ${INC_SYS})
 
-if(CMAKE_COMPILER_IS_GNUCC AND (NOT WITH_CYCLES_KERNEL_ASAN))
-  # GCC hangs compiling the big kernel files with asan and release, so disable by default.
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=all")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
-elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  # With OSL, Cycles disables rtti in some modules, wich then breaks at linking
-  # when trying to use vptr sanitizer (included into 'undefined' general option).
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=vptr")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
+if(WITH_COMPILER_ASAN)
+  if(CMAKE_COMPILER_IS_GNUCC AND (NOT WITH_CYCLES_KERNEL_ASAN))
+    # GCC hangs compiling the big kernel files with asan and release, so disable by default.
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=all")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
+  elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # With OSL, Cycles disables rtti in some modules, wich then breaks at linking
+    # when trying to use vptr sanitizer (included into 'undefined' general option).
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=vptr")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
+  endif()
 endif()
 
 set_source_files_properties(kernels/cpu/kernel.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_KERNEL_FLAGS}")

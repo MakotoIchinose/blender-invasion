@@ -3585,6 +3585,7 @@ static void adjust_offsets(BevelParams *bp, BMesh *bm)
       }
       if (!iscycle) {
         /* right->left direction, changing vchainstart at each step */
+        v->adjchain = NULL;
         v = vchainstart;
         bvcur = bv;
         do {

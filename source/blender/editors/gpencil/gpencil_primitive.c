@@ -330,7 +330,15 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 
   gps->flag |= GP_STROKE_3DSPACE;
 
-  gps->mat_nr = BKE_gpencil_object_material_get_index(tgpi->ob, tgpi->mat);
+  gps->mat_nr = BKE_gpencil_object_material_get_index_from_brush(tgpi->ob, tgpi->brush);
+  if (gps->mat_nr < 0) {
+    if (tgpi->ob->actcol - 1 < 0) {
+      gps->mat_nr = 0;
+    }
+    else {
+      gps->mat_nr = tgpi->ob->actcol - 1;
+    }
+  }
 
   /* allocate memory for storage points, but keep empty */
   gps->totpoints = 0;
@@ -959,7 +967,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
     /* add small offset to keep stroke over the surface */
     if ((depth_arr) && (gpd->zdepth_offset > 0.0f)) {
-      depth_arr[i] *= (1.0f - gpd->zdepth_offset);
+      depth_arr[i] *= (1.0f - (gpd->zdepth_offset / 1000.0f));
     }
 
     /* convert screen-coordinates to 3D coordinates */

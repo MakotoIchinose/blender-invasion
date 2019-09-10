@@ -42,7 +42,6 @@ struct EditBone;
 struct NumInput;
 struct Object;
 struct RNG;
-struct RenderEngineType;
 struct ReportList;
 struct Scene;
 struct ScrArea;
@@ -52,7 +51,6 @@ struct TransDataContainer;
 struct TransInfo;
 struct TransSnap;
 struct TransformOrientation;
-struct View3D;
 struct ViewLayer;
 struct bConstraint;
 struct bContext;
@@ -85,7 +83,9 @@ typedef struct TransSnap {
   bool snap_self;
   bool peel;
   bool snap_spatial_grid;
-  short status;
+  char status;
+  /* Snapped Element Type (currently for objects only). */
+  char snapElem;
   /** snapping from this point (in global-space). */
   float snapPoint[3];
   /** to this point (in global-space). */
@@ -375,6 +375,7 @@ typedef struct VertSlideParams {
 typedef struct BoneInitData {
   struct EditBone *bone;
   float tail[3];
+  float rad_head;
   float rad_tail;
   float roll;
   float head[3];
@@ -908,23 +909,6 @@ void drawPropCircle(const struct bContext *C, TransInfo *t);
 
 struct wmKeyMap *transform_modal_keymap(struct wmKeyConfig *keyconf);
 
-/*********************** transform_conversions.c ********** */
-
-void flushTransIntFrameActionData(TransInfo *t);
-void flushTransGraphData(TransInfo *t);
-void remake_graph_transdata(TransInfo *t, struct ListBase *anim_data);
-void flushTransUVs(TransInfo *t);
-void flushTransParticles(TransInfo *t);
-bool clipUVTransform(TransInfo *t, float vec[2], const bool resize);
-void clipUVData(TransInfo *t);
-void flushTransNodes(TransInfo *t);
-void flushTransSeq(TransInfo *t);
-void flushTransTracking(TransInfo *t);
-void flushTransMasking(TransInfo *t);
-void flushTransPaintCurve(TransInfo *t);
-void restoreMirrorPoseBones(TransDataContainer *tc);
-void restoreBones(TransDataContainer *tc);
-
 /*********************** transform_gizmo.c ********** */
 
 #define GIZMO_AXIS_LINE_WIDTH 2.0f
@@ -934,31 +918,7 @@ bool gimbal_axis(struct Object *ob, float gmat[3][3]);
 void drawDial3d(const TransInfo *t);
 
 /*********************** TransData Creation and General Handling *********** */
-void createTransData(struct bContext *C, TransInfo *t);
-void sort_trans_data_dist(TransInfo *t);
-void special_aftertrans_update(struct bContext *C, TransInfo *t);
-int special_transform_moving(TransInfo *t);
-
-void transform_autoik_update(TransInfo *t, short mode);
 bool transdata_check_local_islands(TransInfo *t, short around);
-
-int count_set_pose_transflags(struct Object *ob,
-                              const int mode,
-                              const short around,
-                              bool has_translate_rotate[2]);
-
-/* Auto-keyframe applied after transform, returns true if motion paths need to be updated. */
-void autokeyframe_object(struct bContext *C,
-                         struct Scene *scene,
-                         struct ViewLayer *view_layer,
-                         struct Object *ob,
-                         int tmode);
-void autokeyframe_pose(
-    struct bContext *C, struct Scene *scene, struct Object *ob, int tmode, short targetless_ik);
-
-/* Test if we need to update motion paths for a given object. */
-bool motionpath_need_update_object(struct Scene *scene, struct Object *ob);
-bool motionpath_need_update_pose(struct Scene *scene, struct Object *ob);
 
 /*********************** Constraints *****************************/
 

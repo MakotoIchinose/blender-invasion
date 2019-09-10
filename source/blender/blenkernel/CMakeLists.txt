@@ -50,6 +50,8 @@ set(INC
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
   ../../../intern/smoke/extern
+
+  ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
 )
 
 set(INC_SYS
@@ -83,6 +85,7 @@ set(SRC
   intern/brush.c
   intern/bvhutils.c
   intern/cachefile.c
+  intern/callbacks.c
   intern/camera.c
   intern/cdderivedmesh.c
   intern/cloth.c
@@ -151,6 +154,7 @@ set(SRC
   intern/mesh_mapping.c
   intern/mesh_merge.c
   intern/mesh_remap.c
+  intern/mesh_remesh_voxel.c
   intern/mesh_runtime.c
   intern/mesh_tangent.c
   intern/mesh_validate.c
@@ -243,6 +247,7 @@ set(SRC
   BKE_brush.h
   BKE_bvhutils.h
   BKE_cachefile.h
+  BKE_callbacks.h
   BKE_camera.h
   BKE_ccg.h
   BKE_cdderivedmesh.h
@@ -301,6 +306,7 @@ set(SRC
   BKE_mesh_iterators.h
   BKE_mesh_mapping.h
   BKE_mesh_remap.h
+  BKE_mesh_remesh_voxel.h
   BKE_mesh_runtime.h
   BKE_mesh_tangent.h
   BKE_modifier.h
@@ -621,3 +627,6 @@ endif()
 #endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# Needed so we can use dna_type_offsets.h for defaults initialization.
+add_dependencies(bf_blenkernel bf_dna)

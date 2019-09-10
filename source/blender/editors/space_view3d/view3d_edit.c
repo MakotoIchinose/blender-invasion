@@ -404,9 +404,7 @@ static void viewops_data_create(bContext *C,
   if (viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE) {
     if (ED_view3d_persp_ensure(depsgraph, vod->v3d, vod->ar)) {
       /* If we're switching from camera view to the perspective one,
-       * need to tag viewport update, so camera vuew and borders
-       * are properly updated.
-       */
+       * need to tag viewport update, so camera view and borders are properly updated. */
       ED_region_tag_redraw(vod->ar);
     }
   }
@@ -517,9 +515,6 @@ static void viewops_data_create(bContext *C,
 static void viewops_data_free(bContext *C, wmOperator *op)
 {
   ARegion *ar;
-#if 0
-  Paint *p = BKE_paint_get_active_from_context(C);
-#endif
   if (op->customdata) {
     ViewOpsData *vod = op->customdata;
     ar = vod->ar;
@@ -536,12 +531,9 @@ static void viewops_data_free(bContext *C, wmOperator *op)
     ar = CTX_wm_region(C);
   }
 
-#if 0
-  if (p && (p->flags & PAINT_FAST_NAVIGATE))
-#endif
-  {
-    ED_region_tag_redraw(ar);
-  }
+  /* Need to redraw because drawing code uses RV3D_NAVIGATING to draw
+   * faster while navigation operator runs. */
+  ED_region_tag_redraw(ar);
 }
 
 /** \} */
@@ -4952,6 +4944,7 @@ void ED_view3d_cursor3d_position_rotation(bContext *C,
                                                        .use_object_edit_cage = false,
                                                    },
                                                    mval_fl,
+                                                   NULL,
                                                    &dist_px,
                                                    ray_co,
                                                    ray_no,
@@ -5058,7 +5051,7 @@ void ED_view3d_cursor3d_update(bContext *C,
 
   {
     struct wmMsgBus *mbus = CTX_wm_message_bus(C);
-    wmMsgParams_RNA msg_key_params = {{{0}}};
+    wmMsgParams_RNA msg_key_params = {{0}};
     RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
     WM_msg_publish_rna_params(mbus, &msg_key_params);
   }

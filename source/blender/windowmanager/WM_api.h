@@ -53,19 +53,15 @@ struct PropertyRNA;
 struct ScrArea;
 struct ViewLayer;
 struct bContext;
-struct bToolRef_Runtime;
 struct rcti;
 struct wmDrag;
 struct wmDropBox;
 struct wmEvent;
-struct wmEventHandler;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
 struct wmGenericUserData;
 struct wmGesture;
 struct wmJob;
-struct wmMsgSubscribeKey;
-struct wmMsgSubscribeValue;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
@@ -162,7 +158,8 @@ enum {
   WM_WINDOW_RENDER = 1,
   WM_WINDOW_USERPREFS,
   WM_WINDOW_DRIVERS,
-  // WM_WINDOW_FILESEL // UNUSED
+  WM_WINDOW_INFO,
+  WM_WINDOW_FILESEL,
 };
 
 struct wmWindow *WM_window_open(struct bContext *C, const struct rcti *rect);
@@ -420,11 +417,14 @@ int WM_operator_call_py(struct bContext *C,
                         struct ReportList *reports,
                         const bool is_undo);
 
+/* Used for keymap and macro items. */
 void WM_operator_properties_alloc(struct PointerRNA **ptr,
                                   struct IDProperty **properties,
-                                  const char *opstring); /* used for keymap and macro items */
-void WM_operator_properties_sanitize(
-    struct PointerRNA *ptr, const bool no_context); /* make props context sensitive or not */
+                                  const char *opstring);
+
+/* Make props context sensitive or not. */
+void WM_operator_properties_sanitize(struct PointerRNA *ptr, const bool no_context);
+
 bool WM_operator_properties_default(struct PointerRNA *ptr, const bool do_update);
 void WM_operator_properties_reset(struct wmOperator *op);
 void WM_operator_properties_create(struct PointerRNA *ptr, const char *opstring);
@@ -493,6 +493,8 @@ bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalPa
 #define WM_FILESEL_FILENAME (1 << 2)
 #define WM_FILESEL_FILEPATH (1 << 3)
 #define WM_FILESEL_FILES (1 << 4)
+/* Show the properties sidebar by default. */
+#define WM_FILESEL_SHOW_PROPS (1 << 5)
 
 /* operator as a python command (resultuing string must be freed) */
 char *WM_operator_pystring_ex(struct bContext *C,
@@ -545,6 +547,9 @@ struct wmOperatorTypeMacro *WM_operatortype_macro_define(struct wmOperatorType *
                                                          const char *idname);
 
 const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties);
+char *WM_operatortype_description(struct bContext *C,
+                                  struct wmOperatorType *ot,
+                                  struct PointerRNA *properties);
 
 /* wm_uilist_type.c */
 void WM_uilisttype_init(void);

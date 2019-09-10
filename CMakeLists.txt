@@ -182,6 +182,8 @@ if(UNIX AND NOT APPLE)
   set(_init_SDL                            OFF)
   set(_init_FFTW3                          OFF)
   set(_init_OPENSUBDIV                     OFF)
+  set(_init_OPENVDB                        OFF)
+  set(_init_OPENIMAGEDENOISE               OFF)
 elseif(WIN32)
   set(_init_JACK                           OFF)
 elseif(APPLE)
@@ -237,11 +239,12 @@ option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLO
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
+option(WITH_OPENIMAGEDENOISE   "Enable the OpenImageDenoise compositing node" ${_init_OPENIMAGEDENOISE})
 
 option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" ${_init_OPENSUBDIV})
 
-option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
-option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
+option(WITH_OPENVDB       "Enable features relying on OpenVDB" ${_init_OPENVDB})
+option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" ${_init_OPENVDB})
 option(WITH_OPENVDB_3_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 3 ABI compatibility" OFF)
 mark_as_advanced(WITH_OPENVDB_3_ABI_COMPATIBLE)
 
@@ -749,14 +752,12 @@ if(NOT WITH_CUDA_DYNLOAD)
 endif()
 
 #-----------------------------------------------------------------------------
-# Check for valid directories
-# ... a partial checkout may cause this.
-#
-# note: we need to check for a known subdir in both cases.
-#       since uninitialized git submodules will give blank dirs
+# Check check if submodules are cloned
 
 if(WITH_INTERNATIONAL)
-  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/release/datafiles/locale/languages")
+  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
+  list(LENGTH RESULT DIR_LEN)
+  if(DIR_LEN EQUAL 0)
     message(WARNING
       "Translation path '${CMAKE_SOURCE_DIR}/release/datafiles/locale' is missing, "
       "This is a 'git submodule', which are known not to work with bridges to other version "
@@ -778,7 +779,9 @@ if(WITH_PYTHON)
     message(FATAL_ERROR "At least Python 3.7 is required to build")
   endif()
 
-  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/release/scripts/addons/modules")
+  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/scripts/addons")
+  list(LENGTH RESULT DIR_LEN)
+  if(DIR_LEN EQUAL 0)
     message(WARNING
       "Addons path '${CMAKE_SOURCE_DIR}/release/scripts/addons' is missing, "
       "This is a 'git submodule', which are known not to work with bridges to other version "
@@ -1427,7 +1430,6 @@ if(CMAKE_COMPILER_IS_GNUCC)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_NO_DIV_BY_ZERO -Wno-div-by-zero)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_TYPE_LIMITS -Wtype-limits)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_ERROR_RETURN_TYPE  -Werror=return-type)
-  ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_ERROR_IMPLICIT_FUNCTION_DECLARATION -Werror=implicit-function-declaration)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_NO_CHAR_SUBSCRIPTS -Wno-char-subscripts)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_NO_UNKNOWN_PRAGMAS -Wno-unknown-pragmas)
   ADD_CHECK_CXX_COMPILER_FLAG(CXX_WARNINGS CXX_WARN_POINTER_ARITH -Wpointer-arith)
@@ -1760,6 +1762,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_CYCLES)
   info_cfg_option(WITH_FREESTYLE)
   info_cfg_option(WITH_OPENCOLORIO)
+  info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
 

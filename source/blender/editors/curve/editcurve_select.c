@@ -1311,7 +1311,7 @@ static void select_nth_bezt(Nurb *nu, BezTriple *bezt, const struct CheckerInter
 
   while (a--) {
     const int depth = abs(start - a);
-    if (WM_operator_properties_checker_interval_test(params, depth)) {
+    if (!WM_operator_properties_checker_interval_test(params, depth)) {
       select_beztriple(bezt, DESELECT, SELECT, HIDDEN);
     }
 
@@ -1334,7 +1334,7 @@ static void select_nth_bp(Nurb *nu, BPoint *bp, const struct CheckerIntervalPara
 
   while (a--) {
     const int depth = abs(pnt - startpnt) + abs(row - startrow);
-    if (WM_operator_properties_checker_interval_test(params, depth)) {
+    if (!WM_operator_properties_checker_interval_test(params, depth)) {
       select_bpoint(bp, DESELECT, SELECT, HIDDEN);
     }
 
@@ -1417,7 +1417,7 @@ void CURVE_OT_select_nth(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Checker Deselect";
-  ot->description = "Deselect every other vertex";
+  ot->description = "Deselect every Nth point starting from the active one";
   ot->idname = "CURVE_OT_select_nth";
 
   /* api callbacks */

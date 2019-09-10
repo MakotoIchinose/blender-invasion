@@ -1149,9 +1149,12 @@ typedef struct RenderInfo {
   char scene_name[MAX_ID_NAME - 2];
 } RenderInfo;
 
-/* was for historic render-deamon feature,
- * now write because it can be easily extracted without
- * reading the whole blend file */
+/**
+ * This was originally added for the historic render-daemon feature,
+ * now write because it can be easily extracted without reading the whole blend file.
+ *
+ * See: `release/scripts/modules/blend_render_info.py`
+ */
 static void write_renderinfo(WriteData *wd, Main *mainvar)
 {
   bScreen *curscreen;
@@ -2024,7 +2027,7 @@ static void write_mdisps(WriteData *wd, int count, MDisps *mdlist, int external)
     int i;
 
     writestruct(wd, DATA, MDisps, count, mdlist);
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       MDisps *md = &mdlist[i];
       if (md->disps) {
         if (!external) {
@@ -2045,7 +2048,7 @@ static void write_grid_paint_mask(WriteData *wd, int count, GridPaintMask *grid_
     int i;
 
     writestruct(wd, DATA, GridPaintMask, count, grid_paint_mask);
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
         const int gridsize = BKE_ccg_gridsize(gpm->level);
@@ -2481,7 +2484,7 @@ static void write_lightcache(WriteData *wd, LightCache *cache)
 
   if (cache->cube_mips) {
     writestruct(wd, DATA, LightCacheTexture, cache->mips_len, cache->cube_mips);
-    for (int i = 0; i < cache->mips_len; ++i) {
+    for (int i = 0; i < cache->mips_len; i++) {
       write_lightcache_texture(wd, &cache->cube_mips[i]);
     }
   }

@@ -95,6 +95,7 @@
 #include "BLT_translation.h"
 
 #include "transform.h"
+#include "transform_convert.h"
 
 /* Disabling, since when you type you know what you are doing,
  * and being able to set it to zero is handy. */
@@ -2009,19 +2010,18 @@ static void drawTransformView(const struct bContext *C, ARegion *ar, void *arg)
  * to warn that autokeying is enabled */
 static void drawAutoKeyWarning(TransInfo *UNUSED(t), ARegion *ar)
 {
-  rcti rect;
   const char *printable = IFACE_("Auto Keying On");
   float printable_size[2];
   int xco, yco;
 
-  ED_region_visible_rect(ar, &rect);
+  const rcti *rect = ED_region_visible_rect(ar);
 
   const int font_id = BLF_default();
   BLF_width_and_height(
       font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-  xco = (rect.xmax - U.widget_unit) - (int)printable_size[0];
-  yco = (rect.ymax - U.widget_unit);
+  xco = (rect->xmax - U.widget_unit) - (int)printable_size[0];
+  yco = (rect->ymax - U.widget_unit);
 
   /* warning text (to clarify meaning of overlays)
    * - original color was red to match the icon, but that clashes badly with a less nasty border
@@ -2303,12 +2303,6 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     RNA_property_boolean_set(
         op->ptr, prop, (t->settings->uvcalc_flag & UVCALC_TRANSFORM_CORRECT) != 0);
   }
-
-  if (t->mode == TFM_SHEAR) {
-    prop = RNA_struct_find_property(op->ptr, "shear_axis");
-    t->custom.mode.data = POINTER_FROM_INT(RNA_property_enum_get(op->ptr, prop));
-    RNA_property_enum_set(op->ptr, prop, POINTER_AS_INT(t->custom.mode.data));
-  }
 }
 
 /**
@@ -2518,8 +2512,6 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
       initToSphere(t);
       break;
     case TFM_SHEAR:
-      prop = RNA_struct_find_property(op->ptr, "shear_axis");
-      t->custom.mode.data = POINTER_FROM_INT(RNA_property_enum_get(op->ptr, prop));
       initShear(t);
       break;
     case TFM_BEND:
@@ -3516,13 +3508,7 @@ static void Bend(TransInfo *t, const int UNUSED(mval[2]))
 static void initShear_mouseInputMode(TransInfo *t)
 {
   float dir[3];
-
-  if (t->custom.mode.data == NULL) {
-    copy_v3_v3(dir, t->orient_matrix[t->orient_axis_ortho]);
-  }
-  else {
-    cross_v3_v3v3(dir, t->orient_matrix[t->orient_axis_ortho], t->orient_matrix[t->orient_axis]);
-  }
+  copy_v3_v3(dir, t->orient_matrix[t->orient_axis_ortho]);
 
   /* Without this, half the gizmo handles move in the opposite direction. */
   if ((t->orient_axis_ortho + 1) % 3 != t->orient_axis) {
@@ -3570,24 +3556,22 @@ static eRedrawFlag handleEventShear(TransInfo *t, const wmEvent *event)
 
   if (event->type == MIDDLEMOUSE && event->val == KM_PRESS) {
     /* Use custom.mode.data pointer to signal Shear direction */
-    if (t->custom.mode.data == NULL) {
-      t->custom.mode.data = (void *)1;
-    }
-    else {
-      t->custom.mode.data = NULL;
-    }
+    do {
+      t->orient_axis_ortho = (t->orient_axis_ortho + 1) % 3;
+    } while (t->orient_axis_ortho == t->orient_axis);
+
     initShear_mouseInputMode(t);
 
     status = TREDRAW_HARD;
   }
   else if (event->type == XKEY && event->val == KM_PRESS) {
-    t->custom.mode.data = NULL;
+    t->orient_axis_ortho = (t->orient_axis + 1) % 3;
     initShear_mouseInputMode(t);
 
     status = TREDRAW_HARD;
   }
   else if (event->type == YKEY && event->val == KM_PRESS) {
-    t->custom.mode.data = (void *)1;
+    t->orient_axis_ortho = (t->orient_axis + 2) % 3;
     initShear_mouseInputMode(t);
 
     status = TREDRAW_HARD;
@@ -3631,14 +3615,7 @@ static void applyShear(TransInfo *t, const int UNUSED(mval[2]))
   }
 
   unit_m3(smat);
-
-  // Custom data signals shear direction
-  if (t->custom.mode.data == NULL) {
-    smat[1][0] = value;
-  }
-  else {
-    smat[0][1] = value;
-  }
+  smat[1][0] = value;
 
   copy_v3_v3(axismat_inv[0], t->orient_matrix[t->orient_axis_ortho]);
   copy_v3_v3(axismat_inv[2], t->orient_matrix[t->orient_axis]);
@@ -6602,7 +6579,7 @@ static void slide_origdata_interp_data_vert(SlideOrigData *sod,
      * and we do not want to mess up other shape keys */
     BM_loop_interp_from_face(bm, l, f_copy, false, false);
 
-    /* make sure face-attributes are correct (e.g. MTexPoly) */
+    /* make sure face-attributes are correct (e.g. #MLoopUV, #MLoopCol) */
     BM_elem_attrs_copy_ex(sod->bm_origfaces, bm, f_copy, l->f, 0x0, CD_MASK_NORMAL);
 
     /* weight the loop */

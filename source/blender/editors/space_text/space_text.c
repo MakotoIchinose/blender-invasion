@@ -29,6 +29,7 @@
 
 #include "BLI_blenlib.h"
 
+#include "BKE_global.h"
 #include "BKE_context.h"
 #include "BKE_library.h"
 #include "BKE_screen.h"
@@ -63,6 +64,8 @@ static SpaceLink *text_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   stext->lheight = 12;
   stext->tabnumber = 4;
   stext->margin_column = 80;
+  stext->showsyntax = true;
+  stext->showlinenrs = true;
 
   /* header */
   ar = MEM_callocN(sizeof(ARegion), "header for text");
@@ -354,7 +357,7 @@ static void text_drop_paste(wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_ID(drag, 0);
 
   /* copy drag path to properties */
-  text = RNA_path_full_ID_py(id);
+  text = RNA_path_full_ID_py(G_MAIN, id);
   RNA_string_set(drop->ptr, "text", text);
   MEM_freeN(text);
 }

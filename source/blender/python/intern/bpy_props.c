@@ -480,7 +480,7 @@ static void bpy_prop_boolean_array_get_cb(struct PointerRNA *ptr,
   if (ret == NULL) {
     PyC_Err_PrintWithFunc(py_func);
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
       values[i] = false;
     }
   }
@@ -488,7 +488,7 @@ static void bpy_prop_boolean_array_get_cb(struct PointerRNA *ptr,
     if (PyC_AsArray(values, ret, len, &PyBool_Type, false, "BoolVectorProperty get") == -1) {
       PyC_Err_PrintWithFunc(py_func);
 
-      for (i = 0; i < len; ++i) {
+      for (i = 0; i < len; i++) {
         values[i] = false;
       }
 
@@ -724,7 +724,7 @@ static void bpy_prop_int_array_get_cb(struct PointerRNA *ptr,
   if (ret == NULL) {
     PyC_Err_PrintWithFunc(py_func);
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
       values[i] = 0;
     }
   }
@@ -732,7 +732,7 @@ static void bpy_prop_int_array_get_cb(struct PointerRNA *ptr,
     if (PyC_AsArray(values, ret, len, &PyLong_Type, false, "IntVectorProperty get") == -1) {
       PyC_Err_PrintWithFunc(py_func);
 
-      for (i = 0; i < len; ++i) {
+      for (i = 0; i < len; i++) {
         values[i] = 0;
       }
 
@@ -968,7 +968,7 @@ static void bpy_prop_float_array_get_cb(struct PointerRNA *ptr,
   if (ret == NULL) {
     PyC_Err_PrintWithFunc(py_func);
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
       values[i] = 0.0f;
     }
   }
@@ -976,7 +976,7 @@ static void bpy_prop_float_array_get_cb(struct PointerRNA *ptr,
     if (PyC_AsArray(values, ret, len, &PyFloat_Type, false, "FloatVectorProperty get") == -1) {
       PyC_Err_PrintWithFunc(py_func);
 
-      for (i = 0; i < len; ++i) {
+      for (i = 0; i < len; i++) {
         values[i] = 0.0f;
       }
 
@@ -2931,8 +2931,8 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
 
     prop = RNA_def_property(srna, id, PROP_STRING, subtype);
     if (maxlen != 0) {
-      RNA_def_property_string_maxlength(prop,
-                                        maxlen + 1); /* +1 since it includes null terminator */
+      /* +1 since it includes null terminator. */
+      RNA_def_property_string_maxlength(prop, maxlen + 1);
     }
     if (def && def[0]) {
       RNA_def_property_string_default(prop, def);

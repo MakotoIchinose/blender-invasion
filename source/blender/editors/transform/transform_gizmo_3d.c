@@ -82,6 +82,7 @@
 
 /* local module include */
 #include "transform.h"
+#include "transform_convert.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -1392,7 +1393,8 @@ void drawDial3d(const TransInfo *t)
     scale *= ED_view3d_pixel_size_no_ui_scale(t->ar->regiondata, mat_final[3]);
     mul_mat3_m4_fl(mat_final, scale);
 
-    if ((t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) && activeSnap(t)) {
+    if (activeSnap(t) && (!transformModeUseSnap(t) ||
+                          (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)))) {
       increment = (t->modifiers & MOD_PRECISION) ? t->snap[2] : t->snap[1];
     }
     else {
@@ -2294,7 +2296,6 @@ static void WIDGETGROUP_xform_shear_setup(const bContext *UNUSED(C), wmGizmoGrou
       interp_v3_v3v3(gz->color, axis_color[i_ortho_a], axis_color[i_ortho_b], 0.75f);
       gz->color[3] = 0.5f;
       PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_shear, NULL);
-      RNA_enum_set(ptr, "shear_axis", 0);
       RNA_boolean_set(ptr, "release_confirm", 1);
       xgzgroup->gizmo[i][j] = gz;
     }

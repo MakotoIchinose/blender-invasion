@@ -31,8 +31,8 @@
 /* Struct Declarations */
 
 struct ARegion;
-struct ARegionType;
 struct AutoComplete;
+struct FileSelectParams;
 struct ID;
 struct IDProperty;
 struct ImBuf;
@@ -90,7 +90,7 @@ typedef struct uiPopupBlockHandle uiPopupBlockHandle;
  * For #ARegion.overlap regions, pass events though if they don't overlap
  * the regions contents (the usable part of the #View2D and buttons).
  *
- * The margin is needed so it's not possible to accidentally click inbetween buttons.
+ * The margin is needed so it's not possible to accidentally click in between buttons.
  */
 #define UI_REGION_OVERLAP_MARGIN (U.widget_unit / 3)
 
@@ -523,6 +523,7 @@ typedef bool (*uiMenuStepFunc)(struct bContext *C, int direction, void *arg1);
 /* interface_query.c */
 bool UI_but_has_tooltip_label(const uiBut *but);
 bool UI_but_is_tool(const uiBut *but);
+bool UI_but_is_utf8(const uiBut *but);
 #define UI_but_is_decorator(but) ((but)->func == ui_but_anim_decorate_cb)
 
 bool UI_block_is_empty(const uiBlock *block);
@@ -1599,6 +1600,11 @@ void UI_but_func_hold_set(uiBut *but, uiButHandleHoldFunc func, void *argN);
 
 void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, void *arg);
 
+PointerRNA *UI_but_extra_operator_icon_add(uiBut *but,
+                                           const char *opname,
+                                           short opcontext,
+                                           int icon);
+
 /* Autocomplete
  *
  * Tab complete helper functions, for use in uiButCompleteFunc callbacks.
@@ -2085,6 +2091,9 @@ void uiTemplateColormanagedViewSettings(struct uiLayout *layout,
                                         const char *propname);
 
 int uiTemplateRecentFiles(struct uiLayout *layout, int rows);
+void uiTemplateFileSelectPath(uiLayout *layout,
+                              struct bContext *C,
+                              struct FileSelectParams *params);
 
 /* items */
 void uiItemO(uiLayout *layout, const char *name, int icon, const char *opname);

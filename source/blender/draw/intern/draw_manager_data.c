@@ -387,6 +387,10 @@ static void drw_call_state_update_matflag(DRWCallState *state,
     }
     state->ob_random = random * (1.0f / (float)0xFFFFFFFF);
   }
+
+  if (new_flags & DRW_CALL_OBJECTCOLOR) {
+    copy_v4_v4(state->ob_color, ob->color);
+  }
 }
 
 static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
@@ -783,7 +787,7 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint
     GPU_vertbuf_data_resize(buf, count + DRW_BUFFER_VERTS_CHUNK);
   }
 
-  for (int i = 0; i < attr_len; ++i) {
+  for (int i = 0; i < attr_len; i++) {
     GPU_vertbuf_attr_set(buf, i, count, attr[i]);
   }
 
@@ -836,6 +840,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   shgroup->modelviewprojection = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MVP);
   shgroup->orcotexfac = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_ORCO);
   shgroup->objectinfo = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_INFO);
+  shgroup->objectcolor = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_OBJECT_COLOR);
   shgroup->callid = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_CALLID);
 
   shgroup->matflag = 0;
@@ -850,6 +855,9 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   }
   if (shgroup->objectinfo > -1) {
     shgroup->matflag |= DRW_CALL_OBJECTINFO;
+  }
+  if (shgroup->objectcolor > -1) {
+    shgroup->matflag |= DRW_CALL_OBJECTCOLOR;
   }
 }
 
@@ -931,7 +939,7 @@ GPUVertFormat *DRW_shgroup_instance_format_array(const DRWInstanceAttrFormat att
 {
   GPUVertFormat *format = MEM_callocN(sizeof(GPUVertFormat), "GPUVertFormat");
 
-  for (int i = 0; i < arraysize; ++i) {
+  for (int i = 0; i < arraysize; i++) {
     GPU_vertformat_attr_add(format,
                             attrs[i].name,
                             (attrs[i].type == DRW_ATTR_INT) ? GPU_COMP_I32 : GPU_COMP_F32,

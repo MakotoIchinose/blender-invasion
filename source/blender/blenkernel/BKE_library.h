@@ -46,17 +46,14 @@ extern "C" {
  * except in some specific cases requiring advanced (and potentially dangerous) handling.
  */
 
-struct BlendThumbnail;
 struct GHash;
 struct ID;
-struct ImBuf;
 struct Library;
 struct ListBase;
 struct Main;
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
-struct wmWindowManager;
 
 size_t BKE_libblock_get_alloc_info(short type, const char **name);
 void *BKE_libblock_alloc_notest(short type) ATTR_WARN_UNUSED_RESULT;
@@ -117,10 +114,7 @@ enum {
                          LIB_ID_CREATE_NO_DEG_TAG | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_CACHES,
 };
 
-void BKE_libblock_copy_ex(struct Main *bmain,
-                          const struct ID *id,
-                          struct ID **r_newid,
-                          const int flag);
+void BKE_libblock_copy_ex(struct Main *bmain, const struct ID *id, struct ID **r_newid, int flag);
 void *BKE_libblock_copy(struct Main *bmain, const struct ID *id) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
 /* Special version. sued by datablock localization. */

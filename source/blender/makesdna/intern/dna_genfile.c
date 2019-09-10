@@ -339,7 +339,7 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
 
   data = (int *)sdna->data;
 
-  /* clear pointers incase of error */
+  /* Clear pointers in case of error. */
   sdna->names = NULL;
   sdna->types = NULL;
   sdna->structs = NULL;
@@ -1102,7 +1102,7 @@ static void reconstruct_elem(const SDNA *newsdna,
    *          - cast type
    *      - name partially equal (array differs)
    *          - type equal: memcpy
-   *          - types casten
+   *          - type cast (per element).
    * (nzc 2-4-2001 I want the 'unsigned' bit to be parsed as well. Where
    * can I force this?)
    */

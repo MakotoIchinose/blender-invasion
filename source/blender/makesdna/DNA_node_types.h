@@ -113,7 +113,7 @@ typedef struct bNodeSocket {
   short stack_index;
   /* XXX deprecated, kept for forward compatibility */
   short stack_type DNA_DEPRECATED;
-  char draw_shape;
+  char display_shape;
   char _pad[3];
 
   /** Cached data from execution. */
@@ -153,11 +153,14 @@ typedef enum eNodeSocketDatatype {
 } eNodeSocketDatatype;
 
 /* socket shape */
-typedef enum eNodeSocketDrawShape {
-  SOCK_DRAW_SHAPE_CIRCLE = 0,
-  SOCK_DRAW_SHAPE_SQUARE = 1,
-  SOCK_DRAW_SHAPE_DIAMOND = 2,
-} eNodeSocketDrawShape;
+typedef enum eNodeSocketDisplayShape {
+  SOCK_DISPLAY_SHAPE_CIRCLE = 0,
+  SOCK_DISPLAY_SHAPE_SQUARE = 1,
+  SOCK_DISPLAY_SHAPE_DIAMOND = 2,
+  SOCK_DISPLAY_SHAPE_CIRCLE_DOT = 3,
+  SOCK_DISPLAY_SHAPE_SQUARE_DOT = 4,
+  SOCK_DISPLAY_SHAPE_DIAMOND_DOT = 5,
+} eNodeSocketDisplayShape;
 
 /* socket side (input/output) */
 typedef enum eNodeSocketInOut {
@@ -273,7 +276,8 @@ typedef struct bNode {
   short preview_xsize, preview_ysize;
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag;
-  char _pad2[2];
+  /** Used at runtime to tag derivatives branches. EEVEE only. */
+  short branch_tag;
   /** Runtime during drawing. */
   struct uiBlock *block;
 
@@ -866,6 +870,8 @@ typedef struct NodeTexGradient {
 
 typedef struct NodeTexNoise {
   NodeTexBase base;
+  int dimensions;
+  char _pad[4];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -879,7 +885,7 @@ typedef struct NodeTexVoronoi {
 typedef struct NodeTexMusgrave {
   NodeTexBase base;
   int musgrave_type;
-  char _pad[4];
+  int dimensions;
 } NodeTexMusgrave;
 
 typedef struct NodeTexWave {
@@ -1011,6 +1017,11 @@ typedef struct NodeCryptomatte {
   int num_inputs;
   char _pad[4];
 } NodeCryptomatte;
+
+typedef struct NodeDenoise {
+  char hdr;
+  char _pad[7];
+} NodeDenoise;
 
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0
@@ -1159,35 +1170,70 @@ typedef struct NodeCryptomatte {
 #define SHD_AO_INSIDE 1
 #define SHD_AO_LOCAL 2
 
+/* Mapping node vector types */
+enum {
+  NODE_MAPPING_TYPE_POINT = 0,
+  NODE_MAPPING_TYPE_TEXTURE = 1,
+  NODE_MAPPING_TYPE_VECTOR = 2,
+  NODE_MAPPING_TYPE_NORMAL = 3,
+};
+
 /* math node clamp */
 #define SHD_MATH_CLAMP 1
 
-/* Math node operation/ */
+/* Math node operations. */
 enum {
   NODE_MATH_ADD = 0,
-  NODE_MATH_SUB = 1,
-  NODE_MATH_MUL = 2,
+  NODE_MATH_SUBTRACT = 1,
+  NODE_MATH_MULTIPLY = 2,
   NODE_MATH_DIVIDE = 3,
-  NODE_MATH_SIN = 4,
-  NODE_MATH_COS = 5,
-  NODE_MATH_TAN = 6,
-  NODE_MATH_ASIN = 7,
-  NODE_MATH_ACOS = 8,
-  NODE_MATH_ATAN = 9,
-  NODE_MATH_POW = 10,
-  NODE_MATH_LOG = 11,
-  NODE_MATH_MIN = 12,
-  NODE_MATH_MAX = 13,
+  NODE_MATH_SINE = 4,
+  NODE_MATH_COSINE = 5,
+  NODE_MATH_TANGENT = 6,
+  NODE_MATH_ARCSINE = 7,
+  NODE_MATH_ARCCOSINE = 8,
+  NODE_MATH_ARCTANGENT = 9,
+  NODE_MATH_POWER = 10,
+  NODE_MATH_LOGARITHM = 11,
+  NODE_MATH_MINIMUM = 12,
+  NODE_MATH_MAXIMUM = 13,
   NODE_MATH_ROUND = 14,
-  NODE_MATH_LESS = 15,
-  NODE_MATH_GREATER = 16,
-  NODE_MATH_MOD = 17,
-  NODE_MATH_ABS = 18,
-  NODE_MATH_ATAN2 = 19,
+  NODE_MATH_LESS_THAN = 15,
+  NODE_MATH_GREATER_THAN = 16,
+  NODE_MATH_MODULO = 17,
+  NODE_MATH_ABSOLUTE = 18,
+  NODE_MATH_ARCTAN2 = 19,
   NODE_MATH_FLOOR = 20,
   NODE_MATH_CEIL = 21,
-  NODE_MATH_FRACT = 22,
+  NODE_MATH_FRACTION = 22,
   NODE_MATH_SQRT = 23,
+};
+
+/* Vector Math node operations. */
+enum {
+  NODE_VECTOR_MATH_ADD = 0,
+  NODE_VECTOR_MATH_SUBTRACT = 1,
+  NODE_VECTOR_MATH_MULTIPLY = 2,
+  NODE_VECTOR_MATH_DIVIDE = 3,
+
+  NODE_VECTOR_MATH_CROSS_PRODUCT = 4,
+  NODE_VECTOR_MATH_PROJECT = 5,
+  NODE_VECTOR_MATH_REFLECT = 6,
+  NODE_VECTOR_MATH_DOT_PRODUCT = 7,
+
+  NODE_VECTOR_MATH_DISTANCE = 8,
+  NODE_VECTOR_MATH_LENGTH = 9,
+  NODE_VECTOR_MATH_SCALE = 10,
+  NODE_VECTOR_MATH_NORMALIZE = 11,
+
+  NODE_VECTOR_MATH_SNAP = 12,
+  NODE_VECTOR_MATH_FLOOR = 13,
+  NODE_VECTOR_MATH_CEIL = 14,
+  NODE_VECTOR_MATH_MODULO = 15,
+  NODE_VECTOR_MATH_FRACTION = 16,
+  NODE_VECTOR_MATH_ABSOLUTE = 17,
+  NODE_VECTOR_MATH_MINIMUM = 18,
+  NODE_VECTOR_MATH_MAXIMUM = 19,
 };
 
 /* mix rgb node flags */

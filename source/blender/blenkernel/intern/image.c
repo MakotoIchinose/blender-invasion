@@ -55,6 +55,8 @@
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_light_types.h"
+#include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math_vector.h"
@@ -2766,8 +2768,8 @@ static void do_makepicstring(char *string,
                              int frame,
                              const char imtype,
                              const ImageFormatData *im_format,
-                             const short use_ext,
-                             const short use_frames,
+                             const bool use_ext,
+                             const bool use_frames,
                              const char *suffix)
 {
   if (string == NULL) {

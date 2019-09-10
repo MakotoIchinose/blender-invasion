@@ -116,6 +116,7 @@
 typedef struct MoveToCollectionData MoveToCollectionData;
 static void move_to_collection_menus_items(struct uiLayout *layout,
                                            struct MoveToCollectionData *menu);
+static ListBase selected_objects_get(bContext *C);
 
 /* ************* XXX **************** */
 static void error(const char *UNUSED(arg))
@@ -593,7 +594,7 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
     if (LIKELY(em)) {
       /* order doesn't matter */
       EDBM_mesh_normals_update(em);
-      BKE_editmesh_tessface_calc(em);
+      BKE_editmesh_looptri_calc(em);
     }
 
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_MESH, NULL);
@@ -1199,7 +1200,7 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
     }
 
     if (ob->type == OB_MESH) {
-      BKE_mesh_smooth_flag_set(ob, !clear);
+      BKE_mesh_smooth_flag_set(ob->data, !clear);
 
       BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -1341,26 +1342,11 @@ static bool object_mode_set_poll(bContext *C)
 
 static int object_mode_set_exec(bContext *C, wmOperator *op)
 {
-  bool use_submode = STREQ(op->idname, "OBJECT_OT_mode_set_or_submode");
+  bool use_submode = STREQ(op->idname, "OBJECT_OT_mode_set_with_submode");
   Object *ob = CTX_data_active_object(C);
   eObjectMode mode = RNA_enum_get(op->ptr, "mode");
   eObjectMode restore_mode = (ob) ? ob->mode : OB_MODE_OBJECT;
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
-
-  if (use_submode) {
-    /* When not changing modes use submodes, see: T55162. */
-    if (toggle == false) {
-      if (mode == restore_mode) {
-        switch (mode) {
-          case OB_MODE_EDIT:
-            WM_menu_name_call(C, "VIEW3D_MT_edit_mesh_select_mode", WM_OP_INVOKE_REGION_WIN);
-            return OPERATOR_INTERFACE;
-          default:
-            break;
-        }
-      }
-    }
-  }
 
   /* by default the operator assume is a mesh, but if gp object change mode */
   if ((ob != NULL) && (ob->type == OB_GPENCIL) && (mode == OB_MODE_EDIT)) {
@@ -1405,6 +1391,20 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
     }
   }
 
+  if (use_submode) {
+    if (ob->type == OB_MESH) {
+      if (ob->mode & OB_MODE_EDIT) {
+        PropertyRNA *prop = RNA_struct_find_property(op->ptr, "mesh_select_mode");
+        if (RNA_property_is_set(op->ptr, prop)) {
+          int mesh_select_mode = RNA_property_enum_get(op->ptr, prop);
+          if (mesh_select_mode != 0) {
+            EDBM_selectmode_set_multi(C, mesh_select_mode);
+          }
+        }
+      }
+    }
+  }
+
   return OPERATOR_FINISHED;
 }
 
@@ -1434,30 +1434,37 @@ void OBJECT_OT_mode_set(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
-void OBJECT_OT_mode_set_or_submode(wmOperatorType *ot)
+void OBJECT_OT_mode_set_with_submode(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
+  OBJECT_OT_mode_set(ot);
 
   /* identifiers */
-  ot->name = "Set Object Mode or Submode";
-  ot->description = "Sets the object interaction mode";
-  ot->idname = "OBJECT_OT_mode_set_or_submode";
+  ot->name = "Set Object Mode with Submode";
+  ot->idname = "OBJECT_OT_mode_set_with_submode";
 
-  /* api callbacks */
-  ot->exec = object_mode_set_exec;
+  /* properties */
+  /* we could add other types - particle for eg. */
+  PropertyRNA *prop;
+  prop = RNA_def_enum_flag(
+      ot->srna, "mesh_select_mode", rna_enum_mesh_select_mode_items, 0, "Mesh Mode", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
 
-  ot->poll = object_mode_set_poll;  // ED_operator_object_active_editable;
+static ListBase selected_objects_get(bContext *C)
+{
+  ListBase objects = {NULL};
 
-  /* flags */
-  ot->flag = 0; /* no register/undo here, leave it to operators being called */
+  if (CTX_wm_space_outliner(C) != NULL) {
+    ED_outliner_selected_objects_get(C, &objects);
+  }
+  else {
+    CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
+      BLI_addtail(&objects, BLI_genericNodeN(ob));
+    }
+    CTX_DATA_END;
+  }
 
-  ot->prop = RNA_def_enum(
-      ot->srna, "mode", rna_enum_object_mode_items, OB_MODE_OBJECT, "Mode", "");
-  RNA_def_enum_funcs(ot->prop, object_mode_set_itemsf);
-  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
-
-  prop = RNA_def_boolean(ot->srna, "toggle", 0, "Toggle", "");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  return objects;
 }
 
 static bool move_to_collection_poll(bContext *C)
@@ -1472,7 +1479,7 @@ static bool move_to_collection_poll(bContext *C)
       return false;
     }
 
-    return ED_operator_object_active_editable(C);
+    return ED_operator_objectmode(C);
   }
 }
 
@@ -1498,15 +1505,7 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (CTX_wm_space_outliner(C) != NULL) {
-    ED_outliner_selected_objects_get(C, &objects);
-  }
-  else {
-    CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
-      BLI_addtail(&objects, BLI_genericNodeN(ob));
-    }
-    CTX_DATA_END;
-  }
+  objects = selected_objects_get(C);
 
   if (is_new) {
     char new_collection_name[MAX_NAME];
@@ -1650,6 +1649,13 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
 {
   Scene *scene = CTX_data_scene(C);
 
+  ListBase objects = selected_objects_get(C);
+  if (BLI_listbase_is_empty(&objects)) {
+    BKE_report(op->reports, RPT_ERROR, "No objects selected");
+    return OPERATOR_CANCELLED;
+  }
+  BLI_freelistN(&objects);
+
   /* Reset the menus data for the current master collection, and free previously allocated data. */
   move_to_collection_menus_free(&master_collection_menu);
 
@@ -1674,7 +1680,7 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
     return move_to_collection_exec(C, op);
   }
 
-  Collection *master_collection = BKE_collection_master(scene);
+  Collection *master_collection = scene->master_collection;
 
   /* We need the data to be allocated so it's available during menu drawing.
    * Technically we could use wmOperator->customdata. However there is no free callback
