@@ -5100,7 +5100,7 @@ void uiTemplateProfileWidget(uiLayout *layout, PointerRNA *ptr, const char *prop
   cb->ptr = *ptr;
   cb->prop = prop;
 
-  id = cptr.id.data;
+  id = cptr.owner_id;
   UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
 
   profilewidget_buttons_layout(layout, &cptr, cb);
