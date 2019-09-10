@@ -1848,26 +1848,10 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
            * on transform completion since it's
            * really slow -joeedh */
           projectEdgeSlideData(t, true);
-
-          FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-            EdgeSlideData *sld = tc->custom.mode.data;
-
-            if (sld == NULL) {
-              continue;
-            }
-
-            /* Free temporary faces to avoid auto-merging and deleting
-             * during cleanup - psy-fi. */
-            freeEdgeSlideTempFaces(sld);
-          }
         }
         else if (t->mode == TFM_VERT_SLIDE) {
           /* as above */
           projectVertSlideData(t, true);
-          FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-            VertSlideData *sld = tc->custom.mode.data;
-            freeVertSlideTempFaces(sld);
-          }
         }
 
         if (t->obedit_type == OB_MESH) {

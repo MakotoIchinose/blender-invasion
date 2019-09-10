@@ -294,34 +294,11 @@ typedef struct TransDataEdgeSlideVert {
   int loop_nr;
 } TransDataEdgeSlideVert;
 
-/* store original data so we can correct UV's and similar when sliding */
-typedef struct SlideOrigData {
-  /** Set when #origfaces is initialized. */
-  bool use_origfaces;
-  int cd_loop_mdisp_offset;
-
-  /** map {BMVert: TransDataGenericSlideVert} */
-  struct GHash *origverts;
-  struct GHash *origfaces;
-  struct BMesh *bm_origfaces;
-
-  struct MemArena *arena;
-  /** Number of math BMLoop layers. */
-  int layer_math_map_num;
-  /** Array size of 'layer_math_map_num'
-   * maps TransDataVertSlideVert.cd_group index to absolute CustomData layer index */
-  int *layer_math_map;
-} SlideOrigData;
-
 typedef struct EdgeSlideData {
   TransDataEdgeSlideVert *sv;
   int totsv;
 
   int mval_start[2], mval_end[2];
-  struct BMEditMesh *em;
-
-  SlideOrigData orig_data;
-
   int curr_sv_index;
 
   /** when un-clamped - use this index: #TransDataEdgeSlideVert.dir_side */
@@ -350,11 +327,6 @@ typedef struct TransDataVertSlideVert {
 typedef struct VertSlideData {
   TransDataVertSlideVert *sv;
   int totsv;
-
-  struct BMEditMesh *em;
-
-  SlideOrigData orig_data;
-
   int curr_sv_index;
 
   /* result of ED_view3d_ob_project_mat_get */
@@ -1109,11 +1081,9 @@ int getTransformOrientation(const struct bContext *C, float normal[3], float pla
 
 void freeCustomNormalArray(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data);
 
-void freeEdgeSlideTempFaces(EdgeSlideData *sld);
 void freeEdgeSlideVerts(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data);
 void projectEdgeSlideData(TransInfo *t, bool is_final);
 
-void freeVertSlideTempFaces(VertSlideData *sld);
 void freeVertSlideVerts(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data);
 void projectVertSlideData(TransInfo *t, bool is_final);
 

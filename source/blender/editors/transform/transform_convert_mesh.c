@@ -27,8 +27,10 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
+#include "BLI_memarena.h"
 #include "BLI_linklist_stack.h"
 
 #include "BKE_context.h"
@@ -609,7 +611,7 @@ static void VertsToTransData(TransInfo *t,
 
   td->ext = NULL;
   td->val = NULL;
-  td->extra = NULL;
+  td->extra = eve;
   if (t->mode == TFM_BWEIGHT) {
     td->val = bweight;
     td->ival = *bweight;
@@ -905,6 +907,367 @@ void createTransEditVerts(TransInfo *t)
     }
     if (mirror_bitmap) {
       MEM_freeN(mirror_bitmap);
+    }
+  }
+}
+
+/**************** CustomData Layer Correction ****************/
+
+struct TransCustomDataLayerVert {
+  BMVert *v;
+  float co_orig_3d[3];
+  struct LinkNode **cd_loop_groups;
+};
+
+struct TransCustomDataLayer {
+  BMesh *bm;
+
+  int cd_loop_mdisp_offset;
+
+  /** map {BMVert: TransCustomDataLayerVert} */
+  struct GHash *origverts;
+  struct GHash *origfaces;
+  struct BMesh *bm_origfaces;
+
+  struct MemArena *arena;
+  /** Number of math BMLoop layers. */
+  int layer_math_map_num;
+  /** Array size of 'layer_math_map_num'
+   * maps TransCustomDataLayerVert.cd_group index to absolute CustomData layer index */
+  int *layer_math_map;
+
+  /* Array with all elements transformed. */
+  struct TransCustomDataLayerVert *data;
+  int data_len;
+};
+
+static void trans_mesh_customdata_free_cb(struct TransInfo *t,
+                                          struct TransDataContainer *tc,
+                                          struct TransCustomData *custom_data)
+{
+  struct TransCustomDataLayer *tcld = custom_data->data;
+  bmesh_edit_end(tcld->bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
+
+  if (tcld->bm_origfaces) {
+    BM_mesh_free(tcld->bm_origfaces);
+  }
+  if (tcld->origfaces) {
+    BLI_ghash_free(tcld->origfaces, NULL, NULL);
+  }
+  if (tcld->origverts) {
+    BLI_ghash_free(tcld->origverts, NULL, NULL);
+  }
+  if (tcld->arena) {
+    BLI_memarena_free(tcld->arena);
+  }
+  if (tcld->layer_math_map) {
+    MEM_freeN(tcld->layer_math_map);
+  }
+
+  MEM_freeN(tcld);
+  custom_data->data = NULL;
+}
+
+static void create_trans_vert_customdata_layer(BMVert *v,
+                                               struct TransCustomDataLayer *tcld,
+                                               struct TransCustomDataLayerVert *r_tcld_vert)
+{
+  BMesh *bm = tcld->bm;
+  BMIter liter;
+  int j, l_num;
+  float *loop_weights;
+
+  /* copy face data */
+  // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT) {
+  BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
+  l_num = liter.count;
+  loop_weights = BLI_array_alloca(loop_weights, l_num);
+  for (j = 0; j < l_num; j++) {
+    BMLoop *l = BM_iter_step(&liter);
+    BMLoop *l_prev, *l_next;
+    void **val_p;
+    if (!BLI_ghash_ensure_p(tcld->origfaces, l->f, &val_p)) {
+      BMFace *f_copy = BM_face_copy(tcld->bm_origfaces, bm, l->f, true, true);
+      *val_p = f_copy;
+    }
+
+    if ((l_prev = BM_loop_find_prev_nodouble(l, l->next, FLT_EPSILON)) &&
+        (l_next = BM_loop_find_next_nodouble(l, l_prev, FLT_EPSILON))) {
+      loop_weights[j] = angle_v3v3v3(l_prev->v->co, l->v->co, l_next->v->co);
+    }
+    else {
+      loop_weights[j] = 0.0f;
+    }
+  }
+
+  /* store cd_loop_groups */
+  if (tcld->layer_math_map_num && (l_num != 0)) {
+    r_tcld_vert->cd_loop_groups = BLI_memarena_alloc(tcld->arena,
+                                                     tcld->layer_math_map_num * sizeof(void *));
+    for (j = 0; j < tcld->layer_math_map_num; j++) {
+      const int layer_nr = tcld->layer_math_map[j];
+      r_tcld_vert->cd_loop_groups[j] = BM_vert_loop_groups_data_layer_create(
+          bm, v, layer_nr, loop_weights, tcld->arena);
+    }
+  }
+  else {
+    r_tcld_vert->cd_loop_groups = NULL;
+  }
+
+  r_tcld_vert->v = v;
+  copy_v3_v3(r_tcld_vert->co_orig_3d, v->co);
+  BLI_ghash_insert(tcld->origverts, v, r_tcld_vert);
+}
+
+void trans_mesh_customdata_correction_init(TransInfo *t)
+{
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    BLI_assert(tc->custom.type.data == NULL);
+    int i;
+
+    BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
+    BMesh *bm = em->bm;
+
+    bool use_origfaces;
+    int cd_loop_mdisp_offset;
+    {
+      const bool has_layer_math = CustomData_has_math(&bm->ldata);
+      cd_loop_mdisp_offset = CustomData_get_offset(&bm->ldata, CD_MDISPS);
+      if ((t->settings->uvcalc_flag & UVCALC_TRANSFORM_CORRECT) &&
+          /* don't do this at all for non-basis shape keys, too easy to
+           * accidentally break uv maps or vertex colors then */
+          (bm->shapenr <= 1) && (has_layer_math || (cd_loop_mdisp_offset != -1))) {
+        use_origfaces = true;
+        cd_loop_mdisp_offset = cd_loop_mdisp_offset;
+      }
+      else {
+        use_origfaces = false;
+        cd_loop_mdisp_offset = -1;
+      }
+    }
+
+    if (use_origfaces) {
+      /* create copies of faces for customdata projection */
+      bmesh_edit_begin(bm, BMO_OPTYPE_FLAG_UNTAN_MULTIRES);
+
+      struct GHash *origfaces = BLI_ghash_ptr_new(__func__);
+      struct BMesh *bm_origfaces = BM_mesh_create(&bm_mesh_allocsize_default,
+                                                  &((struct BMeshCreateParams){
+                                                      .use_toolflags = false,
+                                                  }));
+
+      /* we need to have matching customdata */
+      BM_mesh_copy_init_customdata(bm_origfaces, bm, NULL);
+
+      int *layer_math_map = NULL;
+      int layer_index_dst = 0;
+      {
+        /* TODO: We don't need `sod->layer_math_map` when there are no loops linked
+         * to one of the sliding vertices. */
+        if (CustomData_has_math(&bm->ldata)) {
+          /* over alloc, only 'math' layers are indexed */
+          layer_math_map = MEM_mallocN(bm->ldata.totlayer * sizeof(int), __func__);
+          for (i = 0; i < bm->ldata.totlayer; i++) {
+            if (CustomData_layer_has_math(&bm->ldata, i)) {
+              layer_math_map[layer_index_dst++] = i;
+            }
+          }
+          BLI_assert(layer_index_dst != 0);
+        }
+      }
+
+      struct TransCustomDataLayer *tcld;
+      tc->custom.type.data = tcld = MEM_mallocN(sizeof(*tcld), __func__);
+      tc->custom.type.free_cb = trans_mesh_customdata_free_cb;
+
+      tcld->bm = bm;
+      tcld->origfaces = origfaces;
+      tcld->bm_origfaces = bm_origfaces;
+      tcld->cd_loop_mdisp_offset = cd_loop_mdisp_offset;
+      tcld->layer_math_map = layer_math_map;
+      tcld->layer_math_map_num = layer_index_dst;
+      tcld->arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+
+      int data_len = tc->data_len + tc->mirror.data_len;
+      struct GHash *origverts = BLI_ghash_ptr_new_ex(__func__, data_len);
+      tcld->origverts = origverts;
+
+      struct TransCustomDataLayerVert *tcld_vert, *tcld_vert_iter;
+      tcld_vert = BLI_memarena_alloc(tcld->arena, data_len * sizeof(*tcld_vert));
+      tcld_vert_iter = &tcld_vert[0];
+
+      TransData *tob;
+      for (i = tc->data_len, tob = tc->data; i--; tob++, tcld_vert_iter++) {
+        BMVert *v = tob->extra;
+        create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
+      }
+
+      TransDataMirror *tdm;
+      for (i = tc->mirror.data_len, tdm = tc->mirror.data; i--; tdm++, tcld_vert_iter++) {
+        BMVert *v = tdm->extra;
+        create_trans_vert_customdata_layer(v, tcld, tcld_vert_iter);
+      }
+
+      tcld->data = tcld_vert;
+      tcld->data_len = data_len;
+    }
+  }
+}
+
+/**
+ * If we're sliding the vert, return its original location, if not, the current location is good.
+ */
+static const float *trans_vert_orig_co_get(struct TransCustomDataLayer *tcld, BMVert *v)
+{
+  struct TransCustomDataLayerVert *tcld_vert = BLI_ghash_lookup(tcld->origverts, v);
+  return tcld_vert ? tcld_vert->co_orig_3d : v->co;
+}
+
+static void trans_mesh_customdata_correction_apply_vert(struct TransCustomDataLayer *tcld,
+                                                        struct TransCustomDataLayerVert *tcld_vert,
+                                                        bool is_final)
+{
+  BMesh *bm = tcld->bm;
+  BMVert *v = tcld_vert->v;
+  const float *co_orig_3d = tcld_vert->co_orig_3d;
+  struct LinkNode **cd_loop_groups = tcld_vert->cd_loop_groups;
+
+  BMIter liter;
+  int j, l_num;
+  float *loop_weights;
+  const bool is_moved = (len_squared_v3v3(v->co, co_orig_3d) > FLT_EPSILON);
+  const bool do_loop_weight = tcld->layer_math_map_num && is_moved;
+  const bool do_loop_mdisps = is_final && is_moved && (tcld->cd_loop_mdisp_offset != -1);
+  const float *v_proj_axis = v->no;
+  /* original (l->prev, l, l->next) projections for each loop ('l' remains unchanged) */
+  float v_proj[3][3];
+
+  if (do_loop_weight || do_loop_mdisps) {
+    project_plane_normalized_v3_v3v3(v_proj[1], co_orig_3d, v_proj_axis);
+  }
+
+  // BM_ITER_ELEM (l, &liter, sv->v, BM_LOOPS_OF_VERT)
+  BM_iter_init(&liter, bm, BM_LOOPS_OF_VERT, v);
+  l_num = liter.count;
+  loop_weights = do_loop_weight ? BLI_array_alloca(loop_weights, l_num) : NULL;
+  for (j = 0; j < l_num; j++) {
+    BMFace *f_copy; /* the copy of 'f' */
+    BMLoop *l = BM_iter_step(&liter);
+
+    f_copy = BLI_ghash_lookup(tcld->origfaces, l->f);
+
+    /* only loop data, no vertex data since that contains shape keys,
+     * and we do not want to mess up other shape keys */
+    BM_loop_interp_from_face(bm, l, f_copy, false, false);
+
+    /* make sure face-attributes are correct (e.g. #MLoopUV, #MLoopCol) */
+    BM_elem_attrs_copy_ex(tcld->bm_origfaces, bm, f_copy, l->f, 0x0, CD_MASK_NORMAL);
+
+    /* weight the loop */
+    if (do_loop_weight) {
+      const float eps = 1.0e-8f;
+      const BMLoop *l_prev = l->prev;
+      const BMLoop *l_next = l->next;
+      const float *co_prev = trans_vert_orig_co_get(tcld, l_prev->v);
+      const float *co_next = trans_vert_orig_co_get(tcld, l_next->v);
+      bool co_prev_ok;
+      bool co_next_ok;
+
+      /* In the unlikely case that we're next to a zero length edge -
+       * walk around the to the next.
+       *
+       * Since we only need to check if the vertex is in this corner,
+       * its not important _which_ loop - as long as its not overlapping
+       * 'sv->co_orig_3d', see: T45096. */
+      project_plane_normalized_v3_v3v3(v_proj[0], co_prev, v_proj_axis);
+      while (UNLIKELY(((co_prev_ok = (len_squared_v3v3(v_proj[1], v_proj[0]) > eps)) == false) &&
+                      ((l_prev = l_prev->prev) != l->next))) {
+        co_prev = trans_vert_orig_co_get(tcld, l_prev->v);
+        project_plane_normalized_v3_v3v3(v_proj[0], co_prev, v_proj_axis);
+      }
+      project_plane_normalized_v3_v3v3(v_proj[2], co_next, v_proj_axis);
+      while (UNLIKELY(((co_next_ok = (len_squared_v3v3(v_proj[1], v_proj[2]) > eps)) == false) &&
+                      ((l_next = l_next->next) != l->prev))) {
+        co_next = trans_vert_orig_co_get(tcld, l_next->v);
+        project_plane_normalized_v3_v3v3(v_proj[2], co_next, v_proj_axis);
+      }
+
+      if (co_prev_ok && co_next_ok) {
+        const float dist = dist_signed_squared_to_corner_v3v3v3(
+            v->co, UNPACK3(v_proj), v_proj_axis);
+
+        loop_weights[j] = (dist >= 0.0f) ? 1.0f : ((dist <= -eps) ? 0.0f : (1.0f + (dist / eps)));
+        if (UNLIKELY(!isfinite(loop_weights[j]))) {
+          loop_weights[j] = 0.0f;
+        }
+      }
+      else {
+        loop_weights[j] = 0.0f;
+      }
+    }
+  }
+
+  if (tcld->layer_math_map_num && cd_loop_groups) {
+    if (do_loop_weight) {
+      for (j = 0; j < tcld->layer_math_map_num; j++) {
+        BM_vert_loop_groups_data_layer_merge_weights(
+            bm, cd_loop_groups[j], tcld->layer_math_map[j], loop_weights);
+      }
+    }
+    else {
+      for (j = 0; j < tcld->layer_math_map_num; j++) {
+        BM_vert_loop_groups_data_layer_merge(bm, cd_loop_groups[j], tcld->layer_math_map[j]);
+      }
+    }
+  }
+
+  /* Special handling for multires
+   *
+   * Interpolate from every other loop (not ideal)
+   * However values will only be taken from loops which overlap other mdisps.
+   * */
+  if (do_loop_mdisps) {
+    float(*faces_center)[3] = BLI_array_alloca(faces_center, l_num);
+    BMLoop *l;
+
+    BM_ITER_ELEM_INDEX (l, &liter, v, BM_LOOPS_OF_VERT, j) {
+      BM_face_calc_center_median(l->f, faces_center[j]);
+    }
+
+    BM_ITER_ELEM_INDEX (l, &liter, v, BM_LOOPS_OF_VERT, j) {
+      BMFace *f_copy = BLI_ghash_lookup(tcld->origfaces, l->f);
+      float f_copy_center[3];
+      BMIter liter_other;
+      BMLoop *l_other;
+      int j_other;
+
+      BM_face_calc_center_median(f_copy, f_copy_center);
+
+      BM_ITER_ELEM_INDEX (l_other, &liter_other, v, BM_LOOPS_OF_VERT, j_other) {
+        BM_face_interp_multires_ex(bm,
+                                   l_other->f,
+                                   f_copy,
+                                   faces_center[j_other],
+                                   f_copy_center,
+                                   tcld->cd_loop_mdisp_offset);
+      }
+    }
+  }
+}
+
+void trans_mesh_customdata_correction_apply(struct TransDataContainer *tc, bool is_final)
+{
+  struct TransCustomDataLayer *tcld = tc->custom.type.data;
+  if (!tcld) {
+    return;
+  }
+
+  const bool has_mdisps = (tcld->cd_loop_mdisp_offset != -1);
+  struct TransCustomDataLayerVert *tcld_vert_iter = &tcld->data[0];
+
+  for (int i = tcld->data_len; i--; tcld_vert_iter++) {
+    if (tcld_vert_iter->cd_loop_groups || has_mdisps) {
+      trans_mesh_customdata_correction_apply_vert(tcld, tcld_vert_iter, is_final);
     }
   }
 }
