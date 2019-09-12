@@ -107,6 +107,7 @@
 
 const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
+const char *RE_engine_id_BLENDER_LANPR = "BLENDER_LANPR";
 const char *RE_engine_id_CYCLES = "CYCLES";
 
 void free_avicodecdata(AviCodecData *acd)
@@ -227,6 +228,32 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   MEM_freeN(toolsettings);
 }
 
+void BKE_lanpr_copy_data(const Scene *from, Scene *to)
+{
+  const SceneLANPR *lanpr = &from->lanpr;
+  LANPR_LineLayer *ll, *new_ll;
+  LANPR_LineLayerComponent *llc, *new_llc;
+
+  to->lanpr.line_layers.first = to->lanpr.line_layers.last = NULL;
+  memset(&to->lanpr.line_layers, 0, sizeof(ListBase));
+
+  for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
+    new_ll = MEM_callocN(sizeof(LANPR_LineLayer), "Copied Line Layer");
+    memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
+    memset(&new_ll->components, 0, sizeof(ListBase));
+    new_ll->next = new_ll->prev = NULL;
+    BLI_addtail(&to->lanpr.line_layers, new_ll);
+    for (llc = ll->components.first; llc; llc = llc->next) {
+      new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Copied Line Layer Component");
+      memcpy(new_llc, llc, sizeof(LANPR_LineLayerComponent));
+      new_llc->next = new_llc->prev = NULL;
+      BLI_addtail(&new_ll->components, new_llc);
+    }
+  }
+
+  /*  render_buffer now only accessible from lanpr_share */
+}
+
 /**
  * Only copy internal data of Scene ID from source
  * to already allocated/initialized destination.
@@ -342,6 +369,10 @@ void BKE_scene_copy_data(Main *bmain, Scene *sce_dst, const Scene *sce_src, cons
   sce_dst->eevee.light_cache = NULL;
   sce_dst->eevee.light_cache_info[0] = '\0';
   /* TODO Copy the cache. */
+
+  /* lanpr data */
+
+  BKE_lanpr_copy_data(sce_src, sce_dst);
 }
 
 Scene *BKE_scene_copy(Main *bmain, Scene *sce, int type)
@@ -476,6 +507,20 @@ void BKE_scene_make_local(Main *bmain, Scene *sce, const bool lib_local)
   /* For now should work, may need more work though to support all possible corner cases
    * (also scene_copy probably needs some love). */
   BKE_id_make_local_generic(bmain, &sce->id, true, lib_local);
+}
+
+void BKE_lanpr_free_everything(Scene *s)
+{
+  SceneLANPR *lanpr = &s->lanpr;
+  LANPR_LineLayer *ll;
+  LANPR_LineLayerComponent *llc;
+
+  while ((ll = BLI_pophead(&lanpr->line_layers)) != NULL) {
+    while ((llc = BLI_pophead(&ll->components)) != NULL) {
+      MEM_freeN(llc);
+    }
+    MEM_freeN(ll);
+  }
 }
 
 /** Free (or release) any data used by this scene (does not free the scene itself). */
@@ -733,6 +778,19 @@ void BKE_scene_init(Scene *sce)
   sce->master_collection = BKE_collection_master_add();
 
   BKE_view_layer_add(sce, "View Layer");
+
+  /* SceneLANPR */
+
+  sce->lanpr.crease_threshold = 0.7;
+
+  sce->lanpr.line_color[0] = 1;
+  sce->lanpr.line_color[1] = 1;
+  sce->lanpr.line_color[2] = 1;
+  sce->lanpr.line_color[3] = 1;
+
+  sce->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
+  sce->lanpr.chaining_image_threshold = 0.01;
+  sce->lanpr.chaining_geometry_threshold = 0.1;
 }
 
 Scene *BKE_scene_add(Main *bmain, const char *name)
