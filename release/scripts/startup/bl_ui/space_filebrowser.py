@@ -44,7 +44,7 @@ class FILEBROWSER_HT_header(Header):
 
         # can be None when save/reload with a file selector open
         """
-        <<<<<<< HEAD
+        <<<<< HEAD
                 layout.separator()
                 if st.asset_engine and is_lib_browser:
                     draw_header = getattr(st.asset_engine, "draw_header", None)
@@ -97,7 +97,7 @@ class FILEBROWSER_HT_header(Header):
 
                         row.separator()
                         row.prop(params, "filter_search", text="", icon='VIEWZOOM')
-        =======
+        =====
         """
         layout.separator_spacer()
 
@@ -220,10 +220,11 @@ class FILEBROWSER_PT_filter(Panel):
 
 
 def panel_poll_is_upper_region(region):
-    # The upper region is left-aligned, the lower is split into it then.
-    return region.alignment == 'LEFT'
+    # The upper region is left-aligned, the lower is split into it then. Note that after "Flip Regions" it's right-aligned.
+    return region.alignment in {'LEFT', 'RIGHT'}
+
 """
->>>>>>> master
+>>>>> master
 """
 
 class FILEBROWSER_UL_dir(UIList):
@@ -455,7 +456,7 @@ class FILEBROWSER_PT_directory_path(Panel):
         row.operator("file.directory_new", icon='NEWFOLDER', text="")
 
         subrow = row.row()
-        subrow.prop(params, "directory", text="")
+        subrow.template_file_select_path(params)
 
         subrow = row.row()
         subrow.scale_x = 0.5
@@ -514,7 +515,7 @@ class FILEBROWSER_MT_select(Menu):
         layout.separator()
 
         layout.operator("file.select_box")
-        
+
 
 class FILEBROWSER_MT_context_menu(Menu):
     bl_label = "Files Context Menu"

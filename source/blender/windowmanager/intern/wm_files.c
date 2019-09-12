@@ -52,8 +52,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
 #include "BLI_utildefines.h"
+#include "BLI_timer.h"
 #include "BLI_threads.h"
-#include "BLI_callbacks.h"
 #include "BLI_system.h"
 #include BLI_SYSTEM_PID_H
 
@@ -74,6 +74,7 @@
 #include "BKE_blender.h"
 #include "BKE_blendfile.h"
 #include "BKE_blender_undo.h"
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
@@ -536,16 +537,16 @@ static void wm_file_read_post(bContext *C,
 
   if (use_userdef) {
     if (is_factory_startup) {
-      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_USERDEF_POST);
+      BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_USERDEF_POST);
     }
   }
 
   if (use_data) {
     /* important to do before NULL'ing the context */
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_VERSION_UPDATE);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_POST);
     if (is_factory_startup) {
-      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
+      BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_STARTUP_POST);
     }
   }
 
@@ -608,7 +609,8 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   WM_cursor_wait(1);
 
-  BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_PRE);
+  BKE_callback_exec_null(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE);
+  BLI_timer_on_file_load();
 
   UI_view2d_zoom_cache_reset();
 
@@ -810,7 +812,8 @@ void wm_homefile_read(bContext *C,
   }
 
   if (use_data) {
-    BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_PRE);
+    BKE_callback_exec_null(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE);
+    BLI_timer_on_file_load();
 
     G.relbase_valid = 0;
 
@@ -1250,9 +1253,6 @@ static ImBuf *blend_file_thumb(const bContext *C,
   /* gets scaled to BLEN_THUMB_SIZE */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
-  /* Offscreen drawing requires a drawable window context. */
-  wm_window_make_drawable(wm, CTX_wm_window(C));
-
   if (scene->camera) {
     ibuf = ED_view3d_draw_offscreen_imbuf_simple(depsgraph,
                                                  scene,
@@ -1378,7 +1378,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
 
   /* Call pre-save callbacks before writing preview,
    * that way you can generate custom file thumbnail. */
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_PRE);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_PRE);
 
   /* Enforce full override check/generation on file save. */
   BKE_main_override_library_operations_create(bmain, true);
@@ -1431,7 +1431,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
       wm_history_file_update();
     }
 
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_POST);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_POST);
 
     /* run this function after because the file cant be written before the blend is */
     if (ibuf_thumb) {
@@ -1656,7 +1656,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_PRE);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_PRE);
 
   /* check current window and close it if temp */
   if (win && WM_window_is_temp_screen(win)) {
@@ -1684,7 +1684,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 
   G.save_over = 0;
 
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_POST);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_POST);
 
   return OPERATOR_FINISHED;
 }
@@ -2421,7 +2421,10 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
   ot->name = "Revert";
   ot->idname = "WM_OT_revert_mainfile";
   ot->description = "Reload the saved file";
+
   ot->invoke = WM_operator_confirm;
+  ot->exec = wm_revert_mainfile_exec;
+  ot->poll = wm_revert_mainfile_poll;
 
   RNA_def_boolean(ot->srna,
                   "use_scripts",
@@ -2429,9 +2432,6 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
                   "Trusted Source",
                   "Allow .blend file to execute scripts automatically, default available from "
                   "system preferences");
-
-  ot->exec = wm_revert_mainfile_exec;
-  ot->poll = wm_revert_mainfile_poll;
 }
 
 /** \} */
@@ -2476,8 +2476,8 @@ void WM_OT_recover_last_session(wmOperatorType *ot)
   ot->name = "Recover Last Session";
   ot->idname = "WM_OT_recover_last_session";
   ot->description = "Open the last closed file (\"" BLENDER_QUIT_FILE "\")";
-  ot->invoke = WM_operator_confirm;
 
+  ot->invoke = WM_operator_confirm;
   ot->exec = wm_recover_last_session_exec;
 }
 
@@ -2519,8 +2519,8 @@ void WM_OT_recover_auto_save(wmOperatorType *ot)
   ot->idname = "WM_OT_recover_auto_save";
   ot->description = "Open an automatically saved file to recover it";
 
-  ot->exec = wm_recover_auto_save_exec;
   ot->invoke = wm_recover_auto_save_invoke;
+  ot->exec = wm_recover_auto_save_exec;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_BLENDER,

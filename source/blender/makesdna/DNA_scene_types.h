@@ -669,9 +669,8 @@ typedef struct RenderData {
 
   char _pad0[1];
 
-  /* safety, border and display rect */
-  rctf safety, border;
-  rcti disprect;
+  /** Render border to render sub-resions. */
+  rctf border;
 
   /* information on different layers to be rendered */
   /** Converted to Scene->view_layers. */
@@ -1637,7 +1636,7 @@ typedef struct SceneEEVEE {
   int motion_blur_samples;
   float motion_blur_shutter;
 
-  int shadow_method;
+  int shadow_method DNA_DEPRECATED;
   int shadow_cube_size;
   int shadow_cascade_size;
 
@@ -2293,6 +2292,8 @@ typedef enum eGPencil_SimplifyFlags {
   SIMPLIFY_GPENCIL_FX = (1 << 5),
   /* Simplify layer blending */
   SIMPLIFY_GPENCIL_BLEND = (1 << 6),
+  /* Simplify layer tint */
+  SIMPLIFY_GPENCIL_TINT = (1 << 7),
 } eGPencil_SimplifyFlags;
 
 /* ToolSettings.gpencil_*_align - Stroke Placement mode flags */
@@ -2326,6 +2327,7 @@ typedef enum eGPencil_GuideTypes {
   GP_GUIDE_RADIAL,
   GP_GUIDE_PARALLEL,
   GP_GUIDE_GRID,
+  GP_GUIDE_ISO,
 } eGPencil_GuideTypes;
 
 /* ToolSettings.gpencil_guide_references */
@@ -2392,7 +2394,7 @@ enum {
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
   // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
-  SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13),
+  // SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13), /* Unused */
   SCE_EEVEE_SSR_ENABLED = (1 << 14),
   SCE_EEVEE_SSR_REFRACTION = (1 << 15),
   SCE_EEVEE_SSR_HALF_RESOLUTION = (1 << 16),

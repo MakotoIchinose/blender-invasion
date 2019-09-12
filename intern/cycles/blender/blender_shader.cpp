@@ -733,9 +733,9 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexVoronoi)) {
     BL::ShaderNodeTexVoronoi b_voronoi_node(b_node);
     VoronoiTextureNode *voronoi = new VoronoiTextureNode();
-    voronoi->coloring = (NodeVoronoiColoring)b_voronoi_node.coloring();
-    voronoi->metric = (NodeVoronoiDistanceMetric)b_voronoi_node.distance();
+    voronoi->dimensions = b_voronoi_node.voronoi_dimensions();
     voronoi->feature = (NodeVoronoiFeature)b_voronoi_node.feature();
+    voronoi->metric = (NodeVoronoiDistanceMetric)b_voronoi_node.distance();
     BL::TexMapping b_texture_mapping(b_voronoi_node.texture_mapping());
     get_tex_mapping(&voronoi->tex_mapping, b_texture_mapping);
     node = voronoi;
@@ -778,18 +778,19 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexNoise)) {
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = new NoiseTextureNode();
-    noise->dimensions = b_noise_node.dimensions();
+    noise->dimensions = b_noise_node.noise_dimensions();
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(&noise->tex_mapping, b_texture_mapping);
     node = noise;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexMusgrave)) {
     BL::ShaderNodeTexMusgrave b_musgrave_node(b_node);
-    MusgraveTextureNode *musgrave = new MusgraveTextureNode();
-    musgrave->type = (NodeMusgraveType)b_musgrave_node.musgrave_type();
+    MusgraveTextureNode *musgrave_node = new MusgraveTextureNode();
+    musgrave_node->type = (NodeMusgraveType)b_musgrave_node.musgrave_type();
+    musgrave_node->dimensions = b_musgrave_node.musgrave_dimensions();
     BL::TexMapping b_texture_mapping(b_musgrave_node.texture_mapping());
-    get_tex_mapping(&musgrave->tex_mapping, b_texture_mapping);
-    node = musgrave;
+    get_tex_mapping(&musgrave_node->tex_mapping, b_texture_mapping);
+    node = musgrave_node;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
@@ -831,7 +832,7 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeTexWhiteNoise)) {
     BL::ShaderNodeTexWhiteNoise b_tex_white_noise_node(b_node);
     WhiteNoiseTextureNode *white_noise_node = new WhiteNoiseTextureNode();
-    white_noise_node->dimensions = b_tex_white_noise_node.dimensions();
+    white_noise_node->dimensions = b_tex_white_noise_node.noise_dimensions();
     node = white_noise_node;
   }
   else if (b_node.is_a(&RNA_ShaderNodeNormalMap)) {
@@ -1164,8 +1165,10 @@ static void add_nodes(Scene *scene,
   BL::NodeTree::links_iterator b_link;
 
   for (b_ntree.links.begin(b_link); b_link != b_ntree.links.end(); ++b_link) {
-    /* Ignore invalid links to avoid unwanted cycles created in graph. */
-    if (!b_link->is_valid()) {
+    /* Ignore invalid links to avoid unwanted cycles created in graph.
+     * Also ignore links with unavailable sockets. */
+    if (!(b_link->is_valid() && b_link->from_socket().enabled() &&
+          b_link->to_socket().enabled())) {
       continue;
     }
     /* get blender link data */
@@ -1347,6 +1350,14 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
       texture_environment->filename = new_viewport_parameters.studiolight_path;
       graph->add(texture_environment);
 
+      MixNode *mix_intensity = new MixNode();
+      mix_intensity->type = NODE_MIX_MUL;
+      mix_intensity->fac = 1.0f;
+      mix_intensity->color2 = make_float3(new_viewport_parameters.studiolight_intensity,
+                                          new_viewport_parameters.studiolight_intensity,
+                                          new_viewport_parameters.studiolight_intensity);
+      graph->add(mix_intensity);
+
       TextureCoordinateNode *texture_coordinate = new TextureCoordinateNode();
       graph->add(texture_coordinate);
 
@@ -1359,10 +1370,10 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
 
       graph->connect(texture_coordinate->output("Generated"),
                      texture_environment->input("Vector"));
+      graph->connect(texture_environment->output("Color"), mix_intensity->input("Color1"));
       graph->connect(light_path->output("Is Camera Ray"), mix_scene_with_background->input("Fac"));
-      graph->connect(texture_environment->output("Color"),
-                     mix_scene_with_background->input("Color1"));
-      graph->connect(texture_environment->output("Color"),
+      graph->connect(mix_intensity->output("Color"), mix_scene_with_background->input("Color1"));
+      graph->connect(mix_intensity->output("Color"),
                      mix_background_with_environment->input("Color2"));
       graph->connect(mix_background_with_environment->output("Color"),
                      mix_scene_with_background->input("Color2"));

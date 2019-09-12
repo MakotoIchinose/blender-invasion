@@ -30,6 +30,8 @@ struct FileSelectParams;
 struct ScrArea;
 struct SpaceFile;
 struct bContext;
+struct bScreen;
+struct uiBlock;
 struct wmWindowManager;
 
 #define FILE_LAYOUT_HOR 1
@@ -133,6 +135,11 @@ int ED_file_extension_icon(const char *path);
 void ED_file_read_bookmarks(void);
 
 void ED_file_change_dir(struct bContext *C);
+
+void ED_file_path_button(struct bScreen *screen,
+                         const struct SpaceFile *sfile,
+                         struct FileSelectParams *params,
+                         struct uiBlock *block);
 
 struct AssetEngine *ED_filelist_assetengine_get(struct SpaceFile *sfile);
 

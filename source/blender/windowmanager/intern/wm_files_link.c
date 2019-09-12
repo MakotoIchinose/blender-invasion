@@ -338,7 +338,7 @@ static void wm_link_virtual_lib(WMLinkAppendData *lapp_data,
       if (generate_overrides) {
         /* Create local override of virtually linked datablock, since we nearly always want to be
          * able to edit pretty much everything about it. */
-        new_id = BKE_override_library_create_from_id(bmain, new_id);
+        new_id = BKE_override_library_create_from_id(bmain, new_id, true);
         /* TODO: will need to protect some fields on type-by-type case (path field). */
       }
 

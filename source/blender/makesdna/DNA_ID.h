@@ -538,12 +538,17 @@ typedef enum ID_Type {
 #define ID_BLEND_PATH_FROM_GLOBAL(_id) \
   ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path_from_global())
 
-#define ID_MISSING(_id) (((_id)->tag & LIB_TAG_MISSING) != 0)
+#define ID_MISSING(_id) ((((ID *)(_id))->tag & LIB_TAG_MISSING) != 0)
 
 #define ID_IS_LINKED(_id) (((ID *)(_id))->lib != NULL)
 #define LIB_IS_VIRTUAL(_lib) (((_lib)->flag & LIBRARY_FLAG_VIRTUAL) != 0)
 #define ID_IS_LINKED_DATABLOCK(_id) (ID_IS_LINKED(_id) && !LIB_IS_VIRTUAL(((ID *)(_id))->lib))
 #define ID_IS_LINKED_DATAPATH(_id) (ID_IS_LINKED(_id) && LIB_IS_VIRTUAL(((ID *)(_id))->lib))
+
+/* Note that this is a fairly high-level check, should be used at user interaction level, not in
+ * BKE_library_override typically (especially due to the check on LIB_TAG_EXTERN). */
+#define ID_IS_OVERRIDABLE_LIBRARY(_id) \
+  (ID_IS_LINKED(_id) && !ID_MISSING(_id) && (((ID *)(_id))->tag & LIB_TAG_EXTERN) != 0)
 
 #define ID_IS_OVERRIDE_LIBRARY(_id) \
   (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference != NULL)

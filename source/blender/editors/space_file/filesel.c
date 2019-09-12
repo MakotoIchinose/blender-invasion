@@ -631,7 +631,7 @@ static void file_attribute_columns_widths(const FileSelectParams *params, FileLa
   const bool small_size = SMALL_SIZE_CHECK(params->thumbnail_size);
   const int pad = small_size ? 0 : ATTRIBUTE_COLUMN_PADDING * 2;
 
-  for (int i = 0; i < ATTRIBUTE_COLUMN_MAX; ++i) {
+  for (int i = 0; i < ATTRIBUTE_COLUMN_MAX; i++) {
     layout->attribute_columns[i].width = 0;
   }
 
@@ -639,7 +639,7 @@ static void file_attribute_columns_widths(const FileSelectParams *params, FileLa
   columns[COLUMN_DATETIME].width = file_string_width(small_size ? "23/08/89" :
                                                                   "23 Dec 6789, 23:59") +
                                    pad;
-  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "098.7 MB") + pad;
+  columns[COLUMN_SIZE].width = file_string_width(small_size ? "98.7 M" : "098.7 MiB") + pad;
   if (params->display == FILE_IMGDISPLAY) {
     columns[COLUMN_NAME].width = ((float)params->thumbnail_size / 8.0f) * UI_UNIT_X;
   }
@@ -895,7 +895,7 @@ int autocomplete_file(struct bContext *C, char *str, void *UNUSED(arg_v))
     int nentries = filelist_files_ensure(sfile->files, ED_fileselect_get_params(sfile));
     int i;
 
-    for (i = 0; i < nentries; ++i) {
+    for (i = 0; i < nentries; i++) {
       FileDirEntry *file = filelist_file(sfile->files, i);
       UI_autocomplete_update_name(autocpl, file->relpath);
     }
