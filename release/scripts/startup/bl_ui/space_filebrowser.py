@@ -33,6 +33,7 @@ class FILEBROWSER_HT_header(Header):
             layout.template_header()
 
         layout.menu("FILEBROWSER_MT_view")
+        layout.menu("FILEBROWSER_MT_select")
 
         # can be None when save/reload with a file selector open
 
@@ -157,8 +158,8 @@ class FILEBROWSER_PT_filter(Panel):
 
 
 def panel_poll_is_upper_region(region):
-    # The upper region is left-aligned, the lower is split into it then.
-    return region.alignment == 'LEFT'
+    # The upper region is left-aligned, the lower is split into it then. Note that after "Flip Regions" it's right-aligned.
+    return region.alignment in {'LEFT', 'RIGHT'}
 
 
 class FILEBROWSER_UL_dir(UIList):
@@ -390,7 +391,7 @@ class FILEBROWSER_PT_directory_path(Panel):
         row.operator("file.directory_new", icon='NEWFOLDER', text="")
 
         subrow = row.row()
-        subrow.prop(params, "directory", text="")
+        subrow.template_file_select_path(params)
 
         subrow = row.row()
         subrow.scale_x = 0.5
@@ -433,6 +434,22 @@ class FILEBROWSER_MT_view(Menu):
         layout.separator()
 
         layout.menu("INFO_MT_area")
+
+
+class FILEBROWSER_MT_select(Menu):
+    bl_label = "Select"
+
+    def draw(self, context):
+        layout = self.layout
+        st = context.space_data
+
+        layout.operator("file.select_all", text="All").action = 'SELECT'
+        layout.operator("file.select_all", text="None").action = 'DESELECT'
+        layout.operator("file.select_all", text="Inverse").action = 'INVERT'
+
+        layout.separator()
+
+        layout.operator("file.select_box")
 
 
 class FILEBROWSER_MT_context_menu(Menu):
@@ -485,6 +502,7 @@ classes = (
     FILEBROWSER_PT_directory_path,
     FILEBROWSER_PT_options_toggle,
     FILEBROWSER_MT_view,
+    FILEBROWSER_MT_select,
     FILEBROWSER_MT_context_menu,
 )
 

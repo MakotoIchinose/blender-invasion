@@ -1025,7 +1025,7 @@ void DRW_cache_free_old_batches(Main *bmain)
 
   for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
     for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
-      Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, false);
+      Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, false);
       if (depsgraph == NULL) {
         continue;
       }
@@ -1768,7 +1768,9 @@ void DRW_draw_render_loop(struct Depsgraph *depsgraph,
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, NULL);
 }
 
-/* @viewport CAN be NULL, in this case we create one. */
+/**
+ * \param viewport: can be NULL, in this case we create one.
+ */
 void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
                                     RenderEngineType *engine_type,
                                     ARegion *ar,

@@ -15,12 +15,15 @@
  */
 #include "blender_viewport.h"
 
+#include "blender_util.h"
+
 CCL_NAMESPACE_BEGIN
 
 BlenderViewportParameters::BlenderViewportParameters()
     : use_scene_world(true),
       use_scene_lights(true),
       studiolight_rotate_z(0.0f),
+      studiolight_intensity(1.0f),
       studiolight_background_alpha(1.0f),
       studiolight_path(ustring())
 {
@@ -36,6 +39,7 @@ BlenderViewportParameters::BlenderViewportParameters(BL::SpaceView3D &b_v3d)
     use_scene_lights = b_v3d.shading().use_scene_lights_render();
     if (!use_scene_world) {
       studiolight_rotate_z = b_v3d.shading().studiolight_rotate_z();
+      studiolight_intensity = b_v3d.shading().studiolight_intensity();
       studiolight_background_alpha = b_v3d.shading().studiolight_background_alpha();
       studiolight_path = b_v3d.shading().selected_studio_light().path();
     }
@@ -47,6 +51,7 @@ const bool BlenderViewportParameters::modified(const BlenderViewportParameters &
 {
   return use_scene_world != other.use_scene_world || use_scene_lights != other.use_scene_lights ||
          studiolight_rotate_z != other.studiolight_rotate_z ||
+         studiolight_intensity != other.studiolight_intensity ||
          studiolight_background_alpha != other.studiolight_background_alpha ||
          studiolight_path != other.studiolight_path;
 }
@@ -54,6 +59,40 @@ const bool BlenderViewportParameters::modified(const BlenderViewportParameters &
 const bool BlenderViewportParameters::custom_viewport_parameters() const
 {
   return !(use_scene_world && use_scene_lights);
+}
+
+PassType BlenderViewportParameters::get_viewport_display_render_pass(BL::SpaceView3D &b_v3d)
+{
+  PassType display_pass = PASS_NONE;
+  if (b_v3d) {
+    BL::View3DShading b_view3dshading = b_v3d.shading();
+    PointerRNA cshading = RNA_pointer_get(&b_view3dshading.ptr, "cycles");
+    display_pass = (PassType)get_enum(cshading, "render_pass", -1, -1);
+  }
+  return display_pass;
+}
+
+PassType update_viewport_display_passes(BL::SpaceView3D &b_v3d,
+                                        vector<Pass> &passes,
+                                        bool reset_passes)
+{
+  if (b_v3d) {
+    PassType display_pass = BlenderViewportParameters::get_viewport_display_render_pass(b_v3d);
+
+    if (reset_passes) {
+      passes.clear();
+      /* We always need a combined pass for now. It would be a good optimization
+       * to support rendering without combined pass. */
+      Pass::add(PASS_COMBINED, passes);
+    }
+
+    if (display_pass != PASS_COMBINED) {
+      Pass::add(display_pass, passes);
+    }
+
+    return display_pass;
+  }
+  return PASS_NONE;
 }
 
 CCL_NAMESPACE_END

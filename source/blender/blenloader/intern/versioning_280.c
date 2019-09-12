@@ -55,6 +55,7 @@
 #include "DNA_curve_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_text_types.h"
+#include "DNA_world_types.h"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
@@ -723,6 +724,17 @@ static void do_version_constraints_copy_scale_power(ListBase *lb)
     if (con->type == CONSTRAINT_TYPE_SIZELIKE) {
       bSizeLikeConstraint *data = (bSizeLikeConstraint *)con->data;
       data->power = 1.0f;
+    }
+  }
+}
+
+static void do_version_constraints_copy_rotation_mix_mode(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_ROTLIKE) {
+      bRotateLikeConstraint *data = (bRotateLikeConstraint *)con->data;
+      data->mix_mode = (data->flag & ROTLIKE_OFFSET) ? ROTLIKE_MIX_OFFSET : ROTLIKE_MIX_REPLACE;
+      data->flag &= ~ROTLIKE_OFFSET;
     }
   }
 }
@@ -1442,7 +1454,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           ToolSettings *ts = scene->toolsettings;
           /* sculpt brushes */
           GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; ++i) {
+          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
             gp_brush = &gset->brush[i];
             gp_brush->flag |= GP_SCULPT_FLAG_ENABLE_CURSOR;
             copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
@@ -1854,7 +1866,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         EEVEE_GET_BOOL(props, shadow_high_bitdepth, SCE_EEVEE_SHADOW_HIGH_BITDEPTH);
         EEVEE_GET_BOOL(props, taa_reprojection, SCE_EEVEE_TAA_REPROJECTION);
         // EEVEE_GET_BOOL(props, sss_enable, SCE_EEVEE_SSS_ENABLED);
-        EEVEE_GET_BOOL(props, sss_separate_albedo, SCE_EEVEE_SSS_SEPARATE_ALBEDO);
+        // EEVEE_GET_BOOL(props, sss_separate_albedo, SCE_EEVEE_SSS_SEPARATE_ALBEDO);
         EEVEE_GET_BOOL(props, ssr_enable, SCE_EEVEE_SSR_ENABLED);
         EEVEE_GET_BOOL(props, ssr_refraction, SCE_EEVEE_SSR_REFRACTION);
         EEVEE_GET_BOOL(props, ssr_halfres, SCE_EEVEE_SSR_HALF_RESOLUTION);
@@ -3754,9 +3766,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
-
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 9)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -3797,5 +3807,42 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         do_version_bones_inherit_scale(&arm->bonebase);
       }
     }
+
+    /* Convert the Offset flag to the mix mode enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bRotateLikeConstraint", "char", "mix_mode")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        do_version_constraints_copy_rotation_mix_mode(&ob->constraints);
+        if (ob->pose) {
+          LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+            do_version_constraints_copy_rotation_mix_mode(&pchan->constraints);
+          }
+        }
+      }
+    }
+
+    /* Added studiolight intensity */
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "studiolight_intensity")) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->shading.studiolight_intensity = 1.0f;
+            }
+          }
+        }
+      }
+    }
+
+    /* Elatic deform brush */
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_SCULPT && br->elastic_deform_volume_preservation == 0.0f) {
+        br->elastic_deform_volume_preservation = 0.5f;
+      }
+    }
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
   }
 }

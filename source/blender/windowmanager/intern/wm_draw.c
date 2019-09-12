@@ -436,6 +436,17 @@ static void wm_draw_region_blit(ARegion *ar, int view)
     return;
   }
 
+  if (view == -1) {
+    /* Non-stereo drawing. */
+    view = 0;
+  }
+  else if (view > 0) {
+    if (ar->draw_buffer->viewport[view] == NULL && ar->draw_buffer->offscreen[view] == NULL) {
+      /* Region does not need stereo or failed to allocate stereo buffers. */
+      view = 0;
+    }
+  }
+
   if (ar->draw_buffer->viewport[view]) {
     GPU_viewport_draw_to_screen(ar->draw_buffer->viewport[view], &ar->winrct);
   }
@@ -688,7 +699,7 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
         }
         else {
           /* Blit from offscreen buffer. */
-          wm_draw_region_blit(ar, 0);
+          wm_draw_region_blit(ar, view);
         }
       }
     }
@@ -820,11 +831,11 @@ static void wm_draw_window(bContext *C, wmWindow *win)
 /****************** main update call **********************/
 
 /* quick test to prevent changing window drawable */
-static bool wm_draw_update_test_window(wmWindow *win)
+static bool wm_draw_update_test_window(Main *bmain, wmWindow *win)
 {
   Scene *scene = WM_window_get_active_scene(win);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-  struct Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+  struct Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
   bScreen *screen = WM_window_get_active_screen(win);
   ARegion *ar;
   bool do_draw = false;
@@ -925,7 +936,7 @@ void wm_draw_update(bContext *C)
     }
 #endif
 
-    if (wm_draw_update_test_window(win)) {
+    if (wm_draw_update_test_window(bmain, win)) {
       bScreen *screen = WM_window_get_active_screen(win);
 
       CTX_wm_window_set(C, win);

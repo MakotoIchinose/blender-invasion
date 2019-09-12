@@ -220,10 +220,10 @@ class VoronoiTextureNode : public TextureNode {
     return NODE_GROUP_LEVEL_2;
   }
 
-  NodeVoronoiColoring coloring;
+  int dimensions;
   NodeVoronoiDistanceMetric metric;
   NodeVoronoiFeature feature;
-  float scale, exponent;
+  float w, scale, exponent, smoothness, randomness;
   float3 vector;
 };
 
@@ -236,8 +236,9 @@ class MusgraveTextureNode : public TextureNode {
     return NODE_GROUP_LEVEL_2;
   }
 
+  int dimensions;
   NodeMusgraveType type;
-  float scale, detail, dimension, lacunarity, offset, gain;
+  float w, scale, detail, dimension, lacunarity, offset, gain;
   float3 vector;
 };
 
@@ -391,9 +392,10 @@ class MappingNode : public ShaderNode {
   {
     return NODE_GROUP_LEVEL_2;
   }
+  void constant_fold(const ConstantFolder &folder);
 
-  float3 vector;
-  TextureMapping tex_mapping;
+  float3 vector, location, rotation, scale;
+  NodeMappingType type;
 };
 
 class RGBToBWNode : public ShaderNode {

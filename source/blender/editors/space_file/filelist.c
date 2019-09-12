@@ -334,15 +334,16 @@ enum {
 
 #define SPECIAL_IMG_SIZE 256
 #define SPECIAL_IMG_ROWS 1
-#define SPECIAL_IMG_COLS 6
+#define SPECIAL_IMG_COLS 7
 
 enum {
   SPECIAL_IMG_DOCUMENT = 0,
-  SPECIAL_IMG_FOLDER = 1,
-  SPECIAL_IMG_PARENT = 2,
-  SPECIAL_IMG_DRIVE_FIXED = 3,
-  SPECIAL_IMG_DRIVE_ATTACHED = 4,
-  SPECIAL_IMG_DRIVE_REMOTE = 5,
+  SPECIAL_IMG_UNSUPORTED = 1,
+  SPECIAL_IMG_FOLDER = 2,
+  SPECIAL_IMG_PARENT = 3,
+  SPECIAL_IMG_DRIVE_FIXED = 4,
+  SPECIAL_IMG_DRIVE_ATTACHED = 5,
+  SPECIAL_IMG_DRIVE_REMOTE = 6,
   SPECIAL_IMG_MAX,
 };
 
@@ -894,7 +895,7 @@ void filelist_free_icons(void)
 
   BLI_assert(G.background == false);
 
-  for (i = 0; i < SPECIAL_IMG_MAX; ++i) {
+  for (i = 0; i < SPECIAL_IMG_MAX; i++) {
     IMB_freeImBuf(gSpecialFileImages[i]);
     gSpecialFileImages[i] = NULL;
   }
@@ -1005,6 +1006,9 @@ static int filelist_geticon_ex(const int typeflag,
   }
   else if (typeflag & FILE_TYPE_TEXT) {
     return ICON_FILE_TEXT;
+  }
+  else if (typeflag & FILE_TYPE_ARCHIVE) {
+    return ICON_FILE_ARCHIVE;
   }
   else if (typeflag & FILE_TYPE_BLENDERLIB) {
     const int ret = UI_idcode_icon_get(blentype);
@@ -2126,6 +2130,9 @@ int ED_path_extension_type(const char *path)
   else if (BLI_path_extension_check(path, ".abc")) {
     return FILE_TYPE_ALEMBIC;
   }
+  else if (BLI_path_extension_check(path, ".zip")) {
+    return FILE_TYPE_ARCHIVE;
+  }
   else if (BLI_path_extension_check_n(path, ".obj", ".3ds", ".fbx", ".glb", ".gltf", NULL)) {
     return FILE_TYPE_OBJECT_IO;
   }
@@ -2183,6 +2190,8 @@ int ED_file_extension_icon(const char *path)
       return ICON_FILE_3D;
     case FILE_TYPE_TEXT:
       return ICON_FILE_TEXT;
+    case FILE_TYPE_ARCHIVE:
+      return ICON_FILE_ARCHIVE;
     default:
       return ICON_FILE_BLANK;
   }
