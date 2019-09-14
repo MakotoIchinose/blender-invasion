@@ -332,7 +332,8 @@ static void sculpt_vertex_neighbors_get(SculptSession *ss,
   } \
   if (neighbor_iterator.neighbors != neighbor_iterator.neighbors_fixed) { \
     MEM_freeN(neighbor_iterator.neighbors); \
-  }
+  } \
+  ((void)0)
 
 /* Utils */
 static void sculpt_vertex_mask_clamp(SculptSession *ss, int index, float min, float max)
@@ -443,7 +444,7 @@ static bool is_symmetry_iteration_valid(char i, char symm)
 
 /* Checks if a vertex is inside the brush radius from any of its mirrored axis */
 static bool sculpt_is_vertex_inside_brush_radius_symm(float vertex[3],
-                                                      float br_co[3],
+                                                      const float br_co[3],
                                                       float radius,
                                                       char symm)
 {
@@ -1211,7 +1212,7 @@ static float *sculpt_topology_automasking_init(Sculpt *sd, Object *ob, float *au
         }
       }
     }
-    sculpt_vertex_neighbors_iter_end(ni)
+    sculpt_vertex_neighbors_iter_end(ni);
   }
 
   BLI_stack_free(not_visited_vertices);
@@ -3593,7 +3594,7 @@ static void pose_brush_init_task_cb_ex(void *__restrict userdata,
 }
 
 static bool sculpt_pose_brush_is_vertex_inside_brush_radius(float vertex[3],
-                                                            float br_co[3],
+                                                            const float br_co[3],
                                                             float radius,
                                                             char symm)
 {
@@ -3676,7 +3677,7 @@ static void sculpt_pose_brush_init(Sculpt *sd, Object *ob, SculptSession *ss, Br
         }
       }
     }
-    sculpt_vertex_neighbors_iter_end(ni)
+    sculpt_vertex_neighbors_iter_end(ni);
   }
 
   BLI_stack_free(not_visited_vertices);
@@ -7896,7 +7897,12 @@ static void sculpt_filter_cache_init(Object *ob, Sculpt *sd)
   for (int i = 0; i < totnode; i++) {
     BKE_pbvh_node_mark_normals_update(nodes[i]);
   }
-  BKE_pbvh_update_normals(ss->pbvh, NULL);
+
+  /* mesh->runtime.subdiv_ccg is not available. Updating of the normals is done during drawing.
+   * Filters can't use normals in multires. */
+  if (BKE_pbvh_type(ss->pbvh) != PBVH_GRIDS) {
+    BKE_pbvh_update_normals(ss->pbvh, NULL);
+  }
 
   SculptThreadedTaskData data = {
       .sd = sd,
@@ -8212,7 +8218,7 @@ typedef enum eSculptMaskFilterTypes {
   MASK_FILTER_CONTRAST_DECREASE = 6,
 } eSculptMaskFilterTypes;
 
-EnumPropertyItem prop_mask_filter_types[] = {
+static EnumPropertyItem prop_mask_filter_types[] = {
     {MASK_FILTER_SMOOTH, "SMOOTH", 0, "Smooth Mask", "Smooth mask"},
     {MASK_FILTER_SHARPEN, "SHARPEN", 0, "Sharpen Mask", "Sharpen mask"},
     {MASK_FILTER_GROW, "GROW", 0, "Grow Mask", "Grow mask"},
@@ -8940,7 +8946,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
         BLI_gsqueue_push(queue, &new_entry);
       }
     }
-    sculpt_vertex_neighbors_iter_end(ni)
+    sculpt_vertex_neighbors_iter_end(ni);
   }
 
   if (use_normals) {
@@ -9091,7 +9097,7 @@ void sculpt_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
         }
       }
     }
-    sculpt_vertex_neighbors_iter_end(ni)
+    sculpt_vertex_neighbors_iter_end(ni);
   }
 
   BLI_stack_free(not_visited_vertices);
@@ -9109,14 +9115,6 @@ void ED_sculpt_init_transform(struct bContext *C)
 
   copy_v3_v3(ss->init_pivot_pos, ss->pivot_pos);
   copy_v4_v4(ss->init_pivot_rot, ss->pivot_rot);
-
-  ss->init_pivot_scale[0] = 1.0f;
-  ss->init_pivot_scale[1] = 1.0f;
-  ss->init_pivot_scale[2] = 1.0f;
-
-  ss->pivot_scale[0] = 1.0f;
-  ss->pivot_scale[1] = 1.0f;
-  ss->pivot_scale[2] = 1.0f;
 
   sculpt_undo_push_begin("Transform");
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false, false);
@@ -9330,7 +9328,7 @@ typedef enum eSculptPivotPositionModes {
   SCULPT_PIVOT_POSITION_CURSOR_SURFACE = 4,
 } eSculptPivotPositionModes;
 
-EnumPropertyItem prop_sculpt_pivot_position_types[] = {
+static EnumPropertyItem prop_sculpt_pivot_position_types[] = {
     {SCULPT_PIVOT_POSITION_ORIGIN,
      "ORIGIN",
      0,
