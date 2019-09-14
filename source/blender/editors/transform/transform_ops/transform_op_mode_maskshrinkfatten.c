@@ -96,6 +96,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_op.h"
 
 /* -------------------------------------------------------------------- */
 /* Transform (Mask Shrink/Fatten) */

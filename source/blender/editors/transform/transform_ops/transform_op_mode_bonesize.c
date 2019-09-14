@@ -95,6 +95,7 @@
 #include "BLT_translation.h"
 
 #include "transform.h"
+#include "transform_op.h"
 
 /* -------------------------------------------------------------------- */
 /* Transform (EditBone (B-bone) width scaling) */
