@@ -111,8 +111,6 @@ void postInputRotation(TransInfo *t, float values[3])
   }
 }
 
-static void storeCustomLNorValue(TransDataContainer *t, BMesh *bm);
-
 /**
  * \a smat is reference matrix only.
  *
