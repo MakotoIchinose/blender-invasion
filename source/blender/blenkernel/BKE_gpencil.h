@@ -237,6 +237,13 @@ bool BKE_gpencil_smooth_stroke_uv(struct bGPDstroke *gps, int point_index, float
 bool BKE_gpencil_close_stroke(struct bGPDstroke *gps);
 void BKE_gpencil_dissolve_points(struct bGPDframe *gpf, struct bGPDstroke *gps, const short tag);
 
+bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, const float dist);
+bool BKE_gpencil_trim_stroke_points(struct bGPDstroke *gps, const int index_from, const int index_to);
+bool BKE_gpencil_split_stroke(struct bGPDframe *gpf, struct bGPDstroke *gps, const int before_index, struct bGPDstroke **remaining_gps);
+bool BKE_gpencil_shrink_stroke(struct bGPDstroke *gps, const float dist);
+
+float BKE_gpencil_stroke_length(const struct bGPDstroke *gps, bool use_3d);
+
 void BKE_gpencil_get_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
 float BKE_gpencil_multiframe_falloff_calc(
     struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
