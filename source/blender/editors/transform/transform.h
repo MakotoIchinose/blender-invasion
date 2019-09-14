@@ -874,16 +874,9 @@ enum {
 #define T_PROP_SIZE_MIN 1e-6f
 #define T_PROP_SIZE_MAX 1e12f
 
-bool initTransform(struct bContext *C,
-                   struct TransInfo *t,
-                   struct wmOperator *op,
-                   const struct wmEvent *event,
-                   int mode);
-void saveTransform(struct bContext *C, struct TransInfo *t, struct wmOperator *op);
-int transformEvent(TransInfo *t, const struct wmEvent *event);
-void transformApply(struct bContext *C, TransInfo *t);
-int transformEnd(struct bContext *C, TransInfo *t);
-
+/* transform.c */
+bool transdata_check_local_center(TransInfo *t, short around);
+bool transdata_check_local_islands(TransInfo *t, short around);
 void setTransformViewMatrices(TransInfo *t);
 void setTransformViewAspect(TransInfo *t, float r_aspect[3]);
 void convertViewVec(TransInfo *t, float r_vec[3], double dx, double dy);
@@ -891,13 +884,8 @@ void projectIntViewEx(TransInfo *t, const float vec[3], int adr[2], const eV3DPr
 void projectIntView(TransInfo *t, const float vec[3], int adr[2]);
 void projectFloatViewEx(TransInfo *t, const float vec[3], float adr[2], const eV3DProjTest flag);
 void projectFloatView(TransInfo *t, const float vec[3], float adr[2]);
-
-void applyAspectRatio(TransInfo *t, float vec[2]);
 void removeAspectRatio(TransInfo *t, float vec[2]);
-
-void drawPropCircle(const struct bContext *C, TransInfo *t);
-
-struct wmKeyMap *transform_modal_keymap(struct wmKeyConfig *keyconf);
+bool checkUseAxisMatrix(TransInfo *t);
 
 /*********************** transform_gizmo.c ********** */
 
@@ -906,9 +894,6 @@ struct wmKeyMap *transform_modal_keymap(struct wmKeyConfig *keyconf);
 /* return 0 when no gimbal for selection */
 bool gimbal_axis(struct Object *ob, float gmat[3][3]);
 void drawDial3d(const TransInfo *t);
-
-/*********************** TransData Creation and General Handling *********** */
-bool transdata_check_local_islands(TransInfo *t, short around);
 
 /*********************** Constraints *****************************/
 
@@ -1086,9 +1071,6 @@ void projectEdgeSlideData(TransInfo *t, bool is_final);
 
 void freeVertSlideVerts(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data);
 void projectVertSlideData(TransInfo *t, bool is_final);
-
-/* TODO. transform_query.c */
-bool checkUseAxisMatrix(TransInfo *t);
 
 #define TRANSFORM_SNAP_MAX_PX 100.0f
 #define TRANSFORM_DIST_INVALID -FLT_MAX

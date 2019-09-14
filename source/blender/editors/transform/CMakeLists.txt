@@ -22,6 +22,7 @@ set(INC
   ../../blenlib
   ../../blentranslation
   ../../bmesh
+  ../../editors/transform
   ../../gpu
   ../../ikplugin
   ../../makesdna
@@ -40,37 +41,73 @@ set(INC_SYS
 set(SRC
   transform.c
   transform_constraints.c
-  transform_convert.c
-  transform_convert_action.c
-  transform_convert_armature.c
-  transform_convert_cursor.c
-  transform_convert_curve.c
-  transform_convert_gpencil.c
-  transform_convert_graph.c
-  transform_convert_lattice.c
-  transform_convert_mask.c
-  transform_convert_mball.c
-  transform_convert_mesh.c
-  transform_convert_nla.c
-  transform_convert_node.c
-  transform_convert_object.c
-  transform_convert_paintcurve.c
-  transform_convert_particle.c
-  transform_convert_sculpt.c
-  transform_convert_sequencer.c
-  transform_convert_tracking.c
   transform_generics.c
-  transform_gizmo_2d.c
-  transform_gizmo_3d.c
-  transform_gizmo_extrude_3d.c
+  transform_gizmo/transform_gizmo_2d.c
+  transform_gizmo/transform_gizmo_3d.c
+  transform_gizmo/transform_gizmo_extrude_3d.c
   transform_input.c
-  transform_ops.c
   transform_orientations.c
-  transform_snap.c
-  transform_snap_object.c
+
+  transform_convert/transform_convert.c
+  transform_convert/transform_convert_action.c
+  transform_convert/transform_convert_armature.c
+  transform_convert/transform_convert_cursor.c
+  transform_convert/transform_convert_curve.c
+  transform_convert/transform_convert_gpencil.c
+  transform_convert/transform_convert_graph.c
+  transform_convert/transform_convert_lattice.c
+  transform_convert/transform_convert_mask.c
+  transform_convert/transform_convert_mball.c
+  transform_convert/transform_convert_mesh.c
+  transform_convert/transform_convert_nla.c
+  transform_convert/transform_convert_node.c
+  transform_convert/transform_convert_object.c
+  transform_convert/transform_convert_paintcurve.c
+  transform_convert/transform_convert_particle.c
+  transform_convert/transform_convert_sculpt.c
+  transform_convert/transform_convert_sequencer.c
+  transform_convert/transform_convert_tracking.c
+
+  transform_ops/transform_op.c
+  transform_ops/transform_op_mode.c
+  transform_ops/transform_op_mode_align.c
+  transform_ops/transform_op_mode_baketime.c
+  transform_ops/transform_op_mode_bend.c
+  transform_ops/transform_op_mode_boneenvelope.c
+  transform_ops/transform_op_mode_boneroll.c
+  transform_ops/transform_op_mode_bonesize.c
+  transform_ops/transform_op_mode_curveshrinkfatten.c
+  transform_ops/transform_op_mode_edge_bevelweight.c
+  transform_ops/transform_op_mode_edge_crease.c
+  transform_ops/transform_op_mode_edge_rotate_normal.c
+  transform_ops/transform_op_mode_edge_seq_slide.c
+  transform_ops/transform_op_mode_edge_slide.c
+  transform_ops/transform_op_mode_gpopacity.c
+  transform_ops/transform_op_mode_gpshrinkfatten.c
+  transform_ops/transform_op_mode_maskshrinkfatten.c
+  transform_ops/transform_op_mode_mirror.c
+  transform_ops/transform_op_mode_push_pull.c
+  transform_ops/transform_op_mode_resize.c
+  transform_ops/transform_op_mode_rotate.c
+  transform_ops/transform_op_mode_shear.c
+  transform_ops/transform_op_mode_shrink_fatten.c
+  transform_ops/transform_op_mode_skin_resize.c
+  transform_ops/transform_op_mode_tilt.c
+  transform_ops/transform_op_mode_timescale.c
+  transform_ops/transform_op_mode_timeslide.c
+  transform_ops/transform_op_mode_timetranslate.c
+  transform_ops/transform_op_mode_tosphere.c
+  transform_ops/transform_op_mode_trackball.c
+  transform_ops/transform_op_mode_translate.c
+  transform_ops/transform_op_mode_vert_slide.c
+  transform_ops/transform_op_orientation.c
+
+  transform_snap/transform_snap.c
+  transform_snap/transform_snap_object.c
 
   transform.h
   transform_convert.h
+  transform_op.h
 )
 
 set(LIB
