@@ -66,9 +66,6 @@
 #include "GPU_draw.h"
 #include "GPU_extensions.h"
 #include "GPU_glew.h"
-#include "GPU_material.h"
-#include "GPU_matrix.h"
-#include "GPU_shader.h"
 #include "GPU_texture.h"
 
 #include "PIL_time.h"
@@ -794,7 +791,7 @@ bool GPU_upload_dxt_texture(ImBuf *ibuf, bool use_srgb)
   }
 
   blocksize = (ibuf->dds_data.fourcc == FOURCC_DXT1) ? 8 : 16;
-  for (i = 0; i < ibuf->dds_data.nummipmaps && (width || height); ++i) {
+  for (i = 0; i < ibuf->dds_data.nummipmaps && (width || height); i++) {
     if (width == 0) {
       width = 1;
     }

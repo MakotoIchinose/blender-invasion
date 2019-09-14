@@ -547,6 +547,9 @@ struct wmOperatorTypeMacro *WM_operatortype_macro_define(struct wmOperatorType *
                                                          const char *idname);
 
 const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties);
+char *WM_operatortype_description(struct bContext *C,
+                                  struct wmOperatorType *ot,
+                                  struct PointerRNA *properties);
 
 /* wm_uilist_type.c */
 void WM_uilisttype_init(void);
@@ -683,6 +686,7 @@ enum {
   WM_JOB_TYPE_STUDIOLIGHT,
   WM_JOB_TYPE_LIGHT_BAKE,
   WM_JOB_TYPE_FSMENU_BOOKMARK_VALIDATE,
+  WM_JOB_TYPE_QUADRIFLOW_REMESH,
   /* add as needed, bake, seq proxy build
    * if having hard coded values is a problem */
 };

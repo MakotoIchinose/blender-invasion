@@ -807,7 +807,7 @@ bGPDframe *BKE_gpencil_layer_find_frame(bGPDlayer *gpl, int cframe)
 bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_Mode addnew)
 {
   bGPDframe *gpf = NULL;
-  short found = 0;
+  bool found = false;
 
   /* error checking */
   if (gpl == NULL) {
@@ -833,11 +833,11 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
     if (gpf->framenum < cframe) {
       for (; gpf; gpf = gpf->next) {
         if (gpf->framenum == cframe) {
-          found = 1;
+          found = true;
           break;
         }
         else if ((gpf->next) && (gpf->next->framenum > cframe)) {
-          found = 1;
+          found = true;
           break;
         }
       }
@@ -864,7 +864,7 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
     else {
       for (; gpf; gpf = gpf->prev) {
         if (gpf->framenum <= cframe) {
-          found = 1;
+          found = true;
           break;
         }
       }
@@ -898,7 +898,7 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
       /* find gp-frame which is less than or equal to cframe */
       for (gpf = gpl->frames.last; gpf; gpf = gpf->prev) {
         if (gpf->framenum <= cframe) {
-          found = 1;
+          found = true;
           break;
         }
       }
@@ -907,7 +907,7 @@ bGPDframe *BKE_gpencil_layer_getframe(bGPDlayer *gpl, int cframe, eGP_GetFrame_M
       /* find gp-frame which is less than or equal to cframe */
       for (gpf = gpl->frames.first; gpf; gpf = gpf->next) {
         if (gpf->framenum <= cframe) {
-          found = 1;
+          found = true;
           break;
         }
       }
@@ -1042,7 +1042,7 @@ void BKE_gpencil_layer_setactive(bGPdata *gpd, bGPDlayer *active)
 }
 
 /* Set locked layers for autolock mode. */
-void BKE_gpencil_layer_autolock_set(bGPdata *gpd)
+void BKE_gpencil_layer_autolock_set(bGPdata *gpd, const bool unlock)
 {
   BLI_assert(gpd != NULL);
 
@@ -1066,8 +1066,10 @@ void BKE_gpencil_layer_autolock_set(bGPdata *gpd)
     /* If disable is better unlock all layers by default or it looks there is
      * a problem in the UI because the user expects all layers will be unlocked
      */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      gpl->flag &= ~GP_LAYER_LOCKED;
+    if (unlock) {
+      for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+        gpl->flag &= ~GP_LAYER_LOCKED;
+      }
     }
   }
 }
@@ -1480,11 +1482,11 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
 
     /* find def_nr in list, if not exist, then create one */
     for (j = 0; j < dv->totweight; j++) {
-      int found = 0;
+      bool found = false;
       dw = &dv->dw[j];
       for (ld = result->first; ld; ld = ld->next) {
         if (ld->data == POINTER_FROM_INT(dw->def_nr)) {
-          found = 1;
+          found = true;
           break;
         }
       }
@@ -1506,10 +1508,9 @@ static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase 
   LinkData *ld;
   MDeformVert *dst = MEM_mallocN(count * sizeof(MDeformVert), "new_deformVert");
 
-  dst->totweight = totweight;
-
   for (i = 0; i < count; i++) {
     dst[i].dw = MEM_mallocN(sizeof(MDeformWeight) * totweight, "new_deformWeight");
+    dst[i].totweight = totweight;
     j = 0;
     /* re-assign deform groups */
     for (ld = def_nr_list->first; ld; ld = ld->next) {
@@ -1703,7 +1704,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
   int result_totweight;
 
   if (gps->dvert != NULL) {
-    stroke_defvert_create_nr_list(gps->dvert, count, &def_nr_list, &result_totweight);
+    stroke_defvert_create_nr_list(gps->dvert, gps->totpoints, &def_nr_list, &result_totweight);
     new_dv = stroke_defvert_new_count(count, result_totweight, &def_nr_list);
   }
 
@@ -1759,16 +1760,21 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
   }
 
   gps->points = new_pt;
-  gps->totpoints = i;
-  MEM_freeN(pt); /* original */
+  /* Free original vertex list. */
+  MEM_freeN(pt);
 
   if (new_dv) {
+    /* Free original weight data. */
     BKE_gpencil_free_stroke_weights(gps);
+    MEM_freeN(gps->dvert);
     while ((ld = BLI_pophead(&def_nr_list))) {
       MEM_freeN(ld);
     }
+
     gps->dvert = new_dv;
   }
+
+  gps->totpoints = i;
 
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
   gps->tot_triangles = 0;
@@ -3237,7 +3243,7 @@ static int gpencil_check_same_material_color(Object *ob_gp, float color[4], Mate
 /* Helper: Add gpencil material using curve material as base. */
 static Material *gpencil_add_from_curve_material(Main *bmain,
                                                  Object *ob_gp,
-                                                 float cu_color[4],
+                                                 const float cu_color[4],
                                                  const bool gpencil_lines,
                                                  const bool fill,
                                                  int *r_idx)
@@ -3278,7 +3284,7 @@ static void gpencil_add_new_points(bGPDstroke *gps,
                                    float pressure,
                                    int init,
                                    int totpoints,
-                                   float init_co[3],
+                                   const float init_co[3],
                                    bool last)
 {
   for (int i = 0; i < totpoints; i++) {
@@ -3409,23 +3415,27 @@ static void gpencil_convert_spline(Main *bmain,
     /* If object has more than 1 material, use second material for stroke color. */
     if ((!only_stroke) && (ob_cu->totcol > 1) && (give_current_material(ob_cu, 2))) {
       mat_curve = give_current_material(ob_cu, 2);
-      linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
-      mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
+      if (mat_curve) {
+        linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+        mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
+      }
     }
     else if ((only_stroke) || (do_stroke)) {
       /* Also use the first color if the fill is none for stroke color. */
       if (ob_cu->totcol > 0) {
         mat_curve = give_current_material(ob_cu, 1);
-        linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
-        mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
-        /* Set fill and stroke depending of curve type (3D or 2D). */
-        if ((cu->flag & CU_3D) || ((cu->flag & (CU_FRONT | CU_BACK)) == 0)) {
-          mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
-          mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
-        }
-        else {
-          mat_gp->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
-          mat_gp->gp_style->flag |= GP_STYLE_FILL_SHOW;
+        if (mat_curve) {
+          linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+          mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
+          /* Set fill and stroke depending of curve type (3D or 2D). */
+          if ((cu->flag & CU_3D) || ((cu->flag & (CU_FRONT | CU_BACK)) == 0)) {
+            mat_gp->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+            mat_gp->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+          }
+          else {
+            mat_gp->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+            mat_gp->gp_style->flag |= GP_STYLE_FILL_SHOW;
+          }
         }
       }
     }

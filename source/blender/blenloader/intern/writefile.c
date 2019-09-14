@@ -158,7 +158,6 @@
 #include "BKE_layer.h"
 #include "BKE_library_override.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_pointcache.h"
@@ -2015,7 +2014,7 @@ static void write_mdisps(WriteData *wd, int count, MDisps *mdlist, int external)
     int i;
 
     writestruct(wd, DATA, MDisps, count, mdlist);
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       MDisps *md = &mdlist[i];
       if (md->disps) {
         if (!external) {
@@ -2036,7 +2035,7 @@ static void write_grid_paint_mask(WriteData *wd, int count, GridPaintMask *grid_
     int i;
 
     writestruct(wd, DATA, GridPaintMask, count, grid_paint_mask);
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
         const int gridsize = BKE_ccg_gridsize(gpm->level);
@@ -2414,6 +2413,13 @@ static void write_view_settings(WriteData *wd, ColorManagedViewSettings *view_se
   }
 }
 
+static void write_view3dshading(WriteData *wd, View3DShading *shading)
+{
+  if (shading->prop) {
+    IDP_WriteProperty(shading->prop, wd);
+  }
+}
+
 static void write_paint(WriteData *wd, Paint *p)
 {
   if (p->cavity_curve) {
@@ -2472,7 +2478,7 @@ static void write_lightcache(WriteData *wd, LightCache *cache)
 
   if (cache->cube_mips) {
     writestruct(wd, DATA, LightCacheTexture, cache->mips_len, cache->cube_mips);
-    for (int i = 0; i < cache->mips_len; ++i) {
+    for (int i = 0; i < cache->mips_len; i++) {
       write_lightcache_texture(wd, &cache->cube_mips[i]);
     }
   }
@@ -2692,6 +2698,7 @@ static void write_scene(WriteData *wd, Scene *sce)
       writestruct(wd, DATA, LANPR_LineLayerComponent, 1, llc);
     }
   }
+  write_view3dshading(wd, &sce->display.shading);
 
   /* Freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);
@@ -2859,6 +2866,7 @@ static void write_area_regions(WriteData *wd, ScrArea *area)
       if (v3d->fx_settings.dof) {
         writestruct(wd, DATA, GPUDOFSettings, 1, v3d->fx_settings.dof);
       }
+      write_view3dshading(wd, &v3d->shading);
     }
     else if (sl->spacetype == SPACE_GRAPH) {
       SpaceGraph *sipo = (SpaceGraph *)sl;

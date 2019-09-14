@@ -593,8 +593,14 @@ static void file_ui_region_draw(const bContext *C, ARegion *ar)
 
 static void file_execution_region_init(wmWindowManager *wm, ARegion *ar)
 {
+  wmKeyMap *keymap;
+
   ED_region_panels_init(wm, ar);
   ar->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
+
+  /* own keymap */
+  keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, 0);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
 static void file_execution_region_draw(const bContext *C, ARegion *ar)
@@ -704,6 +710,7 @@ void ED_spacetype_file(void)
   art->init = file_execution_region_init;
   art->draw = file_execution_region_draw;
   BLI_addhead(&st->regiontypes, art);
+  file_execute_region_panels_register(art);
 
   /* regions: channels (directories) */
   art = MEM_callocN(sizeof(ARegionType), "spacetype file region");
@@ -726,7 +733,7 @@ void ED_spacetype_file(void)
   art->init = file_tools_region_init;
   art->draw = file_tools_region_draw;
   BLI_addhead(&st->regiontypes, art);
-  file_panels_register(art);
+  file_tool_props_region_panels_register(art);
 
   BKE_spacetype_register(st);
 }

@@ -55,6 +55,7 @@
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
 #include "BKE_object.h"
+#include "BKE_paint.h"
 
 #include "DEG_depsgraph.h"
 
@@ -82,13 +83,11 @@
 
 /* local module include */
 #include "transform.h"
+#include "transform_convert.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_select.h"
 #include "GPU_state.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1055,7 +1054,13 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
     }
   }
   else if (ob && (ob->mode & OB_MODE_ALL_PAINT)) {
-    /* pass */
+    if (ob->mode & OB_MODE_SCULPT) {
+      totsel = 1;
+      calc_tw_center_with_matrix(tbounds, ob->sculpt->pivot_pos, false, ob->obmat);
+      mul_m4_v3(ob->obmat, tbounds->center);
+      mul_m4_v3(ob->obmat, tbounds->min);
+      mul_m4_v3(ob->obmat, tbounds->max);
+    }
   }
   else if (ob && ob->mode & OB_MODE_PARTICLE_EDIT) {
     PTCacheEdit *edit = PE_get_current(scene, ob);
@@ -1166,6 +1171,10 @@ static void gizmo_prepare_mat(const bContext *C,
         Object *ob = OBACT(view_layer);
         if (gpd && (gpd->flag & GP_DATA_STROKE_EDITMODE)) {
           /* pass */
+        }
+        else if (ob->sculpt) {
+          SculptSession *ss = ob->sculpt;
+          copy_v3_v3(rv3d->twmat[3], ss->pivot_pos);
         }
         else if (ob != NULL) {
           ED_object_calc_active_center(ob, false, rv3d->twmat[3]);
@@ -2295,7 +2304,6 @@ static void WIDGETGROUP_xform_shear_setup(const bContext *UNUSED(C), wmGizmoGrou
       interp_v3_v3v3(gz->color, axis_color[i_ortho_a], axis_color[i_ortho_b], 0.75f);
       gz->color[3] = 0.5f;
       PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_shear, NULL);
-      RNA_enum_set(ptr, "shear_axis", 0);
       RNA_boolean_set(ptr, "release_confirm", 1);
       xgzgroup->gizmo[i][j] = gz;
     }

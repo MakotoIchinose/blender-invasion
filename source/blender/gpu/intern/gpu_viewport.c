@@ -39,7 +39,6 @@
 #include "GPU_immediate.h"
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
-#include "GPU_draw.h"
 
 #include "DRW_engine.h"
 
@@ -303,7 +302,7 @@ GPUTexture *GPU_viewport_texture_pool_query(
         (GPU_texture_width(tmp_tex->texture) == width) &&
         (GPU_texture_height(tmp_tex->texture) == height)) {
       /* Search if the engine is not already using this texture */
-      for (int i = 0; i < MAX_ENGINE_BUFFER_SHARING; ++i) {
+      for (int i = 0; i < MAX_ENGINE_BUFFER_SHARING; i++) {
         if (tmp_tex->user[i] == engine) {
           break;
         }
@@ -339,7 +338,7 @@ static void gpu_viewport_texture_pool_clear_users(GPUViewport *viewport)
   for (ViewportTempTexture *tmp_tex = viewport->tex_pool.first; tmp_tex; tmp_tex = tmp_tex_next) {
     tmp_tex_next = tmp_tex->next;
     bool no_user = true;
-    for (int i = 0; i < MAX_ENGINE_BUFFER_SHARING; ++i) {
+    for (int i = 0; i < MAX_ENGINE_BUFFER_SHARING; i++) {
       if (tmp_tex->user[i] != NULL) {
         tmp_tex->user[i] = NULL;
         no_user = false;

@@ -55,8 +55,8 @@
 #include "DNA_curve_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_text_types.h"
+#include "DNA_world_types.h"
 
-#include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_cloth.h"
 #include "BKE_collection.h"
@@ -65,22 +65,17 @@
 #include "BKE_customdata.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
-#include "BKE_gpencil.h"
 #include "BKE_idprop.h"
-#include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_node.h"
-#include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pointcache.h"
 #include "BKE_report.h"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_sequencer.h"
 #include "BKE_studiolight.h"
@@ -637,6 +632,18 @@ static void do_version_bones_split_bbone_scale(ListBase *lb)
   }
 }
 
+static void do_version_bones_inherit_scale(ListBase *lb)
+{
+  for (Bone *bone = lb->first; bone; bone = bone->next) {
+    if (bone->flag & BONE_NO_SCALE) {
+      bone->inherit_scale_mode = BONE_INHERIT_SCALE_NONE_LEGACY;
+      bone->flag &= ~BONE_NO_SCALE;
+    }
+
+    do_version_bones_inherit_scale(&bone->childbase);
+  }
+}
+
 static bool replace_bbone_scale_rnapath(char **p_old_path)
 {
   char *old_path = *p_old_path;
@@ -711,6 +718,17 @@ static void do_version_constraints_copy_scale_power(ListBase *lb)
     if (con->type == CONSTRAINT_TYPE_SIZELIKE) {
       bSizeLikeConstraint *data = (bSizeLikeConstraint *)con->data;
       data->power = 1.0f;
+    }
+  }
+}
+
+static void do_version_constraints_copy_rotation_mix_mode(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_ROTLIKE) {
+      bRotateLikeConstraint *data = (bRotateLikeConstraint *)con->data;
+      data->mix_mode = (data->flag & ROTLIKE_OFFSET) ? ROTLIKE_MIX_OFFSET : ROTLIKE_MIX_REPLACE;
+      data->flag &= ~ROTLIKE_OFFSET;
     }
   }
 }
@@ -822,6 +840,14 @@ static void do_versions_material_convert_legacy_blend_mode(bNodeTree *ntree, cha
 
   if (need_update) {
     ntreeUpdateTree(NULL, ntree);
+  }
+}
+
+static void do_versions_local_collection_bits_set(LayerCollection *layer_collection)
+{
+  layer_collection->local_collections_bits = ~(0);
+  LISTBASE_FOREACH (LayerCollection *, child, &layer_collection->layer_collections) {
+    do_versions_local_collection_bits_set(child);
   }
 }
 
@@ -1430,7 +1456,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           ToolSettings *ts = scene->toolsettings;
           /* sculpt brushes */
           GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; ++i) {
+          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
             gp_brush = &gset->brush[i];
             gp_brush->flag |= GP_SCULPT_FLAG_ENABLE_CURSOR;
             copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
@@ -1842,7 +1868,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         EEVEE_GET_BOOL(props, shadow_high_bitdepth, SCE_EEVEE_SHADOW_HIGH_BITDEPTH);
         EEVEE_GET_BOOL(props, taa_reprojection, SCE_EEVEE_TAA_REPROJECTION);
         // EEVEE_GET_BOOL(props, sss_enable, SCE_EEVEE_SSS_ENABLED);
-        EEVEE_GET_BOOL(props, sss_separate_albedo, SCE_EEVEE_SSS_SEPARATE_ALBEDO);
+        // EEVEE_GET_BOOL(props, sss_separate_albedo, SCE_EEVEE_SSS_SEPARATE_ALBEDO);
         EEVEE_GET_BOOL(props, ssr_enable, SCE_EEVEE_SSR_ENABLED);
         EEVEE_GET_BOOL(props, ssr_refraction, SCE_EEVEE_SSR_REFRACTION);
         EEVEE_GET_BOOL(props, ssr_halfres, SCE_EEVEE_SSR_HALF_RESOLUTION);
@@ -2915,7 +2941,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
             case SPACE_VIEW3D: {
               View3D *v3d = (View3D *)sl;
-              v3d->flag &= ~(V3D_FLAG_UNUSED_0 | V3D_FLAG_UNUSED_1 | V3D_FLAG_UNUSED_10 |
+              v3d->flag &= ~(V3D_LOCAL_COLLECTIONS | V3D_FLAG_UNUSED_1 | V3D_FLAG_UNUSED_10 |
                              V3D_FLAG_UNUSED_12);
               v3d->flag2 &= ~(V3D_FLAG2_UNUSED_3 | V3D_FLAG2_UNUSED_6 | V3D_FLAG2_UNUSED_12 |
                               V3D_FLAG2_UNUSED_13 | V3D_FLAG2_UNUSED_14 | V3D_FLAG2_UNUSED_15);
@@ -3763,9 +3789,29 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 6)) {
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = (View3D *)sl;
+            v3d->shading.flag |= V3D_SHADING_SCENE_LIGHTS_RENDER | V3D_SHADING_SCENE_WORLD_RENDER;
 
+            /* files by default don't have studio lights selected unless interacted
+             * with the shading popover. When no studiolight could be read, we will
+             * select the default world one. */
+            StudioLight *studio_light = BKE_studiolight_find(v3d->shading.lookdev_light,
+                                                             STUDIOLIGHT_TYPE_WORLD);
+            if (studio_light != NULL) {
+              STRNCPY(v3d->shading.lookdev_light, studio_light->name);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 9)) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -3776,6 +3822,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ARegion *ar_header = do_versions_find_region(regionbase, RGN_TYPE_HEADER);
             ARegion *ar_toolprops = do_versions_find_region_or_null(regionbase,
                                                                     RGN_TYPE_TOOL_PROPS);
+            ARegion *ar_execute = do_versions_find_region_or_null(regionbase, RGN_TYPE_EXECUTE);
 
             /* Reinsert UI region so that it spawns entire area width */
             BLI_remlink(regionbase, ar_ui);
@@ -3792,9 +3839,73 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               BLI_freelinkN(regionbase, ar_toolprops);
             }
 
+            if (!ar_execute) {
+              ARegion *ar_main = do_versions_find_region(regionbase, RGN_TYPE_WINDOW);
+              ar_execute = MEM_callocN(sizeof(ARegion), "versioning execute region for file");
+              BLI_insertlinkbefore(regionbase, ar_main, ar_execute);
+              ar_execute->regiontype = RGN_TYPE_EXECUTE;
+              ar_execute->alignment = RGN_ALIGN_BOTTOM;
+              ar_execute->flag |= RGN_FLAG_DYNAMIC_SIZE;
+            }
+
             if (sfile->params) {
               sfile->params->details_flags |= FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME;
             }
+          }
+        }
+      }
+    }
+
+    /* Convert the BONE_NO_SCALE flag to inherit_scale_mode enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "Bone", "char", "inherit_scale_mode")) {
+      LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+        do_version_bones_inherit_scale(&arm->bonebase);
+      }
+    }
+
+    /* Convert the Offset flag to the mix mode enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bRotateLikeConstraint", "char", "mix_mode")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        do_version_constraints_copy_rotation_mix_mode(&ob->constraints);
+        if (ob->pose) {
+          LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+            do_version_constraints_copy_rotation_mix_mode(&pchan->constraints);
+          }
+        }
+      }
+    }
+
+    /* Added studiolight intensity */
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DShading", "float", "studiolight_intensity")) {
+      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+        for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+          for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->shading.studiolight_intensity = 1.0f;
+            }
+          }
+        }
+      }
+    }
+
+    /* Elatic deform brush */
+    for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+      if (br->ob_mode & OB_MODE_SCULPT && br->elastic_deform_volume_preservation == 0.0f) {
+        br->elastic_deform_volume_preservation = 0.5f;
+      }
+    }
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "LayerCollection", "short", "local_collections_bits")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
+          LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
+            do_versions_local_collection_bits_set(layer_collection);
           }
         }
       }

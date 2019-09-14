@@ -71,6 +71,52 @@
 
 #include "file_intern.h"  // own include
 
+void ED_file_path_button(bScreen *screen,
+                         const SpaceFile *sfile,
+                         FileSelectParams *params,
+                         uiBlock *block)
+{
+  PointerRNA params_rna_ptr;
+  uiBut *but;
+
+  RNA_pointer_create(&screen->id, &RNA_FileSelectParams, params, &params_rna_ptr);
+
+  /* callbacks for operator check functions */
+  UI_block_func_set(block, file_draw_check_cb, NULL, NULL);
+
+  but = uiDefButR(block,
+                  UI_BTYPE_TEXT,
+                  -1,
+                  "",
+                  0,
+                  0,
+                  UI_UNIT_X * 10,
+                  UI_UNIT_Y,
+                  &params_rna_ptr,
+                  "directory",
+                  0,
+                  0.0f,
+                  (float)FILE_MAX,
+                  0.0f,
+                  0.0f,
+                  TIP_("File path"));
+
+  BLI_assert(!UI_but_flag_is_set(but, UI_BUT_UNDO));
+  BLI_assert(!UI_but_is_utf8(but));
+
+  UI_but_func_complete_set(but, autocomplete_directory, NULL);
+  UI_but_funcN_set(but, file_directory_enter_handle, NULL, but);
+
+  /* TODO, directory editing is non-functional while a library is loaded
+   * until this is properly supported just disable it. */
+  if (sfile && sfile->files && filelist_lib(sfile->files)) {
+    UI_but_flag_enable(but, UI_BUT_DISABLED);
+  }
+
+  /* clear func */
+  UI_block_func_set(block, NULL, NULL, NULL);
+}
+
 /* Dummy helper - we need dynamic tooltips here. */
 static char *file_draw_tooltip_func(bContext *UNUSED(C), void *argN, const char *UNUSED(tip))
 {
@@ -92,12 +138,9 @@ static void file_draw_icon(
 {
   uiBut *but;
   int x, y;
-  // float alpha = 1.0f;
 
   x = sx;
   y = sy - height;
-
-  /*if (icon == ICON_FILE_BLANK) alpha = 0.375f;*/
 
   but = uiDefIconBut(
       block, UI_BTYPE_LABEL, 0, icon, x, y, width, height, NULL, 0.0f, 0.0f, 0.0f, 0.0f, NULL);
@@ -177,8 +220,8 @@ static void file_draw_preview(uiBlock *block,
   float scaledx, scaledy;
   float scale;
   int ex, ey;
-  bool use_dropshadow = !is_icon &&
-                        (typeflags & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
+  bool show_outline = !is_icon &&
+                      (typeflags & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
 
   BLI_assert(imb != NULL);
 
@@ -213,26 +256,17 @@ static void file_draw_preview(uiBlock *block,
   xco = sx + (int)dx;
   yco = sy - layout->prv_h + (int)dy;
 
-  /* shadow */
-  if (use_dropshadow) {
-    UI_draw_box_shadow(128, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
-  }
-
   GPU_blend(true);
 
   /* the large image */
 
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
-    /*  File and Folder icons draw with lowered opacity until we add themes */
-    col[3] = 0.6f;
-    /*  Use dark images if background is light */
-    float bg[3];
-    UI_GetThemeColor3fv(TH_BACK, bg);
-    if (rgb_to_grayscale(bg) > 0.5f) {
-      col[0] = 0;
-      col[1] = 0;
-      col[2] = 0;
+    if (typeflags & FILE_TYPE_DIR) {
+      UI_GetThemeColor4fv(TH_ICON_FOLDER, col);
+    }
+    else {
+      UI_GetThemeColor4fv(TH_TEXT, col);
     }
   }
   else if (typeflags & FILE_TYPE_FTFONT) {
@@ -270,18 +304,17 @@ static void file_draw_preview(uiBlock *block,
 
     if (is_icon) {
       const float icon_size = 16.0f / icon_aspect * U.dpi_fac;
-      float icon_opacity = MIN2(icon_aspect, 0.7);
-      uchar icon_color[4] = {255, 255, 255, 255};
-      float bg[3];
-      /*  base this off theme color of file or folder later */
-      UI_GetThemeColor3fv(TH_BACK, bg);
-      if (rgb_to_grayscale(bg) > 0.5f) {
-        icon_color[0] = 0;
-        icon_color[1] = 0;
-        icon_color[2] = 0;
+      float icon_opacity = 0.3f;
+      uchar icon_color[4] = {0, 0, 0, 255};
+      float bgcolor[4];
+      UI_GetThemeColor4fv(TH_ICON_FOLDER, bgcolor);
+      if (rgb_to_grayscale(bgcolor) < 0.5f) {
+        icon_color[0] = 255;
+        icon_color[1] = 255;
+        icon_color[2] = 255;
       }
       icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
-      icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.65f));
+      icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.75f));
       UI_icon_draw_ex(
           icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, icon_color, false);
     }
@@ -298,23 +331,21 @@ static void file_draw_preview(uiBlock *block,
     }
   }
 
-  /* border */
-  if (use_dropshadow) {
+  /* Contrasting outline around some preview types. */
+  if (show_outline) {
     GPUVertFormat *format = immVertexFormat();
-    uint pos_attr = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    uint col_attr = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-
-    immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
-    immBegin(GPU_PRIM_LINE_LOOP, 4);
-    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.15f);
-    immVertex2f(pos_attr, (float)xco + 1, (float)(yco + ey));
-    immAttr4f(col_attr, 1.0f, 1.0f, 1.0f, 0.2f);
-    immVertex2f(pos_attr, (float)(xco + ex), (float)(yco + ey));
-    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.2f);
-    immVertex2f(pos_attr, (float)(xco + ex), (float)yco + 1);
-    immAttr4f(col_attr, 0.0f, 0.0f, 0.0f, 0.3f);
-    immVertex2f(pos_attr, (float)xco + 1, (float)yco + 1);
-    immEnd();
+    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    float border_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+    float bgcolor[4];
+    UI_GetThemeColor4fv(TH_BACK, bgcolor);
+    if (rgb_to_grayscale(bgcolor) > 0.5f) {
+      border_color[0] = 0.0f;
+      border_color[1] = 0.0f;
+      border_color[2] = 0.0f;
+    }
+    immUniformColor4fv(border_color);
+    imm_draw_box_wire_2d(pos, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
     immUnbindProgram();
   }
 

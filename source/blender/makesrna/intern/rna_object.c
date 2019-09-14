@@ -1410,6 +1410,22 @@ static void rna_Object_constraints_clear(Object *object, Main *bmain)
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, object);
 }
 
+static void rna_Object_constraints_move(
+    Object *object, Main *bmain, ReportList *reports, int from, int to)
+{
+  if (from == to) {
+    return;
+  }
+
+  if (!BLI_listbase_move_index(&object->constraints, from, to)) {
+    BKE_reportf(reports, RPT_ERROR, "Could not move constraint from index '%d' to '%d'", from, to);
+    return;
+  }
+
+  ED_object_constraint_tag_update(bmain, object, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT, object);
+}
+
 bool rna_Object_constraints_override_apply(Main *UNUSED(bmain),
                                            PointerRNA *ptr_dst,
                                            PointerRNA *ptr_src,
@@ -2041,6 +2057,15 @@ static void rna_def_object_constraints(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "clear", "rna_Object_constraints_clear");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
   RNA_def_function_ui_description(func, "Remove all constraint from this object");
+
+  func = RNA_def_function(srna, "move", "rna_Object_constraints_move");
+  RNA_def_function_ui_description(func, "Move a constraint to a different position");
+  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_int(
+      func, "from_index", -1, INT_MIN, INT_MAX, "From Index", "Index to move", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(func, "to_index", -1, INT_MIN, INT_MAX, "To Index", "Target index", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
 /* object.modifiers */
@@ -2566,7 +2591,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "quat");
   RNA_def_property_editable_array_func(prop, "rna_Object_rotation_4d_editable");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_float_array_default(prop, rna_default_quaternion);
   RNA_def_property_ui_text(prop, "Quaternion Rotation", "Rotation in Quaternions");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
@@ -2603,7 +2627,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_editable_array_func(prop, "rna_Object_scale_editable");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
-  RNA_def_property_float_array_default(prop, rna_default_scale_3d);
   RNA_def_property_ui_text(prop, "Scale", "Scaling of the object");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
@@ -2640,7 +2663,6 @@ static void rna_def_object(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "delta_rotation_quaternion", PROP_FLOAT, PROP_QUATERNION);
   RNA_def_property_float_sdna(prop, NULL, "dquat");
-  RNA_def_property_float_array_default(prop, rna_default_quaternion);
   RNA_def_property_ui_text(
       prop,
       "Delta Rotation (Quaternion)",
@@ -2663,7 +2685,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "dscale");
   RNA_def_property_flag(prop, PROP_PROPORTIONAL);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
-  RNA_def_property_float_array_default(prop, rna_default_scale_3d);
   RNA_def_property_ui_text(prop, "Delta Scale", "Extra scaling added to the scale of the object");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 

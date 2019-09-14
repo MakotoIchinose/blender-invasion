@@ -50,7 +50,6 @@
 #include "BKE_customdata.h"
 #include "BKE_idprop.h"
 #include "BKE_global.h"
-#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -360,7 +359,7 @@ void wm_event_do_depsgraph(bContext *C, bool is_after_open_file)
      * and for until then we have to accept ambiguities when object is shared
      * across visible view layers and has overrides on it.
      */
-    Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+    Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
     if (is_after_open_file) {
       DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
       DEG_graph_on_visible_update(bmain, depsgraph, true);
@@ -1804,8 +1803,11 @@ void wm_event_free_handler(wmEventHandler *handler)
 /* only set context when area/region is part of screen */
 static void wm_handler_op_context(bContext *C, wmEventHandler_Op *handler, const wmEvent *event)
 {
-  wmWindow *win = CTX_wm_window(C);
-  bScreen *screen = CTX_wm_screen(C);
+  wmWindow *win = handler->context.win ? handler->context.win : CTX_wm_window(C);
+  /* It's probably fine to always use WM_window_get_active_screen() to get the screen. But this
+   * code has been getting it through context since forever, so play safe and stick to that when
+   * possible. */
+  bScreen *screen = handler->context.win ? WM_window_get_active_screen(win) : CTX_wm_screen(C);
 
   if (screen && handler->op) {
     if (handler->context.area == NULL) {
@@ -2376,10 +2378,18 @@ static int wm_handler_fileselect_do(bContext *C,
     case EVT_FILESELECT_EXEC:
     case EVT_FILESELECT_CANCEL:
     case EVT_FILESELECT_EXTERNAL_CANCEL: {
+      wmWindow *ctx_win = CTX_wm_window(C);
+
       /* remlink now, for load file case before removing*/
       BLI_remlink(handlers, handler);
 
-      if (val != EVT_FILESELECT_EXTERNAL_CANCEL) {
+      if (val == EVT_FILESELECT_EXTERNAL_CANCEL) {
+        /* The window might have been freed already. */
+        if (BLI_findindex(&wm->windows, handler->context.win) == -1) {
+          handler->context.win = NULL;
+        }
+      }
+      else {
         for (wmWindow *win = wm->windows.first; win; win = win->next) {
           if (WM_window_is_temp_screen(win)) {
             bScreen *screen = WM_window_get_active_screen(win);
@@ -2388,9 +2398,20 @@ static int wm_handler_fileselect_do(bContext *C,
             BLI_assert(file_sa->spacetype == SPACE_FILE);
 
             if (BLI_listbase_is_single(&file_sa->spacedata)) {
-              wmWindow *ctx_win = CTX_wm_window(C);
+              BLI_assert(ctx_win != win);
+
               wm_window_close(C, wm, win);
+
               CTX_wm_window_set(C, ctx_win);  // wm_window_close() NULLs.
+              /* Some operators expect a drawable context (for EVT_FILESELECT_EXEC) */
+              wm_window_make_drawable(wm, ctx_win);
+              /* Ensure correct cursor position, otherwise, popups may close immediately after
+               * opening (UI_BLOCK_MOVEMOUSE_QUIT) */
+              wm_get_cursor_position(ctx_win, &ctx_win->eventstate->x, &ctx_win->eventstate->y);
+              wm->winactive = ctx_win; /* Reports use this... */
+              if (handler->context.win == win) {
+                handler->context.win = NULL;
+              }
             }
             else if (file_sa->full) {
               ED_screen_full_prevspace(C, file_sa);
@@ -2404,7 +2425,7 @@ static int wm_handler_fileselect_do(bContext *C,
         }
       }
 
-      wm_handler_op_context(C, handler, CTX_wm_window(C)->eventstate);
+      wm_handler_op_context(C, handler, ctx_win->eventstate);
 
       /* needed for UI_popup_menu_reports */
 
@@ -3238,9 +3259,10 @@ void wm_event_do_handlers(bContext *C)
       wm_event_free_all(win);
     }
     else {
+      Main *bmain = CTX_data_main(C);
       Scene *scene = WM_window_get_active_scene(win);
       ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-      Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, false);
+      Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, false);
       Scene *scene_eval = (depsgraph != NULL) ? DEG_get_evaluated_scene(depsgraph) : NULL;
 
       if (scene_eval != NULL) {
@@ -3514,51 +3536,25 @@ void WM_event_add_fileselect(bContext *C, wmOperator *op)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = CTX_wm_window(C);
+  /* Don't add the file handler to the temporary window, or else it owns the handlers for itself,
+   * causing dangling pointers once it's destructed through a handler. It has a parent which should
+   * hold the handlers itself. */
+  ListBase *modalhandlers = WM_window_is_temp_screen(win) ? &win->parent->modalhandlers :
+                                                            &win->modalhandlers;
 
   /* Close any popups, like when opening a file browser from the splash. */
-  UI_popup_handlers_remove_all(C, &win->modalhandlers);
-
-  /* only allow 1 file selector open per window */
-  LISTBASE_FOREACH_MUTABLE (wmEventHandler *, handler_base, &win->modalhandlers) {
-    if (handler_base->type == WM_HANDLER_TYPE_OP) {
-      wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
-      if (handler->is_fileselect == false) {
-        continue;
-      }
-      bScreen *screen = CTX_wm_screen(C);
-      bool cancel_handler = true;
-
-      /* find the area with the file selector for this handler */
-      ED_screen_areas_iter(win, screen, sa)
-      {
-        if (sa->spacetype == SPACE_FILE) {
-          SpaceFile *sfile = sa->spacedata.first;
-
-          if (sfile->op == handler->op) {
-            CTX_wm_area_set(C, sa);
-            wm_handler_fileselect_do(C, &win->modalhandlers, handler, EVT_FILESELECT_CANCEL);
-            cancel_handler = false;
-            break;
-          }
-        }
-      }
-
-      /* if not found we stop the handler without changing the screen */
-      if (cancel_handler) {
-        wm_handler_fileselect_do(C, &win->modalhandlers, handler, EVT_FILESELECT_EXTERNAL_CANCEL);
-      }
-    }
-  }
+  UI_popup_handlers_remove_all(C, modalhandlers);
 
   wmEventHandler_Op *handler = MEM_callocN(sizeof(*handler), __func__);
   handler->head.type = WM_HANDLER_TYPE_OP;
 
   handler->is_fileselect = true;
   handler->op = op;
+  handler->context.win = CTX_wm_window(C);
   handler->context.area = CTX_wm_area(C);
   handler->context.region = CTX_wm_region(C);
 
-  BLI_addhead(&win->modalhandlers, handler);
+  BLI_addhead(modalhandlers, handler);
 
   /* check props once before invoking if check is available
    * ensures initial properties are valid */

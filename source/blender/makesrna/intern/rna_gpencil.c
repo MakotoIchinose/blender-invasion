@@ -151,7 +151,7 @@ static void rna_GPencil_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Pointe
 static void rna_GPencil_autolock(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  BKE_gpencil_layer_autolock_set(gpd);
+  BKE_gpencil_layer_autolock_set(gpd, true);
 
   /* standard update */
   rna_GPencil_update(bmain, scene, ptr);
@@ -1861,7 +1861,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "onion_keytype");
   RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_enum_items(prop, rna_enum_onion_keyframe_type_items);
-  RNA_def_property_ui_text(prop, "Filter By Type", "Type of keyframe (for filtering)");
+  RNA_def_property_ui_text(prop, "Filter by Type", "Type of keyframe (for filtering)");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   prop = RNA_def_property(srna, "use_onion_fade", PROP_BOOLEAN, PROP_NONE);
