@@ -988,11 +988,6 @@ static Scene *rna_3DViewShading_scene(PointerRNA *ptr)
 {
   /* Get scene, depends if using 3D view or OpenGL render settings. */
   ID *id = ptr->owner_id;
-  if (!id) {
-    /* When accessed from an external render engine the id.data is NULL
-     * This might be missing from the RNA CPP Api */
-    return NULL;
-  }
   if (GS(id->name) == ID_SCE) {
     return (Scene *)id;
   }
@@ -1221,6 +1216,19 @@ static const EnumPropertyItem *rna_View3DShading_studio_light_itemf(bContext *UN
   RNA_enum_item_end(&item, &totitem);
   *r_free = true;
   return item;
+}
+
+static void rna_SpaceView3D_use_local_collections_update(bContext *C, PointerRNA *ptr)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  View3D *v3d = (View3D *)ptr->data;
+
+  if (ED_view3d_local_collections_set(bmain, v3d)) {
+    BKE_layer_collection_local_sync(view_layer, v3d);
+    DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+  }
 }
 
 static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C,
@@ -2968,7 +2976,7 @@ static void rna_def_space_outliner(BlenderRNA *brna)
   /* Libraries filter. */
   prop = RNA_def_property(srna, "use_filter_id_type", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "filter", SO_FILTER_ID_TYPE);
-  RNA_def_property_ui_text(prop, "Filter By Type", "Show only data-blocks of one type");
+  RNA_def_property_ui_text(prop, "Filter by Type", "Show only data-blocks of one type");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
   prop = RNA_def_property(srna, "filter_id_type", PROP_ENUM, PROP_NONE);
@@ -2993,7 +3001,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
        "Use a custom color limited to this viewport only"},
       {0, NULL, 0, NULL, NULL},
   };
-  static const float default_background_color[] = {0.05f, 0.05f, 0.05f};
 
   static const EnumPropertyItem cavity_type_items[] = {
       {V3D_SHADING_CAVITY_SSAO,
@@ -3076,7 +3083,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "curvature_ridge_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "curvature_ridge_factor");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Curvature Ridge", "Factor for the curvature ridges");
   RNA_def_property_range(prop, 0.0f, 2.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -3084,7 +3090,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "curvature_valley_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "curvature_valley_factor");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Curvature Valley", "Factor for the curvature valleys");
   RNA_def_property_range(prop, 0.0f, 2.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -3092,7 +3097,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "cavity_ridge_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "cavity_ridge_factor");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Cavity Ridge", "Factor for the cavity ridges");
   RNA_def_property_range(prop, 0.0f, 250.0f);
   RNA_def_property_ui_range(prop, 0.00f, 2.5f, 1, 3);
@@ -3101,7 +3105,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "cavity_valley_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "cavity_valley_factor");
-  RNA_def_property_float_default(prop, 1.0);
   RNA_def_property_ui_text(prop, "Cavity Valley", "Factor for the cavity valleys");
   RNA_def_property_range(prop, 0.0f, 250.0f);
   RNA_def_property_ui_range(prop, 0.00f, 2.5f, 1, 3);
@@ -3119,7 +3122,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "studiolight_rotate_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, NULL, "studiolight_rot_z");
-  RNA_def_property_float_default(prop, 0.0);
   RNA_def_property_ui_text(
       prop, "Studiolight Rotation", "Rotation of the studiolight around the Z-Axis");
   RNA_def_property_range(prop, -M_PI, M_PI);
@@ -3128,7 +3130,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "studiolight_intensity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "studiolight_intensity");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Strength", "Strength of the studiolight");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
@@ -3137,7 +3138,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "studiolight_background_alpha", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "studiolight_background");
-  RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_ui_text(prop, "Background", "Show the studiolight in the background");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.00f, 1.0f, 1, 3);
@@ -3173,7 +3173,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "background_color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_array(prop, 3);
-  RNA_def_property_float_array_default(prop, default_background_color);
   RNA_def_property_ui_text(prop, "Background Color", "Color for custom background color");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -3198,7 +3197,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "xray_alpha", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "xray_alpha");
-  RNA_def_property_float_default(prop, 0.5);
   RNA_def_property_ui_text(prop, "X-Ray Alpha", "Amount of alpha to use");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -3206,7 +3204,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "xray_alpha_wireframe", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "xray_alpha_wire");
-  RNA_def_property_float_default(prop, 0.5);
   RNA_def_property_ui_text(prop, "X-Ray Alpha", "Amount of alpha to use");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -3237,14 +3234,12 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_scene_lights_render", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_SCENE_LIGHTS_RENDER);
-  RNA_def_property_boolean_default(prop, true);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Scene Lights", "Render lights and light probes of the scene");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_scene_world_render", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_SHADING_SCENE_WORLD_RENDER);
-  RNA_def_property_boolean_default(prop, true);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Scene World", "Use scene world for lighting");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -3264,7 +3259,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "shadow_intensity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "shadow_intensity");
-  RNA_def_property_float_default(prop, 0.5);
   RNA_def_property_ui_text(prop, "Shadow Intensity", "Darkness of shadows");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.00f, 1.0f, 1, 3);
@@ -3319,7 +3313,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Grid Scale", "Distance between 3D View grid lines");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, 1000.0f, 0.1f, 3);
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "grid_lines", PROP_INT, PROP_NONE);
@@ -3327,14 +3320,12 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Grid Lines", "Number of grid lines to display in perspective view");
   RNA_def_property_range(prop, 0, 1024);
-  RNA_def_property_int_default(prop, 16);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "grid_subdivisions", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "gridsubdiv");
   RNA_def_property_ui_text(prop, "Grid Subdivisions", "Number of subdivisions between grid lines");
   RNA_def_property_range(prop, 1, 1024);
-  RNA_def_property_int_default(prop, 10);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "grid_scale_unit", PROP_FLOAT, PROP_NONE);
@@ -3407,7 +3398,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "xray_alpha_bone", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.xray_alpha_bone");
-  RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Opacity", "Opacity to use for bone selection");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -3440,7 +3430,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "wireframe_threshold", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.wireframe_threshold");
-  RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(
       prop, "Wireframe Threshold", "Adjust the number of wires displayed (1 for all wires)");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -3607,7 +3596,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "texture_paint_mode_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.texture_paint_mode_opacity");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(
       prop, "Stencil Opacity", "Opacity of the texture paint mode stencil mask overlay");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -3615,7 +3603,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "vertex_paint_mode_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.vertex_paint_mode_opacity");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(
       prop, "Vertex Paint Opacity", "Opacity of the vertex paint mode overlay");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -3623,7 +3610,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "weight_paint_mode_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.weight_paint_mode_opacity");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(
       prop, "Weight Paint Opacity", "Opacity of the weight paint mode overlay");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -3631,7 +3617,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "sculpt_mode_mask_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.sculpt_mode_mask_opacity");
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Sculpt Mask Opacity", "");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -3670,7 +3655,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gpencil_grid_opacity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "overlay.gpencil_grid_opacity");
   RNA_def_property_range(prop, 0.1f, 1.0f);
-  RNA_def_property_float_default(prop, 0.9f);
   RNA_def_property_ui_text(prop, "Opacity", "Canvas grid opacity");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
@@ -3678,7 +3662,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gpencil_paper_opacity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "overlay.gpencil_paper_opacity");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Opacity", "Fade factor");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
@@ -3827,7 +3810,6 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "clip_start", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
-  RNA_def_property_float_default(prop, 0.1f);
   RNA_def_property_ui_text(
       prop, "Clip Start", "3D View near clipping distance (perspective view only)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -3835,7 +3817,6 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "clip_end", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
-  RNA_def_property_float_default(prop, 1000.0f);
   RNA_def_property_ui_text(prop, "Clip End", "3D View far clipping distance");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
@@ -3982,6 +3963,14 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "fx_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "FX Options", "Options used for real time compositing");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
+  prop = RNA_def_property(srna, "use_local_collections", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", V3D_LOCAL_COLLECTIONS);
+  RNA_def_property_ui_text(
+      prop, "Local Collections", "Display a different set of collections in this viewport");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_SpaceView3D_use_local_collections_update");
 
   /* Stereo Settings */
   prop = RNA_def_property(srna, "stereo_3d_eye", PROP_ENUM, PROP_NONE);
