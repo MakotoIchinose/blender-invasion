@@ -897,6 +897,7 @@ void drawDial3d(const TransInfo *t);
 
 /*********************** Constraints *****************************/
 
+void drawPropCircle(const bContext *C, TransInfo *t);
 void drawConstraint(TransInfo *t);
 
 void getConstraintMatrix(TransInfo *t);

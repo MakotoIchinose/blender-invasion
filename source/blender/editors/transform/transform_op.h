@@ -93,7 +93,6 @@ void ElementRotation_ex(TransInfo *t,
                         const float *center);
 void ElementRotation(
     TransInfo *t, TransDataContainer *tc, TransData *td, float mat[3][3], const short around);
-void drawPropCircle(const bContext *C, TransInfo *t);
 void protectedTransBits(short protectflag, float vec[3]);
 void protectedSizeBits(short protectflag, float size[3]);
 void protectedRotateBits(short protectflag, float eul[3], const float oldeul[3]);
