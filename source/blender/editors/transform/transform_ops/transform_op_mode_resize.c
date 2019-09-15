@@ -20,38 +20,19 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-
 #include "BLI_math.h"
-#include "BLI_utildefines.h"
-
-#include "BLT_translation.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_report.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
-#include "BKE_scene.h"
 #include "BKE_unit.h"
 
-#include "RNA_access.h"
 #include "RNA_define.h"
-#include "RNA_enum_types.h"
 
 #include "WM_api.h"
-#include "WM_message.h"
 #include "WM_types.h"
-#include "WM_toolsystem.h"
 
 #include "UI_interface.h"
-#include "UI_resources.h"
 
 #include "ED_screen.h"
-/* for USE_LOOPSLIDE_HACK only */
-#include "ED_mesh.h"
 
 #include "transform.h"
 #include "transform_convert.h"

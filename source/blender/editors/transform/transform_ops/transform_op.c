@@ -20,37 +20,25 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_constraint_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_movieclip_types.h"
-#include "DNA_scene_types.h" /* PET modes */
-#include "DNA_workspace_types.h"
 #include "DNA_gpencil_types.h"
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_report.h"
 #include "BKE_editmesh.h"
-#include "BKE_layer.h"
 #include "BKE_scene.h"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_image.h"
 #include "ED_keyframing.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
-#include "ED_markers.h"
-#include "ED_view3d.h"
 #include "ED_mesh.h"
 #include "ED_clip.h"
 #include "ED_node.h"
@@ -62,21 +50,15 @@
 #include "RNA_enum_types.h"
 
 #include "BLF_api.h"
-#include "BLT_translation.h"
 
 #include "WM_api.h"
-#include "WM_message.h"
 #include "WM_types.h"
 #include "WM_toolsystem.h"
 
-#include "UI_view2d.h"
-#include "UI_interface.h"
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
-#include "ED_screen.h"
-/* for USE_LOOPSLIDE_HACK only */
-#include "ED_mesh.h"
+#include "BLT_translation.h"
 
 #include "transform.h"
 #include "transform_convert.h"

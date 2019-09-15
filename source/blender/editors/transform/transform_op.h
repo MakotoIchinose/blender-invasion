@@ -74,11 +74,11 @@ enum {
 /* transform_op.c */
 extern const float VecOne[3];
 
-int transform_modal(bContext *C, wmOperator *op, const wmEvent *event);
-void transform_cancel(bContext *C, wmOperator *op);
-int transform_exec(bContext *C, wmOperator *op);
-int transform_invoke(bContext *C, wmOperator *op, const wmEvent *event);
-bool transform_poll_property(const bContext *C, wmOperator *op, const PropertyRNA *prop);
+int transform_modal(bContext *C, struct wmOperator *op, const struct wmEvent *event);
+void transform_cancel(bContext *C, struct wmOperator *op);
+int transform_exec(bContext *C, struct wmOperator *op);
+int transform_invoke(bContext *C, struct wmOperator *op, const struct wmEvent *event);
+bool transform_poll_property(const bContext *C, struct wmOperator *op, const PropertyRNA *prop);
 
 /* transform_op_mode.c */
 void postInputRotation(TransInfo *t, float values[3]);
@@ -115,7 +115,7 @@ void initBakeTime(TransInfo *t);
 /* transform_op_mode_bend.c */
 extern const char OP_BEND[];
 void initBend(TransInfo *t);
-void TRANSFORM_OT_bend(wmOperatorType *ot);
+void TRANSFORM_OT_bend(struct wmOperatorType *ot);
 
 /* transform_op_mode_boneenvelope.c */
 void initBoneEnvelope(TransInfo *t);
@@ -132,22 +132,22 @@ void initCurveShrinkFatten(TransInfo *t);
 /* transform_op_mode_edge_bevelweight.c */
 extern const char OP_EDGE_BWEIGHT[];
 void initBevelWeight(TransInfo *t);
-void TRANSFORM_OT_edge_bevelweight(wmOperatorType *ot);
+void TRANSFORM_OT_edge_bevelweight(struct wmOperatorType *ot);
 
 /* transform_op_mode_edge_crease.c */
 extern const char OP_EDGE_CREASE[];
 void initCrease(TransInfo *t);
-void TRANSFORM_OT_edge_crease(wmOperatorType *ot);
+void TRANSFORM_OT_edge_crease(struct wmOperatorType *ot);
 
 /* transform_op_mode_edge_rotate_normal.c */
 extern const char OP_NORMAL_ROTATION[];
 void initNormalRotation(TransInfo *t);
-void TRANSFORM_OT_rotate_normal(wmOperatorType *ot);
+void TRANSFORM_OT_rotate_normal(struct wmOperatorType *ot);
 
 /* transform_op_mode_edge_seq_slide.c */
 extern const char OP_SEQ_SLIDE[];
 void initSeqSlide(TransInfo *t);
-void TRANSFORM_OT_seq_slide(wmOperatorType *ot);
+void TRANSFORM_OT_seq_slide(struct wmOperatorType *ot);
 
 /* transform_op_mode_edge_slide.c */
 extern const char OP_EDGE_SLIDE[];
@@ -156,7 +156,7 @@ void doEdgeSlide(TransInfo *t, float perc);
 void initEdgeSlide_ex(
     TransInfo *t, bool use_double_side, bool use_even, bool flipped, bool use_clamp);
 void initEdgeSlide(TransInfo *t);
-void TRANSFORM_OT_edge_slide(wmOperatorType *ot);
+void TRANSFORM_OT_edge_slide(struct wmOperatorType *ot);
 
 /* transform_op_mode_gpopacity.c */
 void initGPOpacity(TransInfo *t);
@@ -170,42 +170,42 @@ void initMaskShrinkFatten(TransInfo *t);
 /* transform_op_mode_mirror.c */
 extern const char OP_MIRROR[];
 void initMirror(TransInfo *t);
-void TRANSFORM_OT_mirror(wmOperatorType *ot);
+void TRANSFORM_OT_mirror(struct wmOperatorType *ot);
 
 /* transform_op_mode_push_pull.c */
 extern const char OP_PUSH_PULL[];
 void initPushPull(TransInfo *t);
-void TRANSFORM_OT_push_pull(wmOperatorType *ot);
+void TRANSFORM_OT_push_pull(struct wmOperatorType *ot);
 
 /* transform_op_mode_resize.c */
 extern const char OP_RESIZE[];
 void initResize(TransInfo *t);
-void TRANSFORM_OT_resize(wmOperatorType *ot);
+void TRANSFORM_OT_resize(struct wmOperatorType *ot);
 
 /* transform_op_mode_rotate.c */
 extern const char OP_ROTATION[];
 void initRotation(TransInfo *t);
-void TRANSFORM_OT_rotate(wmOperatorType *ot);
+void TRANSFORM_OT_rotate(struct wmOperatorType *ot);
 
 /* transform_op_mode_shear.c */
 extern const char OP_SHEAR[];
 void initShear(TransInfo *t);
-void TRANSFORM_OT_shear(wmOperatorType *ot);
+void TRANSFORM_OT_shear(struct wmOperatorType *ot);
 
 /* transform_op_mode_shrink_fatten.c */
 extern const char OP_SHRINK_FATTEN[];
 void initShrinkFatten(TransInfo *t);
-void TRANSFORM_OT_shrink_fatten(wmOperatorType *ot);
+void TRANSFORM_OT_shrink_fatten(struct wmOperatorType *ot);
 
 /* transform_op_mode_skin_resize.c */
 extern const char OP_SKIN_RESIZE[];
 void initSkinResize(TransInfo *t);
-void TRANSFORM_OT_skin_resize(wmOperatorType *ot);
+void TRANSFORM_OT_skin_resize(struct wmOperatorType *ot);
 
 /* transform_op_mode_tilt.c */
 extern const char OP_TILT[];
 void initTilt(TransInfo *t);
-void TRANSFORM_OT_tilt(wmOperatorType *ot);
+void TRANSFORM_OT_tilt(struct wmOperatorType *ot);
 
 /* transform_op_mode_timescale.c */
 void initTimeScale(TransInfo *t);
@@ -219,17 +219,17 @@ void initTimeTranslate(TransInfo *t);
 /* transform_op_mode_tosphere.c */
 extern const char OP_TOSPHERE[];
 void initToSphere(TransInfo *t);
-void TRANSFORM_OT_tosphere(wmOperatorType *ot);
+void TRANSFORM_OT_tosphere(struct wmOperatorType *ot);
 
 /* transform_op_mode_trackball.c */
 extern const char OP_TRACKBALL[];
 void initTrackball(TransInfo *t);
-void TRANSFORM_OT_trackball(wmOperatorType *ot);
+void TRANSFORM_OT_trackball(struct wmOperatorType *ot);
 
 /* transform_op_mode_translate.c */
 extern const char OP_TRANSLATION[];
 void initTranslation(TransInfo *t);
-void TRANSFORM_OT_translate(wmOperatorType *ot);
+void TRANSFORM_OT_translate(struct wmOperatorType *ot);
 
 /* transform_op_mode_vert_slide.c */
 extern const char OP_VERT_SLIDE[];
@@ -237,11 +237,11 @@ void drawVertSlide(TransInfo *t);
 void doVertSlide(TransInfo *t, float perc);
 void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use_clamp);
 void initVertSlide(TransInfo *t);
-void TRANSFORM_OT_vert_slide(wmOperatorType *ot);
+void TRANSFORM_OT_vert_slide(struct wmOperatorType *ot);
 
 /* transform_op_orientation.c */
-void TRANSFORM_OT_select_orientation(wmOperatorType *ot);
-void TRANSFORM_OT_delete_orientation(wmOperatorType *ot);
-void TRANSFORM_OT_create_orientation(wmOperatorType *ot);
+void TRANSFORM_OT_select_orientation(struct wmOperatorType *ot);
+void TRANSFORM_OT_delete_orientation(struct wmOperatorType *ot);
+void TRANSFORM_OT_create_orientation(struct wmOperatorType *ot);
 
 #endif
