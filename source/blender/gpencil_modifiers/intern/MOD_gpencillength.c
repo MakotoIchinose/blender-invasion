@@ -90,7 +90,7 @@ static void applyLength(bGPDstroke *gps, float length, float percentage)
   if (len < FLT_EPSILON) {
     return;
   }
-  float length2 = len * percentage;
+  float length2 = len * percentage / 2; /* Srinking from two tips. */
 
   stretchOrShrinkStroke(gps, length2);
 }
