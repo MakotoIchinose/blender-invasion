@@ -1517,7 +1517,7 @@ static void OBJECT_cache_init(void *vedata)
     psl->camera_images_front = DRW_pass_create("Camera Images Front", state);
   }
 
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 2; i++) {
     OBJECT_ShadingGroupList *sgl = (i == 1) ? &stl->g_data->sgl_ghost : &stl->g_data->sgl;
 
     /* Solid bones */
@@ -1540,7 +1540,7 @@ static void OBJECT_cache_init(void *vedata)
     sgl->bone_axes = psl->bone_axes[i] = DRW_pass_create("Bone Axes Pass", state);
   }
 
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 2; i++) {
     OBJECT_ShadingGroupList *sgl = (i == 1) ? &stl->g_data->sgl_ghost : &stl->g_data->sgl;
 
     /* Non Meshes Pass (Camera, empties, lights ...) */
@@ -2154,7 +2154,7 @@ static void camera_view3d_stereoscopy_display_extra(OBJECT_ShadingGroupList *sgl
     static float one = 1.0f;
     float plane_mat[4][4], scale_mat[4][4];
     float scale_factor[3] = {1.0f, 1.0f, 1.0f};
-    float color_plane[2][4] = {
+    const float color_plane[2][4] = {
         {0.0f, 0.0f, 0.0f, v3d->stereo3d_convergence_alpha},
         {0.0f, 0.0f, 0.0f, 1.0f},
     };
@@ -2180,7 +2180,7 @@ static void camera_view3d_stereoscopy_display_extra(OBJECT_ShadingGroupList *sgl
   /* Draw convergence volume. */
   if (is_stereo3d_volume && !is_select) {
     static float one = 1.0f;
-    float color_volume[3][4] = {
+    const float color_volume[3][4] = {
         {0.0f, 1.0f, 1.0f, v3d->stereo3d_volume_alpha},
         {1.0f, 0.0f, 0.0f, v3d->stereo3d_volume_alpha},
         {0.0f, 0.0f, 0.0f, 1.0f},
@@ -2306,7 +2306,7 @@ static void camera_view3d_reconstruction(OBJECT_ShadingGroupList *sgl,
           DRW_shgroup_empty_ex(sgl, bundle_mat, &v3d->bundle_size, v3d->bundle_drawtype, color);
         }
 
-        float bundle_color_v4[4] = {
+        const float bundle_color_v4[4] = {
             bundle_color[0],
             bundle_color[1],
             bundle_color[2],
@@ -2982,7 +2982,7 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
            {0.0, 0.0, 0.0, 1.0}},
       };
 
-      for (int i = 0; i < 6; ++i) {
+      for (int i = 0; i < 6; i++) {
         float clipmat[4][4];
         normalize_m4_m4(clipmat, ob->obmat);
         mul_m4_m4m4(clipmat, clipmat, cubefacemat[i]);
@@ -3687,11 +3687,15 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
   }
 
   /* Helpers for when we're transforming origins. */
-  if (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) {
-    if (ob->base_flag & BASE_SELECTED) {
-      const float color[4] = {0.75, 0.75, 0.75, 0.5};
-      float axes_size = 1.0f;
-      DRW_buffer_add_entry(sgl->origin_xform, color, &axes_size, ob->obmat);
+  if (draw_ctx->object_mode == OB_MODE_OBJECT) {
+    if (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) {
+      if (ob->base_flag & BASE_SELECTED) {
+        if (!DRW_state_is_select()) {
+          const float color[4] = {0.75, 0.75, 0.75, 0.5};
+          float axes_size = 1.0f;
+          DRW_buffer_add_entry(sgl->origin_xform, color, &axes_size, ob->obmat);
+        }
+      }
     }
   }
 

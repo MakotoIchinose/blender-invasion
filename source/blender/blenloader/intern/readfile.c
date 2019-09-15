@@ -111,8 +111,6 @@
 #include "BKE_action.h"
 #include "BKE_armature.h"
 #include "BKE_brush.h"
-#include "BKE_cachefile.h"
-#include "BKE_cloth.h"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -120,7 +118,6 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"  // for G
-#include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_idcode.h"
 #include "BKE_idprop.h"
@@ -137,8 +134,6 @@
 #include "BKE_multires.h"
 #include "BKE_node.h"  // for tree type defines
 #include "BKE_object.h"
-#include "BKE_ocean.h"
-#include "BKE_outliner_treehash.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
@@ -233,7 +228,7 @@
 #define USE_GHASH_RESTORE_POINTER
 
 /* Define this to have verbose debug prints. */
-#define USE_DEBUG_PRINT
+//#define USE_DEBUG_PRINT
 
 #ifdef USE_DEBUG_PRINT
 #  define DEBUG_PRINTF(...) printf(__VA_ARGS__)
@@ -2597,7 +2592,7 @@ static PreviewImage *direct_link_preview_image(FileData *fd, PreviewImage *old_p
 
   if (prv) {
     int i;
-    for (i = 0; i < NUM_ICON_SIZES; ++i) {
+    for (i = 0; i < NUM_ICON_SIZES; i++) {
       if (prv->rect[i]) {
         prv->rect[i] = newdataadr(fd, prv->rect[i]);
       }
@@ -4938,7 +4933,7 @@ static void direct_link_mdisps(FileData *fd, int count, MDisps *mdisps, int exte
   if (mdisps) {
     int i;
 
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       mdisps[i].disps = newdataadr(fd, mdisps[i].disps);
       mdisps[i].hidden = newdataadr(fd, mdisps[i].hidden);
 
@@ -4968,7 +4963,7 @@ static void direct_link_grid_paint_mask(FileData *fd, int count, GridPaintMask *
   if (grid_paint_mask) {
     int i;
 
-    for (i = 0; i < count; ++i) {
+    for (i = 0; i < count; i++) {
       GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
         gpm->data = newdataadr(fd, gpm->data);
@@ -5339,8 +5334,8 @@ static void lib_link_object(FileData *fd, Main *main)
                                                                            eModifierType_Smoke);
 
         if (smd && (smd->type == MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
-          smd->domain->flags |=
-              MOD_SMOKE_FILE_LOAD; /* flag for refreshing the simulation after loading */
+          /* Flag for refreshing the simulation after loading. */
+          smd->domain->flags |= MOD_SMOKE_FILE_LOAD;
         }
       }
 
@@ -6344,13 +6339,21 @@ static void direct_link_lightcache(FileData *fd, LightCache *cache)
 
   if (cache->cube_mips) {
     cache->cube_mips = newdataadr(fd, cache->cube_mips);
-    for (int i = 0; i < cache->mips_len; ++i) {
+    for (int i = 0; i < cache->mips_len; i++) {
       direct_link_lightcache_texture(fd, &cache->cube_mips[i]);
     }
   }
 
   cache->cube_data = newdataadr(fd, cache->cube_data);
   cache->grid_data = newdataadr(fd, cache->grid_data);
+}
+
+static void direct_link_view3dshading(FileData *fd, View3DShading *shading)
+{
+  if (shading->prop) {
+    shading->prop = newdataadr(fd, shading->prop);
+    IDP_DirectLinkGroup_OrFree(&shading->prop, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
+  }
 }
 
 /* check for cyclic set-scene,
@@ -6755,6 +6758,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
 
     ed->act_seq = newdataadr(fd, ed->act_seq);
     ed->cache = NULL;
+    ed->prefetch_job = NULL;
 
     /* recursive link sequences, lb will be correctly initialized */
     link_recurs_seq(fd, &ed->seqbase);
@@ -6986,6 +6990,8 @@ static void direct_link_scene(FileData *fd, Scene *sce)
       direct_link_lightcache(fd, sce->eevee.light_cache);
     }
   }
+
+  direct_link_view3dshading(fd, &sce->display.shading);
 
   sce->layer_properties = newdataadr(fd, sce->layer_properties);
   IDP_DirectLinkGroup_OrFree(&sce->layer_properties, (fd->flags & FD_FLAGS_SWITCH_ENDIAN), fd);
@@ -7254,6 +7260,8 @@ static void direct_link_area(FileData *fd, ScrArea *area)
       if (v3d->fx_settings.ssao) {
         v3d->fx_settings.ssao = newdataadr(fd, v3d->fx_settings.ssao);
       }
+
+      direct_link_view3dshading(fd, &v3d->shading);
 
       blo_do_versions_view3d_split_250(v3d, &sl->regionbase);
     }

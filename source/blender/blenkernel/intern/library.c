@@ -1264,15 +1264,14 @@ void BKE_libblock_init_empty(ID *id)
       break;
     case ID_OB: {
       Object *ob = (Object *)id;
-      ob->type = OB_EMPTY;
-      BKE_object_init(ob);
+      BKE_object_init(ob, OB_EMPTY);
       break;
     }
     case ID_ME:
       BKE_mesh_init((Mesh *)id);
       break;
     case ID_CU:
-      BKE_curve_init((Curve *)id);
+      BKE_curve_init((Curve *)id, 0);
       break;
     case ID_MB:
       BKE_mball_init((MetaBall *)id);
@@ -1408,23 +1407,30 @@ void *BKE_id_new_nomain(const short type, const char *name)
   return id;
 }
 
-void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int flag)
+void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, int flag)
 {
   ID *new_id = *r_newid;
 
-  /* Grrrrrrrrr... Not adding 'root' nodetrees to bmain.... grrrrrrrrrrrrrrrrrrrr! */
-  /* This is taken from original ntree copy code, might be weak actually? */
-  const bool use_nodetree_alloc_exception = ((GS(id->name) == ID_NT) && (bmain != NULL) &&
-                                             (BLI_findindex(&bmain->nodetrees, id) < 0));
-
-  /* The id->flag bits to copy over. */
-  const int copy_flag_mask = LIB_PRIVATE_DATA;
+  const bool is_private_id_data = (id->flag & LIB_PRIVATE_DATA) != 0;
 
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || bmain != NULL);
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) != 0 || (flag & LIB_ID_CREATE_NO_ALLOCATE) == 0);
-  BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) == 0 || (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) != 0);
+  if (!is_private_id_data) {
+    /* When we are handling private ID data, we might still want to manage usercounts, even though
+     * that ID data-block is actually outside of Main... */
+    BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) == 0 ||
+               (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) != 0);
+  }
   /* Never implicitly copy shapekeys when generating temp data outside of Main database. */
   BLI_assert((flag & LIB_ID_CREATE_NO_MAIN) == 0 || (flag & LIB_ID_COPY_SHAPEKEY) == 0);
+
+  /* 'Private ID' data handling. */
+  if ((bmain != NULL) && is_private_id_data) {
+    flag |= LIB_ID_CREATE_NO_MAIN;
+  }
+
+  /* The id->flag bits to copy over. */
+  const int copy_flag_mask = LIB_PRIVATE_DATA;
 
   if ((flag & LIB_ID_CREATE_NO_ALLOCATE) != 0) {
     /* r_newid already contains pointer to allocated memory. */
@@ -1435,10 +1441,7 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int fla
     /* TODO Do we want/need to copy more from ID struct itself? */
   }
   else {
-    new_id = BKE_libblock_alloc(bmain,
-                                GS(id->name),
-                                id->name + 2,
-                                flag | (use_nodetree_alloc_exception ? LIB_ID_CREATE_NO_MAIN : 0));
+    new_id = BKE_libblock_alloc(bmain, GS(id->name), id->name + 2, flag);
   }
   BLI_assert(new_id != NULL);
 
@@ -1471,7 +1474,8 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int fla
 
     /* the duplicate should get a copy of the animdata */
     if ((flag & LIB_ID_COPY_NO_ANIMDATA) == 0) {
-      BLI_assert((flag & LIB_ID_COPY_ACTIONS) == 0 || (flag & LIB_ID_CREATE_NO_MAIN) == 0);
+      BLI_assert((flag & LIB_ID_COPY_ACTIONS) == 0 || (flag & LIB_ID_CREATE_NO_MAIN) == 0 ||
+                 is_private_id_data);
       iat->adt = BKE_animdata_copy(bmain, iat->adt, flag);
     }
     else {

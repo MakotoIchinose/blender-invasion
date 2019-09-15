@@ -44,7 +44,6 @@
 #include "GPU_glew.h"
 #include "GPU_material.h"
 #include "GPU_shader.h"
-#include "GPU_texture.h"
 #include "GPU_uniformbuffer.h"
 #include "GPU_vertex_format.h"
 
@@ -414,7 +413,7 @@ static void codegen_convert_datatype(DynStr *ds, int from, int to, const char *t
   }
   else if (to == GPU_FLOAT) {
     if (from == GPU_VEC4) {
-      BLI_dynstr_appendf(ds, "convert_rgba_to_float(%s)", name);
+      BLI_dynstr_appendf(ds, "dot(%s.rgb, vec3(0.2126, 0.7152, 0.0722))", name);
     }
     else if (from == GPU_VEC3) {
       BLI_dynstr_appendf(ds, "(%s.r + %s.g + %s.b) / 3.0", name, name, name);
@@ -1080,6 +1079,15 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
                     "\treturn mix(c1, c2, step(vec3(0.04045), c));\n"
                     "}\n\n");
 
+  BLI_dynstr_append(ds,
+                    "vec4 srgba_to_linear_attr(vec4 c) {\n"
+                    "\tc = max(c, vec4(0.0));\n"
+                    "\tvec4 c1 = c * (1.0 / 12.92);\n"
+                    "\tvec4 c2 = pow((c + 0.055) * (1.0 / 1.055), vec4(2.4));\n"
+                    "\tvec4 final = mix(c1, c2, step(vec4(0.04045), c));"
+                    "\treturn vec4(final.xyz, c.a);\n"
+                    "}\n\n");
+
   /* Prototype because defined later. */
   BLI_dynstr_append(ds,
                     "vec2 hair_get_customdata_vec2(const samplerBuffer);\n"
@@ -1184,7 +1192,7 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
         }
         else if (input->attr_type == CD_MCOL) {
           BLI_dynstr_appendf(ds,
-                             "\tvar%d%s = srgb_to_linear_attr(att%d);\n",
+                             "\tvar%d%s = srgba_to_linear_attr(att%d);\n",
                              input->attr_id,
                              use_geom ? "g" : "",
                              input->attr_id);
@@ -1307,7 +1315,7 @@ static char *code_generate_geometry(ListBase *nodes, const char *geom_code, cons
       BLI_dynstr_append(ds, "\tgl_Position = gl_in[2].gl_Position;\n");
       BLI_dynstr_append(ds, "\tpass_attr(2);\n");
       BLI_dynstr_append(ds, "\tEmitVertex();\n");
-      BLI_dynstr_append(ds, "};\n");
+      BLI_dynstr_append(ds, "}\n");
     }
   }
   else {
@@ -1376,8 +1384,8 @@ void GPU_code_generate_glsl_lib(void)
   }
 
   FUNCTION_HASH = BLI_ghash_str_new("GPU_lookup_function gh");
-  for (int i = 0; gpu_material_libraries[i].code; i++) {
-    gpu_parse_material_library(FUNCTION_HASH, &gpu_material_libraries[i]);
+  for (int i = 0; gpu_material_libraries[i]; i++) {
+    gpu_parse_material_library(FUNCTION_HASH, gpu_material_libraries[i]);
   }
 }
 
@@ -1780,15 +1788,20 @@ GPUNodeLink *GPU_builtin(eGPUBuiltin builtin)
   return link;
 }
 
+static void gpu_material_use_library_with_dependencies(GSet *used_libraries,
+                                                       GPUMaterialLibrary *library)
+{
+  if (BLI_gset_add(used_libraries, library->code)) {
+    for (int i = 0; library->dependencies[i]; i++) {
+      gpu_material_use_library_with_dependencies(used_libraries, library->dependencies[i]);
+    }
+  }
+}
+
 static void gpu_material_use_library(GPUMaterial *material, GPUMaterialLibrary *library)
 {
   GSet *used_libraries = gpu_material_used_libraries(material);
-
-  if (BLI_gset_add(used_libraries, library->code)) {
-    for (int i = 0; library->dependencies[i]; i++) {
-      BLI_gset_add(used_libraries, library->dependencies[i]);
-    }
-  }
+  gpu_material_use_library_with_dependencies(used_libraries, library);
 }
 
 bool GPU_link(GPUMaterial *mat, const char *name, ...)
@@ -1971,9 +1984,13 @@ static char *code_generate_material_library(GPUMaterial *material, const char *f
 
   GSet *used_libraries = gpu_material_used_libraries(material);
 
+  /* Always include those because they may be needed by the execution function. */
+  gpu_material_use_library_with_dependencies(used_libraries,
+                                             &gpu_shader_material_world_normals_library);
+
   /* Add library code in order, for dependencies. */
-  for (int i = 0; gpu_material_libraries[i].code; i++) {
-    GPUMaterialLibrary *library = &gpu_material_libraries[i];
+  for (int i = 0; gpu_material_libraries[i]; i++) {
+    GPUMaterialLibrary *library = gpu_material_libraries[i];
     if (BLI_gset_haskey(used_libraries, library->code)) {
       BLI_dynstr_append(ds, library->code);
     }
@@ -2120,7 +2137,7 @@ static int count_active_texture_sampler(GPUShader *shader, char *source)
         }
         /* Catch duplicates. */
         bool is_duplicate = false;
-        for (int i = 0; i < sampler_len; ++i) {
+        for (int i = 0; i < sampler_len; i++) {
           if (samplers_id[i] == id) {
             is_duplicate = true;
           }

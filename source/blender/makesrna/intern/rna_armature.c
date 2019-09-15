@@ -36,6 +36,8 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BLI_math_vector.h"
+
 #  include "BKE_action.h"
 #  include "BKE_context.h"
 #  include "BKE_global.h"
@@ -303,6 +305,40 @@ static void rna_Bone_layer_set(PointerRNA *ptr, const bool *values)
   BKE_armature_refresh_layer_used(arm);
 }
 
+/* TODO: remove the deprecation stubs. */
+static bool rna_use_inherit_scale_get(char inherit_scale_mode)
+{
+  return inherit_scale_mode <= BONE_INHERIT_SCALE_FIX_SHEAR;
+}
+
+static void rna_use_inherit_scale_set(char *inherit_scale_mode, bool value)
+{
+  bool cur_value = (*inherit_scale_mode <= BONE_INHERIT_SCALE_FIX_SHEAR);
+  if (value != cur_value) {
+    *inherit_scale_mode = (value ? BONE_INHERIT_SCALE_FULL : BONE_INHERIT_SCALE_NONE);
+  }
+}
+
+static bool rna_EditBone_use_inherit_scale_get(PointerRNA *ptr)
+{
+  return rna_use_inherit_scale_get(((EditBone *)ptr->data)->inherit_scale_mode);
+}
+
+static void rna_EditBone_use_inherit_scale_set(PointerRNA *ptr, bool value)
+{
+  rna_use_inherit_scale_set(&((EditBone *)ptr->data)->inherit_scale_mode, value);
+}
+
+static bool rna_Bone_use_inherit_scale_get(PointerRNA *ptr)
+{
+  return rna_use_inherit_scale_get(((Bone *)ptr->data)->inherit_scale_mode);
+}
+
+static void rna_Bone_use_inherit_scale_set(PointerRNA *ptr, bool value)
+{
+  rna_use_inherit_scale_set(&((Bone *)ptr->data)->inherit_scale_mode, value);
+}
+
 static void rna_Armature_layer_set(PointerRNA *ptr, const bool *values)
 {
   bArmature *arm = (bArmature *)ptr->data;
@@ -447,6 +483,22 @@ static void rna_EditBone_matrix_set(PointerRNA *ptr, const float *values)
 {
   EditBone *ebone = (EditBone *)(ptr->data);
   ED_armature_ebone_from_mat4(ebone, (float(*)[4])values);
+}
+
+static float rna_EditBone_length_get(PointerRNA *ptr)
+{
+  EditBone *ebone = (EditBone *)(ptr->data);
+  return len_v3v3(ebone->head, ebone->tail);
+}
+
+static void rna_EditBone_length_set(PointerRNA *ptr, float length)
+{
+  EditBone *ebone = (EditBone *)(ptr->data);
+  float delta[3];
+
+  sub_v3_v3v3(delta, ebone->tail, ebone->head);
+  normalize_v3(delta);
+  madd_v3_v3v3fl(ebone->tail, ebone->head, delta, length);
 }
 
 static void rna_Bone_bbone_handle_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -773,6 +825,28 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem prop_inherit_scale_mode[] = {
+      {BONE_INHERIT_SCALE_FULL, "FULL", 0, "Full", "Inherit all effects of parent scaling"},
+      {BONE_INHERIT_SCALE_FIX_SHEAR,
+       "FIX_SHEAR",
+       0,
+       "Fix Shear",
+       "Inherit scaling, but remove shearing of the child in the rest orientation"},
+      {BONE_INHERIT_SCALE_AVERAGE,
+       "AVERAGE",
+       0,
+       "Average",
+       "Inherit uniform scaling representing the overall change in the volume of the parent"},
+      {BONE_INHERIT_SCALE_NONE, "NONE", 0, "None", "Completely ignore parent scaling"},
+      {BONE_INHERIT_SCALE_NONE_LEGACY,
+       "NONE_LEGACY",
+       0,
+       "None (Legacy)",
+       "Ignore parent scaling without compensating for parent shear. "
+       "Replicates the effect of disabling the original Inherit Scale checkbox"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   PropertyRNA *prop;
 
   /* strings */
@@ -832,9 +906,25 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_def_property_ui_text(prop, "Deform", "Enable Bone to deform geometry");
   RNA_def_property_update(prop, 0, "rna_Armature_update_data");
 
+  prop = RNA_def_property(srna, "inherit_scale", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Inherit Scale", "Specifies how the bone inherits scaling from the parent bone");
+  RNA_def_property_enum_sdna(prop, NULL, "inherit_scale_mode");
+  RNA_def_property_enum_items(prop, prop_inherit_scale_mode);
+  RNA_def_property_update(prop, 0, "rna_Armature_update_data");
+
+  /* TODO: remove the compatibility stub. */
   prop = RNA_def_property(srna, "use_inherit_scale", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Inherit Scale", "Bone inherits scaling from parent bone");
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", BONE_NO_SCALE);
+  RNA_def_property_ui_text(
+      prop, "Inherit Scale", "DEPRECATED: Bone inherits scaling from parent bone");
+  if (editbone) {
+    RNA_def_property_boolean_funcs(
+        prop, "rna_EditBone_use_inherit_scale_get", "rna_EditBone_use_inherit_scale_set");
+  }
+  else {
+    RNA_def_property_boolean_funcs(
+        prop, "rna_Bone_use_inherit_scale_get", "rna_Bone_use_inherit_scale_set");
+  }
   RNA_def_property_update(prop, 0, "rna_Armature_update_data");
 
   prop = RNA_def_property(srna, "use_local_location", PROP_BOOLEAN, PROP_NONE);
@@ -1069,27 +1159,28 @@ static void rna_def_bone(BlenderRNA *brna)
   prop = RNA_def_property(srna, "matrix", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_float_sdna(prop, NULL, "bone_mat");
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_3x3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Bone Matrix", "3x3 bone matrix");
 
   prop = RNA_def_property(srna, "matrix_local", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_float_sdna(prop, NULL, "arm_mat");
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Bone Armature-Relative Matrix", "4x4 bone matrix relative to armature");
 
   prop = RNA_def_property(srna, "tail", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "tail");
   RNA_def_property_array(prop, 3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Tail", "Location of tail end of the bone");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Tail", "Location of tail end of the bone relative to its parent");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
 
   prop = RNA_def_property(srna, "tail_local", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "arm_tail");
   RNA_def_property_array(prop, 3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Armature-Relative Tail", "Location of tail end of the bone relative to armature");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
@@ -1097,7 +1188,7 @@ static void rna_def_bone(BlenderRNA *brna)
   prop = RNA_def_property(srna, "head", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "head");
   RNA_def_property_array(prop, 3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Head", "Location of head end of the bone relative to its parent");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
@@ -1105,10 +1196,15 @@ static void rna_def_bone(BlenderRNA *brna)
   prop = RNA_def_property(srna, "head_local", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_float_sdna(prop, NULL, "arm_head");
   RNA_def_property_array(prop, 3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "Armature-Relative Head", "Location of head end of the bone relative to armature");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Length", "Length of the bone");
 
   RNA_api_bone(srna);
 }
@@ -1152,6 +1248,14 @@ static void rna_def_edit_bone(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "tail");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Tail", "Location of tail end of the bone");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, "rna_Armature_editbone_transform_update");
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_funcs(prop, "rna_EditBone_length_get", "rna_EditBone_length_set", NULL);
+  RNA_def_property_range(prop, 0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_text(prop, "Length", "Length of the bone. Changing moves the tail end");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_Armature_editbone_transform_update");
 

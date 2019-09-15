@@ -33,6 +33,7 @@
 
 #include "BKE_anim.h"
 #include "BKE_colortools.h"
+#include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
@@ -41,6 +42,7 @@
 #include "BKE_main.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_paint.h"
@@ -65,7 +67,6 @@
 #include "GPU_uniformbuffer.h"
 #include "GPU_viewport.h"
 #include "GPU_matrix.h"
-#include "GPU_select.h"
 
 #include "IMB_colormanagement.h"
 
@@ -97,10 +98,6 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DRW_select_buffer.h"
-
-#ifdef USE_GPU_SELECT
-#  include "GPU_select.h"
-#endif
 
 /** Render State: No persistent data between draw calls. */
 DRWManager DST = {NULL};
@@ -1023,7 +1020,7 @@ void DRW_cache_free_old_batches(Main *bmain)
 
   for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
     for (view_layer = scene->view_layers.first; view_layer; view_layer = view_layer->next) {
-      Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, false);
+      Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, false);
       if (depsgraph == NULL) {
         continue;
       }
@@ -1548,6 +1545,20 @@ void DRW_draw_view(const bContext *C)
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
+static bool is_object_visible_in_viewport(View3D *v3d, Object *ob)
+{
+  if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+    return false;
+  }
+
+  if ((v3d->flag & V3D_LOCAL_COLLECTIONS) &&
+      ((v3d->local_collections_uuid & ob->runtime.local_collections_bits) == 0)) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Used for both regular and off-screen drawing.
  * Need to reset DST before calling this function
@@ -1623,7 +1634,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
         if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
           continue;
         }
-        if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+        if (!is_object_visible_in_viewport(v3d, ob)) {
           continue;
         }
         DST.dupli_parent = data_.dupli_parent;
@@ -1766,7 +1777,9 @@ void DRW_draw_render_loop(struct Depsgraph *depsgraph,
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, NULL);
 }
 
-/* @viewport CAN be NULL, in this case we create one. */
+/**
+ * \param viewport: can be NULL, in this case we create one.
+ */
 void DRW_draw_render_loop_offscreen(struct Depsgraph *depsgraph,
                                     RenderEngineType *engine_type,
                                     ARegion *ar,
@@ -2204,24 +2217,43 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
   drw_state_prepare_clean_for_draw(&DST);
 
   bool use_obedit = false;
-  int obedit_mode = 0;
+  /* obedit_ctx_mode is used for selecting the right draw engines */
+  eContextObjectMode obedit_ctx_mode;
+  /* object_mode is used for filtering objects in the depsgraph */
+  eObjectMode object_mode;
+  int object_type = 0;
   if (obedit != NULL) {
+    object_type = obedit->type;
+    object_mode = obedit->mode;
     if (obedit->type == OB_MBALL) {
       use_obedit = true;
-      obedit_mode = CTX_MODE_EDIT_METABALL;
+      obedit_ctx_mode = CTX_MODE_EDIT_METABALL;
     }
     else if (obedit->type == OB_ARMATURE) {
       use_obedit = true;
-      obedit_mode = CTX_MODE_EDIT_ARMATURE;
+      obedit_ctx_mode = CTX_MODE_EDIT_ARMATURE;
     }
   }
   if (v3d->overlay.flag & V3D_OVERLAY_BONE_SELECT) {
     if (!(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
       /* Note: don't use "BKE_object_pose_armature_get" here, it breaks selection. */
       Object *obpose = OBPOSE_FROM_OBACT(obact);
+      if (obpose == NULL) {
+        Object *obweight = OBWEIGHTPAINT_FROM_OBACT(obact);
+        if (obweight) {
+          /* Only use Armature pose selection, when connected armature is in pose mode. */
+          Object *ob_armature = modifiers_isDeformedByArmature(obweight);
+          if (ob_armature && ob_armature->mode == OB_MODE_POSE) {
+            obpose = ob_armature;
+          }
+        }
+      }
+
       if (obpose) {
         use_obedit = true;
-        obedit_mode = CTX_MODE_POSE;
+        object_type = obpose->type;
+        object_mode = obpose->mode;
+        obedit_ctx_mode = CTX_MODE_POSE;
       }
     }
   }
@@ -2235,8 +2267,8 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 
   /* Get list of enabled engines */
   if (use_obedit) {
-    drw_engines_enable_from_paint_mode(obedit_mode);
-    drw_engines_enable_from_mode(obedit_mode);
+    drw_engines_enable_from_paint_mode(obedit_ctx_mode);
+    drw_engines_enable_from_mode(obedit_ctx_mode);
   }
   else if (!draw_surface) {
     /* grease pencil selection */
@@ -2283,7 +2315,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_world_update(scene);
 
     if (use_obedit) {
-      FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
+      FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, object_type, object_mode, ob_iter) {
         drw_engines_cache_populate(ob_iter);
       }
       FOREACH_OBJECT_IN_MODE_END;
@@ -2293,10 +2325,9 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
                                               v3d->object_type_exclude_select);
       bool filter_exclude = false;
       DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
-        if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+        if (!is_object_visible_in_viewport(v3d, ob)) {
           continue;
         }
-
         if ((ob->base_flag & BASE_SELECTABLE) &&
             (object_type_exclude_select & (1 << ob->type)) == 0) {
           if (object_filter_fn != NULL) {
@@ -2415,11 +2446,9 @@ static void drw_draw_depth_loop_imp(void)
       if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
         continue;
       }
-
-      if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+      if (!is_object_visible_in_viewport(v3d, ob)) {
         continue;
       }
-
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
       drw_duplidata_load(DST.dupli_source);
