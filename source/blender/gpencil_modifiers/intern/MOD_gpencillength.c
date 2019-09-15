@@ -108,7 +108,20 @@ static void bakeModifier(Main *UNUSED(bmain),
       LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
-        applyLength(gps, lmd->length, lmd->percentage);
+        if (is_stroke_affected_by_modifier(ob,
+                                           lmd->layername,
+                                           lmd->materialname,
+                                           lmd->pass_index,
+                                           lmd->layer_pass,
+                                           1,
+                                           gpl,
+                                           gps,
+                                           lmd->flag & GP_MIRROR_INVERT_LAYER,
+                                           lmd->flag & GP_MIRROR_INVERT_PASS,
+                                           lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
+                                           lmd->flag & GP_MIRROR_INVERT_MATERIAL)){
+          applyLength(gps, lmd->length, lmd->percentage);
+        }
       }
       return;
     }
@@ -126,7 +139,20 @@ static void deformStroke(GpencilModifierData *md,
                          bGPDstroke *gps)
 {
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
-  applyLength(gps, lmd->length, lmd->percentage);
+  if (is_stroke_affected_by_modifier(ob,
+                                      lmd->layername,
+                                      lmd->materialname,
+                                      lmd->pass_index,
+                                      lmd->layer_pass,
+                                      1,
+                                      gpl,
+                                      gps,
+                                      lmd->flag & GP_MIRROR_INVERT_LAYER,
+                                      lmd->flag & GP_MIRROR_INVERT_PASS,
+                                      lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
+                                      lmd->flag & GP_MIRROR_INVERT_MATERIAL)){
+    applyLength(gps, lmd->length, lmd->percentage);
+  }
 }
 
 GpencilModifierTypeInfo modifierType_Gpencil_Length = {

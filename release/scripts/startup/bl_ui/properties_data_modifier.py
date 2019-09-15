@@ -2335,6 +2335,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
     def GP_LENGTH(self, layout, ob, md):
+        gpd = ob.data
         sp = layout.split()
         col = sp.column()
         col.label(text="Absolute:")
@@ -2343,6 +2344,28 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = sp.column()
         col.label(text="Relative:")
         col.prop(md, "percentage")
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Material:")
+        row = col.row(align=True)
+        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
+        row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "pass_index", text="Pass")
+        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Layer:")
+        row = col.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
+        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "layer_pass", text="Pass")
+        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
     
     def GP_MULTIPLY(self, layout, ob, md):
         sp = layout.split(factor = 0.5)
