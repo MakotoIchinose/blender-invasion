@@ -238,6 +238,20 @@ static void bakeModifier(Main *UNUSED(bmain),
       MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
       bGPDstroke *gps;
       for (gps = gpf->strokes.first; gps; gps = gps->next) {
+        if (!is_stroke_affected_by_modifier(ob,
+                                            mmd->layername,
+                                            mmd->materialname,
+                                            mmd->pass_index,
+                                            mmd->layer_pass,
+                                            1,
+                                            gpl,
+                                            gps,
+                                            mmd->flag & GP_MIRROR_INVERT_LAYER,
+                                            mmd->flag & GP_MIRROR_INVERT_PASS,
+                                            mmd->flag & GP_MIRROR_INVERT_LAYERPASS,
+                                            mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
+          continue;
+        }
         if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
           splitStroke(gpf, gps, mmd->split_angle);
         }
@@ -273,6 +287,20 @@ static void generateStrokes(
   bGPDstroke *gps;
   ListBase duplicates = {0};
   for (gps = gpf->strokes.first; gps; gps = gps->next) {
+    if (!is_stroke_affected_by_modifier(ob,
+                                        mmd->layername,
+                                        mmd->materialname,
+                                        mmd->pass_index,
+                                        mmd->layer_pass,
+                                        1,
+                                        gpl,
+                                        gps,
+                                        mmd->flag & GP_MIRROR_INVERT_LAYER,
+                                        mmd->flag & GP_MIRROR_INVERT_PASS,
+                                        mmd->flag & GP_MIRROR_INVERT_LAYERPASS,
+                                        mmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
+      continue;
+    }
     if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
       splitStroke(gpf, gps, mmd->split_angle);
     }

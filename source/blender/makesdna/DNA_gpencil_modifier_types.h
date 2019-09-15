@@ -647,8 +647,6 @@ typedef struct ArmatureGpencilModifierData {
 
 typedef struct LengthGpencilModifierData {
   GpencilModifierData modifier;
-  /* What's this object for ? */
-  struct Object *object;
   /** Layer name. */
   char layername[64];
   /** Material name. */
@@ -666,6 +664,18 @@ typedef struct LengthGpencilModifierData {
 
 typedef struct MultiplyGpencilModifierData {
   GpencilModifierData modifier;
+  /** Layer name. */
+  char layername[64];
+  /** Material name. */
+  char materialname[64];
+  /** Custom index for passes. */
+  int pass_index;
+  /** Flags. */
+  int flag;
+  /** Custom index for passes. */
+  int layer_pass;
+  char _pad[4];
+
   int flags;
 
   int duplications;

@@ -119,7 +119,7 @@ static void bakeModifier(Main *UNUSED(bmain),
                                            lmd->flag & GP_MIRROR_INVERT_LAYER,
                                            lmd->flag & GP_MIRROR_INVERT_PASS,
                                            lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
-                                           lmd->flag & GP_MIRROR_INVERT_MATERIAL)){
+                                           lmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
           applyLength(gps, lmd->length, lmd->percentage);
         }
       }
@@ -140,17 +140,17 @@ static void deformStroke(GpencilModifierData *md,
 {
   LengthGpencilModifierData *lmd = (LengthGpencilModifierData *)md;
   if (is_stroke_affected_by_modifier(ob,
-                                      lmd->layername,
-                                      lmd->materialname,
-                                      lmd->pass_index,
-                                      lmd->layer_pass,
-                                      1,
-                                      gpl,
-                                      gps,
-                                      lmd->flag & GP_MIRROR_INVERT_LAYER,
-                                      lmd->flag & GP_MIRROR_INVERT_PASS,
-                                      lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
-                                      lmd->flag & GP_MIRROR_INVERT_MATERIAL)){
+                                     lmd->layername,
+                                     lmd->materialname,
+                                     lmd->pass_index,
+                                     lmd->layer_pass,
+                                     1,
+                                     gpl,
+                                     gps,
+                                     lmd->flag & GP_MIRROR_INVERT_LAYER,
+                                     lmd->flag & GP_MIRROR_INVERT_PASS,
+                                     lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
+                                     lmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
     applyLength(gps, lmd->length, lmd->percentage);
   }
 }

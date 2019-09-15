@@ -2368,8 +2368,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
     
     def GP_MULTIPLY(self, layout, ob, md):
+        gpd = ob.data
         sp = layout.split(factor = 0.5)
-
         col = sp.column()
         col.prop(md, "enable_duplication")
         if md.enable_duplication:
@@ -2388,6 +2388,28 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "enable_angle_splitting")
         if md.enable_angle_splitting:
             col.prop(md,"split_angle")
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Material:")
+        row = col.row(align=True)
+        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
+        row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "pass_index", text="Pass")
+        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Layer:")
+        row = col.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
+        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "layer_pass", text="Pass")
+        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
             
 classes = (
     DATA_PT_modifiers,
