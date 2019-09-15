@@ -1933,9 +1933,9 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
   int index_start, index_end;
 
   i = 1;
-  while (len1 < dist && gps->totpoints > i-1) {
+  while (len1 < dist && gps->totpoints > i - 1) {
     next_pt = &pt[i];
-    this_len1 = len_v3v3(&pt[i].x, &pt[i+1].x);
+    this_len1 = len_v3v3(&pt[i].x, &pt[i + 1].x);
     len1 += this_len1;
     cut_len1 = len1 - dist;
     i++;
