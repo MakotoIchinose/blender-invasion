@@ -1036,7 +1036,7 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
     def poll(cls, context):
         scene = context.scene
         lanpr = scene.lanpr
-        return lanpr.enable_chaining and not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX')
+        return scene.render.engine!='BLENDER_LANPR' or lanpr.enable_chaining and (not (scene.render.engine=='BLENDER_LANPR' and lanpr.master_mode=='DPIX'))
 
     def draw(self, context):
         scene = context.scene
