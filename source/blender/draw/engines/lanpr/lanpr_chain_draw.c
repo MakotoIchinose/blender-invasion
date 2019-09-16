@@ -160,15 +160,15 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
       if (rlci == rlc->chain.first) {
         if (rlci->next == rlc->chain.last) {
-          GPU_indexbuf_add_line_adj_verts(&elb, vert_count-1, i, i + 1, vert_count-1);
+          GPU_indexbuf_add_line_adj_verts(&elb, vert_count - 1, i, i + 1, vert_count - 1);
         }
         else {
-          GPU_indexbuf_add_line_adj_verts(&elb, vert_count-1, i, i + 1, i + 2);
+          GPU_indexbuf_add_line_adj_verts(&elb, vert_count - 1, i, i + 1, i + 2);
         }
       }
       else {
         if (rlci->next == rlc->chain.last) {
-          GPU_indexbuf_add_line_adj_verts(&elb, i - 1, i, i + 1, vert_count-1);
+          GPU_indexbuf_add_line_adj_verts(&elb, i - 1, i, i + 1, vert_count - 1);
         }
         else {
           GPU_indexbuf_add_line_adj_verts(&elb, i - 1, i, i + 1, i + 2);

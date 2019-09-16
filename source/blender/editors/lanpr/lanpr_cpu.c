@@ -3286,16 +3286,16 @@ static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
             rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[0])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[0], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(
-                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[1])) {
+    if (lanpr_line_crosses_bounding_area(
+            rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[1])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[1], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(
-                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[2])) {
+    if (lanpr_line_crosses_bounding_area(
+            rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[2])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[2], rl);
     }
-    else if (lanpr_line_crosses_bounding_area(
-                 rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[3])) {
+    if (lanpr_line_crosses_bounding_area(
+            rb, rl->l->fbcoord, rl->r->fbcoord, &RootBoundingArea->child[3])) {
       lanpr_link_line_with_bounding_area(rb, &RootBoundingArea->child[3], rl);
     }
   }
