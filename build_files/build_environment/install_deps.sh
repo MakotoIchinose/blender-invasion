@@ -2931,7 +2931,7 @@ compile_OpenXR_SDK() {
     INFO "If you want to force rebuild of this lib, use the --force-openxr option."
   fi
 
-  run_ldconfig "openxr"
+  run_ldconfig "openxr-sdk"
 }
 
 
