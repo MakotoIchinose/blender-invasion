@@ -178,14 +178,14 @@ static XrBool32 debug_messenger_func(XrDebugUtilsMessageSeverityFlagsEXT /*messa
 {
   puts("OpenXR Debug Message:");
   puts(callbackData->message);
-  return XR_FALSE;  // OpenXR spec suggests always returning false.
+  return XR_FALSE; /* OpenXR spec suggests always returning false. */
 }
 
 void GHOST_XrContext::initDebugMessenger()
 {
   XrDebugUtilsMessengerCreateInfoEXT create_info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
 
-  /* Extension functions need to be obtained through xrGetInstanceProcAddr */
+  /* Extension functions need to be obtained through xrGetInstanceProcAddr(). */
   if (XR_FAILED(xrGetInstanceProcAddr(
           m_oxr->instance,
           "xrCreateDebugUtilsMessengerEXT",
@@ -319,7 +319,7 @@ void GHOST_XrContext::enumerateApiLayers()
   CHECK_XR(xrEnumerateApiLayerProperties(layer_count, &layer_count, m_oxr->layers.data()),
            "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
   for (XrApiLayerProperties &layer : m_oxr->layers) {
-    /* Each layer may have own extensions */
+    /* Each layer may have own extensions. */
     enumerateExtensionsEx(m_oxr->extensions, layer.layerName);
   }
 }
@@ -396,7 +396,7 @@ void GHOST_XrContext::getExtensionsToEnable(std::vector<const char *> &r_ext_nam
 
   try_ext.clear();
 
-  /* Try enabling debug extension */
+  /* Try enabling debug extension. */
 #ifndef WIN32
   XR_DEBUG_ONLY_CALL(this, try_ext.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME));
 #endif

@@ -1674,6 +1674,10 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   G.f &= ~G_FLAG_RENDER_VIEWPORT;
 }
 
+/**
+ * Creates own fake 3d views (wrapping #ED_view3d_draw_offscreen). Similar too
+ * #ED_view_draw_offscreen_imbuf_simple.
+ */
 void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
                                      Scene *scene,
                                      View3DShading *shading_override,
@@ -1697,7 +1701,6 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
   ARegion ar = {NULL};
   RegionView3D rv3d = {{{0}}};
 
-  /* connect data */
   v3d.regionbase.first = v3d.regionbase.last = &ar;
   ar.regiondata = &rv3d;
   ar.regiontype = RGN_TYPE_WINDOW;

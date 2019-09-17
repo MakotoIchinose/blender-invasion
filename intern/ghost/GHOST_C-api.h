@@ -962,7 +962,7 @@ extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
 
 #ifdef WITH_OPENXR
 
-/* xr-context */
+/* XR-context */
 
 /**
  * Set a custom callback to be executed whenever an error occurs. Should be set before calling

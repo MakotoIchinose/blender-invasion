@@ -38,8 +38,8 @@ GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *cre
 {
   GHOST_XrContext *xr_context = new GHOST_XrContext(create_info);
 
-  // TODO GHOST_XrContext's should probably be owned by the GHOST_System, which will handle context
-  // creation and destruction. Try-catch logic can be moved to C-API then.
+  /* TODO GHOST_XrContext's should probably be owned by the GHOST_System, which will handle context
+   * creation and destruction. Try-catch logic can be moved to C-API then. */
   try {
     xr_context->initialize(create_info);
   }

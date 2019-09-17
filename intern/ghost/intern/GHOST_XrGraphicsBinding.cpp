@@ -114,7 +114,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     oxr_binding.wgl.hGLRC = ctx_wgl->m_hGLRC;
 #endif
 
-    /* Generate a framebuffer to use for blitting into the texture */
+    /* Generate a framebuffer to use for blitting into the texture. */
     glGenFramebuffers(1, &m_fbo);
   }
 
@@ -130,14 +130,14 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     std::vector<XrSwapchainImageOpenGLKHR> ogl_images(image_count);
     std::vector<XrSwapchainImageBaseHeader *> base_images;
 
-    // Need to return vector of base header pointers, so of a different type. Need to build a new
-    // list with this type, and keep the initial one alive.
+    /* Need to return vector of base header pointers, so of a different type. Need to build a new
+     * list with this type, and keep the initial one alive. */
     for (XrSwapchainImageOpenGLKHR &image : ogl_images) {
       image.type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
       base_images.push_back(reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
     }
 
-    // Keep alive.
+    /* Keep alive. */
     m_image_cache.push_back(std::move(ogl_images));
 
     return base_images;
@@ -226,14 +226,14 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     std::vector<XrSwapchainImageD3D11KHR> d3d_images(image_count);
     std::vector<XrSwapchainImageBaseHeader *> base_images;
 
-    // Need to return vector of base header pointers, so of a different type. Need to build a new
-    // list with this type, and keep the initial one alive.
+    /* Need to return vector of base header pointers, so of a different type. Need to build a new
+     * list with this type, and keep the initial one alive. */
     for (XrSwapchainImageD3D11KHR &image : d3d_images) {
       image.type = XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR;
       base_images.push_back(reinterpret_cast<XrSwapchainImageBaseHeader *>(&image));
     }
 
-    // Keep alive.
+    /* Keep alive. */
     m_image_cache.push_back(std::move(d3d_images));
 
     return base_images;

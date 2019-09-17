@@ -26,7 +26,7 @@
 
 static bool GHOST_XrEventPollNext(XrInstance instance, XrEventDataBuffer &r_event_data)
 {
-  /* (Re-)initialize as required by specification */
+  /* (Re-)initialize as required by specification. */
   r_event_data.type = XR_TYPE_EVENT_DATA_BUFFER;
   r_event_data.next = nullptr;
 
@@ -36,20 +36,19 @@ static bool GHOST_XrEventPollNext(XrInstance instance, XrEventDataBuffer &r_even
 GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_contexthandle)
 {
   GHOST_XrContext *xr_context = (GHOST_XrContext *)xr_contexthandle;
-  XrEventDataBuffer event_buffer; /* structure big enought to hold all possible events */
+  XrEventDataBuffer event_buffer; /* Structure big enough to hold all possible events. */
 
   if (xr_context == NULL) {
     return GHOST_kFailure;
   }
 
   while (GHOST_XrEventPollNext(xr_context->getInstance(), event_buffer)) {
-    XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer; /* base event struct */
+    XrEventDataBaseHeader *event = (XrEventDataBaseHeader *)&event_buffer;
 
     switch (event->type) {
       case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
         xr_context->handleSessionStateChange((XrEventDataSessionStateChanged *)event);
         return GHOST_kSuccess;
-
       case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
         GHOST_XrContextDestroy(xr_contexthandle);
         return GHOST_kSuccess;

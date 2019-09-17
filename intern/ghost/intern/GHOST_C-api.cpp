@@ -910,7 +910,7 @@ int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_contexthandle)
 {
   const GHOST_IXrContext *xr_context = (const GHOST_IXrContext *)xr_contexthandle;
   GHOST_XR_CAPI_CALL_RET(xr_context->isSessionRunning(), xr_context);
-  return 0;  // Only reached if exception is thrown.
+  return 0; /* Only reached if exception is thrown. */
 }
 
 void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_contexthandle, void *draw_customdata)

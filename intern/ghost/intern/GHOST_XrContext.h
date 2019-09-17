@@ -26,9 +26,9 @@
 #include "GHOST_IXrContext.h"
 
 struct GHOST_XrCustomFuncs {
-  /** Function to retrieve (possibly create) a graphics context */
+  /** Function to retrieve (possibly create) a graphics context. */
   GHOST_XrGraphicsContextBindFn gpu_ctx_bind_fn{nullptr};
-  /** Function to release (possibly free) a graphics context */
+  /** Function to release (possibly free) a graphics context. */
   GHOST_XrGraphicsContextUnbindFn gpu_ctx_unbind_fn{nullptr};
 
   /** Custom per-view draw function for Blender side drawing. */
@@ -91,16 +91,16 @@ class GHOST_XrContext : public GHOST_IXrContext {
   /** Active graphics binding type. */
   GHOST_TXrGraphicsBinding m_gpu_binding_type{GHOST_kXrGraphicsUnknown};
 
-  /** Names of enabled extensions */
+  /** Names of enabled extensions. */
   std::vector<const char *> m_enabled_extensions;
-  /** Names of enabled API-layers */
+  /** Names of enabled API-layers. */
   std::vector<const char *> m_enabled_layers;
 
   static GHOST_XrErrorHandlerFn s_error_handler;
   static void *s_error_handler_customdata;
   GHOST_XrCustomFuncs m_custom_funcs;
 
-  /** Enable debug message prints and OpenXR API validation layers */
+  /** Enable debug message prints and OpenXR API validation layers. */
   bool m_debug{false};
   bool m_debug_time{false};
 

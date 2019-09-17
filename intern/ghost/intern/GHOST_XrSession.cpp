@@ -39,7 +39,7 @@ struct OpenXRSessionData {
   XrSession session{XR_NULL_HANDLE};
   XrSessionState session_state{XR_SESSION_STATE_UNKNOWN};
 
-  // Only stereo rendering supported now.
+  /* Only stereo rendering supported now. */
   const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
   XrSpace reference_space;
   std::vector<XrView> views;
@@ -53,7 +53,7 @@ struct GHOST_XrDrawInfo {
 
   /** Time at frame start to benchmark frame render durations. */
   std::chrono::high_resolution_clock::time_point frame_begin_time;
-  /* Time previous frames took for rendering (in ms) */
+  /* Time previous frames took for rendering (in ms). */
   std::list<double> last_frame_times;
 };
 
@@ -333,7 +333,7 @@ void GHOST_XrSession::beginFrameDrawing()
   XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
   XrFrameState frame_state{XR_TYPE_FRAME_STATE};
 
-  // TODO Blocking call. Does this intefer with other drawing?
+  /* TODO Blocking call. Drawing should run on a separate thread to avoid interferences. */
   CHECK_XR(xrWaitFrame(m_oxr->session, &wait_info, &frame_state),
            "Failed to synchronize frame rates between Blender and the device.");
 
@@ -390,7 +390,7 @@ void GHOST_XrSession::endFrameDrawing(std::vector<XrCompositionLayerBaseHeader *
 void GHOST_XrSession::draw(void *draw_customdata)
 {
   std::vector<XrCompositionLayerProjectionView>
-      projection_layer_views;  // Keep alive until xrEndFrame() call!
+      projection_layer_views; /* Keep alive until xrEndFrame() call! */
   XrCompositionLayerProjection proj_layer;
   std::vector<XrCompositionLayerBaseHeader *> layers;
 
@@ -407,7 +407,7 @@ void GHOST_XrSession::draw(void *draw_customdata)
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
 #if 0
-  /* Set and convert to Blender coodinate space */
+  /* Set and convert to Blender coodinate space. */
   r_info.pose.position[0] = view.pose.position.x;
   r_info.pose.position[1] = -view.pose.position.z;
   r_info.pose.position[2] = view.pose.position.y;
@@ -434,7 +434,8 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
 static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *context)
 {
   /* WMR seems to be faulty and doesn't do OETF transform correctly. So expect a SRGB buffer to
-   * compensate. */
+   * compensate. You get way too dark rendering without this, it's pretty obvious (even in the
+   * default startup scene). */
   return context->getOpenXRRuntimeID() == OPENXR_RUNTIME_WMR;
 }
 

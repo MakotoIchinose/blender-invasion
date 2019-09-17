@@ -61,7 +61,7 @@ class GHOST_IXrGraphicsBinding {
                                  const GHOST_XrDrawViewInfo *draw_info) = 0;
 
  protected:
-  /* Use GHOST_XrGraphicsBindingCreateFromType */
+  /* Use GHOST_XrGraphicsBindingCreateFromType! */
   GHOST_IXrGraphicsBinding() = default;
 };
 

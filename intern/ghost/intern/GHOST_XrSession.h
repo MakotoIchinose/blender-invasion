@@ -41,7 +41,7 @@ class GHOST_XrSession {
 
   bool isRunning() const;
 
-  void unbindGraphicsContext(); /* public so context can ensure it's unbound as needed. */
+  void unbindGraphicsContext(); /* Public so context can ensure it's unbound as needed. */
 
   void draw(void *draw_customdata);
 
@@ -50,7 +50,7 @@ class GHOST_XrSession {
    * custom callbacks set before session start. */
   class GHOST_XrContext *m_context;
 
-  std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable */
+  std::unique_ptr<struct OpenXRSessionData> m_oxr; /* Could use stack, but PImpl is preferable. */
 
   /** Active Ghost graphic context. Owned by Blender, not GHOST. */
   class GHOST_Context *m_gpu_ctx{nullptr};
