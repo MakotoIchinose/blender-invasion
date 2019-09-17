@@ -449,7 +449,6 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   bContext *C = customdata;
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   const float clip_start = 0.01f, clip_end = 500.0f;
-  const float lens = 50.0f;
   const rcti rect = {
       .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
 
@@ -485,7 +484,6 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   winmat,
                                   clip_start,
                                   clip_end,
-                                  lens,
                                   true,
                                   true,
                                   NULL,

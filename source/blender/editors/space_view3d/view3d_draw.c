@@ -1676,7 +1676,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 
 /**
  * Creates own fake 3d views (wrapping #ED_view3d_draw_offscreen). Similar too
- * #ED_view_draw_offscreen_imbuf_simple.
+ * #ED_view_draw_offscreen_imbuf_simple, but takes view/projection matrices as arguments.
  */
 void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
                                      Scene *scene,
@@ -1689,7 +1689,6 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
                                      float winmat[4][4],
                                      float clip_start,
                                      float clip_end,
-                                     float lens,
                                      bool do_sky,
                                      bool is_persp,
                                      const char *viewname,
@@ -1738,7 +1737,8 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
   rv3d.persp = RV3D_PERSP;
   v3d.clip_start = clip_start;
   v3d.clip_end = clip_end;
-  v3d.lens = lens;
+  /* Actually not used since we pass in the projection matrix. */
+  v3d.lens = 0;
 
   ED_view3d_draw_offscreen(depsgraph,
                            scene,
