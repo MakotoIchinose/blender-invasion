@@ -1718,6 +1718,8 @@ enum {
   LANPR_GPU_CACHE_SIZE_1K = 1, /* default */
   LANPR_GPU_CACHE_SIZE_2K = 2,
   LANPR_GPU_CACHE_SIZE_4K = 3,
+  LANPR_GPU_CACHE_SIZE_8K = 4,
+  LANPR_GPU_CACHE_SIZE_16K = 5,
 };
 
 /* *************************************************************** */

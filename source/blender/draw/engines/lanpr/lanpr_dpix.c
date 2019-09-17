@@ -69,6 +69,10 @@ int lanpr_dpix_texture_size(SceneLANPR *lanpr)
       return 2048;
     case LANPR_GPU_CACHE_SIZE_4K:
       return 4096;
+    case LANPR_GPU_CACHE_SIZE_8K:
+      return 8192;
+    case LANPR_GPU_CACHE_SIZE_16K:
+      return 16384;
   }
   return 512;
 }

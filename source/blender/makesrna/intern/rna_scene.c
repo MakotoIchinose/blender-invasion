@@ -7161,6 +7161,8 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_2K, "S2K", 0, "2K", "2K px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_4K, "S4K", 0, "4K", "4K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_8K, "S8K", 0, "8K", "8K px texture as cache"},
+      {LANPR_GPU_CACHE_SIZE_16K, "S16K", 0, "16K", "16K px texture as cache"},
       {0, NULL, 0, NULL, NULL}};
 
   srna = RNA_def_struct(brna, "SceneLANPR", NULL);
