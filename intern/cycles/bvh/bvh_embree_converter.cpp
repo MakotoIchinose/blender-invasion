@@ -360,6 +360,17 @@ BVHNode* BVHEmbreeConverter::getBVH4()
     This->setUnalignedBounds(Node, tr);
   };
 
+  param.expectedSize = [](unsigned int num_prim, unsigned int num_tri, void* userData) {
+    SET_THIS;
+    This->pack->prim_visibility.reserve(num_prim);
+    This->pack->prim_object.reserve(num_prim);
+    This->pack->prim_type.reserve(num_prim);
+    This->pack->prim_index.reserve(num_prim);
+    This->pack->prim_tri_index.reserve(num_prim);
+
+    This->pack->prim_tri_verts.reserve(num_tri);
+  };
+
   return reinterpret_cast<BVHNode *>(rtcExtractBVH(this->s, param, this));
 }
 
@@ -725,55 +736,12 @@ void pack_inner(const BVHStackEntry &e, const BVHStackEntry &c0, const BVHStackE
 }
 
 void BVHEmbreeConverter::fillPack(PackedBVH &pack) {
-  size_t num_prim = 0;
-  size_t num_tri = 0;
-
-  foreach (Object *ob, objects) {
-    if (params.top_level) {
-      if (!ob->is_traceable()) {
-        continue;
-      }
-      if (!ob->mesh->is_instanced()) {
-        if (params.primitive_mask & PRIMITIVE_ALL_TRIANGLE) {
-          num_prim += ob->mesh->num_triangles();
-          num_tri += ob->mesh->num_triangles();
-        }
-        if (params.primitive_mask & PRIMITIVE_ALL_CURVE) {
-          for (size_t j = 0; j < ob->mesh->num_curves(); ++j) {
-            num_prim += ob->mesh->get_curve(j).num_segments();
-          }
-        }
-      }
-      else {
-        ++num_prim;
-      }
-    }
-    else {
-      if (params.primitive_mask & PRIMITIVE_ALL_TRIANGLE && ob->mesh->num_triangles() > 0) {
-        num_prim += ob->mesh->num_triangles();
-        num_tri += ob->mesh->num_triangles();
-      }
-      if (params.primitive_mask & PRIMITIVE_ALL_CURVE) {
-        for (size_t j = 0; j < ob->mesh->num_curves(); ++j) {
-          num_prim += ob->mesh->get_curve(j).num_segments();
-        }
-      }
-    }
-  }
-
   pack.prim_visibility.clear();
-  pack.prim_visibility.reserve(num_prim);
   pack.prim_object.clear();
-  pack.prim_object.reserve(num_prim);
   pack.prim_type.clear();
-  pack.prim_type.reserve(num_prim);
   pack.prim_index.clear();
-  pack.prim_index.reserve(num_prim);
   pack.prim_tri_index.clear();
-  pack.prim_tri_index.reserve(num_prim);
-
   pack.prim_tri_verts.clear();
-  pack.prim_tri_index.reserve(3 * num_tri);
 
   this->pack = &pack;
 
