@@ -53,7 +53,7 @@ class PhysicButtonsPanel:
 
 class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -78,7 +78,7 @@ class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_smoke_settings(PhysicButtonsPanel, Panel):
     bl_label = "Settings"
     bl_parent_id = 'PHYSICS_PT_smoke'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -168,7 +168,7 @@ class PHYSICS_PT_smoke_settings(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_smoke_settings_initial_velocity(PhysicButtonsPanel, Panel):
     bl_label = "Initial Velocity"
     bl_parent_id = 'PHYSICS_PT_smoke_settings'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -208,7 +208,7 @@ class PHYSICS_PT_smoke_settings_initial_velocity(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_smoke_settings_particle_size(PhysicButtonsPanel, Panel):
     bl_label = "Particle Size"
     bl_parent_id = 'PHYSICS_PT_smoke_settings'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -242,7 +242,7 @@ class PHYSICS_PT_smoke_settings_particle_size(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_smoke_behavior(PhysicButtonsPanel, Panel):
     bl_label = "Behavior"
     bl_parent_id = 'PHYSICS_PT_smoke_settings'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -272,7 +272,7 @@ class PHYSICS_PT_smoke_behavior_dissolve(PhysicButtonsPanel, Panel):
     bl_label = "Dissolve"
     bl_parent_id = 'PHYSICS_PT_smoke_behavior'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -310,7 +310,7 @@ class PHYSICS_PT_smoke_flow_texture(PhysicButtonsPanel, Panel):
     bl_label = "Texture"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -358,7 +358,7 @@ class PHYSICS_PT_smoke_fire(PhysicButtonsPanel, Panel):
     bl_label = "Flames"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -397,7 +397,7 @@ class PHYSICS_PT_smoke_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Adaptive Domain"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -435,7 +435,7 @@ class PHYSICS_PT_smoke_highres(PhysicButtonsPanel, Panel):
     bl_label = "High Resolution"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -477,7 +477,7 @@ class PHYSICS_PT_smoke_collections(PhysicButtonsPanel, Panel):
     bl_label = "Collections"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -504,7 +504,7 @@ class PHYSICS_PT_smoke_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -549,7 +549,7 @@ class PHYSICS_PT_smoke_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
     bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):

@@ -33,7 +33,7 @@ class ViewLayerButtonsPanel:
 
 class VIEWLAYER_PT_layer(ViewLayerButtonsPanel, Panel):
     bl_label = "View Layer"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_LANPR', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
