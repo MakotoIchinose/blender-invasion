@@ -1099,7 +1099,7 @@ static bool sculpt_brush_test_cyl(SculptBrushTest *test,
 static bool sculpt_automasking_enabled(SculptSession *ss, const Brush *br)
 {
   // REMOVE WITH PBVH_GRIDS
-  if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
+  if (ss->pbvh && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
     return false;
   }
 
@@ -4247,7 +4247,8 @@ static void calc_sculpt_plane(
 
   if (ss->cache->mirror_symmetry_pass == 0 && ss->cache->radial_symmetry_pass == 0 &&
       ss->cache->tile_pass == 0 &&
-      (ss->cache->first_time || !(brush->flag & BRUSH_ORIGINAL_NORMAL))) {
+      (ss->cache->first_time || !(brush->flag & BRUSH_ORIGINAL_PLANE) ||
+       !(brush->flag & BRUSH_ORIGINAL_NORMAL))) {
     switch (brush->sculpt_plane) {
       case SCULPT_DISP_DIR_VIEW:
         copy_v3_v3(r_area_no, ss->cache->true_view_normal);
@@ -4284,10 +4285,20 @@ static void calc_sculpt_plane(
     }
 
     /* for area normal */
-    copy_v3_v3(ss->cache->sculpt_normal, r_area_no);
+    if ((!ss->cache->first_time) && (brush->flag & BRUSH_ORIGINAL_NORMAL)) {
+      copy_v3_v3(r_area_no, ss->cache->sculpt_normal);
+    }
+    else {
+      copy_v3_v3(ss->cache->sculpt_normal, r_area_no);
+    }
 
     /* for flatten center */
-    copy_v3_v3(ss->cache->last_center, r_area_co);
+    if ((!ss->cache->first_time) && (brush->flag & BRUSH_ORIGINAL_PLANE)) {
+      copy_v3_v3(r_area_co, ss->cache->last_center);
+    }
+    else {
+      copy_v3_v3(ss->cache->last_center, r_area_co);
+    }
   }
   else {
     /* for area normal */
@@ -6958,8 +6969,19 @@ void sculpt_pbvh_clear(Object *ob)
   /* Clear out any existing DM and PBVH */
   if (ss->pbvh) {
     BKE_pbvh_free(ss->pbvh);
+    ss->pbvh = NULL;
   }
-  ss->pbvh = NULL;
+
+  if (ss->pmap) {
+    MEM_freeN(ss->pmap);
+    ss->pmap = NULL;
+  }
+
+  if (ss->pmap_mem) {
+    MEM_freeN(ss->pmap_mem);
+    ss->pmap_mem = NULL;
+  }
+
   BKE_object_free_derived_caches(ob);
 
   /* Tag to rebuild PBVH in depsgraph. */
@@ -7529,13 +7551,11 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
   const int mode_flag = OB_MODE_SCULPT;
   Mesh *me = BKE_mesh_from_object(ob);
 
-  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
-  if (mmd) {
-    multires_force_update(ob);
-  }
+  multires_flush_sculpt_updates(ob);
 
   /* Not needed for now. */
 #if 0
+  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
   const int flush_recalc = ed_object_sculptmode_flush_recalc_flag(scene, ob, mmd);
 #endif
 
