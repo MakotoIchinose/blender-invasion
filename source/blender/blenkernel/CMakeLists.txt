@@ -190,6 +190,7 @@ set(SRC
   intern/scene.c
   intern/screen.c
   intern/seqcache.c
+  intern/seqprefetch.c
   intern/seqeffects.c
   intern/seqmodifier.c
   intern/sequencer.c
@@ -206,12 +207,14 @@ set(SRC
   intern/subdiv_ccg_material.c
   intern/subdiv_converter.c
   intern/subdiv_converter_mesh.c
+  intern/subdiv_deform.c
   intern/subdiv_displacement.c
   intern/subdiv_displacement_multires.c
   intern/subdiv_eval.c
   intern/subdiv_foreach.c
   intern/subdiv_mesh.c
   intern/subdiv_stats.c
+  intern/subdiv_topology.c
   intern/subsurf_ccg.c
   intern/suggestions.c
   intern/text.c
@@ -341,9 +344,11 @@ set(SRC
   BKE_studiolight.h
   BKE_subdiv.h
   BKE_subdiv_ccg.h
+  BKE_subdiv_deform.h
   BKE_subdiv_eval.h
   BKE_subdiv_foreach.h
   BKE_subdiv_mesh.h
+  BKE_subdiv_topology.h
   BKE_subsurf.h
   BKE_suggestions.h
   BKE_text.h
@@ -621,6 +626,16 @@ if(WITH_OPENVDB)
       -DWITH_OPENVDB_BLOSC
     )
   endif()
+endif()
+
+if(WITH_QUADRIFLOW)
+  list(APPEND INC
+     ../../../intern/quadriflow
+  )
+  list(APPEND LIB
+     bf_intern_quadriflow
+  )
+  add_definitions(-DWITH_QUADRIFLOW)
 endif()
 
 ## Warnings as errors, this is too strict!

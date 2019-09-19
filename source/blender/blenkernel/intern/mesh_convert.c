@@ -556,7 +556,7 @@ Mesh *BKE_mesh_new_nomain_from_curve_displist(Object *ob, ListBase *dispbase)
   memcpy(mesh->mpoly, allpoly, totpoly * sizeof(MPoly));
 
   if (alluv) {
-    const char *uvname = "Orco";
+    const char *uvname = "UVMap";
     CustomData_add_layer_named(&mesh->ldata, CD_MLOOPUV, CD_ASSIGN, alluv, totloop, uvname);
   }
 
@@ -635,7 +635,7 @@ void BKE_mesh_from_nurbs_displist(Main *bmain,
     me->mpoly = CustomData_add_layer(&me->pdata, CD_MPOLY, CD_ASSIGN, allpoly, me->totpoly);
 
     if (alluv) {
-      const char *uvname = "Orco";
+      const char *uvname = "UVMap";
       me->mloopuv = CustomData_add_layer_named(
           &me->ldata, CD_MLOOPUV, CD_ASSIGN, alluv, me->totloop, uvname);
     }
@@ -1080,6 +1080,7 @@ static Mesh *mesh_new_from_mball_object(Object *object)
 
   Mesh *mesh_result = BKE_id_new_nomain(ID_ME, ((ID *)object->data)->name + 2);
   BKE_mesh_from_metaball(&object->runtime.curve_cache->disp, mesh_result);
+  BKE_mesh_texspace_copy_from_object(mesh_result, object);
 
   /* Copy materials. */
   mesh_result->totcol = mball->totcol;

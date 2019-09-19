@@ -153,18 +153,9 @@ void WM_opengl_context_dispose(void *context);
 void WM_opengl_context_activate(void *context);
 void WM_opengl_context_release(void *context);
 
-/* defines for 'type' WM_window_open_temp */
-enum {
-  WM_WINDOW_RENDER = 1,
-  WM_WINDOW_USERPREFS,
-  WM_WINDOW_DRIVERS,
-  WM_WINDOW_INFO,
-  WM_WINDOW_FILESEL,
-};
-
 struct wmWindow *WM_window_open(struct bContext *C, const struct rcti *rect);
 struct wmWindow *WM_window_open_temp(
-    struct bContext *C, int x, int y, int sizex, int sizey, int type);
+    struct bContext *C, const char *title, int x, int y, int sizex, int sizey, int space_type);
 void WM_window_set_dpi(wmWindow *win);
 
 bool WM_stereo3d_enabled(struct wmWindow *win, bool only_fullscreen_test);
@@ -686,6 +677,7 @@ enum {
   WM_JOB_TYPE_STUDIOLIGHT,
   WM_JOB_TYPE_LIGHT_BAKE,
   WM_JOB_TYPE_FSMENU_BOOKMARK_VALIDATE,
+  WM_JOB_TYPE_QUADRIFLOW_REMESH,
   WM_JOB_TYPE_ASSET_UPDATECHECK,
   /* add as needed, bake, seq proxy build
    * if having hard coded values is a problem */

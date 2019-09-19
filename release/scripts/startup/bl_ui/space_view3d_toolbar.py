@@ -219,9 +219,10 @@ class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.active = tool_settings.use_mesh_automerge
-        layout.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
-        layout.prop(tool_settings, "double_threshold", text="Threshold")
+        col = layout.column(align=True)
+        col.active = tool_settings.use_mesh_automerge
+        col.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
+        col.prop(tool_settings, "double_threshold", text="Threshold")
 
 # ********** default tools for editmode_curve ****************
 
@@ -455,7 +456,10 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
             # crease_pinch_factor
             if capabilities.has_pinch_factor:
                 row = col.row(align=True)
-                row.prop(brush, "crease_pinch_factor", slider=True, text="Pinch")
+                if (brush.sculpt_tool in ('BLOB', 'SNAKE_HOOK')):
+                    row.prop(brush, "crease_pinch_factor", slider=True, text="Magnify")
+                else:
+                    row.prop(brush, "crease_pinch_factor", slider=True, text="Pinch")
 
             # rake_factor
             if capabilities.has_rake_factor:
@@ -645,6 +649,7 @@ class VIEW3D_PT_tools_brush_options(Panel, View3DPaintPanel):
             if capabilities.has_sculpt_plane:
                 col.prop(brush, "sculpt_plane")
                 col.prop(brush, "use_original_normal")
+                col.prop(brush, "use_original_plane")
 
             col.prop(brush, "use_frontface", text="Front Faces Only")
             col.prop(brush, "use_projected")
@@ -772,6 +777,7 @@ class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
     bl_context = ".imagepaint"  # dot on purpose (access from topbar)
     bl_label = "Mask"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_ui_units_x = 14
 
     @classmethod
     def poll(cls, context):
@@ -796,20 +802,20 @@ class VIEW3D_PT_stencil_projectpaint(View3DPanel, Panel):
         col = layout.column()
         col.active = ipaint.use_stencil_layer
 
+        col.label(text="Stencil Image")
+        col.template_ID(ipaint, "stencil_image", new="image.new", open="image.open")
+
         stencil_text = mesh.uv_layer_stencil.name if mesh.uv_layer_stencil else ""
-        split = col.split(factor=0.5)
+
+        col.separator()
+
+        split = col.split()
         colsub = split.column()
         colsub.alignment = 'RIGHT'
         colsub.label(text="UV Layer")
         split.column().menu("VIEW3D_MT_tools_projectpaint_stencil", text=stencil_text, translate=False)
 
-        # todo this should be combined into a single row
-        split = col.split(factor=0.5)
-        colsub = split.column()
-        colsub.alignment = 'RIGHT'
-        colsub.label(text="Stencil Image")
-        colsub = split.column()
-        colsub.template_ID(ipaint, "stencil_image", new="image.new", open="image.open")
+        col.separator()
 
         row = col.row(align=True)
         row.prop(ipaint, "stencil_color", text="Display Color")

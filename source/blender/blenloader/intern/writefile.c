@@ -157,7 +157,6 @@
 #include "BKE_layer.h"
 #include "BKE_library_override.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_pointcache.h"
@@ -703,7 +702,8 @@ static void write_iddata(void *wd, const ID *id)
 {
   /* ID_WM's id->properties are considered runtime only, and never written in .blend file. */
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
-    /* We want to write IDProps from 'virtual' libraries too, but not from 'real' linked datablocks... */
+    /* We want to write IDProps from 'virtual' libraries too, but not from 'real' linked
+     * datablocks... */
     if (!id->uuid || (id->lib && (id->lib->flag & LIBRARY_FLAG_VIRTUAL))) {
       IDP_WriteProperty(id->properties, wd);
     }
@@ -3646,7 +3646,9 @@ static void write_libraries(WriteData *wd, Main *main)
       found_one = false;
       while (!found_one && tot--) {
         for (id = lbarray[tot]->first; id; id = id->next) {
-          if (id->us > 0 && (id->tag & LIB_TAG_EXTERN)) {
+          if (id->us > 0 &&
+              ((id->tag & LIB_TAG_EXTERN) ||
+               ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
             found_one = true;
             break;
           }
@@ -3738,7 +3740,9 @@ static void write_libraries(WriteData *wd, Main *main)
       else {
         while (a--) {
           for (id = lbarray[a]->first; id; id = id->next) {
-            if (id->us > 0 && (id->tag & LIB_TAG_EXTERN)) {
+            if (id->us > 0 &&
+                ((id->tag & LIB_TAG_EXTERN) ||
+                 ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
               if (!BKE_idcode_is_linkable(GS(id->name))) {
                 printf(
                     "ERROR: write file: data-block '%s' from lib '%s' is not linkable "

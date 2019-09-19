@@ -344,7 +344,7 @@ void BlenderSync::sync_film(BL::SpaceView3D &b_v3d)
   Film prevfilm = *film;
 
   if (b_v3d) {
-    film->display_pass = update_viewport_display_passes(b_v3d, film->passes, true);
+    film->display_pass = update_viewport_display_passes(b_v3d, film->passes);
   }
 
   film->exposure = get_float(cscene, "film_exposure");
@@ -520,7 +520,6 @@ int BlenderSync::get_denoising_pass(BL::RenderPass &b_pass)
 vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLayer &b_view_layer)
 {
   vector<Pass> passes;
-  Pass::add(PASS_COMBINED, passes);
 
   /* loop over passes */
   BL::RenderLayer::passes_iterator b_pass_iter;
@@ -758,7 +757,7 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
     preview_samples = preview_samples * preview_samples;
   }
 
-  if (get_enum(cscene, "progressive") == 0) {
+  if (get_enum(cscene, "progressive") == 0 && (params.device.type != DEVICE_OPTIX)) {
     if (background) {
       params.samples = aa_samples;
     }

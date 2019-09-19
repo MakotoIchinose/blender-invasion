@@ -47,8 +47,6 @@
 #include "ED_object.h"
 #include "ED_gpencil.h"
 
-#include "GPU_extensions.h"
-
 #include "DRW_engine.h"
 
 #include "RNA_define.h"
@@ -2944,7 +2942,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "transform_pivot_point", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "transform_pivot_point");
   RNA_def_property_enum_items(prop, rna_enum_transform_pivot_items_full);
-  RNA_def_property_ui_text(prop, "Pivot Point", "Pivot center for rotation/scaling");
+  RNA_def_property_ui_text(prop, "Transform Pivot Point", "Pivot center for rotation/scaling");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "use_transform_pivot_point_align", PROP_BOOLEAN, PROP_NONE);
@@ -2955,12 +2953,12 @@ static void rna_def_tool_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_transform_data_origin", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_DATA_ORIGIN);
-  RNA_def_property_ui_text(prop, "Data Origins", "Manipulate object data");
+  RNA_def_property_ui_text(prop, "Transform Origins", "Manipulate object data");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_transform_skip_children", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "transform_flag", SCE_XFORM_SKIP_CHILDREN);
-  RNA_def_property_ui_text(prop, "Skip Children", "Don't transform children");
+  RNA_def_property_ui_text(prop, "Transform Parents", "Don't transform children");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "use_mesh_automerge", PROP_BOOLEAN, PROP_NONE);
@@ -5511,22 +5509,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem display_mode_items[] = {
-      {R_OUTPUT_SCREEN,
-       "SCREEN",
-       0,
-       "Full Screen",
-       "Images are rendered in a maximized Image Editor"},
-      {R_OUTPUT_AREA, "AREA", 0, "Image Editor", "Images are rendered in an Image Editor"},
-      {R_OUTPUT_WINDOW, "WINDOW", 0, "New Window", "Images are rendered in a new window"},
-      {R_OUTPUT_NONE,
-       "NONE",
-       0,
-       "Keep User Interface",
-       "Images are rendered without changing the user interface"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   /* Bake */
   static const EnumPropertyItem bake_mode_items[] = {
       //{RE_BAKE_AO, "AO", 0, "Ambient Occlusion", "Bake ambient occlusion"},
@@ -5921,13 +5903,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
                            "Full Sample",
                            "Save for every anti-aliasing sample the entire RenderLayer results "
                            "(this solves anti-aliasing issues with compositing)");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
-
-  prop = RNA_def_property(srna, "display_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_bitflag_sdna(prop, NULL, "displaymode");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_enum_items(prop, display_mode_items);
-  RNA_def_property_ui_text(prop, "Display", "Select where rendered images will be displayed");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
   prop = RNA_def_property(srna, "use_lock_interface", PROP_BOOLEAN, PROP_NONE);

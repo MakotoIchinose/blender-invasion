@@ -14,13 +14,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#ifndef __BLI_STACK_CXX_H__
+#define __BLI_STACK_CXX_H__
+
 /** \file
  * \ingroup bli
  *
  * Basic stack implementation with support for small object optimization.
  */
-
-#pragma once
 
 #include "BLI_vector.h"
 
@@ -72,7 +73,7 @@ template<typename T, uint N = 4, typename Allocator = GuardedAllocator> class St
 
   void push(T &&value)
   {
-    m_elements.append(std::forward<T>(value));
+    m_elements.append(std::move(value));
   }
 
   /**
@@ -140,3 +141,5 @@ template<typename T, uint N = 4, typename Allocator = GuardedAllocator> class St
 };
 
 } /* namespace BLI */
+
+#endif /* __BLI_STACK_CXX_H__ */
