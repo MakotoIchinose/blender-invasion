@@ -279,6 +279,7 @@ static void file_refresh(const bContext *C, ScrArea *sa)
   SpaceFile *sfile = CTX_wm_space_file(C);
   FileSelectParams *params = ED_fileselect_get_params(sfile);
   struct FSMenu *fsmenu = ED_fsmenu_get();
+  ARegion *region_tool_props = BKE_area_find_region_type(sa, RGN_TYPE_TOOL_PROPS);
 
   if (!sfile->folders_prev) {
     sfile->folders_prev = folderlist_new();
@@ -341,8 +342,30 @@ static void file_refresh(const bContext *C, ScrArea *sa)
   }
 
   /* Might be called with NULL sa, see file_main_region_draw() below. */
-  if (sa) {
-    file_ensure_valid_region_state((bContext *)C, wm, win, sa, sfile, params);
+  if (sa && BKE_area_find_region_type(sa, RGN_TYPE_TOOLS) == NULL) {
+    /* Create TOOLS region. */
+    file_tools_region(sa);
+
+    ED_area_initialize(wm, win, sa);
+  }
+
+  /* If there's an file-operation, ensure we have the option region */
+  if (sa && sfile->op && (region_tool_props == NULL)) {
+    ARegion *region_props = file_tool_props_region(sa);
+
+    if (params->flag & FILE_HIDE_TOOL_PROPS) {
+      region_props->flag |= RGN_FLAG_HIDDEN;
+    }
+
+    ED_area_initialize(wm, win, sa);
+  }
+  /* If there's _no_ file-operation, ensure we _don't_ have the option region */
+  else if (sa && (sfile->op == NULL) && (region_tool_props != NULL)) {
+    /* Remove TOOL_PROPS region. */
+    ED_region_exit((bContext *)C, region_tool_props);
+    BKE_area_region_free(sa->type, region_tool_props);
+    BLI_remlink(&sa->regionbase, region_tool_props);
+    MEM_freeN(region_tool_props);
   }
 
   ED_area_tag_redraw(sa);
