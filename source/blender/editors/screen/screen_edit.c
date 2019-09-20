@@ -1346,6 +1346,53 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *sa, const s
   return sc->areabase.first;
 }
 
+/**
+ * Wrapper to open a temporary space either as fullscreen space, or as separate window, as defined
+ * by \a display_type.
+ *
+ * \param title: Title to set for the window, if a window is spawned.
+ * \param x, y: Position of the window, if a window is spawned.
+ * \param sizex, sizey: Dimensions of the window, if a window is spawned.
+ */
+ScrArea *ED_screen_temp_space_open(bContext *C,
+                                   const char *title,
+                                   int x,
+                                   int y,
+                                   int sizex,
+                                   int sizey,
+                                   eSpace_Type space_type,
+                                   int display_type)
+{
+  ScrArea *sa = NULL;
+
+  switch (display_type) {
+    case USER_TEMP_SPACE_DISPLAY_WINDOW:
+      if (WM_window_open_temp(C, title, x, y, sizex, sizey, (int)space_type)) {
+        sa = CTX_wm_area(C);
+      }
+      break;
+    case USER_TEMP_SPACE_DISPLAY_FULLSCREEN: {
+      ScrArea *ctx_sa = CTX_wm_area(C);
+
+      if (ctx_sa->full) {
+        sa = ctx_sa;
+        ED_area_newspace(C, ctx_sa, space_type, true);
+        /* we already had a fullscreen here -> mark new space as a stacked fullscreen */
+        sa->flag |= (AREA_FLAG_STACKED_FULLSCREEN | AREA_FLAG_TEMP_TYPE);
+      }
+      else if (ctx_sa->spacetype == space_type) {
+        sa = ED_screen_state_toggle(C, CTX_wm_window(C), ctx_sa, SCREENMAXIMIZED);
+      }
+      else {
+        sa = ED_screen_full_newspace(C, ctx_sa, (int)space_type);
+      }
+      break;
+    }
+  }
+
+  return sa;
+}
+
 /* update frame rate info for viewport drawing */
 void ED_refresh_viewport_fps(bContext *C)
 {
