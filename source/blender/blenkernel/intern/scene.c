@@ -604,6 +604,9 @@ void BKE_scene_free_ex(Scene *sce, const bool do_id_user)
     sce->display.shading.prop = NULL;
   }
 
+  /* Copied and generated LANPR data. */
+  BKE_lanpr_free_everything(sce);
+
   /* These are freed on doversion. */
   BLI_assert(sce->layer_properties == NULL);
 }
