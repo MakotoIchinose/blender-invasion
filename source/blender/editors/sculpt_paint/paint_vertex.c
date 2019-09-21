@@ -34,7 +34,6 @@
 #include "BLI_array_utils.h"
 #include "BLI_task.h"
 
-#include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
@@ -42,7 +41,6 @@
 #include "DNA_object_types.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
@@ -260,7 +258,7 @@ static bool weight_paint_poll_ex(bContext *C, bool check_tool)
       (BKE_paint_brush(&CTX_data_tool_settings(C)->wpaint->paint) != NULL) &&
       (sa = CTX_wm_area(C)) && (sa->spacetype == SPACE_VIEW3D)) {
     ARegion *ar = CTX_wm_region(C);
-    if (ar->regiontype == RGN_TYPE_WINDOW) {
+    if (ELEM(ar->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_HUD)) {
       if (!check_tool || WM_toolsystem_active_tool_is_brush(C)) {
         return 1;
       }

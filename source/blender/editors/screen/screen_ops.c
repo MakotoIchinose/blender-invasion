@@ -38,7 +38,6 @@
 #include "DNA_lattice_types.h"
 #include "DNA_object_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_mesh_types.h"
@@ -48,7 +47,6 @@
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.h"
-#include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
@@ -3848,10 +3846,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
     for (ar = sa->regionbase.first; ar; ar = arn) {
       arn = ar->next;
       if (ar->alignment == RGN_ALIGN_QSPLIT) {
-        ED_region_exit(C, ar);
-        BKE_area_region_free(sa->type, ar);
-        BLI_remlink(&sa->regionbase, ar);
-        MEM_freeN(ar);
+        ED_region_remove(C, sa, ar);
       }
     }
     ED_area_tag_redraw(sa);
