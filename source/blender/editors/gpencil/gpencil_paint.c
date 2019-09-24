@@ -598,6 +598,7 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
   float sco[2] = {0.0f};
   float a[2], b[2], c[2], d[2];
   float pressure = 0.0f;
+  float strength = 0.0f;
   const float average_fac = 1.0f / steps;
 
   /* Compute smoothed coordinate by taking the ones nearby */
@@ -605,21 +606,25 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
     copy_v2_v2(a, &pta->x);
     madd_v2_v2fl(sco, a, average_fac);
     pressure += pta->pressure * average_fac;
+    strength += pta->strength * average_fac;
   }
   if (ptb) {
     copy_v2_v2(b, &ptb->x);
     madd_v2_v2fl(sco, b, average_fac);
     pressure += ptb->pressure * average_fac;
+    strength += ptb->strength * average_fac;
   }
   if (ptc) {
     copy_v2_v2(c, &ptc->x);
     madd_v2_v2fl(sco, c, average_fac);
     pressure += ptc->pressure * average_fac;
+    strength += ptc->strength * average_fac;
   }
   if (ptd) {
     copy_v2_v2(d, &ptd->x);
     madd_v2_v2fl(sco, d, average_fac);
     pressure += ptd->pressure * average_fac;
+    strength += ptd->strength * average_fac;
   }
 
   /* Based on influence factor, blend between original and optimal smoothed coordinate. */
@@ -627,6 +632,8 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
   copy_v2_v2(&ptc->x, c);
   /* Interpolate pressure. */
   ptc->pressure = interpf(ptc->pressure, pressure, inf);
+  /* Interpolate strength. */
+  ptc->strength = interpf(ptc->strength, strength, inf);
 }
 
 /* Apply subdivide to buffer while drawing
