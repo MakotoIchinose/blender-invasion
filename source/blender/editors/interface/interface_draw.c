@@ -2112,15 +2112,9 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
   immUnbindProgram();
 }
 
-#define DEBUG_PROFILE_DRAW 0
-#define DEBUG_PROFILE_DRAW_FILL 0
-
 /** Used to draw a profile widget. Somewhat similar to ui_draw_but_CURVE */
 void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
-#if DEBUG_PROFILE_DRAW
-  printf("UI DRAW BUT PROFILE\n");
-#endif
   uint i;
   float fx, fy;
   ProfileWidget *prwdgt;
@@ -2141,16 +2135,6 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   if (zoomx == 0.0f) {
     return;
   }
-
-#if DEBUG_PROFILE_DRAW
-  if (!prwdgt->path) {
-    printf("UI DRAW BUT PROFILE -- ProfileWidget has no path!\n");
-  }
-  if (!prwdgt->table) {
-    printf("UI DRAW BUT PROFILE -- ProfileWidget has no table!\n");
-  }
-  fflush(0);
-#endif
 
   /* Test needed because path can draw outside of boundary */
   int scissor[4];
@@ -2250,32 +2234,6 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   uint (*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
   BLI_polyfill_calc(table_coords, tot_points, -1, tri_indices);
 
-#if DEBUG_PROFILE_DRAW
-  printf("add_bottom_tri: %d\n", add_bottom_tri);
-  printf("add_left_tri: %d\n", add_left_tri);
-
-  printf("tot_points = %u\n", tot_points);
-  printf("Point coords:\n");
-  for (i = 0; i < tot_points; i++) {
-    printf("(%.3f, %.3f) ", (double)table_coords[i][0], (double)table_coords[i][1]);
-  }
-  printf("\n");
-#endif
-#if DEBUG_PROFILE_DRAW_FILL
-  printf("\nPoint indices:\n");
-  for (i = 0; i < tot_triangles; i++) {
-    printf("(%u, %u, %u) ", tri_indices[i][0], tri_indices[i][1], tri_indices[i][2]);
-  }
-  printf("\nPoint corners:\n");
-  for (i = 0; i < tot_triangles; i++) {
-    uint *tri = tri_indices[i];
-    printf("([%.03f, %.03f],", (double)table_coords[tri[0]][0], (double)table_coords[tri[0]][1]);
-    printf("[%.03f, %.03f],",  (double)table_coords[tri[1]][0], (double)table_coords[tri[1]][1]);
-    printf("[%.03f, %.03f]) ", (double)table_coords[tri[2]][0], (double)table_coords[tri[2]][1]);
-  }
-  printf("\n");
-#endif
-
   /* Draw the triangles for the profile fill */
   immUniformColor3ubvAlpha((const uchar *)wcol->item, 128);
   GPU_blend(true);
@@ -2307,17 +2265,20 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   immUnbindProgram();
   MEM_freeN(table_coords);
 
-
-  /* Draw the control points, use aspect to make them visible on edges. */
+  /* New GPU instructions for control points and sampled points. */
   format = immVertexFormat();
   pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_FLAT_COLOR);
 
   /* Calculate vertex colors based on text theme. */
-  float color_vert[4], color_vert_select[4];
+  float color_vert[4], color_vert_select[4], color_sample[4];
   UI_GetThemeColor4fv(TH_TEXT_HI, color_vert);
   UI_GetThemeColor4fv(TH_TEXT, color_vert_select);
+  color_sample[0] = (float)wcol->item[0] / 255.0f;
+  color_sample[1] = (float)wcol->item[1] / 255.0f;
+  color_sample[2] = (float)wcol->item[2] / 255.0f;
+  color_sample[3] = (float)wcol->item[3] / 255.0f;
   if (len_squared_v3v3(color_vert, color_vert_select) < 0.1f) {
     interp_v3_v3v3(color_vert, color_vert_select, color_backdrop, 0.75f);
   }
@@ -2326,7 +2287,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     swap_v3_v3(color_vert, color_vert_select);
   }
 
-  /* Draw the control points */
+  /* Draw the control points. */
   pts = prwdgt->path;
   tot_points = (uint)prwdgt->totpoint;
   GPU_line_smooth(false);
@@ -2350,7 +2311,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
     for (i = 0; i < tot_points; i++) {
       fx = rect->xmin + zoomx * (pts[i].x - offsx);
       fy = rect->ymin + zoomy * (pts[i].y - offsy);
-      immAttr4fv(col, color_vert);
+      immAttr4fv(col, color_sample);
       immVertex2f(pos, fx, fy);
     }
     immEnd();

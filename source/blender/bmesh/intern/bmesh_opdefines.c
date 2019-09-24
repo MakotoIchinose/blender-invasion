@@ -1725,6 +1725,12 @@ static BMO_FlagSet bmo_enum_bevel_miter_type[] = {
   {0, NULL},
 };
 
+static BMO_FlagSet bmo_enum_bevel_vmesh_method[] = {
+  {BEVEL_VMESH_ADJ, "ADJ"},
+  {BEVEL_VMESH_CUTOFF, "CUTOFF"},
+  {0, NULL},
+};
+
 /*
  * Bevel.
  *
@@ -1757,7 +1763,8 @@ static BMOpDefine bmo_bevel_def = {
    {"use_custom_profile", BMO_OP_SLOT_BOOL}, /* Whether to use custom profile feature */
    /* the ProfileWiget struct for the custom profile shape */
    {"prwdgt", BMO_OP_SLOT_PTR, {(int)BMO_OP_SLOT_SUBTYPE_PTR_STRUCT}},
-   {"vmesh_method", BMO_OP_SLOT_INT},
+   {"vmesh_method", BMO_OP_SLOT_INT, {(int)BMO_OP_SLOT_SUBTYPE_INT_ENUM},
+    bmo_enum_bevel_vmesh_method},
    {{'\0'}},
   },
   /* slots_out */

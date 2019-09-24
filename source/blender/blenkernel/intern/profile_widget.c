@@ -91,7 +91,7 @@ ProfileWidget *BKE_profilewidget_copy(const ProfileWidget *prwdgt)
 }
 
 /** Removes a specific point from the path of control points.
- * \note: Requiress profilewidget_changed call after. */
+ * \note: Requires profilewidget_changed call after. */
 bool BKE_profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 {
   ProfilePoint *pts;
@@ -123,7 +123,7 @@ bool BKE_profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
 
 /** Removes every point in the widget with the supplied flag set, except for the first and last.
  * \param flag: ProfilePoint->flag.
- * \note: Requiress profilewidget_changed call after. */
+ * \note: Requires profilewidget_changed call after. */
 void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 {
   int i_old, i_new, n_removed = 0;
@@ -153,7 +153,7 @@ void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 /** Adds a new point at the specified location. The choice for which points to place the new vertex
  * between is made by checking which control point line segment is closest to the new point and
  * placing the new vertex in between that segment's points.
- * \note: Requiress profilewidget_changed call after. */
+ * \note: Requires profilewidget_changed call after. */
 ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 {
   ProfilePoint *new_pt = NULL;
@@ -208,7 +208,7 @@ ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
 
 /** Sets the handle type of the selected control points.
  * \param type: Either HD_VECT or HD_AUTO.
- * \note: Requiress profilewidget_changed call after. */
+ * \note: Requires profilewidget_changed call after. */
 void BKE_profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 {
   for (int i = 0; i < prwdgt->totpoint; i++) {
@@ -225,7 +225,7 @@ void BKE_profilewidget_handle_set(ProfileWidget *prwdgt, int type)
 }
 
 /** Flips the profile across the diagonal so that its orientation is reversed.
- * \note: Requiress profilewidget_changed call after.  */
+ * \note: Requires profilewidget_changed call after.  */
 void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
 {
   /* Quick fix for when there are only two points and reversing shouldn't do anything */
@@ -246,6 +246,28 @@ void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
   prwdgt->path = new_pts;
 }
 
+/** Builds a quarter circle profile with space on each side for 'support loops.' */
+static void profilewidget_build_supports(ProfileWidget *prwdgt) {
+  int n = prwdgt->totpoint;
+  
+  prwdgt->path[0].x = 1.0;
+  prwdgt->path[0].y = 0.0;
+  prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[1].x = 1.0;
+  prwdgt->path[1].y = 0.5;
+  prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+  for (int i = 1; i < n - 2; i++) {
+    prwdgt->path[i + 1].x = 1.0f - (0.5f * (1.0f - cosf((float)((i / (float)(n - 3))) * M_PI_2)));
+    prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / (float)(n - 3)) * M_PI_2));
+  }
+  prwdgt->path[n - 2].x = 0.5;
+  prwdgt->path[n - 2].y = 1.0;
+  prwdgt->path[n - 2].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 1].x = 0.0;
+  prwdgt->path[n - 1].y = 1.0;
+  prwdgt->path[n - 1].flag = PROF_HANDLE_VECTOR;
+}
+
 /** Puts the widget's control points in a step pattern. Uses vector handles for each point. */
 static void profilewidget_build_steps(ProfileWidget *prwdgt)
 {
@@ -253,6 +275,17 @@ static void profilewidget_build_steps(ProfileWidget *prwdgt)
   float n_steps_x, n_steps_y;
 
   n = prwdgt->totpoint;
+
+  /* Special case for two points to avoid dividing by zero later. */
+  if (n == 2) {
+    prwdgt->path[0].x = 1.0f;
+    prwdgt->path[0].y = 0.0f;
+    prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
+    prwdgt->path[1].x = 0.0f;
+    prwdgt->path[1].y = 1.0f;
+    prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+    return;
+  }
 
   n_steps_x = (n % 2 == 0) ? n : (n - 1);
   n_steps_y = (n % 2 == 0) ? (n - 2) : (n - 1);
@@ -264,6 +297,13 @@ static void profilewidget_build_steps(ProfileWidget *prwdgt)
     prwdgt->path[i].y = (float)(2 * step_y) / n_steps_y;
     prwdgt->path[i].flag = PROF_HANDLE_VECTOR;
   }
+}
+
+/** Shorthand helper function for setting location and interpolation of a point */
+static void inline set_point(ProfilePoint *point, float x, float y, short flag) {
+  point->x = x;
+  point->y = y;
+  point->flag = flag;
 }
 
 /** Resets the profile to the current preset.
@@ -280,7 +320,15 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
       prwdgt->totpoint = 2;
       break;
     case PROF_PRESET_SUPPORTS:
-      prwdgt->totpoint = 12;
+      /* Use a dynamic number of control points for the widget's profile. */
+      if (prwdgt->totsegments < 4) {
+        /* But always use enough points to at least build the support points. */
+        prwdgt->totpoint = 5;
+      }
+      else
+      {
+        prwdgt->totpoint = prwdgt->totsegments + 1;
+      }
       break;
     case PROF_PRESET_CORNICE:
       prwdgt->totpoint = 13;
@@ -289,9 +337,9 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
       prwdgt->totpoint = 11;
       break;
     case PROF_PRESET_STEPS:
-      /* Use dynamic number of control points based on the set number of segments. */
+      /* Also use dynamic number of control points based on the set number of segments. */
       if (prwdgt->totsegments == 0) {
-        /* If totsegments hasn't been set, use the number of control points for 8 steps. */
+        /* totsegments hasn't been set-- use the number of control points for 8 steps. */
         prwdgt->totpoint = 17;
       }
       else {
@@ -304,94 +352,39 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
 
   switch (preset) {
     case PROF_PRESET_LINE:
-      prwdgt->path[0].x = 1.0;
-      prwdgt->path[0].y = 0.0;
-      prwdgt->path[1].x = 0.0;
-      prwdgt->path[1].y = 1.0;
+      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[1], 0.0f, 1.0f, PROF_HANDLE_AUTO);
       break;
     case PROF_PRESET_SUPPORTS:
-      prwdgt->path[0].x = 1.0;
-      prwdgt->path[0].y = 0.0;
-      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[1].x = 1.0;
-      prwdgt->path[1].y = 0.5;
-      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
-      for (int i = 1; i < 10; i++) {
-        prwdgt->path[i + 1].x = 1.0f - (0.5f * (1.0f - cosf((float)((i / 9.0) * M_PI_2))));
-        prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / 9.0) * M_PI_2));
-      }
-      prwdgt->path[10].x = 0.5;
-      prwdgt->path[10].y = 1.0;
-      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[11].x = 0.0;
-      prwdgt->path[11].y = 1.0;
-      prwdgt->path[11].flag = PROF_HANDLE_VECTOR;
+      profilewidget_build_supports(prwdgt);
       break;
     case PROF_PRESET_CORNICE:
-      prwdgt->path[0].x = 1.0f;
-      prwdgt->path[0].y = 0.0f;
-      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[1].x = 1.0f;
-      prwdgt->path[1].y = 0.125f;
-      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[2].x = 0.92f;
-      prwdgt->path[2].y = 0.16f;
-      prwdgt->path[3].x = 0.875f;
-      prwdgt->path[3].y = 0.25f;
-      prwdgt->path[3].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[4].x = 0.8f;
-      prwdgt->path[4].y = 0.25f;
-      prwdgt->path[4].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[5].x = 0.733f;
-      prwdgt->path[5].y = 0.433f;
-      prwdgt->path[6].x = 0.582f;
-      prwdgt->path[6].y = 0.522f;
-      prwdgt->path[7].x = 0.4f;
-      prwdgt->path[7].y = 0.6f;
-      prwdgt->path[8].x = 0.289f;
-      prwdgt->path[8].y = 0.727f;
-      prwdgt->path[9].x = 0.25f;
-      prwdgt->path[9].y = 0.925f;
-      prwdgt->path[9].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[10].x = 0.175f;
-      prwdgt->path[10].y = 0.925f;
-      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[11].x = 0.175f;
-      prwdgt->path[11].y = 1.0f;
-      prwdgt->path[11].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[12].x = 0.0f;
-      prwdgt->path[12].y = 1.0f;
-      prwdgt->path[12].flag = PROF_HANDLE_VECTOR;
+      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[1], 1.0f, 0.125f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[2], 0.92f, 0.16f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[3], 0.875f, 0.25f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[4], 0.8f, 0.25f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[5], 0.733f, 0.433f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[6], 0.582f, 0.522f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[7], 0.4f, 0.6f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[8], 0.289f, 0.727f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[9], 0.25f, 0.925f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[10], 0.175f, 0.925f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[11], 0.175f, 1.0f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[12], 0.0f, 1.0f, PROF_HANDLE_VECTOR);
       break;
     case PROF_PRESET_CROWN:
-      prwdgt->path[0].x = 1.0f;
-      prwdgt->path[0].y = 0.0f;
-      prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[1].x = 1.0f;
-      prwdgt->path[1].y = 0.25f;
-      prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[2].x = 0.75f;
-      prwdgt->path[2].y = 0.25f;
-      prwdgt->path[2].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[3].x = 0.75f;
-      prwdgt->path[3].y = 0.325f;
-      prwdgt->path[3].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[4].x = 0.925f;
-      prwdgt->path[4].y = 0.4f;
-      prwdgt->path[5].x = 0.975f;
-      prwdgt->path[5].y = 0.5f;
-      prwdgt->path[6].x = 0.94f;
-      prwdgt->path[6].y = 0.65f;
-      prwdgt->path[7].x = 0.85f;
-      prwdgt->path[7].y = 0.75f;
-      prwdgt->path[8].x = 0.75f;
-      prwdgt->path[8].y = 0.875f;
-      prwdgt->path[9].x = 0.7f;
-      prwdgt->path[9].y = 1.0f;
-      prwdgt->path[9].flag = PROF_HANDLE_VECTOR;
-      prwdgt->path[10].x = 0.0f;
-      prwdgt->path[10].y = 1.0f;
-      prwdgt->path[10].flag = PROF_HANDLE_VECTOR;
+      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[1], 1.0f, 0.25f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[2], 0.75f, 0.25f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[3], 0.75f, 0.325f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[4], 0.925, 0.4f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[5], 0.975f, 0.5f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[6], 0.94f, 0.65f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[7], 0.85f, 0.75f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[8], 0.75f, 0.875f, PROF_HANDLE_AUTO);
+      set_point(&prwdgt->path[9], 0.7f, 1.0f, PROF_HANDLE_VECTOR);
+      set_point(&prwdgt->path[10], 0.0f, 1.0f, PROF_HANDLE_VECTOR);
       break;
     case PROF_PRESET_STEPS:
       profilewidget_build_steps(prwdgt);

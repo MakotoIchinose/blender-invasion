@@ -1340,7 +1340,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
     normalize_v3(pro->proj_dir);
     project_to_edge(e->e, co1, co2, pro->middle);
     if (DEBUG_OLD_PROJ_TO_PERP_PLANE) {
-      /* put arc endpoints on plane with normal proj_dir, containing midco */
+      /* put arc endpoints on plane with normal proj_dir, containing middle */
       add_v3_v3v3(co3, co1, pro->proj_dir);
       if (!isect_line_plane_v3(pro->start, co1, co3, pro->middle, pro->proj_dir)) {
         /* shouldn't happen */
@@ -1356,7 +1356,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
       copy_v3_v3(pro->start, co1);
       copy_v3_v3(pro->end, co2);
     }
-    /* default plane to project onto is the one with triangle co1 - midco - co2 in it */
+    /* default plane to project onto is the one with triangle co1 - middle - co2 in it */
     sub_v3_v3v3(d1, pro->middle, co1);
     sub_v3_v3v3(d2, pro->middle, co2);
     normalize_v3(d1);
@@ -1364,11 +1364,11 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
     cross_v3_v3v3(pro->plane_no, d1, d2);
     normalize_v3(pro->plane_no);
     if (nearly_parallel(d1, d2)) {
-      /* co1 - midco -co2 are collinear.
+      /* co1 - middle -co2 are collinear.
        * Should be case that beveled edge is coplanar with two boundary verts.
        * We want to move the profile to that common plane, if possible.
        * That makes the multi-segment bevels curve nicely in that plane, as users expect.
-       * The new midco should be either v (when neighbor edges are unbeveled)
+       * The new middle should be either v (when neighbor edges are unbeveled)
        * or the intersection of the offset lines (if they are).
        * If the profile is going to lead into unbeveled edges on each side
        * (that is, both BoundVerts are "on-edge" points on non-beveled edges)
@@ -1435,7 +1435,7 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
     copy_v3_v3(pro->plane_co, co1);
   }
   else if (bndv->is_arc_start) {
-    /* assume pro->midco was alredy set */
+    /* assume pro->middle was alredy set */
     copy_v3_v3(pro->start, co1);
     copy_v3_v3(pro->end, co2);
     pro->super_r = PRO_CIRCLE_R;
@@ -1456,9 +1456,9 @@ static void set_profile_params(BevelParams *bp, BevVert *bv, BoundVert *bndv)
   }
 }
 
-/* Maybe move the profile plane for bndv->ebev to the plane its profile's coa, cob and the
+/* Maybe move the profile plane for bndv->ebev to the plane its profile's start,  and the
  * original beveled vert, bmv. This will usually be the plane containing its adjacent
- * non-beveled edges, but sometimes coa and cob are not on those edges.
+ * non-beveled edges, but sometimes the start and the end are not on those edges.
  *
  * Currently just used in build boundary terminal edge */
 static void move_profile_plane(BoundVert *bndv, BMVert *bmvert)
@@ -1466,7 +1466,7 @@ static void move_profile_plane(BoundVert *bndv, BMVert *bmvert)
   float d1[3], d2[3], no[3], no2[3], no3[3], dot2, dot3;
   Profile *pro = &bndv->profile;
 
-  /* only do this if projecting, and coa, cob, and proj_dir are not coplanar */
+  /* only do this if projecting, and start, end, and proj_dir are not coplanar */
   if (is_zero_v3(pro->proj_dir)) {
     return;
   }
@@ -1663,7 +1663,7 @@ static double superellipse_co(double x, float r, bool rbig)
 }
 
 /* Find the point on given profile at parameter i which goes from 0 to n as
- * the profile is moved from pro->coa to pro->cob.
+ * the profile is moved from pro->start to pro->end.
  * We assume that n is either the global seg number or a power of 2 less than
  * or equal to the power of 2 >= seg.
  * In the latter case, we subsample the profile for seg_2, which will not necessarily
@@ -1740,9 +1740,7 @@ static void calculate_profile(BevelParams *bp, BoundVert *bndv, bool reversed, b
   if (bp->vmesh_method == BEVEL_VMESH_CUTOFF && map_ok) {
     /* Calculate the "height" of the profile by putting the (0,0) and (1,1) corners of the
      * un-transformed profile throught the 2D->3D map and calculating the distance between them */
-    p[0] = 0.0f;
-    p[1] = 0.0f;
-    p[2] = 0.0f;
+    zero_v3(p);
     mul_v3_m4v3(bottom_corner, map, p);
     p[0] = 1.0f;
     p[1] = 1.0f;
@@ -3023,7 +3021,6 @@ static bool adjust_the_cycle_or_chain_fast(BoundVert *vstart, int np, bool iscyc
 }
 #endif
 
-#ifndef OTHER_RPO_CODE
 /** Helper function to return the next Beveled EdgeHalf along a path.
  * \param toward_bv Whether the direction to travel points toward or away from the BevVert
  *        connected to the current EdgeHalf
@@ -3043,11 +3040,24 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   float second_best_dot = 0.0f, best_dot = 0.0f;
   float new_dot;
 
+
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf. */
   if (toward_bv) {
     /* Skip all the logic if there's only one beveled edge at the vertex, we're at an end. */
     if ((*r_bv)->selcount == 1) {
       return NULL; /* No other edges to go to. */
+    }
+
+    /* The case with only one other edge connected to the vertex is special too. */
+    if ((*r_bv)->selcount == 2) {
+      /* Just find the next beveled edge, that's the only other option. */
+      new_edge = start_edge;
+      do {
+        new_edge = new_edge->next;
+      }
+      while (!new_edge->is_bev);
+      
+      return new_edge;
     }
 
     /* Find the direction vector of the current edge (pointing INTO the BevVert).
@@ -3155,153 +3165,6 @@ static void regularize_profile_orientation(BevelParams *bp, BMEdge *bme)
     }
   }
 }
-#else
-
-/** Helper function for the traveling process in the profile orientation regularization pass.
- * Finds the best edge to travel to next by comparing the directions of the current edge with all
- * the possible next edges. The edge most parallel to the current edge is chosen as the next, but
- * only if the choice is clear and the angle between the best and second best next edges is at
- * at least BEVEL_SMALL_ANG degrees. */
-static BMEdge *next_orientation_edge(BevelParams *bp, BMEdge *start_edge, BMVert *bmv)
-{
-  BMIter iter;
-  BMEdge *new_edge;
-  EdgeHalf *new_edgehalf;
-  BMEdge *next_edge = NULL;
-  BevVert *bv = find_bevvert(bp, bmv); /* For checking if edges are already visited. */
-  float dir_start_edge[3], dir_new_edge[3];
-  float new_dot;
-  float second_best_dot = 0.0f,
-        best_dot = 0.0f; /* Initialize these to the least parallel angle. */
-
-  /* Find the direction vector of the current edge (pointing INTO the vertex). */
-  if (start_edge->v1 == bmv) {
-    sub_v3_v3v3(dir_start_edge, start_edge->v1->co, start_edge->v2->co);
-  }
-  else {
-    sub_v3_v3v3(dir_start_edge, start_edge->v2->co, start_edge->v1->co);
-  }
-  normalize_v3(dir_start_edge);
-
-  BM_ITER_ELEM (new_edge, &iter, bmv, BM_EDGES_OF_VERT) {
-    /* Only travel along beveled edges and don't bother testing the start edge. */
-    if (!BM_elem_flag_test(new_edge, BM_ELEM_TAG) || new_edge == start_edge) {
-      continue;
-    }
-
-    /* Check if this edge was already visited and don't use it if it was */
-    new_edgehalf = find_edge_half(bv, new_edge);
-    if (!new_edgehalf || new_edgehalf->visited_rpo) {
-      continue;
-    }
-
-    /* Find the direction vector of the new edge (pointing OUT OF the vertex). */
-    if (new_edge->v2 == bmv) {
-      sub_v3_v3v3(dir_new_edge, new_edge->v1->co, new_edge->v2->co);
-    }
-    else {
-      sub_v3_v3v3(dir_new_edge, new_edge->v2->co, new_edge->v1->co);
-    }
-    normalize_v3(dir_new_edge);
-
-    new_dot = dot_v3v3(dir_new_edge, dir_start_edge);
-
-    /* Use this edge if it's the most parallel so far. */
-    if (new_dot > best_dot) {
-      second_best_dot = best_dot;
-      best_dot = new_dot;
-      next_edge = new_edge;
-    }
-    else if (new_dot > second_best_dot) {
-      second_best_dot = new_dot;
-    }
-  }
-
-  /* Only return a new edge if the choice of next edge was not too close. */
-  if ((next_edge != NULL) && compare_ff(best_dot, second_best_dot, BEVEL_SMALL_ANG_DOT)) {
-    return NULL;
-  }
-  else {
-    return next_edge;
-  }
-}
-
-/** The recursive call for the regularize profile orientation pass. Called twice by the initial
- * the starting function. Each time it travels until it finds an end or reaches a point where which
- * edge to travel to next isn't clear. */
-static void RPO_recursive(BMesh *bm, BevelParams *bp, BMEdge *bme, BMVert *last_v, bool reversed)
-{
-  BevVert *bv;
-  EdgeHalf *edge_half;
-  BMEdge *next_edge;
-  BMVert *other_vert = (bme->v1 == last_v) ? bme->v2 : bme->v1;
-
-  /* Assign the direction for the vertex shared with the last edge we visited. */
-  bv = find_bevvert(bp, last_v);
-  edge_half = find_edge_half(bv, bme);
-  if (edge_half == NULL) {
-    return; /* There's no EdgeHalf built here for whatever reason-- stop traveling. */
-  }
-  edge_half->leftv->is_profile_start = !reversed;
-  edge_half->visited_rpo = true;
-
-  /* Assign the direction for the vertex on the opposite side of the edge as last_v. */
-  bv = find_bevvert(bp, other_vert);
-  edge_half = find_edge_half(bv, bme);
-  if (edge_half == NULL) {
-    return; /* There's no EdgeHalf built here for whatever reason-- stop traveling. */
-  }
-  edge_half->leftv->is_profile_start = reversed;
-  edge_half->visited_rpo = true;
-
-  /* If we can, keep traveling recursively in the same direction, towards the other vert. */
-  next_edge = next_orientation_edge(bp, bme, other_vert);
-  if (next_edge != NULL) {
-    RPO_recursive(bm, bp, next_edge, other_vert, reversed);
-  }
-}
-
-/** Starting along any beveled edge, travel along the chain / cycle of beveled edges including that
- * edge, marking consistent profile orientations along the way. Orientations are marked by setting
- * whether the BoundVert that contains each profile's information is the side of the profile's
- * start or not. */
-static void regularize_profile_orientation(BMesh *bm, BevelParams *bp, BMEdge *bme)
-{
-  BevVert *bv;
-  EdgeHalf *edge_half;
-  BMEdge *next_edge;
-
-  /* Direction 1: Mark the right boundvert at v1 the profile start and travel in that direction */
-  bv = find_bevvert(bp, bme->v1);
-  edge_half = find_edge_half(bv, bme);
-  if (edge_half == NULL || edge_half->visited_rpo) {
-    return;
-  }
-  edge_half->leftv->is_profile_start = false;
-  edge_half->visited_rpo = true;
-
-  /* Start traveling to the most parallel edge connected to v1 and go there if there was one. */
-  next_edge = next_orientation_edge(bp, bme, bme->v1);
-  if (next_edge != NULL) {
-    RPO_recursive(bm, bp, next_edge, bme->v1, false); /* Recursively travel in this direction. */
-  }
-
-  /* Direction 2: Mark the left boundvert at v2 the profile start. */
-  bv = find_bevvert(bp, bme->v2);
-  edge_half = find_edge_half(bv, bme);
-  if (edge_half == NULL || edge_half->visited_rpo) {
-    return;
-  }
-  edge_half->leftv->is_profile_start = true;
-  edge_half->visited_rpo = true;
-
-  /* Find the most parallel edge connected to v2 and continue there if there was one. */
-  next_edge = next_orientation_edge(bp, bme, bme->v2);
-  if (next_edge != NULL) {
-    RPO_recursive(bm, bp, next_edge, bme->v2, true); /* Recursively travel in this direction. */
-  }
-}
-#endif
 
 #ifdef DEBUG_PROFILE_ORIENTATION_DRAW
 /** Draws markers on beveled edges showing the side that the profile starts on. A sphere shows
@@ -7521,11 +7384,7 @@ void BM_mesh_bevel(BMesh *bm,
     if (bp.use_custom_profile) {
       BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(e, BM_ELEM_TAG)) {
-#ifdef OTHER_RPO_CODE
-          regularize_profile_orientation(bm, &bp, e);
-#else
           regularize_profile_orientation(&bp, e);
-#endif
         }
       }
     }
