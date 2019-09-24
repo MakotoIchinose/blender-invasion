@@ -1001,6 +1001,22 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
                          (!is_depth);
   int i, totelem;
 
+  /* For very low pressure at the end, truncate stroke. */
+  if (p->paintmode == GP_PAINTMODE_DRAW) {
+    int last_i = gpd->runtime.sbuffer_used - 1;
+    while (last_i > 0) {
+      ptc = (tGPspoint *)gpd->runtime.sbuffer + last_i;
+      if (ptc->pressure > 0.005f) {
+        break;
+      }
+      else {
+        gpd->runtime.sbuffer_used = last_i - 1;
+        CLAMP_MIN(gpd->runtime.sbuffer_used, 1);
+      }
+
+      last_i--;
+    }
+  }
   /* Since strokes are so fine,
    * when using their depth we need a margin otherwise they might get missed. */
   int depth_margin = (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) ? 4 : 0;
