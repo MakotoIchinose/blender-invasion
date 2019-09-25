@@ -636,7 +636,7 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
   ptc->strength = interpf(ptc->strength, strength, inf);
 }
 
-/* Smooth the section added with fake events when pen mouse very fast. */
+/* Smooth the section added with fake events when pen moves very fast. */
 static void gp_smooth_fake_events(tGPsdata *p, int size_before, int size_after)
 {
   bGPdata *gpd = p->gpd;
