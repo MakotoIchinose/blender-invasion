@@ -636,11 +636,12 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
   ptc->strength = interpf(ptc->strength, strength, inf);
 }
 
+/* Smooth the section added with fake events when pen mouse very fast. */
 static void gp_smooth_fake_events(tGPsdata *p, int size_before, int size_after)
 {
   bGPdata *gpd = p->gpd;
   const short totpoints = size_after - size_before - 1;
-  /* Do nothing if not enough data to smooth out */
+  /* Do nothing if not enough data to smooth out. */
   if (totpoints < 1) {
     return;
   }
@@ -1051,7 +1052,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     int last_i = gpd->runtime.sbuffer_used - 1;
     while (last_i > 0) {
       ptc = (tGPspoint *)gpd->runtime.sbuffer + last_i;
-      if (ptc->pressure > 0.005f) {
+      if (ptc->pressure > 0.001f) {
         break;
       }
       else {
