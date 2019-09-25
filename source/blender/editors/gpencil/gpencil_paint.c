@@ -3913,7 +3913,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       int size_after = p->gpd->runtime.sbuffer_used;
 
       /* Smooth the fake events to get smoother strokes, specially at ends. */
-      if ((added_events) && (size_before < size_after)) {
+      if (added_events) {
         gp_smooth_fake_events(p, size_before, size_after);
       }
 
