@@ -722,11 +722,11 @@ static void gp_smooth_fake_segments(tGPsdata *p)
       doit = true;
     }
     /* If detect control point after fake points, select a segment with same length in both sides,
-     * except if is more than stroke length. */
+     * except if it is more than stroke length. */
     if ((doit) && (!is_fake)) {
       if (i + (i - from_idx) < gpd->runtime.sbuffer_used - 1) {
         to_idx = i + (i - from_idx);
-        /* Smooth this segments (need loop to get acumulative smooth). */
+        /* Smooth this segments (need loop to get cumulative smooth). */
         for (int r = 0; r < 10; r++) {
           gp_smooth_segment(gpd, 0.1f, from_idx, to_idx);
         }
