@@ -50,8 +50,8 @@ typedef struct BrushClone {
 typedef struct BrushGpencilSettings {
   /** Amount of smoothing to apply to newly created strokes. */
   float draw_smoothfac;
-  /** Amount of sensitivity to apply to newly created strokes. */
-  float draw_sensitivity;
+  /** Amount of smooth for very fast mouse/pen movements. */
+  float smart_smooth;
   /** Amount of alpha strength to apply to newly created strokes. */
   float draw_strength;
   /** Amount of jitter to apply to newly created strokes. */
@@ -515,7 +515,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \
+        /* These brushes could handle dynamic topology, \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)

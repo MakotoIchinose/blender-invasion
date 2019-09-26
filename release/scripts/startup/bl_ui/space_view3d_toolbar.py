@@ -1901,6 +1901,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
             col.prop(gp_settings, "input_samples")
             col.separator()
 
+            col.prop(gp_settings, "pen_smart_smooth_factor")
             col.prop(gp_settings, "active_smooth_factor")
             col.prop(gp_settings, "active_subdivide_steps")
             col.separator()

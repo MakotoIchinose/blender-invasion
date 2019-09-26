@@ -854,7 +854,6 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
       if (brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
         jitter = BKE_curvemapping_evaluateF(
             brush->gpencil_settings->curve_jitter, 0, curve_pressure);
-        jitter *= brush->gpencil_settings->draw_sensitivity;
       }
       else {
         jitter = brush->gpencil_settings->draw_jitter;
@@ -901,7 +900,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     if (brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
       float curvef = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, curve_pressure);
-      strength *= curvef * brush->gpencil_settings->draw_sensitivity;
+      strength *= curvef;
       strength *= brush->gpencil_settings->draw_strength;
     }
 

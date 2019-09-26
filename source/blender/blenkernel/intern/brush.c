@@ -147,7 +147,6 @@ void BKE_brush_init_gpencil_settings(Brush *brush)
   brush->gpencil_settings->draw_smoothlvl = 1;
   brush->gpencil_settings->flag = 0;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
   brush->gpencil_settings->draw_strength = 1.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
@@ -256,7 +255,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Draw Pencil");
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 0.6f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -291,7 +289,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   deft = brush; /* save default brush */
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 1.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -326,7 +323,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Draw Ink");
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.6f;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -365,7 +361,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Draw Noise");
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -406,7 +401,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Draw Block");
   brush->size = 150.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -438,7 +432,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Draw Marker");
   brush->size = 80.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -479,7 +472,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   deft = brush; /* save default brush */
   brush->size = 300.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->draw_strength = 0.4f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -515,7 +507,6 @@ void BKE_brush_gpencil_presets(bContext *C)
   brush = BKE_brush_add_gpencil(bmain, ts, "Fill Area");
   brush->size = 20.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
   brush->gpencil_settings->fill_leak = 3;
   brush->gpencil_settings->fill_threshold = 0.1f;
   brush->gpencil_settings->fill_simplylvl = 1;

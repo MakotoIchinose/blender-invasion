@@ -493,8 +493,7 @@ static void gp_brush_jitter(bGPdata *gpd,
 {
   float tmp_pressure = pressure;
   if (brush->gpencil_settings->draw_jitter > 0.0f) {
-    float curvef = BKE_curvemapping_evaluateF(brush->gpencil_settings->curve_jitter, 0, pressure);
-    tmp_pressure = curvef * brush->gpencil_settings->draw_sensitivity;
+    tmp_pressure = BKE_curvemapping_evaluateF(brush->gpencil_settings->curve_jitter, 0, pressure);
   }
   /* exponential value */
   const float exfactor = (brush->gpencil_settings->draw_jitter + 2.0f) *
@@ -728,7 +727,7 @@ static void gp_smooth_fake_segments(tGPsdata *p)
         to_idx = i + (i - from_idx);
         /* Smooth this segments (need loop to get cumulative smooth). */
         for (int r = 0; r < 5; r++) {
-          gp_smooth_segment(gpd, 0.1f, from_idx, to_idx);
+          gp_smooth_segment(gpd, brush->gpencil_settings->smart_smooth, from_idx, to_idx);
         }
       }
       else {
@@ -900,9 +899,8 @@ static short gp_stroke_addpoint(
     /* store settings */
     /* pressure */
     if (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) {
-      float curvef = BKE_curvemapping_evaluateF(
+      pt->pressure = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_sensitivity, 0, pressure);
-      pt->pressure = curvef * brush->gpencil_settings->draw_sensitivity;
     }
     else {
       pt->pressure = 1.0f;
@@ -924,9 +922,8 @@ static short gp_stroke_addpoint(
     /* apply randomness to pressure */
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
         (brush->gpencil_settings->draw_random_press > 0.0f)) {
-      float curvef = BKE_curvemapping_evaluateF(
+      float tmp_pressure = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_sensitivity, 0, pressure);
-      float tmp_pressure = curvef * brush->gpencil_settings->draw_sensitivity;
       if (BLI_rng_get_float(p->rng) > 0.5f) {
         pt->pressure -= tmp_pressure * brush->gpencil_settings->draw_random_press *
                         BLI_rng_get_float(p->rng);
@@ -960,9 +957,8 @@ static short gp_stroke_addpoint(
 
     /* color strength */
     if (brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-      float curvef = BKE_curvemapping_evaluateF(
+      float tmp_pressure = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, pressure);
-      float tmp_pressure = curvef * brush->gpencil_settings->draw_sensitivity;
 
       pt->strength = tmp_pressure * brush->gpencil_settings->draw_strength;
     }
