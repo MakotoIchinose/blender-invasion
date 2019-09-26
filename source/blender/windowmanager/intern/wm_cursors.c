@@ -45,6 +45,29 @@
 #include "wm_cursors.h"
 #include "wm_window.h"
 
+/* Blender custom cursor. */
+typedef struct BCursor {
+  char *small_bm;
+  char *small_mask;
+
+  char small_sizex;
+  char small_sizey;
+  char small_hotx;
+  char small_hoty;
+
+  char *big_bm;
+  char *big_mask;
+
+  char big_sizex;
+  char big_sizey;
+  char big_hotx;
+  char big_hoty;
+
+  bool can_invert_color;
+} BCursor;
+
+static BCursor *BlenderCursor[WM_CURSOR_NUM] = {0};
+
 /* Blender cursor to GHOST standard cursor conversion. */
 static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
 {
@@ -142,9 +165,6 @@ static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
                                cursor->can_invert_color);
   }
 }
-
-/* Cursor Globals */
-static BCursor *BlenderCursor[WM_CURSOR_NUM] = {0};
 
 void WM_cursor_set(wmWindow *win, int curs)
 {
@@ -909,78 +929,6 @@ void wm_init_cursor_data(void)
   BlenderCursor[WM_CURSOR_CROSSC] = &CrossCursorC;
   END_CURSOR_BLOCK;
 
-  /********************** EditCross Cursor ***********************/
-  BEGIN_CURSOR_BLOCK;
-  static char editcross_sbm[] = {
-      0x0e, 0x00, 0x11, 0x00, 0x1d, 0x00, 0x19, 0x03, 0x1d, 0x03, 0x11,
-      0x03, 0x0e, 0x03, 0x00, 0x03, 0xf8, 0x7c, 0xf8, 0x7c, 0x00, 0x03,
-      0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x00,
-  };
-
-  static char editcross_smsk[] = {
-      0x0e, 0x00, 0x1f, 0x00, 0x1f, 0x03, 0x1f, 0x03, 0x1f, 0x03, 0x1f,
-      0x03, 0x0e, 0x03, 0x80, 0x07, 0xfc, 0xfc, 0xfc, 0xfc, 0x80, 0x07,
-      0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03, 0x00, 0x03,
-  };
-
-  static BCursor EditCrossCursor = {
-      /* small */
-      editcross_sbm,
-      editcross_smsk,
-      16,
-      16,
-      9,
-      8,
-      /* big */
-      NULL,
-      NULL,
-      32,
-      32,
-      15,
-      15,
-      /* don't invert color */
-      false,
-  };
-
-  BlenderCursor[WM_CURSOR_EDITCROSS] = &EditCrossCursor;
-  END_CURSOR_BLOCK;
-
-  /********************** Box Select *************************/
-  BEGIN_CURSOR_BLOCK;
-  static char box_sbm[32] = {
-      0x7f, 0x00, 0x41, 0x00, 0x41, 0x00, 0x41, 0x06, 0x41, 0x06, 0x41,
-      0x06, 0x7f, 0x06, 0x00, 0x06, 0xe0, 0x79, 0xe0, 0x79, 0x00, 0x06,
-      0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x00,
-  };
-
-  static char box_smsk[32] = {
-      0x7f, 0x00, 0x7f, 0x00, 0x63, 0x06, 0x63, 0x06, 0x63, 0x06, 0x7f,
-      0x06, 0x7f, 0x06, 0x00, 0x0f, 0xf0, 0xf9, 0xf0, 0xf9, 0x00, 0x0f,
-      0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x06,
-  };
-
-  static BCursor BoxSelCursor = {
-      /* small */
-      box_sbm,
-      box_smsk,
-      16,
-      16,
-      9,
-      8,
-      /* big */
-      NULL,
-      NULL,
-      32,
-      32,
-      15,
-      15,
-      /* don't invert color */
-      false,
-  };
-
-  BlenderCursor[WM_CURSOR_BOXSEL] = &BoxSelCursor;
-
-  END_CURSOR_BLOCK;
   /********************** Knife Cursor ***********************/
   BEGIN_CURSOR_BLOCK;
   static char knife_sbm[] = {
