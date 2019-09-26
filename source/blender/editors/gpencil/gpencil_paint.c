@@ -727,7 +727,7 @@ static void gp_smooth_fake_segments(tGPsdata *p)
       if (i + (i - from_idx) < gpd->runtime.sbuffer_used - 1) {
         to_idx = i + (i - from_idx);
         /* Smooth this segments (need loop to get cumulative smooth). */
-        for (int r = 0; r < 10; r++) {
+        for (int r = 0; r < 5; r++) {
           gp_smooth_segment(gpd, 0.1f, from_idx, to_idx);
         }
       }
