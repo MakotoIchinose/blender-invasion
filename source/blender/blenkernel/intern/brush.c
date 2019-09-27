@@ -271,8 +271,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->gradient_s[0] = 1.0f;
   brush->gpencil_settings->gradient_s[1] = 1.0f;
 
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
-
   brush->gpencil_tool = GPAINT_TOOL_DRAW;
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_AIRBRUSH;
 
@@ -320,7 +318,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_press = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   /* Curve. */
   custom_curve = brush->gpencil_settings->curve_sensitivity;
@@ -367,7 +364,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_strength = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   /* Curve. */
   custom_curve = brush->gpencil_settings->curve_sensitivity;
@@ -413,7 +409,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_strength = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   /* Curve. */
   custom_curve = brush->gpencil_settings->curve_sensitivity;
@@ -458,7 +453,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_press = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_CHISEL;
   brush->gpencil_tool = GPAINT_TOOL_DRAW;
@@ -498,7 +492,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_strength = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PEN;
   brush->gpencil_tool = GPAINT_TOOL_DRAW;
@@ -539,7 +532,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_strength = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PENCIL;
   brush->gpencil_tool = GPAINT_TOOL_DRAW;
@@ -580,7 +572,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_random_press = 0.0f;
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PENCIL;
   brush->gpencil_tool = GPAINT_TOOL_DRAW;
@@ -607,8 +598,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->thick_smoothfac = 1.0f;
   brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 1;
-
-  brush->gpencil_settings->draw_sensitivity = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_FILL;
   brush->gpencil_tool = GPAINT_TOOL_FILL;
