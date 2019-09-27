@@ -91,7 +91,7 @@ Mesh *BKE_mirror_bisect_on_mirror_plane(MirrorModifierData *mmd,
     }
   }
 
-  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
+  result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
   BM_mesh_free(bm);
 
   return result;

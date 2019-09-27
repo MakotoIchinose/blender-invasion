@@ -447,8 +447,7 @@ struct Mesh *BKE_mesh_remesh_voxel_fix_poles(struct Mesh *mesh)
   Mesh *result = BKE_mesh_from_bmesh_nomain(bm,
                                             (&(struct BMeshToMeshParams){
                                                 .calc_object_remap = false,
-                                            }),
-                                            mesh);
+                                            }));
 
   BKE_id_free(NULL, mesh);
   BM_mesh_free(bm);
