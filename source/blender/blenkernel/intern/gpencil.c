@@ -1428,9 +1428,7 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 
   /* Remove the group */
   BLI_freelinkN(&ob->defbase, defgroup);
-  if (gpd) {
-    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  }
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 }
 
 void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
@@ -2272,28 +2270,6 @@ void BKE_gpencil_stroke_2d_flat_ref(const bGPDspoint *ref_points,
 
   /* Concave (-1), Convex (1), or Autodetect (0)? */
   *r_direction = (int)locy[2];
-}
-
-float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
-{
-  if (!gps->points || gps->totpoints < 2) {
-    return 0;
-  }
-  float *last_pt = &gps->points[0].x;
-  int i;
-  bGPDspoint *pt;
-  float total_length = 0;
-  for (i = 1; i < gps->totpoints; i++) {
-    pt = &gps->points[i];
-    if (use_3d) {
-      total_length += len_v3v3(&pt->x, last_pt);
-    }
-    else {
-      total_length += len_v2v2(&pt->x, last_pt);
-    }
-    last_pt = &pt->x;
-  }
-  return total_length;
 }
 
 /**
