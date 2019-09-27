@@ -911,6 +911,7 @@ void BKE_brush_sculpt_reset(Brush *br)
     case SCULPT_TOOL_SCRAPE:
       br->alpha = 1.0f;
       br->spacing = 7;
+      br->flag |= BRUSH_ACCUMULATE;
       break;
     case SCULPT_TOOL_ROTATE:
       br->alpha = 1.0;
@@ -921,6 +922,8 @@ void BKE_brush_sculpt_reset(Brush *br)
       br->alpha = 0.7f;
       break;
     case SCULPT_TOOL_SNAKE_HOOK:
+      br->alpha = 1.0f;
+      break;
     case SCULPT_TOOL_THUMB:
       br->size = 75;
       br->flag &= ~BRUSH_ALPHA_PRESSURE;
@@ -1592,11 +1595,11 @@ unsigned int *BKE_brush_gen_texture_cache(Brush *br, int half_side, bool use_sec
 }
 
 /**** Radial Control ****/
-struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary)
+struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary, bool display_gradient)
 {
   ImBuf *im = MEM_callocN(sizeof(ImBuf), "radial control texture");
   unsigned int *texcache;
-  int side = 128;
+  int side = 512;
   int half = side / 2;
   int i, j;
 
@@ -1605,15 +1608,17 @@ struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary)
   im->rect_float = MEM_callocN(sizeof(float) * side * side, "radial control rect");
   im->x = im->y = side;
 
-  for (i = 0; i < side; i++) {
-    for (j = 0; j < side; j++) {
-      float magn = sqrtf(pow2f(i - half) + pow2f(j - half));
-      im->rect_float[i * side + j] = BKE_brush_curve_strength_clamped(br, magn, half);
+  if (display_gradient || texcache) {
+    for (i = 0; i < side; i++) {
+      for (j = 0; j < side; j++) {
+        float magn = sqrtf(pow2f(i - half) + pow2f(j - half));
+        im->rect_float[i * side + j] = BKE_brush_curve_strength_clamped(br, magn, half);
+      }
     }
   }
 
-  /* Modulate curve with texture */
   if (texcache) {
+    /* Modulate curve with texture */
     for (i = 0; i < side; i++) {
       for (j = 0; j < side; j++) {
         const int col = texcache[i * side + j];
@@ -1622,7 +1627,6 @@ struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary)
                                         3.0f / 255.0f;
       }
     }
-
     MEM_freeN(texcache);
   }
 
