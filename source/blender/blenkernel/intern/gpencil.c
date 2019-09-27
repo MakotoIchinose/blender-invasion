@@ -2488,8 +2488,7 @@ void BKE_gpencil_dissolve_points(bGPDframe *gpf, bGPDstroke *gps, const short ta
   }
   else {
     /* just copy all points to keep into a smaller buffer */
-    bGPDspoint *new_points = MEM_callocN(sizeof(bGPDspoint) * tot,
-                                         "new gp stroke coord_array copy");
+    bGPDspoint *new_points = MEM_callocN(sizeof(bGPDspoint) * tot, "new gp stroke points copy");
     bGPDspoint *npt = new_points;
 
     MDeformVert *new_dvert = NULL;

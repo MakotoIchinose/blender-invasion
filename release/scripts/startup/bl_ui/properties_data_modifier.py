@@ -2334,6 +2334,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
+
 classes = (
     DATA_PT_modifiers,
     DATA_PT_gpencil_modifiers,
