@@ -649,7 +649,7 @@ static void gp_smooth_segment(bGPdata *gpd, const float inf, int from_idx, int t
   }
 
   tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
-  const float steps = (num_points < 4) ? 3.0f : 4.0f;
+  const float average_fac = 0.25f;
 
   for (int i = from_idx; i < to_idx + 1; i++) {
 
@@ -659,7 +659,6 @@ static void gp_smooth_segment(bGPdata *gpd, const float inf, int from_idx, int t
     tGPspoint *ptd = &points[i];
 
     float sco[2] = {0.0f};
-    const float average_fac = 1.0f / steps;
 
     /* Compute smoothed coordinate by taking the ones nearby */
     if (pta) {
@@ -2072,6 +2071,7 @@ static void gp_set_default_eraser(Main *bmain, Brush *brush_dft)
 /* initialize a drawing brush */
 static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
@@ -2080,7 +2080,7 @@ static void gp_init_drawing_brush(bContext *C, tGPsdata *p)
   /* if not exist, create a new one */
   if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
     /* create new brushes */
-    BKE_brush_gpencil_presets(C);
+    BKE_brush_gpencil_presets(bmain, ts);
     changed = true;
   }
   /* be sure curves are initializated */
