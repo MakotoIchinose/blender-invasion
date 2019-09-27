@@ -888,6 +888,21 @@ static void sculpt_debug_cb(void *user_data,
 }
 #endif
 
+static void drw_sculpt_get_frustum_planes(Object *ob, float planes[6][4])
+{
+  /* TODO: take into account partial redraw for clipping planes. */
+  DRW_view_frustum_planes_get(DRW_view_default_get(), planes);
+
+  /* Transform clipping planes to object space. Transforming a plane with a
+   * 4x4 matrix is done by multiplying with the tranpose inverse. The inverse
+   * cancels out here since we transform by inverse(obmat). */
+  float tmat[4][4];
+  transpose_m4_m4(tmat, ob->obmat);
+  for (int i = 0; i < 6; i++) {
+    mul_m4_v4(tmat, planes[i]);
+  }
+}
+
 static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd, bool use_vcol)
 {
   /* PBVH should always exist for non-empty meshes, created by depsgrah eval. */
@@ -896,7 +911,10 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd, bool use_vcol)
     return;
   }
 
-  float(*planes)[4] = NULL; /* TODO proper culling. */
+  float planes[6][4];
+  drw_sculpt_get_frustum_planes(scd->ob, planes);
+  PBVHFrustumPlanes frustum = {.planes = planes, .num_planes = 6};
+
   scd->fast_mode = false;
 
   const DRWContextState *drwctx = DRW_context_state_get();
@@ -911,7 +929,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd, bool use_vcol)
   BKE_pbvh_update_normals(pbvh, mesh->runtime.subdiv_ccg);
   BKE_pbvh_update_draw_buffers(pbvh, use_vcol);
 
-  BKE_pbvh_draw_cb(pbvh, planes, (void (*)(void *, GPU_PBVH_Buffers *))sculpt_draw_cb, scd);
+  BKE_pbvh_draw_cb(pbvh, &frustum, (void (*)(void *, GPU_PBVH_Buffers *))sculpt_draw_cb, scd);
 
 #ifdef SCULPT_DEBUG_BUFFERS
   int node_nr = 0;
