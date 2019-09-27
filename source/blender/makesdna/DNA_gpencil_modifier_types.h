@@ -640,11 +640,4 @@ typedef struct ArmatureGpencilModifierData {
 
 } ArmatureGpencilModifierData;
 
-typedef enum eStrokeGpencil_Flag { /* emm what are these for */
-                                   GP_STROKE_INVERT_LAYER = (1 << 0),
-                                   GP_STROKE_INVERT_PASS = (1 << 1),
-                                   GP_STROKE_KEEP_ONTOP = (1 << 2),
-                                   GP_STROKE_INVERT_LAYERPASS = (1 << 3),
-} eStrokeGpencil_Flag;
-
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */
