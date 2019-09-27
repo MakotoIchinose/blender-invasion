@@ -1272,6 +1272,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
     paint_calculate_rake_rotation(ups, brush, translation);
   }
 
+  /* draw overlay */
+  bool alpha_overlay_active = paint_draw_alpha_overlay(ups, brush, &vc, x, y, zoomx, mode);
+
   if (ups->draw_anchored) {
     final_radius = ups->anchored_size;
     copy_v2_fl2(translation,
@@ -1294,9 +1297,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
     if (ups->stroke_active && BKE_brush_use_size_pressure(scene, brush)) {
       imm_draw_circle_wire_2d(
           pos, translation[0], translation[1], final_radius * ups->size_pressure_value, 40);
+      /* outer at half alpha */
+      immUniformColor3fvAlpha(outline_col, outline_alpha * 0.5f);
     }
-    /* outer at half alpha */
-    immUniformColor3fvAlpha(outline_col, outline_alpha * 0.5f);
 
     GPU_line_width(1.0f);
     imm_draw_circle_wire_2d(pos, translation[0], translation[1], final_radius, 40);
@@ -1304,9 +1307,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
   else { /* 3d painting */
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    /* draw overlay */
-    bool alpha_overlay_active = paint_draw_alpha_overlay(ups, brush, &vc, x, y, zoomx, mode);
 
     /* TODO: as sculpt and other paint modes are unified, this
      * special mode of drawing will go away */
@@ -1349,6 +1349,17 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
     /* Only sculpt mode cursor for now */
     /* Disable for PBVH_GRIDS */
     bool is_multires = ss && ss->pbvh && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS;
+
+    SculptCursorGeometryInfo gi;
+    float mouse[2] = {x - ar->winrct.xmin, y - ar->winrct.ymin};
+    bool is_cursor_over_mesh = false;
+
+    /* Update the active vertex */
+    if ((mode == PAINT_MODE_SCULPT) && !ups->stroke_active) {
+      is_cursor_over_mesh = sculpt_cursor_geometry_info_update(
+          C, &gi, mouse, !(brush->falloff_shape & BRUSH_AIRBRUSH));
+    }
+
     if ((mode == PAINT_MODE_SCULPT) && ss && !is_multires &&
         !(brush->falloff_shape & BRUSH_AIRBRUSH)) {
       Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
@@ -1356,18 +1367,16 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
       /* Update WM mouse cursor, disable when the 3D brush cursor is enabled */
       if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
-        WM_cursor_set(win, CURSOR_STD);
+        WM_cursor_set(win, WM_CURSOR_DEFAULT);
       }
       else {
-        WM_cursor_set(win, CURSOR_EDIT);
+        WM_cursor_set(win, WM_CURSOR_EDIT);
       }
 
       if (!ups->stroke_active) {
-        SculptCursorGeometryInfo gi;
-        float mouse[2] = {x - ar->winrct.xmin, y - ar->winrct.ymin};
         int prev_active_vertex_index = ss->active_vertex_index;
         bool update_previews = false;
-        if (sculpt_cursor_geometry_info_update(C, &gi, mouse, true) && !alpha_overlay_active) {
+        if (is_cursor_over_mesh && !alpha_overlay_active) {
 
           if (prev_active_vertex_index != ss->active_vertex_index) {
             update_previews = true;
