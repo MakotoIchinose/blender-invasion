@@ -57,7 +57,6 @@ set(SRC
   gpencil_select.c
   gpencil_undo.c
   gpencil_utils.c
-  gpencil_svg.c
 
   gpencil_intern.h
 )
