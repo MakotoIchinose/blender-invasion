@@ -304,9 +304,9 @@ class FILEBROWSER_MT_bookmarks_context_menu(Menu):
 
         layout.separator()
         layout.operator("file.bookmark_move", icon='TRIA_UP_BAR',
-                        text="Move To Top").direction = 'TOP'
+                        text="Move to Top").direction = 'TOP'
         layout.operator("file.bookmark_move", icon='TRIA_DOWN_BAR',
-                        text="Move To Bottom").direction = 'BOTTOM'
+                        text="Move to Bottom").direction = 'BOTTOM'
 
 
 class FILEBROWSER_PT_bookmarks_favorites(Panel):
@@ -393,36 +393,6 @@ class FILEBROWSER_PT_advanced_filter(Panel):
                 col.prop(params, "filter_id")
 
 
-class FILEBROWSER_PT_options_toggle(Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOLS'
-    bl_label = "Options Toggle"
-    bl_options = {'HIDE_HEADER'}
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        return context.region.alignment == 'BOTTOM' and sfile.active_operator
-
-    def is_option_region_visible(self, context):
-        for region in context.area.regions:
-            if region.type == 'TOOL_PROPS' and region.width <= 1:
-                return False
-
-        return True
-
-    def draw(self, context):
-        layout = self.layout
-        label = "Hide Options" if self.is_option_region_visible(
-            context) else "Options"
-
-        layout.scale_x = 1.3
-        layout.scale_y = 1.3
-
-        layout.operator("screen.region_toggle",
-                        text=label).region_type = 'TOOL_PROPS'
-
-
 class FILEBROWSER_PT_directory_path(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'UI'
@@ -437,6 +407,16 @@ class FILEBROWSER_PT_directory_path(Panel):
 
         return True
 
+    def is_option_region_visible(self, context, space):
+        if not space.active_operator:
+            return False
+
+        for region in context.area.regions:
+            if region.type == 'TOOL_PROPS' and region.width <= 1:
+                return False
+
+        return True
+
     def draw(self, context):
         layout = self.layout
         space = context.space_data
@@ -446,31 +426,37 @@ class FILEBROWSER_PT_directory_path(Panel):
         layout.scale_y = 1.3
 
         row = layout.row()
+        flow = row.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=False)
 
-        subrow = row.row(align=True)
-        subrow.operator("file.previous", text="", icon='BACK')
-        subrow.operator("file.next", text="", icon='FORWARD')
-        subrow.operator("file.parent", text="", icon='FILE_PARENT')
-        subrow.operator("file.refresh", text="", icon='FILE_REFRESH')
+        subrow = flow.row()
 
-        row.operator("file.directory_new", icon='NEWFOLDER', text="")
+        subsubrow = subrow.row(align=True)
+        subsubrow.operator("file.previous", text="", icon='BACK')
+        subsubrow.operator("file.next", text="", icon='FORWARD')
+        subsubrow.operator("file.parent", text="", icon='FILE_PARENT')
+        subsubrow.operator("file.refresh", text="", icon='FILE_REFRESH')
 
-        subrow = row.row()
+        subsubrow = subrow.row()
+        subsubrow.operator_context = 'EXEC_DEFAULT'
+        subsubrow.operator("file.directory_new", icon='NEWFOLDER', text="")
+
         subrow.template_file_select_path(params)
 
-        subrow = row.row()
-        subrow.scale_x = 0.5
-        subrow.prop(params, "filter_search", text="", icon='VIEWZOOM')
+        subrow = flow.row()
+
+        subsubrow = subrow.row()
+        subsubrow.scale_x = 0.6
+        subsubrow.prop(params, "filter_search", text="", icon='VIEWZOOM')
 
         # Uses prop_with_popover() as popover() only adds the triangle icon in headers.
-        row.prop_with_popover(
+        subrow.prop_with_popover(
             params,
             "display_type",
             panel="FILEBROWSER_PT_display",
             text="",
             icon_only=True,
         )
-        row.prop_with_popover(
+        subrow.prop_with_popover(
             params,
             "display_type",
             panel="FILEBROWSER_PT_filter",
@@ -478,6 +464,14 @@ class FILEBROWSER_PT_directory_path(Panel):
             icon='FILTER',
             icon_only=True,
         )
+
+        if space.active_operator:
+            subrow.operator(
+                "screen.region_toggle",
+                text="",
+                icon='PREFERENCES',
+                depress=self.is_option_region_visible(context, space)
+            ).region_type = 'TOOL_PROPS'
 
 
 class FILEBROWSER_MT_view(Menu):
@@ -541,7 +535,9 @@ class FILEBROWSER_MT_context_menu(Menu):
 
         layout.operator("file.rename", text="Rename")
         # layout.operator("file.delete")
-        layout.operator("file.directory_new", text="New Folder")
+        sub = layout.row()
+        sub.operator_context = 'EXEC_DEFAULT'
+        sub.operator("file.directory_new", text="New Folder")
         layout.operator("file.bookmark_add", text="Add Bookmark")
 
         layout.separator()
@@ -565,7 +561,6 @@ classes = (
     FILEBROWSER_PT_bookmarks_recents,
     FILEBROWSER_PT_advanced_filter,
     FILEBROWSER_PT_directory_path,
-    FILEBROWSER_PT_options_toggle,
     FILEBROWSER_MT_view,
     FILEBROWSER_MT_select,
     FILEBROWSER_MT_context_menu,

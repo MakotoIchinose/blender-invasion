@@ -2223,7 +2223,7 @@ class VIEW3D_MT_object_rigid_body(Menu):
         layout.operator("rigidbody.mass_calculate", text="Calculate Mass")
         layout.operator("rigidbody.object_settings_copy", text="Copy from Active")
         layout.operator("object.visual_transform_apply", text="Apply Transformation")
-        layout.operator("rigidbody.bake_to_keyframes", text="Bake To Keyframes")
+        layout.operator("rigidbody.bake_to_keyframes", text="Bake to Keyframes")
 
         layout.separator()
 
@@ -2897,6 +2897,31 @@ class VIEW3D_MT_sculpt(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.dirty_mask", text='Dirty Mask')
+
+        layout.separator()
+        layout.menu("VIEW3D_MT_sculpt_set_pivot", text="Set Pivot")
+
+
+class VIEW3D_MT_sculpt_set_pivot(Menu):
+    bl_label = "Sculpt Set Pivot"
+
+    def draw(self, context):
+        layout = self.layout
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Origin")
+        props.mode = 'ORIGIN'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Unmasked")
+        props.mode = 'UNMASKED'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Mask Border")
+        props.mode = 'BORDER'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Active Vertex")
+        props.mode = 'ACTIVE'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Surface Under Cursor")
+        props.mode = 'SURFACE'
 
 
 class VIEW3D_MT_particle(Menu):
@@ -6782,6 +6807,7 @@ classes = (
     VIEW3D_MT_gpencil_vertex_group,
     VIEW3D_MT_paint_weight,
     VIEW3D_MT_sculpt,
+    VIEW3D_MT_sculpt_set_pivot,
     VIEW3D_MT_particle,
     VIEW3D_MT_particle_context_menu,
     VIEW3D_MT_particle_showhide,

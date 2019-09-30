@@ -160,11 +160,8 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
   };
 
   TaskParallelSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-  BLI_task_parallel_range(
-
-      0, totnode, &data, mask_flood_fill_task_cb, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
+  BLI_task_parallel_range(0, totnode, &data, mask_flood_fill_task_cb, &settings);
 
   if (multires) {
     multires_mark_as_modified(depsgraph, ob, MULTIRES_COORDS_MODIFIED);
@@ -297,7 +294,6 @@ bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *
 
   /* transform the clip planes in object space */
   ED_view3d_clipping_calc(&bb, clip_planes, vc->ar, vc->obact, rect);
-  negate_m4(clip_planes);
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false, true);
   pbvh = ob->sculpt->pbvh;
@@ -315,8 +311,10 @@ bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *
         flip_plane(clip_planes_final[j], clip_planes[j], symmpass);
       }
 
-      BKE_pbvh_search_gather(
-          pbvh, BKE_pbvh_node_planes_contain_AABB, clip_planes_final, &nodes, &totnode);
+      PBVHFrustumPlanes frustum = {.planes = clip_planes_final, .num_planes = 4};
+      BKE_pbvh_search_gather(pbvh, BKE_pbvh_node_frustum_contain_AABB, &frustum, &nodes, &totnode);
+
+      negate_m4(clip_planes_final);
 
       MaskTaskData data = {
           .ob = ob,
@@ -329,9 +327,7 @@ bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *
       };
 
       TaskParallelSettings settings;
-      BLI_parallel_range_settings_defaults(&settings);
-      settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
-                                totnode > SCULPT_THREADED_LIMIT);
+      BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
       BLI_task_parallel_range(0, totnode, &data, mask_box_select_task_cb, &settings);
 
       if (nodes) {
@@ -483,7 +479,6 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
                                   &data);
 
     ED_view3d_clipping_calc(&bb, clip_planes, vc.ar, vc.obact, &data.rect);
-    negate_m4(clip_planes);
 
     BKE_sculpt_update_object_for_edit(depsgraph, ob, false, true);
     pbvh = ob->sculpt->pbvh;
@@ -505,8 +500,11 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
 
         /* gather nodes inside lasso's enclosing rectangle
          * (should greatly help with bigger meshes) */
+        PBVHFrustumPlanes frustum = {.planes = clip_planes_final, .num_planes = 4};
         BKE_pbvh_search_gather(
-            pbvh, BKE_pbvh_node_planes_contain_AABB, clip_planes_final, &nodes, &totnode);
+            pbvh, BKE_pbvh_node_frustum_contain_AABB, &frustum, &nodes, &totnode);
+
+        negate_m4(clip_planes_final);
 
         data.task_data.ob = ob;
         data.task_data.pbvh = pbvh;
@@ -516,9 +514,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
         data.task_data.value = value;
 
         TaskParallelSettings settings;
-        BLI_parallel_range_settings_defaults(&settings);
-        settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
-                                  (totnode > SCULPT_THREADED_LIMIT));
+        BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
         BLI_task_parallel_range(0, totnode, &data, mask_gesture_lasso_task_cb, &settings);
 
         if (nodes) {

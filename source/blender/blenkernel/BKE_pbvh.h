@@ -40,6 +40,7 @@ struct MVert;
 struct PBVH;
 struct PBVHNode;
 struct SubdivCCG;
+struct TaskParallelSettings;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;
@@ -62,6 +63,11 @@ typedef enum {
 
   PBVH_UpdateTopology = 256,
 } PBVHNodeFlags;
+
+typedef struct PBVHFrustumPlanes {
+  float (*planes)[4];
+  int num_planes;
+} PBVHFrustumPlanes;
 
 /* Callbacks */
 
@@ -167,7 +173,9 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *bvh,
 /* Drawing */
 
 void BKE_pbvh_draw_cb(PBVH *bvh,
-                      float (*planes)[4],
+                      bool show_vcol,
+                      bool update_only_visible,
+                      PBVHFrustumPlanes *frustum,
                       void (*draw_fn)(void *user_data, struct GPU_PBVH_Buffers *buffers),
                       void *user_data);
 
@@ -245,10 +253,10 @@ void BKE_pbvh_node_get_original_BB(PBVHNode *node, float bb_min[3], float bb_max
 
 float BKE_pbvh_node_get_tmin(PBVHNode *node);
 
-/* test if AABB is at least partially inside the planes' volume */
-bool BKE_pbvh_node_planes_contain_AABB(PBVHNode *node, void *data);
-/* test if AABB is at least partially outside the planes' volume */
-bool BKE_pbvh_node_planes_exclude_AABB(PBVHNode *node, void *data);
+/* test if AABB is at least partially inside the PBVHFrustumPlanes volume */
+bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, void *frustum);
+/* test if AABB is at least partially outside the PBVHFrustumPlanes volume */
+bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, void *frustum);
 
 struct GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
 struct GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
@@ -260,7 +268,6 @@ void BKE_pbvh_bmesh_after_stroke(PBVH *bvh);
 
 void BKE_pbvh_update_bounds(PBVH *bvh, int flags);
 void BKE_pbvh_update_normals(PBVH *bvh, struct SubdivCCG *subdiv_ccg);
-void BKE_pbvh_update_draw_buffers(PBVH *bvh, bool show_vcol);
 void BKE_pbvh_redraw_BB(PBVH *bvh, float bb_min[3], float bb_max[3]);
 void BKE_pbvh_get_grid_updates(PBVH *bvh, bool clear, void ***r_gridfaces, int *r_totface);
 void BKE_pbvh_grids_update(PBVH *bvh,
@@ -407,6 +414,10 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
                                     float (**r_orco_coords)[3]);
 
 bool BKE_pbvh_node_vert_update_check_any(PBVH *bvh, PBVHNode *node);
+
+void BKE_pbvh_parallel_range_settings(struct TaskParallelSettings *settings,
+                                      bool use_threading,
+                                      int totnode);
 
 // void BKE_pbvh_node_BB_reset(PBVHNode *node);
 // void BKE_pbvh_node_BB_expand(PBVHNode *node, float co[3]);

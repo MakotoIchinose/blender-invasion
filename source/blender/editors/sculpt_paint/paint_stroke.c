@@ -43,7 +43,6 @@
 #include "BKE_curve.h"
 #include "BKE_colortools.h"
 #include "BKE_image.h"
-#include "BKE_mesh.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -808,7 +807,7 @@ static int paint_space_stroke(bContext *C,
   while (length > 0.0f) {
     float spacing = paint_space_stroke_spacing_variable(
         C, scene, stroke, pressure, dpressure, length);
-    float mouse[2];
+    float mouse[3];
 
     if (length >= spacing) {
       if (use_scene_spacing) {
@@ -863,6 +862,7 @@ PaintStroke *paint_stroke_new(bContext *C,
   UnifiedPaintSettings *ups = &toolsettings->unified_paint_settings;
   Paint *p = BKE_paint_get_active_from_context(C);
   Brush *br = stroke->brush = BKE_paint_brush(p);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float zoomx, zoomy;
 
   ED_view3d_viewcontext_init(C, &stroke->vc, depsgraph);
@@ -888,6 +888,10 @@ PaintStroke *paint_stroke_new(bContext *C,
   ups->overlap_factor = 1.0;
   ups->stroke_active = true;
 
+  if (rv3d) {
+    rv3d->rflag |= RV3D_PAINTING;
+  }
+
   zero_v3(ups->average_stroke_accum);
   ups->average_stroke_counter = 0;
 
@@ -902,19 +906,41 @@ PaintStroke *paint_stroke_new(bContext *C,
   return stroke;
 }
 
-void paint_stroke_data_free(struct wmOperator *op)
+void paint_stroke_free(bContext *C, wmOperator *op)
 {
-  BKE_paint_set_overlay_override(0);
-  MEM_SAFE_FREE(op->customdata);
-}
-
-static void stroke_done(struct bContext *C, struct wmOperator *op)
-{
-  struct PaintStroke *stroke = op->customdata;
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  PaintStroke *stroke = op->customdata;
   UnifiedPaintSettings *ups = stroke->ups;
 
   ups->draw_anchored = false;
   ups->stroke_active = false;
+
+  if (rv3d) {
+    rv3d->rflag &= ~RV3D_PAINTING;
+  }
+
+  if (stroke->timer) {
+    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
+  }
+
+  if (stroke->rng) {
+    BLI_rng_free(stroke->rng);
+  }
+
+  if (stroke->stroke_cursor) {
+    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
+  }
+
+  BLI_freelistN(&stroke->line);
+
+  BKE_paint_set_overlay_override(0);
+  MEM_SAFE_FREE(op->customdata);
+}
+
+static void stroke_done(bContext *C, wmOperator *op)
+{
+  PaintStroke *stroke = op->customdata;
+  UnifiedPaintSettings *ups = stroke->ups;
 
   /* reset rotation here to avoid doing so in cursor display */
   if (!(stroke->brush->mtex.brush_angle_mode & MTEX_ANGLE_RAKE)) {
@@ -935,21 +961,7 @@ static void stroke_done(struct bContext *C, struct wmOperator *op)
     }
   }
 
-  if (stroke->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
-  }
-
-  if (stroke->rng) {
-    BLI_rng_free(stroke->rng);
-  }
-
-  if (stroke->stroke_cursor) {
-    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
-  }
-
-  BLI_freelistN(&stroke->line);
-
-  paint_stroke_data_free(op);
+  paint_stroke_free(C, op);
 }
 
 /* Returns zero if the stroke dots should not be spaced, non-zero otherwise */

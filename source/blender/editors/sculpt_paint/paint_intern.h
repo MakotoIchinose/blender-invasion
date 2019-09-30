@@ -70,7 +70,7 @@ struct PaintStroke *paint_stroke_new(struct bContext *C,
                                      StrokeRedraw redraw,
                                      StrokeDone done,
                                      int event_type);
-void paint_stroke_data_free(struct wmOperator *op);
+void paint_stroke_free(struct bContext *C, struct wmOperator *op);
 
 bool paint_space_stroke_enabled(struct Brush *br, enum ePaintMode mode);
 bool paint_supports_dynamic_size(struct Brush *br, enum ePaintMode mode);
@@ -274,7 +274,6 @@ void image_undo_remove_masks(void);
 void image_undo_init_locks(void);
 void image_undo_end_locks(void);
 
-struct ListBase *ED_image_undosys_step_get_tiles(struct UndoStep *us_p);
 struct ListBase *ED_image_undo_get_tiles(void);
 
 /* sculpt_uv.c */

@@ -31,7 +31,7 @@ struct ModifierUpdateDepsgraphContext;
 struct Object;
 struct Scene;
 /* NOTE: bakeModifier() called from UI:
- * needs to create new databloc-ks, hence the need for this. */
+ * needs to create new data-blocks, hence the need for this. */
 struct bGPDframe;
 struct bGPDlayer;
 struct bGPDstroke;
@@ -297,6 +297,7 @@ void BKE_gpencil_modifiers_foreachTexLink(struct Object *ob,
 
 bool BKE_gpencil_has_geometry_modifiers(struct Object *ob);
 bool BKE_gpencil_has_time_modifiers(struct Object *ob);
+bool BKE_gpencil_has_transform_modifiers(struct Object *ob);
 
 void BKE_gpencil_stroke_modifiers(struct Depsgraph *depsgraph,
                                   struct Object *ob,
