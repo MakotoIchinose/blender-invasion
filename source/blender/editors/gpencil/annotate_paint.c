@@ -614,6 +614,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->gradient_f = 1.0f;
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;
+  gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
 

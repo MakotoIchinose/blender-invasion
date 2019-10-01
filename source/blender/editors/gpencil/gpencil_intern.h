@@ -492,6 +492,8 @@ void GPENCIL_OT_stroke_cutter(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_trim(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_merge_by_distance(struct wmOperatorType *ot);
 
+void GPENCIL_OT_transform_uv(struct wmOperatorType *ot);
+
 void GPENCIL_OT_brush_presets_create(struct wmOperatorType *ot);
 
 /* undo stack ---------- */

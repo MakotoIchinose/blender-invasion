@@ -5959,6 +5959,39 @@ def km_3d_view_tool_edit_gpencil_to_sphere(params):
     )
 
 
+def km_3d_view_tool_edit_gpencil_translate_uv(params):
+    return (
+        "3D View Tool: Edit Gpencil, Translate UV",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("gpencil.transform_uv", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("mode", 'TRANSLATE'), ("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_edit_gpencil_rotate_uv(params):
+    return (
+        "3D View Tool: Edit Gpencil, Rotate UV",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("gpencil.transform_uv", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("mode", 'ROTATE'), ("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_edit_gpencil_scale_uv(params):
+    return (
+        "3D View Tool: Edit Gpencil, Scale UV",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("gpencil.transform_uv", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("mode", 'SCALE'), ("release_confirm", True)]}),
+        ]},
+    )
+
+
 # Also used for weight paint.
 def km_3d_view_tool_sculpt_gpencil_paint(_params):
     return (
@@ -6216,6 +6249,9 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_gpencil_bend(params),
         km_3d_view_tool_edit_gpencil_shear(params),
         km_3d_view_tool_edit_gpencil_to_sphere(params),
+        km_3d_view_tool_edit_gpencil_translate_uv(params),
+        km_3d_view_tool_edit_gpencil_rotate_uv(params),
+        km_3d_view_tool_edit_gpencil_scale_uv(params),
         km_3d_view_tool_sculpt_gpencil_paint(params),
         km_3d_view_tool_sculpt_gpencil_select(params),
         km_3d_view_tool_sculpt_gpencil_select_box(params),

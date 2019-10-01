@@ -3857,7 +3857,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Fix wrong 3D viewport copying causing corrupt pointers (T69974). */
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -3897,6 +3896,21 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
               BLI_insertlinkafter(regionbase, ar_header, ar_tools);
               ar_tools->alignment = RGN_ALIGN_LEFT;
+            }
+          }
+        }
+      }
+    }
+
+    {
+      /* Fix new grease pencil uv scale. */
+      if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "uv_scale")) {
+        for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+          for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+            for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+              for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+                gps->uv_scale = 1.0f;
+              }
             }
           }
         }

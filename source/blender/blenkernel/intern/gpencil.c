@@ -484,6 +484,8 @@ bGPDstroke *BKE_gpencil_add_stroke(bGPDframe *gpf, int mat_idx, int totpoints, s
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;
 
+  gps->uv_scale = 1.0f;
+
   gps->inittime = 0;
 
   /* enable recalculation flag by default */
@@ -2739,6 +2741,8 @@ static void gpencil_convert_spline(Main *bmain,
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
   gps->thickness = 1.0f;
   gps->gradient_f = 1.0f;
+  gps->uv_scale = 1.0f;
+
   ARRAY_SET_ITEMS(gps->gradient_s, 1.0f, 1.0f);
   ARRAY_SET_ITEMS(gps->caps, GP_STROKE_CAP_ROUND, GP_STROKE_CAP_ROUND);
   gps->inittime = 0.0f;
