@@ -507,8 +507,9 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "mode", uv_mode, 0, "Mode", "");
 
-  RNA_def_float_vector(
+  prop = RNA_def_float_vector(
       ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "", -FLT_MAX, FLT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_float_rotation(ot->srna,
                                 "rotation",
@@ -521,9 +522,11 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
                                 DEG2RADF(-360.0f),
                                 DEG2RADF(360.0f));
   RNA_def_property_float_default(prop, DEG2RADF(0.0f));
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_float(ot->srna, "scale", 1.0f, 0.001f, 100.0f, "Scale", "", 0.001f, 100.0f);
   RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
