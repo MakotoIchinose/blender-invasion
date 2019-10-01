@@ -60,7 +60,7 @@ typedef struct GpUvData {
   float initial_length;
   float pixel_size; /* use when mouse input is interpreted as spatial distance */
   bool is_modal;
-  NumInput num_input;
+  bool is_shift;
 
   /* Arrays of original loc/rot/scale by stroke. */
   float (*array_loc)[2];
@@ -83,28 +83,43 @@ enum {
   GP_UV_SCALE = 2,
 };
 
+#define SMOOTH_FACTOR 0.3f
+
 static void gpencil_uv_transform_update_header(wmOperator *op, bContext *C)
 {
-  GpUvData *opdata = op->customdata;
-  const char *str = TIP_("Confirm: Enter/LClick, Cancel: (Esc/RClick), Rotation: %s");
+  const int mode = RNA_enum_get(op->ptr, "mode");
+  const char *str = TIP_("Confirm: Enter/LClick, Cancel: (Esc/RClick) %s");
 
   char msg[UI_MAX_DRAW_STR];
   ScrArea *sa = CTX_wm_area(C);
-  Scene *sce = CTX_data_scene(C);
 
   if (sa) {
     char flts_str[NUM_STR_REP_LEN * 2];
-    if (hasNumInput(&opdata->num_input)) {
-      if (hasNumInput(&opdata->num_input)) {
-        outputNumInput(&opdata->num_input, flts_str, &sce->unit);
+    switch (mode) {
+      case GP_UV_TRANSLATE: {
+        float location[2];
+        RNA_float_get_array(op->ptr, "location", location);
+        BLI_snprintf(
+            flts_str, NUM_STR_REP_LEN, ", Translation: (%f, %f)", location[0], location[1]);
+        break;
       }
-      else {
-        BLI_snprintf(flts_str, NUM_STR_REP_LEN, "%f", RAD2DEG(RNA_float_get(op->ptr, "rotation")));
+      case GP_UV_ROTATE: {
+        BLI_snprintf(flts_str,
+                     NUM_STR_REP_LEN,
+                     ", Rotation: %f",
+                     RAD2DEG(RNA_float_get(op->ptr, "rotation")));
+        break;
       }
-      BLI_snprintf(msg, sizeof(msg), str, flts_str, flts_str + NUM_STR_REP_LEN);
-
-      ED_area_status_text(sa, msg);
+      case GP_UV_SCALE: {
+        BLI_snprintf(
+            flts_str, NUM_STR_REP_LEN, ", Scale: %f", RAD2DEG(RNA_float_get(op->ptr, "scale")));
+        break;
+      }
+      default:
+        break;
     }
+    BLI_snprintf(msg, sizeof(msg), str, flts_str, flts_str + NUM_STR_REP_LEN);
+    ED_area_status_text(sa, msg);
   }
 }
 
@@ -127,9 +142,9 @@ static void gpencil_stroke_center(bGPDstroke *gps, float r_center[3])
 static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is_modal)
 {
   GpUvData *opdata;
-  Scene *scene = CTX_data_scene(C);
-
   if (is_modal) {
+    float zero[2] = {0.0f};
+    RNA_float_set_array(op->ptr, "location", zero);
     RNA_float_set(op->ptr, "rotation", 0.0f);
     RNA_float_set(op->ptr, "scale", 1.0f);
   }
@@ -144,15 +159,10 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
   opdata->array_rot = NULL;
   opdata->array_scale = NULL;
   opdata->ob_scale = mat4_to_scale(opdata->ob->obmat);
+  opdata->is_shift = false;
 
   opdata->vinit_rotation[0] = 1.0f;
   opdata->vinit_rotation[1] = 0.0f;
-
-  initNumInput(&opdata->num_input);
-  opdata->num_input.idx_max = 1;
-  opdata->num_input.unit_sys = scene->unit.system;
-  opdata->num_input.unit_type[0] = B_UNIT_LENGTH;
-  opdata->num_input.unit_type[1] = B_UNIT_LENGTH;
 
   if (is_modal) {
     ARegion *ar = CTX_wm_region(C);
@@ -248,73 +258,98 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
   float vr[2];
   sub_v2_v2v2(vr, opdata->mouse, opdata->mcenter);
   normalize_v2(vr);
-  const float uv_rotation = angle_signed_v2v2(opdata->vinit_rotation, vr);
-  RNA_float_set(op->ptr, "rotation", uv_rotation);
+
+  float location[2];
+  RNA_float_get_array(op->ptr, "location", location);
+
+  float uv_rotation = (opdata->is_modal) ? angle_signed_v2v2(opdata->vinit_rotation, vr) :
+                                           RNA_float_get(op->ptr, "rotation");
+  if (opdata->is_shift) {
+    uv_rotation *= SMOOTH_FACTOR;
+  }
+  if (opdata->is_modal) {
+    RNA_float_set(op->ptr, "rotation", uv_rotation);
+  }
 
   int i = 0;
 
   /* Apply transformations to all strokes. */
-  switch (mode) {
-    case GP_UV_TRANSLATE: {
-      float mdiff[2];
-      mdiff[0] = opdata->mcenter[0] - opdata->mouse[0];
-      mdiff[1] = opdata->mcenter[1] - opdata->mouse[1];
-      /* Apply angle in translation. */
-      mdiff[0] *= cos(uv_rotation);
-      mdiff[1] *= sin(uv_rotation);
-      changed = (bool)((mdiff[0] != 0.0f) || (mdiff[1] != 0.0f));
-      if (changed) {
-        GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-          if (gps->flag & GP_STROKE_SELECT) {
-            add_v2_v2v2(gps->uv_translation, opdata->array_loc[i], mdiff);
-            gps->tot_triangles = 0;
-            i++;
-          }
-        }
-        GP_EDITABLE_STROKES_END(gpstroke_iter);
-      }
-      break;
+  if ((mode == GP_UV_TRANSLATE) || (!opdata->is_modal)) {
+    float mdiff[2];
+    mdiff[0] = opdata->mcenter[0] - opdata->mouse[0];
+    mdiff[1] = opdata->mcenter[1] - opdata->mouse[1];
+    if (opdata->is_shift) {
+      mul_v2_fl(mdiff, SMOOTH_FACTOR);
     }
-    case GP_UV_ROTATE: {
-      changed = (bool)(uv_rotation != 0.0f);
-      if (changed) {
-        GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-          if (gps->flag & GP_STROKE_SELECT) {
-            gps->uv_rotation = opdata->array_rot[i] + uv_rotation;
-            gps->tot_triangles = 0;
-            i++;
-          }
-        }
-        GP_EDITABLE_STROKES_END(gpstroke_iter);
-      }
-      break;
-    }
-    case GP_UV_SCALE: {
-      float mdiff[2];
-      mdiff[0] = opdata->mcenter[0] - opdata->mouse[0];
-      mdiff[1] = opdata->mcenter[1] - opdata->mouse[1];
-      float scale = ((len_v2(mdiff) - opdata->initial_length) * opdata->pixel_size) /
-                    opdata->ob_scale;
-      RNA_float_set(op->ptr, "scale", scale);
 
-      changed = (bool)(scale != 0.0f);
-      if (changed) {
-        GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-          if (gps->flag & GP_STROKE_SELECT) {
-            gps->uv_scale = opdata->array_scale[i] + scale;
-            gps->tot_triangles = 0;
-            i++;
-          }
-        }
-        GP_EDITABLE_STROKES_END(gpstroke_iter);
-      }
-      break;
+    /* Apply angle in translation. */
+    mdiff[0] *= cos(uv_rotation);
+    mdiff[1] *= sin(uv_rotation);
+    if (opdata->is_modal) {
+      RNA_float_set_array(op->ptr, "location", mdiff);
     }
-    default:
-      break;
+
+    changed = (bool)((mdiff[0] != 0.0f) || (mdiff[1] != 0.0f));
+    if (changed) {
+      GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+        if (gps->flag & GP_STROKE_SELECT) {
+          if (opdata->is_modal) {
+            add_v2_v2v2(gps->uv_translation, opdata->array_loc[i], mdiff);
+          }
+          else {
+            copy_v2_v2(gps->uv_translation, location);
+          }
+          gps->tot_triangles = 0;
+          i++;
+        }
+      }
+      GP_EDITABLE_STROKES_END(gpstroke_iter);
+    }
   }
 
-  if (changed) {
+  if ((mode == GP_UV_ROTATE) || (!opdata->is_modal)) {
+    changed = (bool)(uv_rotation != 0.0f);
+    if (changed) {
+      GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+        if (gps->flag & GP_STROKE_SELECT) {
+          gps->uv_rotation = (opdata->is_modal) ? opdata->array_rot[i] + uv_rotation : uv_rotation;
+          gps->tot_triangles = 0;
+          i++;
+        }
+      }
+      GP_EDITABLE_STROKES_END(gpstroke_iter);
+    }
+  }
+
+  if ((mode == GP_UV_SCALE) || (!opdata->is_modal)) {
+    float mdiff[2];
+    mdiff[0] = opdata->mcenter[0] - opdata->mouse[0];
+    mdiff[1] = opdata->mcenter[1] - opdata->mouse[1];
+    float scale = (opdata->is_modal) ?
+                      ((len_v2(mdiff) - opdata->initial_length) * opdata->pixel_size) /
+                          opdata->ob_scale :
+                      RNA_float_get(op->ptr, "scale");
+    if (opdata->is_shift) {
+      scale *= SMOOTH_FACTOR;
+    }
+    if (opdata->is_modal) {
+      RNA_float_set(op->ptr, "scale", scale);
+    }
+
+    changed = (bool)(scale != 0.0f);
+    if (changed) {
+      GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+        if (gps->flag & GP_STROKE_SELECT) {
+          gps->uv_scale = (opdata->is_modal) ? opdata->array_scale[i] + scale : scale;
+          gps->tot_triangles = 0;
+          i++;
+        }
+      }
+      GP_EDITABLE_STROKES_END(gpstroke_iter);
+    }
+  }
+
+  if ((!opdata->is_modal) || (changed)) {
     /* Update cursor line. */
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GEOM | ND_DATA, NULL);
@@ -380,6 +415,7 @@ static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEven
   /* initialize mouse values */
   opdata->mouse[0] = event->mval[0];
   opdata->mouse[1] = event->mval[1];
+  opdata->is_shift = event->shift;
 
   copy_v3_v3(center_3d, opdata->ob->loc);
   mlen[0] = opdata->mcenter[0] - event->mval[0];
@@ -405,75 +441,37 @@ static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEven
 static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   GpUvData *opdata = op->customdata;
-  const bool has_numinput = hasNumInput(&opdata->num_input);
 
-  /* Modal numinput active, try to handle numeric inputs first... */
-  if (event->val == KM_PRESS && has_numinput && handleNumInput(C, &opdata->num_input, event)) {
-    float amounts[1] = {RNA_float_get(op->ptr, "rotation")};
-    applyNumInput(&opdata->num_input, amounts);
-    amounts[0] = max_ff(amounts[0], 0.0f);
-    RNA_float_set(op->ptr, "rotation", amounts[0]);
-
-    if (gpencil_uv_transform_calc(C, op)) {
-      gpencil_uv_transform_update_header(op, C);
-      return OPERATOR_RUNNING_MODAL;
-    }
-    else {
+  switch (event->type) {
+    case ESCKEY:
+    case RIGHTMOUSE: {
       gpencil_uv_transform_cancel(C, op);
       return OPERATOR_CANCELLED;
     }
-  }
-  else {
-    bool handled = false;
-    switch (event->type) {
-      case ESCKEY:
-      case RIGHTMOUSE: {
-        gpencil_uv_transform_cancel(C, op);
-        return OPERATOR_CANCELLED;
-      }
-      case MOUSEMOVE: {
-        if (!has_numinput) {
-          opdata->mouse[0] = event->mval[0];
-          opdata->mouse[1] = event->mval[1];
-
-          if (gpencil_uv_transform_calc(C, op)) {
-            gpencil_uv_transform_update_header(op, C);
-          }
-          else {
-            gpencil_uv_transform_cancel(C, op);
-            return OPERATOR_CANCELLED;
-          }
-          handled = true;
-        }
-        break;
-      }
-      case LEFTMOUSE:
-      case PADENTER:
-      case RETKEY: {
-        if ((event->val == KM_PRESS) ||
-            ((event->val == KM_RELEASE) && RNA_boolean_get(op->ptr, "release_confirm"))) {
-          gpencil_uv_transform_calc(C, op);
-          gpencil_uv_transform_exit(C, op);
-          return OPERATOR_FINISHED;
-        }
-        break;
-      }
-    }
-    /* Modal numinput inactive, try to handle numeric inputs last... */
-    if (!handled && event->val == KM_PRESS && handleNumInput(C, &opdata->num_input, event)) {
-      float amount[1] = {RNA_float_get(op->ptr, "rotation")};
-      applyNumInput(&opdata->num_input, amount);
-
-      RNA_float_set(op->ptr, "rotation", amount[0]);
+    case MOUSEMOVE: {
+      opdata->mouse[0] = event->mval[0];
+      opdata->mouse[1] = event->mval[1];
+      opdata->is_shift = event->shift;
 
       if (gpencil_uv_transform_calc(C, op)) {
         gpencil_uv_transform_update_header(op, C);
-        return OPERATOR_RUNNING_MODAL;
       }
       else {
         gpencil_uv_transform_cancel(C, op);
         return OPERATOR_CANCELLED;
       }
+      break;
+    }
+    case LEFTMOUSE:
+    case PADENTER:
+    case RETKEY: {
+      if ((event->val == KM_PRESS) ||
+          ((event->val == KM_RELEASE) && RNA_boolean_get(op->ptr, "release_confirm"))) {
+        gpencil_uv_transform_calc(C, op);
+        gpencil_uv_transform_exit(C, op);
+        return OPERATOR_FINISHED;
+      }
+      break;
     }
   }
 
@@ -508,7 +506,10 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "mode", uv_mode, 0, "Mode", "");
-  // RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  RNA_def_float_vector(
+      ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "", -FLT_MAX, FLT_MAX);
 
   prop = RNA_def_float_rotation(ot->srna,
                                 "rotation",
