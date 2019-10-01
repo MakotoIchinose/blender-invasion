@@ -1523,36 +1523,21 @@ class _defs_gpencil_edit:
         )
 
     @ToolDef.from_fn
-    def transform_uv_translate():
-        return dict(
-            idname="builtin.translate_uv",
-            label="Translate UV",
-            icon="ops.gpencil.translate_uv",
-            cursor='DEFAULT',
-            widget=None,
-            keymap=(),
-        )
+    def transform_uv():
+        def draw_settings(context, layout, tool):
+                props = tool.operator_properties("gpencil.transform_uv")
+                row = layout.row()
+                row.use_property_split = False
+                row.prop(props, "mode", expand=True)
 
-    @ToolDef.from_fn
-    def transform_uv_rotate():
         return dict(
-            idname="builtin.rotate_uv",
-            label="Rotate UV",
-            icon="ops.gpencil.rotate_uv",
+            idname="builtin.transform_uv",
+            label="Transform UV",
+            icon="ops.gpencil.transform_uv",
             cursor='DEFAULT',
             widget=None,
             keymap=(),
-        )
-
-    @ToolDef.from_fn
-    def transform_uv_scale():
-        return dict(
-            idname="builtin.scale_uv",
-            label="Scale UV",
-            icon="ops.gpencil.scale_uv",
-            cursor='DEFAULT',
-            widget=None,
-            keymap=(),
+            draw_settings=draw_settings,
         )
 
 class _defs_gpencil_sculpt:
@@ -2096,9 +2081,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_gpencil_edit.tosphere,
             ),
             None,
-            _defs_gpencil_edit.transform_uv_translate,
-            _defs_gpencil_edit.transform_uv_rotate,
-            _defs_gpencil_edit.transform_uv_scale,
+            _defs_gpencil_edit.transform_uv,
         ],
         'SCULPT_GPENCIL': [
             _defs_gpencil_sculpt.generate_from_brushes,

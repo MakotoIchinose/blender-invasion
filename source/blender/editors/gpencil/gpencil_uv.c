@@ -481,8 +481,8 @@ static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent
 void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 {
   static const EnumPropertyItem uv_mode[] = {
-      {GP_UV_ROTATE, "ROTATE", 0, "Rotate", ""},
       {GP_UV_TRANSLATE, "TRANSLATE", 0, "Translate", ""},
+      {GP_UV_ROTATE, "ROTATE", 0, "Rotate", ""},
       {GP_UV_SCALE, "SCALE", 0, "Scale", ""},
       {0, NULL, 0, NULL, NULL},
   };
@@ -506,7 +506,6 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "mode", uv_mode, 0, "Mode", "");
-  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   RNA_def_float_vector(
       ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "", -FLT_MAX, FLT_MAX);
