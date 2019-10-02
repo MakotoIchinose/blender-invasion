@@ -36,11 +36,6 @@ extern "C" {
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_scene.h"
-/* SpaceType struct has a member called 'new' which obviously conflicts with C++
- * so temporarily redefining the new keyword to make it compile. */
-#define new extern_new
-#include "BKE_screen.h"
-#undef new
 
 #include "BLI_fileops.h"
 #include "BLI_string.h"
@@ -55,6 +50,7 @@ struct ExportJobData {
   ViewLayer *view_layer;
   Main *bmain;
   Depsgraph *depsgraph;
+  wmWindowManager *wm;
 
   char filename[1024];
   USDExportParams params;
@@ -77,11 +73,8 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   data->progress = progress;
   data->was_canceled = false;
 
-  /* XXX annoying hack: needed to prevent data corruption when changing
-   * scene frame in separate threads
-   */
   G.is_rendering = true;
-  BKE_spacedata_draw_locks(true);
+  WM_set_locked_interface(data->wm, true);
   G.is_break = false;
 
   // Construct the depsgraph for exporting.
@@ -178,7 +171,7 @@ static void export_endjob(void *customdata)
   }
 
   G.is_rendering = false;
-  BKE_spacedata_draw_locks(false);
+  WM_set_locked_interface(data->wm, false);
 }
 
 bool USD_export(bContext *C,
@@ -193,6 +186,7 @@ bool USD_export(bContext *C,
       MEM_mallocN(sizeof(ExportJobData), "ExportJobData"));
 
   job->bmain = CTX_data_main(C);
+  job->wm = CTX_wm_manager(C);
   job->export_ok = false;
   BLI_strncpy(job->filename, filepath, 1024);
 
@@ -201,12 +195,8 @@ bool USD_export(bContext *C,
 
   bool export_ok = false;
   if (as_background_job) {
-    wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
-                                CTX_wm_window(C),
-                                scene,
-                                "USD Export",
-                                WM_JOB_PROGRESS,
-                                WM_JOB_TYPE_ALEMBIC);
+    wmJob *wm_job = WM_jobs_get(
+        job->wm, CTX_wm_window(C), scene, "USD Export", WM_JOB_PROGRESS, WM_JOB_TYPE_ALEMBIC);
 
     /* setup job */
     WM_jobs_customdata_set(wm_job, job, MEM_freeN);
