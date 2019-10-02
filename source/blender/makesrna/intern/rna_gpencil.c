@@ -152,7 +152,7 @@ static void rna_GPencil_uv_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Poi
 {
   /* Force to recalc the UVs. */
   bGPDstroke *gps = (bGPDstroke *)ptr->data;
-  gps->tot_triangles == 0;
+  gps->tot_triangles = 0;
 
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
