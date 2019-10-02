@@ -1217,6 +1217,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
   gps->flag = gpd->runtime.sbuffer_sflag;
   gps->inittime = p->inittime;
+  gps->uv_scale = 1.0f;
 
   /* enable recalculation flag by default (only used if hq fill) */
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
