@@ -25,7 +25,7 @@ void USDHairWriter::do_write(HierarchyContext &context)
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdGeomBasisCurves curves = pxr::UsdGeomBasisCurves::Define(stage, usd_path_);
 
-  // TODO: deal with (psys->part->flag & PART_HAIR_BSPLINE)
+  // TODO(Sybren): deal with (psys->part->flag & PART_HAIR_BSPLINE)
   curves.CreateBasisAttr(pxr::VtValue(pxr::UsdGeomTokens->bspline));
   curves.CreateTypeAttr(pxr::VtValue(pxr::UsdGeomTokens->cubic));
 

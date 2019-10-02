@@ -90,8 +90,8 @@ struct HierarchyContext {
 class AbstractHierarchyWriter {
  public:
   virtual void write(HierarchyContext &context) = 0;
-  // TODO: add function like unused_during_iteration() that's called when a writer was previously
-  // created, but wasn't used this iteration.
+  // TODO(Sybren): add function like unused_during_iteration() that's called when a writer was
+  // previously created, but wasn't used this iteration.
 };
 
 class AbstractHierarchyIterator {
