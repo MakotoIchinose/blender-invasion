@@ -548,7 +548,6 @@ static int gpencil_reset_uv_transform_exec(bContext *C, wmOperator *op)
       }
       gps->tot_triangles = 0;
       changed = true;
-      break;
     }
   }
   GP_EDITABLE_STROKES_END(gpstroke_iter);
