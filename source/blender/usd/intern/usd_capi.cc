@@ -19,7 +19,6 @@
  */
 
 #include "../usd.h"
-#include "debug_timer.h"
 #include "usd_hierarchy_iterator.h"
 
 #include <pxr/usd/usd/stage.h>
@@ -65,7 +64,6 @@ struct ExportJobData {
 
 static void export_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
-  Timer timer_("Export to USD");
   ExportJobData *data = static_cast<ExportJobData *>(customdata);
 
   data->stop = stop;
@@ -79,12 +77,9 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
 
   // Construct the depsgraph for exporting.
   Scene *scene = DEG_get_input_scene(data->depsgraph);
-  {
-    Timer deg_build_timer_("Building depsgraph for USD export");
-    ViewLayer *view_layer = DEG_get_input_view_layer(data->depsgraph);
-    DEG_graph_build_from_view_layer(data->depsgraph, data->bmain, scene, view_layer);
-    BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
-  }
+  ViewLayer *view_layer = DEG_get_input_view_layer(data->depsgraph);
+  DEG_graph_build_from_view_layer(data->depsgraph, data->bmain, scene, view_layer);
+  BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
 
   // Constructing & evaluating the depsgraph counts as 10% of the work.
   *progress = 0.1f;
@@ -93,59 +88,56 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   // For restoring the current frame after exporting animation is done.
   const int orig_frame = CFRA;
 
-  {
-    Timer usd_write_timer_("Writing to USD");
+  // Create a stage and set up the metadata.
+  pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
+  usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
+  usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit,
+                         pxr::VtValue(scene->unit.scale_length));
+  usd_stage->GetRootLayer()->SetDocumentation(std::string("Blender ") + versionstr);
 
-    // Create a stage and set up the metadata.
-    pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
-    usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
-    usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit,
-                           pxr::VtValue(scene->unit.scale_length));
-    usd_stage->GetRootLayer()->SetDocumentation(std::string("Blender ") + versionstr);
-
-    // Set up the stage for animated data.
-    if (data->params.export_animation) {
-      usd_stage->SetTimeCodesPerSecond(FPS);
-      usd_stage->SetStartTimeCode(scene->r.sfra);
-      usd_stage->SetEndTimeCode(scene->r.efra);
-    }
-
-    USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
-
-    if (data->params.export_animation) {
-      // Writing the animated frames is 80% of the work.
-      float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
-
-      for (float frame = scene->r.sfra; frame <= scene->r.efra; frame++) {
-        if (G.is_break) {
-          break;
-        }
-
-        // Update the scene for the next frame to render.
-        scene->r.cfra = static_cast<int>(frame);
-        scene->r.subframe = frame - scene->r.cfra;
-        BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
-
-        iter.set_export_frame(frame);
-        iter.iterate();
-
-        *progress += progress_per_frame;
-        *do_update = true;
-      }
-    }
-    else {
-      // If we're not animating, a single iteration over all objects is enough.
-      iter.iterate();
-    }
-
-    iter.release_writers();
-
-    // Writing the final file is the other 10% of the work.
-    *progress = 0.9f;
-    *do_update = true;
-    usd_stage->GetRootLayer()->Save();
+  // Set up the stage for animated data.
+  if (data->params.export_animation) {
+    usd_stage->SetTimeCodesPerSecond(FPS);
+    usd_stage->SetStartTimeCode(scene->r.sfra);
+    usd_stage->SetEndTimeCode(scene->r.efra);
   }
 
+  USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
+
+  if (data->params.export_animation) {
+    // Writing the animated frames is 80% of the work.
+    float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
+
+    for (float frame = scene->r.sfra; frame <= scene->r.efra; frame++) {
+      if (G.is_break) {
+        break;
+      }
+
+      // Update the scene for the next frame to render.
+      scene->r.cfra = static_cast<int>(frame);
+      scene->r.subframe = frame - scene->r.cfra;
+      BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
+
+      iter.set_export_frame(frame);
+      iter.iterate();
+
+      *progress += progress_per_frame;
+      *do_update = true;
+    }
+  }
+  else {
+    // If we're not animating, a single iteration over all objects is enough.
+    iter.iterate();
+  }
+
+  iter.release_writers();
+
+  // Writing the final file is the other 10% of the work.
+  *progress = 0.9f;
+  *do_update = true;
+  usd_stage->GetRootLayer()->Save();
+
+  // Finish up by going back to the keyframe that was current before we started.
   *progress = 0.99f;
   *do_update = true;
 
