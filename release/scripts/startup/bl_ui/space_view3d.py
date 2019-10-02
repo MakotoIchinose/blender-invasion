@@ -4597,6 +4597,9 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.operator_menu_enum("gpencil.stroke_caps_set", text="Toggle Caps", property="type")
         layout.operator("gpencil.stroke_flip", text="Switch Direction")
 
+        layout.separator()
+        layout.operator("gpencil.reset_uv_transform", text="Reset UV Transform")
+
 
 class VIEW3D_MT_edit_gpencil_point(Menu):
     bl_label = "Point"

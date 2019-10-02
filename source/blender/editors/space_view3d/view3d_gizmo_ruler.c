@@ -470,6 +470,7 @@ static bool view3d_ruler_to_gpencil(bContext *C, wmGizmoGroup *gzgroup)
     gps->gradient_f = 1.0f;
     gps->gradient_s[0] = 1.0f;
     gps->gradient_s[1] = 1.0f;
+    gps->uv_scale = 1.0f;
 
     BLI_addtail(&gpf->strokes, gps);
     changed = true;

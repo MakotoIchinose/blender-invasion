@@ -318,6 +318,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->gradient_f = 1.0f;
   gps->gradient_s[0] = 1.0f;
   gps->gradient_s[1] = 1.0f;
+  gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
 
   /* enable recalculation flag by default */

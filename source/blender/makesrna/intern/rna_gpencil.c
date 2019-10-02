@@ -148,6 +148,16 @@ static void rna_GPencil_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Pointe
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
 
+static void rna_GPencil_uv_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  /* Force to recalc the UVs. */
+  bGPDstroke *gps = (bGPDstroke *)ptr->data;
+  gps->tot_triangles = 0;
+
+  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+}
+
 static void rna_GPencil_autolock(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
@@ -641,6 +651,7 @@ static bGPDstroke *rna_GPencil_stroke_new(bGPDframe *frame)
   bGPDstroke *stroke = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
   stroke->gradient_f = 1.0f;
   ARRAY_SET_ITEMS(stroke->gradient_s, 1.0f, 1.0f);
+  stroke->uv_scale = 1.0f;
   BLI_addtail(&frame->strokes, stroke);
 
   return stroke;
@@ -1129,6 +1140,32 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Aspect Ratio", "");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
+  /* UV translation. */
+  prop = RNA_def_property(srna, "uv_translation", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_float_sdna(prop, NULL, "uv_translation");
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_ui_text(prop, "UV Translation", "Translation of default UV postion");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_uv_update");
+
+  /* UV rotation. */
+  prop = RNA_def_property(srna, "uv_rotation", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "uv_rotation");
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_ui_text(prop, "UV Rotation", "Rotation of the UV");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_uv_update");
+
+  /* UV scale. */
+  prop = RNA_def_property(srna, "uv_scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "uv_scale");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_range(prop, 0.01f, 100.0f);
+  RNA_def_property_ui_text(prop, "UV Scale", "Scale of the UV");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_uv_update");
 }
 
 static void rna_def_gpencil_strokes_api(BlenderRNA *brna, PropertyRNA *cprop)
