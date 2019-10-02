@@ -26,7 +26,6 @@
 #include "GPU_init_exit.h" /* interface */
 #include "GPU_immediate.h"
 #include "GPU_batch.h"
-#include "GPU_texture.h"
 #include "BKE_global.h"
 
 #include "intern/gpu_codegen.h"
@@ -63,11 +62,13 @@ void GPU_init(void)
     immInit();
   }
 
-  GPU_pbvh_fix_linking();
+  gpu_pbvh_init();
 }
 
 void GPU_exit(void)
 {
+  gpu_pbvh_exit();
+
   if (!G.background) {
     immDestroy();
   }

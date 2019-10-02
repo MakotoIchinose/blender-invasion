@@ -430,11 +430,9 @@ void node_select_single(bContext *C, bNode *node)
 }
 
 static int node_mouse_select(bContext *C,
+                             wmOperator *op,
                              const int mval[2],
-                             const bool extend,
-                             const bool socket_select,
-                             const bool deselect_all,
-                             const bool wait_to_deselect_others)
+                             bool wait_to_deselect_others)
 {
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -445,8 +443,15 @@ static int node_mouse_select(bContext *C,
   float cursor[2];
   int ret_value = OPERATOR_CANCELLED;
 
-  /* Waiting to deselect others is only allowed for basic selection. */
-  BLI_assert(!(extend || socket_select) || !wait_to_deselect_others);
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  /* always do socket_select when extending selection. */
+  const bool socket_select = extend || RNA_boolean_get(op->ptr, "socket_select");
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
+
+  /* These cases are never modal. */
+  if (extend || socket_select) {
+    wait_to_deselect_others = false;
+  }
 
   /* get mouse coordinates in view2d space */
   UI_view2d_region_to_view(&ar->v2d, mval[0], mval[1], &cursor[0], &cursor[1]);
@@ -552,19 +557,13 @@ static int node_mouse_select(bContext *C,
 
 static int node_select_exec(bContext *C, wmOperator *op)
 {
-  int mval[2];
-
   /* get settings from RNA properties for operator */
+  int mval[2];
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
 
-  const bool extend = RNA_boolean_get(op->ptr, "extend");
-  /* always do socket_select when extending selection. */
-  const bool socket_select = extend || RNA_boolean_get(op->ptr, "socket_select");
-  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
-
   /* perform the select */
-  const int ret_value = node_mouse_select(C, mval, extend, socket_select, deselect_all, false);
+  const int ret_value = node_mouse_select(C, op, mval, false);
 
   /* allow tweak event to work too */
   return ret_value | OPERATOR_PASS_THROUGH;
@@ -579,19 +578,9 @@ static int node_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
 
-  const bool extend = RNA_boolean_get(op->ptr, "extend");
-  /* always do socket_select when extending selection. */
-  const bool socket_select = extend || RNA_boolean_get(op->ptr, "socket_select");
-  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
-
-  /* These cases are never modal. */
-  if (extend || socket_select) {
-    return node_select_exec(C, op);
-  }
-
   if (init_event_type == 0) {
     if (event->val == KM_PRESS) {
-      const int ret_value = node_mouse_select(C, mval, extend, socket_select, deselect_all, true);
+      const int ret_value = node_mouse_select(C, op, mval, true);
 
       op->customdata = POINTER_FROM_INT((int)event->type);
       if (ret_value & OPERATOR_RUNNING_MODAL) {
@@ -603,11 +592,12 @@ static int node_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
       /* If we are in init phase, and cannot validate init of modal operations,
        * just fall back to basic exec.
        */
-      return node_select_exec(C, op);
+      const int ret_value = node_mouse_select(C, op, mval, false);
+      return ret_value | OPERATOR_PASS_THROUGH;
     }
   }
   else if (event->type == init_event_type && event->val == KM_RELEASE) {
-    const int ret_value = node_mouse_select(C, mval, extend, socket_select, deselect_all, false);
+    const int ret_value = node_mouse_select(C, op, mval, false);
     return ret_value | OPERATOR_PASS_THROUGH;
   }
   else if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
@@ -1234,8 +1224,18 @@ static uiBlock *node_find_menu(bContext *C, ARegion *ar, void *arg_op)
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  but = uiDefSearchBut(
-      block, search, 0, ICON_VIEWZOOM, sizeof(search), 10, 10, 9 * UI_UNIT_X, UI_UNIT_Y, 0, 0, "");
+  but = uiDefSearchBut(block,
+                       search,
+                       0,
+                       ICON_VIEWZOOM,
+                       sizeof(search),
+                       10,
+                       10,
+                       UI_searchbox_size_x(),
+                       UI_UNIT_Y,
+                       0,
+                       0,
+                       "");
   UI_but_func_search_set(but, NULL, node_find_cb, op->type, false, node_find_call_cb, NULL);
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
 
@@ -1256,7 +1256,7 @@ static uiBlock *node_find_menu(bContext *C, ARegion *ar, void *arg_op)
            NULL);
 
   /* Move it downwards, mouse over button. */
-  UI_block_bounds_set_popup(block, 6, (const int[2]){0, -UI_UNIT_Y});
+  UI_block_bounds_set_popup(block, 0.3f * U.widget_unit, (const int[2]){0, -UI_UNIT_Y});
 
   return block;
 }

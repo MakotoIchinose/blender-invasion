@@ -48,10 +48,16 @@ ccl_device void shader_setup_object_transforms(KernelGlobals *kg, ShaderData *sd
 }
 #endif
 
-ccl_device_noinline void shader_setup_from_ray(KernelGlobals *kg,
-                                               ShaderData *sd,
-                                               const Intersection *isect,
-                                               const Ray *ray)
+#ifdef __KERNEL_OPTIX__
+ccl_device_inline
+#else
+ccl_device_noinline
+#endif
+    void
+    shader_setup_from_ray(KernelGlobals *kg,
+                          ShaderData *sd,
+                          const Intersection *isect,
+                          const Ray *ray)
 {
   PROFILING_INIT(kg, PROFILING_SHADER_SETUP);
 
@@ -1356,7 +1362,7 @@ ccl_device bool shader_transparent_shadow(KernelGlobals *kg, Intersection *isect
   int shader = 0;
 
 #  ifdef __HAIR__
-  if (kernel_tex_fetch(__prim_type, isect->prim) & PRIMITIVE_ALL_TRIANGLE) {
+  if (isect->type & PRIMITIVE_ALL_TRIANGLE) {
 #  endif
     shader = kernel_tex_fetch(__tri_shader, prim);
 #  ifdef __HAIR__

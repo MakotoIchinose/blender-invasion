@@ -142,7 +142,7 @@ static char *buf_tabs_to_spaces(const char *in_buf, const int tab_size)
 
 BLI_INLINE int text_pixel_x_to_column(SpaceText *st, const int x)
 {
-  /* add half the char width so mouse cursor selection is inbetween letters */
+  /* Add half the char width so mouse cursor selection is in between letters. */
   return (x + (st->cwidth / 2)) / st->cwidth;
 }
 
@@ -442,6 +442,8 @@ static int text_reload_exec(bContext *C, wmOperator *op)
   text_update_cursor_moved(C);
   text_drawcache_tag_update(CTX_wm_space_text(C), 1);
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
+
+  text->flags &= ~TXT_ISDIRTY;
 
   /* return to scroll position */
   st->top = orig_top;
@@ -3482,7 +3484,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
   }
   else {
     if (!found) {
-      BKE_reportf(op->reports, RPT_ERROR, "Text not found: %s", st->findstr);
+      BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
     }
   }
 

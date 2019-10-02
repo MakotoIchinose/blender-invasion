@@ -71,7 +71,14 @@ typedef struct tGPspoint {
   float uv_rot;   /* uv rotation for dor mode */
   float rnd[3];   /* rnd value */
   bool rnd_dirty; /* rnd flag */
+  short tflag;    /* Internal flag */
 } tGPspoint;
+
+/* tGPspoint->flag */
+typedef enum etGPspoint_tFlag {
+  /* Created by Fake event (used when mouse/pen move very fast while drawing). */
+  GP_TPOINT_FAKE = (1 << 0),
+} etGPspoint_tFlag;
 
 /* used to sort by zdepth gpencil objects in viewport */
 /* TODO: this could be a system parameter in userprefs screen */
@@ -288,4 +295,7 @@ struct tGPspoint *ED_gpencil_sbuffer_ensure(struct tGPspoint *buffer_array,
                                             short *buffer_size,
                                             short *buffer_used,
                                             const bool clear);
+/* Tag all scene grease pencil object to update. */
+void ED_gpencil_tag_scene_gpencil(struct Scene *scene);
+
 #endif /*  __ED_GPENCIL_H__ */

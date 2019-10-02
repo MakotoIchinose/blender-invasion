@@ -918,21 +918,21 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
 
   tmp_str = PyUnicode_FromString(id->name + 2);
 
-  if (RNA_struct_is_ID(self->ptr.type)) {
+  if (RNA_struct_is_ID(self->ptr.type) && (id->flag & LIB_PRIVATE_DATA) == 0) {
     ret = PyUnicode_FromFormat(
         "bpy.data.%s[%R]", BKE_idcode_to_name_plural(GS(id->name)), tmp_str);
   }
   else {
     const char *path;
-    path = RNA_path_from_ID_to_struct(&self->ptr);
+    ID *real_id = NULL;
+    path = RNA_path_from_real_ID_to_struct(G_MAIN, &self->ptr, &real_id);
     if (path) {
-      if (GS(id->name) == ID_NT) { /* Nodetree paths are not accurate. */
-        ret = PyUnicode_FromFormat("bpy.data...%s", path);
+      if (real_id != id) {
+        Py_DECREF(tmp_str);
+        tmp_str = PyUnicode_FromString(real_id->name + 2);
       }
-      else {
-        ret = PyUnicode_FromFormat(
-            "bpy.data.%s[%R].%s", BKE_idcode_to_name_plural(GS(id->name)), tmp_str, path);
-      }
+      ret = PyUnicode_FromFormat(
+          "bpy.data.%s[%R].%s", BKE_idcode_to_name_plural(GS(real_id->name)), tmp_str, path);
 
       MEM_freeN((void *)path);
     }
@@ -1033,20 +1033,23 @@ static PyObject *pyrna_prop_repr_ex(BPy_PropertyRNA *self, const int index_dim, 
 
   tmp_str = PyUnicode_FromString(id->name + 2);
 
-  path = RNA_path_from_ID_to_property_index(&self->ptr, self->prop, index_dim, index);
+  /* Note that using G_MAIN is absolutely not ideal, but we have no access to actual Main DB from
+   * here. */
+  ID *real_id = NULL;
+  path = RNA_path_from_real_ID_to_property_index(
+      G_MAIN, &self->ptr, self->prop, index_dim, index, &real_id);
 
   if (path) {
+    if (real_id != id) {
+      Py_DECREF(tmp_str);
+      tmp_str = PyUnicode_FromString(real_id->name + 2);
+    }
     const char *data_delim = (path[0] == '[') ? "" : ".";
-    if (GS(id->name) == ID_NT) { /* Nodetree paths are not accurate. */
-      ret = PyUnicode_FromFormat("bpy.data...%s", path);
-    }
-    else {
-      ret = PyUnicode_FromFormat("bpy.data.%s[%R]%s%s",
-                                 BKE_idcode_to_name_plural(GS(id->name)),
-                                 tmp_str,
-                                 data_delim,
-                                 path);
-    }
+    ret = PyUnicode_FromFormat("bpy.data.%s[%R]%s%s",
+                               BKE_idcode_to_name_plural(GS(real_id->name)),
+                               tmp_str,
+                               data_delim,
+                               path);
 
     MEM_freeN((void *)path);
   }
@@ -1765,7 +1768,12 @@ static int pyrna_py_to_prop(
         if (value == Py_None) {
           if ((RNA_property_flag(prop) & PROP_NEVER_NULL) == 0) {
             if (data) {
-              *((char **)data) = (char *)NULL;
+              if (RNA_property_flag(prop) & PROP_THICK_WRAP) {
+                *(char *)data = 0;
+              }
+              else {
+                *((char **)data) = (char *)NULL;
+              }
             }
             else {
               RNA_property_string_set(ptr, prop, NULL);
@@ -1810,7 +1818,12 @@ static int pyrna_py_to_prop(
           }
           else {
             if (data) {
-              *((char **)data) = (char *)param;
+              if (RNA_property_flag(prop) & PROP_THICK_WRAP) {
+                BLI_strncpy((char *)data, (char *)param, RNA_property_string_maxlength(prop));
+              }
+              else {
+                *((char **)data) = (char *)param;
+              }
             }
             else {
               RNA_property_string_set_bytes(ptr, prop, param, PyBytes_Size(value));
@@ -1859,7 +1872,12 @@ static int pyrna_py_to_prop(
             /* XXX, this is suspect, but needed for function calls,
              * need to see if there's a better way. */
             if (data) {
-              *((char **)data) = (char *)param;
+              if (RNA_property_flag(prop) & PROP_THICK_WRAP) {
+                BLI_strncpy((char *)data, (char *)param, RNA_property_string_maxlength(prop));
+              }
+              else {
+                *((char **)data) = (char *)param;
+              }
             }
             else {
               RNA_property_string_set(ptr, prop, param);
@@ -1910,7 +1928,7 @@ static int pyrna_py_to_prop(
          * layout.prop(self.properties, "filepath")
          *
          * we need to do this trick.
-         * if the prop is not an operator type and the pyobject is an operator,
+         * if the prop is not an operator type and the PyObject is an operator,
          * use its properties in place of itself.
          *
          * This is so bad that it is almost a good reason to do away with fake
@@ -3692,9 +3710,9 @@ static PyObject *pyrna_struct_is_property_readonly(BPy_StructRNA *self, PyObject
 PyDoc_STRVAR(pyrna_struct_is_property_overridable_library_doc,
              ".. method:: is_property_overridable_library(property)\n"
              "\n"
-             "   Check if a property is statically overridable.\n"
+             "   Check if a property is overridable.\n"
              "\n"
-             "   :return: True when the property is statically overridable.\n"
+             "   :return: True when the property is overridable.\n"
              "   :rtype: boolean\n");
 static PyObject *pyrna_struct_is_property_overridable_library(BPy_StructRNA *self, PyObject *args)
 {
@@ -3718,14 +3736,13 @@ static PyObject *pyrna_struct_is_property_overridable_library(BPy_StructRNA *sel
   return PyBool_FromLong((long)RNA_property_overridable_get(&self->ptr, prop));
 }
 
-PyDoc_STRVAR(
-    pyrna_struct_property_overridable_library_set_doc,
-    ".. method:: property_overridable_library_set(property)\n"
-    "\n"
-    "   Define a property as statically overridable or not (only for custom properties!).\n"
-    "\n"
-    "   :return: True when the overridable status of the property was successfully set.\n"
-    "   :rtype: boolean\n");
+PyDoc_STRVAR(pyrna_struct_property_overridable_library_set_doc,
+             ".. method:: property_overridable_library_set(property, overridable)\n"
+             "\n"
+             "   Define a property as overridable or not (only for custom properties!).\n"
+             "\n"
+             "   :return: True when the overridable status of the property was successfully set.\n"
+             "   :rtype: boolean\n");
 static PyObject *pyrna_struct_property_overridable_library_set(BPy_StructRNA *self, PyObject *args)
 {
   PropertyRNA *prop;
@@ -3968,7 +3985,7 @@ static PyObject *pyrna_struct_type_recast(BPy_StructRNA *self)
 }
 
 /**
- * \note Return value is borrowed, caller must incref.
+ * \note Return value is borrowed, caller must #Py_INCREF.
  */
 static PyObject *pyrna_struct_bl_rna_find_subclass_recursive(PyObject *cls, const char *id)
 {
@@ -7175,7 +7192,7 @@ static PyObject *pyrna_srna_Subtype(StructRNA *srna)
 #endif
 
     /* Newclass will now have 2 ref's, ???,
-     * probably 1 is internal since decrefing here segfaults. */
+     * probably 1 is internal since #Py_DECREF here segfaults. */
 
     /* PyC_ObSpit("new class ref", newclass); */
 

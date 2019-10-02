@@ -23,8 +23,6 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "GPU_extensions.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_view3d_types.h"
 
@@ -91,7 +89,6 @@ typedef struct EDIT_MESH_PassList {
 
 typedef struct EDIT_MESH_FramebufferList {
   struct GPUFrameBuffer *occlude_wire_fb;
-  struct GPUFrameBuffer *ghost_wire_fb;
 } EDIT_MESH_FramebufferList;
 
 typedef struct EDIT_MESH_StorageList {
@@ -105,8 +102,6 @@ typedef struct EDIT_MESH_Data {
   EDIT_MESH_PassList *psl;
   EDIT_MESH_StorageList *stl;
 } EDIT_MESH_Data;
-
-#define MAX_SHADERS 16
 
 /** Can only contain shaders (freed as array). */
 typedef struct EDIT_MESH_Shaders {
@@ -160,12 +155,6 @@ typedef struct EDIT_MESH_PrivateData {
 
   EDIT_MESH_ComponentShadingGroupList edit_shgrps;
   EDIT_MESH_ComponentShadingGroupList edit_in_front_shgrps;
-
-  DRWShadingGroup *vert_shgrp_in_front;
-  DRWShadingGroup *edge_shgrp_in_front;
-  DRWShadingGroup *face_shgrp_in_front;
-  DRWShadingGroup *face_cage_shgrp_in_front;
-  DRWShadingGroup *facedot_shgrp_in_front;
 
   DRWShadingGroup *facefill_occluded_shgrp;
   DRWShadingGroup *facefill_occluded_cage_shgrp;
@@ -459,7 +448,12 @@ static void EDIT_MESH_cache_init(void *vedata)
       }
       if ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_EDGES) == 0) {
         if ((tsettings->selectmode & SCE_SELECT_EDGE) == 0) {
-          g_data->do_edges = false;
+          if ((v3d->shading.type < OB_SOLID) || (v3d->shading.flag & V3D_SHADING_XRAY)) {
+            /* Special case, when drawing wire, draw edges, see: T67637. */
+          }
+          else {
+            g_data->do_edges = false;
+          }
         }
       }
       if ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CREASES) == 0) {

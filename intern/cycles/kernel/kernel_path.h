@@ -92,7 +92,7 @@ ccl_device_forceinline void kernel_path_lamp_emission(KernelGlobals *kg,
 #ifdef __LAMP_MIS__
   if (kernel_data.integrator.use_lamp_mis && !(state->flag & PATH_RAY_CAMERA)) {
     /* ray starting from previous non-transparent bounce */
-    Ray light_ray;
+    Ray light_ray ccl_optional_struct_init;
 
     light_ray.P = ray->P - state->ray_t * ray->D;
     state->ray_t += isect->t;
@@ -326,13 +326,19 @@ ccl_device_forceinline bool kernel_path_shader_apply(KernelGlobals *kg,
   return true;
 }
 
-ccl_device_noinline void kernel_path_ao(KernelGlobals *kg,
-                                        ShaderData *sd,
-                                        ShaderData *emission_sd,
-                                        PathRadiance *L,
-                                        ccl_addr_space PathState *state,
-                                        float3 throughput,
-                                        float3 ao_alpha)
+#ifdef __KERNEL_OPTIX__
+ccl_device_inline /* inline trace calls */
+#else
+ccl_device_noinline
+#endif
+    void
+    kernel_path_ao(KernelGlobals *kg,
+                   ShaderData *sd,
+                   ShaderData *emission_sd,
+                   PathRadiance *L,
+                   ccl_addr_space PathState *state,
+                   float3 throughput,
+                   float3 ao_alpha)
 {
   PROFILING_INIT(kg, PROFILING_AO);
 
@@ -655,9 +661,11 @@ ccl_device void kernel_path_trace(
 
   kernel_path_trace_setup(kg, sample, x, y, &rng_hash, &ray);
 
+#  ifndef __KERNEL_OPTIX__
   if (ray.t == 0.0f) {
     return;
   }
+#  endif
 
   /* Initialize state. */
   float3 throughput = make_float3(1.0f, 1.0f, 1.0f);
@@ -670,6 +678,13 @@ ccl_device void kernel_path_trace(
 
   PathState state;
   path_state_init(kg, emission_sd, &state, rng_hash, sample, &ray);
+
+#  ifdef __KERNEL_OPTIX__
+  /* Force struct into local memory to avoid costly spilling on trace calls. */
+  if (pass_stride < 0) /* This is never executed and just prevents the compiler from doing SROA. */
+    for (int i = 0; i < sizeof(L); ++i)
+      reinterpret_cast<unsigned char *>(&L)[-pass_stride + i] = 0;
+#  endif
 
   /* Integrate. */
   kernel_path_integrate(kg, &state, throughput, &ray, &L, buffer, emission_sd);
