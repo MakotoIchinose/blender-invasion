@@ -177,6 +177,7 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
   zero_v2(opdata->mcenter);
   float center[3] = {0.0f};
   int i = 0;
+  /* Need use evaluated to get the viewport final position. */
   GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
   {
     if (gps->flag & GP_STROKE_SELECT) {
@@ -195,8 +196,7 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
     opdata->array_rot = MEM_calloc_arrayN(i, sizeof(float), __func__);
     opdata->array_scale = MEM_calloc_arrayN(i, sizeof(float), __func__);
     i = 0;
-    GP_EVALUATED_STROKES_BEGIN(gpstroke_iter, C, gpl, gps)
-    {
+    GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
       if (gps->flag & GP_STROKE_SELECT) {
         copy_v2_v2(opdata->array_loc[i], gps->uv_translation);
         opdata->array_rot[i] = gps->uv_rotation;
@@ -204,7 +204,7 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
         i++;
       }
     }
-    GP_EVALUATED_STROKES_END(gpstroke_iter);
+    GP_EDITABLE_STROKES_END(gpstroke_iter);
   }
   /* convert to 2D */
   gp_point_3d_to_xy(&opdata->gsc, GP_STROKE_3DSPACE, center, opdata->mcenter);
