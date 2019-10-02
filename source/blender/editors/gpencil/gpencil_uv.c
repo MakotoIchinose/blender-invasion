@@ -499,7 +499,7 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
   /* properties */
-  ot->prop = RNA_def_enum(ot->srna, "mode", uv_mode, 0, "Mode", "");
+  ot->prop = RNA_def_enum(ot->srna, "mode", uv_mode, GP_UV_ROTATE, "Mode", "");
 
   prop = RNA_def_float_vector(
       ot->srna, "location", 2, NULL, -FLT_MAX, FLT_MAX, "Location", "", -FLT_MAX, FLT_MAX);
@@ -585,5 +585,5 @@ void GPENCIL_OT_reset_uv_transform(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  ot->prop = RNA_def_enum(ot->srna, "mode", uv_clear_mode, 0, "Mode", "");
+  ot->prop = RNA_def_enum(ot->srna, "mode", uv_clear_mode, GP_UV_ALL, "Mode", "");
 }
