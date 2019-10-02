@@ -67,7 +67,6 @@
 #include "BKE_global.h"  // for G
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"  // for ME_ defines (patching)
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_particle.h"
@@ -1555,7 +1554,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         for (sl = sa->spacedata.first; sl; sl = sl->next) {
           if (sl->spacetype == SPACE_IMAGE) {
             SpaceImage *sima = (SpaceImage *)sl;
-            scopes_new(&sima->scopes);
+            BKE_scopes_new(&sima->scopes);
           }
         }
       }
@@ -1697,7 +1696,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
       /* will have no effect */
       if (brush->alpha == 0) {
-        brush->alpha = 0.5f;
+        brush->alpha = 1.0f;
       }
 
       /* bad radius */
@@ -2080,11 +2079,12 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     }
   }
 
-  if (bmain->versionfile < 256 || (bmain->versionfile == 256 && bmain->subversionfile < 6)) {
-    Mesh *me;
-
-    for (me = bmain->meshes.first; me; me = me->id.next) {
-      BKE_mesh_calc_normals_tessface(me->mvert, me->totvert, me->mface, me->totface, NULL);
+  if (0) {
+    if (bmain->versionfile < 256 || (bmain->versionfile == 256 && bmain->subversionfile < 6)) {
+      for (Mesh *me = bmain->meshes.first; me; me = me->id.next) {
+        /* Vertex normal calculation from legacy 'MFace' has been removed.
+         * update after calculating polygons in file reading code instead. */
+      }
     }
   }
 

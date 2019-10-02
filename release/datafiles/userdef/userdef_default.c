@@ -16,10 +16,18 @@
 
 /* Preferences Data File 'U_default'. */
 
+/* For constants. */
+#include "BLI_math_base.h"
+
 #include "DNA_userdef_types.h"
 #include "DNA_curve_types.h"
+#include "DNA_space_types.h"
+
+#include "BLI_math_rotation.h"
 
 #include "BKE_blender_version.h"
+
+#include "BLO_readfile.h" /* own include */
 
 const UserDef U_default = {
     .versionfile = BLENDER_VERSION,
@@ -56,8 +64,6 @@ const UserDef U_default = {
     .gpu_flag = 0,
     .app_flag = 0,
     .language = 0,
-    .userpref = USER_SECTION_INTERFACE,
-    .userpref_flag = 0,
     .viewzoom = USER_ZOOM_DOLLY,
     .mixbufsize = 2048,
     .audiodevice = 0,
@@ -153,6 +159,8 @@ const UserDef U_default = {
     .autokey_flag = AUTOKEY_FLAG_XYZ2RGB,
     .text_render = 0,
     .navigation_mode = VIEW_NAVIGATION_WALK,
+    .view_rotate_sensitivity_turntable = DEG2RAD(0.4),
+    .view_rotate_sensitivity_trackball = 1.0f,
 
     /** Initialized by #BKE_colorband_init. */
     .coba_weight = {0},
@@ -173,6 +181,13 @@ const UserDef U_default = {
     .pie_menu_confirm = 0,
     .pie_menu_radius = 100,
     .pie_menu_threshold = 12,
+    .opensubdiv_compute_type = 0,
+    .gpencil_multisamples = 4,
+    .factor_display_type = USER_FACTOR_AS_FACTOR,
+    .render_display_type = USER_RENDER_DISPLAY_WINDOW,
+    .filebrowser_display_type = USER_TEMP_SPACE_DISPLAY_WINDOW,
+    .viewport_aa = 8,
+
     .walk_navigation =
         {
             .mouse_speed = 1,
@@ -183,10 +198,24 @@ const UserDef U_default = {
             .teleport_time = 0.2,
             .flag = 0,
         },
-    .opensubdiv_compute_type = 0,
-    .gpencil_multisamples = 4,
-    .factor_display_type = USER_FACTOR_AS_FACTOR,
-    .viewport_aa = 8,
+
+    .space_data =
+        {
+            .section_active = USER_SECTION_INTERFACE,
+        },
+
+    .file_space_data =
+        {
+            .display_type = FILE_VERTICALDISPLAY,
+            .thumbnail_size = 128,
+            .sort_type = FILE_SORT_ALPHA,
+            .details_flags = FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME,
+            .flag = FILE_HIDE_DOT,
+
+            .temp_win_sizex = 1020,
+            .temp_win_sizey = 600,
+        },
+
     .runtime =
         {
             .is_dirty = 0,

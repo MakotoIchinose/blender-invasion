@@ -733,7 +733,7 @@ void AnimationImporter::Assign_float_animations(const COLLADAFW::UniqueId &listi
            * Reason: old blender versions stored spot_size in radians (was a bug)
            */
           if (this->import_from_version == "" ||
-              BLI_natstrcmp(this->import_from_version.c_str(), "2.69.10") != -1) {
+              BLI_strcasecmp_natural(this->import_from_version.c_str(), "2.69.10") != -1) {
             fcurve_deg_to_rad(fcu);
           }
         }
@@ -966,7 +966,7 @@ void AnimationImporter::apply_matrix_curves(Object *ob,
 }
 
 /*
- * This function returns the aspet ration from the Collada camera.
+ * This function returns the aspect ration from the Collada camera.
  *
  * Note:COLLADA allows to specify either XFov, or YFov alone.
  * In that case the aspect ratio can be determined from

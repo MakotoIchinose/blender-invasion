@@ -113,6 +113,8 @@ class IMAGE_MT_view(Menu):
         layout.operator("image.view_all", text="Frame All")
         layout.operator("image.view_all", text="Frame All Fit").fit_view = True
 
+        layout.operator("image.view_center_cursor", text="Center View to Cursor")
+
         layout.separator()
 
         if show_render:
@@ -142,7 +144,7 @@ class IMAGE_MT_view_zoom(Menu):
 
             layout.operator(
                 "image.view_zoom_ratio",
-                text=iface_(f"Zoom {a:d}:{b:d}"),
+                text=iface_("Zoom %d:%d") % (a, b),
                 translate=False,
             ).ratio = a / b
 
@@ -176,6 +178,7 @@ class IMAGE_MT_select(Menu):
         layout.separator()
 
         layout.operator("uv.select_split")
+        layout.operator("uv.select_overlap")
 
 
 class IMAGE_MT_brush(Menu):
@@ -237,6 +240,7 @@ class IMAGE_MT_image(Menu):
             layout.separator()
 
             layout.menu("IMAGE_MT_image_invert")
+            layout.operator("image.resize", text="Resize")
 
         if ima and not show_render:
             if ima.packed_file:
@@ -960,7 +964,6 @@ class IMAGE_PT_view_display_uv_edit_overlays(Panel):
         col = layout.column()
 
         col.prop(uvedit, "edge_display_type", text="Display As")
-        col.prop(uvedit, "show_edges", text="Edges")
         col.prop(uvedit, "show_faces", text="Faces")
 
         col = layout.column()
@@ -1077,9 +1080,12 @@ class IMAGE_PT_paint_color(Panel, ImagePaintPanel):
         settings = context.tool_settings.image_paint
         brush = settings.brush
 
-        layout.active = not brush.use_gradient
+        layout.prop(brush, "color_type", expand=True)
 
-        brush_texpaint_common_color(self, context, layout, brush, settings, True)
+        if brush.color_type == 'COLOR':
+            brush_texpaint_common_color(self, context, layout, brush, settings, True)
+        elif brush.color_type == 'GRADIENT':
+            brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class IMAGE_PT_paint_swatches(Panel, ImagePaintPanel):
@@ -1104,38 +1110,6 @@ class IMAGE_PT_paint_swatches(Panel, ImagePaintPanel):
         layout.template_ID(settings, "palette", new="palette.new")
         if settings.palette:
             layout.template_palette(settings, "palette", color=True)
-
-
-class IMAGE_PT_paint_gradient(Panel, ImagePaintPanel):
-    bl_category = "Tool"
-    bl_context = ".paint_common_2d"
-    bl_parent_id = "IMAGE_PT_paint"
-    bl_label = "Gradient"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-        capabilities = brush.image_paint_capabilities
-
-        return capabilities.has_color
-
-    def draw_header(self, context):
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-        self.layout.prop(brush, "use_gradient", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = False
-        layout.use_property_decorate = False  # No animation.
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-
-        layout.active = brush.use_gradient
-
-        brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class IMAGE_PT_paint_clone(Panel, ImagePaintPanel):
@@ -1740,7 +1714,6 @@ classes = (
     IMAGE_PT_paint,
     IMAGE_PT_paint_color,
     IMAGE_PT_paint_swatches,
-    IMAGE_PT_paint_gradient,
     IMAGE_PT_paint_clone,
     IMAGE_PT_paint_options,
     IMAGE_PT_tools_brush_texture,

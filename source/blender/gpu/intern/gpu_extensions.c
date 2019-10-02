@@ -309,6 +309,7 @@ void gpu_extensions_init(void)
   }
   else if ((strstr(renderer, "Mesa DRI R")) ||
            (strstr(renderer, "Radeon") && strstr(vendor, "X.Org")) ||
+           (strstr(renderer, "AMD") && strstr(vendor, "X.Org")) ||
            (strstr(renderer, "Gallium ") && strstr(renderer, " on ATI ")) ||
            (strstr(renderer, "Gallium ") && strstr(renderer, " on AMD "))) {
     GG.device = GPU_DEVICE_ATI;
@@ -364,10 +365,13 @@ void gpu_extensions_init(void)
     GG.mip_render_workaround = true;
     GG.depth_blitting_workaround = true;
     GG.unused_fb_slot_workaround = true;
-    GG.context_local_shaders_workaround = true;
+    GG.context_local_shaders_workaround = GLEW_ARB_get_program_binary;
   }
 
   /* df/dy calculation factors, those are dependent on driver */
+  GG.dfdyfactors[0] = 1.0;
+  GG.dfdyfactors[1] = 1.0;
+
   if ((strstr(vendor, "ATI") && strstr(version, "3.3.10750"))) {
     GG.dfdyfactors[0] = 1.0;
     GG.dfdyfactors[1] = -1.0;
@@ -382,21 +386,26 @@ void gpu_extensions_init(void)
       GG.dfdyfactors[0] = -1.0;
       GG.dfdyfactors[1] = 1.0;
     }
-    else {
-      GG.dfdyfactors[0] = 1.0;
-      GG.dfdyfactors[1] = 1.0;
-    }
 
-    if (strstr(version, "Build 10.18.10.3379") || strstr(version, "Build 10.18.10.3574") ||
-        strstr(version, "Build 10.18.10.4252") || strstr(version, "Build 10.18.10.4358") ||
-        strstr(version, "Build 10.18.10.4653") || strstr(version, "Build 10.18.10.5069") ||
-        strstr(version, "Build 10.18.14.4264") || strstr(version, "Build 10.18.14.4432") ||
-        strstr(version, "Build 10.18.14.5067")) {
+    if (strstr(version, "Build 10.18.10.3") || strstr(version, "Build 10.18.10.4") ||
+        strstr(version, "Build 10.18.10.5") || strstr(version, "Build 10.18.14.4") ||
+        strstr(version, "Build 10.18.14.5")) {
       /* Maybe not all of these drivers have problems with `GLEW_ARB_base_instance`.
        * But it's hard to test each case. */
       GG.glew_arb_base_instance_is_supported = false;
       GG.context_local_shaders_workaround = true;
     }
+
+    if (strstr(version, "Build 20.19.15.4285")) {
+      /* Somehow fixes armature display issues (see T69743). */
+      GG.context_local_shaders_workaround = true;
+    }
+  }
+  else if ((GG.device == GPU_DEVICE_ATI) && (GG.os == GPU_OS_UNIX) &&
+           (GG.driver == GPU_DRIVER_OPENSOURCE)) {
+    /* See T70187: merging vertices fail. This has been tested from 18.2.2 till 19.3.0~dev of the
+     * Mesa driver */
+    GG.unused_fb_slot_workaround = true;
   }
 
   GPU_invalid_tex_init();

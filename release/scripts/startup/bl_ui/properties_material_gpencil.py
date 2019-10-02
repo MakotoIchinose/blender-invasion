@@ -44,6 +44,10 @@ class GPENCIL_MT_color_context_menu(Menu):
         layout.operator("gpencil.stroke_lock_color", text="Lock Unselected")
         layout.operator("gpencil.lock_layer", text="Lock Unused")
 
+        layout.separator()
+
+        layout.operator("object.material_slot_remove_unused")
+
 
 class GPENCIL_UL_matslots(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
@@ -152,15 +156,14 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                     if gpcolor.use_stroke_texture_mix is True:
                         col.prop(gpcolor, "mix_stroke_factor", text="Factor")
 
-            if (
-                    gpcolor.stroke_style == 'SOLID' or
-                    gpcolor.use_stroke_pattern or
-                    gpcolor.use_stroke_texture_mix
-            ):
+            if (gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern or gpcolor.use_stroke_texture_mix):
                 col.prop(gpcolor, "color", text="Color")
 
             if gpcolor.mode in {'DOTS', 'BOX'}:
                 col.prop(gpcolor, "alignment_mode")
+
+            if gpcolor.mode == 'LINE' and gpcolor.stroke_style != 'TEXTURE':
+                col.prop(gpcolor, "use_overlap_strokes")
 
 
 class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
@@ -217,7 +220,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.template_ID(gpcolor, "fill_image", open="image.open")
 
             if gpcolor.fill_style == 'TEXTURE':
-                col.prop(gpcolor, "use_fill_pattern", text="Use As Stencil Mask")
+                col.prop(gpcolor, "use_fill_pattern", text="Use as Stencil Mask")
                 if gpcolor.use_fill_pattern is True:
                     col.prop(gpcolor, "fill_color", text="Color")
 
@@ -228,7 +231,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.prop(gpcolor, "texture_clamp", text="Clip Image")
 
             if gpcolor.use_fill_pattern is False:
-                col.prop(gpcolor, "use_fill_texture_mix", text="Mix With Color")
+                col.prop(gpcolor, "use_fill_texture_mix", text="Mix with Color")
 
                 if gpcolor.use_fill_texture_mix is True:
                     col.prop(gpcolor, "fill_color", text="Mix Color")

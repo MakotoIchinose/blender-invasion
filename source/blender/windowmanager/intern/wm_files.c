@@ -52,8 +52,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
 #include "BLI_utildefines.h"
+#include "BLI_timer.h"
 #include "BLI_threads.h"
-#include "BLI_callbacks.h"
 #include "BLI_system.h"
 #include BLI_SYSTEM_PID_H
 
@@ -73,10 +73,11 @@
 #include "BKE_autoexec.h"
 #include "BKE_blender.h"
 #include "BKE_blendfile.h"
-#include "BKE_blender_undo.h"
+#include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
+#include "BKE_library_override.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
@@ -100,6 +101,7 @@
 #include "ED_datafiles.h"
 #include "ED_fileselect.h"
 #include "ED_image.h"
+#include "ED_outliner.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
 #include "ED_util.h"
@@ -111,8 +113,6 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 #include "UI_view2d.h"
-
-#include "GPU_draw.h"
 
 /* only to report a missing engine */
 #include "RE_engine.h"
@@ -534,16 +534,16 @@ static void wm_file_read_post(bContext *C,
 
   if (use_userdef) {
     if (is_factory_startup) {
-      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_USERDEF_POST);
+      BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_USERDEF_POST);
     }
   }
 
   if (use_data) {
     /* important to do before NULL'ing the context */
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_VERSION_UPDATE);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_POST);
     if (is_factory_startup) {
-      BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
+      BKE_callback_exec_null(bmain, BKE_CB_EVT_LOAD_FACTORY_STARTUP_POST);
     }
   }
 
@@ -606,7 +606,8 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   WM_cursor_wait(1);
 
-  BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_PRE);
+  BKE_callback_exec_null(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE);
+  BLI_timer_on_file_load();
 
   UI_view2d_zoom_cache_reset();
 
@@ -803,7 +804,8 @@ void wm_homefile_read(bContext *C,
   }
 
   if (use_data) {
-    BLI_callback_exec(CTX_data_main(C), NULL, BLI_CB_EVT_LOAD_PRE);
+    BKE_callback_exec_null(CTX_data_main(C), BKE_CB_EVT_LOAD_PRE);
+    BLI_timer_on_file_load();
 
     G.relbase_valid = 0;
 
@@ -1061,6 +1063,7 @@ void wm_homefile_read(bContext *C,
   }
 }
 
+/* -------------------------------------------------------------------- */
 /** \name WM History File API
  * \{ */
 
@@ -1189,6 +1192,10 @@ static void wm_history_file_update(void)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Save Main .blend File (internal)
+ * \{ */
+
 /* screen can be NULL */
 static ImBuf *blend_file_thumb(const bContext *C,
                                Scene *scene,
@@ -1198,6 +1205,8 @@ static ImBuf *blend_file_thumb(const bContext *C,
   /* will be scaled down, but gives some nice oversampling */
   ImBuf *ibuf;
   BlendThumbnail *thumb;
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *windrawable_old = wm->windrawable;
   char err_out[256] = "unknown";
 
   /* screen if no camera found */
@@ -1261,6 +1270,14 @@ static ImBuf *blend_file_thumb(const bContext *C,
                                           NULL,
                                           NULL,
                                           err_out);
+  }
+
+  /* Reset to old drawable. */
+  if (windrawable_old) {
+    wm_window_make_drawable(wm, windrawable_old);
+  }
+  else {
+    wm_window_clear_drawable(wm);
   }
 
   if (ibuf) {
@@ -1346,9 +1363,12 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
     }
   }
 
-  /* Call pre-save callbacks befores writing preview,
+  /* Call pre-save callbacks before writing preview,
    * that way you can generate custom file thumbnail. */
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_PRE);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_PRE);
+
+  /* Enforce full override check/generation on file save. */
+  BKE_main_override_library_operations_create(bmain, true);
 
   /* blend file thumbnail */
   /* Save before exit_editmode, otherwise derivedmeshes for shared data corrupt T27765. */
@@ -1398,7 +1418,7 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
       wm_history_file_update();
     }
 
-    BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_POST);
+    BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_POST);
 
     /* run this function after because the file cant be written before the blend is */
     if (ibuf_thumb) {
@@ -1422,7 +1442,11 @@ static bool wm_file_write(bContext *C, const char *filepath, int fileflags, Repo
   return ok;
 }
 
-/************************ autosave ****************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Auto-Save API
+ * \{ */
 
 void wm_autosave_location(char *filepath)
 {
@@ -1550,6 +1574,9 @@ void wm_autosave_read(bContext *C, ReportList *reports)
   WM_file_read(C, filename, reports);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Initialize WM_OT_open_xxx properties
  *
  * Check if load_ui was set by the caller.
@@ -1593,8 +1620,8 @@ void WM_file_tag_modified(void)
   }
 }
 
+/* -------------------------------------------------------------------- */
 /** \name Preferences/startup save & load.
- *
  * \{ */
 
 /**
@@ -1616,7 +1643,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_PRE);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_PRE);
 
   /* check current window and close it if temp */
   if (win && WM_window_is_temp_screen(win)) {
@@ -1644,7 +1671,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
 
   G.save_over = 0;
 
-  BLI_callback_exec(bmain, NULL, BLI_CB_EVT_SAVE_POST);
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_SAVE_POST);
 
   return OPERATOR_FINISHED;
 }
@@ -1737,7 +1764,7 @@ static void wm_userpref_read_exceptions(UserDef *userdef_curr, const UserDef *us
   ((void)0)
 
   /* Current visible preferences category. */
-  USERDEF_RESTORE(userpref);
+  USERDEF_RESTORE(space_data.section_active);
 
 #undef USERDEF_RESTORE
 }
@@ -1792,7 +1819,9 @@ static void wm_userpref_update_when_changed(bContext *C,
   BPY_execute_string(C, (const char *[]){"addon_utils", NULL}, "addon_utils.reset_all()");
 #endif
 
+  WM_reinit_gizmomap_all(bmain);
   WM_keyconfig_reload(C);
+
   userdef_curr->runtime.is_dirty = is_dirty;
 }
 
@@ -1947,6 +1976,14 @@ static int wm_homefile_read_exec(bContext *C, wmOperator *op)
   if (use_userdef) {
     wm_userpref_read_exceptions(&U, &U_backup);
     SET_FLAG_FROM_TEST(G.f, use_factory_settings, G_FLAG_USERPREF_NO_SAVE_ON_EXIT);
+
+    if (use_factory_settings) {
+      U.runtime.is_dirty = true;
+    }
+  }
+
+  if (G.fileflags & G_FILE_NO_UI) {
+    ED_outliner_select_sync_from_all_tag(C);
   }
 
   return OPERATOR_FINISHED;
@@ -2035,8 +2072,8 @@ void WM_OT_read_factory_settings(wmOperatorType *ot)
 
 /** \} */
 
-/** \name Open main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Open Main .blend File Utilities
  * \{ */
 
 /**
@@ -2062,8 +2099,7 @@ static bool wm_file_read_opwrap(bContext *C,
   return success;
 }
 
-/* Generic operator state utilities
- *********************************************/
+/* Generic operator state utilities */
 
 static void create_operator_state(wmOperatorType *ot, int first_state)
 {
@@ -2101,8 +2137,11 @@ static int operator_state_dispatch(bContext *C, wmOperator *op, OperatorDispatch
   return OPERATOR_CANCELLED;
 }
 
-/* Open Mainfile operator
- ********************************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Open Main .blend File Operator
+ * \{ */
 
 enum {
   OPEN_MAINFILE_STATE_DISCARD_CHANGES,
@@ -2202,6 +2241,10 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
   BKE_report_print_level_set(op->reports, RPT_WARNING);
 
   if (success) {
+    if (G.fileflags & G_FILE_NO_UI) {
+      ED_outliner_select_sync_from_all_tag(C);
+    }
+    ED_view3d_local_collections_reset(C, (G.fileflags & G_FILE_NO_UI) != 0);
     return OPERATOR_FINISHED;
   }
   else {
@@ -2290,7 +2333,7 @@ static void wm_open_mainfile_ui(bContext *UNUSED(C), wmOperator *op)
 
 void WM_OT_open_mainfile(wmOperatorType *ot)
 {
-  ot->name = "Open Blender File";
+  ot->name = "Open";
   ot->idname = "WM_OT_open_mainfile";
   ot->description = "Open a Blender file";
 
@@ -2326,8 +2369,8 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
 
 /** \} */
 
-/** \name Reload (revert) main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Reload (revert) Main .blend File Operator
  * \{ */
 
 static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
@@ -2366,7 +2409,10 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
   ot->name = "Revert";
   ot->idname = "WM_OT_revert_mainfile";
   ot->description = "Reload the saved file";
+
   ot->invoke = WM_operator_confirm;
+  ot->exec = wm_revert_mainfile_exec;
+  ot->poll = wm_revert_mainfile_poll;
 
   RNA_def_boolean(ot->srna,
                   "use_scripts",
@@ -2374,15 +2420,12 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
                   "Trusted Source",
                   "Allow .blend file to execute scripts automatically, default available from "
                   "system preferences");
-
-  ot->exec = wm_revert_mainfile_exec;
-  ot->poll = wm_revert_mainfile_poll;
 }
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
 /** \name Recover last session & auto-save.
- *
  * \{ */
 
 void WM_recover_last_session(bContext *C, ReportList *reports)
@@ -2421,8 +2464,8 @@ void WM_OT_recover_last_session(wmOperatorType *ot)
   ot->name = "Recover Last Session";
   ot->idname = "WM_OT_recover_last_session";
   ot->description = "Open the last closed file (\"" BLENDER_QUIT_FILE "\")";
-  ot->invoke = WM_operator_confirm;
 
+  ot->invoke = WM_operator_confirm;
   ot->exec = wm_recover_last_session_exec;
 }
 
@@ -2464,22 +2507,22 @@ void WM_OT_recover_auto_save(wmOperatorType *ot)
   ot->idname = "WM_OT_recover_auto_save";
   ot->description = "Open an automatically saved file to recover it";
 
-  ot->exec = wm_recover_auto_save_exec;
   ot->invoke = wm_recover_auto_save_invoke;
+  ot->exec = wm_recover_auto_save_exec;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_BLENDER,
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH,
-                                 FILE_LONGDISPLAY,
+                                 FILE_VERTICALDISPLAY,
                                  FILE_SORT_TIME);
 }
 
 /** \} */
 
-/** \name Save main .blend file.
- *
+/* -------------------------------------------------------------------- */
+/** \name Save Main .blend File Operator
  * \{ */
 
 static void wm_filepath_default(char *filepath)
@@ -2606,7 +2649,7 @@ void WM_OT_save_as_mainfile(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  ot->name = "Save As Blender File";
+  ot->name = "Save As";
   ot->idname = "WM_OT_save_as_mainfile";
   ot->description = "Save the current file in the desired location";
 
@@ -2707,8 +2750,8 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
 /** \name Auto-execution of scripts warning popup
- *
  * \{ */
 
 static void wm_block_autorun_warning_ignore(bContext *C, void *arg_block, void *UNUSED(arg))
@@ -2812,6 +2855,12 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
   /* Buttons */
   uiBut *but;
   uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
+  uiLayoutSetScaleY(split, 1.2f);
+
+  /* empty space */
+  col = uiLayoutColumn(split, false);
+  uiItemS(col);
+
   col = uiLayoutColumn(split, false);
 
   /* Allow reload if we have a saved file.
@@ -2852,12 +2901,9 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
                            TIP_("Enable scripts"));
     UI_but_func_set(but, wm_block_autorun_warning_enable_scripts, block, NULL);
   }
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 
-  /* empty space between buttons */
   col = uiLayoutColumn(split, false);
-  uiItemS(col);
-
-  col = uiLayoutColumn(split, 1);
   but = uiDefIconTextBut(block,
                          UI_BTYPE_BUT,
                          0,
@@ -2874,8 +2920,10 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
                          0,
                          TIP_("Continue using file without Python scripts"));
   UI_but_func_set(but, wm_block_autorun_warning_ignore, block, NULL);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 
-  UI_block_bounds_set_centered(block, 10);
+  UI_block_bounds_set_centered(block, 14 * U.dpi_fac);
 
   return block;
 }
@@ -2978,7 +3026,7 @@ static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback 
 static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Discard Changes"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Don't Save"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_file_close_discard, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -2998,8 +3046,28 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
 {
   wmGenericCallback *post_action = (wmGenericCallback *)arg1;
   Main *bmain = CTX_data_main(C);
-
   uiStyle *style = UI_style_get();
+  uiFontStyle *fs = &style->widgetlabel;
+
+  /* Filename */
+  const char *blendfile_pathpath = BKE_main_blendfile_path(bmain);
+  char filename[FILE_MAX];
+  if (blendfile_pathpath[0] != '\0') {
+    BLI_split_file_part(blendfile_pathpath, filename, sizeof(filename));
+    BLI_path_extension_replace(filename, sizeof(filename), "");
+  }
+  else {
+    STRNCPY(filename, IFACE_("Untitled"));
+  }
+
+  /* Title */
+  char title[FILE_MAX + 100];
+  UI_text_clip_middle_ex(
+      fs, filename, U.widget_unit * 9, U.widget_unit * 2, sizeof(filename), '\0');
+  BLI_snprintf(title, sizeof(title), TIP_("Save changes to \"%s\" before closing?"), filename);
+  int title_width = MAX2(UI_fontstyle_string_width(fs, title), U.widget_unit * 22);
+
+  /* Create dialog */
   uiBlock *block = UI_block_begin(C, ar, close_file_dialog_name, UI_EMBOSS);
 
   UI_block_flag_enable(
@@ -3012,24 +3080,24 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
                                      UI_LAYOUT_PANEL,
                                      10,
                                      2,
-                                     U.widget_unit * 24,
+                                     U.widget_unit * 2 + title_width,
                                      U.widget_unit * 6,
                                      0,
                                      style);
 
   /* Title */
-  bool blend_file_is_saved = BKE_main_blendfile_path(bmain)[0] != '\0';
-  if (blend_file_is_saved) {
-    uiItemL(layout, "This file has unsaved changes.", ICON_INFO);
-  }
-  else {
-    uiItemL(layout, "This file has not been saved yet.", ICON_INFO);
-  }
+  uiItemL(layout, title, ICON_ERROR);
 
   /* Image Saving */
   ReportList reports;
   BKE_reports_init(&reports, RPT_STORE);
   uint modified_images_count = ED_image_save_all_modified_info(C, &reports);
+
+  LISTBASE_FOREACH (Report *, report, &reports.list) {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiLayoutSetRedAlert(row, true);
+    uiItemL(row, report->message, ICON_CANCEL);
+  }
 
   if (modified_images_count > 0) {
     char message[64];
@@ -3038,6 +3106,7 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
                  (modified_images_count == 1) ? "Save %u modified image" :
                                                 "Save %u modified images",
                  modified_images_count);
+    uiItemS(layout);
     uiDefButBitC(block,
                  UI_BTYPE_CHECKBOX,
                  1,
@@ -3055,13 +3124,9 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
                  "");
   }
 
-  LISTBASE_FOREACH (Report *, report, &reports.list) {
-    uiItemL(layout, report->message, ICON_ERROR);
-  }
-
   BKE_reports_clear(&reports);
 
-  uiItemL(layout, "", ICON_NONE);
+  uiItemS_ex(layout, 3.0f);
 
   /* Buttons */
 #ifdef _WIN32
@@ -3070,10 +3135,12 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
   const bool windows_layout = false;
 #endif
 
-  uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
-
   if (windows_layout) {
     /* Windows standard layout. */
+
+    uiLayout *split = uiLayoutSplit(layout, 0.18f, true);
+    uiLayoutSetScaleY(split, 1.2f);
+
     uiLayout *col = uiLayoutColumn(split, false);
     uiItemS(col);
 
@@ -3088,20 +3155,24 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
   }
   else {
     /* macOS and Linux standard layout. */
-    uiLayout *col = uiLayoutColumn(split, false);
+
+    uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
+    uiLayoutSetScaleY(split, 1.2f);
+
+    uiLayout *col = uiLayoutColumn(split, true);
     wm_block_file_close_discard_button(block, post_action);
 
-    col = uiLayoutColumn(split, false);
+    col = uiLayoutColumn(split, true);
     uiItemS(col);
 
-    col = uiLayoutColumn(split, false);
+    col = uiLayoutColumn(split, true);
     wm_block_file_close_cancel_button(block, post_action);
 
     col = uiLayoutColumn(split, false);
     wm_block_file_close_save_button(block, post_action);
   }
 
-  UI_block_bounds_set_centered(block, 10);
+  UI_block_bounds_set_centered(block, 14 * U.dpi_fac);
   return block;
 }
 

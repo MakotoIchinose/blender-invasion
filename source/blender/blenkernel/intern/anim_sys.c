@@ -305,8 +305,9 @@ AnimData *BKE_animdata_copy(Main *bmain, AnimData *adt, const int flag)
   /* make a copy of action - at worst, user has to delete copies... */
   if (do_action) {
     BLI_assert(bmain != NULL);
-    BKE_id_copy(bmain, (ID *)dadt->action, (ID **)&dadt->action);
-    BKE_id_copy(bmain, (ID *)dadt->tmpact, (ID **)&dadt->tmpact);
+    BLI_assert(dadt->action == NULL || dadt->action != dadt->tmpact);
+    BKE_id_copy_ex(bmain, (ID *)dadt->action, (ID **)&dadt->action, flag);
+    BKE_id_copy_ex(bmain, (ID *)dadt->tmpact, (ID **)&dadt->tmpact, flag);
   }
   else if (do_id_user) {
     id_us_plus((ID *)dadt->action);
@@ -648,7 +649,7 @@ char *BKE_animdata_driver_path_hack(bContext *C,
                                     PropertyRNA *prop,
                                     char *base_path)
 {
-  ID *id = (ID *)ptr->id.data;
+  ID *id = ptr->owner_id;
   ScrArea *sa = CTX_wm_area(C);
 
   /* get standard path which may be extended */
@@ -1656,14 +1657,14 @@ static bool animsys_store_rna_setting(PointerRNA *ptr,
   if (path) {
     /* get property to write to */
     if (RNA_path_resolve_property(ptr, path, &r_result->ptr, &r_result->prop)) {
-      if ((ptr->id.data == NULL) || RNA_property_animateable(&r_result->ptr, r_result->prop)) {
+      if ((ptr->owner_id == NULL) || RNA_property_animateable(&r_result->ptr, r_result->prop)) {
         int array_len = RNA_property_array_length(&r_result->ptr, r_result->prop);
 
         if (array_len && array_index >= array_len) {
           if (G.debug & G_DEBUG) {
             CLOG_WARN(&LOG,
                       "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
-                      (ptr->id.data) ? (((ID *)ptr->id.data)->name + 2) : "<No ID>",
+                      (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
                       path,
                       array_index,
                       array_len - 1);
@@ -1682,7 +1683,7 @@ static bool animsys_store_rna_setting(PointerRNA *ptr,
       if (G.debug & G_DEBUG) {
         CLOG_WARN(&LOG,
                   "Animato: Invalid path. ID = '%s',  '%s[%d]'",
-                  (ptr->id.data) ? (((ID *)ptr->id.data)->name + 2) : "<No ID>",
+                  (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
                   path,
                   array_index);
       }
@@ -1703,7 +1704,7 @@ static bool animsys_read_rna_setting(PathResolvedRNA *anim_rna, float *r_value)
   float orig_value;
 
   /* caller must ensure this is animatable */
-  BLI_assert(RNA_property_animateable(ptr, prop) || ptr->id.data == NULL);
+  BLI_assert(RNA_property_animateable(ptr, prop) || ptr->owner_id == NULL);
 
   switch (RNA_property_type(prop)) {
     case PROP_BOOLEAN: {
@@ -1765,7 +1766,7 @@ static bool animsys_write_rna_setting(PathResolvedRNA *anim_rna, const float val
   int array_index = anim_rna->prop_index;
 
   /* caller must ensure this is animatable */
-  BLI_assert(RNA_property_animateable(ptr, prop) || ptr->id.data == NULL);
+  BLI_assert(RNA_property_animateable(ptr, prop) || ptr->owner_id == NULL);
 
   /* Check whether value is new. Otherwise we skip all the updates. */
   float old_value;
@@ -1844,7 +1845,7 @@ static bool animsys_construct_orig_pointer_rna(const PointerRNA *ptr, PointerRNA
    * not a valid pointer, but there are exceptions in various places of this file which handles
    * such pointers.
    * We do special trickery here as well, to quickly go from evaluated to original NlaStrip. */
-  if (ptr->id.data == NULL) {
+  if (ptr->owner_id == NULL) {
     if (ptr->type != &RNA_NlaStrip) {
       return false;
     }
@@ -1855,8 +1856,8 @@ static bool animsys_construct_orig_pointer_rna(const PointerRNA *ptr, PointerRNA
     ptr_orig->data = strip->orig_strip;
   }
   else {
-    ptr_orig->id.data = ((ID *)ptr_orig->id.data)->orig_id;
-    ptr_orig->data = ptr_orig->id.data;
+    ptr_orig->owner_id = ptr_orig->owner_id->orig_id;
+    ptr_orig->data = ptr_orig->owner_id;
   }
   return true;
 }
@@ -2003,7 +2004,7 @@ void animsys_evaluate_action_group(PointerRNA *ptr, bAction *act, bActionGroup *
     return;
   }
 
-  action_idcode_patch_check(ptr->id.data, act);
+  action_idcode_patch_check(ptr->owner_id, act);
 
   /* if group is muted, don't evaluated any of the F-Curve */
   if (agrp->flag & AGRP_MUTED) {
@@ -2034,7 +2035,7 @@ static void animsys_evaluate_action_ex(PointerRNA *ptr,
     return;
   }
 
-  action_idcode_patch_check(ptr->id.data, act);
+  action_idcode_patch_check(ptr->owner_id, act);
 
   /* calculate then execute each curve */
   animsys_evaluate_fcurves(ptr, &act->curves, ctime, flush_to_original);
@@ -2643,7 +2644,7 @@ static NlaEvalChannel *nlaevalchan_verify(PointerRNA *ptr, NlaEvalData *nlaeval,
     if (G.debug & G_DEBUG) {
       CLOG_WARN(&LOG,
                 "Animato: Invalid path. ID = '%s',  '%s'",
-                (ptr->id.data) ? (((ID *)ptr->id.data)->name + 2) : "<No ID>",
+                (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
                 path);
     }
 
@@ -2651,7 +2652,7 @@ static NlaEvalChannel *nlaevalchan_verify(PointerRNA *ptr, NlaEvalData *nlaeval,
   }
 
   /* Check that the property can be animated. */
-  if (ptr->id.data != NULL && !RNA_property_animateable(&key.ptr, key.prop)) {
+  if (ptr->owner_id != NULL && !RNA_property_animateable(&key.ptr, key.prop)) {
     return NULL;
   }
 
@@ -2884,7 +2885,7 @@ static bool nlaeval_blend_value(NlaBlendData *blend,
 
   if (index < 0) {
     if (G.debug & G_DEBUG) {
-      ID *id = nec->key.ptr.id.data;
+      ID *id = nec->key.ptr.owner_id;
       CLOG_WARN(&LOG,
                 "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
                 id ? (id->name + 2) : "<No ID>",
@@ -3081,7 +3082,7 @@ static void nlastrip_evaluate_actionclip(PointerRNA *ptr,
     return;
   }
 
-  action_idcode_patch_check(ptr->id.data, strip->act);
+  action_idcode_patch_check(ptr->owner_id, strip->act);
 
   /* join this strip's modifiers to the parent's modifiers (own modifiers first) */
   nlaeval_fmodifiers_join_stacks(&tmp_modifiers, &strip->modifiers, modifiers);
@@ -3940,7 +3941,7 @@ void BKE_animsys_evaluate_all_animation(Main *main,
    * - this is like EVAL_ANIM_IDS, but this handles the case "embedded nodetrees"
    *   (i.e. scene/material/texture->nodetree) which we need a special exception
    *   for, otherwise they'd get skipped
-   * - ntp = "node tree parent" = data-block where node tree stuff resides
+   * - 'ntp' stands for "node tree parent" = data-block where node tree stuff resides
    */
 #define EVAL_ANIM_NODETREE_IDS(first, NtId_Type, aflag) \
   for (id = first; id; id = id->next) { \
@@ -4081,11 +4082,10 @@ void BKE_animsys_update_driver_array(ID *id)
   }
 }
 
-void BKE_animsys_eval_driver(Depsgraph *depsgraph,
-                             ID *id,
-                             int driver_index,
-                             ChannelDriver *driver_orig)
+void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCurve *fcu_orig)
 {
+  BLI_assert(fcu_orig != NULL);
+
   /* TODO(sergey): De-duplicate with BKE animsys. */
   PointerRNA id_ptr;
   bool ok = false;
@@ -4110,6 +4110,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph,
   if ((fcu->flag & (FCURVE_MUTED | FCURVE_DISABLED)) == 0) {
     /* check if driver itself is tagged for recalculation */
     /* XXX driver recalc flag is not set yet by depsgraph! */
+    ChannelDriver *driver_orig = fcu_orig->driver;
     if ((driver_orig) && !(driver_orig->flag & DRIVER_FLAG_INVALID)) {
       /* evaluate this using values set already in other places
        * NOTE: for 'layering' option later on, we should check if we should remove old value before
@@ -4120,7 +4121,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph,
       if (animsys_store_rna_setting(&id_ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
         /* Evaluate driver, and write results to COW-domain destination */
         const float ctime = DEG_get_ctime(depsgraph);
-        const float curval = evaluate_fcurve_driver(&anim_rna, fcu, driver_orig, ctime);
+        const float curval = calculate_fcurve(&anim_rna, fcu, ctime);
         ok = animsys_write_rna_setting(&anim_rna, curval);
 
         /* Flush results & status codes to original data for UI (T59984) */
@@ -4128,6 +4129,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph,
           animsys_write_orig_anim_rna(&id_ptr, fcu->rna_path, fcu->array_index, curval);
 
           /* curval is displayed in the UI, and flag contains error-status codes */
+          fcu_orig->curval = fcu->curval;
           driver_orig->curval = fcu->driver->curval;
           driver_orig->flag = fcu->driver->flag;
 

@@ -77,15 +77,11 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_texture.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-
 #include "ED_object.h"
-#include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_paint.h"
 #include "ED_screen.h"
@@ -105,7 +101,6 @@
 
 #include "IMB_colormanagement.h"
 
-#include "bmesh.h"
 //#include "bmesh_tools.h"
 
 #include "paint_intern.h"
@@ -1695,7 +1690,7 @@ static float project_paint_uvpixel_mask(const ProjPaintState *ps,
     ca3 = ps->cavities[lt_vtri[2]];
 
     ca_mask = w[0] * ca1 + w[1] * ca2 + w[2] * ca3;
-    ca_mask = curvemapping_evaluateF(ps->cavity_curve, 0, ca_mask);
+    ca_mask = BKE_curvemapping_evaluateF(ps->cavity_curve, 0, ca_mask);
     CLAMP(ca_mask, 0.0f, 1.0f);
     mask *= ca_mask;
   }
@@ -1719,9 +1714,9 @@ static float project_paint_uvpixel_mask(const ProjPaintState *ps,
       normalize_v3(no);
     }
     else {
-      /* incase the */
 #if 1
-      /* normalizing per pixel isn't optimal, we could cache or check ps->*/
+      /* In case the normalizing per pixel isn't optimal,
+       * we could cache or access from evaluated mesh. */
       normal_tri_v3(no,
                     ps->mvert_eval[lt_vtri[0]].co,
                     ps->mvert_eval[lt_vtri[1]].co,
@@ -1812,31 +1807,31 @@ static int project_paint_undo_subtiles(const TileInfo *tinf, int tx, int ty)
   }
 
   if (generate_tile) {
-    ListBase *undo_tiles = ED_image_undo_get_tiles();
+    ListBase *undo_tiles = ED_image_paint_tile_list_get();
     volatile void *undorect;
     if (tinf->masked) {
-      undorect = image_undo_push_tile(undo_tiles,
-                                      pjIma->ima,
-                                      pjIma->ibuf,
-                                      tinf->tmpibuf,
-                                      tx,
-                                      ty,
-                                      &pjIma->maskRect[tile_index],
-                                      &pjIma->valid[tile_index],
-                                      true,
-                                      false);
+      undorect = ED_image_paint_tile_push(undo_tiles,
+                                          pjIma->ima,
+                                          pjIma->ibuf,
+                                          tinf->tmpibuf,
+                                          tx,
+                                          ty,
+                                          &pjIma->maskRect[tile_index],
+                                          &pjIma->valid[tile_index],
+                                          true,
+                                          false);
     }
     else {
-      undorect = image_undo_push_tile(undo_tiles,
-                                      pjIma->ima,
-                                      pjIma->ibuf,
-                                      tinf->tmpibuf,
-                                      tx,
-                                      ty,
-                                      NULL,
-                                      &pjIma->valid[tile_index],
-                                      true,
-                                      false);
+      undorect = ED_image_paint_tile_push(undo_tiles,
+                                          pjIma->ima,
+                                          pjIma->ibuf,
+                                          tinf->tmpibuf,
+                                          tx,
+                                          ty,
+                                          NULL,
+                                          &pjIma->valid[tile_index],
+                                          true,
+                                          false);
     }
 
     BKE_image_mark_dirty(pjIma->ima, pjIma->ibuf);
@@ -1885,14 +1880,14 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
 
   /* calculate the undo tile offset of the pixel, used to store the original
    * pixel color and accumulated mask if any */
-  x_tile = x_px >> IMAPAINT_TILE_BITS;
-  y_tile = y_px >> IMAPAINT_TILE_BITS;
+  x_tile = x_px >> ED_IMAGE_UNDO_TILE_BITS;
+  y_tile = y_px >> ED_IMAGE_UNDO_TILE_BITS;
 
-  x_round = x_tile * IMAPAINT_TILE_SIZE;
-  y_round = y_tile * IMAPAINT_TILE_SIZE;
+  x_round = x_tile * ED_IMAGE_UNDO_TILE_SIZE;
+  y_round = y_tile * ED_IMAGE_UNDO_TILE_SIZE;
   // memset(projPixel, 0, size);
 
-  tile_offset = (x_px - x_round) + (y_px - y_round) * IMAPAINT_TILE_SIZE;
+  tile_offset = (x_px - x_round) + (y_px - y_round) * ED_IMAGE_UNDO_TILE_SIZE;
   tile_index = project_paint_undo_subtiles(tinf, x_tile, y_tile);
 
   /* other thread may be initializing the tile so wait here */
@@ -1900,8 +1895,9 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
     /* pass */
   }
 
-  BLI_assert(tile_index < (IMAPAINT_TILE_NUMBER(ibuf->x) * IMAPAINT_TILE_NUMBER(ibuf->y)));
-  BLI_assert(tile_offset < (IMAPAINT_TILE_SIZE * IMAPAINT_TILE_SIZE));
+  BLI_assert(tile_index <
+             (ED_IMAGE_UNDO_TILE_NUMBER(ibuf->x) * ED_IMAGE_UNDO_TILE_NUMBER(ibuf->y)));
+  BLI_assert(tile_offset < (ED_IMAGE_UNDO_TILE_SIZE * ED_IMAGE_UNDO_TILE_SIZE));
 
   projPixel->valid = projima->valid[tile_index];
 
@@ -2979,7 +2975,7 @@ static void project_paint_face_init(const ProjPaintState *ps,
   TileInfo tinf = {
       ps->tile_lock,
       ps->do_masking,
-      IMAPAINT_TILE_NUMBER(ibuf->x),
+      ED_IMAGE_UNDO_TILE_NUMBER(ibuf->x),
       tmpibuf,
       ps->projImages + image_index,
   };
@@ -3931,7 +3927,7 @@ static void proj_paint_state_thread_init(ProjPaintState *ps, const bool reset_th
       BLI_spin_init(ps->tile_lock);
     }
 
-    image_undo_init_locks();
+    ED_image_paint_tile_lock_init();
   }
 
   for (a = 0; a < ps->thread_tot; a++) {
@@ -4249,8 +4245,8 @@ static void project_paint_build_proj_ima(ProjPaintState *ps,
     projIma->ima = node->link;
     projIma->touch = 0;
     projIma->ibuf = BKE_image_acquire_ibuf(projIma->ima, NULL, NULL);
-    size = sizeof(void **) * IMAPAINT_TILE_NUMBER(projIma->ibuf->x) *
-           IMAPAINT_TILE_NUMBER(projIma->ibuf->y);
+    size = sizeof(void **) * ED_IMAGE_UNDO_TILE_NUMBER(projIma->ibuf->x) *
+           ED_IMAGE_UNDO_TILE_NUMBER(projIma->ibuf->y);
     projIma->partRedrawRect = BLI_memarena_alloc(
         arena, sizeof(ImagePaintPartialRedraw) * PROJ_BOUNDBOX_SQUARED);
     partial_redraw_array_init(projIma->partRedrawRect);
@@ -4540,8 +4536,6 @@ static void project_paint_end(ProjPaintState *ps)
 {
   int a;
 
-  image_undo_remove_masks();
-
   /* dereference used image buffers */
   if (ps->is_shared_user == false) {
     ProjPaintImage *projIma;
@@ -4583,7 +4577,7 @@ static void project_paint_end(ProjPaintState *ps)
       MEM_freeN((void *)ps->tile_lock);
     }
 
-    image_undo_end_locks();
+    ED_image_paint_tile_lock_end();
 
 #ifndef PROJ_DEBUG_NOSEAMBLEED
     if (ps->seam_bleed_px > 0.0f) {
@@ -5092,6 +5086,22 @@ static void image_paint_partial_redraw_expand(ImagePaintPartialRedraw *cell,
   cell->y2 = max_ii(cell->y2, (int)projPixel->y_px + 1);
 }
 
+static void copy_original_alpha_channel(ProjPixel *pixel, bool is_floatbuf)
+{
+  /* Use the original alpha channel data instead of the modified one */
+  if (is_floatbuf) {
+    /* slightly more involved case since floats are in premultiplied space we need
+     * to make sure alpha is consistent, see T44627 */
+    float rgb_straight[4];
+    premul_to_straight_v4_v4(rgb_straight, pixel->pixel.f_pt);
+    rgb_straight[3] = pixel->origColor.f_pt[3];
+    straight_to_premul_v4_v4(pixel->pixel.f_pt, rgb_straight);
+  }
+  else {
+    pixel->pixel.ch_pt[3] = pixel->origColor.ch_pt[3];
+  }
+}
+
 /* Run this for single and multi-threaded painting. */
 static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
                                    void *ph_v,
@@ -5196,8 +5206,10 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
             float line_len_sq_inv, line_len;
             float f;
             float color_f[4];
-            float p[2] = {projPixel->projCoSS[0] - lastpos[0],
-                          projPixel->projCoSS[1] - lastpos[1]};
+            const float p[2] = {
+                projPixel->projCoSS[0] - lastpos[0],
+                projPixel->projCoSS[1] - lastpos[1],
+            };
 
             sub_v2_v2v2(tangent, pos, lastpos);
             line_len = len_squared_v2(tangent);
@@ -5263,17 +5275,7 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
           }
 
           if (lock_alpha) {
-            if (is_floatbuf) {
-              /* slightly more involved case since floats are in premultiplied space we need
-               * to make sure alpha is consistent, see T44627 */
-              float rgb_straight[4];
-              premul_to_straight_v4_v4(rgb_straight, projPixel->pixel.f_pt);
-              rgb_straight[3] = projPixel->origColor.f_pt[3];
-              straight_to_premul_v4_v4(projPixel->pixel.f_pt, rgb_straight);
-            }
-            else {
-              projPixel->pixel.ch_pt[3] = projPixel->origColor.ch_pt[3];
-            }
+            copy_original_alpha_channel(projPixel, is_floatbuf);
           }
 
           last_partial_redraw_cell = last_projIma->partRedrawRect + projPixel->bb_cell_index;
@@ -5478,17 +5480,7 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
               }
 
               if (lock_alpha) {
-                if (is_floatbuf) {
-                  /* slightly more involved case since floats are in premultiplied space we need
-                   * to make sure alpha is consistent, see T44627 */
-                  float rgb_straight[4];
-                  premul_to_straight_v4_v4(rgb_straight, projPixel->pixel.f_pt);
-                  rgb_straight[3] = projPixel->origColor.f_pt[3];
-                  straight_to_premul_v4_v4(projPixel->pixel.f_pt, rgb_straight);
-                }
-                else {
-                  projPixel->pixel.ch_pt[3] = projPixel->origColor.ch_pt[3];
-                }
+                copy_original_alpha_channel(projPixel, is_floatbuf);
               }
             }
 
@@ -5504,11 +5496,17 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
     for (node = smearPixels; node; node = node->next) { /* this wont run for a float image */
       projPixel = node->link;
       *projPixel->pixel.uint_pt = ((ProjPixelClone *)projPixel)->clonepx.uint;
+      if (lock_alpha) {
+        copy_original_alpha_channel(projPixel, false);
+      }
     }
 
     for (node = smearPixels_f; node; node = node->next) {
       projPixel = node->link;
       copy_v4_v4(projPixel->pixel.f_pt, ((ProjPixelClone *)projPixel)->clonepx.f);
+      if (lock_alpha) {
+        copy_original_alpha_channel(projPixel, true);
+      }
     }
 
     BLI_memarena_free(smearArena);
@@ -5518,11 +5516,17 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
     for (node = softenPixels; node; node = node->next) { /* this wont run for a float image */
       projPixel = node->link;
       *projPixel->pixel.uint_pt = projPixel->newColor.uint;
+      if (lock_alpha) {
+        copy_original_alpha_channel(projPixel, false);
+      }
     }
 
     for (node = softenPixels_f; node; node = node->next) {
       projPixel = node->link;
       copy_v4_v4(projPixel->pixel.f_pt, projPixel->newColor.f);
+      if (lock_alpha) {
+        copy_original_alpha_channel(projPixel, true);
+      }
     }
 
     BLI_memarena_free(softenArena);

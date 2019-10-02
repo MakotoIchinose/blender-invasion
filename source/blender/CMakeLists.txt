@@ -156,3 +156,7 @@ endif()
 if(WITH_USD)
   add_subdirectory(usd)
 endif()
+
+if(WIN32)
+  add_subdirectory(blendthumb)
+endif()

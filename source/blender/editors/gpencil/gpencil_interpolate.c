@@ -560,7 +560,7 @@ static int gpencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent
       tgpi->ar->type, gpencil_interpolate_draw_3d, tgpi, REGION_DRAW_POST_VIEW);
 
   /* set cursor to indicate modal */
-  WM_cursor_modal_set(win, BC_EW_SCROLLCURSOR);
+  WM_cursor_modal_set(win, WM_CURSOR_EW_SCROLL);
 
   /* update shift indicator in header */
   gpencil_interpolate_status_indicators(C, tgpi);
@@ -1003,7 +1003,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
       if (ipo_settings->type == GP_IPO_CURVEMAP) {
         /* custom curvemap */
         if (ipo_settings->custom_ipo) {
-          factor = curvemapping_evaluateF(ipo_settings->custom_ipo, 0, factor);
+          factor = BKE_curvemapping_evaluateF(ipo_settings->custom_ipo, 0, factor);
         }
         else {
           BKE_report(op->reports, RPT_ERROR, "Custom interpolation curve does not exist");

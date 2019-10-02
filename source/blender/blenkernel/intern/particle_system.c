@@ -501,7 +501,7 @@ void psys_tasks_free(ParticleTask *tasks, int numtasks)
   int i;
 
   /* threads */
-  for (i = 0; i < numtasks; ++i) {
+  for (i = 0; i < numtasks; i++) {
     if (tasks[i].rng) {
       BLI_rng_free(tasks[i].rng);
     }
@@ -563,13 +563,13 @@ void psys_thread_context_free(ParticleThreadContext *ctx)
   BLI_kdtree_3d_free(ctx->tree);
 
   if (ctx->clumpcurve != NULL) {
-    curvemapping_free(ctx->clumpcurve);
+    BKE_curvemapping_free(ctx->clumpcurve);
   }
   if (ctx->roughcurve != NULL) {
-    curvemapping_free(ctx->roughcurve);
+    BKE_curvemapping_free(ctx->roughcurve);
   }
   if (ctx->twistcurve != NULL) {
-    curvemapping_free(ctx->twistcurve);
+    BKE_curvemapping_free(ctx->twistcurve);
   }
 }
 
@@ -1695,7 +1695,7 @@ typedef struct SPHRangeData {
 
 static void sph_evaluate_func(BVHTree *tree,
                               ParticleSystem **psys,
-                              float co[3],
+                              const float co[3],
                               SPHRangeData *pfr,
                               float interaction_radius,
                               BVHTree_RangeQuery callback)
@@ -1958,10 +1958,10 @@ static void sphclassical_density_accum_cb(void *userdata,
   pfr->data[1] += q / npa->sphdensity;
 }
 
-static void sphclassical_neighbour_accum_cb(void *userdata,
-                                            int index,
-                                            const float co[3],
-                                            float UNUSED(squared_dist))
+static void sphclassical_neighbor_accum_cb(void *userdata,
+                                           int index,
+                                           const float co[3],
+                                           float UNUSED(squared_dist))
 {
   SPHRangeData *pfr = (SPHRangeData *)userdata;
   ParticleData *npa = pfr->npsys->particles + index;
@@ -2031,7 +2031,7 @@ static void sphclassical_force_cb(void *sphdata_v,
   pfr.pa = pa;
 
   sph_evaluate_func(
-      NULL, psys, state->co, &pfr, interaction_radius, sphclassical_neighbour_accum_cb);
+      NULL, psys, state->co, &pfr, interaction_radius, sphclassical_neighbor_accum_cb);
   pressure = stiffness * (pow7f(pa->sphdensity / rest_density) - 1.0f);
 
   /* multiply by mass so that we return a force, not accel */
@@ -2497,7 +2497,7 @@ static float collision_point_distance_with_normal(
   return 0;
 }
 static void collision_point_on_surface(
-    float p[3], ParticleCollisionElement *pce, float fac, ParticleCollision *col, float *co)
+    const float p[3], ParticleCollisionElement *pce, float fac, ParticleCollision *col, float *co)
 {
   collision_interpolate_element(pce, 0.f, fac, col);
 
@@ -3490,10 +3490,10 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   psys->clmd->sim_parms->effector_weights = psys->part->effector_weights;
 
   BKE_id_copy_ex(NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh, LIB_ID_COPY_LOCALIZE);
-  deformedVerts = BKE_mesh_vertexCos_get(psys->hair_out_mesh, NULL);
+  deformedVerts = BKE_mesh_vert_coords_alloc(psys->hair_out_mesh, NULL);
   clothModifier_do(
       psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts);
-  BKE_mesh_apply_vert_coords(psys->hair_out_mesh, deformedVerts);
+  BKE_mesh_vert_coords_apply(psys->hair_out_mesh, deformedVerts);
 
   MEM_freeN(deformedVerts);
 

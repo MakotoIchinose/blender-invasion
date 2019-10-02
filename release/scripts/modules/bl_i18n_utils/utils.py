@@ -180,9 +180,8 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
 
     prefs = bpy.context.preferences
     used_ext = {ext.module for ext in prefs.addons}
-    # XXX TEMP WORKAROUND
-    black_list = {"space_view3d_math_vis",
-                  "object_scatter"}
+    # In case we need to blacklist some add-ons...
+    black_list = {}
 
     ret = [
         mod for mod in addon_utils.modules()
@@ -835,7 +834,7 @@ class I18nMessages:
     def parse_messages_from_po(self, src, key=None):
         """
         Parse a po file.
-        Note: This function will silently "arrange" mis-formated entries, thus using afterward write_messages() should
+        Note: This function will silently "arrange" mis-formatted entries, thus using afterward write_messages() should
               always produce a po-valid file, though not correct!
         """
         reading_msgid = False

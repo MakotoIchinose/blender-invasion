@@ -1428,13 +1428,13 @@ static void emit_from_particles(Object *flow_ob,
 
     /* prepare curvemapping tables */
     if ((psys->part->child_flag & PART_CHILD_USE_CLUMP_CURVE) && psys->part->clumpcurve) {
-      curvemapping_changed_all(psys->part->clumpcurve);
+      BKE_curvemapping_changed_all(psys->part->clumpcurve);
     }
     if ((psys->part->child_flag & PART_CHILD_USE_ROUGH_CURVE) && psys->part->roughcurve) {
-      curvemapping_changed_all(psys->part->roughcurve);
+      BKE_curvemapping_changed_all(psys->part->roughcurve);
     }
     if ((psys->part->child_flag & PART_CHILD_USE_TWIST_CURVE) && psys->part->twistcurve) {
-      curvemapping_changed_all(psys->part->twistcurve);
+      BKE_curvemapping_changed_all(psys->part->twistcurve);
     }
 
     /* initialize particle cache */
@@ -3352,14 +3352,16 @@ struct Mesh *smokeModifier_do(
   if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
       smd->domain->flags & MOD_SMOKE_ADAPTIVE_DOMAIN && smd->domain->base_res[0]) {
     result = createDomainGeometry(smd->domain, ob);
+    BKE_mesh_copy_settings(result, me);
   }
   else {
     result = BKE_mesh_copy_for_eval(me, false);
   }
-  /* XXX This is really not a nice hack, but until root of the problem is understood,
-   * this should be an acceptable workaround I think.
-   * See T58492 for details on the issue. */
-  result->texflag |= ME_AUTOSPACE;
+
+  /* Smoke simulation needs a texture space relative to the adaptive domain bounds, not the
+   * original mesh. So recompute it at this point in the modifier stack. See T58492. */
+  BKE_mesh_texspace_calc(result);
+
   return result;
 }
 

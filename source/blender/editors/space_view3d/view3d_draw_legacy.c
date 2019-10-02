@@ -88,20 +88,15 @@
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
-#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
-#include "GPU_material.h"
-#include "GPU_extensions.h"
 #include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_select.h"
-#include "GPU_matrix.h"
 #include "GPU_state.h"
 #include "GPU_viewport.h"
 
 #include "RE_engine.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "view3d_intern.h" /* own include */
 
@@ -155,16 +150,13 @@ void ED_view3d_clipping_enable(void)
 /**
  * \note Only use in object mode.
  */
-static void validate_object_select_id(struct Depsgraph *depsgraph,
-                                      Scene *scene,
-                                      ViewLayer *view_layer,
-                                      ARegion *ar,
-                                      View3D *v3d,
-                                      Object *obact)
+static void validate_object_select_id(
+    struct Depsgraph *depsgraph, ViewLayer *view_layer, ARegion *ar, View3D *v3d, Object *obact)
 {
   Object *obact_eval = DEG_get_evaluated_object(depsgraph, obact);
 
   BLI_assert(ar->regiontype == RGN_TYPE_WINDOW);
+  UNUSED_VARS_NDEBUG(ar);
 
   if (obact_eval && (obact_eval->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT) ||
                      BKE_paint_select_face_test(obact_eval))) {
@@ -188,8 +180,8 @@ static void validate_object_select_id(struct Depsgraph *depsgraph,
   }
 
   if (obact_eval && ((obact_eval->base_flag & BASE_VISIBLE) != 0)) {
-    DRW_draw_select_id_object(
-        depsgraph, view_layer, ar, v3d, obact, scene->toolsettings->selectmode);
+    Base *base = BKE_view_layer_base_find(view_layer, obact);
+    DRW_select_buffer_context_create(&base, 1, -1);
   }
 
   /* TODO: Create a flag in `DRW_manager` because the drawing is no longer
@@ -224,8 +216,7 @@ void ED_view3d_select_id_validate(ViewContext *vc)
   /* TODO: Create a flag in `DRW_manager` because the drawing is no longer
    *       made on the backbuffer in this case. */
   if (vc->v3d->flag & V3D_INVALID_BACKBUF) {
-    validate_object_select_id(
-        vc->depsgraph, vc->scene, vc->view_layer, vc->ar, vc->v3d, vc->obact);
+    validate_object_select_id(vc->depsgraph, vc->view_layer, vc->ar, vc->v3d, vc->obact);
   }
 }
 
@@ -244,22 +235,6 @@ void ED_view3d_backbuf_depth_validate(ViewContext *vc)
   }
 }
 
-uint *ED_view3d_select_id_read_rect(const rcti *clip, uint *r_buf_len)
-{
-  uint width = BLI_rcti_size_x(clip);
-  uint height = BLI_rcti_size_y(clip);
-  uint buf_len = width * height;
-  uint *buf = MEM_mallocN(buf_len * sizeof(*buf), __func__);
-
-  DRW_framebuffer_select_id_read(clip, buf);
-
-  if (r_buf_len) {
-    *r_buf_len = buf_len;
-  }
-
-  return buf;
-}
-
 /**
  * allow for small values [0.5 - 2.5],
  * and large values, FLT_MAX by clamping by the area size
@@ -267,30 +242,6 @@ uint *ED_view3d_select_id_read_rect(const rcti *clip, uint *r_buf_len)
 int ED_view3d_backbuf_sample_size_clamp(ARegion *ar, const float dist)
 {
   return (int)min_ff(ceilf(dist), (float)max_ii(ar->winx, ar->winx));
-}
-
-/* reads full rect, converts indices */
-uint *ED_view3d_select_id_read(int xmin, int ymin, int xmax, int ymax, uint *r_buf_len)
-{
-  if (UNLIKELY((xmin > xmax) || (ymin > ymax))) {
-    return NULL;
-  }
-
-  const rcti rect = {
-      .xmin = xmin,
-      .xmax = xmax + 1,
-      .ymin = ymin,
-      .ymax = ymax + 1,
-  };
-
-  uint buf_len;
-  uint *buf = ED_view3d_select_id_read_rect(&rect, &buf_len);
-
-  if (r_buf_len) {
-    *r_buf_len = buf_len;
-  }
-
-  return buf;
 }
 
 /* *********************** */
@@ -431,6 +382,14 @@ void ED_view3d_datamask(const bContext *C,
   if (ELEM(v3d->shading.type, OB_TEXTURE, OB_MATERIAL, OB_RENDER)) {
     r_cddata_masks->lmask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
     r_cddata_masks->vmask |= CD_MASK_ORCO;
+  }
+  else if (v3d->shading.type == OB_SOLID) {
+    if (v3d->shading.color_type == V3D_SHADING_TEXTURE_COLOR) {
+      r_cddata_masks->lmask |= CD_MASK_MLOOPUV;
+    }
+    if (v3d->shading.color_type == V3D_SHADING_VERTEX_COLOR) {
+      r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
+    }
   }
 
   if ((CTX_data_mode_enum(C) == CTX_MODE_EDIT_MESH) &&

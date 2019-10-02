@@ -71,14 +71,12 @@
 #include "BKE_constraint.h"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
-#include "BKE_image.h"
 #include "BKE_lattice.h"
 #include "BKE_main.h"  // for Main
 #include "BKE_mesh.h"  // for ME_ defines (patching)
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
 #include "BKE_sequencer.h"
 
 #include "NOD_socket.h"
@@ -2094,8 +2092,8 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         la->falloff_type = LA_FALLOFF_INVLINEAR;
 
         if (la->curfalloff == NULL) {
-          la->curfalloff = curvemapping_add(1, 0.0f, 1.0f, 1.0f, 0.0f);
-          curvemapping_initialize(la->curfalloff);
+          la->curfalloff = BKE_curvemapping_add(1, 0.0f, 1.0f, 1.0f, 0.0f);
+          BKE_curvemapping_initialize(la->curfalloff);
         }
       }
     }

@@ -61,7 +61,6 @@
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
-#include "GPU_select.h"
 #include "GPU_state.h"
 
 #include "BLF_api.h"
@@ -343,6 +342,7 @@ static bool view3d_ruler_item_mousemove(RulerInfo *ruler_info,
                                                       .use_object_edit_cage = true,
                                                   },
                                                   mval_fl,
+                                                  NULL,
                                                   &dist_px,
                                                   co,
                                                   ray_normal)) {
@@ -363,16 +363,31 @@ static bool view3d_ruler_item_mousemove(RulerInfo *ruler_info,
     }
     else if (do_snap) {
       const float mval_fl[2] = {UNPACK2(mval)};
+      float *prev_point = NULL;
+
+      if (inter->co_index != 1) {
+        if (ruler_item->flag & RULERITEM_USE_ANGLE) {
+          prev_point = ruler_item->co[1];
+        }
+        else if (inter->co_index == 0) {
+          prev_point = ruler_item->co[2];
+        }
+        else {
+          prev_point = ruler_item->co[0];
+        }
+      }
 
       if (ED_transform_snap_object_project_view3d(
               ruler_info->snap_context,
-              (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE),
+              (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE |
+               SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_EDGE_PERPENDICULAR),
               &(const struct SnapObjectParams){
                   .snap_select = SNAP_ALL,
                   .use_object_edit_cage = true,
                   .use_occlusion_test = true,
               },
               mval_fl,
+              prev_point,
               &dist_px,
               co,
               NULL)) {
@@ -998,9 +1013,9 @@ static void gizmo_ruler_exit(bContext *C, wmGizmo *gz, const bool cancel)
 static int gizmo_ruler_cursor_get(wmGizmo *gz)
 {
   if (gz->highlight_part == PART_LINE) {
-    return BC_CROSSCURSOR;
+    return WM_CURSOR_CROSS;
   }
-  return BC_NSEW_SCROLLCURSOR;
+  return WM_CURSOR_NSEW_SCROLL;
 }
 
 void VIEW3D_GT_ruler_item(wmGizmoType *gzt)

@@ -316,12 +316,20 @@ extern GHOST_TSuccess GHOST_EndProgressBar(GHOST_WindowHandle windowhandle);
 extern GHOST_TStandardCursor GHOST_GetCursorShape(GHOST_WindowHandle windowhandle);
 
 /**
- * Set the shape of the cursor.
+ * Set the shape of the cursor. If the shape is not supported by the platform,
+ * it will use the default cursor instead.
  * \param windowhandle The handle to the window
  * \param cursorshape The new cursor shape type id.
  * \return Indication of success.
  */
 extern GHOST_TSuccess GHOST_SetCursorShape(GHOST_WindowHandle windowhandle,
+                                           GHOST_TStandardCursor cursorshape);
+
+/**
+ * Test if the standard cursor shape is supported by current platform.
+ * \return Indication of success.
+ */
+extern GHOST_TSuccess GHOST_HasCursorShape(GHOST_WindowHandle windowhandle,
                                            GHOST_TStandardCursor cursorshape);
 
 /**
@@ -477,7 +485,7 @@ extern GHOST_TEventDataPtr GHOST_GetEventData(GHOST_EventHandle eventhandle);
 
 /**
  * Returns the timer callback.
- * \param timertaskhandle The handle to the timertask
+ * \param timertaskhandle The handle to the timer-task.
  * \return The timer callback.
  */
 extern GHOST_TimerProcPtr GHOST_GetTimerProc(GHOST_TimerTaskHandle timertaskhandle);
