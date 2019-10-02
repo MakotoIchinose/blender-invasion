@@ -51,8 +51,7 @@ struct USDExportParams {
  * true when the export was ok, and false if there were any errors.
  */
 
-bool USD_export(struct Scene *scene,
-                struct bContext *C,
+bool USD_export(struct bContext *C,
                 const char *filepath,
                 const struct USDExportParams *params,
                 bool as_background_job);

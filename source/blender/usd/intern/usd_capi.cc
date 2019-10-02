@@ -181,12 +181,14 @@ static void export_endjob(void *customdata)
   BKE_spacedata_draw_locks(false);
 }
 
-bool USD_export(Scene *scene,
-                bContext *C,
+bool USD_export(bContext *C,
                 const char *filepath,
-                const struct USDExportParams *params,
+                const USDExportParams *params,
                 bool as_background_job)
 {
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Scene *scene = CTX_data_scene(C);
+
   ExportJobData *job = static_cast<ExportJobData *>(
       MEM_mallocN(sizeof(ExportJobData), "ExportJobData"));
 
@@ -194,7 +196,6 @@ bool USD_export(Scene *scene,
   job->export_ok = false;
   BLI_strncpy(job->filename, filepath, 1024);
 
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   job->depsgraph = DEG_graph_new(job->bmain, scene, view_layer, params->evaluation_mode);
   job->params = *params;
 

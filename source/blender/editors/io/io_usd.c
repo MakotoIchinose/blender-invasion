@@ -97,9 +97,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
-  /* Take some defaults from the scene, if not specified explicitly. */
-  Scene *scene = CTX_data_scene(C);
-
   const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
   const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
@@ -123,7 +120,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       evaluation_mode,
   };
 
-  bool ok = USD_export(scene, C, filename, &params, as_background_job);
+  bool ok = USD_export(C, filename, &params, as_background_job);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
