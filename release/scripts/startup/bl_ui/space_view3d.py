@@ -4585,6 +4585,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.menu("GPENCIL_MT_move_to_layer")
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
+        layout.operator_menu_enum("gpencil.clear_uv_transform", "mode", text="Clear UV Transform")
         layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
 
         layout.separator()

@@ -81,6 +81,7 @@ enum {
   GP_UV_ROTATE = 0,
   GP_UV_TRANSLATE = 1,
   GP_UV_SCALE = 2,
+  GP_UV_ALL = 3,
 };
 
 #define SMOOTH_FACTOR 0.3f
@@ -530,4 +531,66 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/* Clear UV transformations. */
+static int gpencil_clear_uv_transform_exec(bContext *C, wmOperator *op)
+{
+  const int mode = RNA_enum_get(op->ptr, "mode");
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bool changed = false;
+
+  /* Loop all selected strokes and reset. */
+  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+    if (gps->flag & GP_STROKE_SELECT) {
+      if ((mode == GP_UV_TRANSLATE) || (mode == GP_UV_ALL)) {
+        zero_v2(gps->uv_translation);
+      }
+      if ((mode == GP_UV_ROTATE) || (mode == GP_UV_ALL)) {
+        gps->uv_rotation = 0.0f;
+      }
+      if ((mode == GP_UV_SCALE) || (mode == GP_UV_ALL)) {
+        gps->uv_scale = 1.0f;
+      }
+      gps->tot_triangles = 0;
+      changed = true;
+      break;
+    }
+  }
+  GP_EDITABLE_STROKES_END(gpstroke_iter);
+
+  /* notifiers */
+  if (changed) {
+    DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_clear_uv_transform(wmOperatorType *ot)
+{
+  static const EnumPropertyItem uv_clear_mode[] = {
+      {GP_UV_ALL, "ALL", 0, "All", ""},
+      {GP_UV_TRANSLATE, "TRANSLATE", 0, "Translate", ""},
+      {GP_UV_ROTATE, "ROTATE", 0, "Rotate", ""},
+      {GP_UV_SCALE, "SCALE", 0, "Scale", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  /* identifiers */
+  ot->name = "Clear UV Transformations";
+  ot->idname = "GPENCIL_OT_clear_uv_transform";
+  ot->description = "Reset any UV transformation and back to default values";
+
+  /* callbacks */
+  ot->exec = gpencil_clear_uv_transform_exec;
+  ot->poll = gpencil_uv_transform_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_enum(ot->srna, "mode", uv_clear_mode, 0, "Mode", "");
 }
