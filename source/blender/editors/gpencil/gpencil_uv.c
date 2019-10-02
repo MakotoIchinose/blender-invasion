@@ -519,7 +519,7 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_float(ot->srna, "scale", 1.0f, 0.001f, 100.0f, "Scale", "", 0.001f, 100.0f);
-  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
