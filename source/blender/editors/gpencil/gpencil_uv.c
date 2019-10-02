@@ -527,7 +527,7 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 }
 
 /* Clear UV transformations. */
-static int gpencil_clear_uv_transform_exec(bContext *C, wmOperator *op)
+static int gpencil_reset_uv_transform_exec(bContext *C, wmOperator *op)
 {
   const int mode = RNA_enum_get(op->ptr, "mode");
   Object *ob = CTX_data_active_object(C);
@@ -562,7 +562,7 @@ static int gpencil_clear_uv_transform_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_clear_uv_transform(wmOperatorType *ot)
+void GPENCIL_OT_reset_uv_transform(wmOperatorType *ot)
 {
   static const EnumPropertyItem uv_clear_mode[] = {
       {GP_UV_ALL, "ALL", 0, "All", ""},
@@ -573,12 +573,12 @@ void GPENCIL_OT_clear_uv_transform(wmOperatorType *ot)
   };
 
   /* identifiers */
-  ot->name = "Clear UV Transformations";
-  ot->idname = "GPENCIL_OT_clear_uv_transform";
+  ot->name = "Reset UV Transformations";
+  ot->idname = "GPENCIL_OT_reset_uv_transform";
   ot->description = "Reset any UV transformation and back to default values";
 
   /* callbacks */
-  ot->exec = gpencil_clear_uv_transform_exec;
+  ot->exec = gpencil_reset_uv_transform_exec;
   ot->poll = gpencil_uv_transform_poll;
 
   /* flags */
