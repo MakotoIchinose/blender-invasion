@@ -392,14 +392,7 @@ static bool gpencil_uv_transform_poll(bContext *C)
     return false;
   }
 
-  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
-    if (gps->flag & GP_STROKE_SELECT) {
-      return true;
-    }
-  }
-  GP_EDITABLE_STROKES_END(gpstroke_iter);
-
-  return false;
+  return true;
 }
 
 static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEvent *event)
