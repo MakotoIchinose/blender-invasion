@@ -333,24 +333,18 @@ static bool gp_brush_smooth_apply(tGP_BrushEditData *gso,
 {
   // GP_Sculpt_Data *gp_brush = gso->brush;
   float inf = gp_brush_influence_calc(gso, radius, co);
-  /* need one flag enabled by default */
-  if ((gso->settings->flag &
-       (GP_SCULPT_SETT_FLAG_APPLY_POSITION | GP_SCULPT_SETT_FLAG_APPLY_STRENGTH |
-        GP_SCULPT_SETT_FLAG_APPLY_THICKNESS | GP_SCULPT_SETT_FLAG_APPLY_UV)) == 0) {
-    gso->settings->flag |= GP_SCULPT_SETT_FLAG_APPLY_POSITION;
-  }
 
   /* perform smoothing */
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_POSITION) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_POSITION) {
     BKE_gpencil_smooth_stroke(gps, pt_index, inf);
   }
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_STRENGTH) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
     BKE_gpencil_smooth_stroke_strength(gps, pt_index, inf);
   }
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_THICKNESS) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
     BKE_gpencil_smooth_stroke_thickness(gps, pt_index, inf);
   }
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_UV) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_UV) {
     BKE_gpencil_smooth_stroke_uv(gps, pt_index, inf);
   }
 
@@ -847,15 +841,9 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
    */
   const float inf = gp_brush_influence_calc(gso, radius, co) / 2.0f;
   const float fac = BLI_rng_get_float(gso->rng) * inf;
-  /* need one flag enabled by default */
-  if ((gso->settings->flag &
-       (GP_SCULPT_SETT_FLAG_APPLY_POSITION | GP_SCULPT_SETT_FLAG_APPLY_STRENGTH |
-        GP_SCULPT_SETT_FLAG_APPLY_THICKNESS | GP_SCULPT_SETT_FLAG_APPLY_UV)) == 0) {
-    gso->settings->flag |= GP_SCULPT_SETT_FLAG_APPLY_POSITION;
-  }
 
   /* apply random to position */
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_POSITION) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_POSITION) {
     /* Jitter is applied perpendicular to the mouse movement vector
      * - We compute all effects in screenspace (since it's easier)
      *   and then project these to get the points/distances in
@@ -910,7 +898,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     }
   }
   /* apply random to strength */
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_STRENGTH) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
     if (BLI_rng_get_float(gso->rng) > 0.5f) {
       pt->strength += fac;
     }
@@ -921,7 +909,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     CLAMP_MAX(pt->strength, 1.0f);
   }
   /* apply random to thickness (use pressure) */
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_THICKNESS) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
     if (BLI_rng_get_float(gso->rng) > 0.5f) {
       pt->pressure += fac;
     }
@@ -932,7 +920,7 @@ static bool gp_brush_randomize_apply(tGP_BrushEditData *gso,
     CLAMP_MIN(pt->pressure, 0.0f);
   }
   /* apply random to UV (use pressure) */
-  if (gso->settings->flag & GP_SCULPT_SETT_FLAG_APPLY_UV) {
+  if (gso->gp_brush->mode_flag & GP_SCULPT_FLAGMODE_APPLY_UV) {
     if (BLI_rng_get_float(gso->rng) > 0.5f) {
       pt->uv_rot += fac;
     }
@@ -1282,10 +1270,6 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
 
   const bool is_weight_mode = ob->mode == OB_MODE_WEIGHT_GPENCIL;
   /* set the brush using the tool */
-#if 0
-  GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-  eGP_Sculpt_Types mode = is_weight_mode ? gset->weighttype : gset->brushtype;
-#endif
   tGP_BrushEditData *gso;
 
   /* setup operator data */

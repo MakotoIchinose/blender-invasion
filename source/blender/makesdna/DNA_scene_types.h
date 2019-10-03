@@ -1042,7 +1042,7 @@ typedef enum eGP_Lockaxis_Types {
 typedef struct GP_Sculpt_Data {
   /** Radius of brush. */
   short size;
-  /** EGP_Sculpt_Flag. */
+  /** eGP_Sculpt_Flag. */
   short flag;
   /** Strength of effect. */
   float strength;
@@ -1052,7 +1052,8 @@ typedef struct GP_Sculpt_Data {
   float curcolor_sub[3];
   /** Target weight. */
   float weight;
-  char _pad[4];
+  /** eGP_Sculpt_Mode_Flag. */
+  int mode_flag;
 } GP_Sculpt_Data;
 
 /* Settings for a GPencil Speed Guide */
@@ -1089,6 +1090,18 @@ typedef enum eGP_Sculpt_Flag {
   GP_SCULPT_FLAG_PRESSURE_RADIUS = (1 << 6),
 } eGP_Sculpt_Flag;
 
+/* GP_Sculpt_Data.mode_flag */
+typedef enum eGP_Sculpt_Mode_Flag {
+  /* apply brush to position */
+  GP_SCULPT_FLAGMODE_APPLY_POSITION = (1 << 0),
+  /* apply brush to strength */
+  GP_SCULPT_FLAGMODE_APPLY_STRENGTH = (1 << 1),
+  /* apply brush to thickness */
+  GP_SCULPT_FLAGMODE_APPLY_THICKNESS = (1 << 2),
+  /* apply brush to uv data */
+  GP_SCULPT_FLAGMODE_APPLY_UV = (1 << 3),
+} eGP_Sculpt_Mode_Flag;
+
 /* GPencil Stroke Sculpting Settings */
 typedef struct GP_Sculpt_Settings {
   /** GP_SCULPT_TYPE_MAX. */
@@ -1123,18 +1136,10 @@ typedef struct GP_Sculpt_Settings {
 typedef enum eGP_Sculpt_SettingsFlag {
   /* only affect selected points */
   GP_SCULPT_SETT_FLAG_DEPRECATED = (1 << 0),
-  /* apply brush to position */
-  GP_SCULPT_SETT_FLAG_APPLY_POSITION = (1 << 1),
-  /* apply brush to strength */
-  GP_SCULPT_SETT_FLAG_APPLY_STRENGTH = (1 << 2),
-  /* apply brush to thickness */
-  GP_SCULPT_SETT_FLAG_APPLY_THICKNESS = (1 << 3),
   /* apply brush to thickness */
   GP_SCULPT_SETT_FLAG_WEIGHT_MODE = (1 << 4),
   /* enable falloff for multiframe editing */
   GP_SCULPT_SETT_FLAG_FRAME_FALLOFF = (1 << 5),
-  /* apply brush to uv data */
-  GP_SCULPT_SETT_FLAG_APPLY_UV = (1 << 6),
   /* apply primitive curve */
   GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 7),
 } eGP_Sculpt_SettingsFlag;

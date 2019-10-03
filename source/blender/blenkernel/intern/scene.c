@@ -678,6 +678,7 @@ void BKE_scene_init(Scene *sce)
                      GP_SCULPT_FLAG_ENABLE_CURSOR;
     copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
     copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
+    gp_brush->mode_flag = GP_SCULPT_FLAGMODE_APPLY_POSITION;
 
     gp_brush = &gset->brush[GP_SCULPT_TYPE_THICKNESS];
     gp_brush->size = 25;
@@ -727,6 +728,7 @@ void BKE_scene_init(Scene *sce)
     gp_brush->flag = GP_SCULPT_FLAG_USE_FALLOFF | GP_SCULPT_FLAG_ENABLE_CURSOR;
     copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
     copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
+    gp_brush->mode_flag = GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
   for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {

@@ -267,14 +267,14 @@ class GreasePencilSculptOptionsPanel:
         brush = settings.brush
 
         if tool in {'SMOOTH', 'RANDOMIZE'}:
-            layout.prop(settings, "use_edit_position", text="Affect Position")
-            layout.prop(settings, "use_edit_strength", text="Affect Strength")
-            layout.prop(settings, "use_edit_thickness", text="Affect Thickness")
+            layout.prop(brush, "use_edit_position", text="Affect Position")
+            layout.prop(brush, "use_edit_strength", text="Affect Strength")
+            layout.prop(brush, "use_edit_thickness", text="Affect Thickness")
 
             if tool == 'SMOOTH':
                 layout.prop(brush, "use_edit_pressure")
 
-            layout.prop(settings, "use_edit_uv", text="Affect UV")
+            layout.prop(brush, "use_edit_uv", text="Affect UV")
 
 
 # GP Object Tool Settings

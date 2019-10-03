@@ -1423,9 +1423,6 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "bGPDpalettecolor", "*palcolor")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         ToolSettings *ts = scene->toolsettings;
-        /* initialize use position for sculpt brushes */
-        ts->gp_sculpt.flag |= GP_SCULPT_SETT_FLAG_APPLY_POSITION;
-
         /* new strength sculpt brush */
         if (ts->gp_sculpt.brush[0].size >= 11) {
           GP_Sculpt_Settings *gset = &ts->gp_sculpt;
