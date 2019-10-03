@@ -25,6 +25,7 @@
 
 #include "DRW_render.h"
 
+#include "BKE_paint.h"
 #include "BKE_particle.h"
 
 #include "DNA_particle_types.h"
@@ -94,11 +95,6 @@ static void basic_cache_init(void *vedata)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   BASIC_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  const RegionView3D *rv3d = draw_ctx->rv3d;
-
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
 
   if (!stl->g_data) {
     /* Alloc transient pointers */
@@ -110,7 +106,7 @@ static void basic_cache_init(void *vedata)
                                       DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL);
     stl->g_data->depth_shgrp = DRW_shgroup_create(sh_data->depth, psl->depth_pass);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(stl->g_data->depth_shgrp, rv3d);
+      DRW_shgroup_state_enable(stl->g_data->depth_shgrp, DRW_STATE_CLIP_PLANES);
     }
 
     psl->depth_pass_cull = DRW_pass_create("Depth Pass Cull",
@@ -118,7 +114,7 @@ static void basic_cache_init(void *vedata)
                                                DRW_STATE_CULL_BACK);
     stl->g_data->depth_shgrp_cull = DRW_shgroup_create(sh_data->depth, psl->depth_pass_cull);
     if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_world_clip_planes_from_rv3d(stl->g_data->depth_shgrp_cull, rv3d);
+      DRW_shgroup_state_enable(stl->g_data->depth_shgrp_cull, DRW_STATE_CLIP_PLANES);
     }
   }
 }
@@ -159,18 +155,26 @@ static void basic_cache_populate(void *vedata, Object *ob)
     if (is_flat_object_viewed_from_side) {
       /* Avoid losing flat objects when in ortho views (see T56549) */
       struct GPUBatch *geom = DRW_cache_object_all_edges_get(ob);
-      DRW_shgroup_call_object(stl->g_data->depth_shgrp, geom, ob);
+      if (geom) {
+        DRW_shgroup_call(stl->g_data->depth_shgrp, geom, ob);
+      }
       return;
     }
   }
 
-  struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
-  if (geom) {
-    const bool do_cull = (draw_ctx->v3d &&
-                          (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
-    /* Depth Prepass */
-    DRW_shgroup_call_object(
-        (do_cull) ? stl->g_data->depth_shgrp_cull : stl->g_data->depth_shgrp, geom, ob);
+  const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d);
+  const bool do_cull = (draw_ctx->v3d &&
+                        (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING));
+  DRWShadingGroup *shgrp = (do_cull) ? stl->g_data->depth_shgrp_cull : stl->g_data->depth_shgrp;
+
+  if (use_sculpt_pbvh) {
+    DRW_shgroup_call_sculpt(shgrp, ob, false, false, false);
+  }
+  else {
+    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    if (geom) {
+      DRW_shgroup_call(shgrp, geom, ob);
+    }
   }
 }
 

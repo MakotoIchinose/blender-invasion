@@ -288,9 +288,7 @@ static int object_hide_collection_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
 
-  if (BKE_layer_collection_isolate(scene, view_layer, lc, extend)) {
-    DEG_relations_tag_update(CTX_data_main(C));
-  }
+  BKE_layer_collection_isolate(scene, view_layer, lc, extend);
 
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
 
@@ -871,6 +869,8 @@ static int forcefield_toggle_exec(bContext *C, wmOperator *UNUSED(op))
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
+  DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+
   return OPERATOR_FINISHED;
 }
 
@@ -906,7 +906,9 @@ void ED_objects_recalculate_paths(bContext *C, Scene *scene, bool current_frame_
   }
 
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  /* NOTE: Dependency graph will be evaluated at all the frames, but we first need to access some
+   * nested pointers, like animation data. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ListBase targets = {NULL, NULL};
 
   /* loop over objects in scene */
@@ -1056,7 +1058,7 @@ void OBJECT_OT_paths_update(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_paths_update";
   ot->description = "Recalculate paths for selected objects";
 
-  /* api callbakcs */
+  /* api callbacks */
   ot->exec = object_update_paths_exec;
   ot->poll = object_update_paths_poll;
 
@@ -1606,6 +1608,7 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
   MoveToCollectionData *menu = menu_v;
   const char *name = BKE_collection_ui_name_get(menu->collection);
 
+  UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
   uiItemIntO(layout, name, ICON_NONE, menu->ot->idname, "collection_index", menu->index);
   uiItemS(layout);
 
@@ -1710,7 +1713,7 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
 
   /* identifiers */
   ot->name = "Move to Collection";
-  ot->description = "Move objects to a scene collection";
+  ot->description = "Move objects to a collection";
   ot->idname = "OBJECT_OT_move_to_collection";
 
   /* api callbacks */

@@ -47,6 +47,8 @@
 
 #include "RNA_access.h"
 
+#include "BPY_extern.h"
+
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -358,7 +360,31 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
     if (drawstr[0] == '\0') {
       /* Hard code overrides for generic operators. */
       if (UI_but_is_tool(but)) {
-        RNA_string_get(but->opptr, "name", drawstr);
+        char idname[64];
+        RNA_string_get(but->opptr, "name", idname);
+#ifdef WITH_PYTHON
+        {
+          const char *expr_imports[] = {"bpy", "bl_ui", NULL};
+          char expr[256];
+          SNPRINTF(expr,
+                   "bl_ui.space_toolsystem_common.item_from_id("
+                   "bpy.context, "
+                   "bpy.context.space_data.type, "
+                   "'%s').label",
+                   idname);
+          char *expr_result = NULL;
+          if (BPY_execute_string_as_string(C, expr_imports, expr, true, &expr_result)) {
+            STRNCPY(drawstr, expr_result);
+            MEM_freeN(expr_result);
+          }
+          else {
+            BLI_assert(0);
+            STRNCPY(drawstr, idname);
+          }
+        }
+#else
+        STRNCPY(drawstr, idname);
+#endif
       }
     }
     ED_screen_user_menu_item_add_operator(
@@ -497,8 +523,9 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
     /* determine if we can key a single component of an array */
     const bool is_array = RNA_property_array_length(&but->rnapoin, but->rnaprop) != 0;
     const bool is_array_component = (is_array && but->rnaindex != -1);
+    const bool is_whole_array = (is_array && but->rnaindex == -1);
 
-    const int override_status = RNA_property_static_override_status(ptr, prop, -1);
+    const int override_status = RNA_property_override_library_status(ptr, prop, -1);
     const bool is_overridable = (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE) != 0;
 
     /* Set the (button_pointer, button_prop)
@@ -632,21 +659,23 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
                        1);
       }
 
-      uiItemO(layout,
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver"),
-              ICON_NONE,
-              "ANIM_OT_copy_driver_button");
-      if (ANIM_driver_can_paste()) {
+      if (!is_whole_array) {
         uiItemO(layout,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Paste Driver"),
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver"),
                 ICON_NONE,
-                "ANIM_OT_paste_driver_button");
-      }
+                "ANIM_OT_copy_driver_button");
+        if (ANIM_driver_can_paste()) {
+          uiItemO(layout,
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Paste Driver"),
+                  ICON_NONE,
+                  "ANIM_OT_paste_driver_button");
+        }
 
-      uiItemO(layout,
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Edit Driver"),
-              ICON_DRIVER,
-              "ANIM_OT_driver_button_edit");
+        uiItemO(layout,
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Edit Driver"),
+                ICON_DRIVER,
+                "ANIM_OT_driver_button_edit");
+      }
 
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open Drivers Editor"),
@@ -664,11 +693,13 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
               ICON_DRIVER,
               "ANIM_OT_driver_button_add");
 
-      if (ANIM_driver_can_paste()) {
-        uiItemO(layout,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Paste Driver"),
-                ICON_NONE,
-                "ANIM_OT_paste_driver_button");
+      if (!is_whole_array) {
+        if (ANIM_driver_can_paste()) {
+          uiItemO(layout,
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Paste Driver"),
+                  ICON_NONE,
+                  "ANIM_OT_paste_driver_button");
+        }
       }
 
       uiItemO(layout,
@@ -836,7 +867,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
               "UI_OT_unset_property_button");
     }
 
-    if (is_idprop && !is_array_component && ELEM(type, PROP_INT, PROP_FLOAT)) {
+    if (is_idprop && !is_array && ELEM(type, PROP_INT, PROP_FLOAT)) {
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Assign Value as Default"),
               ICON_NONE,
@@ -872,6 +903,14 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
             CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Data Path"),
             ICON_NONE,
             "UI_OT_copy_data_path_button");
+
+    if (ptr->id.data && !is_whole_array &&
+        ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy As New Driver"),
+              ICON_NONE,
+              "UI_OT_copy_as_driver_button");
+    }
 
     uiItemS(layout);
 
@@ -1004,23 +1043,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
                                 0,
                                 "");
         UI_but_func_set(but2, popup_change_shortcut_func, but, NULL);
-
-        but2 = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                ICON_BLANK1,
-                                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Remove Shortcut"),
-                                0,
-                                0,
-                                w,
-                                UI_UNIT_Y,
-                                NULL,
-                                0,
-                                0,
-                                0,
-                                0,
-                                "");
-        UI_but_func_set(but2, remove_shortcut_func, but, NULL);
       }
       else {
         but2 = uiDefIconTextBut(block,
@@ -1041,6 +1063,23 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
                                      "please use User Preferences otherwise"));
         UI_but_flag_enable(but2, UI_BUT_DISABLED);
       }
+
+      but2 = uiDefIconTextBut(block,
+                              UI_BTYPE_BUT,
+                              0,
+                              ICON_BLANK1,
+                              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Remove Shortcut"),
+                              0,
+                              0,
+                              w,
+                              UI_UNIT_Y,
+                              NULL,
+                              0,
+                              0,
+                              0,
+                              0,
+                              "");
+      UI_but_func_set(but2, remove_shortcut_func, but, NULL);
     }
     /* only show 'assign' if there's a suitable key map for it to go in */
     else if (WM_keymap_guess_opname(C, idname)) {
@@ -1091,20 +1130,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
                     &ptr_props);
         RNA_string_set(&ptr_props, "doc_id", buf);
       }
-
-      /* XXX inactive option, not for public! */
-#if 0
-      uiItemFullO(layout,
-                  "WM_OT_doc_edit",
-                  "Submit Description",
-                  ICON_NONE,
-                  NULL,
-                  WM_OP_INVOKE_DEFAULT,
-                  0,
-                  &ptr_props);
-      RNA_string_set(&ptr_props, "doc_id", buf);
-      RNA_string_set(&ptr_props, "doc_new", RNA_property_description(but->rnaprop));
-#endif
     }
   }
 

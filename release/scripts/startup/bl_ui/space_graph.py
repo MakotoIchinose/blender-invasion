@@ -19,7 +19,7 @@
 # <pep8 compliant>
 
 from bpy.types import Header, Menu, Panel
-from .space_dopesheet import (
+from bl_ui.space_dopesheet import (
     DopesheetFilterPopoverBase,
     dopesheet_filter,
 )
@@ -169,10 +169,10 @@ class GRAPH_MT_select(Menu):
         props = layout.operator("graph.select_box")
         props.axis_range = False
         props.include_handles = False
-        props = layout.operator("graph.select_box", text="Border Axis Range")
+        props = layout.operator("graph.select_box", text="Box Select (Axis Range)")
         props.axis_range = True
         props.include_handles = False
-        props = layout.operator("graph.select_box", text="Border (Include Handles)")
+        props = layout.operator("graph.select_box", text="Box Select (Include Handles)")
         props.axis_range = False
         props.include_handles = True
 
@@ -207,7 +207,7 @@ class GRAPH_MT_marker(Menu):
     def draw(self, context):
         layout = self.layout
 
-        from .space_time import marker_menu_generic
+        from bl_ui.space_time import marker_menu_generic
         marker_menu_generic(layout, context)
 
         # TODO: pose markers for action edit mode only?
@@ -328,6 +328,8 @@ class GRAPH_MT_context_menu(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator_context = 'INVOKE_DEFAULT'
+
         layout.operator("graph.copy", text="Copy", icon='COPYDOWN')
         layout.operator("graph.paste", text="Paste", icon='PASTEDOWN')
         layout.operator("graph.paste", text="Paste Flipped", icon='PASTEFLIPDOWN').flipped = True
@@ -342,6 +344,7 @@ class GRAPH_MT_context_menu(Menu):
 
         layout.operator("graph.keyframe_insert").type = 'SEL'
         layout.operator("graph.duplicate_move")
+        layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("graph.delete")
 
         layout.separator()

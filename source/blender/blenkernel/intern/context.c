@@ -89,7 +89,8 @@ struct bContext {
     struct Scene *scene;
 
     int recursion;
-    int py_init; /* true if python is initialized */
+    /** True if python is initialized. */
+    bool py_init;
     void *py_context;
   } data;
 };
@@ -212,11 +213,11 @@ void CTX_store_free_list(ListBase *contexts)
 
 /* is python initialized? */
 
-int CTX_py_init_get(bContext *C)
+bool CTX_py_init_get(bContext *C)
 {
   return C->data.py_init;
 }
-void CTX_py_init_set(bContext *C, int value)
+void CTX_py_init_set(bContext *C, bool value)
 {
   C->data.py_init = value;
 }
@@ -397,6 +398,39 @@ static int ctx_data_collection_get(const bContext *C, const char *member, ListBa
   BLI_listbase_clear(list);
 
   return 0;
+}
+
+static int ctx_data_base_collection_get(const bContext *C, const char *member, ListBase *list)
+{
+  ListBase ctx_object_list;
+  bool ok = false;
+
+  if ((ctx_data_collection_get(C, member, &ctx_object_list) == false) ||
+      BLI_listbase_is_empty(&ctx_object_list)) {
+    BLI_listbase_clear(list);
+    return 0;
+  }
+
+  bContextDataResult result;
+  memset(&result, 0, sizeof(bContextDataResult));
+
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  CollectionPointerLink *ctx_object;
+  for (ctx_object = ctx_object_list.first; ctx_object; ctx_object = ctx_object->next) {
+    Object *ob = ctx_object->ptr.data;
+    Base *base = BKE_view_layer_base_find(view_layer, ob);
+    if (base != NULL) {
+      CTX_data_list_add(&result, &scene->id, &RNA_ObjectBase, base);
+      ok = true;
+    }
+  }
+  CTX_data_type_set(&result, CTX_DATA_TYPE_COLLECTION);
+  BLI_freelistN(&ctx_object_list);
+
+  *list = result.list;
+  return ok;
 }
 
 PointerRNA CTX_data_pointer_get(const bContext *C, const char *member)
@@ -1150,7 +1184,7 @@ int CTX_data_selected_editable_objects(const bContext *C, ListBase *list)
 
 int CTX_data_selected_editable_bases(const bContext *C, ListBase *list)
 {
-  return ctx_data_collection_get(C, "selected_editable_bases", list);
+  return ctx_data_base_collection_get(C, "selected_editable_objects", list);
 }
 
 int CTX_data_editable_objects(const bContext *C, ListBase *list)
@@ -1160,7 +1194,7 @@ int CTX_data_editable_objects(const bContext *C, ListBase *list)
 
 int CTX_data_editable_bases(const bContext *C, ListBase *list)
 {
-  return ctx_data_collection_get(C, "editable_bases", list);
+  return ctx_data_base_collection_get(C, "editable_objects", list);
 }
 
 int CTX_data_selected_objects(const bContext *C, ListBase *list)
@@ -1170,7 +1204,7 @@ int CTX_data_selected_objects(const bContext *C, ListBase *list)
 
 int CTX_data_selected_bases(const bContext *C, ListBase *list)
 {
-  return ctx_data_collection_get(C, "selected_bases", list);
+  return ctx_data_base_collection_get(C, "selected_objects", list);
 }
 
 int CTX_data_visible_objects(const bContext *C, ListBase *list)
@@ -1180,7 +1214,7 @@ int CTX_data_visible_objects(const bContext *C, ListBase *list)
 
 int CTX_data_visible_bases(const bContext *C, ListBase *list)
 {
-  return ctx_data_collection_get(C, "visible_bases", list);
+  return ctx_data_base_collection_get(C, "visible_objects", list);
 }
 
 int CTX_data_selectable_objects(const bContext *C, ListBase *list)
@@ -1190,7 +1224,7 @@ int CTX_data_selectable_objects(const bContext *C, ListBase *list)
 
 int CTX_data_selectable_bases(const bContext *C, ListBase *list)
 {
-  return ctx_data_collection_get(C, "selectable_bases", list);
+  return ctx_data_base_collection_get(C, "selectable_objects", list);
 }
 
 struct Object *CTX_data_active_object(const bContext *C)
@@ -1200,7 +1234,14 @@ struct Object *CTX_data_active_object(const bContext *C)
 
 struct Base *CTX_data_active_base(const bContext *C)
 {
-  return ctx_data_pointer_get(C, "active_base");
+  Object *ob = ctx_data_pointer_get(C, "active_object");
+
+  if (ob == NULL) {
+    return NULL;
+  }
+
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  return BKE_view_layer_base_find(view_layer, ob);
 }
 
 struct Object *CTX_data_edit_object(const bContext *C)
@@ -1308,7 +1349,7 @@ int CTX_data_editable_gpencil_strokes(const bContext *C, ListBase *list)
   return ctx_data_collection_get(C, "editable_gpencil_strokes", list);
 }
 
-Depsgraph *CTX_data_depsgraph(const bContext *C)
+Depsgraph *CTX_data_depsgraph_pointer(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -1321,11 +1362,20 @@ Depsgraph *CTX_data_depsgraph(const bContext *C)
   return depsgraph;
 }
 
-Depsgraph *CTX_data_evaluated_depsgraph(const bContext *C)
+Depsgraph *CTX_data_expect_evaluated_depsgraph(const bContext *C)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  /* TODO(sergey): Assert that the dependency graph is fully evaluated.
+   * Note that first the depsgraph and scene post-eval hooks needs to run extra round of updates
+   * first to make check here really reliable. */
+  return depsgraph;
+}
+
+Depsgraph *CTX_data_ensure_evaluated_depsgraph(const bContext *C)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
-  BKE_scene_graph_update_tagged(depsgraph, bmain);
+  BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
   return depsgraph;
 }
 

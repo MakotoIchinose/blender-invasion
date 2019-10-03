@@ -66,9 +66,11 @@ static int rna_CurveMapping_curves_length(PointerRNA *ptr)
   CurveMapping *cumap = (CurveMapping *)ptr->data;
   int len;
 
-  for (len = 0; len < CM_TOT; len++)
-    if (!cumap->cm[len].curve)
+  for (len = 0; len < CM_TOT; len++) {
+    if (!cumap->cm[len].curve) {
       break;
+    }
+  }
 
   return len;
 }
@@ -85,12 +87,14 @@ static void rna_CurveMapping_clip_set(PointerRNA *ptr, bool value)
 {
   CurveMapping *cumap = (CurveMapping *)ptr->data;
 
-  if (value)
+  if (value) {
     cumap->flag |= CUMA_DO_CLIP;
-  else
+  }
+  else {
     cumap->flag &= ~CUMA_DO_CLIP;
+  }
 
-  curvemapping_changed(cumap, false);
+  BKE_curvemapping_changed(cumap, false);
 }
 
 static void rna_CurveMapping_black_level_set(PointerRNA *ptr, const float *values)
@@ -99,7 +103,7 @@ static void rna_CurveMapping_black_level_set(PointerRNA *ptr, const float *value
   cumap->black[0] = values[0];
   cumap->black[1] = values[1];
   cumap->black[2] = values[2];
-  curvemapping_set_black_white(cumap, NULL, NULL);
+  BKE_curvemapping_set_black_white(cumap, NULL, NULL);
 }
 
 static void rna_CurveMapping_white_level_set(PointerRNA *ptr, const float *values)
@@ -108,7 +112,7 @@ static void rna_CurveMapping_white_level_set(PointerRNA *ptr, const float *value
   cumap->white[0] = values[0];
   cumap->white[1] = values[1];
   cumap->white[2] = values[2];
-  curvemapping_set_black_white(cumap, NULL, NULL);
+  BKE_curvemapping_set_black_white(cumap, NULL, NULL);
 }
 
 static void rna_CurveMapping_tone_update(Main *UNUSED(bmain),
@@ -340,8 +344,9 @@ static CBData *rna_ColorRampElement_new(struct ColorBand *coba,
 {
   CBData *element = BKE_colorband_element_add(coba, position);
 
-  if (element == NULL)
+  if (element == NULL) {
     BKE_reportf(reports, RPT_ERROR, "Unable to add element to colorband (limit %d)", MAXCOLORBAND);
+  }
 
   return element;
 }
@@ -363,7 +368,7 @@ static void rna_ColorRampElement_remove(struct ColorBand *coba,
 static void rna_CurveMap_remove_point(CurveMap *cuma, ReportList *reports, PointerRNA *point_ptr)
 {
   CurveMapPoint *point = point_ptr->data;
-  if (curvemap_remove_point(cuma, point) == false) {
+  if (BKE_curvemap_remove_point(cuma, point) == false) {
     BKE_report(reports, RPT_ERROR, "Unable to remove curve point");
     return;
   }
@@ -414,8 +419,9 @@ static void rna_ColorManagedDisplaySettings_display_device_update(Main *bmain,
 {
   ID *id = ptr->id.data;
 
-  if (!id)
+  if (!id) {
     return;
+  }
 
   if (GS(id->name) == ID_SCE) {
     Scene *scene = (Scene *)id;
@@ -512,7 +518,7 @@ static void rna_ColorManagedViewSettings_use_curves_set(PointerRNA *ptr, bool va
     view_settings->flag |= COLORMANAGE_VIEW_USE_CURVES;
 
     if (view_settings->curve_mapping == NULL) {
-      view_settings->curve_mapping = curvemapping_add(4, 0.0f, 0.0f, 1.0f, 1.0f);
+      view_settings->curve_mapping = BKE_curvemapping_add(4, 0.0f, 0.0f, 1.0f, 1.0f);
     }
   }
   else {
@@ -591,13 +597,15 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
   else if (GS(id->name) == ID_MC) {
     MovieClip *clip = (MovieClip *)id;
 
-    BKE_movieclip_reload(bmain, clip);
+    DEG_id_tag_update(&clip->id, ID_RECALC_SOURCE);
+    BKE_sequence_invalidate_movieclip_strips(bmain, clip);
 
     WM_main_add_notifier(NC_MOVIECLIP | ND_DISPLAY, &clip->id);
     WM_main_add_notifier(NC_MOVIECLIP | NA_EDITED, &clip->id);
   }
   else if (GS(id->name) == ID_SCE) {
     Scene *scene = (Scene *)id;
+    BKE_sequence_invalidate_scene_strips(bmain, scene);
 
     if (scene->ed) {
       ColorManagedColorspaceSettings *colorspace_settings = (ColorManagedColorspaceSettings *)
@@ -623,7 +631,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
           seq->strip->proxy->anim = NULL;
         }
 
-        BKE_sequence_invalidate_cache(scene, seq);
+        BKE_sequence_invalidate_cache_preprocessed(scene, seq);
       }
       else {
         SEQ_BEGIN (scene->ed, seq) {
@@ -635,8 +643,6 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
       WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
     }
   }
-
-  BKE_sequencer_cache_cleanup_all(bmain);
 }
 
 static char *rna_ColorManagedSequencerColorspaceSettings_path(PointerRNA *UNUSED(ptr))
@@ -653,8 +659,9 @@ static void rna_ColorManagement_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
 {
   ID *id = ptr->id.data;
 
-  if (!id)
+  if (!id) {
     return;
+  }
 
   if (GS(id->name) == ID_SCE) {
     DEG_id_tag_update(id, 0);
@@ -662,7 +669,7 @@ static void rna_ColorManagement_update(Main *UNUSED(bmain), Scene *UNUSED(scene)
   }
 }
 
-/* this function only exists because #curvemap_evaluateF uses a 'const' qualifier */
+/* this function only exists because #BKE_curvemap_evaluateF uses a 'const' qualifier */
 static float rna_CurveMap_evaluateF(struct CurveMap *cuma, ReportList *reports, float value)
 {
   if (!cuma->table) {
@@ -672,12 +679,12 @@ static float rna_CurveMap_evaluateF(struct CurveMap *cuma, ReportList *reports, 
         "CurveMap table not initialized, call initialize() on CurveMapping owner of the CurveMap");
     return 0.0f;
   }
-  return curvemap_evaluateF(cuma, value);
+  return BKE_curvemap_evaluateF(cuma, value);
 }
 
 static void rna_CurveMap_initialize(struct CurveMapping *cumap)
 {
-  curvemapping_initialize(cumap);
+  BKE_curvemapping_initialize(cumap);
 }
 #else
 
@@ -722,7 +729,7 @@ static void rna_def_curvemap_points_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "CurveMap");
   RNA_def_struct_ui_text(srna, "Curve Map Point", "Collection of Curve Map Points");
 
-  func = RNA_def_function(srna, "new", "curvemap_insert");
+  func = RNA_def_function(srna, "new", "BKE_curvemap_insert");
   RNA_def_function_ui_description(func, "Add point to CurveMap");
   parm = RNA_def_float(func,
                        "position",
@@ -882,7 +889,7 @@ static void rna_def_curvemapping(BlenderRNA *brna)
       prop, "White Level", "For RGB curves, the color that white is mapped to");
   RNA_def_property_float_funcs(prop, NULL, "rna_CurveMapping_white_level_set", NULL);
 
-  func = RNA_def_function(srna, "update", "curvemapping_changed_all");
+  func = RNA_def_function(srna, "update", "BKE_curvemapping_changed_all");
   RNA_def_function_ui_description(func, "Update curve mapping after making changes");
 
   func = RNA_def_function(srna, "initialize", "rna_CurveMap_initialize");
@@ -1249,7 +1256,10 @@ static void rna_def_colormanage(BlenderRNA *brna)
                               "rna_ColorManagedColorspaceSettings_colorspace_get",
                               "rna_ColorManagedColorspaceSettings_colorspace_set",
                               "rna_ColorManagedColorspaceSettings_colorspace_itemf");
-  RNA_def_property_ui_text(prop, "Input Color Space", "Color space of the image or movie on disk");
+  RNA_def_property_ui_text(
+      prop,
+      "Input Color Space",
+      "Color space in the image file, to convert to and from when saving and loading the image");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagedColorspaceSettings_reload_update");
 
   prop = RNA_def_property(srna, "is_data", PROP_BOOLEAN, PROP_NONE);

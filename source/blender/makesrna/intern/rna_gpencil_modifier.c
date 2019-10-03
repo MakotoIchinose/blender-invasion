@@ -377,6 +377,10 @@ static void rna_def_modifier_gpencilnoise(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Random", "Use random values");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
+  prop = RNA_def_property(srna, "seed", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_ui_text(prop, "Seed", "Random seed");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "use_edit_position", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_NOISE_MOD_LOCATION);
   RNA_def_property_ui_text(
@@ -607,12 +611,22 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
        "FIXED",
        ICON_IPO_CONSTANT,
        "Fixed",
-       "Delete alternative vertices in the stroke, except extremes"},
+       "Delete alternating vertices in the stroke, except extremes"},
       {GP_SIMPLIFY_ADAPTIVE,
        "ADAPTIVE",
        ICON_IPO_EASE_IN_OUT,
        "Adaptive",
-       "Use a RDP algorithm to simplify"},
+       "Use a RDP algorithm to simplify the stroke"},
+      {GP_SIMPLIFY_SAMPLE,
+       "SAMPLE",
+       ICON_IPO_EASE_IN_OUT,
+       "Sample",
+       "Resample the stroke with segments of the specified length"},
+      {GP_SIMPLIFY_MERGE,
+       "MERGE",
+       ICON_IPO_EASE_IN_OUT,
+       "Merge",
+       "Simplify the stroke by merging vertices closer than a given distance"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -663,13 +677,27 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
   /* Mode */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, prop_gpencil_simplify_mode_items);
-  RNA_def_property_ui_text(prop, "Mode", "How simplify the stroke");
+  RNA_def_property_ui_text(prop, "Mode", "How to simplify the stroke");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "step", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "step");
   RNA_def_property_range(prop, 1, 50);
   RNA_def_property_ui_text(prop, "Iterations", "Number of times to apply simplify");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Sample */
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10.0f);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Distance */
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "distance");
+  RNA_def_property_range(prop, 0, 100.0f);
+  RNA_def_property_ui_text(prop, "Distance", "Distance between points");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
@@ -988,8 +1016,8 @@ static void rna_def_modifier_gpencilcolor(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "hue", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_range(prop, 0.0, 2.0);
-  RNA_def_property_ui_range(prop, 0.0, 2.0, 0.1, 3);
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 3);
   RNA_def_property_float_sdna(prop, NULL, "hsv[0]");
   RNA_def_property_ui_text(prop, "Hue", "Color Hue");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
@@ -1645,7 +1673,7 @@ static void rna_def_modifier_gpencilarmature(BlenderRNA *brna)
   RNA_def_property_pointer_funcs(
       prop, NULL, "rna_ArmatureGpencilModifier_object_set", NULL, "rna_Armature_object_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 
   prop = RNA_def_property(srna, "use_bone_envelopes", PROP_BOOLEAN, PROP_NONE);
@@ -1720,13 +1748,13 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "mode", eGpencilModifierMode_Realtime);
   RNA_def_property_ui_text(prop, "Realtime", "Display modifier in viewport");
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_ON, 1);
 
   prop = RNA_def_property(srna, "show_render", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", eGpencilModifierMode_Render);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Render", "Use modifier during render");
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_ON, 1);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
@@ -1740,7 +1768,7 @@ void RNA_def_greasepencil_modifier(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, NULL, "mode", eGpencilModifierMode_Expanded);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Expanded", "Set modifier expanded in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 

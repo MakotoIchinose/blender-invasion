@@ -210,8 +210,8 @@ MINLINE axis_t max_axis(axis_t a, axis_t b)
 #endif
 
 /**
- * Introsort
- * with permission deriven from the following Java code:
+ * Intro-sort
+ * with permission deriving from the following Java code:
  * http://ralphunden.net/content/tutorials/a-guide-to-introsort/
  * and he derived it from the SUN STL
  */
@@ -561,7 +561,7 @@ static void bvhtree_verify(BVHTree *tree)
 
 /* Helper data and structures to build a min-leaf generalized implicit tree
  * This code can be easily reduced
- * (basicly this is only method to calculate pow(k, n) in O(1).. and stuff like that) */
+ * (basically this is only method to calculate pow(k, n) in O(1).. and stuff like that) */
 typedef struct BVHBuildHelper {
   int tree_type;
   int totleafs;
@@ -603,7 +603,9 @@ static void build_implicit_tree_helper(const BVHTree *tree, BVHBuildHelper *data
   data->remain_leafs = remain + nnodes;
 }
 
-// return the min index of all the leafs archivable with the given branch
+/**
+ * Return the min index of all the leafs achievable with the given branch.
+ */
 static int implicit_leafs_index(const BVHBuildHelper *data, const int depth, const int child_index)
 {
   int min_leaf_index = child_index * data->leafs_per_child[depth - 1];
@@ -623,14 +625,14 @@ static int implicit_leafs_index(const BVHBuildHelper *data, const int depth, con
  * Generalized implicit tree build
  *
  * An implicit tree is a tree where its structure is implied,
- * thus there is no need to store child pointers or indexs.
- * Its possible to find the position of the child or the parent with simple maths
- * (multiplication and adittion).
+ * thus there is no need to store child pointers or indexes.
+ * It's possible to find the position of the child or the parent with simple maths
+ * (multiplication and addition).
  * This type of tree is for example used on heaps..
- * where node N has its childs at indexs N*2 and N*2+1.
+ * where node N has its child at indices N*2 and N*2+1.
  *
- * Although in this case the tree type is general.. and not know until runtime.
- * tree_type stands for the maximum number of childs that a tree node can have.
+ * Although in this case the tree type is general.. and not know until run-time.
+ * tree_type stands for the maximum number of children that a tree node can have.
  * All tree types >= 2 are supported.
  *
  * Advantages of the used trees include:
@@ -698,7 +700,7 @@ typedef struct BVHDivNodesData {
 
 static void non_recursive_bvh_div_nodes_task_cb(void *__restrict userdata,
                                                 const int j,
-                                                const ParallelRangeTLS *__restrict UNUSED(tls))
+                                                const TaskParallelTLS *__restrict UNUSED(tls))
 {
   BVHDivNodesData *data = userdata;
 
@@ -839,14 +841,14 @@ static void non_recursive_bvh_div_nodes(const BVHTree *tree,
     cb_data.depth = depth;
 
     if (true) {
-      ParallelRangeSettings settings;
+      TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       settings.use_threading = (num_leafs > KDOPBVH_THREAD_LEAF_THRESHOLD);
       BLI_task_parallel_range(i, i_stop, &cb_data, non_recursive_bvh_div_nodes_task_cb, &settings);
     }
     else {
       /* Less hassle for debugging. */
-      ParallelRangeTLS tls = {0};
+      TaskParallelTLS tls = {0};
       for (int i_task = i; i_task < i_stop; i_task++) {
         non_recursive_bvh_div_nodes_task_cb(&cb_data, i_task, &tls);
       }
@@ -1193,7 +1195,7 @@ int BLI_bvhtree_overlap_thread_num(const BVHTree *tree)
 
 static void bvhtree_overlap_task_cb(void *__restrict userdata,
                                     const int j,
-                                    const ParallelRangeTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict UNUSED(tls))
 {
   BVHOverlapData_Thread *data = &((BVHOverlapData_Thread *)userdata)[j];
   BVHOverlapData_Shared *data_shared = data->shared;
@@ -1260,7 +1262,7 @@ BVHTreeOverlap *BLI_bvhtree_overlap(
     data[j].thread = j;
   }
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (tree1->totleaf > KDOPBVH_THREAD_LEAF_THRESHOLD);
   BLI_task_parallel_range(0, thread_num, data, bvhtree_overlap_task_cb, &settings);
@@ -1792,7 +1794,7 @@ void BLI_bvhtree_ray_cast_all(BVHTree *tree,
 /* -------------------------------------------------------------------- */
 /** \name BLI_bvhtree_range_query
  *
- * Allocs and fills an array with the indexs of node that are on the given spherical range
+ * Allocates and fills an array with the indices of node that are on the given spherical range
  * (center, radius).
  * Returns the size of the array.
  *

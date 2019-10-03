@@ -74,7 +74,7 @@ static void eevee_motion_blur_camera_get_matrix_at_time(Scene *scene,
   /* FIXME : This is a temporal solution that does not take care of parent animations */
   /* Recalc Anim manually */
   BKE_animsys_evaluate_animdata(
-      draw_ctx->depsgraph, scene, &camdata_cpy.id, camdata_cpy.adt, time, ADT_RECALC_ALL);
+      scene, &camdata_cpy.id, camdata_cpy.adt, time, ADT_RECALC_ALL, false);
   BKE_object_where_is_calc_time(draw_ctx->depsgraph, scene, &cam_cpy, time);
 
   /* Compute winmat */
@@ -127,7 +127,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *veda
 
       /* Viewport Matrix */
       /* Note: This does not have TAA jitter applied. */
-      DRW_viewport_matrix_get(persmat, DRW_MAT_PERS);
+      DRW_view_persmat_get(NULL, persmat, false);
 
       bool view_is_valid = (stl->g_data->view_updated == false);
 

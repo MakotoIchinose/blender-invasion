@@ -44,8 +44,7 @@ class ConstraintButtonsPanel:
             else:
                 row = box.row(align=True)
                 row.prop(con, "influence")
-                row.operator("constraint.disable_keep_transform",
-                    text='', icon='CANCEL')
+                row.operator("constraint.disable_keep_transform", text="", icon='CANCEL')
 
     @staticmethod
     def space_template(layout, con, target=True, owner=True):
@@ -549,10 +548,7 @@ class ConstraintButtonsPanel:
     def FLOOR(self, _context, layout, con):
         self.target_template(layout, con)
 
-        row = layout.row()
-        row.prop(con, "use_sticky")
-        row.prop(con, "use_rotation")
-
+        layout.prop(con, "use_rotation")
         layout.prop(con, "offset")
 
         row = layout.row()

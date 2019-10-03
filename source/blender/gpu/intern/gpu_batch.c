@@ -28,6 +28,7 @@
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
+#include "GPU_extensions.h"
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
 
@@ -56,7 +57,7 @@ void GPU_batch_vao_cache_clear(GPUBatch *batch)
             (GPUShaderInterface *)batch->dynamic_vaos.interfaces[i], batch);
       }
     }
-    MEM_freeN(batch->dynamic_vaos.interfaces);
+    MEM_freeN((void *)batch->dynamic_vaos.interfaces);
     MEM_freeN(batch->dynamic_vaos.vao_ids);
   }
   else {
@@ -181,6 +182,25 @@ void GPU_batch_instbuf_set(GPUBatch *batch, GPUVertBuf *inst, bool own_vbo)
   }
 }
 
+void GPU_batch_elembuf_set(GPUBatch *batch, GPUIndexBuf *elem, bool own_ibo)
+{
+  BLI_assert(elem != NULL);
+  /* redo the bindings */
+  GPU_batch_vao_cache_clear(batch);
+
+  if (batch->elem != NULL && (batch->owns_flag & GPU_BATCH_OWNS_INDEX)) {
+    GPU_indexbuf_discard(batch->elem);
+  }
+  batch->elem = elem;
+
+  if (own_ibo) {
+    batch->owns_flag |= GPU_BATCH_OWNS_INDEX;
+  }
+  else {
+    batch->owns_flag &= ~GPU_BATCH_OWNS_INDEX;
+  }
+}
+
 /* Returns the index of verts in the batch. */
 int GPU_batch_vertbuf_add_ex(GPUBatch *batch, GPUVertBuf *verts, bool own_vbo)
 {
@@ -285,7 +305,7 @@ static GLuint batch_vao_get(GPUBatch *batch)
       /* Not enough place, realloc the array. */
       i = batch->dynamic_vaos.count;
       batch->dynamic_vaos.count += GPU_BATCH_VAO_DYN_ALLOC_COUNT;
-      batch->dynamic_vaos.interfaces = MEM_recallocN(batch->dynamic_vaos.interfaces,
+      batch->dynamic_vaos.interfaces = MEM_recallocN((void *)batch->dynamic_vaos.interfaces,
                                                      sizeof(GPUShaderInterface *) *
                                                          batch->dynamic_vaos.count);
       batch->dynamic_vaos.vao_ids = MEM_recallocN(batch->dynamic_vaos.vao_ids,
@@ -361,13 +381,23 @@ static void create_bindings(GPUVertBuf *verts,
   const GPUVertFormat *format = &verts->format;
 
   const uint attr_len = format->attr_len;
-  const uint stride = format->stride;
+  uint stride = format->stride;
+  uint offset = 0;
 
   GPU_vertbuf_use(verts);
 
   for (uint a_idx = 0; a_idx < attr_len; ++a_idx) {
     const GPUVertAttr *a = &format->attrs[a_idx];
-    const GLvoid *pointer = (const GLubyte *)0 + a->offset + v_first * stride;
+
+    if (format->deinterleaved) {
+      offset += ((a_idx == 0) ? 0 : format->attrs[a_idx - 1].sz) * verts->vertex_len;
+      stride = a->sz;
+    }
+    else {
+      offset = a->offset;
+    }
+
+    const GLvoid *pointer = (const GLubyte *)0 + offset + v_first * stride;
 
     for (uint n_idx = 0; n_idx < a->name_len; ++n_idx) {
       const char *name = GPU_vertformat_attr_name_get(format, a, n_idx);
@@ -418,8 +448,11 @@ static void create_bindings(GPUVertBuf *verts,
 
 static void batch_update_program_bindings(GPUBatch *batch, uint v_first)
 {
-  for (int v = 0; v < GPU_BATCH_VBO_MAX_LEN && batch->verts[v] != NULL; ++v) {
-    create_bindings(batch->verts[v], batch->interface, (batch->inst) ? 0 : v_first, false);
+  /* Reverse order so first vbos have more prevalence (in term of attrib override). */
+  for (int v = GPU_BATCH_VBO_MAX_LEN - 1; v > -1; --v) {
+    if (batch->verts[v] != NULL) {
+      create_bindings(batch->verts[v], batch->interface, (batch->inst) ? 0 : v_first, false);
+    }
   }
   if (batch->inst) {
     create_bindings(batch->inst, batch->interface, v_first, true);
@@ -545,42 +578,29 @@ void GPU_batch_uniform_mat4(GPUBatch *batch, const char *name, const float data[
   glUniformMatrix4fv(uniform->location, 1, GL_FALSE, (const float *)data);
 }
 
-static void primitive_restart_enable(const GPUIndexBuf *el)
-{
-  // TODO(fclem) Replace by GL_PRIMITIVE_RESTART_FIXED_INDEX when we have ogl 4.3
-  glEnable(GL_PRIMITIVE_RESTART);
-  GLuint restart_index = (GLuint)0xFFFFFFFF;
-
-#if GPU_TRACK_INDEX_RANGE
-  if (el->index_type == GPU_INDEX_U8) {
-    restart_index = (GLuint)0xFF;
-  }
-  else if (el->index_type == GPU_INDEX_U16) {
-    restart_index = (GLuint)0xFFFF;
-  }
-#endif
-
-  glPrimitiveRestartIndex(restart_index);
-}
-
-static void primitive_restart_disable(void)
-{
-  glDisable(GL_PRIMITIVE_RESTART);
-}
-
 static void *elem_offset(const GPUIndexBuf *el, int v_first)
 {
 #if GPU_TRACK_INDEX_RANGE
-  if (el->index_type == GPU_INDEX_U8) {
-    return (GLubyte *)0 + v_first;
+  if (el->index_type == GPU_INDEX_U16) {
+    return (GLushort *)0 + v_first + el->index_start;
   }
-  else if (el->index_type == GPU_INDEX_U16) {
-    return (GLushort *)0 + v_first;
-  }
-  else {
 #endif
-    return (GLuint *)0 + v_first;
+  return (GLuint *)0 + v_first + el->index_start;
+}
+
+/* Use when drawing with GPU_batch_draw_advanced */
+void GPU_batch_bind(GPUBatch *batch)
+{
+  glBindVertexArray(batch->vao_id);
+
+#if GPU_TRACK_INDEX_RANGE
+  /* Can be removed if GL 4.3 is required. */
+  if (!GLEW_ARB_ES3_compatibility && batch->elem != NULL) {
+    GLuint restart_index = (batch->elem->index_type == GPU_INDEX_U16) ? (GLuint)0xFFFF :
+                                                                        (GLuint)0xFFFFFFFF;
+    glPrimitiveRestartIndex(restart_index);
   }
+#endif
 }
 
 void GPU_batch_draw(GPUBatch *batch)
@@ -592,103 +612,74 @@ void GPU_batch_draw(GPUBatch *batch)
   GPU_batch_program_use_begin(batch);
   GPU_matrix_bind(batch->interface);  // external call.
 
-  GPU_batch_draw_range_ex(batch, 0, 0, false);
+  GPU_batch_bind(batch);
+  GPU_batch_draw_advanced(batch, 0, 0, 0, 0);
 
   GPU_batch_program_use_end(batch);
 }
 
-void GPU_batch_draw_range_ex(GPUBatch *batch, int v_first, int v_count, bool force_instance)
+void GPU_batch_draw_advanced(GPUBatch *batch, int v_first, int v_count, int i_first, int i_count)
 {
 #if TRUST_NO_ONE
-  assert(!(force_instance && (batch->inst == NULL)) ||
-         v_count > 0);  // we cannot infer length if force_instance
+  BLI_assert(batch->program_in_use);
+  /* TODO could assert that VAO is bound. */
 #endif
 
-  const bool do_instance = (force_instance || batch->inst);
-
-  // If using offset drawing, use the default VAO and redo bindings.
-  if (v_first != 0 && do_instance) {
-    glBindVertexArray(GPU_vao_default());
-    batch_update_program_bindings(batch, v_first);
+  if (v_count == 0) {
+    v_count = (batch->elem) ? batch->elem->index_len : batch->verts[0]->vertex_len;
   }
-  else {
-    glBindVertexArray(batch->vao_id);
+  if (i_count == 0) {
+    i_count = (batch->inst) ? batch->inst->vertex_len : 1;
   }
 
-  if (do_instance) {
-    /* Infer length if vertex count is not given */
-    if (v_count == 0) {
-      v_count = batch->inst->vertex_len;
+  if (!GPU_arb_base_instance_is_supported()) {
+    if (i_first > 0 && i_count > 0) {
+      /* If using offset drawing with instancing, we must
+       * use the default VAO and redo bindings. */
+      glBindVertexArray(GPU_vao_default());
+      batch_update_program_bindings(batch, i_first);
     }
+    else {
+      /* Previous call could have bind the default vao
+       * see above. */
+      glBindVertexArray(batch->vao_id);
+    }
+  }
 
-    if (batch->elem) {
-      const GPUIndexBuf *el = batch->elem;
-
-      if (el->use_prim_restart) {
-        primitive_restart_enable(el);
-      }
+  if (batch->elem) {
+    const GPUIndexBuf *el = batch->elem;
 #if GPU_TRACK_INDEX_RANGE
+    GLenum index_type = el->gl_index_type;
+    GLint base_index = el->base_index;
+#else
+    GLenum index_type = GL_UNSIGNED_INT;
+    GLint base_index = 0;
+#endif
+    void *v_first_ofs = elem_offset(el, v_first);
+
+    if (GPU_arb_base_instance_is_supported()) {
+      glDrawElementsInstancedBaseVertexBaseInstance(
+          batch->gl_prim_type, v_count, index_type, v_first_ofs, i_count, base_index, i_first);
+    }
+    else {
       glDrawElementsInstancedBaseVertex(
-          batch->gl_prim_type, el->index_len, el->gl_index_type, 0, v_count, el->base_index);
-#else
-      glDrawElementsInstanced(batch->gl_prim_type, el->index_len, GL_UNSIGNED_INT, 0, v_count);
-#endif
-      if (el->use_prim_restart) {
-        primitive_restart_disable();
-      }
-    }
-    else {
-      glDrawArraysInstanced(batch->gl_prim_type, 0, batch->verts[0]->vertex_len, v_count);
+          batch->gl_prim_type, v_count, index_type, v_first_ofs, i_count, base_index);
     }
   }
   else {
-    /* Infer length if vertex count is not given */
-    if (v_count == 0) {
-      v_count = (batch->elem) ? batch->elem->index_len : batch->verts[0]->vertex_len;
-    }
-
-    if (batch->elem) {
-      const GPUIndexBuf *el = batch->elem;
-
-      if (el->use_prim_restart) {
-        primitive_restart_enable(el);
-      }
-
-      void *v_first_ofs = elem_offset(el, v_first);
-
-#if GPU_TRACK_INDEX_RANGE
-      if (el->base_index) {
-        glDrawRangeElementsBaseVertex(batch->gl_prim_type,
-                                      el->min_index,
-                                      el->max_index,
-                                      v_count,
-                                      el->gl_index_type,
-                                      v_first_ofs,
-                                      el->base_index);
-      }
-      else {
-        glDrawRangeElements(batch->gl_prim_type,
-                            el->min_index,
-                            el->max_index,
-                            v_count,
-                            el->gl_index_type,
-                            v_first_ofs);
-      }
-#else
-      glDrawElements(batch->gl_prim_type, v_count, GL_UNSIGNED_INT, v_first_ofs);
+#ifdef __APPLE__
+    glDisable(GL_PRIMITIVE_RESTART);
 #endif
-      if (el->use_prim_restart) {
-        primitive_restart_disable();
-      }
+    if (GPU_arb_base_instance_is_supported()) {
+      glDrawArraysInstancedBaseInstance(batch->gl_prim_type, v_first, v_count, i_count, i_first);
     }
     else {
-      glDrawArrays(batch->gl_prim_type, v_first, v_count);
+      glDrawArraysInstanced(batch->gl_prim_type, v_first, v_count, i_count);
     }
+#ifdef __APPLE__
+    glEnable(GL_PRIMITIVE_RESTART);
+#endif
   }
-
-  /* Performance hog if you are drawing with the same vao multiple time.
-   * Only activate for debugging. */
-  // glBindVertexArray(0);
 }
 
 /* just draw some vertices and let shader place them where we want. */

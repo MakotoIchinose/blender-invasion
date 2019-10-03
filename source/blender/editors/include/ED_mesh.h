@@ -142,22 +142,6 @@ bool BMBVH_EdgeVisible(struct BMBVHTree *tree,
 void ED_mesh_undosys_type(struct UndoType *ut);
 
 /* editmesh_select.c */
-struct EDBMSelectID_Context;
-struct EDBMSelectID_Context *EDBM_select_id_context_create(struct ViewContext *vc,
-                                                           struct Base **bases,
-                                                           const uint bases_len,
-                                                           short select_mode);
-void EDBM_select_id_context_destroy(struct EDBMSelectID_Context *sel_id_ctx);
-struct BMElem *EDBM_select_id_bm_elem_get(struct EDBMSelectID_Context *sel_id_ctx,
-                                          const uint sel_id,
-                                          uint *r_base_index);
-
-uint EDBM_select_id_context_offset_for_object_elem(const struct EDBMSelectID_Context *sel_id_ctx,
-                                                   int base_index,
-                                                   char htype);
-
-uint EDBM_select_id_context_elem_len(const struct EDBMSelectID_Context *sel_id_ctx);
-
 void EDBM_select_mirrored(
     struct BMEditMesh *em, const int axis, const bool extend, int *r_totmirr, int *r_totfail);
 void EDBM_automerge(struct Scene *scene, struct Object *ob, bool update, const char hflag);
@@ -270,7 +254,10 @@ void ED_operatormacros_mesh(void);
 void ED_keymap_mesh(struct wmKeyConfig *keyconf);
 
 /* editmesh_tools.c (could be moved) */
-void EDBM_project_snap_verts(struct bContext *C, struct ARegion *ar, struct BMEditMesh *em);
+void EDBM_project_snap_verts(struct bContext *C,
+                             struct Depsgraph *depsgraph,
+                             struct ARegion *ar,
+                             struct BMEditMesh *em);
 
 /* editface.c */
 void paintface_flush_flags(struct bContext *C, struct Object *ob, short flag);
@@ -408,6 +395,9 @@ bool ED_mesh_color_remove_named(struct Mesh *me, const char *name);
 
 void ED_mesh_report_mirror(struct wmOperator *op, int totmirr, int totfail);
 void ED_mesh_report_mirror_ex(struct wmOperator *op, int totmirr, int totfail, char selectmode);
+
+/* Returns the pinned mesh, the mesh from the pinned object, or the mesh from the active object. */
+struct Mesh *ED_mesh_context(struct bContext *C);
 
 /* mesh backup */
 typedef struct BMBackup {

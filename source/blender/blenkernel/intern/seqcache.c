@@ -40,7 +40,9 @@
 #include "BKE_scene.h"
 #include "BKE_main.h"
 
-/* ***************************** Sequencer cache design notes ******************************
+/**
+ * Sequencer Cache Design Notes
+ * ============================
  *
  * Cache key members:
  * is_temp_cache - this cache entry will be freed before rendering next frame
@@ -50,8 +52,8 @@
  *
  * Linking: We use links to reduce number of iterations needed to manage cache.
  * Entries are linked in order as they are put into cache.
- * Only pernament (is_temp_cache = 0) cache entries are linked.
- * Putting SEQ_CACHE_STORE_FINAL_OUT will reset linking
+ * Only permanent (is_temp_cache = 0) cache entries are linked.
+ * Putting #SEQ_CACHE_STORE_FINAL_OUT will reset linking
  *
  * Function:
  * All images created during rendering are added to cache, even if the cache is already full.
@@ -90,7 +92,6 @@ typedef struct SeqCacheKey {
   struct SeqCacheKey *link_next; /* Used for linking intermediate items to final frame */
   struct Sequence *seq;
   SeqRenderData context;
-  float cfra;
   float nfra;
   float cost;
   bool is_temp_cache;
@@ -232,14 +233,17 @@ static SeqCacheKey *seq_cache_choose_key(Scene *scene, SeqCacheKey *lkey, SeqCac
   SeqCacheKey *finalkey = NULL;
 
   if (rkey && lkey) {
-    if (lkey->cfra > rkey->cfra) {
+    int lkey_cfra = lkey->seq->start + lkey->nfra;
+    int rkey_cfra = rkey->seq->start + rkey->nfra;
+
+    if (lkey_cfra > rkey_cfra) {
       SeqCacheKey *swapkey = lkey;
       lkey = rkey;
       rkey = swapkey;
     }
 
-    int l_diff = scene->r.cfra - lkey->cfra;
-    int r_diff = rkey->cfra - scene->r.cfra;
+    int l_diff = scene->r.cfra - lkey_cfra;
+    int r_diff = rkey_cfra - scene->r.cfra;
 
     if (l_diff > r_diff) {
       finalkey = lkey;
@@ -319,7 +323,7 @@ static SeqCacheKey *seq_cache_get_item_for_removal(Scene *scene)
     if (key->cost <= scene->ed->recycle_max_cost) {
       cheap_count++;
       if (lkey) {
-        if (key->cfra < lkey->cfra) {
+        if (key->seq->start + key->nfra < lkey->seq->start + lkey->nfra) {
           lkey = key;
         }
       }
@@ -327,7 +331,7 @@ static SeqCacheKey *seq_cache_get_item_for_removal(Scene *scene)
         lkey = key;
       }
       if (rkey) {
-        if (key->cfra > rkey->cfra) {
+        if (key->seq->start + key->nfra > rkey->seq->start + rkey->nfra) {
           rkey = key;
         }
       }
@@ -425,7 +429,7 @@ void BKE_sequencer_cache_free_temp_cache(Scene *scene, short id, int cfra)
     SeqCacheKey *key = BLI_ghashIterator_getKey(&gh_iter);
     BLI_ghashIterator_step(&gh_iter);
 
-    if (key->is_temp_cache && key->creator_id == id && key->cfra != cfra) {
+    if (key->is_temp_cache && key->creator_id == id && key->seq->start + key->nfra != cfra) {
       BLI_ghash_remove(cache->hash, key, seq_cache_keyfree, seq_cache_valfree);
     }
   }
@@ -474,7 +478,10 @@ void BKE_sequencer_cache_cleanup(Scene *scene)
   seq_cache_unlock(scene);
 }
 
-void BKE_sequencer_cache_cleanup_sequence(Scene *scene, Sequence *seq)
+void BKE_sequencer_cache_cleanup_sequence(Scene *scene,
+                                          Sequence *seq,
+                                          Sequence *seq_changed,
+                                          int invalidate_types)
 {
   SeqCache *cache = seq_cache_get_from_scene(scene);
   if (!cache) {
@@ -483,14 +490,40 @@ void BKE_sequencer_cache_cleanup_sequence(Scene *scene, Sequence *seq)
 
   seq_cache_lock(scene);
 
+  int range_start = seq_changed->startdisp;
+  int range_end = seq_changed->enddisp;
+
+  if (seq->startdisp > range_start) {
+    range_start = seq->startdisp;
+  }
+
+  if (seq->enddisp < range_end) {
+    range_end = seq->enddisp;
+  }
+
+  int invalidate_composite = invalidate_types & SEQ_CACHE_STORE_FINAL_OUT;
+  int invalidate_source = invalidate_types & (SEQ_CACHE_STORE_RAW | SEQ_CACHE_STORE_PREPROCESSED |
+                                              SEQ_CACHE_STORE_COMPOSITE);
+
   GHashIterator gh_iter;
   BLI_ghashIterator_init(&gh_iter, cache->hash);
   while (!BLI_ghashIterator_done(&gh_iter)) {
     SeqCacheKey *key = BLI_ghashIterator_getKey(&gh_iter);
     BLI_ghashIterator_step(&gh_iter);
 
-    if (key->seq == seq) {
-      /* Relink keys, so we don't end up with orphaned keys */
+    int key_cfra = key->seq->start + key->nfra;
+
+    /* clean all final and composite in intersection of seq and seq_changed */
+    if (key->type & invalidate_composite && key_cfra >= range_start && key_cfra <= range_end) {
+      if (key->link_next || key->link_prev) {
+        seq_cache_relink_keys(key->link_next, key->link_prev);
+      }
+
+      BLI_ghash_remove(cache->hash, key, seq_cache_keyfree, seq_cache_valfree);
+    }
+
+    if (key->type & invalidate_source && key->seq == seq && key_cfra >= seq_changed->startdisp &&
+        key_cfra <= seq_changed->enddisp) {
       if (key->link_next || key->link_prev) {
         seq_cache_relink_keys(key->link_next, key->link_prev);
       }
@@ -592,7 +625,6 @@ void BKE_sequencer_cache_put(
   key->cache_owner = cache;
   key->seq = seq;
   key->context = *context;
-  key->cfra = cfra;
   key->nfra = cfra - seq->start;
   key->type = type;
   key->cost = cost;
@@ -634,7 +666,7 @@ void BKE_sequencer_cache_put(
 void BKE_sequencer_cache_iterate(
     struct Scene *scene,
     void *userdata,
-    bool callback(void *userdata, struct Sequence *seq, int cfra, int cache_type, float cost))
+    bool callback(void *userdata, struct Sequence *seq, int nfra, int cache_type, float cost))
 {
   SeqCache *cache = seq_cache_get_from_scene(scene);
   if (!cache) {
@@ -650,7 +682,7 @@ void BKE_sequencer_cache_iterate(
     SeqCacheKey *key = BLI_ghashIterator_getKey(&gh_iter);
     BLI_ghashIterator_step(&gh_iter);
 
-    interrupt = callback(userdata, key->seq, key->cfra, key->type, key->cost);
+    interrupt = callback(userdata, key->seq, key->nfra, key->type, key->cost);
   }
 
   cache->last_key = NULL;

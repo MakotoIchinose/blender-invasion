@@ -282,8 +282,9 @@ void OBJECT_OT_shaderfx_add(wmOperatorType *ot)
   ot->prop = RNA_def_enum(
       ot->srna, "type", rna_enum_object_shaderfx_type_items, eShaderFxType_Blur, "Type", "");
   RNA_def_enum_funcs(ot->prop, shaderfx_add_itemf);
-  RNA_def_property_translation_context(ot->prop,
-                                       BLT_I18NCONTEXT_ID_ID); /* Abused, for "Light"... */
+
+  /* Abused, for "Light"... */
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_ID);
 }
 
 /* -------------------------------------------------------------------- */
@@ -310,9 +311,9 @@ static bool edit_shaderfx_poll_generic(bContext *C, StructRNA *rna_type, int obt
     return 0;
   }
 
-  if (ID_IS_STATIC_OVERRIDE(ob)) {
-    CTX_wm_operator_poll_msg_set(C, "Cannot edit shaderfxs coming from static override");
-    return (((ShaderFxData *)ptr.data)->flag & eShaderFxFlag_StaticOverride_Local) != 0;
+  if (ID_IS_OVERRIDE_LIBRARY(ob)) {
+    CTX_wm_operator_poll_msg_set(C, "Cannot edit shaderfxs coming from library override");
+    return (((ShaderFxData *)ptr.data)->flag & eShaderFxFlag_OverrideLibrary_Local) != 0;
   }
 
   return 1;

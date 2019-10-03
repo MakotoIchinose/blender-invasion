@@ -477,7 +477,7 @@ static void curve_to_displist(Curve *cu,
 }
 
 /**
- * \param normal_proj: Optional normal thats used to project the scanfill verts into 2d coords.
+ * \param normal_proj: Optional normal that's used to project the scanfill verts into 2d coords.
  * Pass this along if known since it saves time calculating the normal.
  * \param flipnormal: Flip the normal (same as passing \a normal_proj negated)
  */
@@ -723,7 +723,7 @@ static float displist_calc_taper(Depsgraph *depsgraph, Scene *scene, Object *tap
 
   dl = taperobj->runtime.curve_cache ? taperobj->runtime.curve_cache->disp.first : NULL;
   if (dl == NULL) {
-    BKE_displist_make_curveTypes(depsgraph, scene, taperobj, false, false, NULL);
+    BKE_displist_make_curveTypes(depsgraph, scene, taperobj, false, false);
     dl = taperobj->runtime.curve_cache->disp.first;
   }
   if (dl) {
@@ -1011,7 +1011,7 @@ static void curve_calc_modifiers_post(Depsgraph *depsgraph,
   }
 
   if (r_final && *r_final) {
-    BKE_id_free(NULL, r_final);
+    BKE_id_free(NULL, *r_final);
   }
 
   for (; md; md = md->next) {
@@ -1158,6 +1158,10 @@ static void curve_calc_modifiers_post(Depsgraph *depsgraph,
     else {
       (*r_final) = NULL;
     }
+  }
+  else if (modified != NULL) {
+    /* Prety stupid to generate that whole mesh if it's unused, yet we have to free it. */
+    BKE_id_free(NULL, modified);
   }
 }
 
@@ -1527,7 +1531,6 @@ static void do_makeDispListCurveTypes(Depsgraph *depsgraph,
                                       ListBase *dispbase,
                                       const bool for_render,
                                       const bool for_orco,
-                                      LinkNode *ob_cyclic_list,
                                       Mesh **r_final)
 {
   Curve *cu = ob->data;
@@ -1571,7 +1574,7 @@ static void do_makeDispListCurveTypes(Depsgraph *depsgraph,
     BKE_curve_bevelList_make(ob, &nubase, for_render);
 
     /* If curve has no bevel will return nothing */
-    BKE_curve_bevel_make(depsgraph, scene, ob, &dlbev, for_render, ob_cyclic_list);
+    BKE_curve_bevel_make(ob, &dlbev);
 
     /* no bevel or extrude, and no width correction? */
     if (!dlbev.first && cu->width == 1.0f) {
@@ -1786,12 +1789,8 @@ static void do_makeDispListCurveTypes(Depsgraph *depsgraph,
   }
 }
 
-void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
-                                  Scene *scene,
-                                  Object *ob,
-                                  const bool for_render,
-                                  const bool for_orco,
-                                  LinkNode *ob_cyclic_list)
+void BKE_displist_make_curveTypes(
+    Depsgraph *depsgraph, Scene *scene, Object *ob, const bool for_render, const bool for_orco)
 {
   ListBase *dispbase;
 
@@ -1810,14 +1809,13 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
 
   dispbase = &(ob->runtime.curve_cache->disp);
 
-  do_makeDispListCurveTypes(depsgraph,
-                            scene,
-                            ob,
-                            dispbase,
-                            for_render,
-                            for_orco,
-                            ob_cyclic_list,
-                            &ob->runtime.mesh_eval);
+  do_makeDispListCurveTypes(
+      depsgraph, scene, ob, dispbase, for_render, for_orco, &ob->runtime.mesh_eval);
+
+  if (ob->runtime.mesh_eval != NULL) {
+    ob->runtime.mesh_eval->id.tag |= LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT;
+    ob->runtime.is_mesh_eval_owned = true;
+  }
 
   boundbox_displist_object(ob);
 }
@@ -1827,15 +1825,13 @@ void BKE_displist_make_curveTypes_forRender(Depsgraph *depsgraph,
                                             Object *ob,
                                             ListBase *dispbase,
                                             Mesh **r_final,
-                                            const bool for_orco,
-                                            LinkNode *ob_cyclic_list)
+                                            const bool for_orco)
 {
   if (ob->runtime.curve_cache == NULL) {
     ob->runtime.curve_cache = MEM_callocN(sizeof(CurveCache), "CurveCache for Curve");
   }
 
-  do_makeDispListCurveTypes(
-      depsgraph, scene, ob, dispbase, true, for_orco, ob_cyclic_list, r_final);
+  do_makeDispListCurveTypes(depsgraph, scene, ob, dispbase, true, for_orco, r_final);
 }
 
 void BKE_displist_minmax(ListBase *dispbase, float min[3], float max[3])
@@ -1861,7 +1857,7 @@ void BKE_displist_minmax(ListBase *dispbase, float min[3], float max[3])
   }
 }
 
-/* this is confusing, there's also min_max_object, appplying the obmat... */
+/* this is confusing, there's also min_max_object, applying the obmat... */
 static void boundbox_displist_object(Object *ob)
 {
   if (ELEM(ob->type, OB_CURVE, OB_SURF, OB_FONT)) {

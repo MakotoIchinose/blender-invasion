@@ -149,7 +149,7 @@ typedef struct TaskThreadLocalStorage {
    * without "interrupting" for task execution.
    *
    * We try to accumulate as much tasks as possible in a local queue without
-   * any locks first, and then we push all of them into a scheduler's queue
+   * any locks first, and then we push all of them into a schedulers queue
    * from within a single mutex lock.
    */
   bool do_delayed_push;
@@ -210,6 +210,10 @@ struct TaskScheduler {
   ListBase queue;
   ThreadMutex queue_mutex;
   ThreadCondition queue_cond;
+
+  ThreadMutex startup_mutex;
+  ThreadCondition startup_cond;
+  volatile int num_thread_started;
 
   volatile bool do_exit;
 
@@ -429,6 +433,14 @@ static void *task_scheduler_thread_run(void *thread_p)
 
   pthread_setspecific(scheduler->tls_id_key, thread);
 
+  /* signal the main thread when all threads have started */
+  BLI_mutex_lock(&scheduler->startup_mutex);
+  scheduler->num_thread_started++;
+  if (scheduler->num_thread_started == scheduler->num_threads) {
+    BLI_condition_notify_one(&scheduler->startup_cond);
+  }
+  BLI_mutex_unlock(&scheduler->startup_mutex);
+
   /* keep popping off tasks */
   while (task_scheduler_thread_wait_pop(scheduler, &task)) {
     TaskPool *pool = task->pool;
@@ -462,6 +474,10 @@ TaskScheduler *BLI_task_scheduler_create(int num_threads)
   BLI_listbase_clear(&scheduler->queue);
   BLI_mutex_init(&scheduler->queue_mutex);
   BLI_condition_init(&scheduler->queue_cond);
+
+  BLI_mutex_init(&scheduler->startup_mutex);
+  BLI_condition_init(&scheduler->startup_cond);
+  scheduler->num_thread_started = 0;
 
   if (num_threads == 0) {
     /* automatic number of threads will be main thread + num cores */
@@ -503,6 +519,17 @@ TaskScheduler *BLI_task_scheduler_create(int num_threads)
       }
     }
   }
+
+  /* Wait for all worker threads to start before returning to caller to prevent the case where
+   * threads are still starting and pthread_join is called, which causes a deadlock on pthreads4w.
+   */
+  BLI_mutex_lock(&scheduler->startup_mutex);
+  /* NOTE: Use loop here to avoid false-positive everything-is-ready caused by spontaneous thread
+   * wake up. */
+  while (scheduler->num_thread_started != num_threads) {
+    BLI_condition_wait(&scheduler->startup_cond, &scheduler->startup_mutex);
+  }
+  BLI_mutex_unlock(&scheduler->startup_mutex);
 
   return scheduler;
 }
@@ -551,6 +578,8 @@ void BLI_task_scheduler_free(TaskScheduler *scheduler)
   /* delete mutex/condition */
   BLI_mutex_end(&scheduler->queue_mutex);
   BLI_condition_end(&scheduler->queue_cond);
+  BLI_mutex_end(&scheduler->startup_mutex);
+  BLI_condition_end(&scheduler->startup_cond);
 
   MEM_freeN(scheduler);
 }
@@ -1025,6 +1054,49 @@ typedef struct ParallelRangeState {
   int chunk_size;
 } ParallelRangeState;
 
+BLI_INLINE void task_parallel_range_calc_chunk_size(const TaskParallelSettings *settings,
+                                                    const int num_tasks,
+                                                    ParallelRangeState *state)
+{
+  const int tot_items = state->stop - state->start;
+  int chunk_size = 0;
+
+  if (settings->min_iter_per_thread > 0) {
+    /* Already set by user, no need to do anything here. */
+    chunk_size = settings->min_iter_per_thread;
+  }
+  else {
+    /* Basic heuristic to avoid threading on low amount of items. We could make that limit
+     * configurable in settings too... */
+    if (tot_items > 0 && tot_items < 256) {
+      chunk_size = tot_items;
+    }
+    /* NOTE: The idea here is to compensate for rather measurable threading
+     * overhead caused by fetching tasks. With too many CPU threads we are starting
+     * to spend too much time in those overheads. */
+    else if (num_tasks > 32) {
+      chunk_size = 128;
+    }
+    else if (num_tasks > 16) {
+      chunk_size = 64;
+    }
+    else {
+      chunk_size = 32;
+    }
+  }
+
+  BLI_assert(chunk_size > 0);
+
+  switch (settings->scheduling_mode) {
+    case TASK_SCHEDULING_STATIC:
+      state->chunk_size = max_ii(chunk_size, tot_items / (num_tasks));
+      break;
+    case TASK_SCHEDULING_DYNAMIC:
+      state->chunk_size = chunk_size;
+      break;
+  }
+}
+
 BLI_INLINE bool parallel_range_next_iter_get(ParallelRangeState *__restrict state,
                                              int *__restrict iter,
                                              int *__restrict count)
@@ -1040,7 +1112,7 @@ BLI_INLINE bool parallel_range_next_iter_get(ParallelRangeState *__restrict stat
 static void parallel_range_func(TaskPool *__restrict pool, void *userdata_chunk, int thread_id)
 {
   ParallelRangeState *__restrict state = BLI_task_pool_userdata(pool);
-  ParallelRangeTLS tls = {
+  TaskParallelTLS tls = {
       .thread_id = thread_id,
       .userdata_chunk = userdata_chunk,
   };
@@ -1056,7 +1128,7 @@ static void parallel_range_single_thread(const int start,
                                          int const stop,
                                          void *userdata,
                                          TaskParallelRangeFunc func,
-                                         const ParallelRangeSettings *settings)
+                                         const TaskParallelSettings *settings)
 {
   void *userdata_chunk = settings->userdata_chunk;
   const size_t userdata_chunk_size = settings->userdata_chunk_size;
@@ -1066,7 +1138,7 @@ static void parallel_range_single_thread(const int start,
     userdata_chunk_local = MALLOCA(userdata_chunk_size);
     memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
   }
-  ParallelRangeTLS tls = {
+  TaskParallelTLS tls = {
       .thread_id = 0,
       .userdata_chunk = userdata_chunk_local,
   };
@@ -1089,7 +1161,7 @@ void BLI_task_parallel_range(const int start,
                              const int stop,
                              void *userdata,
                              TaskParallelRangeFunc func,
-                             const ParallelRangeSettings *settings)
+                             const TaskParallelSettings *settings)
 {
   TaskScheduler *task_scheduler;
   TaskPool *task_pool;
@@ -1133,16 +1205,8 @@ void BLI_task_parallel_range(const int start,
   state.userdata = userdata;
   state.func = func;
   state.iter = start;
-  switch (settings->scheduling_mode) {
-    case TASK_SCHEDULING_STATIC:
-      state.chunk_size = max_ii(settings->min_iter_per_thread, (stop - start) / (num_tasks));
-      break;
-    case TASK_SCHEDULING_DYNAMIC:
-      /* TODO(sergey): Make it configurable from min_iter_per_thread. */
-      state.chunk_size = 32;
-      break;
-  }
 
+  task_parallel_range_calc_chunk_size(settings, num_tasks, &state);
   num_tasks = min_ii(num_tasks, max_ii(1, (stop - start) / state.chunk_size));
 
   if (num_tasks == 1) {

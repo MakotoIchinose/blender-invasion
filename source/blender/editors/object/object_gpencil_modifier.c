@@ -402,10 +402,10 @@ static int gpencil_edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, 
     return 0;
   }
 
-  if (ID_IS_STATIC_OVERRIDE(ob)) {
-    CTX_wm_operator_poll_msg_set(C, "Cannot edit modifiers coming from static override");
-    return (((GpencilModifierData *)ptr.data)->flag & eGpencilModifierFlag_StaticOverride_Local) !=
-           0;
+  if (ID_IS_OVERRIDE_LIBRARY(ob)) {
+    CTX_wm_operator_poll_msg_set(C, "Cannot edit modifiers coming from library override");
+    return (((GpencilModifierData *)ptr.data)->flag &
+            eGpencilModifierFlag_OverrideLibrary_Local) != 0;
   }
 
   return 1;
@@ -596,7 +596,7 @@ void OBJECT_OT_gpencil_modifier_move_down(wmOperatorType *ot)
 static int gpencil_modifier_apply_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = ED_object_active_context(C);
   GpencilModifierData *md = gpencil_edit_modifier_property_get(op, ob, 0);
   int apply_as = RNA_enum_get(op->ptr, "apply_as");

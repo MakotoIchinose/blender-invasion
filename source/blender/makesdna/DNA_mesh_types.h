@@ -75,6 +75,12 @@ struct MLoopTri_Store {
 
 /* not saved in file! */
 typedef struct Mesh_Runtime {
+  /* Evaluated mesh for objects which do not have effective modifiers. This mesh is sued as a
+   * result of modifier stack evaluation.
+   * Since modifier stack evaluation is threaded on object level we need some synchronization. */
+  struct Mesh *mesh_eval;
+  void *eval_mutex;
+
   struct EditMeshData *edit_data;
   void *batch_cache;
 
@@ -187,9 +193,10 @@ typedef struct Mesh {
 
   short totcol;
 
+  float remesh_voxel_size;
+  char _pad1[4];
   /** Deprecated multiresolution modeling data, only keep for loading old files. */
   struct Multires *mr DNA_DEPRECATED;
-  void *_pad1;
 
   Mesh_Runtime runtime;
 } Mesh;
@@ -244,6 +251,8 @@ enum {
   ME_FLAG_UNUSED_8 = 1 << 8, /* cleared */
   ME_DS_EXPAND = 1 << 9,
   ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,
+  ME_REMESH_SMOOTH_NORMALS = 1 << 11,
+  ME_REMESH_REPROJECT_PAINT_MASK = 1 << 12,
 };
 
 /* me->cd_flag */

@@ -270,7 +270,6 @@ static PBVH *cdDM_getPBVH(Object *ob, DerivedMesh *dm)
                          ob->sculpt->cd_vert_node_offset,
                          ob->sculpt->cd_face_node_offset);
 
-    pbvh_show_diffuse_color_set(cddm->pbvh, ob->sculpt->show_diffuse_color);
     pbvh_show_mask_set(cddm->pbvh, ob->sculpt->show_mask);
   }
 
@@ -300,7 +299,6 @@ static PBVH *cdDM_getPBVH(Object *ob, DerivedMesh *dm)
                         looptri,
                         looptris_num);
 
-    pbvh_show_diffuse_color_set(cddm->pbvh, ob->sculpt->show_diffuse_color);
     pbvh_show_mask_set(cddm->pbvh, ob->sculpt->show_mask);
 
     deformed = check_sculpt_object_deformed(ob, true);
@@ -1173,8 +1171,9 @@ void CDDM_calc_normals(DerivedMesh *dm)
   CDDerivedMesh *cddm = (CDDerivedMesh *)dm;
   float(*poly_nors)[3];
 
-  if (dm->numVertData == 0)
+  if (dm->numVertData == 0) {
     return;
+  }
 
   /* we don't want to overwrite any referenced layers */
   cddm->mvert = CustomData_duplicate_referenced_layer(&dm->vertData, CD_MVERT, dm->numVertData);

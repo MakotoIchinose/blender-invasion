@@ -61,10 +61,10 @@ int getname_anim_fcurve(char *name, ID *id, FCurve *fcu)
   }
   else if (ELEM(NULL, id, fcu, fcu->rna_path)) {
     if (fcu == NULL) {
-      strcpy(name, IFACE_("<invalid>"));
+      strcpy(name, TIP_("<invalid>"));
     }
     else if (fcu->rna_path == NULL) {
-      strcpy(name, IFACE_("<no path>"));
+      strcpy(name, TIP_("<no path>"));
     }
     else { /* id == NULL */
       BLI_snprintf(name, 256, "%s[%d]", fcu->rna_path, fcu->array_index);
@@ -238,6 +238,6 @@ void getcolor_fcurve_rainbow(int cur, int tot, float out[3])
   /* value is fixed at 1.0f, otherwise we cannot clearly see the curves... */
   hsv[2] = 1.0f;
 
-  /* finally, conver this to RGB colors */
+  /* finally, convert this to RGB colors */
   hsv_to_rgb_v(hsv, out);
 }

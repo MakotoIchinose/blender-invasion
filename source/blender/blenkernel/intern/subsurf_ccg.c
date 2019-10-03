@@ -1459,7 +1459,7 @@ typedef struct CopyFinalLoopArrayData {
 
 static void copyFinalLoopArray_task_cb(void *__restrict userdata,
                                        const int iter,
-                                       const ParallelRangeTLS *__restrict UNUSED(tls))
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   CopyFinalLoopArrayData *data = userdata;
   CCGDerivedMesh *ccgdm = data->ccgdm;
@@ -1536,7 +1536,7 @@ static void ccgDM_copyFinalLoopArray(DerivedMesh *dm, MLoop *mloop)
    */
   data.mloop_index = data.grid_size >= 5 ? 1 : 8;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.min_iter_per_thread = 1;
 
@@ -2294,7 +2294,7 @@ static struct PBVH *ccgDM_getPBVH(Object *ob, DerivedMesh *dm)
   }
 
   if (ob->sculpt->pbvh) {
-    /* Note that we have to clean up exisitng pbvh instead of updating it in case it does not
+    /* Note that we have to clean up existing pbvh instead of updating it in case it does not
      * match current grid_pbvh status. */
     const PBVHType pbvh_type = BKE_pbvh_type(ob->sculpt->pbvh);
     if (grid_pbvh) {
@@ -2379,7 +2379,6 @@ static struct PBVH *ccgDM_getPBVH(Object *ob, DerivedMesh *dm)
   }
 
   if (ccgdm->pbvh != NULL) {
-    pbvh_show_diffuse_color_set(ccgdm->pbvh, ob->sculpt->show_diffuse_color);
     pbvh_show_mask_set(ccgdm->pbvh, ob->sculpt->show_mask);
   }
 
@@ -3016,7 +3015,7 @@ struct DerivedMesh *subsurf_make_derived_from_derived(struct DerivedMesh *dm,
          * subsurf structure in order to save computation time since
          * re-creation is rather a complicated business.
          *
-         * TODO(sergey): There was a good eason why final calculation
+         * TODO(sergey): There was a good reason why final calculation
          * used to free entirely cached subsurf structure. reason of
          * this is to be investigated still to be sure we don't have
          * regressions here.

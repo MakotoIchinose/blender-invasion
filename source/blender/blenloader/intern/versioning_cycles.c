@@ -26,6 +26,7 @@
 
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_color_types.h"
@@ -78,14 +79,6 @@ static bool cycles_property_boolean(IDProperty *idprop, const char *name, bool d
 {
   IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT);
   return (prop) ? IDP_Int(prop) : default_value;
-}
-
-static const char *cycles_property_string(IDProperty *idprop,
-                                          const char *name,
-                                          const char *default_value)
-{
-  IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_STRING);
-  return (prop) ? IDP_String(prop) : default_value;
 }
 
 static void displacement_node_insert(bNodeTree *ntree)
@@ -193,7 +186,7 @@ static void square_roughness_node_insert(bNodeTree *ntree)
 
     /* Add sqrt node. */
     bNode *node = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
-    node->custom1 = NODE_MATH_POW;
+    node->custom1 = NODE_MATH_POWER;
     node->locx = 0.5f * (fromnode->locx + tonode->locx);
     node->locy = 0.5f * (fromnode->locy + tonode->locy);
 
@@ -232,14 +225,14 @@ static void vector_curve_node_remap(bNode *node)
     for (int curve_index = 0; curve_index < CM_TOT; curve_index++) {
       CurveMap *cm = &mapping->cm[curve_index];
       if (cm->curve) {
-        for (int i = 0; i < mapping->cm->totpoint; i++) {
+        for (int i = 0; i < cm->totpoint; i++) {
           cm->curve[i].x = (cm->curve[i].x * 2.0f) - 1.0f;
           cm->curve[i].y = (cm->curve[i].y - 0.5f) * 2.0f;
         }
       }
     }
 
-    curvemapping_changed_all(mapping);
+    BKE_curvemapping_changed_all(mapping);
   }
 }
 
@@ -393,6 +386,46 @@ static void light_emission_unify(Light *light, const char *engine)
   }
 }
 
+/* The B input of the Math node is no longer used for single-operand operators.
+ * Previously, if the B input was linked and the A input was not, the B input
+ * was used as the input of the operator. To correct this, we move the link
+ * from B to A if B is linked and A is not.
+ */
+static void update_math_node_single_operand_operators(bNodeTree *ntree)
+{
+  bool need_update = false;
+
+  for (bNode *node = ntree->nodes.first; node; node = node->next) {
+    if (node->type == SH_NODE_MATH) {
+      if (ELEM(node->custom1,
+               NODE_MATH_SQRT,
+               NODE_MATH_CEIL,
+               NODE_MATH_SINE,
+               NODE_MATH_ROUND,
+               NODE_MATH_FLOOR,
+               NODE_MATH_COSINE,
+               NODE_MATH_ARCSINE,
+               NODE_MATH_TANGENT,
+               NODE_MATH_ABSOLUTE,
+               NODE_MATH_FRACTION,
+               NODE_MATH_ARCCOSINE,
+               NODE_MATH_ARCTANGENT)) {
+        bNodeSocket *sockA = BLI_findlink(&node->inputs, 0);
+        bNodeSocket *sockB = BLI_findlink(&node->inputs, 1);
+        if (!sockA->link && sockB->link) {
+          nodeAddLink(ntree, sockB->link->fromnode, sockB->link->fromsock, node, sockA);
+          nodeRemLink(ntree, sockB->link);
+          need_update = true;
+        }
+      }
+    }
+  }
+
+  if (need_update) {
+    ntreeUpdateTree(NULL, ntree);
+  }
+}
+
 void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bmain)
 {
   /* Particle shape shared with Eevee. */
@@ -500,7 +533,7 @@ void do_versions_after_linking_cycles(Main *bmain)
       for (Camera *camera = bmain->cameras.first; camera; camera = camera->id.next) {
         IDProperty *ccamera = cycles_properties_from_ID(&camera->id);
         if (ccamera) {
-          const char *aperture_type = cycles_property_string(ccamera, "aperture_type", "RADIUS");
+          const bool is_fstop = cycles_property_int(ccamera, "aperture_type", 0) == 1;
 
           camera->dof.aperture_fstop = cycles_property_float(ccamera, "aperture_fstop", 5.6f);
           camera->dof.aperture_blades = cycles_property_int(ccamera, "aperture_blades", 0);
@@ -510,7 +543,10 @@ void do_versions_after_linking_cycles(Main *bmain)
 
           float aperture_size = cycles_property_float(ccamera, "aperture_size", 0.0f);
 
-          if (STREQ(aperture_type, "RADIUS") && aperture_size > 0.0f) {
+          if (is_fstop) {
+            continue;
+          }
+          else if (aperture_size > 0.0f) {
             if (camera->type == CAM_ORTHO) {
               camera->dof.aperture_fstop = 1.0f / (2.0f * aperture_size);
             }
@@ -530,5 +566,14 @@ void do_versions_after_linking_cycles(Main *bmain)
         camera->dof.flag &= ~CAM_DOF_ENABLED;
       }
     }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 2)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        update_math_node_single_operand_operators(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 }

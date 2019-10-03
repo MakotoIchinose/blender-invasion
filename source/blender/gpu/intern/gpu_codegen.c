@@ -46,6 +46,7 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 #include "GPU_uniformbuffer.h"
+#include "GPU_vertex_format.h"
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 
@@ -328,23 +329,29 @@ static char *gpu_generate_function_prototyps(GHash *hash)
 
     BLI_dynstr_appendf(ds, "void %s(", name);
     for (a = 0; a < function->totparam; a++) {
-      if (function->paramqual[a] == FUNCTION_QUAL_OUT)
+      if (function->paramqual[a] == FUNCTION_QUAL_OUT) {
         BLI_dynstr_append(ds, "out ");
-      else if (function->paramqual[a] == FUNCTION_QUAL_INOUT)
+      }
+      else if (function->paramqual[a] == FUNCTION_QUAL_INOUT) {
         BLI_dynstr_append(ds, "inout ");
+      }
 
-      if (function->paramtype[a] == GPU_TEX2D)
+      if (function->paramtype[a] == GPU_TEX2D) {
         BLI_dynstr_append(ds, "sampler2D");
-      else if (function->paramtype[a] == GPU_SHADOW2D)
+      }
+      else if (function->paramtype[a] == GPU_SHADOW2D) {
         BLI_dynstr_append(ds, "sampler2DShadow");
-      else
+      }
+      else {
         BLI_dynstr_append(ds, GPU_DATATYPE_STR[function->paramtype[a]]);
+      }
 #  if 0
       BLI_dynstr_appendf(ds, " param%d", a);
 #  endif
 
-      if (a != function->totparam - 1)
+      if (a != function->totparam - 1) {
         BLI_dynstr_append(ds, ", ");
+      }
     }
     BLI_dynstr_append(ds, ");\n");
   }
@@ -923,12 +930,15 @@ static char *code_generate_fragment(GPUMaterial *material,
   /* XXX This cannot go into gpu_shader_material.glsl because main()
    * would be parsed and generate error */
   /* Old glsl mode compat. */
+  /* TODO(fclem) This is only used by world shader now. get rid of it? */
   BLI_dynstr_append(ds, "#ifndef NODETREE_EXEC\n");
   BLI_dynstr_append(ds, "out vec4 fragColor;\n");
   BLI_dynstr_append(ds, "void main()\n");
   BLI_dynstr_append(ds, "{\n");
   BLI_dynstr_append(ds, "\tClosure cl = nodetree_exec();\n");
-  BLI_dynstr_append(ds, "\tfragColor = vec4(cl.radiance, cl.opacity);\n");
+  BLI_dynstr_append(ds,
+                    "\tfragColor = vec4(cl.radiance, "
+                    "saturate(1.0 - avg(cl.transmittance)));\n");
   BLI_dynstr_append(ds, "}\n");
   BLI_dynstr_append(ds, "#endif\n\n");
 
@@ -937,8 +947,9 @@ static char *code_generate_fragment(GPUMaterial *material,
   BLI_dynstr_free(ds);
 
 #if 0
-  if (G.debug & G_DEBUG)
+  if (G.debug & G_DEBUG) {
     printf("%s\n", code);
+  }
 #endif
 
   return code;
@@ -1001,19 +1012,24 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
               ds, "#define att%d %s\n", input->attr_id, attr_prefix_get(input->attr_type));
         }
         else {
-          uint hash = BLI_ghashutil_strhash_p(input->attr_name);
+          char attr_safe_name[GPU_MAX_SAFE_ATTRIB_NAME];
+          GPU_vertformat_safe_attrib_name(
+              input->attr_name, attr_safe_name, GPU_MAX_SAFE_ATTRIB_NAME);
           BLI_dynstr_appendf(ds,
-                             "DEFINE_ATTR(%s, %s%u);\n",
+                             "DEFINE_ATTR(%s, %s%s);\n",
                              GPU_DATATYPE_STR[input->type],
                              attr_prefix_get(input->attr_type),
-                             hash);
-          BLI_dynstr_appendf(
-              ds, "#define att%d %s%u\n", input->attr_id, attr_prefix_get(input->attr_type), hash);
+                             attr_safe_name);
+          BLI_dynstr_appendf(ds,
+                             "#define att%d %s%s\n",
+                             input->attr_id,
+                             attr_prefix_get(input->attr_type),
+                             attr_safe_name);
           /* Auto attribute can be vertex color byte buffer.
            * We need to know and convert them to linear space in VS. */
           if (input->attr_type == CD_AUTO_FROM_NAME) {
-            BLI_dynstr_appendf(ds, "uniform bool ba%u;\n", hash);
-            BLI_dynstr_appendf(ds, "#define att%d_is_srgb ba%u\n", input->attr_id, hash);
+            BLI_dynstr_appendf(ds, "uniform bool ba%s;\n", attr_safe_name);
+            BLI_dynstr_appendf(ds, "#define att%d_is_srgb ba%s\n", input->attr_id, attr_safe_name);
           }
         }
         BLI_dynstr_appendf(ds,
@@ -1209,8 +1225,9 @@ static char *code_generate_vertex(ListBase *nodes, const char *vert_code, bool u
   BLI_dynstr_free(ds);
 
 #if 0
-  if (G.debug & G_DEBUG)
+  if (G.debug & G_DEBUG) {
     printf("%s\n", code);
+  }
 #endif
 
   return code;
@@ -2097,17 +2114,17 @@ static int count_active_texture_sampler(GPUShader *shader, char *source)
   return sampler_len;
 }
 
-static bool gpu_pass_shader_validate(GPUPass *pass)
+static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
 {
-  if (pass->shader == NULL) {
+  if (shader == NULL) {
     return false;
   }
 
   /* NOTE: The only drawback of this method is that it will count a sampler
    * used in the fragment shader and only declared (but not used) in the vertex
    * shader as used by both. But this corner case is not happening for now. */
-  int vert_samplers_len = count_active_texture_sampler(pass->shader, pass->vertexcode);
-  int frag_samplers_len = count_active_texture_sampler(pass->shader, pass->fragmentcode);
+  int vert_samplers_len = count_active_texture_sampler(shader, pass->vertexcode);
+  int frag_samplers_len = count_active_texture_sampler(shader, pass->fragmentcode);
 
   int total_samplers_len = vert_samplers_len + frag_samplers_len;
 
@@ -2118,7 +2135,7 @@ static bool gpu_pass_shader_validate(GPUPass *pass)
   }
 
   if (pass->geometrycode) {
-    int geom_samplers_len = count_active_texture_sampler(pass->shader, pass->geometrycode);
+    int geom_samplers_len = count_active_texture_sampler(shader, pass->geometrycode);
     total_samplers_len += geom_samplers_len;
     if (geom_samplers_len > GPU_max_textures_geom()) {
       return false;
@@ -2128,30 +2145,40 @@ static bool gpu_pass_shader_validate(GPUPass *pass)
   return (total_samplers_len <= GPU_max_textures());
 }
 
-void GPU_pass_compile(GPUPass *pass, const char *shname)
+bool GPU_pass_compile(GPUPass *pass, const char *shname)
 {
+  bool success = true;
   if (!pass->compiled) {
-    pass->shader = GPU_shader_create(
+    GPUShader *shader = GPU_shader_create(
         pass->vertexcode, pass->fragmentcode, pass->geometrycode, NULL, pass->defines, shname);
 
     /* NOTE: Some drivers / gpu allows more active samplers than the opengl limit.
      * We need to make sure to count active samplers to avoid undefined behavior. */
-    if (!gpu_pass_shader_validate(pass)) {
-      if (pass->shader != NULL) {
+    if (!gpu_pass_shader_validate(pass, shader)) {
+      success = false;
+      if (shader != NULL) {
         fprintf(stderr, "GPUShader: error: too many samplers in shader.\n");
-        GPU_shader_free(pass->shader);
+        GPU_shader_free(shader);
+        shader = NULL;
       }
-      pass->shader = NULL;
     }
-    else if (!BLI_thread_is_main()) {
-      /* For some Intel drivers, you must use the program at least once
-       * in the rendering context that it is linked. */
-      glUseProgram(GPU_shader_get_program(pass->shader));
-      glUseProgram(0);
+    else if (!BLI_thread_is_main() && GPU_context_local_shaders_workaround()) {
+      pass->binary.content = GPU_shader_get_binary(
+          shader, &pass->binary.format, &pass->binary.len);
+      GPU_shader_free(shader);
+      shader = NULL;
     }
 
+    pass->shader = shader;
     pass->compiled = true;
   }
+  else if (pass->binary.content && BLI_thread_is_main()) {
+    pass->shader = GPU_shader_load_from_binary(
+        pass->binary.content, pass->binary.format, pass->binary.len, shname);
+    MEM_SAFE_FREE(pass->binary.content);
+  }
+
+  return success;
 }
 
 void GPU_pass_release(GPUPass *pass)
@@ -2170,6 +2197,9 @@ static void gpu_pass_free(GPUPass *pass)
   MEM_SAFE_FREE(pass->geometrycode);
   MEM_SAFE_FREE(pass->vertexcode);
   MEM_SAFE_FREE(pass->defines);
+  if (pass->binary.content) {
+    MEM_freeN(pass->binary.content);
+  }
   MEM_freeN(pass);
 }
 

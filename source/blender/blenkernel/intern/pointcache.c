@@ -1590,7 +1590,7 @@ void BKE_ptcache_id_from_softbody(PTCacheID *pid, Object *ob, SoftBody *sb)
 
   pid->stack_index = pid->cache->index;
 
-  pid->default_step = 10;
+  pid->default_step = 1;
   pid->max_step = 20;
   pid->file_type = PTCACHE_FILE_PTCACHE;
 }
@@ -1655,7 +1655,7 @@ void BKE_ptcache_id_from_particles(PTCacheID *pid, Object *ob, ParticleSystem *p
 
   pid->info_types = (1 << BPHYS_DATA_TIMES);
 
-  pid->default_step = 10;
+  pid->default_step = 1;
   pid->max_step = 20;
   pid->file_type = PTCACHE_FILE_PTCACHE;
 }
@@ -2073,10 +2073,9 @@ static int ptcache_path(PTCacheID *pid, char *filename)
       file[i - 6] = '\0';
     }
 
-    BLI_snprintf(filename,
-                 MAX_PTCACHE_PATH,
-                 "//" PTCACHE_PATH "%s",
-                 file); /* add blend file name to pointcache dir */
+    /* Add blend file name to pointcache dir. */
+    BLI_snprintf(filename, MAX_PTCACHE_PATH, "//" PTCACHE_PATH "%s", file);
+
     BLI_path_abs(filename, blendfilename);
     return BLI_add_slash(filename); /* new strlen() */
   }
@@ -2130,24 +2129,17 @@ static int ptcache_filename(PTCacheID *pid, char *filename, int cfra, short do_p
 
     if (pid->cache->flag & PTCACHE_EXTERNAL) {
       if (pid->cache->index >= 0) {
-        BLI_snprintf(newname,
-                     MAX_PTCACHE_FILE,
-                     "_%06d_%02u%s",
-                     cfra,
-                     pid->stack_index,
-                     ext); /* always 6 chars */
+        /* Always 6 chars. */
+        BLI_snprintf(newname, MAX_PTCACHE_FILE, "_%06d_%02u%s", cfra, pid->stack_index, ext);
       }
       else {
-        BLI_snprintf(newname, MAX_PTCACHE_FILE, "_%06d%s", cfra, ext); /* always 6 chars */
+        /* Always 6 chars. */
+        BLI_snprintf(newname, MAX_PTCACHE_FILE, "_%06d%s", cfra, ext);
       }
     }
     else {
-      BLI_snprintf(newname,
-                   MAX_PTCACHE_FILE,
-                   "_%06d_%02u%s",
-                   cfra,
-                   pid->stack_index,
-                   ext); /* always 6 chars */
+      /* Always 6 chars. */
+      BLI_snprintf(newname, MAX_PTCACHE_FILE, "_%06d_%02u%s", cfra, pid->stack_index, ext);
     }
     len += 16;
   }
@@ -2178,8 +2170,9 @@ static PTCacheFile *ptcache_file_open(PTCacheID *pid, int mode, int cfra)
     fp = BLI_fopen(filename, "rb");
   }
   else if (mode == PTCACHE_FILE_WRITE) {
-    BLI_make_existing_file(
-        filename); /* will create the dir if needs be, same as //textures is created */
+    /* Will create the dir if needs be, same as "//textures" is created. */
+    BLI_make_existing_file(filename);
+
     fp = BLI_fopen(filename, "wb");
   }
   else if (mode == PTCACHE_FILE_UPDATE) {
@@ -3337,11 +3330,11 @@ int BKE_ptcache_write(PTCacheID *pid, unsigned int cfra)
     cache->cached_frames[cfra - cache->startframe] = 1;
   }
 
-  BKE_ptcache_update_info(pid);
+  cache->flag |= PTCACHE_FLAG_INFO_DIRTY;
 
   return !error;
 }
-/* youll need to close yourself after!
+/* you'll need to close yourself after!
  * mode - PTCACHE_CLEAR_ALL,
  */
 
@@ -3500,8 +3493,9 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, unsigned int cfra)
       break;
   }
 
-  BKE_ptcache_update_info(pid);
+  pid->cache->flag |= PTCACHE_FLAG_INFO_DIRTY;
 }
+
 int BKE_ptcache_id_exist(PTCacheID *pid, int cfra)
 {
   if (!pid->cache) {
@@ -3559,7 +3553,7 @@ void BKE_ptcache_id_time(
 
   if (timescale) {
     time = BKE_scene_frame_get(scene);
-    nexttime = BKE_scene_frame_get_from_ctime(scene, CFRA + 1.0f);
+    nexttime = BKE_scene_frame_to_ctime(scene, CFRA + 1.0f);
 
     *timescale = MAX2(nexttime - time, 0.0f);
   }
@@ -3810,7 +3804,7 @@ void BKE_ptcache_remove(void)
     closedir(dir);
   }
   else {
-    rmdir = 0; /* path dosnt exist  */
+    rmdir = 0; /* path doesn't exist  */
   }
 
   if (rmdir) {
@@ -4288,7 +4282,7 @@ void BKE_ptcache_toggle_disk_cache(PTCacheID *pid)
 
   BKE_ptcache_id_time(pid, NULL, 0.0f, NULL, NULL, NULL);
 
-  BKE_ptcache_update_info(pid);
+  cache->flag |= PTCACHE_FLAG_INFO_DIRTY;
 
   if ((cache->flag & PTCACHE_DISK_CACHE) == 0) {
     if (cache->index) {
@@ -4461,7 +4455,8 @@ void BKE_ptcache_load_external(PTCacheID *pid)
     cache->cached_frames = NULL;
     cache->cached_frames_len = 0;
   }
-  BKE_ptcache_update_info(pid);
+
+  cache->flag |= PTCACHE_FLAG_INFO_DIRTY;
 }
 
 void BKE_ptcache_update_info(PTCacheID *pid)
@@ -4469,7 +4464,9 @@ void BKE_ptcache_update_info(PTCacheID *pid)
   PointCache *cache = pid->cache;
   PTCacheExtra *extra = NULL;
   int totframes = 0;
-  char mem_info[64];
+  char mem_info[sizeof(((PointCache *)0)->info) / sizeof(*(((PointCache *)0)->info))];
+
+  cache->flag &= ~PTCACHE_FLAG_INFO_DIRTY;
 
   if (cache->flag & PTCACHE_EXTERNAL) {
     int cfra = cache->startframe;
@@ -4482,13 +4479,13 @@ void BKE_ptcache_update_info(PTCacheID *pid)
 
     /* smoke doesn't use frame 0 as info frame so can't check based on totpoint */
     if (pid->type == PTCACHE_TYPE_SMOKE_DOMAIN && totframes) {
-      BLI_snprintf(cache->info, sizeof(cache->info), IFACE_("%i frames found!"), totframes);
+      BLI_snprintf(cache->info, sizeof(cache->info), TIP_("%i frames found!"), totframes);
     }
     else if (totframes && cache->totpoint) {
-      BLI_snprintf(cache->info, sizeof(cache->info), IFACE_("%i points found!"), cache->totpoint);
+      BLI_snprintf(cache->info, sizeof(cache->info), TIP_("%i points found!"), cache->totpoint);
     }
     else {
-      BLI_strncpy(cache->info, IFACE_("No valid data to read!"), sizeof(cache->info));
+      BLI_strncpy(cache->info, TIP_("No valid data to read!"), sizeof(cache->info));
     }
     return;
   }
@@ -4499,10 +4496,10 @@ void BKE_ptcache_update_info(PTCacheID *pid)
 
       if (cache->totpoint > totpoint) {
         BLI_snprintf(
-            mem_info, sizeof(mem_info), IFACE_("%i cells + High Resolution cached"), totpoint);
+            mem_info, sizeof(mem_info), TIP_("%i cells + High Resolution cached"), totpoint);
       }
       else {
-        BLI_snprintf(mem_info, sizeof(mem_info), IFACE_("%i cells cached"), totpoint);
+        BLI_snprintf(mem_info, sizeof(mem_info), TIP_("%i cells cached"), totpoint);
       }
     }
     else {
@@ -4514,7 +4511,7 @@ void BKE_ptcache_update_info(PTCacheID *pid)
         }
       }
 
-      BLI_snprintf(mem_info, sizeof(mem_info), IFACE_("%i frames on disk"), totframes);
+      BLI_snprintf(mem_info, sizeof(mem_info), TIP_("%i frames on disk"), totframes);
     }
   }
   else {
@@ -4544,18 +4541,18 @@ void BKE_ptcache_update_info(PTCacheID *pid)
 
     BLI_snprintf(mem_info,
                  sizeof(mem_info),
-                 IFACE_("%s frames in memory (%s)"),
+                 TIP_("%s frames in memory (%s)"),
                  formatted_tot,
                  formatted_mem);
   }
 
   if (cache->flag & PTCACHE_OUTDATED) {
-    BLI_snprintf(cache->info, sizeof(cache->info), IFACE_("%s, cache is outdated!"), mem_info);
+    BLI_snprintf(cache->info, sizeof(cache->info), TIP_("%s, cache is outdated!"), mem_info);
   }
   else if (cache->flag & PTCACHE_FRAMES_SKIPPED) {
     BLI_snprintf(cache->info,
                  sizeof(cache->info),
-                 IFACE_("%s, not exact since frame %i"),
+                 TIP_("%s, not exact since frame %i"),
                  mem_info,
                  cache->last_exact);
   }

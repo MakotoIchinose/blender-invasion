@@ -53,7 +53,6 @@
 #include "ED_mesh.h"
 #include "ED_screen.h"
 #include "ED_transform.h"
-#include "ED_select_buffer_utils.h"
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
 
@@ -69,6 +68,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "mesh_intern.h" /* own include */
 
@@ -199,171 +199,30 @@ void EDBM_automerge(Scene *scene, Object *obedit, bool update, const char hflag)
 /** \name Back-Buffer OpenGL Selection
  * \{ */
 
-struct EDBMBaseOffset {
-  /* For convenience only. */
-  union {
-    uint offset;
-    uint face_start;
-  };
-  union {
-    uint face;
-    uint edge_start;
-  };
-  union {
-    uint edge;
-    uint vert_start;
-  };
-  uint vert;
-};
-
-struct EDBMSelectID_Context {
-  struct EDBMBaseOffset *base_array_index_offsets;
-  /** Borrow from caller (not freed). */
-  struct Base **bases;
-  uint bases_len;
-  /** Total number of items `base_array_index_offsets[bases_len - 1].vert`. */
-  uint base_array_index_len;
-};
-
-static bool check_ob_drawface_dot(short select_mode, const View3D *v3d, char dt)
+static BMElem *edbm_select_id_bm_elem_get(Base **bases, const uint sel_id, uint *r_base_index)
 {
-  if (select_mode & SCE_SELECT_FACE) {
-    if (dt < OB_SOLID) {
-      return true;
-    }
-    if (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) {
-      return true;
-    }
-    if (XRAY_FLAG_ENABLED(v3d)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void edbm_select_pick_draw_bases(struct EDBMSelectID_Context *sel_id_ctx,
-                                        ViewContext *vc,
-                                        short select_mode)
-{
-  Scene *scene_eval = (Scene *)DEG_get_evaluated_id(vc->depsgraph, &vc->scene->id);
-  DRW_framebuffer_select_id_setup(vc->ar, true);
-
-  uint offset = 1;
-  for (uint base_index = 0; base_index < sel_id_ctx->bases_len; base_index++) {
-    Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
-                                               sel_id_ctx->bases[base_index]->object);
-
-    struct EDBMBaseOffset *base_ofs = &sel_id_ctx->base_array_index_offsets[base_index];
-    bool draw_facedot = check_ob_drawface_dot(select_mode, vc->v3d, ob_eval->dt);
-
-    DRW_draw_select_id_object(scene_eval,
-                              vc->rv3d,
-                              ob_eval,
-                              select_mode,
-                              draw_facedot,
-                              offset,
-                              &base_ofs->vert,
-                              &base_ofs->edge,
-                              &base_ofs->face);
-
-    base_ofs->offset = offset;
-    offset = base_ofs->vert;
-  }
-
-  sel_id_ctx->base_array_index_len = offset;
-
-  DRW_framebuffer_select_id_release(vc->ar);
-}
-
-BMElem *EDBM_select_id_bm_elem_get(struct EDBMSelectID_Context *sel_id_ctx,
-                                   const uint sel_id,
-                                   uint *r_base_index)
-{
-  char elem_type;
   uint elem_id;
-  uint base_index = 0;
-  for (; base_index < sel_id_ctx->bases_len; base_index++) {
-    struct EDBMBaseOffset *base_ofs = &sel_id_ctx->base_array_index_offsets[base_index];
-    if (base_ofs->face > sel_id) {
-      elem_id = sel_id - base_ofs->face_start;
-      elem_type = BM_FACE;
-      break;
+  char elem_type = 0;
+  bool success = DRW_select_buffer_elem_get(sel_id, &elem_id, r_base_index, &elem_type);
+
+  if (success) {
+    Object *obedit = bases[*r_base_index]->object;
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+
+    switch (elem_type) {
+      case SCE_SELECT_FACE:
+        return (BMElem *)BM_face_at_index_find_or_table(em->bm, elem_id);
+      case SCE_SELECT_EDGE:
+        return (BMElem *)BM_edge_at_index_find_or_table(em->bm, elem_id);
+      case SCE_SELECT_VERTEX:
+        return (BMElem *)BM_vert_at_index_find_or_table(em->bm, elem_id);
+      default:
+        BLI_assert(0);
+        return NULL;
     }
-    if (base_ofs->edge > sel_id) {
-      elem_id = sel_id - base_ofs->edge_start;
-      elem_type = BM_EDGE;
-      break;
-    }
-    if (base_ofs->vert > sel_id) {
-      elem_id = sel_id - base_ofs->vert_start;
-      elem_type = BM_VERT;
-      break;
-    }
   }
 
-  if (r_base_index) {
-    *r_base_index = base_index;
-  }
-
-  Object *obedit = sel_id_ctx->bases[base_index]->object;
-  BMEditMesh *em = BKE_editmesh_from_object(obedit);
-
-  switch (elem_type) {
-    case BM_FACE:
-      return (BMElem *)BM_face_at_index_find_or_table(em->bm, elem_id);
-    case BM_EDGE:
-      return (BMElem *)BM_edge_at_index_find_or_table(em->bm, elem_id);
-    case BM_VERT:
-      return (BMElem *)BM_vert_at_index_find_or_table(em->bm, elem_id);
-    default:
-      BLI_assert(0);
-      return NULL;
-  }
-}
-
-uint EDBM_select_id_context_offset_for_object_elem(const struct EDBMSelectID_Context *sel_id_ctx,
-                                                   int base_index,
-                                                   char htype)
-{
-  struct EDBMBaseOffset *base_ofs = &sel_id_ctx->base_array_index_offsets[base_index];
-  if (htype == BM_VERT) {
-    return base_ofs->vert_start - 1;
-  }
-  if (htype == BM_EDGE) {
-    return base_ofs->edge_start - 1;
-  }
-  if (htype == BM_FACE) {
-    return base_ofs->face_start - 1;
-  }
-  BLI_assert(0);
-  return 0;
-}
-
-uint EDBM_select_id_context_elem_len(const struct EDBMSelectID_Context *sel_id_ctx)
-{
-  return sel_id_ctx->base_array_index_len;
-}
-
-struct EDBMSelectID_Context *EDBM_select_id_context_create(ViewContext *vc,
-                                                           Base **bases,
-                                                           uint bases_len,
-                                                           short select_mode)
-{
-  struct EDBMSelectID_Context *sel_id_ctx = MEM_mallocN(sizeof(*sel_id_ctx), __func__);
-  sel_id_ctx->base_array_index_offsets = MEM_mallocN(sizeof(struct EDBMBaseOffset) * bases_len,
-                                                     __func__);
-  sel_id_ctx->bases = bases;
-  sel_id_ctx->bases_len = bases_len;
-
-  edbm_select_pick_draw_bases(sel_id_ctx, vc, select_mode);
-
-  return sel_id_ctx;
-}
-
-void EDBM_select_id_context_destroy(struct EDBMSelectID_Context *sel_id_ctx)
-{
-  MEM_freeN(sel_id_ctx->base_array_index_offsets);
-  MEM_freeN(sel_id_ctx);
+  return NULL;
 }
 
 /** \} */
@@ -378,20 +237,6 @@ void EDBM_select_id_context_destroy(struct EDBMSelectID_Context *sel_id_ctx)
  * when choosing between elements of a single type, but return the real distance
  * to avoid the bias interfering with distance comparisons when mixing types.
  * \{ */
-
-#define FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, select_mode_required) \
-  short select_mode = select_mode_required; \
-  bool fake_select_mode = (select_mode & (vc)->scene->toolsettings->selectmode) == 0; \
-  if (fake_select_mode) { \
-    (vc)->v3d->flag |= V3D_INVALID_BACKBUF; \
-  } \
-  ((void)0)
-
-#define FAKE_SELECT_MODE_END(vc, fake_select_mode) \
-  if (fake_select_mode) { \
-    (vc)->v3d->flag |= V3D_INVALID_BACKBUF; \
-  } \
-  ((void)0)
 
 #define FIND_NEAR_SELECT_BIAS 5
 #define FIND_NEAR_CYCLE_THRESHOLD_MIN 3
@@ -472,23 +317,17 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_VERTEX);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_VERTEX);
 
-      struct EDBMSelectID_Context *sel_id_ctx = EDBM_select_id_context_create(
-          vc, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(
+          vc->depsgraph, vc->ar, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
-        eve = (BMVert *)EDBM_select_id_bm_elem_get(sel_id_ctx, index, &base_index);
+        eve = (BMVert *)edbm_select_id_bm_elem_get(bases, index, &base_index);
       }
       else {
         eve = NULL;
       }
-
-      EDBM_select_id_context_destroy(sel_id_ctx);
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (eve) {
@@ -504,7 +343,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestVertUserData data = {{0}};
-    const struct NearestVertUserData_Hit *hit;
+    const struct NearestVertUserData_Hit *hit = NULL;
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT;
     BMesh *prev_select_bm = NULL;
 
@@ -547,6 +386,10 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     prev_select.index = hit->index;
@@ -697,23 +540,17 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 
     /* No afterqueue (yet), so we check it now, otherwise the bm_xxxofs indices are bad. */
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_EDGE);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_EDGE);
 
-      struct EDBMSelectID_Context *sel_id_ctx = EDBM_select_id_context_create(
-          vc, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_find_nearest_to_point(vc->mval, 1, UINT_MAX, &dist_px);
+      index = DRW_select_buffer_find_nearest_to_point(
+          vc->depsgraph, vc->ar, vc->v3d, vc->mval, 1, UINT_MAX, &dist_px);
 
       if (index) {
-        eed = (BMEdge *)EDBM_select_id_bm_elem_get(sel_id_ctx, index, &base_index);
+        eed = (BMEdge *)edbm_select_id_bm_elem_get(bases, index, &base_index);
       }
       else {
         eed = NULL;
       }
-
-      EDBM_select_id_context_destroy(sel_id_ctx);
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (r_eed_zbuf) {
@@ -751,7 +588,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestEdgeUserData data = {{0}};
-    const struct NearestEdgeUserData_Hit *hit;
+    const struct NearestEdgeUserData_Hit *hit = NULL;
     /* interpolate along the edge before doing a clipping plane test */
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT & ~V3D_PROJ_TEST_CLIP_BB;
     BMesh *prev_select_bm = NULL;
@@ -796,6 +633,10 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     if (r_dist_center) {
@@ -906,23 +747,16 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
     BMFace *efa;
 
     {
-      FAKE_SELECT_MODE_BEGIN(vc, fake_select_mode, select_mode, SCE_SELECT_FACE);
+      DRW_select_buffer_context_create(bases, bases_len, SCE_SELECT_FACE);
 
-      struct EDBMSelectID_Context *sel_id_ctx = EDBM_select_id_context_create(
-          vc, bases, bases_len, select_mode);
-
-      index = ED_select_buffer_sample_point(vc->mval);
+      index = DRW_select_buffer_sample_point(vc->depsgraph, vc->ar, vc->v3d, vc->mval);
 
       if (index) {
-        efa = (BMFace *)EDBM_select_id_bm_elem_get(sel_id_ctx, index, &base_index);
+        efa = (BMFace *)edbm_select_id_bm_elem_get(bases, index, &base_index);
       }
       else {
         efa = NULL;
       }
-
-      EDBM_select_id_context_destroy(sel_id_ctx);
-
-      FAKE_SELECT_MODE_END(vc, fake_select_mode);
     }
 
     if (r_efa_zbuf) {
@@ -960,7 +794,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
   }
   else {
     struct NearestFaceUserData data = {{0}};
-    const struct NearestFaceUserData_Hit *hit;
+    const struct NearestFaceUserData_Hit *hit = NULL;
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_DEFAULT;
     BMesh *prev_select_bm = NULL;
 
@@ -1003,6 +837,10 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
         *r_dist = hit->dist;
         prev_select_bm = vc->em->bm;
       }
+    }
+
+    if (hit == NULL) {
+      return NULL;
     }
 
     if (r_dist_center) {

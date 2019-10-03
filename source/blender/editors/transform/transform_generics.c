@@ -819,6 +819,9 @@ static void pose_transform_mirror_update(Object *ob, PoseInitData_Mirror *pid)
           pid++;
         }
         BKE_pchan_apply_mat4(pchan, pchan_mtx_final, false);
+
+        /* set flag to let autokeyframe know to keyframe the mirrred bone */
+        pchan->bone->flag |= BONE_TRANSFORM_MIRROR;
       }
     }
   }
@@ -1043,7 +1046,6 @@ static void recalcData_objects(TransInfo *t)
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       Object *ob = tc->poseobj;
-      bArmature *arm = ob->data;
       bPose *pose = ob->pose;
 
       if (pose->flag & POSE_MIRROR_EDIT) {
@@ -1080,15 +1082,7 @@ static void recalcData_objects(TransInfo *t)
         BLI_gset_insert(motionpath_updates, ob);
       }
 
-      /* old optimize trick... this enforces to bypass the depgraph */
-      if (!(arm->flag & ARM_DELAYDEFORM)) {
-        DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY); /* sets recalc flags */
-        /* transformation of pose may affect IK tree, make sure it is rebuilt */
-        BIK_clear_data(ob->pose);
-      }
-      else {
-        BKE_pose_where_is(t->depsgraph, t->scene, ob);
-      }
+      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
 
     /* Update motion paths once for all transformed bones in an object. */
@@ -1177,16 +1171,13 @@ static void recalcData_sequencer(TransInfo *t)
     Sequence *seq = tdsq->seq;
 
     if (seq != seq_prev) {
-      if (BKE_sequence_tx_fullupdate_test(seq)) {
-        BKE_sequence_invalidate_cache(t->scene, seq);
-      }
-      else {
-        BKE_sequence_invalidate_cache(t->scene, seq);
-      }
+      BKE_sequence_invalidate_cache_composite(t->scene, seq);
     }
 
     seq_prev = seq;
   }
+
+  DEG_id_tag_update(&t->scene->id, ID_RECALC_SEQUENCER_STRIPS);
 
   flushTransSeq(t);
 }
@@ -1400,7 +1391,6 @@ void initTransDataContainers_FromObjectData(TransInfo *t,
  */
 void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *event)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Scene *sce = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const eObjectMode object_mode = OBACT(view_layer) ? OBACT(view_layer)->mode : OB_MODE_OBJECT;
@@ -1412,7 +1402,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   bGPdata *gpd = CTX_data_gpencil_data(C);
   PropertyRNA *prop;
 
-  t->depsgraph = depsgraph;
+  t->depsgraph = CTX_data_depsgraph_pointer(C);
   t->scene = sce;
   t->view_layer = view_layer;
   t->sa = sa;
@@ -1701,7 +1691,8 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
   else {
-    if (U.flag & USER_RELEASECONFIRM) {
+    if (ISMOUSE(t->launch_event) && (U.flag & USER_RELEASECONFIRM)) {
+      /* Global "release confirm" on mouse bindings */
       t->flag |= T_RELEASE_CONFIRM;
     }
   }

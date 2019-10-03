@@ -116,7 +116,6 @@ class FILEBROWSER_UL_dir(UIList):
             layout.prop(direntry, "path", text="")
 
 
-
 class FILEBROWSER_PT_bookmarks_volumes(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'TOOLS'
@@ -250,6 +249,11 @@ class FILEBROWSER_MT_view(Menu):
         layout = self.layout
         st = context.space_data
         params = st.params
+
+        layout.prop(st, "show_region_toolbar")
+        layout.prop(st, "show_region_ui", text="File Path")
+
+        layout.separator()
 
         layout.prop_menu_enum(params, "display_size")
         layout.prop_menu_enum(params, "recursion_level")
