@@ -3903,7 +3903,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     {
-      /* Fix new grease pencil uv scale. */
+      /* Initialize new grease pencil uv scale parameter. */
       if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "uv_scale")) {
         for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
           for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -3918,10 +3918,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     {
-      /* Enable by default affect position for grease pencil sculpt brushes */
+      /* Enable by default affect position for grease pencil sculpt brushes. */
       if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Data", "int", "mode_flag")) {
         for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-          /* sculpt brushes */
+          /* Sculpt brushes. */
           GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
           if (gset) {
             for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
