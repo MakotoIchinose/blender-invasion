@@ -1362,7 +1362,9 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     }
 
     /* Smooth any point created with fake events when the mouse/pen move very fast. */
-    gp_smooth_fake_segments(p);
+    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) == 0) {
+      gp_smooth_fake_segments(p);
+    }
 
     pt = gps->points;
     dvert = gps->dvert;
