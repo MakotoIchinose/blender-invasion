@@ -101,15 +101,18 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
   BMIter face_iter;
 
   /* Delete all unmasked faces */
+  const int cd_vert_mask_offset = CustomData_get_offset(&bm->vdata, CD_PAINT_MASK);
+  BLI_assert(cd_vert_mask_offset != -1);
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
 
   float mask_threshold = RNA_float_get(op->ptr, "mask_threshold");
   BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
     bool keep_face = true;
     BM_ITER_ELEM (v, &face_iter, f, BM_VERTS_OF_FACE) {
-      float mask = BM_elem_float_data_get(&bm->vdata, v, CD_PAINT_MASK);
+      const float mask = BM_ELEM_CD_GET_FLOAT(v, cd_vert_mask_offset);
       if (mask < mask_threshold) {
         keep_face = false;
+        break;
       }
     }
     BM_elem_flag_set(f, BM_ELEM_TAG, !keep_face);
@@ -175,7 +178,6 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
   }
 
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
-  BKE_editmesh_free_derivedmesh(em);
 
   BKE_mesh_free(new_mesh);
   new_mesh = BKE_mesh_from_bmesh_nomain(bm,
@@ -184,7 +186,8 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
                                         }),
                                         mesh);
 
-  BM_mesh_free(bm);
+  BKE_editmesh_free(em);
+  MEM_freeN(em);
 
   if (new_mesh->totvert == 0) {
     BKE_mesh_free(new_mesh);
@@ -197,8 +200,6 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
   }
   Object *new_ob = ED_object_add_type(C, OB_MESH, NULL, ob->loc, ob->rot, false, local_view_bits);
   BKE_mesh_nomain_to_mesh(new_mesh, new_ob->data, new_ob, &CD_MASK_EVERYTHING, true);
-
-  BKE_mesh_free(new_mesh);
 
   if (RNA_boolean_get(op->ptr, "apply_shrinkwrap")) {
     BKE_shrinkwrap_mesh_nearest_surface_deform(C, new_ob, ob);
