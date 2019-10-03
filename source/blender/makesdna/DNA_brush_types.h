@@ -83,8 +83,7 @@ typedef struct BrushGpencilSettings {
   short fill_leak;
   /** Fill zoom factor */
   short fill_factor;
-  /** Subdivide while drawing factor. */
-  int active_subdivide;
+  char _pad1[4];
 
   /** Number of simplify steps. */
   int fill_simplylvl;
@@ -517,7 +516,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
