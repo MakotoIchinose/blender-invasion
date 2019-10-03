@@ -111,14 +111,38 @@ ccl_device_forceinline bool bvh_unaligned_node_intersect_child(KernelGlobals *kg
                                                                const float t,
                                                                int node_addr,
                                                                int child,
+                                                               const float rayTime,
                                                                float dist[2])
 {
+  float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr);
+
   Transform space = bvh_unaligned_node_fetch_space(kg, node_addr, child);
   float3 aligned_dir = transform_direction(&space, dir);
   float3 aligned_P = transform_point(&space, P);
-  float3 nrdir = -bvh_inverse_direction(aligned_dir);
-  float3 lower_xyz = aligned_P * nrdir;
-  float3 upper_xyz = lower_xyz - nrdir;
+  float3 nrdir = bvh_inverse_direction(aligned_dir);
+
+  float3 lower_xyz;
+  float3 upper_xyz;
+  if (__float_as_int(cnodes.x) & PATH_RAY_NODE_MB) {
+    float4 node3 = kernel_tex_fetch(__bvh_nodes, node_addr + 7);
+    float4 node4 = kernel_tex_fetch(__bvh_nodes, node_addr + 8);
+    float4 node5 = kernel_tex_fetch(__bvh_nodes, node_addr + 9);
+
+    float3 c0dlo = make_float3(node3.x, node4.x, node5.x);
+    float3 c0dhi = make_float3(node3.z, node4.z, node5.z);
+    float3 c1dlo = make_float3(node3.y, node4.y, node5.y);
+    float3 c1dhi = make_float3(node3.w, node4.w, node5.w);
+
+    float3 lowBounds = ((child == 0) ? c0dlo : c1dlo) * rayTime,
+           uppBounds = make_float3(1, 1, 1) + rayTime * (child == 0 ? c0dhi : c1dhi);
+
+    lower_xyz = (lowBounds - aligned_P) * nrdir;
+    upper_xyz = (uppBounds - aligned_P) * nrdir;
+  } else {
+    lower_xyz = aligned_P * -nrdir;
+    upper_xyz = lower_xyz + nrdir;
+  }
+
   const float near_x = min(lower_xyz.x, upper_xyz.x);
   const float near_y = min(lower_xyz.y, upper_xyz.y);
   const float near_z = min(lower_xyz.z, upper_xyz.z);
@@ -138,11 +162,12 @@ ccl_device_forceinline int bvh_unaligned_node_intersect(KernelGlobals *kg,
                                                         const float t,
                                                         const int node_addr,
                                                         const uint visibility,
+                                                        const float rayTime,
                                                         float dist[2])
 {
   int mask = 0;
   float4 cnodes = kernel_tex_fetch(__bvh_nodes, node_addr + 0);
-  if (bvh_unaligned_node_intersect_child(kg, P, dir, t, node_addr, 0, &dist[0])) {
+  if (bvh_unaligned_node_intersect_child(kg, P, dir, t, node_addr, 0, rayTime, &dist[0])) {
 #  ifdef __VISIBILITY_FLAG__
     if ((__float_as_uint(cnodes.x) & visibility))
 #  endif
@@ -150,7 +175,7 @@ ccl_device_forceinline int bvh_unaligned_node_intersect(KernelGlobals *kg,
       mask |= 1;
     }
   }
-  if (bvh_unaligned_node_intersect_child(kg, P, dir, t, node_addr, 1, &dist[1])) {
+  if (bvh_unaligned_node_intersect_child(kg, P, dir, t, node_addr, 1, rayTime, &dist[1])) {
 #  ifdef __VISIBILITY_FLAG__
     if ((__float_as_uint(cnodes.y) & visibility))
 #  endif
@@ -173,7 +198,7 @@ ccl_device_forceinline int bvh_node_intersect(KernelGlobals *kg,
 {
   float4 node = kernel_tex_fetch(__bvh_nodes, node_addr);
   if (__float_as_uint(node.x) & PATH_RAY_NODE_UNALIGNED) {
-    return bvh_unaligned_node_intersect(kg, P, dir, idir, t, node_addr, visibility, dist);
+    return bvh_unaligned_node_intersect(kg, P, dir, idir, t, node_addr, visibility, rayTime, dist);
   }
   else {
     return bvh_aligned_node_intersect(kg, P, idir, t, node_addr, visibility, rayTime, dist);

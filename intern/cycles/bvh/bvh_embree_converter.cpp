@@ -65,14 +65,15 @@ Transform transformSpaceFromBound(const BoundBox &bounds) {
 }
 
 
-BVHNode *merge(BVHNode *oldRoot, BVHNode *n0, BVHNode *n1) {
+BVHNode *merge(const BVHNode *oldRoot, BVHNode *n0, BVHNode *n1) {
   BoundBox childBB = merge(n0->bounds, n1->bounds);
   BVHNode *root = new InnerNode(childBB, n0, n1);
 
   /* If one of the child has linear bound, take the parents bound */
-  if(n0->deltaBounds != nullptr || n1->deltaBounds != nullptr) {
+  if(n0->deltaBounds != nullptr || n1->deltaBounds != nullptr || n0->is_unaligned || n1->is_unaligned) {
     root->bounds = oldRoot->bounds;
     if(oldRoot->deltaBounds != nullptr) root->deltaBounds = new BoundBox(*oldRoot->deltaBounds);
+    if(oldRoot->is_unaligned) root->set_aligned_space(*oldRoot->aligned_space);
   }
 
   return root;
@@ -247,10 +248,30 @@ BVHNode* BVHEmbreeConverter::createCurve(unsigned int nbPrim,
 
     LeafNode *leafNode = new LeafNode(BoundBox::empty, obj->visibility,
                                       this->packIdx, this->packIdx + 1);
-    curve.bounds_grow(segment_id,
-                      obj->mesh->curve_keys.data(),
-                      obj->mesh->curve_radius.data(),
-                      leafNode->bounds);
+
+    int nbStep = 1;
+    const Attribute *curve_attr_mP = nullptr;
+    if (obj->mesh->has_motion_blur()) {
+      curve_attr_mP = obj->mesh->curve_attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+      nbStep = obj->mesh->motion_steps;
+    }
+
+    for(int i = 0; i < nbStep; i++) {
+      float4 keys[4];
+
+      curve.cardinal_keys_for_step(
+            obj->mesh->curve_keys.data(),
+            obj->mesh->curve_radius.data(),
+            curve_attr_mP == nullptr ? nullptr : curve_attr_mP->data_float3(),
+            obj->mesh->curve_keys.size(),
+            nbStep, i,
+            max(curve.first_key + segment_id - 1, curve.first_key) - curve.first_key,
+            segment_id, segment_id + 1,
+            min(curve.first_key + segment_id + 2, curve.first_key + curve.num_keys - 1) - curve.first_key,
+            keys
+            );
+      curve.bounds_grow(keys, leafNode->bounds);
+    }
 
     packPush(this->pack, this->packIdx++,
              object_id, curve_id,
@@ -266,12 +287,12 @@ BVHNode* BVHEmbreeConverter::createCurve(unsigned int nbPrim,
 BVHNode *BVHEmbreeConverter::createInnerNode(unsigned int nbChild,
                                              BVHNode *children[])
 {
-  return new InnerNode(BoundBox::empty, children, nbChild);
+    return new InnerNode(BoundBox::empty, children, nbChild);
 }
 
 void BVHEmbreeConverter::setAlignedBounds(BVHNode *node, BoundBox bounds)
 {
-  node->bounds = bounds;
+    node->bounds = bounds;
 }
 
 void BVHEmbreeConverter::setLinearBounds(BVHNode *node, BoundBox bounds, BoundBox deltaBounds)
@@ -289,6 +310,22 @@ void BVHEmbreeConverter::setUnalignedBounds(BVHNode *node, Transform affSpace)
 
     node->bounds = bb;
     node->set_aligned_space(affSpace);
+}
+
+void BVHEmbreeConverter::setUnalignedLinearBounds(BVHNode *node, Transform affSpace, BoundBox bounds)
+{
+    Transform inv = transform_inverse(affSpace);
+
+    BoundBox bb(transform_point(&inv, make_float3(0)));
+    bb.grow(transform_point(&inv, make_float3(1)));
+
+    bb.grow(transform_point(&inv, bounds.min));
+    bb.grow(transform_point(&inv, bounds.max));
+
+    node->bounds = bb;
+    node->set_aligned_space(affSpace);
+    node->deltaBounds = new BoundBox(bounds.min,
+                                     bounds.max - make_float3(1));
 }
 
 void BVHEmbreeConverter::set_time_bounds(BVHNode *node, float2 time_range)
@@ -344,13 +381,13 @@ BVHNode* BVHEmbreeConverter::getBVH4()
     SET_THIS; SET_NODE;
     Transform tr;
     tr.x.x = affSpace.linear[0];
-    tr.x.y = affSpace.linear[1];
-    tr.x.z = affSpace.linear[2];
-    tr.y.x = affSpace.linear[3];
+    tr.y.x = affSpace.linear[1];
+    tr.z.x = affSpace.linear[2];
+    tr.x.y = affSpace.linear[3];
     tr.y.y = affSpace.linear[4];
-    tr.y.z = affSpace.linear[5];
-    tr.z.x = affSpace.linear[6];
-    tr.z.y = affSpace.linear[7];
+    tr.z.y = affSpace.linear[5];
+    tr.x.z = affSpace.linear[6];
+    tr.y.z = affSpace.linear[7];
     tr.z.z = affSpace.linear[8];
 
     tr.x.w = affSpace.affine[0];
@@ -358,6 +395,26 @@ BVHNode* BVHEmbreeConverter::getBVH4()
     tr.z.w = affSpace.affine[2];
 
     This->setUnalignedBounds(Node, tr);
+  };
+
+  param.setUnalignedLinearBounds = [](void* node, const RTCAffineSpace &affSpace, const RTCBounds &bounds, void* userData) {
+    SET_THIS; SET_NODE;
+    Transform tr;
+    tr.x.x = affSpace.linear[0];
+    tr.y.x = affSpace.linear[1];
+    tr.z.x = affSpace.linear[2];
+    tr.x.y = affSpace.linear[3];
+    tr.y.y = affSpace.linear[4];
+    tr.z.y = affSpace.linear[5];
+    tr.x.z = affSpace.linear[6];
+    tr.y.z = affSpace.linear[7];
+    tr.z.z = affSpace.linear[8];
+
+    tr.x.w = affSpace.affine[0];
+    tr.y.w = affSpace.affine[1];
+    tr.z.w = affSpace.affine[2];
+
+    This->setUnalignedLinearBounds(Node, tr, RTCBoundBoxToCCL(bounds));
   };
 
   param.expectedSize = [](unsigned int num_prim, unsigned int num_tri, void* userData) {

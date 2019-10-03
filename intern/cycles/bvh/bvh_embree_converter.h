@@ -66,6 +66,7 @@ private:
   void setAlignedBounds(BVHNode* node, BoundBox bounds);
   void setLinearBounds(BVHNode* node, BoundBox bounds, BoundBox deltaBounds);
   void setUnalignedBounds(BVHNode* node, Transform affSpace);
+  void setUnalignedLinearBounds(BVHNode *node, Transform affSpace, BoundBox bounds);
   void set_time_bounds(BVHNode* node, float2 time_range);
 
   void pack_instances(size_t nodes_size,
@@ -81,7 +82,7 @@ private:
  * @param n1 Second child
  * @return A node that contains both child
  */
-BVHNode *merge(BVHNode *oldRoot, BVHNode *n0, BVHNode *n1);
+BVHNode *merge(const BVHNode *oldRoot, BVHNode *n0, BVHNode *n1);
 
 /**
  * @brief Insert a new primitive in packed data

@@ -303,7 +303,11 @@ BVHEmbree::BVHEmbree(const BVHParams &params_, const vector<Object *> &objects_)
   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
   thread_scoped_lock lock(rtc_shared_mutex);
   if (rtc_shared_users == 0) {
-    rtc_shared_device = rtcNewDevice("verbose=0");
+    if(bvh_layout == BVH_LAYOUT_EMBREE_CONVERTED) {
+      rtc_shared_device = rtcNewDevice("verbose=0;hair_accel_mb=bvh4.virtualcurve8imb;");
+    } else {
+      rtc_shared_device = rtcNewDevice("verbose=0;");
+    }
     /* Check here if Embree was built with the correct flags. */
     ssize_t ret = rtcGetDeviceProperty(rtc_shared_device, RTC_DEVICE_PROPERTY_RAY_MASK_SUPPORTED);
     if (ret != 1) {
