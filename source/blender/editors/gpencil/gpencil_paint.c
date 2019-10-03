@@ -726,7 +726,9 @@ static void gp_smooth_fake_segments(tGPsdata *p)
         to_idx = i + (i - from_idx);
         /* Smooth this segments (need loop to get cumulative smooth). */
         for (int r = 0; r < 5; r++) {
-          gp_smooth_segment(gpd, brush->gpencil_settings->smart_smooth, from_idx, to_idx);
+          /* The factor is divided because a value > 0.5f is too aggressive, but in the UI is
+           * better to keep the range from 0.0f to 1.0f for usability reasons. */
+          gp_smooth_segment(gpd, brush->gpencil_settings->smart_smooth * 0.5f, from_idx, to_idx);
         }
       }
       else {
