@@ -156,8 +156,14 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
     BLI_snprintf(offset_str, NUM_STR_REP_LEN, "%.1f%%", RNA_float_get(op->ptr, "offset_pct"));
   }
   else {
-    bUnit_AsString2(offset_str, NUM_STR_REP_LEN, (double)RNA_float_get(op->ptr, "offset"), 3,
-                    B_UNIT_LENGTH, &sce->unit, true);
+    double offset_val = (double)RNA_float_get(op->ptr, "offset");
+    bUnit_AsString2(offset_str,
+                    NUM_STR_REP_LEN,
+                    offset_val * sce->unit.scale_length,
+                    3,
+                    B_UNIT_LENGTH,
+                    &sce->unit,
+                    true);
   }
 
   prop = RNA_struct_find_property(op->ptr, "offset_type");
