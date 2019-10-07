@@ -1399,6 +1399,7 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
   bGPdata *gpd = ob->data;
   MDeformVert *dvert = NULL;
   const int def_nr = BLI_findindex(&ob->defbase, defgroup);
+  const int totgrp = BLI_listbase_count(&ob->defbase);
 
   /* Remove points data */
   if (gpd) {
@@ -1413,9 +1414,9 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
                 defvert_remove_group(dvert, dw);
               }
               else {
-                /* reorganize weights in other strokes */
-                for (int g = 0; g < gps->dvert->totweight; g++) {
-                  dw = &dvert->dw[g];
+                /* Reorganize weights in other strokes. */
+                for (int g = 0; g < totgrp; g++) {
+                  dw = defvert_find_index(dvert, g);
                   if ((dw != NULL) && (dw->def_nr > def_nr)) {
                     dw->def_nr--;
                   }
