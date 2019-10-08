@@ -50,8 +50,11 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(volume_max_steps, "Volume Max Steps", 1024);
   SOCKET_FLOAT(volume_step_size, "Volume Step Size", 0.1f);
   static NodeEnum volume_integrator_enum;
-  volume_integrator_enum.insert("path", VOLUME_INTEGRATOR_RAY_MARCH);
-  volume_integrator_enum.insert("branched_path", VOLUME_INTEGRATOR_UNBIASED);
+  volume_integrator_enum.insert("ray marching", VOLUME_INTEGRATOR_RAY_MARCH);
+  volume_integrator_enum.insert("woodcock tracking", VOLUME_INTEGRATOR_WOODCOCK);
+  volume_integrator_enum.insert("ratio tracking", VOLUME_INTEGRATOR_RATIO_TRACKING);
+  volume_integrator_enum.insert("weighted tracking", VOLUME_INTEGRATOR_WEIGHTED);
+  volume_integrator_enum.insert("spectral tracking", VOLUME_INTEGRATOR_SPECTRAL);
   SOCKET_ENUM(volume_integrator, "Volume Integrator", volume_integrator_enum, VOLUME_INTEGRATOR_RAY_MARCH);
 
   SOCKET_FLOAT(volume_max_density, "Volume Max Density", 1.0f);
@@ -106,7 +109,10 @@ NODE_DEFINE(Integrator)
 
   static NodeEnum volume_enum;
   method_enum.insert("ray marching", VOLUME_INTEGRATOR_RAY_MARCH);
-  method_enum.insert("unbiased tracking", VOLUME_INTEGRATOR_UNBIASED);
+  method_enum.insert("woodcock tracking", VOLUME_INTEGRATOR_WOODCOCK);
+  method_enum.insert("ratio tracking", VOLUME_INTEGRATOR_RATIO_TRACKING);
+  method_enum.insert("weighted tracking", VOLUME_INTEGRATOR_WEIGHTED);
+  method_enum.insert("spectral tracking", VOLUME_INTEGRATOR_SPECTRAL);
   SOCKET_ENUM(method, "Volume Integrator", method_enum, VOLUME_INTEGRATOR_RAY_MARCH);
 
   return type;
