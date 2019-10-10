@@ -41,6 +41,8 @@
 #include "transform.h"
 #include "transform_convert.h"
 
+#define USE_HANDLES_AS_CHILD
+
 typedef struct TransDataGraph {
   float unit_scale;
   float offset;
@@ -181,7 +183,9 @@ static void graph_key_shortest_dist(
 
 void createTransGraphEditData(bContext *C, TransInfo *t)
 {
+#ifndef USE_HANDLES_AS_CHILD
   SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
+#endif
   Scene *scene = t->scene;
   ARegion *ar = t->ar;
   View2D *v2d = &ar->v2d;
@@ -199,7 +203,12 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
   int count = 0, i;
   float mtx[3][3], smtx[3][3];
   const bool is_translation_mode = graph_edit_is_translation_mode(t);
-  const bool use_handle = !(sipo->flag & SIPO_NOHANDLES);
+  const bool use_handle =
+#ifdef USE_HANDLES_AS_CHILD
+      false;
+#else
+      !(sipo->flag & SIPO_NOHANDLES);
+#endif
   const bool use_local_center = graph_edit_use_local_center(t);
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   short anim_map_flag = ANIM_UNITCONV_ONLYSEL | ANIM_UNITCONV_SELVERTS;
@@ -258,8 +267,8 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
       if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
         const bool sel2 = (bezt->f2 & SELECT) != 0;
-        const bool sel1 = use_handle ? (bezt->f1 & SELECT) != 0 : sel2;
-        const bool sel3 = use_handle ? (bezt->f3 & SELECT) != 0 : sel2;
+        const bool sel1 = (bezt->f1 & SELECT) != 0 || use_handle ? (bezt->f1 & SELECT) != 0 : sel2;
+        const bool sel3 = (bezt->f3 & SELECT) != 0 || use_handle ? (bezt->f3 & SELECT) != 0 : sel2;
 
         if (is_prop_edit) {
           curvecount += 3;
@@ -371,8 +380,8 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
       if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
         const bool sel2 = (bezt->f2 & SELECT) != 0;
-        const bool sel1 = use_handle ? (bezt->f1 & SELECT) != 0 : sel2;
-        const bool sel3 = use_handle ? (bezt->f3 & SELECT) != 0 : sel2;
+        const bool sel1 = (bezt->f1 & SELECT) != 0 || use_handle ? (bezt->f1 & SELECT) != 0 : sel2;
+        const bool sel3 = (bezt->f3 & SELECT) != 0 || use_handle ? (bezt->f3 & SELECT) != 0 : sel2;
 
         TransDataCurveHandleFlags *hdata = NULL;
         /* short h1=1, h2=1; */ /* UNUSED */
@@ -523,7 +532,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     }
 
     /* Sets handles based on the selection */
-    testhandles_fcurve(fcu, use_handle);
+    testhandles_fcurve(fcu, true);
   }
 
   if (is_prop_edit) {
@@ -556,8 +565,10 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
       for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
         if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
           const bool sel2 = (bezt->f2 & SELECT) != 0;
-          const bool sel1 = use_handle ? (bezt->f1 & SELECT) != 0 : sel2;
-          const bool sel3 = use_handle ? (bezt->f3 & SELECT) != 0 : sel2;
+          const bool sel1 = (bezt->f1 & SELECT) != 0 || use_handle ? (bezt->f1 & SELECT) != 0 :
+                                                                     sel2;
+          const bool sel3 = (bezt->f3 & SELECT) != 0 || use_handle ? (bezt->f3 & SELECT) != 0 :
+                                                                     sel2;
 
           if (sel1 || sel2) {
             td->dist = td->rdist = 0.0f;
