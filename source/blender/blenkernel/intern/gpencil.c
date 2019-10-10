@@ -1772,18 +1772,18 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist)
   second_last = &pt[gps->totpoints - 2];
   next_pt = &pt[1];
 
-  float len1 = 0;
-  float len2 = 0;
+  float len1 = 0.0f;
+  float len2 = 0.0f;
 
   i = 1;
-  while (len1 < 0.001 && gps->totpoints > i) {
+  while (len1 < 0.001f && gps->totpoints > i) {
     next_pt = &pt[i];
     len1 = len_v3v3(&next_pt->x, &pt->x);
     i++;
   }
 
   i = 2;
-  while (len2 < 0.001 && gps->totpoints >= i) {
+  while (len2 < 0.001f && gps->totpoints >= i) {
     second_last = &pt[gps->totpoints - i];
     len2 = len_v3v3(&last_pt->x, &second_last->x);
     i++;
@@ -1814,7 +1814,7 @@ bool BKE_gpencil_trim_stroke_points(bGPDstroke *gps, const int index_from, const
   bGPDspoint *pt = gps->points, *new_pt;
   MDeformVert *dv, *new_dv;
 
-  int new_count = index_to - index_from + 1;
+  const int new_count = index_to - index_from + 1;
 
   if (new_count >= gps->totpoints) {
     return false;
@@ -1872,8 +1872,8 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
     return false;
   }
 
-  int new_count = gps->totpoints - before_index;
-  int old_count = before_index;
+  const int new_count = gps->totpoints - before_index;
+  const int old_count = before_index;
 
   /* Handle remaining segments first. */
 
@@ -1903,8 +1903,8 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
 
   (*remaining_gps) = new_gps;
 
-  /* Trim the original stroke into a shorter one. */
-  /* Keep the end point. */
+  /* Trim the original stroke into a shorter one.
+   * Keep the end point. */
 
   BKE_gpencil_trim_stroke_points(gps, 0, old_count);
 
@@ -1929,9 +1929,11 @@ bool BKE_gpencil_shrink_stroke(bGPDstroke *gps, const float dist)
   second_last = &pt[gps->totpoints - 2];
   next_pt = &pt[1];
 
-  float len1 = 0, this_len1 = 0, cut_len1 = 0;
-  float len2 = 0, this_len2 = 0, cut_len2 = 0;
+  float len1, this_len1, cut_len1;
+  float len2, this_len2, cut_len2;
   int index_start, index_end;
+
+  len1 = len2 = this_len1 = this_len2 = cut_len1 = cut_len2 = 0.0f;
 
   i = 1;
   while (len1 < dist && gps->totpoints > i - 1) {
@@ -2507,12 +2509,12 @@ void BKE_gpencil_stroke_2d_flat_ref(const bGPDspoint *ref_points,
 float BKE_gpencil_stroke_length(const bGPDstroke *gps, bool use_3d)
 {
   if (!gps->points || gps->totpoints < 2) {
-    return 0;
+    return 0.0f;
   }
   float *last_pt = &gps->points[0].x;
   int i;
   bGPDspoint *pt;
-  float total_length = 0;
+  float total_length = 0.0f;
   for (i = 1; i < gps->totpoints; i++) {
     pt = &gps->points[i];
     if (use_3d) {

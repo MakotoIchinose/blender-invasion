@@ -90,7 +90,7 @@ static void applyLength(bGPDstroke *gps, float length, float percentage)
   if (len < FLT_EPSILON) {
     return;
   }
-  float length2 = len * percentage / 2; /* Srinking from two tips. */
+  float length2 = len * percentage / 2.0f; /* Srinking from two tips. */
 
   stretchOrShrinkStroke(gps, length2);
 }
@@ -177,5 +177,4 @@ GpencilModifierTypeInfo modifierType_Gpencil_Length = {
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
-    /* getDuplicationFactor */ NULL,
 };

@@ -69,7 +69,7 @@
 static void initData(GpencilModifierData *md)
 {
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
-  mmd->distance = 0.5;
+  mmd->distance = 0.5f;
   mmd->split_angle = 1.0f;
 }
 
@@ -346,5 +346,4 @@ GpencilModifierTypeInfo modifierType_Gpencil_Multiply = {
     /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
-    /* getDuplicationFactor */ NULL,
 };

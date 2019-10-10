@@ -680,13 +680,15 @@ typedef struct MultiplyGpencilModifierData {
 
   int duplications;
   float distance;
-  float offset; /* -1:inner 0:middle 1:outer */
+  /* -1:inner 0:middle 1:outer */
+  float offset;
 
   float fading_center;
   float fading_thickness;
   float fading_opacity;
 
-  float split_angle; /* in rad not deg */
+  /* in rad not deg */
+  float split_angle;
 
   /* char _pad[4]; */
 } MultiplyGpencilModifierData;
