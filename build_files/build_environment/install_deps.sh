@@ -2519,7 +2519,7 @@ compile_Embree() {
   fi
 
   # To be changed each time we make edits that would modify the compiled results!
-  embree_magic=10
+  embree_magic=11
   _init_embree
 
   # Clean install if needed!
