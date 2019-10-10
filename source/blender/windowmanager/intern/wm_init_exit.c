@@ -100,6 +100,7 @@
 #include "wm_files.h"
 #include "wm_surface.h"
 #include "wm_window.h"
+#include "wm_platform_support.h"
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
@@ -314,6 +315,10 @@ void WM_init(bContext *C, int argc, const char **argv)
     WM_ndof_deadzone_set(U.ndof_deadzone);
 #endif
     WM_init_opengl(G_MAIN);
+
+    if (!WM_platform_support_perform_checks()) {
+      exit(-1);
+    }
 
     UI_init();
   }
@@ -682,4 +687,13 @@ void WM_exit(bContext *C)
 #endif
 
   exit(G.is_break == true);
+}
+
+/**
+ * Needed for cases when operators are re-registered
+ * (when operator type pointers are stored).
+ */
+void WM_script_tag_reload(void)
+{
+  UI_interface_tag_script_reload();
 }

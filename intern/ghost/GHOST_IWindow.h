@@ -241,6 +241,8 @@ class GHOST_IWindow {
    */
   virtual void setUserData(const GHOST_TUserDataPtr userData) = 0;
 
+  virtual bool isDialog() const = 0;
+
   /**
    * Returns if the window is rendered upside down compared to OpenGL.
    */
@@ -283,6 +285,12 @@ class GHOST_IWindow {
    * \return Indication of success.
    */
   virtual GHOST_TSuccess setCursorShape(GHOST_TStandardCursor cursorShape) = 0;
+
+  /**
+   * Test if the standard cursor shape is supported by current platform.
+   * \return Indication of success.
+   */
+  virtual GHOST_TSuccess hasCursorShape(GHOST_TStandardCursor cursorShape) = 0;
 
   /**
    * Set the shape of the cursor to a custom cursor.

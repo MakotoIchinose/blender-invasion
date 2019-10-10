@@ -794,6 +794,8 @@ class VIEW3D_MT_editor_menus(Menu):
         elif obj:
             if mode_string != 'PAINT_TEXTURE':
                 layout.menu("VIEW3D_MT_%s" % mode_string.lower())
+            if mode_string == 'SCULPT':
+                layout.menu("VIEW3D_MT_mask")
 
         else:
             layout.menu("VIEW3D_MT_object")
@@ -2223,7 +2225,7 @@ class VIEW3D_MT_object_rigid_body(Menu):
         layout.operator("rigidbody.mass_calculate", text="Calculate Mass")
         layout.operator("rigidbody.object_settings_copy", text="Copy from Active")
         layout.operator("object.visual_transform_apply", text="Apply Transformation")
-        layout.operator("rigidbody.bake_to_keyframes", text="Bake To Keyframes")
+        layout.operator("rigidbody.bake_to_keyframes", text="Bake to Keyframes")
 
         layout.separator()
 
@@ -2822,18 +2824,28 @@ class VIEW3D_MT_sculpt(Menu):
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        props = layout.operator("paint.hide_show", text="Hide Bounding Box")
-        props.action = 'HIDE'
-        props.area = 'INSIDE'
-
         props = layout.operator("paint.hide_show", text="Show Bounding Box")
         props.action = 'SHOW'
         props.area = 'INSIDE'
 
+        props = layout.operator("paint.hide_show", text="Hide Bounding Box")
+        props.action = 'HIDE'
+        props.area = 'INSIDE'
+
         props = layout.operator("paint.hide_show", text="Hide Masked")
+        props.action = 'HIDE'
         props.area = 'MASKED'
 
         layout.separator()
+
+        layout.menu("VIEW3D_MT_sculpt_set_pivot", text="Set Pivot")
+
+
+class VIEW3D_MT_mask(Menu):
+    bl_label = "Mask"
+
+    def draw(self, _context):
+        layout = self.layout
 
         props = layout.operator("paint.mask_flood_fill", text="Invert Mask")
         props.mode = 'INVERT'
@@ -2896,6 +2908,28 @@ class VIEW3D_MT_sculpt(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.dirty_mask", text='Dirty Mask')
+
+
+class VIEW3D_MT_sculpt_set_pivot(Menu):
+    bl_label = "Sculpt Set Pivot"
+
+    def draw(self, context):
+        layout = self.layout
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Origin")
+        props.mode = 'ORIGIN'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Unmasked")
+        props.mode = 'UNMASKED'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Mask Border")
+        props.mode = 'BORDER'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Active Vertex")
+        props.mode = 'ACTIVE'
+
+        props = layout.operator("sculpt.set_pivot_position", text="Pivot to Surface Under Cursor")
+        props.mode = 'SURFACE'
 
 
 class VIEW3D_MT_particle(Menu):
@@ -5044,9 +5078,6 @@ class VIEW3D_PT_collections(Panel):
             if not use_local_collections:
                 subrow.active = collection.is_visible  # Parent collection runtime visibility
                 subrow.prop(child, "hide_viewport", text="", emboss=False)
-            elif not child.is_visible:
-                subrow.active = False
-                subrow.label(text="", icon='REMOVE')
             else:
                 subrow.active = collection.visible_get() # Parent collection runtime visibility
                 icon = 'HIDE_OFF' if child.visible_get() else 'HIDE_ON'
@@ -6781,6 +6812,8 @@ classes = (
     VIEW3D_MT_gpencil_vertex_group,
     VIEW3D_MT_paint_weight,
     VIEW3D_MT_sculpt,
+    VIEW3D_MT_sculpt_set_pivot,
+    VIEW3D_MT_mask,
     VIEW3D_MT_particle,
     VIEW3D_MT_particle_context_menu,
     VIEW3D_MT_particle_showhide,
