@@ -73,7 +73,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
 static void stretchOrShrinkStroke(bGPDstroke *gps, float length)
 {
-  if (length > 0) {
+  if (length > 0.0f) {
     BKE_gpencil_stretch_stroke(gps, length);
   }
   else {
@@ -86,7 +86,7 @@ static void applyLength(bGPDstroke *gps, float length, float percentage)
 
   stretchOrShrinkStroke(gps, length);
 
-  float len = BKE_gpencil_stroke_length(gps, 1);
+  float len = BKE_gpencil_stroke_length(gps, true);
   if (len < FLT_EPSILON) {
     return;
   }
