@@ -1429,6 +1429,8 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
 
   /* Remove the group */
   BLI_freelinkN(&ob->defbase, defgroup);
+  
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 }
 
 void BKE_gpencil_dvert_ensure(bGPDstroke *gps)
