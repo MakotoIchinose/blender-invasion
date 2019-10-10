@@ -1475,17 +1475,9 @@ static int mouse_graph_keys(bAnimContext *ac,
       bezt = nvi->bezt; /* used to check bezt seletion is set */
       /* depends on selection mode */
       if (select_mode == SELECT_INVERT) {
-        /* keyframe - invert select of all */
         if (nvi->hpoint == NEAREST_HANDLE_KEY) {
-          if (BEZT_ISSEL_ANY(bezt)) {
-            bezt->f2 ^= SELECT;
-          }
-          else {
-            BEZT_SEL_ALL(bezt);
-          }
+          bezt->f2 ^= SELECT;
         }
-
-        /* handles - toggle selection of relevant handle */
         else if (nvi->hpoint == NEAREST_HANDLE_LEFT) {
           /* toggle selection */
           bezt->f1 ^= SELECT;
@@ -1496,11 +1488,10 @@ static int mouse_graph_keys(bAnimContext *ac,
         }
       }
       else {
-        /* if the keyframe was clicked on, select all verts of given beztriple */
+        /* Select the handle that applied */
         if (nvi->hpoint == NEAREST_HANDLE_KEY) {
-          BEZT_SEL_ALL(bezt);
+          bezt->f2 |= SELECT;
         }
-        /* otherwise, select the handle that applied */
         else if (nvi->hpoint == NEAREST_HANDLE_LEFT) {
           bezt->f1 |= SELECT;
         }
