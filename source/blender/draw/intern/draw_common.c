@@ -277,7 +277,6 @@ static struct {
   struct GPUVertFormat *instance_scaled;
   struct GPUVertFormat *instance_sized;
   struct GPUVertFormat *instance_outline;
-  struct GPUVertFormat *instance;
   struct GPUVertFormat *instance_camera;
   struct GPUVertFormat *instance_distance_lines;
   struct GPUVertFormat *instance_spot;
@@ -1095,7 +1094,7 @@ struct GPUShader *volume_velocity_shader_get(bool use_needle)
           NULL,
           datatoc_gpu_shader_flat_color_frag_glsl,
           datatoc_common_view_lib_glsl,
-          "#define USE_NEEDLE");
+          "#define USE_NEEDLE\n");
     }
     return sh_data->volume_velocity_needle_sh;
   }

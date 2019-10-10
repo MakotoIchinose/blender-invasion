@@ -75,7 +75,8 @@
         V3D_SHADING_VERTEX_COLOR))
 
 #define IS_NAVIGATING(wpd) \
-  ((DRW_context_state_get()->rv3d) && (DRW_context_state_get()->rv3d->rflag & RV3D_NAVIGATING))
+  ((DRW_context_state_get()->rv3d) && \
+   (DRW_context_state_get()->rv3d->rflag & (RV3D_NAVIGATING | RV3D_PAINTING)))
 
 #define OBJECT_OUTLINE_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
 #define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
@@ -281,13 +282,8 @@ typedef struct WORKBENCH_EffectInfo {
 } WORKBENCH_EffectInfo;
 
 typedef struct WORKBENCH_MaterialData {
-  float base_color[3];
-  float diffuse_color[3];
-  float specular_color[3];
-  float alpha;
-  float metallic;
-  float roughness;
-  int object_id;
+  float base_color[3], metallic;
+  float roughness, alpha;
   int color_type;
   int interp;
   Image *ima;
@@ -308,8 +304,6 @@ typedef struct WORKBENCH_ObjectData {
   float shadow_min[3], shadow_max[3];
   BoundBox shadow_bbox;
   bool shadow_bbox_dirty;
-
-  int object_id;
 } WORKBENCH_ObjectData;
 
 /* inline helper functions */
@@ -500,7 +494,6 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
                                         DRWShadingGroup *grp,
                                         WORKBENCH_MaterialData *material,
                                         Object *ob,
-                                        const bool use_metallic,
                                         const bool deferred,
                                         const int interp);
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material,

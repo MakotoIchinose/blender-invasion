@@ -80,6 +80,10 @@ rna_module_prop = StringProperty(
 
 
 def context_path_validate(context, data_path):
+    # Silently ignore invalid data paths created by T65397.
+    if "(null)" in data_path:
+        return Ellipsis
+
     try:
         value = eval("context.%s" % data_path) if data_path else Ellipsis
     except AttributeError as ex:
@@ -2038,7 +2042,7 @@ class WM_OT_batch_rename(Operator):
                     if action.use_replace_regex_dst:
                         replace_dst = action.replace_dst
                     else:
-                        replace_dst = re.escape(action.replace_dst)
+                        replace_dst = action.replace_dst.replace("\\", "\\\\")
                 else:
                     replace_src = re.escape(action.replace_src)
                     replace_dst = re.escape(action.replace_dst)
@@ -2201,7 +2205,7 @@ class WM_OT_batch_rename(Operator):
                 change_len += 1
             total_len += 1
 
-        self.report({'INFO'}, "Renamed {:d} of {:d} {:s}".format(total_len, change_len, descr))
+        self.report({'INFO'}, "Renamed {:d} of {:d} {:s}".format(change_len, total_len, descr))
 
         return {'FINISHED'}
 
