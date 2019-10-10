@@ -1030,7 +1030,7 @@ static int empty_drop_named_image_invoke(bContext *C, wmOperator *op, const wmEv
     return OPERATOR_CANCELLED;
   }
   /* handled below */
-  id_us_min((ID *)ima);
+  id_us_min(&ima->id);
 
   Object *ob = NULL;
   Object *ob_cursor = ED_view3d_give_object_under_cursor(C, event->mval);
@@ -2576,7 +2576,7 @@ static Base *object_add_duplicate_internal(
     DEG_id_tag_update(&obn->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
     base = BKE_view_layer_base_find(view_layer, ob);
-    if ((base != NULL) && (base->flag & BASE_VISIBLE)) {
+    if ((base != NULL) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
       BKE_collection_object_add_from(bmain, scene, ob, obn);
     }
     else {

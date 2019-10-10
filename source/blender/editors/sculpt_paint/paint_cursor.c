@@ -410,7 +410,7 @@ static void load_tex_cursor_task_cb(void *__restrict userdata,
     if (len <= 1.0f) {
       float avg = BKE_brush_curve_strength_clamped(br, len, 1.0f); /* Falloff curve */
 
-      buffer[index] = 255 - (GLubyte)(255 * avg);
+      buffer[index] = (GLubyte)(255 * avg);
     }
     else {
       buffer[index] = 0;
@@ -1361,19 +1361,12 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
       is_cursor_over_mesh = sculpt_cursor_geometry_info_update(
           C, &gi, mouse, !(brush->falloff_shape & BRUSH_AIRBRUSH));
     }
+    /* Use special paint crosshair cursor in all paint modes*/
+    wmWindow *win = CTX_wm_window(C);
+    WM_cursor_set(win, WM_CURSOR_PAINT);
 
-    if ((mode == PAINT_MODE_SCULPT) && ss && !is_multires &&
-        !(brush->falloff_shape & BRUSH_AIRBRUSH)) {
+    if ((mode == PAINT_MODE_SCULPT) && ss && !(brush->falloff_shape & BRUSH_AIRBRUSH)) {
       Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-      wmWindow *win = CTX_wm_window(C);
-
-      /* Update WM mouse cursor, disable when the 3D brush cursor is enabled */
-      if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
-        WM_cursor_set(win, WM_CURSOR_DEFAULT);
-      }
-      else {
-        WM_cursor_set(win, WM_CURSOR_EDIT);
-      }
 
       if (!ups->stroke_active) {
         bool update_previews = false;
@@ -1400,7 +1393,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           }
 
           /* Draw pose brush origin */
-          if (brush->sculpt_tool == SCULPT_TOOL_POSE && !is_multires) {
+          if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
             immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
             if (update_previews) {
               BKE_sculpt_update_object_for_edit(depsgraph, vc.obact, true, false);
@@ -1444,15 +1437,16 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           /* Update and draw dynamic mesh preview lines */
           GPU_matrix_push();
           GPU_matrix_mul(vc.obact->obmat);
-          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) {
-            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->modifiers_active) {
+          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) &&
+              !is_multires) {
+            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->deform_modifiers_active) {
               sculpt_geometry_preview_lines_update(C, ss, rds);
               sculpt_geometry_preview_lines_draw(pos, ss);
             }
           }
 
           /* Draw pose brush line preview */
-          if (brush->sculpt_tool == SCULPT_TOOL_POSE && !is_multires) {
+          if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
             immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
             GPU_line_width(2.0f);
             immBegin(GPU_PRIM_LINES, 2);
@@ -1496,8 +1490,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
               pos, ar, cursor_location, sd, vc.obact, ss->cache->radius);
 
           /* Draw cached dynamic mesh preview lines */
-          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) {
-            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->modifiers_active) {
+          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) &&
+              !is_multires) {
+            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->deform_modifiers_active) {
               GPU_matrix_push_projection();
               ED_view3d_draw_setup_view(CTX_wm_window(C),
                                         CTX_data_depsgraph_pointer(C),

@@ -249,7 +249,7 @@ void GPU_pbvh_mesh_buffers_update(GPU_PBVH_Buffers *buffers,
       else {
         /* calculate normal for each polygon only once */
         uint mpoly_prev = UINT_MAX;
-        short no[3];
+        short no[3] = {0, 0, 0};
 
         for (uint i = 0; i < buffers->face_indices_len; i++) {
           const MLoopTri *lt = &buffers->looptri[buffers->face_indices[i]];
@@ -316,10 +316,12 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
                                               const MLoopTri *looptri,
                                               const MVert *mvert,
                                               const int *face_indices,
-                                              const int face_indices_len)
+                                              const int face_indices_len,
+                                              const struct Mesh *mesh)
 {
   GPU_PBVH_Buffers *buffers;
   int i, tottri;
+  int tot_real_edges = 0;
 
   buffers = MEM_callocN(sizeof(GPU_PBVH_Buffers), "GPU_Buffers");
 
@@ -332,6 +334,13 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
   for (i = 0, tottri = 0; i < face_indices_len; i++) {
     const MLoopTri *lt = &looptri[face_indices[i]];
     if (!paint_is_face_hidden(lt, mvert, mloop)) {
+      int r_edges[3];
+      BKE_mesh_looptri_get_real_edges(mesh, lt, r_edges);
+      for (int j = 0; j < 3; j++) {
+        if (r_edges[j] != -1) {
+          tot_real_edges++;
+        }
+      }
       tottri++;
     }
   }
@@ -355,7 +364,7 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
     /* Fill the triangle and line buffers. */
     GPUIndexBufBuilder elb, elb_lines;
     GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, tottri, INT_MAX);
-    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, INT_MAX);
+    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tot_real_edges, INT_MAX);
 
     for (i = 0; i < face_indices_len; i++) {
       const MLoopTri *lt = &looptri[face_indices[i]];
@@ -366,11 +375,18 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
       }
 
       GPU_indexbuf_add_tri_verts(&elb, UNPACK3(face_vert_indices[i]));
+      int r_edges[3];
+      BKE_mesh_looptri_get_real_edges(mesh, lt, r_edges);
 
-      /* TODO skip "non-real" edges. */
-      GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][0], face_vert_indices[i][1]);
-      GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][1], face_vert_indices[i][2]);
-      GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][2], face_vert_indices[i][0]);
+      if (r_edges[0] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][0], face_vert_indices[i][1]);
+      }
+      if (r_edges[1] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][1], face_vert_indices[i][2]);
+      }
+      if (r_edges[2] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, face_vert_indices[i][2], face_vert_indices[i][0]);
+      }
     }
     buffers->index_buf = GPU_indexbuf_build(&elb);
     buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
@@ -378,7 +394,7 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
   else {
     /* Fill the only the line buffer. */
     GPUIndexBufBuilder elb_lines;
-    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, INT_MAX);
+    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tot_real_edges, INT_MAX);
     int vert_idx = 0;
 
     for (i = 0; i < face_indices_len; i++) {
@@ -389,10 +405,18 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(const int (*face_vert_indices)[3],
         continue;
       }
 
-      /* TODO skip "non-real" edges. */
-      GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 0, vert_idx * 3 + 1);
-      GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 1, vert_idx * 3 + 2);
-      GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 2, vert_idx * 3 + 0);
+      int r_edges[3];
+      BKE_mesh_looptri_get_real_edges(mesh, lt, r_edges);
+      if (r_edges[0] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 0, vert_idx * 3 + 1);
+      }
+      if (r_edges[1] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 1, vert_idx * 3 + 2);
+      }
+      if (r_edges[2] != -1) {
+        GPU_indexbuf_add_line_verts(&elb_lines, vert_idx * 3 + 2, vert_idx * 3 + 0);
+      }
+
       vert_idx++;
     }
     buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
@@ -729,47 +753,36 @@ GPU_PBVH_Buffers *GPU_pbvh_grid_buffers_build(int totgrid, BLI_bitmap **grid_hid
 /** \name BMesh PBVH
  * \{ */
 
-/* Output a BMVert into a VertexBufferFormat array
- *
- * The vertex is skipped if hidden, otherwise the output goes into
- * index '*v_index' in the 'vert_data' array and '*v_index' is
- * incremented.
- */
-static void gpu_bmesh_vert_to_buffer_copy__gwn(BMVert *v,
-                                               GPUVertBuf *vert_buf,
-                                               int *v_index,
-                                               const float fno[3],
-                                               const float *fmask,
-                                               const int cd_vert_mask_offset,
-                                               const bool show_mask,
-                                               const bool show_vcol,
-                                               bool *empty_mask)
+/* Output a BMVert into a VertexBufferFormat array at v_index. */
+static void gpu_bmesh_vert_to_buffer_copy(BMVert *v,
+                                          GPUVertBuf *vert_buf,
+                                          int v_index,
+                                          const float fno[3],
+                                          const float *fmask,
+                                          const int cd_vert_mask_offset,
+                                          const bool show_mask,
+                                          const bool show_vcol,
+                                          bool *empty_mask)
 {
-  if (!BM_elem_flag_test(v, BM_ELEM_HIDDEN)) {
+  /* Vertex should always be visible if it's used by a visible face. */
+  BLI_assert(!BM_elem_flag_test(v, BM_ELEM_HIDDEN));
 
-    /* Set coord, normal, and mask */
-    GPU_vertbuf_attr_set(vert_buf, g_vbo_id.pos, *v_index, v->co);
+  /* Set coord, normal, and mask */
+  GPU_vertbuf_attr_set(vert_buf, g_vbo_id.pos, v_index, v->co);
 
-    short no_short[3];
-    normal_float_to_short_v3(no_short, fno ? fno : v->no);
-    GPU_vertbuf_attr_set(vert_buf, g_vbo_id.nor, *v_index, no_short);
+  short no_short[3];
+  normal_float_to_short_v3(no_short, fno ? fno : v->no);
+  GPU_vertbuf_attr_set(vert_buf, g_vbo_id.nor, v_index, no_short);
 
-    if (show_mask) {
-      float effective_mask = fmask ? *fmask : BM_ELEM_CD_GET_FLOAT(v, cd_vert_mask_offset);
-      GPU_vertbuf_attr_set(vert_buf, g_vbo_id.msk, *v_index, &effective_mask);
-      *empty_mask = *empty_mask && (effective_mask == 0.0f);
-    }
+  if (show_mask) {
+    float effective_mask = fmask ? *fmask : BM_ELEM_CD_GET_FLOAT(v, cd_vert_mask_offset);
+    GPU_vertbuf_attr_set(vert_buf, g_vbo_id.msk, v_index, &effective_mask);
+    *empty_mask = *empty_mask && (effective_mask == 0.0f);
+  }
 
-    if (show_vcol) {
-      static char vcol[4] = {255, 255, 255, 255};
-      GPU_vertbuf_attr_set(vert_buf, g_vbo_id.col, *v_index, &vcol);
-    }
-
-    /* Assign index for use in the triangle index buffer */
-    /* note: caller must set:  bm->elem_index_dirty |= BM_VERT; */
-    BM_elem_index_set(v, (*v_index)); /* set_dirty! */
-
-    (*v_index)++;
+  if (show_vcol) {
+    static char vcol[4] = {255, 255, 255, 255};
+    GPU_vertbuf_attr_set(vert_buf, g_vbo_id.col, v_index, &vcol);
   }
 }
 
@@ -839,7 +852,7 @@ void GPU_pbvh_bmesh_buffers_update(GPU_PBVH_Buffers *buffers,
 {
   const bool show_mask = (update_flags & GPU_PBVH_BUFFERS_SHOW_MASK) != 0;
   const bool show_vcol = (update_flags & GPU_PBVH_BUFFERS_SHOW_VCOL) != 0;
-  int tottri, totvert, maxvert = 0;
+  int tottri, totvert;
   bool empty_mask = true;
   BMFace *f = NULL;
 
@@ -869,135 +882,118 @@ void GPU_pbvh_bmesh_buffers_update(GPU_PBVH_Buffers *buffers,
   const int cd_vert_mask_offset = CustomData_get_offset(&bm->vdata, CD_PAINT_MASK);
 
   /* Fill vertex buffer */
-  if (gpu_pbvh_vert_buf_data_set(buffers, totvert)) {
-    int v_index = 0;
-
-    if (buffers->smooth) {
-      GSetIterator gs_iter;
-
-      /* Vertices get an index assigned for use in the triangle
-       * index buffer */
-      bm->elem_index_dirty |= BM_VERT;
-
-      GSET_ITER (gs_iter, bm_unique_verts) {
-        gpu_bmesh_vert_to_buffer_copy__gwn(BLI_gsetIterator_getKey(&gs_iter),
-                                           buffers->vert_buf,
-                                           &v_index,
-                                           NULL,
-                                           NULL,
-                                           cd_vert_mask_offset,
-                                           show_mask,
-                                           show_vcol,
-                                           &empty_mask);
-      }
-
-      GSET_ITER (gs_iter, bm_other_verts) {
-        gpu_bmesh_vert_to_buffer_copy__gwn(BLI_gsetIterator_getKey(&gs_iter),
-                                           buffers->vert_buf,
-                                           &v_index,
-                                           NULL,
-                                           NULL,
-                                           cd_vert_mask_offset,
-                                           show_mask,
-                                           show_vcol,
-                                           &empty_mask);
-      }
-
-      maxvert = v_index;
-    }
-    else {
-      GSetIterator gs_iter;
-
-      GPUIndexBufBuilder elb_lines;
-      GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, totvert);
-
-      GSET_ITER (gs_iter, bm_faces) {
-        f = BLI_gsetIterator_getKey(&gs_iter);
-
-        BLI_assert(f->len == 3);
-
-        if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-          BMVert *v[3];
-          float fmask = 0.0f;
-          int i;
-
-          BM_face_as_array_vert_tri(f, v);
-
-          /* Average mask value */
-          for (i = 0; i < 3; i++) {
-            fmask += BM_ELEM_CD_GET_FLOAT(v[i], cd_vert_mask_offset);
-          }
-          fmask /= 3.0f;
-
-          GPU_indexbuf_add_line_verts(&elb_lines, v_index + 0, v_index + 1);
-          GPU_indexbuf_add_line_verts(&elb_lines, v_index + 1, v_index + 2);
-          GPU_indexbuf_add_line_verts(&elb_lines, v_index + 2, v_index + 0);
-
-          for (i = 0; i < 3; i++) {
-            gpu_bmesh_vert_to_buffer_copy__gwn(v[i],
-                                               buffers->vert_buf,
-                                               &v_index,
-                                               f->no,
-                                               &fmask,
-                                               cd_vert_mask_offset,
-                                               show_mask,
-                                               show_vcol,
-                                               &empty_mask);
-          }
-        }
-      }
-
-      buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
-      buffers->tot_tri = tottri;
-    }
-
-    /* gpu_bmesh_vert_to_buffer_copy sets dirty index values */
-    bm->elem_index_dirty |= BM_VERT;
-  }
-  else {
+  if (!gpu_pbvh_vert_buf_data_set(buffers, totvert)) {
     /* Memory map failed */
     return;
   }
 
+  int v_index = 0;
+
   if (buffers->smooth) {
-    /* Fill the triangle buffer */
+    /* Fill the vertex and triangle buffer in one pass over faces. */
     GPUIndexBufBuilder elb, elb_lines;
-    GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, tottri, maxvert);
-    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, maxvert);
+    GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, tottri, totvert);
+    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, totvert);
 
-    /* Fill triangle index buffer */
-    {
-      GSetIterator gs_iter;
+    GHash *bm_vert_to_index = BLI_ghash_int_new_ex("bm_vert_to_index", totvert);
 
-      GSET_ITER (gs_iter, bm_faces) {
-        f = BLI_gsetIterator_getKey(&gs_iter);
+    GSetIterator gs_iter;
+    GSET_ITER (gs_iter, bm_faces) {
+      f = BLI_gsetIterator_getKey(&gs_iter);
 
-        if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-          BMVert *v[3];
+      if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
+        BMVert *v[3];
+        BM_face_as_array_vert_tri(f, v);
 
-          BM_face_as_array_vert_tri(f, v);
+        uint idx[3];
+        for (int i = 0; i < 3; i++) {
+          void **idx_p;
+          if (!BLI_ghash_ensure_p(bm_vert_to_index, v[i], &idx_p)) {
+            /* Add vertex to the vertex buffer each time a new one is encountered */
+            *idx_p = POINTER_FROM_UINT(v_index);
 
-          const uint idx[3] = {
-              BM_elem_index_get(v[0]), BM_elem_index_get(v[1]), BM_elem_index_get(v[2])};
-          GPU_indexbuf_add_tri_verts(&elb, idx[0], idx[1], idx[2]);
+            gpu_bmesh_vert_to_buffer_copy(v[i],
+                                          buffers->vert_buf,
+                                          v_index,
+                                          NULL,
+                                          NULL,
+                                          cd_vert_mask_offset,
+                                          show_mask,
+                                          show_vcol,
+                                          &empty_mask);
 
-          GPU_indexbuf_add_line_verts(&elb_lines, idx[0], idx[1]);
-          GPU_indexbuf_add_line_verts(&elb_lines, idx[1], idx[2]);
-          GPU_indexbuf_add_line_verts(&elb_lines, idx[2], idx[0]);
+            idx[i] = v_index;
+            v_index++;
+          }
+          else {
+            /* Vertex already in the vertex buffer, just get the index. */
+            idx[i] = POINTER_AS_UINT(*idx_p);
+          }
+        }
+
+        GPU_indexbuf_add_tri_verts(&elb, idx[0], idx[1], idx[2]);
+
+        GPU_indexbuf_add_line_verts(&elb_lines, idx[0], idx[1]);
+        GPU_indexbuf_add_line_verts(&elb_lines, idx[1], idx[2]);
+        GPU_indexbuf_add_line_verts(&elb_lines, idx[2], idx[0]);
+      }
+    }
+
+    BLI_ghash_free(bm_vert_to_index, NULL, NULL);
+
+    buffers->tot_tri = tottri;
+    if (buffers->index_buf == NULL) {
+      buffers->index_buf = GPU_indexbuf_build(&elb);
+    }
+    else {
+      GPU_indexbuf_build_in_place(&elb, buffers->index_buf);
+    }
+    buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
+  }
+  else {
+    GSetIterator gs_iter;
+
+    GPUIndexBufBuilder elb_lines;
+    GPU_indexbuf_init(&elb_lines, GPU_PRIM_LINES, tottri * 3, tottri * 3);
+
+    GSET_ITER (gs_iter, bm_faces) {
+      f = BLI_gsetIterator_getKey(&gs_iter);
+
+      BLI_assert(f->len == 3);
+
+      if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
+        BMVert *v[3];
+        float fmask = 0.0f;
+        int i;
+
+        BM_face_as_array_vert_tri(f, v);
+
+        /* Average mask value */
+        for (i = 0; i < 3; i++) {
+          fmask += BM_ELEM_CD_GET_FLOAT(v[i], cd_vert_mask_offset);
+        }
+        fmask /= 3.0f;
+
+        GPU_indexbuf_add_line_verts(&elb_lines, v_index + 0, v_index + 1);
+        GPU_indexbuf_add_line_verts(&elb_lines, v_index + 1, v_index + 2);
+        GPU_indexbuf_add_line_verts(&elb_lines, v_index + 2, v_index + 0);
+
+        for (i = 0; i < 3; i++) {
+          gpu_bmesh_vert_to_buffer_copy(v[i],
+                                        buffers->vert_buf,
+                                        v_index++,
+                                        f->no,
+                                        &fmask,
+                                        cd_vert_mask_offset,
+                                        show_mask,
+                                        show_vcol,
+                                        &empty_mask);
         }
       }
-
-      buffers->tot_tri = tottri;
-
-      if (buffers->index_buf == NULL) {
-        buffers->index_buf = GPU_indexbuf_build(&elb);
-      }
-      else {
-        GPU_indexbuf_build_in_place(&elb, buffers->index_buf);
-      }
-
-      buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
     }
+
+    buffers->index_lines_buf = GPU_indexbuf_build(&elb_lines);
+    buffers->tot_tri = tottri;
   }
 
   /* Get material index from the last face we iterated on. */
@@ -1054,6 +1050,7 @@ void GPU_pbvh_buffers_update_flush(GPU_PBVH_Buffers *buffers)
     GPU_BATCH_DISCARD_SAFE(buffers->triangles);
     GPU_INDEXBUF_DISCARD_SAFE(buffers->index_buf);
     GPU_VERTBUF_DISCARD_SAFE(buffers->vert_buf);
+    buffers->clear_bmesh_on_flush = false;
   }
 
   /* Force flushing to the GPU. */
