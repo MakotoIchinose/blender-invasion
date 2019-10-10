@@ -439,12 +439,7 @@ class Mesh(bpy_types.ID):
            int pairs, each pair contains two indices to the
            *vertices* argument. eg: [(1, 2), ...]
 
-           When an empty iterable is passed in, the edsges are inferred from the polygons.
-
-           When non-emtpy, either:
-
-           - Edges must be provided for all polygons.
-           - Edges must be calculated afterwards using :class:`Mesh.update` with ``calc_edges=True``.
+           When an empty iterable is passed in, the edges are inferred from the polygons.
 
         :type edges: iterable object
         :arg faces:
@@ -481,11 +476,15 @@ class Mesh(bpy_types.ID):
         self.polygons.foreach_set("loop_start", loop_starts)
         self.polygons.foreach_set("vertices", vertex_indices)
 
-        # if no edges - calculate them
-        if faces and (not edges):
-            self.update(calc_edges=True)
-        elif edges:
-            self.update(calc_edges_loose=True)
+        if edges or faces:
+            self.update(
+                # Needed to either:
+                # - Calculate edges that don't exist for polygons.
+                # - Assign edges to polygon loops.
+                calc_edges=bool(faces),
+                # Flag loose edges.
+                calc_edges_loose=bool(edges),
+            )
 
     @property
     def edge_keys(self):
