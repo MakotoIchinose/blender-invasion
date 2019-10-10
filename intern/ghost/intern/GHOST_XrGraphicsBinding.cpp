@@ -72,11 +72,21 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #else
     GHOST_ContextWGL *ctx_gl = static_cast<GHOST_ContextWGL *>(ghost_ctx);
 #endif
+    static PFN_xrGetOpenGLGraphicsRequirementsKHR s_xrGetOpenGLGraphicsRequirementsKHR_fn =
+        nullptr;
     XrGraphicsRequirementsOpenGLKHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR};
     const XrVersion gl_version = XR_MAKE_VERSION(
         ctx_gl->m_contextMajorVersion, ctx_gl->m_contextMinorVersion, 0);
 
-    xrGetOpenGLGraphicsRequirementsKHR(instance, system_id, &gpu_requirements);
+    if (!s_xrGetOpenGLGraphicsRequirementsKHR_fn &&
+        XR_FAILED(xrGetInstanceProcAddr(
+            instance,
+            "xrGetOpenGLGraphicsRequirementsKHR",
+            (PFN_xrVoidFunction *)&s_xrGetOpenGLGraphicsRequirementsKHR_fn))) {
+      s_xrGetOpenGLGraphicsRequirementsKHR_fn = nullptr;
+    }
+
+    s_xrGetOpenGLGraphicsRequirementsKHR_fn(instance, system_id, &gpu_requirements);
 
     if (r_requirement_info) {
       std::ostringstream strstream;
@@ -188,11 +198,18 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
                                 XrSystemId system_id,
                                 std::string *r_requirement_info) const override
   {
-
     GHOST_ContextD3D *ctx_dx = static_cast<GHOST_ContextD3D *>(ghost_ctx);
     XrGraphicsRequirementsD3D11KHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR};
 
-    xrGetD3D11GraphicsRequirementsKHR(instance, system_id, &gpu_requirements);
+    if (!s_xrGetD3D11GraphicsRequirementsKHR_fn &&
+        XR_FAILED(xrGetInstanceProcAddr(
+            instance,
+            "xrGetD3D11GraphicsRequirementsKHR",
+            (PFN_xrVoidFunction *)&s_xrGetD3D11GraphicsRequirementsKHR_fn))) {
+      s_xrGetD3D11GraphicsRequirementsKHR_fn = nullptr;
+    }
+
+    s_xrGetD3D11GraphicsRequirementsKHR_fn(instance, system_id, &gpu_requirements);
 
     if (r_requirement_info) {
       std::ostringstream strstream;
