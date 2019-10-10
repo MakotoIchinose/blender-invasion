@@ -1436,12 +1436,12 @@ static int mouse_graph_keys(bAnimContext *ac,
     wait_to_deselect_others = false;
   }
 
-  /* Special treatment here: If we click on a key, behavior should be as usual. However, when
-   * clicking a handle, we make sure it's the only selected item in that triple. That way you can
-   * still click+drag handles to select and move them in one go, even though the entire triple is
-   * selected after clicking the key to reveal the handles. */
-  if (wait_to_deselect_others && nvi && BEZT_ISSEL_ANY(nvi->bezt) &&
-      ((nvi->bezt->f2 & SELECT) || (nvi->hpoint != NEAREST_HANDLE_KEY))) {
+  const bool already_selected =
+      nvi && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
+              ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
+              ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
+
+  if (wait_to_deselect_others && nvi && already_selected) {
     ret_val = OPERATOR_RUNNING_MODAL;
   }
   /* For replacing selection, if we have something to select, we have to clear existing selection.
