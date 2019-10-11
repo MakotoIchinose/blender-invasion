@@ -199,6 +199,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
                                 std::string *r_requirement_info) const override
   {
     GHOST_ContextD3D *ctx_dx = static_cast<GHOST_ContextD3D *>(ghost_ctx);
+    static PFN_xrGetD3D11GraphicsRequirementsKHR s_xrGetD3D11GraphicsRequirementsKHR_fn = nullptr;
     XrGraphicsRequirementsD3D11KHR gpu_requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR};
 
     if (!s_xrGetD3D11GraphicsRequirementsKHR_fn &&
