@@ -254,7 +254,7 @@ index 56858294c..6a154881b 100644
 +        size_t nb;
 +        if(leafType == &Triangle4v::type) {
 +            Triangle4v *prims = reinterpret_cast<Triangle4v *>(node.leaf(nb));
-+            BVHPrimitive primsArray[4*nb];
++            BVHPrimitive *primsArray = (BVHPrimitive *)alloca(4 * nb * sizeof(BVHPrimitive));
 +            unsigned int realNum = 0;
 +            for(int i = 0; i < nb; ++i) {
 +                for(size_t j = 0; j < prims[i].size(); j++) {
@@ -267,7 +267,7 @@ index 56858294c..6a154881b 100644
 +            return args.createLeaf(realNum, primsArray, userData);
 +        } else if(leafType == &Triangle4i::type) {
 +            Triangle4i *prims = reinterpret_cast<Triangle4i *>(node.leaf(nb));
-+            BVHPrimitive primsArray[4*nb];
++            BVHPrimitive *primsArray = (BVHPrimitive *)alloca(4 * nb * sizeof(BVHPrimitive));
 +            unsigned int realNum = 0;
 +            for(int i = 0; i < nb; ++i) {
 +                for(size_t j = 0; j < prims[i].size(); j++) {
@@ -280,7 +280,7 @@ index 56858294c..6a154881b 100644
 +            return args.createLeaf(realNum, primsArray, userData);
 +        } else if(leafType == &InstancePrimitive::type) {
 +            InstancePrimitive *prims = reinterpret_cast<InstancePrimitive *>(node.leaf(nb));
-+            uint geomIDs[nb];
++            unsigned int *geomIDs = (unsigned int *)alloca(sizeof(unsigned int)*nb);
 +            for(int i = 0; i < nb; ++i)
 +                geomIDs[i] = prims[i].instance->geomID;
 +
@@ -418,8 +418,8 @@ index 56858294c..6a154881b 100644
 -      return alloc->malloc0(bytes,align);
 -      RTC_CATCH_END(alloc->alloc->getDevice());
 -      return nullptr;
-+    template <uint N>
-+    inline RTCAffineSpace affineSpaceToRTC(const AffineSpace3vf<N> affSpaces, uint i) {
++    template <unsigned int N>
++    inline RTCAffineSpace affineSpaceToRTC(const AffineSpace3vf<N> affSpaces, unsigned int i) {
 +      RTCAffineSpace affSpace;
 +
 +      affSpace.affine[0] = affSpaces.p.x[i];
@@ -486,7 +486,7 @@ index 56858294c..6a154881b 100644
 +
 +      unsigned int nb = 0;
 +      void *children[4];
-+      for(uint i = 0; i < 4; i++) {
++      for(unsigned int i = 0; i < 4; i++) {
 +          void *child = recurse<N>(bnode->child(i), leafType, args, userData);
 +          if(child == nullptr) continue;
 +
