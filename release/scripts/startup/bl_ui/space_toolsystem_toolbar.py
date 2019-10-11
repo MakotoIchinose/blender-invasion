@@ -1392,6 +1392,17 @@ class _defs_gpencil_paint:
             keymap=(),
         )
 
+    @ToolDef.from_fn
+    def eyedropper():
+        return dict(
+            idname="builtin.eyedropper",
+            label="Eyedropper",
+            icon="ops.paint.weight_sample",
+            cursor='EYEDROPPER',
+            widget=None,
+            keymap=(),
+        )
+
 
 class _defs_gpencil_edit:
     @ToolDef.from_fn

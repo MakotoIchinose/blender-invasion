@@ -403,6 +403,25 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, *, compact=True)
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
+    if tool.idname in {"builtin.arc", "builtin.curve", "builtin.line", "builtin.box", "builtin.circle"}:
+        settings = _context.tool_settings.gpencil_sculpt
+        if is_toolbar:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="", icon='CURVE_DATA')
+            sub = row.row(align=True)
+            sub.active = settings.use_thickness_curve
+            sub.popover(
+                panel="TOPBAR_PT_gpencil_primitive",
+                text="Thickness Profile",
+            )
+        else:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="Use Thickness Profile")
+            sub = row.row(align=True)
+            if settings.use_thickness_curve:
+                # Curve
+                layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
+
 
 def brush_basic_gpencil_sculpt_settings(layout, context, brush, *, compact=False):
     tool_settings = context.tool_settings
