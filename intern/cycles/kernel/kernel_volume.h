@@ -1016,18 +1016,20 @@ kernel_volume_integrate_heterogeneous_woodcock_mis_tracking(KernelGlobals *kg,
   float rphase = path_state_rng_1D(kg, state, PRNG_PHASE_CHANNEL);
   int channel = kernel_volume_sample_channel(make_float3(1.0f, 1.0f, 1.0f), make_float3(1.0f, 1.0f, 1.0f), rphase, &channel_pdf);
   float3 tp = *throughput;
-  float3 pdf = make_float3(1.0f, 1.0f, 1.0f);
+  float3 pdf = channel_pdf;//make_float3(1.0f, 1.0f, 1.0f);
+  float running_t = 0.0f;
 
   for (int i = 0; i < kernel_data.integrator.volume_max_steps; ++i) {
     float s = lcg_step_float_addrspace(&lcg_state);
     float dt = - (logf(1.f - s) / sigma_m);
-    t = t + dt ;
+    t = t + dt;
     if(t >= ray->t) {
       break;
     }
     float s2 = lcg_step_float_addrspace(&lcg_state);
     float3 new_P = ray->P + ray->D * t;
-    const float Tc = expf(-t*sigma_m);
+    running_t = sigma_m * dt;
+    const float Tc = expf(-running_t);
     coeff.sigma_t = make_float3(1.0f, 1.0f, 1.0f);
     if (volume_shader_sample(kg, sd, state, new_P, &coeff)) {
       int closure_flag = sd->flag;
@@ -1039,21 +1041,39 @@ kernel_volume_integrate_heterogeneous_woodcock_mis_tracking(KernelGlobals *kg,
         tp *= Tc * coeff.sigma_s;
         pdf *= Tc * coeff.sigma_s;
         *throughput = tp / average(pdf);
+        if (channel == 0) {
+          throughput->y = throughput->z = 0.0f;
+        }
+        else if (channel == 1) {
+          throughput->x = throughput->z = 0.0f;
+        }
+        else {
+          throughput->x = throughput->y = 0.0f;
+        }
         return VOLUME_PATH_SCATTERED;
       }
       else if (s2 < (kernel_volume_channel_get(coeff.sigma_t, channel) / sigma_m)) {
-        float3 sigma_a = coeff.sigma_t - coeff.sigma_s;
+        float3 sigma_a = coeff.sigma_t/* - coeff.sigma_s*/;
         tp *= Tc * sigma_a;
         pdf *= Tc * sigma_a;
         *throughput = tp / average(pdf);
+        *throughput = make_float3(0.0f, 0.0f, 0.0f);
         return VOLUME_PATH_ATTENUATED;
       }
+      tp *= Tc * (make_float3(sigma_m, sigma_m, sigma_m) - coeff.sigma_t);
+      pdf *= Tc * (make_float3(sigma_m, sigma_m, sigma_m) - coeff.sigma_t);
     }
-
-    tp *= Tc * (make_float3(sigma_m, sigma_m, sigma_m) - coeff.sigma_t);
-    pdf *= Tc * (make_float3(sigma_m, sigma_m, sigma_m) - coeff.sigma_t);
   }
   *throughput = tp / average(pdf);
+  if (channel == 0) {
+    throughput->y = throughput->z = 0.0f;
+  }
+  else if (channel == 1) {
+    throughput->x = throughput->z = 0.0f;
+  }
+  else {
+    throughput->x = throughput->y = 0.0f;
+  }
   return VOLUME_PATH_MISSED;
 }
 
@@ -1155,8 +1175,8 @@ kernel_volume_integrate(KernelGlobals *kg,
       return kernel_volume_integrate_heterogeneous_tracking(kg, state, ray, sd, L, throughput);
     }
     else if (kernel_data.integrator.volume_integrator == VOLUME_INTEGRATOR_SPECTRAL) {
-//      return kernel_volume_integrate_heterogeneous_woodcock_mis_tracking(kg, state, ray, sd, L, throughput);
-      return kernel_volume_integrate_heterogeneous_spectral_tracking(kg, state, ray, sd, L, throughput);
+      return kernel_volume_integrate_heterogeneous_woodcock_mis_tracking(kg, state, ray, sd, L, throughput);
+//      return kernel_volume_integrate_heterogeneous_spectral_tracking(kg, state, ray, sd, L, throughput);
     }
     else if (kernel_data.integrator.volume_integrator == VOLUME_INTEGRATOR_WOODCOCK) {
       return kernel_volume_integrate_heterogeneous_woodcock_tracking(kg, state, ray, sd, L, throughput);
