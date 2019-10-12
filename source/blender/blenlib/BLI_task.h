@@ -116,6 +116,9 @@ void *BLI_task_pool_userdata(TaskPool *pool);
 /* optional mutex to use from run function */
 ThreadMutex *BLI_task_pool_user_mutex(TaskPool *pool);
 
+/* Thread ID of thread that created the task pool. */
+int BLI_task_pool_creator_thread_id(TaskPool *pool);
+
 /* Delayed push, use that to reduce thread overhead by accumulating
  * all new tasks into local queue first and pushing it to scheduler
  * from within a single mutex lock.
