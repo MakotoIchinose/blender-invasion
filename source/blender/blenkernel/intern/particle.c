@@ -3337,7 +3337,6 @@ void psys_cache_edit_paths(Depsgraph *depsgraph,
 
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
-  settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, psys_cache_edit_paths_iter, &settings);
 
   edit->totcached = totpart;

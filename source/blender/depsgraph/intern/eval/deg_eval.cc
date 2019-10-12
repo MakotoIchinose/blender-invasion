@@ -86,9 +86,7 @@ static void deg_task_run_func(TaskPool *pool, void *taskdata, int thread_id)
     node->evaluate((::Depsgraph *)state->graph);
   }
   /* Schedule children. */
-  BLI_task_pool_delayed_push_begin(pool, thread_id);
   schedule_children(pool, state->graph, node, thread_id);
-  BLI_task_pool_delayed_push_end(pool, thread_id);
 }
 
 static bool check_operation_node_visible(OperationNode *op_node)
@@ -199,7 +197,7 @@ static void schedule_node(
     }
     else {
       /* children are scheduled once this task is completed */
-      BLI_task_pool_push_from_thread(pool, deg_task_run_func, node, false, NULL, thread_id);
+      BLI_task_pool_push(pool, deg_task_run_func, node, false, NULL);
     }
   }
 }

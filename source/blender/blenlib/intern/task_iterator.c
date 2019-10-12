@@ -224,15 +224,13 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
     userdata_chunk_array = MALLOCA(userdata_chunk_size * num_tasks);
   }
 
-  const int thread_id = BLI_task_pool_creator_thread_id(task_pool);
   for (size_t i = 0; i < num_tasks; i++) {
     if (use_userdata_chunk) {
       userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
       memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
     }
     /* Use this pool's pre-allocated tasks. */
-    BLI_task_pool_push_from_thread(
-        task_pool, parallel_iterator_func, userdata_chunk_local, false, NULL, thread_id);
+    BLI_task_pool_push(task_pool, parallel_iterator_func, userdata_chunk_local, false, NULL);
   }
 
   BLI_task_pool_work_and_wait(task_pool);
@@ -412,11 +410,9 @@ void BLI_task_parallel_mempool(BLI_mempool *mempool,
   BLI_mempool_iter *mempool_iterators = BLI_mempool_iter_threadsafe_create(mempool,
                                                                            (size_t)num_tasks);
 
-  const int thread_id = BLI_task_pool_creator_thread_id(task_pool);
   for (i = 0; i < num_tasks; i++) {
     /* Use this pool's pre-allocated tasks. */
-    BLI_task_pool_push_from_thread(
-        task_pool, parallel_mempool_func, &mempool_iterators[i], false, NULL, thread_id);
+    BLI_task_pool_push(task_pool, parallel_mempool_func, &mempool_iterators[i], false, NULL);
   }
 
   BLI_task_pool_work_and_wait(task_pool);

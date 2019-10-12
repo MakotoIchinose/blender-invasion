@@ -976,7 +976,6 @@ static void obstacles_from_mesh(Object *coll_ob,
       };
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
-      settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(
           sds->res_min[2], sds->res_max[2], &data, obstacles_from_mesh_task_cb, &settings);
     }
@@ -1569,7 +1568,6 @@ static void emit_from_particles(Object *flow_ob,
 
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
-      settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(min[2], max[2], &data, emit_from_particles_task_cb, &settings);
     }
 
@@ -1977,7 +1975,6 @@ static void emit_from_mesh(
 
       TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
-      settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(min[2], max[2], &data, emit_from_mesh_task_cb, &settings);
     }
     /* free bvh tree */
@@ -2967,7 +2964,6 @@ static void update_effectors(
 
     TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
-    settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
     BLI_task_parallel_range(0, sds->res[0], &data, update_effectors_task_cb, &settings);
   }
 
