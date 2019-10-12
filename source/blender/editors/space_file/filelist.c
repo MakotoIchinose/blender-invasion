@@ -1229,7 +1229,7 @@ static void filelist_cache_preview_ensure_running(FileListEntryCache *cache)
   if (!cache->previews_pool) {
     TaskScheduler *scheduler = BLI_task_scheduler_get();
 
-    cache->previews_pool = BLI_task_pool_create_background(scheduler, cache);
+    cache->previews_pool = BLI_task_pool_create_background(scheduler, cache, TASK_PRIORITY_LOW);
     cache->previews_done = BLI_thread_queue_init();
 
     IMB_thumb_locks_acquire();
@@ -1290,12 +1290,11 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     //      printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
 
     filelist_cache_preview_ensure_running(cache);
-    BLI_task_pool_push_ex(cache->previews_pool,
-                          filelist_cache_preview_runf,
-                          preview,
-                          true,
-                          filelist_cache_preview_freef,
-                          TASK_PRIORITY_LOW);
+    BLI_task_pool_push(cache->previews_pool,
+                       filelist_cache_preview_runf,
+                       preview,
+                       true,
+                       filelist_cache_preview_freef);
   }
 }
 

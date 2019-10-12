@@ -175,6 +175,8 @@ struct TaskPool {
   ListBase suspended_queue;
   size_t num_suspended;
 
+  TaskPriority priority;
+
   /* If set, this pool may never be work_and_wait'ed, which means TaskScheduler
    * has to use its special background fallback thread in case we are in
    * single-threaded situation.
@@ -658,7 +660,8 @@ static void task_scheduler_clear(TaskScheduler *scheduler, TaskPool *pool)
 static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
                                      void *userdata,
                                      const bool is_background,
-                                     const bool is_suspended)
+                                     const bool is_suspended,
+                                     const TaskPriority priority)
 {
   TaskPool *pool = MEM_mallocN(sizeof(TaskPool), "TaskPool");
 
@@ -683,6 +686,7 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
   pool->start_suspended = is_suspended;
   pool->num_suspended = 0;
   pool->suspended_queue.first = pool->suspended_queue.last = NULL;
+  pool->priority = priority;
   pool->run_in_background = is_background;
   pool->use_local_tls = false;
 
@@ -734,9 +738,9 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
 /**
  * Create a normal task pool. Tasks will be executed as soon as they are added.
  */
-TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata)
+TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, false, false);
+  return task_pool_create_ex(scheduler, userdata, false, false, priority);
 }
 
 /**
@@ -751,9 +755,11 @@ TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata)
  * they could end never being executed, since the 'fallback' background thread is already
  * busy with parent task in single-threaded context).
  */
-TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler, void *userdata)
+TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
+                                          void *userdata,
+                                          TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, true, false);
+  return task_pool_create_ex(scheduler, userdata, true, false, priority);
 }
 
 /**
@@ -761,9 +767,11 @@ TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler, void *userda
  * for until BLI_task_pool_work_and_wait() is called. This helps reducing threading
  * overhead when pushing huge amount of small initial tasks from the main thread.
  */
-TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler, void *userdata)
+TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler,
+                                         void *userdata,
+                                         TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, false, true);
+  return task_pool_create_ex(scheduler, userdata, false, true, priority);
 }
 
 void BLI_task_pool_free(TaskPool *pool)
@@ -806,7 +814,6 @@ static void task_pool_push(TaskPool *pool,
                            void *taskdata,
                            bool free_taskdata,
                            TaskFreeFunction freedata,
-                           TaskPriority priority,
                            int thread_id)
 {
   /* Allocate task and fill it's properties. */
@@ -852,33 +859,26 @@ static void task_pool_push(TaskPool *pool,
   /* Do push to a global execution pool, slowest possible method,
    * causes quite reasonable amount of threading overhead.
    */
-  task_scheduler_push(pool->scheduler, task, priority);
+  task_scheduler_push(pool->scheduler, task, pool->priority);
 }
 
-void BLI_task_pool_push_ex(TaskPool *pool,
-                           TaskRunFunction run,
-                           void *taskdata,
-                           bool free_taskdata,
-                           TaskFreeFunction freedata,
-                           TaskPriority priority)
+void BLI_task_pool_push(TaskPool *pool,
+                        TaskRunFunction run,
+                        void *taskdata,
+                        bool free_taskdata,
+                        TaskFreeFunction freedata)
 {
-  task_pool_push(pool, run, taskdata, free_taskdata, freedata, priority, -1);
-}
-
-void BLI_task_pool_push(
-    TaskPool *pool, TaskRunFunction run, void *taskdata, bool free_taskdata, TaskPriority priority)
-{
-  BLI_task_pool_push_ex(pool, run, taskdata, free_taskdata, NULL, priority);
+  task_pool_push(pool, run, taskdata, free_taskdata, freedata, -1);
 }
 
 void BLI_task_pool_push_from_thread(TaskPool *pool,
                                     TaskRunFunction run,
                                     void *taskdata,
                                     bool free_taskdata,
-                                    TaskPriority priority,
+                                    TaskFreeFunction freedata,
                                     int thread_id)
 {
-  task_pool_push(pool, run, taskdata, free_taskdata, NULL, priority, thread_id);
+  task_pool_push(pool, run, taskdata, free_taskdata, freedata, thread_id);
 }
 
 void BLI_task_pool_work_and_wait(TaskPool *pool)
@@ -1238,7 +1238,7 @@ void BLI_task_parallel_range(const int start,
     return;
   }
 
-  task_pool = BLI_task_pool_create_suspended(task_scheduler, &state);
+  task_pool = BLI_task_pool_create_suspended(task_scheduler, &state, TASK_PRIORITY_HIGH);
 
   /* NOTE: This way we are adding a memory barrier and ensure all worker
    * threads can read and modify the value, without any locks. */
@@ -1254,12 +1254,8 @@ void BLI_task_parallel_range(const int start,
       memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
     }
     /* Use this pool's pre-allocated tasks. */
-    BLI_task_pool_push_from_thread(task_pool,
-                                   parallel_range_func,
-                                   userdata_chunk_local,
-                                   false,
-                                   TASK_PRIORITY_HIGH,
-                                   task_pool->thread_id);
+    BLI_task_pool_push_from_thread(
+        task_pool, parallel_range_func, userdata_chunk_local, false, NULL, task_pool->thread_id);
   }
 
   BLI_task_pool_work_and_wait(task_pool);
@@ -1422,7 +1418,7 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
   void *userdata_chunk_array = NULL;
   const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
 
-  TaskPool *task_pool = BLI_task_pool_create_suspended(task_scheduler, state);
+  TaskPool *task_pool = BLI_task_pool_create_suspended(task_scheduler, state, TASK_PRIORITY_HIGH);
 
   if (use_userdata_chunk) {
     userdata_chunk_array = MALLOCA(userdata_chunk_size * num_tasks);
@@ -1438,7 +1434,7 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
                                    parallel_iterator_func,
                                    userdata_chunk_local,
                                    false,
-                                   TASK_PRIORITY_HIGH,
+                                   NULL,
                                    task_pool->thread_id);
   }
 
@@ -1601,7 +1597,7 @@ void BLI_task_parallel_mempool(BLI_mempool *mempool,
   }
 
   task_scheduler = BLI_task_scheduler_get();
-  task_pool = BLI_task_pool_create_suspended(task_scheduler, &state);
+  task_pool = BLI_task_pool_create_suspended(task_scheduler, &state, TASK_PRIORITY_HIGH);
   num_threads = BLI_task_scheduler_num_threads(task_scheduler);
 
   /* The idea here is to prevent creating task for each of the loop iterations
@@ -1622,7 +1618,7 @@ void BLI_task_parallel_mempool(BLI_mempool *mempool,
                                    parallel_mempool_func,
                                    &mempool_iterators[i],
                                    false,
-                                   TASK_PRIORITY_HIGH,
+                                   NULL,
                                    task_pool->thread_id);
   }
 

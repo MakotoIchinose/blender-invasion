@@ -79,27 +79,25 @@ typedef struct TaskPool TaskPool;
 typedef void (*TaskRunFunction)(TaskPool *__restrict pool, void *taskdata, int threadid);
 typedef void (*TaskFreeFunction)(TaskPool *__restrict pool, void *taskdata, int threadid);
 
-TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata);
-TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler, void *userdata);
-TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler, void *userdata);
+TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority);
+TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
+                                          void *userdata,
+                                          TaskPriority priority);
+TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler,
+                                         void *userdata,
+                                         TaskPriority priority);
 void BLI_task_pool_free(TaskPool *pool);
 
-void BLI_task_pool_push_ex(TaskPool *pool,
-                           TaskRunFunction run,
-                           void *taskdata,
-                           bool free_taskdata,
-                           TaskFreeFunction freedata,
-                           TaskPriority priority);
 void BLI_task_pool_push(TaskPool *pool,
                         TaskRunFunction run,
                         void *taskdata,
                         bool free_taskdata,
-                        TaskPriority priority);
+                        TaskFreeFunction freedata);
 void BLI_task_pool_push_from_thread(TaskPool *pool,
                                     TaskRunFunction run,
                                     void *taskdata,
                                     bool free_taskdata,
-                                    TaskPriority priority,
+                                    TaskFreeFunction freedata,
                                     int thread_id);
 
 /* work and wait until all tasks are done */
