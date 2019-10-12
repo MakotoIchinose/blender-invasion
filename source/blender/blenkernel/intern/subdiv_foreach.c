@@ -1792,9 +1792,9 @@ static void subdiv_foreach_boundary_edges_task(void *__restrict userdata,
   subdiv_foreach_boundary_edges(ctx, tls->userdata_chunk, edge_index);
 }
 
-static void subdiv_foreach_finalize(void *__restrict userdata, void *__restrict userdata_chunk)
+static void subdiv_foreach_free(const void *__restrict userdata, void *__restrict userdata_chunk)
 {
-  SubdivForeachTaskContext *ctx = userdata;
+  const SubdivForeachTaskContext *ctx = userdata;
   ctx->foreach_context->user_data_tls_free(userdata_chunk);
 }
 
@@ -1826,7 +1826,7 @@ bool BKE_subdiv_foreach_subdiv_geometry(Subdiv *subdiv,
   parallel_range_settings.userdata_chunk = context->user_data_tls;
   parallel_range_settings.userdata_chunk_size = context->user_data_tls_size;
   if (context->user_data_tls_free != NULL) {
-    parallel_range_settings.func_finalize = subdiv_foreach_finalize;
+    parallel_range_settings.func_free = subdiv_foreach_free;
   }
   BLI_task_parallel_range(
       0, coarse_mesh->totpoly, &ctx, subdiv_foreach_task, &parallel_range_settings);

@@ -168,23 +168,17 @@ static void parallel_range_single_thread(const int start,
 {
   void *userdata_chunk = settings->userdata_chunk;
   const size_t userdata_chunk_size = settings->userdata_chunk_size;
-  void *userdata_chunk_local = NULL;
   const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-  if (use_userdata_chunk) {
-    userdata_chunk_local = MALLOCA(userdata_chunk_size);
-    memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
-  }
   TaskParallelTLS tls = {
       .thread_id = 0,
-      .userdata_chunk = userdata_chunk_local,
+      .userdata_chunk = userdata_chunk,
   };
   for (int i = start; i < stop; i++) {
     func(userdata, i, &tls);
   }
-  if (settings->func_finalize != NULL) {
-    settings->func_finalize(userdata, userdata_chunk_local);
+  if (use_userdata_chunk && settings->func_free != NULL) {
+    settings->func_free(userdata, userdata_chunk);
   }
-  MALLOCA_FREE(userdata_chunk_local, userdata_chunk_size);
 }
 
 /**
@@ -274,11 +268,14 @@ void BLI_task_parallel_range(const int start,
   BLI_task_pool_work_and_wait(task_pool);
   BLI_task_pool_free(task_pool);
 
-  if (use_userdata_chunk) {
-    if (settings->func_finalize != NULL) {
-      for (i = 0; i < num_tasks; i++) {
-        userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
-        settings->func_finalize(userdata, userdata_chunk_local);
+  if (use_userdata_chunk && (settings->func_reduce != NULL || settings->func_free != NULL)) {
+    for (i = 0; i < num_tasks; i++) {
+      userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
+      if (settings->func_reduce != NULL) {
+        settings->func_reduce(userdata, userdata_chunk, userdata_chunk_local);
+      }
+      if (settings->func_free != NULL) {
+        settings->func_free(userdata, userdata_chunk_local);
       }
     }
     MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * num_tasks);
@@ -376,23 +373,15 @@ static void task_parallel_iterator_no_threads(const TaskParallelSettings *settin
   /* Prepare user's TLS data. */
   void *userdata_chunk = settings->userdata_chunk;
   const size_t userdata_chunk_size = settings->userdata_chunk_size;
-  void *userdata_chunk_local = NULL;
   const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-  if (use_userdata_chunk) {
-    userdata_chunk_local = MALLOCA(userdata_chunk_size);
-    memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
-  }
 
   /* Also marking it as non-threaded for the iterator callback. */
   state->iter_shared.spin_lock = NULL;
 
   parallel_iterator_func_do(state, userdata_chunk, 0);
 
-  if (use_userdata_chunk) {
-    if (settings->func_finalize != NULL) {
-      settings->func_finalize(state->userdata, userdata_chunk_local);
-    }
-    MALLOCA_FREE(userdata_chunk_local, userdata_chunk_size);
+  if (use_userdata_chunk && settings->func_free != NULL) {
+    settings->func_free(state->userdata, userdata_chunk);
   }
 }
 
@@ -451,11 +440,14 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
   BLI_task_pool_work_and_wait(task_pool);
   BLI_task_pool_free(task_pool);
 
-  if (use_userdata_chunk) {
-    if (settings->func_finalize != NULL) {
-      for (size_t i = 0; i < num_tasks; i++) {
-        userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
-        settings->func_finalize(state->userdata, userdata_chunk_local);
+  if (use_userdata_chunk && (settings->func_reduce != NULL || settings->func_free != NULL)) {
+    for (size_t i = 0; i < num_tasks; i++) {
+      userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
+      if (settings->func_reduce != NULL) {
+        settings->func_reduce(state->userdata, userdata_chunk, userdata_chunk_local);
+      }
+      if (settings->func_free != NULL) {
+        settings->func_free(state->userdata, userdata_chunk_local);
       }
     }
     MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * num_tasks);
