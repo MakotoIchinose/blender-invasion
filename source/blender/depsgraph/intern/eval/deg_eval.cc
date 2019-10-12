@@ -232,6 +232,17 @@ static void depsgraph_ensure_view_layer(Depsgraph *graph)
   }
 }
 
+static TaskPool *deg_evaluate_task_pool_create(DepsgraphEvalState *state)
+{
+  TaskScheduler *task_scheduler = BLI_task_scheduler_get();
+  if (G.debug & G_DEBUG_DEPSGRAPH_NO_THREADS) {
+    return BLI_task_pool_create_no_threads(task_scheduler, state);
+  }
+  else {
+    return BLI_task_pool_create_suspended(task_scheduler, state, TASK_PRIORITY_HIGH);
+  }
+}
+
 /**
  * Evaluate all nodes tagged for updating,
  * \warning This is usually done as part of main loop, but may also be
@@ -253,27 +264,18 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
   DepsgraphEvalState state;
   state.graph = graph;
   state.do_stats = do_time_debug;
-  /* Set up task scheduler and pull for threaded evaluation. */
-  TaskScheduler *task_scheduler;
-  bool need_free_scheduler;
-  if (G.debug & G_DEBUG_DEPSGRAPH_NO_THREADS) {
-    task_scheduler = BLI_task_scheduler_create(1);
-    need_free_scheduler = true;
-  }
-  else {
-    task_scheduler = BLI_task_scheduler_get();
-    need_free_scheduler = false;
-  }
-  TaskPool *task_pool = BLI_task_pool_create_suspended(task_scheduler, &state, TASK_PRIORITY_HIGH);
   /* Prepare all nodes for evaluation. */
   initialize_execution(&state, graph);
   /* Do actual evaluation now. */
   /* First, process all Copy-On-Write nodes. */
   state.is_cow_stage = true;
+  TaskPool *task_pool = deg_evaluate_task_pool_create(&state);
   schedule_graph(task_pool, graph);
-  BLI_task_pool_work_wait_and_reset(task_pool);
+  BLI_task_pool_work_and_wait(task_pool);
+  BLI_task_pool_free(task_pool);
   /* After that, process all other nodes. */
   state.is_cow_stage = false;
+  task_pool = deg_evaluate_task_pool_create(&state);
   schedule_graph(task_pool, graph);
   BLI_task_pool_work_and_wait(task_pool);
   BLI_task_pool_free(task_pool);
@@ -285,9 +287,6 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
   }
   /* Clear any uncleared tags - just in case. */
   deg_graph_clear_tags(graph);
-  if (need_free_scheduler) {
-    BLI_task_scheduler_free(task_scheduler);
-  }
   graph->is_evaluating = false;
   if (do_time_debug) {
     printf("Depsgraph updated in %f seconds.\n", PIL_check_seconds_timer() - start_time);

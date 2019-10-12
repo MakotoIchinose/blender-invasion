@@ -34,6 +34,7 @@ TEST(task, MempoolIter)
 {
   int *data[NUM_ITEMS];
   BLI_threadapi_init();
+  BLI_task_scheduler_init();
   BLI_mempool *mempool = BLI_mempool_create(
       sizeof(*data[0]), NUM_ITEMS, 32, BLI_MEMPOOL_ALLOW_ITER);
 
@@ -106,6 +107,7 @@ TEST(task, ListBaseIter)
   LinkData *items_buffer = (LinkData *)MEM_calloc_arrayN(
       NUM_ITEMS, sizeof(*items_buffer), __func__);
   BLI_threadapi_init();
+  BLI_task_scheduler_init();
 
   int i;
 

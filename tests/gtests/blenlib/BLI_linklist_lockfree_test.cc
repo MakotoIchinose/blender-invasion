@@ -78,11 +78,14 @@ TEST(LockfreeLinkList, InsertMultipleConcurrent)
 {
   static const int num_threads = 512;
   static const int num_nodes = 655360;
+  BLI_system_num_threads_override_set(num_threads);
+  BLI_threadapi_init();
+  BLI_task_scheduler_init();
   /* Initialize list. */
   LockfreeLinkList list;
   BLI_linklist_lockfree_init(&list);
   /* Initialize task scheduler and pool. */
-  TaskScheduler *scheduler = BLI_task_scheduler_create(num_threads);
+  TaskScheduler *scheduler = BLI_task_scheduler_get();
   TaskPool *pool = BLI_task_pool_create_suspended(scheduler, &list, TASK_PRIORITY_HIGH);
   /* Push tasks to the pool. */
   for (int i = 0; i < num_nodes; ++i) {
@@ -112,5 +115,5 @@ TEST(LockfreeLinkList, InsertMultipleConcurrent)
   /* Cleanup data. */
   BLI_linklist_lockfree_free(&list, MEM_freeN);
   BLI_task_pool_free(pool);
-  BLI_task_scheduler_free(scheduler);
+  BLI_threadapi_exit();
 }

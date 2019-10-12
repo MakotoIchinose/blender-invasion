@@ -145,6 +145,7 @@ static void task_listbase_test(const char *id, const int nbr, const bool use_thr
   LinkData *items_buffer = (LinkData *)MEM_calloc_arrayN(nbr, sizeof(*items_buffer), __func__);
 
   BLI_threadapi_init();
+  BLI_task_scheduler_init();
 
   int num_items = 0;
   for (int i = 0; i < nbr; i++) {

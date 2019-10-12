@@ -37,28 +37,17 @@ struct BLI_mempool;
 
 /* Task Scheduler
  *
- * Central scheduler that holds running threads ready to execute tasks. A single
- * queue holds the task from all pools.
- *
- * Init/exit must be called before/after any task pools are created/freed, and
- * must be called from the main threads. All other scheduler and pool functions
- * are thread-safe. */
+ * Initialization must be called after command line arguments are parsed to
+ * control the number of threads, and before any task pools are created. */
 
 typedef struct TaskScheduler TaskScheduler;
 
-enum {
-  TASK_SCHEDULER_AUTO_THREADS = 0,
-  TASK_SCHEDULER_SINGLE_THREAD = 1,
-};
-
-TaskScheduler *BLI_task_scheduler_create(int num_threads);
-void BLI_task_scheduler_free(TaskScheduler *scheduler);
-
+void BLI_task_scheduler_init(void);
 int BLI_task_scheduler_num_threads(TaskScheduler *scheduler);
 
 /* Task Pool
  *
- * Pool of tasks that will be executed by the central TaskScheduler. For each
+ * Pool of tasks that will be executed by the central task scheduler. For each
  * pool, we can wait for all tasks to be done, or cancel them before they are
  * done.
  *
@@ -80,12 +69,16 @@ typedef void (*TaskRunFunction)(TaskPool *__restrict pool, void *taskdata);
 typedef void (*TaskFreeFunction)(TaskPool *__restrict pool, void *taskdata);
 
 TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority);
-TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
-                                          void *userdata,
-                                          TaskPriority priority);
 TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler,
                                          void *userdata,
                                          TaskPriority priority);
+TaskPool *BLI_task_pool_create_no_threads(TaskScheduler *scheduler, void *userdata);
+TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
+                                          void *userdata,
+                                          TaskPriority priority);
+TaskPool *BLI_task_pool_create_background_serial(TaskScheduler *scheduler,
+                                                 void *userdata,
+                                                 TaskPriority priority);
 void BLI_task_pool_free(TaskPool *pool);
 
 void BLI_task_pool_push(TaskPool *pool,
@@ -96,8 +89,6 @@ void BLI_task_pool_push(TaskPool *pool,
 
 /* work and wait until all tasks are done */
 void BLI_task_pool_work_and_wait(TaskPool *pool);
-/* work and wait until all tasks are done, then reset to the initial suspended state */
-void BLI_task_pool_work_wait_and_reset(TaskPool *pool);
 /* cancel all tasks, keep worker threads running */
 void BLI_task_pool_cancel(TaskPool *pool);
 
