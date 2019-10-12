@@ -58,10 +58,7 @@ namespace DEG {
 /* Evaluation Entrypoints */
 
 /* Forward declarations. */
-static void schedule_children(TaskPool *pool,
-                              Depsgraph *graph,
-                              OperationNode *node,
-                              const int thread_id);
+static void schedule_children(TaskPool *pool, Depsgraph *graph, OperationNode *node);
 
 struct DepsgraphEvalState {
   Depsgraph *graph;
@@ -69,7 +66,7 @@ struct DepsgraphEvalState {
   bool is_cow_stage;
 };
 
-static void deg_task_run_func(TaskPool *pool, void *taskdata, int thread_id)
+static void deg_task_run_func(TaskPool *pool, void *taskdata)
 {
   void *userdata_v = BLI_task_pool_userdata(pool);
   DepsgraphEvalState *state = (DepsgraphEvalState *)userdata_v;
@@ -86,7 +83,7 @@ static void deg_task_run_func(TaskPool *pool, void *taskdata, int thread_id)
     node->evaluate((::Depsgraph *)state->graph);
   }
   /* Schedule children. */
-  schedule_children(pool, state->graph, node, thread_id);
+  schedule_children(pool, state->graph, node);
 }
 
 static bool check_operation_node_visible(OperationNode *op_node)
@@ -155,8 +152,7 @@ static void initialize_execution(DepsgraphEvalState *state, Depsgraph *graph)
  *   dec_parents: Decrement pending parents count, true when child nodes are
  *                scheduled after a task has been completed.
  */
-static void schedule_node(
-    TaskPool *pool, Depsgraph *graph, OperationNode *node, bool dec_parents, const int thread_id)
+static void schedule_node(TaskPool *pool, Depsgraph *graph, OperationNode *node, bool dec_parents)
 {
   /* No need to schedule nodes of invisible ID. */
   if (!check_operation_node_visible(node)) {
@@ -193,7 +189,7 @@ static void schedule_node(
   if (!is_scheduled) {
     if (node->is_noop()) {
       /* skip NOOP node, schedule children right away */
-      schedule_children(pool, graph, node, thread_id);
+      schedule_children(pool, graph, node);
     }
     else {
       /* children are scheduled once this task is completed */
@@ -205,14 +201,11 @@ static void schedule_node(
 static void schedule_graph(TaskPool *pool, Depsgraph *graph)
 {
   for (OperationNode *node : graph->operations) {
-    schedule_node(pool, graph, node, false, -1);
+    schedule_node(pool, graph, node, false);
   }
 }
 
-static void schedule_children(TaskPool *pool,
-                              Depsgraph *graph,
-                              OperationNode *node,
-                              const int thread_id)
+static void schedule_children(TaskPool *pool, Depsgraph *graph, OperationNode *node)
 {
   for (Relation *rel : node->outlinks) {
     OperationNode *child = (OperationNode *)rel->to;
@@ -221,7 +214,7 @@ static void schedule_children(TaskPool *pool,
       /* Happens when having cyclic dependencies. */
       continue;
     }
-    schedule_node(pool, graph, child, (rel->flag & RELATION_FLAG_CYCLIC) == 0, thread_id);
+    schedule_node(pool, graph, child, (rel->flag & RELATION_FLAG_CYCLIC) == 0);
   }
 }
 

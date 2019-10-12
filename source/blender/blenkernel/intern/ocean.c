@@ -540,9 +540,7 @@ static void ocean_compute_htilda(void *__restrict userdata,
   }
 }
 
-static void ocean_compute_displacement_y(TaskPool *__restrict pool,
-                                         void *UNUSED(taskdata),
-                                         int UNUSED(threadid))
+static void ocean_compute_displacement_y(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -550,9 +548,7 @@ static void ocean_compute_displacement_y(TaskPool *__restrict pool,
   fftw_execute(o->_disp_y_plan);
 }
 
-static void ocean_compute_displacement_x(TaskPool *__restrict pool,
-                                         void *UNUSED(taskdata),
-                                         int UNUSED(threadid))
+static void ocean_compute_displacement_x(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -581,9 +577,7 @@ static void ocean_compute_displacement_x(TaskPool *__restrict pool,
   fftw_execute(o->_disp_x_plan);
 }
 
-static void ocean_compute_displacement_z(TaskPool *__restrict pool,
-                                         void *UNUSED(taskdata),
-                                         int UNUSED(threadid))
+static void ocean_compute_displacement_z(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -612,9 +606,7 @@ static void ocean_compute_displacement_z(TaskPool *__restrict pool,
   fftw_execute(o->_disp_z_plan);
 }
 
-static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool,
-                                       void *UNUSED(taskdata),
-                                       int UNUSED(threadid))
+static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -647,9 +639,7 @@ static void ocean_compute_jacobian_jxx(TaskPool *__restrict pool,
   }
 }
 
-static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool,
-                                       void *UNUSED(taskdata),
-                                       int UNUSED(threadid))
+static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -682,9 +672,7 @@ static void ocean_compute_jacobian_jzz(TaskPool *__restrict pool,
   }
 }
 
-static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool,
-                                       void *UNUSED(taskdata),
-                                       int UNUSED(threadid))
+static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -711,9 +699,7 @@ static void ocean_compute_jacobian_jxz(TaskPool *__restrict pool,
   fftw_execute(o->_Jxz_plan);
 }
 
-static void ocean_compute_normal_x(TaskPool *__restrict pool,
-                                   void *UNUSED(taskdata),
-                                   int UNUSED(threadid))
+static void ocean_compute_normal_x(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;
@@ -732,9 +718,7 @@ static void ocean_compute_normal_x(TaskPool *__restrict pool,
   fftw_execute(o->_N_x_plan);
 }
 
-static void ocean_compute_normal_z(TaskPool *__restrict pool,
-                                   void *UNUSED(taskdata),
-                                   int UNUSED(threadid))
+static void ocean_compute_normal_z(TaskPool *__restrict pool, void *UNUSED(taskdata))
 {
   OceanSimulateData *osd = BLI_task_pool_userdata(pool);
   const Ocean *o = osd->o;

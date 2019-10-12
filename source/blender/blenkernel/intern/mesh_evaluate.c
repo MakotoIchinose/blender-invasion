@@ -1299,7 +1299,7 @@ static void loop_split_worker_do(LoopSplitTaskDataCommon *common_data,
   }
 }
 
-static void loop_split_worker(TaskPool *__restrict pool, void *taskdata, int UNUSED(threadid))
+static void loop_split_worker(TaskPool *__restrict pool, void *taskdata)
 {
   LoopSplitTaskDataCommon *common_data = BLI_task_pool_userdata(pool);
   LoopSplitTaskData *data = taskdata;

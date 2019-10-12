@@ -100,11 +100,9 @@ typedef struct TaskParallelIteratorState {
 } TaskParallelIteratorState;
 
 static void parallel_iterator_func_do(TaskParallelIteratorState *__restrict state,
-                                      void *userdata_chunk,
-                                      int threadid)
+                                      void *userdata_chunk)
 {
   TaskParallelTLS tls = {
-      .thread_id = threadid,
       .userdata_chunk = userdata_chunk,
   };
 
@@ -157,11 +155,11 @@ static void parallel_iterator_func_do(TaskParallelIteratorState *__restrict stat
   MALLOCA_FREE(current_chunk_indices, indices_size);
 }
 
-static void parallel_iterator_func(TaskPool *__restrict pool, void *userdata_chunk, int threadid)
+static void parallel_iterator_func(TaskPool *__restrict pool, void *userdata_chunk)
 {
   TaskParallelIteratorState *__restrict state = BLI_task_pool_userdata(pool);
 
-  parallel_iterator_func_do(state, userdata_chunk, threadid);
+  parallel_iterator_func_do(state, userdata_chunk);
 }
 
 static void task_parallel_iterator_no_threads(const TaskParallelSettings *settings,
@@ -175,7 +173,7 @@ static void task_parallel_iterator_no_threads(const TaskParallelSettings *settin
   /* Also marking it as non-threaded for the iterator callback. */
   state->iter_shared.spin_lock = NULL;
 
-  parallel_iterator_func_do(state, userdata_chunk, 0);
+  parallel_iterator_func_do(state, userdata_chunk);
 
   if (use_userdata_chunk && settings->func_free != NULL) {
     settings->func_free(state->userdata, userdata_chunk);
@@ -346,7 +344,7 @@ typedef struct ParallelMempoolState {
   TaskParallelMempoolFunc func;
 } ParallelMempoolState;
 
-static void parallel_mempool_func(TaskPool *__restrict pool, void *taskdata, int UNUSED(threadid))
+static void parallel_mempool_func(TaskPool *__restrict pool, void *taskdata)
 {
   ParallelMempoolState *__restrict state = BLI_task_pool_userdata(pool);
   BLI_mempool_iter *iter = taskdata;

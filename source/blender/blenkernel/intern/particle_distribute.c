@@ -773,9 +773,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
   }
 }
 
-static void exec_distribute_parent(TaskPool *__restrict UNUSED(pool),
-                                   void *taskdata,
-                                   int UNUSED(threadid))
+static void exec_distribute_parent(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   ParticleTask *task = taskdata;
   ParticleSystem *psys = task->ctx->sim.psys;
@@ -804,9 +802,7 @@ static void exec_distribute_parent(TaskPool *__restrict UNUSED(pool),
   }
 }
 
-static void exec_distribute_child(TaskPool *__restrict UNUSED(pool),
-                                  void *taskdata,
-                                  int UNUSED(threadid))
+static void exec_distribute_child(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   ParticleTask *task = taskdata;
   ParticleSystem *psys = task->ctx->sim.psys;

@@ -5104,9 +5104,7 @@ static void copy_original_alpha_channel(ProjPixel *pixel, bool is_floatbuf)
 }
 
 /* Run this for single and multi-threaded painting. */
-static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
-                                   void *ph_v,
-                                   int UNUSED(threadid))
+static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool), void *ph_v)
 {
   /* First unpack args from the struct */
   ProjPaintState *ps = ((ProjectHandle *)ph_v)->ps;
@@ -5597,7 +5595,7 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
     BLI_task_pool_free(task_pool);
   }
   else {
-    do_projectpaint_thread(NULL, &handles[0], 0);
+    do_projectpaint_thread(NULL, &handles[0]);
   }
 
   BKE_image_pool_free(image_pool);

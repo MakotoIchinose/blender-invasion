@@ -76,8 +76,8 @@ typedef enum TaskPriority {
 } TaskPriority;
 
 typedef struct TaskPool TaskPool;
-typedef void (*TaskRunFunction)(TaskPool *__restrict pool, void *taskdata, int threadid);
-typedef void (*TaskFreeFunction)(TaskPool *__restrict pool, void *taskdata, int threadid);
+typedef void (*TaskRunFunction)(TaskPool *__restrict pool, void *taskdata);
+typedef void (*TaskFreeFunction)(TaskPool *__restrict pool, void *taskdata);
 
 TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority);
 TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
@@ -114,8 +114,6 @@ ThreadMutex *BLI_task_pool_user_mutex(TaskPool *pool);
 
 /* Per-thread specific data passed to the callback. */
 typedef struct TaskParallelTLS {
-  /* Identifier of the thread who this data belongs to. */
-  int thread_id;
   /* Copy of user-specifier chunk, which is copied from original chunk to all
    * worker threads. This is similar to OpenMP's firstprivate.
    */
@@ -229,6 +227,10 @@ BLI_INLINE void BLI_parallel_range_settings_defaults(TaskParallelSettings *setti
   /* Use default heuristic to define actual chunk size. */
   settings->min_iter_per_thread = 0;
 }
+
+/* Don't use this, store any thread specific data in tls->userdata_chunk instead.
+ * Ony here for code to be removed. */
+int BLI_task_parallel_thread_id(const TaskParallelTLS *tls);
 
 #ifdef __cplusplus
 }

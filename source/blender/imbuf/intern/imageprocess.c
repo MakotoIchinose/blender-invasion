@@ -340,7 +340,7 @@ void nearest_interpolation(ImBuf *in, ImBuf *out, float x, float y, int xout, in
 
 /*********************** Threaded image processing *************************/
 
-static void processor_apply_func(TaskPool *__restrict pool, void *taskdata, int UNUSED(threadid))
+static void processor_apply_func(TaskPool *__restrict pool, void *taskdata)
 {
   void (*do_thread)(void *) = (void (*)(void *))BLI_task_pool_userdata(pool);
   do_thread(taskdata);
@@ -401,9 +401,7 @@ typedef struct ScanlineGlobalData {
   int total_scanlines;
 } ScanlineGlobalData;
 
-static void processor_apply_scanline_func(TaskPool *__restrict pool,
-                                          void *taskdata,
-                                          int UNUSED(threadid))
+static void processor_apply_scanline_func(TaskPool *__restrict pool, void *taskdata)
 {
   ScanlineGlobalData *data = BLI_task_pool_userdata(pool);
   int start_scanline = POINTER_AS_INT(taskdata);

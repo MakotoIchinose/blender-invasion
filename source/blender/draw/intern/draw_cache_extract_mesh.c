@@ -4231,7 +4231,7 @@ BLI_INLINE void mesh_extract_iter(const MeshRenderData *mr,
   }
 }
 
-static void extract_run(TaskPool *__restrict UNUSED(pool), void *taskdata, int UNUSED(threadid))
+static void extract_run(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   ExtractTaskData *data = taskdata;
   mesh_extract_iter(
@@ -4307,7 +4307,7 @@ static void extract_task_create(TaskPool *task_pool,
   else {
     /* Single threaded extraction. */
     (*task_counter)++;
-    extract_run(NULL, taskdata, -1);
+    extract_run(NULL, taskdata);
     MEM_freeN(taskdata);
   }
 }

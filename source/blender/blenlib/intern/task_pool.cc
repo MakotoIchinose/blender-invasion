@@ -149,10 +149,6 @@ struct TaskPool {
    * It will be used to access task TLS.
    */
   int thread_id;
-
-#ifndef NDEBUG
-  pthread_t creator_thread_id;
-#endif
 };
 
 struct TaskScheduler {
@@ -181,11 +177,11 @@ typedef struct TaskThread {
 } TaskThread;
 
 /* Helper */
-BLI_INLINE void task_data_free(Task *task, const int thread_id)
+BLI_INLINE void task_data_free(Task *task)
 {
   if (task->free_taskdata) {
     if (task->freedata) {
-      task->freedata(task->pool, task->taskdata, thread_id);
+      task->freedata(task->pool, task->taskdata);
     }
     else {
       MEM_freeN(task->taskdata);
@@ -198,9 +194,9 @@ static Task *task_alloc(TaskPool *pool)
   return (Task *)MEM_mallocN(sizeof(Task), "New task");
 }
 
-static void task_free(TaskPool *pool, Task *task, const int thread_id)
+static void task_free(TaskPool *pool, Task *task)
 {
-  task_data_free(task, thread_id);
+  task_data_free(task);
   MEM_freeN(task);
 }
 
@@ -286,7 +282,6 @@ static void *task_scheduler_thread_run(void *thread_p)
 {
   TaskThread *thread = (TaskThread *)thread_p;
   TaskScheduler *scheduler = thread->scheduler;
-  int thread_id = thread->id;
   Task *task;
 
   pthread_setspecific(scheduler->tls_id_key, thread);
@@ -304,10 +299,10 @@ static void *task_scheduler_thread_run(void *thread_p)
     TaskPool *pool = task->pool;
 
     /* run task */
-    task->run(pool, task->taskdata, thread_id);
+    task->run(pool, task->taskdata);
 
     /* delete task */
-    task_free(pool, task, thread_id);
+    task_free(pool, task);
 
     /* notify pool task was done */
     task_pool_num_decrease(pool, 1);
@@ -417,7 +412,7 @@ void BLI_task_scheduler_free(TaskScheduler *scheduler)
 
   /* delete leftover tasks */
   for (task = (Task *)scheduler->queue.first; task; task = task->next) {
-    task_data_free(task, 0);
+    task_data_free(task);
   }
   BLI_freelistN(&scheduler->queue);
 
@@ -453,27 +448,6 @@ static void task_scheduler_push(TaskScheduler *scheduler, Task *task, TaskPriori
   BLI_mutex_unlock(&scheduler->queue_mutex);
 }
 
-static void task_scheduler_push_all(TaskScheduler *scheduler,
-                                    TaskPool *pool,
-                                    Task **tasks,
-                                    int num_tasks)
-{
-  if (num_tasks == 0) {
-    return;
-  }
-
-  task_pool_num_increase(pool, num_tasks);
-
-  BLI_mutex_lock(&scheduler->queue_mutex);
-
-  for (int i = 0; i < num_tasks; i++) {
-    BLI_addhead(&scheduler->queue, tasks[i]);
-  }
-
-  BLI_condition_notify_all(&scheduler->queue_cond);
-  BLI_mutex_unlock(&scheduler->queue_mutex);
-}
-
 static void task_scheduler_clear(TaskScheduler *scheduler, TaskPool *pool)
 {
   Task *task, *nexttask;
@@ -486,7 +460,7 @@ static void task_scheduler_clear(TaskScheduler *scheduler, TaskPool *pool)
     nexttask = task->next;
 
     if (task->pool == pool) {
-      task_data_free(task, pool->thread_id);
+      task_data_free(task);
       BLI_freelinkN(&scheduler->queue, task);
 
       done++;
@@ -551,9 +525,6 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
        * instead to avoid any possible threading conflicts.
        */
       pool->thread_id = 0;
-#ifndef NDEBUG
-      pool->creator_thread_id = pthread_self();
-#endif
     }
     else {
       pool->thread_id = thread->id;
@@ -703,10 +674,10 @@ void BLI_task_pool_work_and_wait(TaskPool *pool)
     /* if found task, do it, otherwise wait until other tasks are done */
     if (found_task) {
       /* run task */
-      work_task->run(pool, work_task->taskdata, pool->thread_id);
+      work_task->run(pool, work_task->taskdata);
 
       /* delete task */
-      task_free(pool, task, pool->thread_id);
+      task_free(pool, task);
 
       /* notify pool task was done */
       task_pool_num_decrease(pool, 1);

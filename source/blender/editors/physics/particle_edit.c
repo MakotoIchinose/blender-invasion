@@ -4076,7 +4076,7 @@ static void brush_add_count_iter(void *__restrict iter_data_v,
     dmy = size;
     if (tls->rng == NULL) {
       tls->rng = BLI_rng_new_srandom(psys->seed + data->mval[0] + data->mval[1] +
-                                     tls_v->thread_id);
+                                     BLI_task_parallel_thread_id(tls_v));
     }
     /* rejection sampling to get points in circle */
     while (dmx * dmx + dmy * dmy > size2) {

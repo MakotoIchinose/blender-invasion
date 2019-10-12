@@ -452,9 +452,7 @@ finally:
   pRes[3] = fSign;
 }
 
-static void DM_calc_loop_tangents_thread(TaskPool *__restrict UNUSED(pool),
-                                         void *taskdata,
-                                         int UNUSED(threadid))
+static void DM_calc_loop_tangents_thread(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   struct SGLSLMeshToTangent *mesh2tangent = taskdata;
   /* new computation method */

@@ -90,7 +90,6 @@ struct RangeTask {
   void operator()(const tbb::blocked_range<int> &r) const
   {
     TaskParallelTLS tls;
-    tls.thread_id = get_thread_id();
     tls.userdata_chunk = userdata_chunk;
     for (int i = r.begin(); i != r.end(); ++i) {
       func(userdata, i, &tls);
@@ -100,25 +99,6 @@ struct RangeTask {
   void join(const RangeTask &other)
   {
     settings->func_reduce(userdata, userdata_chunk, other.userdata_chunk);
-  }
-
-  int get_thread_id() const
-  {
-    /* Get a unique thread ID for texture nodes. In the future we should get rid
-     * of the thread ID and change texture evaluation to not require per-thread
-     * storage that can't be efficiently allocated on the stack. */
-    static tbb::enumerable_thread_specific<int> pbvh_thread_id(-1);
-    static int pbvh_thread_id_counter = 0;
-
-    int &thread_id = pbvh_thread_id.local();
-    if (thread_id == -1) {
-      thread_id = atomic_fetch_and_add_int32(&pbvh_thread_id_counter, 1);
-      if (thread_id >= BLENDER_MAX_THREADS) {
-        BLI_assert(!"Maximum number of threads exceeded for sculpting");
-        thread_id = thread_id % BLENDER_MAX_THREADS;
-      }
-    }
-    return thread_id;
   }
 };
 
@@ -155,7 +135,6 @@ void BLI_task_parallel_range(const int start,
   /* Single threaded. Nothing to reduce as everything is accumulated into the
    * main userdata chunk directly. */
   TaskParallelTLS tls;
-  tls.thread_id = 0;
   tls.userdata_chunk = settings->userdata_chunk;
   for (int i = start; i < stop; i++) {
     func(userdata, i, &tls);
@@ -163,4 +142,27 @@ void BLI_task_parallel_range(const int start,
   if (settings->func_free != NULL) {
     settings->func_free(userdata, settings->userdata_chunk);
   }
+}
+
+int BLI_task_parallel_thread_id(const TaskParallelTLS *UNUSED(tls))
+{
+#ifdef WITH_TBB
+  /* Get a unique thread ID for texture nodes. In the future we should get rid
+   * of the thread ID and change texture evaluation to not require per-thread
+   * storage that can't be efficiently allocated on the stack. */
+  static tbb::enumerable_thread_specific<int> tbb_thread_id(-1);
+  static int tbb_thread_id_counter = 0;
+
+  int &thread_id = tbb_thread_id.local();
+  if (thread_id == -1) {
+    thread_id = atomic_fetch_and_add_int32(&tbb_thread_id_counter, 1);
+    if (thread_id >= BLENDER_MAX_THREADS) {
+      BLI_assert(!"Maximum number of threads exceeded for sculpting");
+      thread_id = thread_id % BLENDER_MAX_THREADS;
+    }
+  }
+  return thread_id;
+#else
+  return 0;
+#endif
 }

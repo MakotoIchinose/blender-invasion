@@ -2444,6 +2444,7 @@ static void do_smooth_brush_mesh_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const bool smooth_mask = data->smooth_mask;
   float bstrength = data->strength;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
 
@@ -2464,7 +2465,7 @@ static void do_smooth_brush_mesh_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
       if (smooth_mask) {
         float val = neighbor_average_mask(ss, vd.vert_indices[vd.i]) - *vd.mask;
         val *= fade * bstrength;
@@ -2500,6 +2501,7 @@ static void do_smooth_brush_bmesh_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const bool smooth_mask = data->smooth_mask;
   float bstrength = data->strength;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
 
@@ -2520,7 +2522,7 @@ static void do_smooth_brush_bmesh_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   smooth_mask ? 0.0f : *vd.mask,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
       if (smooth_mask) {
         float val = bmesh_neighbor_average_mask(vd.bm_vert, vd.cd_vert_mask_offset) - *vd.mask;
         val *= fade * bstrength;
@@ -2569,6 +2571,8 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
     return;
   }
 
+  const int thread_id = BLI_task_parallel_thread_id(tls);
+
   float bstrength = data->strength;
   CLAMP(bstrength, 0.0f, 1.0f);
 
@@ -2580,17 +2584,11 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
   {
     if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      const float fade = bstrength *
-                         tex_strength(ss,
-                                      brush,
-                                      vd.co,
-                                      sqrtf(test.dist),
-                                      vd.no,
-                                      vd.fno,
-                                      *vd.mask,
-                                      vd.index,
-                                      tls->thread_id) *
-                         ss->cache->pressure;
+      const float fade =
+          bstrength *
+          tex_strength(
+              ss, brush, vd.co, sqrtf(test.dist), vd.no, vd.fno, *vd.mask, vd.index, thread_id) *
+          ss->cache->pressure;
 
       float avg[3], val[3];
 
@@ -2621,6 +2619,7 @@ static void do_smooth_brush_multires_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const bool smooth_mask = data->smooth_mask;
   float bstrength = data->strength;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   CCGElem **griddata, *gddata;
 
@@ -2733,7 +2732,7 @@ static void do_smooth_brush_multires_task_cb_ex(void *__restrict userdata,
           const float fade =
               bstrength *
               tex_strength(
-                  ss, brush, co, sqrtf(test.dist), NULL, fno, strength_mask, 0, tls->thread_id);
+                  ss, brush, co, sqrtf(test.dist), NULL, fno, strength_mask, 0, thread_id);
           float f = 1.0f / 16.0f;
 
           if (x == 0 || x == gridsize - 1) {
@@ -2881,6 +2880,7 @@ static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float bstrength = ss->cache->bstrength;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
 
@@ -2892,7 +2892,7 @@ static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
   {
     if (sculpt_brush_test_sq_fn(&test, vd.co)) {
       const float fade = tex_strength(
-          ss, brush, vd.co, sqrtf(test.dist), vd.no, vd.fno, 0.0f, vd.index, tls->thread_id);
+          ss, brush, vd.co, sqrtf(test.dist), vd.no, vd.fno, 0.0f, vd.index, thread_id);
 
       (*vd.mask) += fade * bstrength;
       CLAMP(*vd.mask, 0, 1);
@@ -2945,6 +2945,7 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float *offset = data->offset;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -2967,7 +2968,7 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
                                       vd.fno,
                                       vd.mask ? *vd.mask : 0.0f,
                                       vd.index,
-                                      tls->thread_id);
+                                      thread_id);
 
       mul_v3_v3fl(proxy[vd.i], offset, fade);
 
@@ -3017,6 +3018,7 @@ static void do_draw_sharp_brush_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float *offset = data->offset;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -3043,7 +3045,7 @@ static void do_draw_sharp_brush_task_cb_ex(void *__restrict userdata,
                                       NULL,
                                       vd.mask ? *vd.mask : 0.0f,
                                       vd.index,
-                                      tls->thread_id);
+                                      thread_id);
 
       mul_v3_v3fl(proxy[vd.i], offset, fade);
 
@@ -3098,6 +3100,7 @@ static void do_crease_brush_task_cb_ex(void *__restrict userdata,
   SculptProjectVector *spvc = data->spvc;
   const float flippedbstrength = data->flippedbstrength;
   const float *offset = data->offset;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -3120,7 +3123,7 @@ static void do_crease_brush_task_cb_ex(void *__restrict userdata,
                                       vd.fno,
                                       vd.mask ? *vd.mask : 0.0f,
                                       vd.index,
-                                      tls->thread_id);
+                                      thread_id);
       float val1[3];
       float val2[3];
 
@@ -3208,6 +3211,7 @@ static void do_pinch_brush_task_cb_ex(void *__restrict userdata,
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -3230,7 +3234,7 @@ static void do_pinch_brush_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
       float val[3];
 
       sub_v3_v3v3(val, test.location, vd.co);
@@ -3276,6 +3280,7 @@ static void do_grab_brush_task_cb_ex(void *__restrict userdata,
   SculptOrigVertData orig_data;
   float(*proxy)[3];
   const float bstrength = ss->cache->bstrength;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   sculpt_orig_vert_data_init(&orig_data, data->ob, data->nodes[n]);
 
@@ -3298,7 +3303,7 @@ static void do_grab_brush_task_cb_ex(void *__restrict userdata,
                                                   NULL,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
 
       mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
 
@@ -3946,6 +3951,7 @@ static void do_nudge_brush_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float *cono = data->cono;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -3968,7 +3974,7 @@ static void do_nudge_brush_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
 
       mul_v3_v3fl(proxy[vd.i], cono, fade);
 
@@ -4014,6 +4020,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   SculptProjectVector *spvc = data->spvc;
   const float *grab_delta = data->grab_delta;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -4041,7 +4048,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
 
       mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
 
@@ -4134,6 +4141,7 @@ static void do_thumb_brush_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float *cono = data->cono;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -4161,7 +4169,7 @@ static void do_thumb_brush_task_cb_ex(void *__restrict userdata,
                                                   NULL,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
 
       mul_v3_v3fl(proxy[vd.i], cono, fade);
 
@@ -4206,6 +4214,7 @@ static void do_rotate_brush_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   const float angle = data->angle;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -4234,7 +4243,7 @@ static void do_rotate_brush_task_cb_ex(void *__restrict userdata,
                                                   NULL,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
 
       sub_v3_v3v3(vec, orig_data.co, ss->cache->location);
       axis_angle_normalized_to_mat3(rot, ss->cache->sculpt_normal_symm, angle * fade);
@@ -4280,6 +4289,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
   Sculpt *sd = data->sd;
   const Brush *brush = data->brush;
   const float *offset = data->offset;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -4313,7 +4323,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
       float *disp = &layer_disp[vd.i];
       float val[3];
 
@@ -4377,6 +4387,7 @@ static void do_inflate_brush_task_cb_ex(void *__restrict userdata,
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -4399,7 +4410,7 @@ static void do_inflate_brush_task_cb_ex(void *__restrict userdata,
                                                   vd.fno,
                                                   vd.mask ? *vd.mask : 0.0f,
                                                   vd.index,
-                                                  tls->thread_id);
+                                                  thread_id);
       float val[3];
 
       if (vd.fno) {
@@ -4564,6 +4575,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const float *area_no = data->area_no;
   const float *area_co = data->area_co;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -4596,7 +4608,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
                                                     vd.fno,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.index,
-                                                    tls->thread_id);
+                                                    thread_id);
 
         mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -4654,6 +4666,7 @@ static void do_clay_brush_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const float *area_no = data->area_no;
   const float *area_co = data->area_co;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -4690,7 +4703,7 @@ static void do_clay_brush_task_cb_ex(void *__restrict userdata,
                                                       vd.fno,
                                                       vd.mask ? *vd.mask : 0.0f,
                                                       vd.index,
-                                                      tls->thread_id);
+                                                      thread_id);
 
           mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -4753,6 +4766,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
   float(*mat)[4] = data->mat;
   const float *area_no_sp = data->area_no_sp;
   const float *area_co = data->area_co;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   SculptBrushTest test;
@@ -4787,7 +4801,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
                                                       vd.fno,
                                                       vd.mask ? *vd.mask : 0.0f,
                                                       vd.index,
-                                                      tls->thread_id);
+                                                      thread_id);
 
           mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -4882,6 +4896,7 @@ static void do_fill_brush_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const float *area_no = data->area_no;
   const float *area_co = data->area_co;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -4915,7 +4930,7 @@ static void do_fill_brush_task_cb_ex(void *__restrict userdata,
                                                       vd.fno,
                                                       vd.mask ? *vd.mask : 0.0f,
                                                       vd.index,
-                                                      tls->thread_id);
+                                                      thread_id);
 
           mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -4975,6 +4990,7 @@ static void do_scrape_brush_task_cb_ex(void *__restrict userdata,
   const Brush *brush = data->brush;
   const float *area_no = data->area_no;
   const float *area_co = data->area_co;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -5007,7 +5023,7 @@ static void do_scrape_brush_task_cb_ex(void *__restrict userdata,
                                                       vd.fno,
                                                       vd.mask ? *vd.mask : 0.0f,
                                                       vd.index,
-                                                      tls->thread_id);
+                                                      thread_id);
 
           mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -5066,6 +5082,7 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
   float *offset = data->offset;
+  const int thread_id = BLI_task_parallel_thread_id(tls);
 
   PBVHVertexIter vd;
   float(*proxy)[3];
@@ -5087,7 +5104,7 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
                                       vd.fno,
                                       vd.mask ? *vd.mask : 0.0f,
                                       vd.index,
-                                      tls->thread_id);
+                                      thread_id);
 
       mul_v3_v3fl(proxy[vd.i], offset, fade);
 

@@ -251,9 +251,7 @@ finally:
   pRes[3] = fSign;
 }
 
-static void emDM_calc_loop_tangents_thread(TaskPool *__restrict UNUSED(pool),
-                                           void *taskdata,
-                                           int UNUSED(threadid))
+static void emDM_calc_loop_tangents_thread(TaskPool *__restrict UNUSED(pool), void *taskdata)
 {
   struct SGLSLEditMeshToTangent *mesh2tangent = taskdata;
   /* new computation method */

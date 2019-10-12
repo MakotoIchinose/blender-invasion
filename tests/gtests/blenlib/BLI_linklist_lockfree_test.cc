@@ -63,7 +63,7 @@ struct IndexedNode {
   int index;
 };
 
-void concurrent_insert(TaskPool *__restrict pool, void *taskdata, int /*threadid*/)
+void concurrent_insert(TaskPool *__restrict pool, void *taskdata)
 {
   LockfreeLinkList *list = (LockfreeLinkList *)BLI_task_pool_userdata(pool);
   CHECK_NOTNULL(list);
