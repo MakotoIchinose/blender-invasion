@@ -739,9 +739,6 @@ static void ocean_compute_normal_z(TaskPool *__restrict pool, void *UNUSED(taskd
 
 void BKE_ocean_simulate(struct Ocean *o, float t, float scale, float chop_amount)
 {
-  TaskScheduler *scheduler = BLI_task_scheduler_get();
-  TaskPool *pool;
-
   OceanSimulateData osd;
 
   scale *= o->normalize_factor;
@@ -751,7 +748,7 @@ void BKE_ocean_simulate(struct Ocean *o, float t, float scale, float chop_amount
   osd.scale = scale;
   osd.chop_amount = chop_amount;
 
-  pool = BLI_task_pool_create(scheduler, &osd, TASK_PRIORITY_HIGH);
+  TaskPool *pool = BLI_task_pool_create(&osd, TASK_PRIORITY_HIGH);
 
   BLI_rw_mutex_lock(&o->oceanmutex, THREAD_LOCK_WRITE);
 

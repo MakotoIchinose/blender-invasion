@@ -234,12 +234,11 @@ static void depsgraph_ensure_view_layer(Depsgraph *graph)
 
 static TaskPool *deg_evaluate_task_pool_create(DepsgraphEvalState *state)
 {
-  TaskScheduler *task_scheduler = BLI_task_scheduler_get();
   if (G.debug & G_DEBUG_DEPSGRAPH_NO_THREADS) {
-    return BLI_task_pool_create_no_threads(task_scheduler, state);
+    return BLI_task_pool_create_no_threads(state);
   }
   else {
-    return BLI_task_pool_create_suspended(task_scheduler, state, TASK_PRIORITY_HIGH);
+    return BLI_task_pool_create_suspended(state, TASK_PRIORITY_HIGH);
   }
 }
 

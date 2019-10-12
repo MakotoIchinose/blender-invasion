@@ -41,7 +41,7 @@ void BLI_task_scheduler_init()
 #endif
 }
 
-int BLI_task_scheduler_num_threads(TaskScheduler *UNUSED(scheduler))
+int BLI_task_scheduler_num_threads()
 {
   return task_scheduler_num_threads;
 }

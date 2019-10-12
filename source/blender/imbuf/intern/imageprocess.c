@@ -355,14 +355,13 @@ void IMB_processor_apply_threaded(
 {
   const int lines_per_task = 64;
 
-  TaskScheduler *task_scheduler = BLI_task_scheduler_get();
   TaskPool *task_pool;
 
   void *handles;
   int total_tasks = (buffer_lines + lines_per_task - 1) / lines_per_task;
   int i, start_line;
 
-  task_pool = BLI_task_pool_create(task_scheduler, do_thread, TASK_PRIORITY_HIGH);
+  task_pool = BLI_task_pool_create(do_thread, TASK_PRIORITY_HIGH);
 
   handles = MEM_callocN(handle_size * total_tasks, "processor apply threaded handles");
 
@@ -420,8 +419,7 @@ void IMB_processor_apply_threaded_scanlines(int total_scanlines,
   data.scanlines_per_task = scanlines_per_task;
   data.total_scanlines = total_scanlines;
   const int total_tasks = (total_scanlines + scanlines_per_task - 1) / scanlines_per_task;
-  TaskScheduler *task_scheduler = BLI_task_scheduler_get();
-  TaskPool *task_pool = BLI_task_pool_create(task_scheduler, &data, TASK_PRIORITY_HIGH);
+  TaskPool *task_pool = BLI_task_pool_create(&data, TASK_PRIORITY_HIGH);
   for (int i = 0, start_line = 0; i < total_tasks; i++) {
     BLI_task_pool_push(
         task_pool, processor_apply_scanline_func, POINTER_FROM_INT(start_line), false, NULL);

@@ -183,8 +183,7 @@ static void task_parallel_iterator_no_threads(const TaskParallelSettings *settin
 static void task_parallel_iterator_do(const TaskParallelSettings *settings,
                                       TaskParallelIteratorState *state)
 {
-  TaskScheduler *task_scheduler = BLI_task_scheduler_get();
-  const int num_threads = BLI_task_scheduler_num_threads(task_scheduler);
+  const int num_threads = BLI_task_scheduler_num_threads();
 
   task_parallel_calc_chunk_size(
       settings, state->tot_items, num_threads, &state->iter_shared.chunk_size);
@@ -216,7 +215,7 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
   void *userdata_chunk_array = NULL;
   const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
 
-  TaskPool *task_pool = BLI_task_pool_create(task_scheduler, state, TASK_PRIORITY_HIGH);
+  TaskPool *task_pool = BLI_task_pool_create(state, TASK_PRIORITY_HIGH);
 
   if (use_userdata_chunk) {
     userdata_chunk_array = MALLOCA(userdata_chunk_size * num_tasks);
@@ -372,8 +371,6 @@ void BLI_task_parallel_mempool(BLI_mempool *mempool,
                                TaskParallelMempoolFunc func,
                                const bool use_threading)
 {
-  TaskScheduler *task_scheduler;
-  TaskPool *task_pool;
   ParallelMempoolState state;
   int i, num_threads, num_tasks;
 
@@ -392,9 +389,8 @@ void BLI_task_parallel_mempool(BLI_mempool *mempool,
     return;
   }
 
-  task_scheduler = BLI_task_scheduler_get();
-  task_pool = BLI_task_pool_create(task_scheduler, &state, TASK_PRIORITY_HIGH);
-  num_threads = BLI_task_scheduler_num_threads(task_scheduler);
+  TaskPool *task_pool = BLI_task_pool_create(&state, TASK_PRIORITY_HIGH);
+  num_threads = BLI_task_scheduler_num_threads();
 
   /* The idea here is to prevent creating task for each of the loop iterations
    * and instead have tasks which are evenly distributed across CPU cores and

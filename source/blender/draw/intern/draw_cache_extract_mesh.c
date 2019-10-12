@@ -4384,11 +4384,7 @@ void mesh_buffer_cache_create_requested(MeshBatchCache *cache,
   double rdata_end = PIL_check_seconds_timer();
 #endif
 
-  TaskScheduler *task_scheduler;
-  TaskPool *task_pool;
-
-  task_scheduler = BLI_task_scheduler_get();
-  task_pool = BLI_task_pool_create_suspended(task_scheduler, NULL, TASK_PRIORITY_HIGH);
+  TaskPool *task_pool = BLI_task_pool_create_suspended(NULL, TASK_PRIORITY_HIGH);
 
   size_t counters_size = (sizeof(mbc) / sizeof(void *)) * sizeof(int32_t);
   int32_t *task_counters = MEM_callocN(counters_size, __func__);

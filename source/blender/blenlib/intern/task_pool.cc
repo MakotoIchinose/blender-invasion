@@ -321,10 +321,7 @@ static void background_task_pool_free(TaskPool *pool)
 
 /* Task Pool */
 
-static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
-                                     void *userdata,
-                                     TaskPoolType type,
-                                     TaskPriority priority)
+static TaskPool *task_pool_create_ex(void *userdata, TaskPoolType type, TaskPriority priority)
 {
   /* Ensure malloc will go fine from threads,
    *
@@ -334,8 +331,7 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
    */
   BLI_threaded_malloc_begin();
 
-  const bool use_threads = BLI_task_scheduler_num_threads(scheduler) > 1 &&
-                           type != TASK_POOL_NO_THREADS;
+  const bool use_threads = BLI_task_scheduler_num_threads() > 1 && type != TASK_POOL_NO_THREADS;
 
   /* Background task pool uses regular TBB scheduling if available. Only when
    * building without TBB or running with -t 1 do we need to ensure these tasks
@@ -371,9 +367,9 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
 /**
  * Create a normal task pool. Tasks will be executed as soon as they are added.
  */
-TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority)
+TaskPool *BLI_task_pool_create(void *userdata, TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, TASK_POOL_TBB, priority);
+  return task_pool_create_ex(userdata, TASK_POOL_TBB, priority);
 }
 
 /**
@@ -388,11 +384,9 @@ TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPri
  * they could end never being executed, since the 'fallback' background thread is already
  * busy with parent task in single-threaded context).
  */
-TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
-                                          void *userdata,
-                                          TaskPriority priority)
+TaskPool *BLI_task_pool_create_background(void *userdata, TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, TASK_POOL_BACKGROUND, priority);
+  return task_pool_create_ex(userdata, TASK_POOL_BACKGROUND, priority);
 }
 
 /**
@@ -400,31 +394,27 @@ TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
  * for until BLI_task_pool_work_and_wait() is called. This helps reducing threading
  * overhead when pushing huge amount of small initial tasks from the main thread.
  */
-TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler,
-                                         void *userdata,
-                                         TaskPriority priority)
+TaskPool *BLI_task_pool_create_suspended(void *userdata, TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, TASK_POOL_TBB_SUSPENDED, priority);
+  return task_pool_create_ex(userdata, TASK_POOL_TBB_SUSPENDED, priority);
 }
 
 /**
  * Single threaded task pool that executes pushed task immediately, for
  * debugging purposes.
  */
-TaskPool *BLI_task_pool_create_no_threads(TaskScheduler *scheduler, void *userdata)
+TaskPool *BLI_task_pool_create_no_threads(void *userdata)
 {
-  return task_pool_create_ex(scheduler, userdata, TASK_POOL_NO_THREADS, TASK_PRIORITY_HIGH);
+  return task_pool_create_ex(userdata, TASK_POOL_NO_THREADS, TASK_PRIORITY_HIGH);
 }
 
 /**
  * Task pool that executeds one task after the other, possibly on different threads
  * but never in parallel.
  */
-TaskPool *BLI_task_pool_create_background_serial(TaskScheduler *scheduler,
-                                                 void *userdata,
-                                                 TaskPriority priority)
+TaskPool *BLI_task_pool_create_background_serial(void *userdata, TaskPriority priority)
 {
-  return task_pool_create_ex(scheduler, userdata, TASK_POOL_BACKGROUND_SERIAL, priority);
+  return task_pool_create_ex(userdata, TASK_POOL_BACKGROUND_SERIAL, priority);
 }
 
 void BLI_task_pool_free(TaskPool *pool)

@@ -657,15 +657,12 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   oglrender->movie_ctx_arr = NULL;
 
   if (is_animation) {
-    TaskScheduler *task_scheduler = BLI_task_scheduler_get();
     if (BKE_imtype_is_movie(scene->r.im_format.imtype)) {
       /* Serial because movie frames must be written in order. */
-      oglrender->task_pool = BLI_task_pool_create_background_serial(
-          task_scheduler, oglrender, TASK_PRIORITY_LOW);
+      oglrender->task_pool = BLI_task_pool_create_background_serial(oglrender, TASK_PRIORITY_LOW);
     }
     else {
-      oglrender->task_pool = BLI_task_pool_create_background(
-          task_scheduler, oglrender, TASK_PRIORITY_LOW);
+      oglrender->task_pool = BLI_task_pool_create_background(oglrender, TASK_PRIORITY_LOW);
     }
     oglrender->pool_ok = true;
     BLI_spin_init(&oglrender->reports_lock);

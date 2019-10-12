@@ -159,11 +159,6 @@ void BLI_threadapi_exit(void)
   BLI_spin_end(&_malloc_lock);
 }
 
-TaskScheduler *BLI_task_scheduler_get(void)
-{
-  return NULL;
-}
-
 /* tot = 0 only initializes malloc mutex in a safe way (see sequence.c)
  * problem otherwise: scene render will kill of the mutex!
  */

@@ -112,8 +112,7 @@ void BLI_task_parallel_range(const int start,
 {
 #ifdef WITH_TBB
   /* Multithreading. */
-  TaskScheduler *scheduler = BLI_task_scheduler_get();
-  if (settings->use_threading && BLI_task_scheduler_num_threads(scheduler) > 1) {
+  if (settings->use_threading && BLI_task_scheduler_num_threads() > 1) {
     RangeTask task(func, userdata, settings);
     const size_t grainsize = MAX(settings->min_iter_per_thread, 1);
     const tbb::blocked_range<int> range(start, stop, grainsize);

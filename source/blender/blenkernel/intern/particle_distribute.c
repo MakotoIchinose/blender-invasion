@@ -1320,8 +1320,6 @@ static void psys_task_init_distribute(ParticleTask *task, ParticleSimulationData
 
 static void distribute_particles_on_dm(ParticleSimulationData *sim, int from)
 {
-  TaskScheduler *task_scheduler;
-  TaskPool *task_pool;
   ParticleThreadContext ctx;
   ParticleTask *tasks;
   Mesh *final_mesh = sim->psmd->mesh_final;
@@ -1332,8 +1330,7 @@ static void distribute_particles_on_dm(ParticleSimulationData *sim, int from)
     return;
   }
 
-  task_scheduler = BLI_task_scheduler_get();
-  task_pool = BLI_task_pool_create(task_scheduler, &ctx, TASK_PRIORITY_HIGH);
+  TaskPool *task_pool = BLI_task_pool_create(&ctx, TASK_PRIORITY_HIGH);
 
   totpart = (from == PART_FROM_CHILD ? sim->psys->totchild : sim->psys->totpart);
   psys_tasks_create(&ctx, 0, totpart, &tasks, &numtasks);

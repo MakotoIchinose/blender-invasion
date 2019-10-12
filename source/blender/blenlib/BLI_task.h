@@ -40,10 +40,8 @@ struct BLI_mempool;
  * Initialization must be called after command line arguments are parsed to
  * control the number of threads, and before any task pools are created. */
 
-typedef struct TaskScheduler TaskScheduler;
-
 void BLI_task_scheduler_init(void);
-int BLI_task_scheduler_num_threads(TaskScheduler *scheduler);
+int BLI_task_scheduler_num_threads(void);
 
 /* Task Pool
  *
@@ -68,17 +66,11 @@ typedef struct TaskPool TaskPool;
 typedef void (*TaskRunFunction)(TaskPool *__restrict pool, void *taskdata);
 typedef void (*TaskFreeFunction)(TaskPool *__restrict pool, void *taskdata);
 
-TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata, TaskPriority priority);
-TaskPool *BLI_task_pool_create_suspended(TaskScheduler *scheduler,
-                                         void *userdata,
-                                         TaskPriority priority);
-TaskPool *BLI_task_pool_create_no_threads(TaskScheduler *scheduler, void *userdata);
-TaskPool *BLI_task_pool_create_background(TaskScheduler *scheduler,
-                                          void *userdata,
-                                          TaskPriority priority);
-TaskPool *BLI_task_pool_create_background_serial(TaskScheduler *scheduler,
-                                                 void *userdata,
-                                                 TaskPriority priority);
+TaskPool *BLI_task_pool_create(void *userdata, TaskPriority priority);
+TaskPool *BLI_task_pool_create_suspended(void *userdata, TaskPriority priority);
+TaskPool *BLI_task_pool_create_no_threads(void *userdata);
+TaskPool *BLI_task_pool_create_background(void *userdata, TaskPriority priority);
+TaskPool *BLI_task_pool_create_background_serial(void *userdata, TaskPriority priority);
 void BLI_task_pool_free(TaskPool *pool);
 
 void BLI_task_pool_push(TaskPool *pool,

@@ -5539,7 +5539,6 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
   bool touch_any = false;
 
   ProjectHandle handles[BLENDER_MAX_THREADS];
-  TaskScheduler *scheduler = NULL;
   TaskPool *task_pool = NULL;
   int a, i;
 
@@ -5550,8 +5549,7 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
   }
 
   if (ps->thread_tot > 1) {
-    scheduler = BLI_task_scheduler_get();
-    task_pool = BLI_task_pool_create_suspended(scheduler, NULL, TASK_PRIORITY_HIGH);
+    task_pool = BLI_task_pool_create_suspended(NULL, TASK_PRIORITY_HIGH);
   }
 
   image_pool = BKE_image_pool_new();

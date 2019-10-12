@@ -2756,8 +2756,6 @@ void psys_cache_child_paths(ParticleSimulationData *sim,
                             const bool editupdate,
                             const bool use_render_params)
 {
-  TaskScheduler *task_scheduler;
-  TaskPool *task_pool;
   ParticleThreadContext ctx;
   ParticleTask *tasks_parent, *tasks_child;
   int numtasks_parent, numtasks_child;
@@ -2772,8 +2770,7 @@ void psys_cache_child_paths(ParticleSimulationData *sim,
     return;
   }
 
-  task_scheduler = BLI_task_scheduler_get();
-  task_pool = BLI_task_pool_create(task_scheduler, &ctx, TASK_PRIORITY_HIGH);
+  TaskPool *task_pool = BLI_task_pool_create(&ctx, TASK_PRIORITY_HIGH);
   totchild = ctx.totchild;
   totparent = ctx.totparent;
 
