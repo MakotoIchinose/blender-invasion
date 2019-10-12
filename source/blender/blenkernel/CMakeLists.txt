@@ -183,7 +183,6 @@ set(SRC
   intern/particle_system.c
   intern/pbvh.c
   intern/pbvh_bmesh.c
-  intern/pbvh_parallel.cc
   intern/pointcache.c
   intern/report.c
   intern/rigidbody.c

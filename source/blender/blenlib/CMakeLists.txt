@@ -121,6 +121,7 @@ set(SRC
   intern/system.c
   intern/task_iterator.c
   intern/task_pool.cc
+  intern/task_range.cc
   intern/threads.c
   intern/time.c
   intern/timecode.c
@@ -266,6 +267,14 @@ set(LIB
 
 if(WITH_MEM_VALGRIND)
   add_definitions(-DWITH_MEM_VALGRIND)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
 endif()
 
 if(WIN32)

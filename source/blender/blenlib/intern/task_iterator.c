@@ -17,7 +17,7 @@
 /** \file
  * \ingroup bli
  *
- * A generic task system which can be used for any task based subsystem.
+ * Parallel tasks over all elements in a container.
  */
 
 #include <stdlib.h>
@@ -34,35 +34,11 @@
 
 #include "atomic_ops.h"
 
-/* Parallel range routines */
-
-/**
- *
- * Main functions:
- * - #BLI_task_parallel_range
- * - #BLI_task_parallel_listbase (#ListBase - double linked list)
- *
- * TODO:
- * - #BLI_task_parallel_foreach_link (#Link - single linked list)
- * - #BLI_task_parallel_foreach_ghash/gset (#GHash/#GSet - hash & set)
- * - #BLI_task_parallel_foreach_mempool (#BLI_mempool - iterate over mempools)
- */
-
 /* Allows to avoid using malloc for userdata_chunk in tasks, when small enough. */
 #define MALLOCA(_size) ((_size) <= 8192) ? alloca((_size)) : MEM_mallocN((_size), __func__)
 #define MALLOCA_FREE(_mem, _size) \
   if (((_mem) != NULL) && ((_size) > 8192)) \
   MEM_freeN((_mem))
-
-typedef struct ParallelRangeState {
-  int start, stop;
-  void *userdata;
-
-  TaskParallelRangeFunc func;
-
-  int iter;
-  int chunk_size;
-} ParallelRangeState;
 
 BLI_INLINE void task_parallel_calc_chunk_size(const TaskParallelSettings *settings,
                                               const int tot_items,
@@ -108,178 +84,7 @@ BLI_INLINE void task_parallel_calc_chunk_size(const TaskParallelSettings *settin
   }
 
   BLI_assert(chunk_size > 0);
-
-  if (tot_items > 0) {
-    switch (settings->scheduling_mode) {
-      case TASK_SCHEDULING_STATIC:
-        *r_chunk_size = max_ii(chunk_size, tot_items / num_tasks);
-        break;
-      case TASK_SCHEDULING_DYNAMIC:
-        *r_chunk_size = chunk_size;
-        break;
-    }
-  }
-  else {
-    /* If total amount of items is unknown, we can only use dynamic scheduling. */
-    *r_chunk_size = chunk_size;
-  }
-}
-
-BLI_INLINE void task_parallel_range_calc_chunk_size(const TaskParallelSettings *settings,
-                                                    const int num_tasks,
-                                                    ParallelRangeState *state)
-{
-  task_parallel_calc_chunk_size(
-      settings, state->stop - state->start, num_tasks, &state->chunk_size);
-}
-
-BLI_INLINE bool parallel_range_next_iter_get(ParallelRangeState *__restrict state,
-                                             int *__restrict iter,
-                                             int *__restrict count)
-{
-  int previter = atomic_fetch_and_add_int32(&state->iter, state->chunk_size);
-
-  *iter = previter;
-  *count = max_ii(0, min_ii(state->chunk_size, state->stop - previter));
-
-  return (previter < state->stop);
-}
-
-static void parallel_range_func(TaskPool *__restrict pool, void *userdata_chunk, int thread_id)
-{
-  ParallelRangeState *__restrict state = BLI_task_pool_userdata(pool);
-  TaskParallelTLS tls = {
-      .thread_id = thread_id,
-      .userdata_chunk = userdata_chunk,
-  };
-  int iter, count;
-  while (parallel_range_next_iter_get(state, &iter, &count)) {
-    for (int i = 0; i < count; i++) {
-      state->func(state->userdata, iter + i, &tls);
-    }
-  }
-}
-
-static void parallel_range_single_thread(const int start,
-                                         int const stop,
-                                         void *userdata,
-                                         TaskParallelRangeFunc func,
-                                         const TaskParallelSettings *settings)
-{
-  void *userdata_chunk = settings->userdata_chunk;
-  const size_t userdata_chunk_size = settings->userdata_chunk_size;
-  const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-  TaskParallelTLS tls = {
-      .thread_id = 0,
-      .userdata_chunk = userdata_chunk,
-  };
-  for (int i = start; i < stop; i++) {
-    func(userdata, i, &tls);
-  }
-  if (use_userdata_chunk && settings->func_free != NULL) {
-    settings->func_free(userdata, userdata_chunk);
-  }
-}
-
-/**
- * This function allows to parallelized for loops in a similar way to OpenMP's
- * 'parallel for' statement.
- *
- * See public API doc of ParallelRangeSettings for description of all settings.
- */
-void BLI_task_parallel_range(const int start,
-                             const int stop,
-                             void *userdata,
-                             TaskParallelRangeFunc func,
-                             const TaskParallelSettings *settings)
-{
-  TaskScheduler *task_scheduler;
-  TaskPool *task_pool;
-  ParallelRangeState state;
-  int i, num_threads, num_tasks;
-
-  void *userdata_chunk = settings->userdata_chunk;
-  const size_t userdata_chunk_size = settings->userdata_chunk_size;
-  void *userdata_chunk_local = NULL;
-  void *userdata_chunk_array = NULL;
-  const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-
-  if (start == stop) {
-    return;
-  }
-
-  BLI_assert(start < stop);
-  if (userdata_chunk_size != 0) {
-    BLI_assert(userdata_chunk != NULL);
-  }
-
-  /* If it's not enough data to be crunched, don't bother with tasks at all,
-   * do everything from the main thread.
-   */
-  if (!settings->use_threading) {
-    parallel_range_single_thread(start, stop, userdata, func, settings);
-    return;
-  }
-
-  task_scheduler = BLI_task_scheduler_get();
-  num_threads = BLI_task_scheduler_num_threads(task_scheduler);
-
-  /* The idea here is to prevent creating task for each of the loop iterations
-   * and instead have tasks which are evenly distributed across CPU cores and
-   * pull next iter to be crunched using the queue.
-   */
-  num_tasks = num_threads + 2;
-
-  state.start = start;
-  state.stop = stop;
-  state.userdata = userdata;
-  state.func = func;
-  state.iter = start;
-
-  task_parallel_range_calc_chunk_size(settings, num_tasks, &state);
-  num_tasks = min_ii(num_tasks, max_ii(1, (stop - start) / state.chunk_size));
-
-  if (num_tasks == 1) {
-    parallel_range_single_thread(start, stop, userdata, func, settings);
-    return;
-  }
-
-  task_pool = BLI_task_pool_create(task_scheduler, &state, TASK_PRIORITY_HIGH);
-
-  /* NOTE: This way we are adding a memory barrier and ensure all worker
-   * threads can read and modify the value, without any locks. */
-  atomic_fetch_and_add_int32(&state.iter, 0);
-
-  if (use_userdata_chunk) {
-    userdata_chunk_array = MALLOCA(userdata_chunk_size * num_tasks);
-  }
-
-  const int thread_id = BLI_task_pool_creator_thread_id(task_pool);
-  for (i = 0; i < num_tasks; i++) {
-    if (use_userdata_chunk) {
-      userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
-      memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
-    }
-    /* Use this pool's pre-allocated tasks. */
-    BLI_task_pool_push_from_thread(
-        task_pool, parallel_range_func, userdata_chunk_local, false, NULL, thread_id);
-  }
-
-  BLI_task_pool_work_and_wait(task_pool);
-  BLI_task_pool_free(task_pool);
-
-  if (use_userdata_chunk && (settings->func_reduce != NULL || settings->func_free != NULL)) {
-    for (i = 0; i < num_tasks; i++) {
-      userdata_chunk_local = (char *)userdata_chunk_array + (userdata_chunk_size * i);
-      if (settings->func_reduce != NULL) {
-        settings->func_reduce(userdata, userdata_chunk, userdata_chunk_local);
-      }
-      if (settings->func_free != NULL) {
-        settings->func_free(userdata, userdata_chunk_local);
-      }
-    }
-    MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * num_tasks);
-  }
+  *r_chunk_size = chunk_size;
 }
 
 typedef struct TaskParallelIteratorState {
@@ -293,14 +98,6 @@ typedef struct TaskParallelIteratorState {
   /* Total number of items. If unknown, set it to a negative number. */
   int tot_items;
 } TaskParallelIteratorState;
-
-BLI_INLINE void task_parallel_iterator_calc_chunk_size(const TaskParallelSettings *settings,
-                                                       const int num_tasks,
-                                                       TaskParallelIteratorState *state)
-{
-  task_parallel_calc_chunk_size(
-      settings, state->tot_items, num_tasks, &state->iter_shared.chunk_size);
-}
 
 static void parallel_iterator_func_do(TaskParallelIteratorState *__restrict state,
                                       void *userdata_chunk,
@@ -391,7 +188,8 @@ static void task_parallel_iterator_do(const TaskParallelSettings *settings,
   TaskScheduler *task_scheduler = BLI_task_scheduler_get();
   const int num_threads = BLI_task_scheduler_num_threads(task_scheduler);
 
-  task_parallel_iterator_calc_chunk_size(settings, num_threads, state);
+  task_parallel_calc_chunk_size(
+      settings, state->tot_items, num_threads, &state->iter_shared.chunk_size);
 
   if (!settings->use_threading) {
     task_parallel_iterator_no_threads(settings, state);

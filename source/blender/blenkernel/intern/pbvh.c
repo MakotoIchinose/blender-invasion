@@ -1096,11 +1096,11 @@ static void pbvh_faces_update_normals(PBVH *bvh, PBVHNode **nodes, int totnode)
       .vnors = vnors,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
 
-  BKE_pbvh_parallel_range(0, totnode, &data, pbvh_update_normals_accum_task_cb, &settings);
-  BKE_pbvh_parallel_range(0, totnode, &data, pbvh_update_normals_store_task_cb, &settings);
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_normals_accum_task_cb, &settings);
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_normals_store_task_cb, &settings);
 
   MEM_freeN(vnors);
 }
@@ -1150,9 +1150,9 @@ static void pbvh_update_mask_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, in
       .flag = flag,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BKE_pbvh_parallel_range(0, totnode, &data, pbvh_update_mask_redraw_task_cb, &settings);
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_mask_redraw_task_cb, &settings);
 }
 
 static void pbvh_update_BB_redraw_task_cb(void *__restrict userdata,
@@ -1188,9 +1188,9 @@ void pbvh_update_BB_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, int flag)
       .flag = flag,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BKE_pbvh_parallel_range(0, totnode, &data, pbvh_update_BB_redraw_task_cb, &settings);
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_BB_redraw_task_cb, &settings);
 }
 
 static int pbvh_get_buffers_update_flags(PBVH *bvh, bool show_vcol)
@@ -1298,9 +1298,9 @@ static void pbvh_update_draw_buffers(
       .show_vcol = show_vcol,
   };
 
-  PBVHParallelSettings settings;
+  TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BKE_pbvh_parallel_range(0, totnode, &data, pbvh_update_draw_buffer_cb, &settings);
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_draw_buffer_cb, &settings);
 }
 
 static int pbvh_flush_bb(PBVH *bvh, PBVHNode *node, int flag)
@@ -2741,7 +2741,7 @@ void pbvh_show_mask_set(PBVH *bvh, bool show_mask)
   bvh->show_mask = show_mask;
 }
 
-void BKE_pbvh_parallel_range_settings(PBVHParallelSettings *settings,
+void BKE_pbvh_parallel_range_settings(TaskParallelSettings *settings,
                                       bool use_threading,
                                       int totnode)
 {
