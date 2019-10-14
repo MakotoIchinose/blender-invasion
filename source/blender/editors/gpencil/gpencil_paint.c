@@ -741,6 +741,80 @@ static void gp_smooth_fake_segments(tGPsdata *p)
   }
 }
 
+static void gp_add_arc_segments(tGPsdata *p)
+{
+  const int segments = 4;
+  const float minlen = 20.0f * 20.0f;
+  bGPdata *gpd = p->gpd;
+  // Brush *brush = p->brush;
+  if (gpd->runtime.sbuffer_used < 3) {
+    return;
+  }
+
+  int idx = gpd->runtime.sbuffer_used;
+  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
+  tGPspoint *pt = NULL;
+  tGPspoint *pt_before = &points[idx - 3]; /* current - 2 */
+  tGPspoint *pt_prev = &points[idx - 2];   /* previous */
+  tGPspoint *pt_cur = &points[idx - 1];    /* actual */
+
+  /* Create two vectors, previous and half way of the actual to get the vertex of the triangle for
+   * arc curve.
+   */
+  float v_prev[2], v_cur[2], v_half[2];
+  sub_v2_v2v2(v_cur, &pt_cur->x, &pt_prev->x);
+  /* Do not add points to very short segments. */
+  if (len_squared_v2(v_cur) < minlen) {
+    return;
+  }
+
+  sub_v2_v2v2(v_prev, &pt_prev->x, &pt_before->x);
+  interp_v2_v2v2(v_half, &pt_prev->x, &pt_cur->x, 0.5f);
+  sub_v2_v2(v_half, &pt_prev->x);
+
+  /* Project the half vector to the previous vector and calculate the mid projected point. */
+  float dot = dot_v2v2(v_prev, v_half);
+  float l = len_squared_v2(v_prev);
+  if (l > 0.0f) {
+    mul_v2_fl(v_prev, dot / l);
+  }
+
+  /* Calc the position of the control point. */
+  float ctl[2];
+  add_v2_v2v2(ctl, &pt_prev->x, v_prev);
+
+  /* Move last buffer point and add space for new arc points. */
+  gpd->runtime.sbuffer_used += segments;
+  pt = &points[gpd->runtime.sbuffer_used - 1];
+
+  copy_v2_v2(&pt->x, &pt_cur->x);
+  pt->pressure = pt_cur->pressure;
+  pt->strength = pt_cur->strength;
+
+  float step = M_PI_2 / (float)(segments + 1);
+  float a = step;
+
+  float midpoint[2], start[2], end[2], cp1[2], corner[2];
+  mid_v2_v2v2(midpoint, &pt_prev->x, &pt_cur->x);
+  copy_v2_v2(start, &pt_prev->x);
+  copy_v2_v2(end, &pt_cur->x);
+  copy_v2_v2(cp1, ctl);
+
+  corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
+  corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
+
+  for (int i = 0; i < segments; i++) {
+    pt = &points[idx + i - 1];
+    pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
+    pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
+
+    /* TODO: Interpolate these */
+    pt->pressure = pt_prev->pressure;
+    pt->strength = pt_prev->strength;
+    a += step;
+  }
+}
+
 /* Smooth the section added with fake events when pen moves very fast. */
 static void gp_smooth_fake_events(tGPsdata *p, int size_before, int size_after)
 {
@@ -2828,6 +2902,9 @@ static void gpencil_draw_apply(
       ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
     }
   }
+
+  /* GPXX */
+  gp_add_arc_segments(p);
 }
 
 /* Helper to rotate point around origin */
