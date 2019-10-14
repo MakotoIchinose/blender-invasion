@@ -744,7 +744,7 @@ static void gp_smooth_fake_segments(tGPsdata *p)
 static void gp_add_arc_segments(tGPsdata *p)
 {
   const int segments = 4;
-  const float minlen = 20.0f * 20.0f;
+  const float minlen_sq = 20.0f * 20.0f;
   bGPdata *gpd = p->gpd;
   // Brush *brush = p->brush;
   if (gpd->runtime.sbuffer_used < 3) {
@@ -764,7 +764,7 @@ static void gp_add_arc_segments(tGPsdata *p)
   float v_prev[2], v_cur[2], v_half[2];
   sub_v2_v2v2(v_cur, &pt_cur->x, &pt_prev->x);
   /* Do not add points to very short segments. */
-  if (len_squared_v2(v_cur) < minlen) {
+  if (len_squared_v2(v_cur) < minlen_sq) {
     return;
   }
 
