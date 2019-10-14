@@ -803,14 +803,17 @@ static void gp_add_arc_segments(tGPsdata *p)
   corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
   corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
 
+  float fi = 1.0f / (float)(segments + 1.0f);
   for (int i = 0; i < segments; i++) {
     pt = &points[idx + i - 1];
     pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
     pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
 
     /* Interpolate values */
-    pt->pressure = interpf(pt_prev->pressure, pt_cur->pressure, M_PI_2 / a);
-    pt->strength = interpf(pt_prev->strength, pt_cur->strength, M_PI_2 / a);
+    float f = fi * (float)(i + 1.0f);
+    pt->pressure = interpf(pt_cur->pressure, pt_prev->pressure, f);
+    pt->strength = interpf(pt_cur->strength, pt_prev->strength, f);
+
     a += step;
   }
 }
