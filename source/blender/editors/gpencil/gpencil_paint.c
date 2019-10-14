@@ -808,9 +808,9 @@ static void gp_add_arc_segments(tGPsdata *p)
     pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
     pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
 
-    /* TODO: Interpolate these */
-    pt->pressure = pt_prev->pressure;
-    pt->strength = pt_prev->strength;
+    /* Interpolate values */
+    pt->pressure = interpf(pt_prev->pressure, pt_cur->pressure, M_PI_2 / a);
+    pt->strength = interpf(pt_prev->strength, pt_cur->strength, M_PI_2 / a);
     a += step;
   }
 }
@@ -2903,7 +2903,7 @@ static void gpencil_draw_apply(
     }
   }
 
-  /* GPXX */
+  /* Add an arc when there are missing events due very fast drawing gesture. */
   gp_add_arc_segments(p);
 }
 
