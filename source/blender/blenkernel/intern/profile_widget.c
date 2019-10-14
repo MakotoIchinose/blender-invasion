@@ -130,7 +130,7 @@ void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 
   /* Copy every point without the flag into the new path. */
   ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
-                                  "path points");
+                                      "path points");
 
   /* Build the new list without any of the points with the flag. Keep the first and last points. */
   new_pts[0] = prwdgt->path[0];
@@ -247,9 +247,10 @@ void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
 }
 
 /** Builds a quarter circle profile with space on each side for 'support loops.' */
-static void profilewidget_build_supports(ProfileWidget *prwdgt) {
+static void profilewidget_build_supports(ProfileWidget *prwdgt)
+{
   int n = prwdgt->totpoint;
-  
+
   prwdgt->path[0].x = 1.0;
   prwdgt->path[0].y = 0.0;
   prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
@@ -300,7 +301,8 @@ static void profilewidget_build_steps(ProfileWidget *prwdgt)
 }
 
 /** Shorthand helper function for setting location and interpolation of a point */
-static void inline set_point(ProfilePoint *point, float x, float y, short flag) {
+static void inline set_point(ProfilePoint *point, float x, float y, short flag)
+{
   point->x = x;
   point->y = y;
   point->flag = flag;
@@ -325,8 +327,7 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
         /* But always use enough points to at least build the support points. */
         prwdgt->totpoint = 5;
       }
-      else
-      {
+      else {
         prwdgt->totpoint = prwdgt->totsegments + 1;
       }
       break;
@@ -399,7 +400,7 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
 
 /** Helper for 'profile_widget_create' samples. Returns whether both handles that make up the edge
  * are vector handles. */
-static bool is_curved_edge(BezTriple * bezt, int i)
+static bool is_curved_edge(BezTriple *bezt, int i)
 {
   return (bezt[i].h2 != HD_VECT || bezt[i + 1].h1 != HD_VECT);
 }
@@ -582,7 +583,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
   qsort(curve_sorted, (size_t)totedges, sizeof(CurvatureSortPoint), search_points_curvature);
 
   /* Assign the number of sampled points for each edge. */
-  n_samples = MEM_callocN((size_t)totedges * sizeof(int),  "create samples numbers");
+  n_samples = MEM_callocN((size_t)totedges * sizeof(int), "create samples numbers");
   int n_added = 0;
   if (n_segments >= totedges) {
     if (sample_straight_edges) {
@@ -612,7 +613,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
 
       /* Give all of the curved edges the same number of points and straight edges one point. */
       n_left = n_segments - (totedges - n_curved_edges); /* Left after 1 for each straight edge */
-      n_common = n_left / n_curved_edges; /* Number assigned to all curved edges */
+      n_common = n_left / n_curved_edges;                /* Number assigned to all curved edges */
       if (n_common > 0) {
         for (i = 0; i < totedges; i++) {
           /* Add the common number if it's a c  urved edges or if all of them will get it. */
@@ -628,7 +629,8 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
       }
       n_left -= n_common * n_curved_edges;
     }
-  } else {
+  }
+  else {
     /* Not enough segments to give one to each edge, so just give them to the most curved edges. */
     n_left = n_segments;
   }
@@ -736,15 +738,14 @@ static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
     BKE_profilewidget_create_samples_even_spacing(prwdgt, n_samples, new_table);
   }
   else {
-    BKE_profilewidget_create_samples(prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES,
-                                     new_table);
+    BKE_profilewidget_create_samples(
+        prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES, new_table);
   }
 
   if (prwdgt->segments) {
     MEM_freeN(prwdgt->segments);
   }
   prwdgt->segments = new_table;
-
 }
 
 /** Sets the default settings and clip range for the profile widget. Does not generate either
@@ -884,7 +885,8 @@ float BKE_profilewidget_total_length(const ProfileWidget *prwdgt)
 /** Samples evenly spaced positions along the profile widget's table (generated from path). Fills
  * an entire table at once for a speedup if all of the results are going to be used anyway.
  * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table.
- * \note Working, but would conflict with "Sample Straight Edges" option, so this is unused for now. */
+ * \note Working, but would conflict with "Sample Straight Edges" option, so this is unused for
+ * now. */
 void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
                                                    int n_segments,
                                                    ProfilePoint *r_samples)
@@ -913,7 +915,8 @@ void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
       distance_to_previous_table_point = 0.0f;
     }
     /* We're at the last table point that fits inside the current segment, use interpolation. */
-    factor = (distance_to_previous_table_point + segment_left) / (distance_to_previous_table_point + distance_to_next_table_point);
+    factor = (distance_to_previous_table_point + segment_left) /
+             (distance_to_previous_table_point + distance_to_next_table_point);
     r_samples[i].x = interpf(prwdgt->table[i_table + 1].x, prwdgt->table[i_table].x, factor);
     r_samples[i].y = interpf(prwdgt->table[i_table + 1].y, prwdgt->table[i_table].y, factor);
 #ifdef DEBUG_PRWDGT_EVALUATE
@@ -924,8 +927,10 @@ void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
     printf("distance_to_next_table_point: %.3f\n", distance_to_next_table_point);
     printf("Interpolating with factor %.3f from (%.3f, %.3f) to (%.3f, %.3f)\n\n",
            factor,
-           prwdgt->table[i_table].x, prwdgt->table[i_table].y,
-           prwdgt->table[i_table + 1].x, prwdgt->table[i_table + 1].y);
+           prwdgt->table[i_table].x,
+           prwdgt->table[i_table].y,
+           prwdgt->table[i_table + 1].x,
+           prwdgt->table[i_table + 1].y);
 #endif
 
     /* We sampled in between this table point and the next, so the next travel step is smaller. */

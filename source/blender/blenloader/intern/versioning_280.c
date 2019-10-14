@@ -3866,7 +3866,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 15)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->toolsettings->snap_node_mode == SCE_SNAP_MODE_NODE_X) {
@@ -3934,7 +3933,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   {
     /* Versioning code until next subversion bump goes here. */
-        
+
     /* Add custom profile widget to toolsettings for bevel tool */
     if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "ProfileWidget", "prwdgt")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {

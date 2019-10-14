@@ -103,7 +103,6 @@ typedef struct {
   ProfileWidget *prwdgt;
 } BevelData;
 
-
 enum {
   BEV_MODAL_CANCEL = 1,
   BEV_MODAL_CONFIRM,
@@ -167,17 +166,17 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
   }
 
   prop = RNA_struct_find_property(op->ptr, "offset_type");
-  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
-                                   &mode_str);
+  RNA_property_enum_name_gettexted(
+      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &mode_str);
   prop = RNA_struct_find_property(op->ptr, "miter_outer");
-  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
-                                   &omiter_str);
+  RNA_property_enum_name_gettexted(
+      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &omiter_str);
   prop = RNA_struct_find_property(op->ptr, "miter_inner");
-  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
-                                   &imiter_str);
+  RNA_property_enum_name_gettexted(
+      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &imiter_str);
   prop = RNA_struct_find_property(op->ptr, "vmesh_method");
-  RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
-                                   &vmesh_str);
+  RNA_property_enum_name_gettexted(
+      C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &vmesh_str);
 
   BLI_snprintf(status_text,
                sizeof(status_text),
@@ -626,29 +625,55 @@ wmKeyMap *bevel_modal_keymap(wmKeyConfig *keyconf)
       {BEV_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", "Confirm bevel"},
       {BEV_MODAL_VALUE_OFFSET, "VALUE_OFFSET", 0, "Change offset", "Value changes offset"},
       {BEV_MODAL_VALUE_PROFILE, "VALUE_PROFILE", 0, "Change profile", "Value changes profile"},
-      {BEV_MODAL_VALUE_SEGMENTS, "VALUE_SEGMENTS", 0, "Change segments",
-       "Value changes segments"},
+      {BEV_MODAL_VALUE_SEGMENTS, "VALUE_SEGMENTS", 0, "Change segments", "Value changes segments"},
       {BEV_MODAL_SEGMENTS_UP, "SEGMENTS_UP", 0, "Increase segments", "Increase segments"},
       {BEV_MODAL_SEGMENTS_DOWN, "SEGMENTS_DOWN", 0, "Decrease segments", "Decrease segments"},
-      {BEV_MODAL_OFFSET_MODE_CHANGE, "OFFSET_MODE_CHANGE", 0, "Change offset mode",
+      {BEV_MODAL_OFFSET_MODE_CHANGE,
+       "OFFSET_MODE_CHANGE",
+       0,
+       "Change offset mode",
        "Cycle through offset modes"},
-      {BEV_MODAL_CLAMP_OVERLAP_TOGGLE, "CLAMP_OVERLAP_TOGGLE", 0, "Toggle clamp overlap",
+      {BEV_MODAL_CLAMP_OVERLAP_TOGGLE,
+       "CLAMP_OVERLAP_TOGGLE",
+       0,
+       "Toggle clamp overlap",
        "Toggle clamp overlap flag"},
-      {BEV_MODAL_VERTEX_ONLY_TOGGLE, "VERTEX_ONLY_TOGGLE", 0, "Toggle vertex only",
+      {BEV_MODAL_VERTEX_ONLY_TOGGLE,
+       "VERTEX_ONLY_TOGGLE",
+       0,
+       "Toggle vertex only",
        "Toggle vertex only flag"},
-      {BEV_MODAL_HARDEN_NORMALS_TOGGLE, "HARDEN_NORMALS_TOGGLE", 0, "Toggle harden normals",
+      {BEV_MODAL_HARDEN_NORMALS_TOGGLE,
+       "HARDEN_NORMALS_TOGGLE",
+       0,
+       "Toggle harden normals",
        "Toggle harden normals flag"},
-      {BEV_MODAL_MARK_SEAM_TOGGLE, "MARK_SEAM_TOGGLE", 0, "Toggle mark seam",
+      {BEV_MODAL_MARK_SEAM_TOGGLE,
+       "MARK_SEAM_TOGGLE",
+       0,
+       "Toggle mark seam",
        "Toggle mark seam flag"},
-      {BEV_MODAL_MARK_SHARP_TOGGLE, "MARK_SHARP_TOGGLE", 0, "Toggle mark sharp",
+      {BEV_MODAL_MARK_SHARP_TOGGLE,
+       "MARK_SHARP_TOGGLE",
+       0,
+       "Toggle mark sharp",
        "Toggle mark sharp flag"},
-      {BEV_MODAL_OUTER_MITER_CHANGE, "OUTER_MITER_CHANGE", 0, "Change outer miter",
+      {BEV_MODAL_OUTER_MITER_CHANGE,
+       "OUTER_MITER_CHANGE",
+       0,
+       "Change outer miter",
        "Cycle through outer miter kinds"},
-      {BEV_MODAL_INNER_MITER_CHANGE, "INNER_MITER_CHANGE", 0, "Change inner miter",
+      {BEV_MODAL_INNER_MITER_CHANGE,
+       "INNER_MITER_CHANGE",
+       0,
+       "Change inner miter",
        "Cycle through inner miter kinds"},
       {BEV_MODAL_CUSTOM_PROFILE_TOGGLE, "CUSTOM_PROFILE_TOGGLE", 0, "Toggle custom profile", ""},
-      {BEV_MODAL_VERTEX_MESH_CHANGE, "VERTEX_MESH_CHANGE", 0, "Change intersection method",
-      "Cycle through intersection methods"},
+      {BEV_MODAL_VERTEX_MESH_CHANGE,
+       "VERTEX_MESH_CHANGE",
+       0,
+       "Change intersection method",
+       "Cycle through intersection methods"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -915,8 +940,8 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
         break;
     }
     prop = RNA_struct_find_property(op->ptr, "offset_type");
-    RNA_property_enum_name_gettexted(C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop),
-                                     &offset_name);
+    RNA_property_enum_name_gettexted(
+        C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &offset_name);
     uiItemR(layout, &ptr, "offset", 0, offset_name, ICON_NONE);
   }
   row = uiLayoutRow(layout, true);
@@ -967,7 +992,10 @@ void MESH_OT_bevel(wmOperatorType *ot)
   static const EnumPropertyItem offset_type_items[] = {
       {BEVEL_AMT_OFFSET, "OFFSET", 0, "Offset", "Amount is offset of new edges from original"},
       {BEVEL_AMT_WIDTH, "WIDTH", 0, "Width", "Amount is width of new face"},
-      {BEVEL_AMT_DEPTH,"DEPTH", 0, "Depth",
+      {BEVEL_AMT_DEPTH,
+       "DEPTH",
+       0,
+       "Depth",
        "Amount is perpendicular distance from original edge to bevel face"},
       {BEVEL_AMT_PERCENT, "PERCENT", 0, "Percent", "Amount is percent of adjacent edge length"},
       {0, NULL, 0, NULL, NULL},
@@ -976,7 +1004,10 @@ void MESH_OT_bevel(wmOperatorType *ot)
   static const EnumPropertyItem face_strength_mode_items[] = {
       {BEVEL_FACE_STRENGTH_NONE, "NONE", 0, "None", "Do not set face strength"},
       {BEVEL_FACE_STRENGTH_NEW, "NEW", 0, "New", "Set face strength on new faces only"},
-      {BEVEL_FACE_STRENGTH_AFFECTED, "AFFECTED", 0, "Affected",
+      {BEVEL_FACE_STRENGTH_AFFECTED,
+       "AFFECTED",
+       0,
+       "Affected",
        "Set face strength on new and modified faces only"},
       {BEVEL_FACE_STRENGTH_ALL, "ALL", 0, "All", "Set face strength on all faces"},
       {0, NULL, 0, NULL, NULL},
@@ -997,7 +1028,10 @@ void MESH_OT_bevel(wmOperatorType *ot)
 
   static EnumPropertyItem vmesh_method_items[] = {
       {BEVEL_VMESH_ADJ, "ADJ", 0, "Grid Fill", "Default patterned fill"},
-      {BEVEL_VMESH_CUTOFF, "CUTOFF", 0, "Cutoff",
+      {BEVEL_VMESH_CUTOFF,
+       "CUTOFF",
+       0,
+       "Cutoff",
        "A cut-off at each profile's end before the intersection"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -1019,8 +1053,8 @@ void MESH_OT_bevel(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
-  RNA_def_enum(ot->srna, "offset_type", offset_type_items, 0, "Width Type",
-               "What distance Width measures");
+  RNA_def_enum(
+      ot->srna, "offset_type", offset_type_items, 0, "Width Type", "What distance Width measures");
   prop = RNA_def_property(ot->srna, "offset", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 0.0, 1e6);
   RNA_def_property_ui_range(prop, 0.0f, 100.0, 1, 3);
@@ -1030,48 +1064,100 @@ void MESH_OT_bevel(wmOperatorType *ot)
   RNA_def_property_range(prop, 0.0, 100);
   RNA_def_property_ui_text(prop, "Width Percent", "Bevel amount for percentage method");
 
-  RNA_def_int(ot->srna, "segments", 1, 1, SEGMENTS_HARD_MAX, "Segments",
-              "Segments for curved edge", 1, 100);
+  RNA_def_int(ot->srna,
+              "segments",
+              1,
+              1,
+              SEGMENTS_HARD_MAX,
+              "Segments",
+              "Segments for curved edge",
+              1,
+              100);
 
-  RNA_def_float(ot->srna, "profile", 0.5f, PROFILE_HARD_MIN, 1.0f, "Profile",
-                "Controls profile shape (0.5 = round)", PROFILE_HARD_MIN, 1.0f);
+  RNA_def_float(ot->srna,
+                "profile",
+                0.5f,
+                PROFILE_HARD_MIN,
+                1.0f,
+                "Profile",
+                "Controls profile shape (0.5 = round)",
+                PROFILE_HARD_MIN,
+                1.0f);
 
   RNA_def_boolean(ot->srna, "vertex_only", false, "Vertex Only", "Bevel only vertices");
 
-  RNA_def_boolean(ot->srna, "clamp_overlap", false, "Clamp Overlap",
+  RNA_def_boolean(ot->srna,
+                  "clamp_overlap",
+                  false,
+                  "Clamp Overlap",
                   "Do not allow beveled edges/vertices to overlap each other");
 
-  RNA_def_boolean(ot->srna, "loop_slide", true, "Loop Slide",
-                  "Prefer slide along edge to even widths");
+  RNA_def_boolean(
+      ot->srna, "loop_slide", true, "Loop Slide", "Prefer slide along edge to even widths");
 
   RNA_def_boolean(ot->srna, "mark_seam", false, "Mark Seams", "Mark Seams along beveled edges");
 
   RNA_def_boolean(ot->srna, "mark_sharp", false, "Mark Sharp", "Mark beveled edges as sharp");
 
-  RNA_def_int(ot->srna, "material", -1, -1, INT_MAX, "Material",
-              "Material for bevel faces (-1 means use adjacent faces)", -1, 100);
+  RNA_def_int(ot->srna,
+              "material",
+              -1,
+              -1,
+              INT_MAX,
+              "Material",
+              "Material for bevel faces (-1 means use adjacent faces)",
+              -1,
+              100);
 
-  RNA_def_boolean(ot->srna, "harden_normals", false, "Harden Normals",
+  RNA_def_boolean(ot->srna,
+                  "harden_normals",
+                  false,
+                  "Harden Normals",
                   "Match normals of new faces to adjacent faces");
 
-  RNA_def_enum(ot->srna, "face_strength_mode", face_strength_mode_items, BEVEL_FACE_STRENGTH_NONE,
+  RNA_def_enum(ot->srna,
+               "face_strength_mode",
+               face_strength_mode_items,
+               BEVEL_FACE_STRENGTH_NONE,
                "Face Strength Mode",
                "Whether to set face strength, and which faces to set face strength on");
 
-  RNA_def_enum(ot->srna, "miter_outer", miter_outer_items, BEVEL_MITER_SHARP,
-               "Outer Miter", "Pattern to use for outside of miters");
+  RNA_def_enum(ot->srna,
+               "miter_outer",
+               miter_outer_items,
+               BEVEL_MITER_SHARP,
+               "Outer Miter",
+               "Pattern to use for outside of miters");
 
-  RNA_def_enum(ot->srna, "miter_inner", miter_inner_items, BEVEL_MITER_SHARP, "Inner Miter",
+  RNA_def_enum(ot->srna,
+               "miter_inner",
+               miter_inner_items,
+               BEVEL_MITER_SHARP,
+               "Inner Miter",
                "Pattern to use for inside of miters");
 
-  RNA_def_float(ot->srna, "spread", 0.1f, 0.0f, 1e6f, "Spread",
-                "Amount to spread arcs for arc inner miters", 0.0f, 100.0f);
+  RNA_def_float(ot->srna,
+                "spread",
+                0.1f,
+                0.0f,
+                1e6f,
+                "Spread",
+                "Amount to spread arcs for arc inner miters",
+                0.0f,
+                100.0f);
 
-  RNA_def_boolean(ot->srna, "use_custom_profile", false, "Custom Profile",
+  RNA_def_boolean(ot->srna,
+                  "use_custom_profile",
+                  false,
+                  "Custom Profile",
                   "Define a custom profile for the bevel");
 
-  RNA_def_enum(ot->srna, "vmesh_method", vmesh_method_items, BEVEL_VMESH_ADJ,
-               "Vertex Mesh Method", "The method to use to create meshes at intersections");
+  RNA_def_enum(ot->srna,
+               "vmesh_method",
+               vmesh_method_items,
+               BEVEL_VMESH_ADJ,
+               "Vertex Mesh Method",
+               "The method to use to create meshes at intersections");
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);

@@ -5811,7 +5811,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       }
     }
     else if (md->type == eModifierType_Bevel) {
-      BevelModifierData * bmd = (BevelModifierData *)md;
+      BevelModifierData *bmd = (BevelModifierData *)md;
       bmd->prwdgt = newdataadr(fd, bmd->prwdgt);
       if (bmd->prwdgt) {
         direct_link_profilewidget(fd, bmd->prwdgt);

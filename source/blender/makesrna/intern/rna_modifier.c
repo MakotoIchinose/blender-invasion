@@ -3537,11 +3537,20 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
 
   static const EnumPropertyItem prop_limit_method_items[] = {
       {0, "NONE", 0, "None", "Bevel the entire mesh by a constant amount"},
-      {MOD_BEVEL_ANGLE, "ANGLE", 0, "Angle",
+      {MOD_BEVEL_ANGLE,
+       "ANGLE",
+       0,
+       "Angle",
        "Only bevel edges with sharp enough angles between faces"},
-      {MOD_BEVEL_WEIGHT, "WEIGHT", 0, "Weight",
+      {MOD_BEVEL_WEIGHT,
+       "WEIGHT",
+       0,
+       "Weight",
        "Use bevel weights to determine how much bevel is applied in edge mode"},
-      {MOD_BEVEL_VGROUP, "VGROUP", 0, "Vertex Group",
+      {MOD_BEVEL_VGROUP,
+       "VGROUP",
+       0,
+       "Vertex Group",
        "Use vertex group weights to select whether vertex or edge is beveled"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -3549,9 +3558,15 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   static const EnumPropertyItem prop_val_type_items[] = {
       {MOD_BEVEL_AMT_OFFSET, "OFFSET", 0, "Offset", "Amount is offset of new edges from original"},
       {MOD_BEVEL_AMT_WIDTH, "WIDTH", 0, "Width", "Amount is width of new face"},
-      {MOD_BEVEL_AMT_DEPTH, "DEPTH", 0, "Depth",
+      {MOD_BEVEL_AMT_DEPTH,
+       "DEPTH",
+       0,
+       "Depth",
        "Amount is perpendicular distance from original edge to bevel face"},
-      {MOD_BEVEL_AMT_PERCENT, "PERCENT", 0, "Percent",
+      {MOD_BEVEL_AMT_PERCENT,
+       "PERCENT",
+       0,
+       "Percent",
        "Amount is percent of adjacent edge length"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -3559,7 +3574,10 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   static EnumPropertyItem prop_harden_normals_items[] = {
       {MOD_BEVEL_FACE_STRENGTH_NONE, "FSTR_NONE", 0, "None", "Do not set face strength"},
       {MOD_BEVEL_FACE_STRENGTH_NEW, "FSTR_NEW", 0, "New", "Set face strength on new faces only"},
-      {MOD_BEVEL_FACE_STRENGTH_AFFECTED, "FSTR_AFFECTED", 0, "Affected",
+      {MOD_BEVEL_FACE_STRENGTH_AFFECTED,
+       "FSTR_AFFECTED",
+       0,
+       "Affected",
        "Set face strength on new and affected faces only"},
       {MOD_BEVEL_FACE_STRENGTH_ALL, "FSTR_ALL", 0, "All", "Set face strength on all faces"},
       {0, NULL, 0, NULL, NULL},
@@ -3580,14 +3598,17 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
 
   static EnumPropertyItem prop_vmesh_method_items[] = {
       {MOD_BEVEL_VMESH_ADJ, "ADJ", 0, "Grid Fill", "Default patterned fill"},
-      {MOD_BEVEL_VMESH_CUTOFF, "CUTOFF", 0, "Cutoff",
+      {MOD_BEVEL_VMESH_CUTOFF,
+       "CUTOFF",
+       0,
+       "Cutoff",
        "A cut-off at the end of each profile before the intersection"},
       {0, NULL, 0, NULL, NULL},
   };
 
   srna = RNA_def_struct(brna, "BevelModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Bevel Modifier",
-                         "Bevel modifier to make edges and vertices more rounded");
+  RNA_def_struct_ui_text(
+      srna, "Bevel Modifier", "Bevel modifier to make edges and vertices more rounded");
   RNA_def_struct_sdna(srna, "BevelModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_BEVEL);
 
@@ -3655,8 +3676,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "material", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "mat");
   RNA_def_property_range(prop, -1, SHRT_MAX);
-  RNA_def_property_ui_text(prop, "Material",
-                           "Material index of generated faces, -1 for automatic");
+  RNA_def_property_ui_text(
+      prop, "Material", "Material index of generated faces, -1 for automatic");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "loop_slide", PROP_BOOLEAN, PROP_NONE);
@@ -3682,8 +3703,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "face_strength_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "face_str_mode");
   RNA_def_property_enum_items(prop, prop_harden_normals_items);
-  RNA_def_property_ui_text(prop, "Set Face Strength",
-                           "Whether to set face strength, and which faces to set it on");
+  RNA_def_property_ui_text(
+      prop, "Set Face Strength", "Whether to set face strength, and which faces to set it on");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "miter_outer", PROP_ENUM, PROP_NONE);
@@ -3707,8 +3728,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_custom_profile", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_CUSTOM_PROFILE);
-  RNA_def_property_ui_text(prop, "Custom Profile",
-                           "Whether to use a user inputed curve for the bevel's profile");
+  RNA_def_property_ui_text(
+      prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "prwdgt", PROP_POINTER, PROP_NONE);
@@ -3720,8 +3741,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "vmesh_method", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "vmesh_method");
   RNA_def_property_enum_items(prop, prop_vmesh_method_items);
-  RNA_def_property_ui_text(prop, "Vertex Mesh Method",
-                           "The method to use to create the mesh at intersections");
+  RNA_def_property_ui_text(
+      prop, "Vertex Mesh Method", "The method to use to create the mesh at intersections");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 

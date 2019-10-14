@@ -69,7 +69,7 @@ static void rna_ProfileWidget_clip_set(PointerRNA *ptr, bool value)
     prwdgt->flag |= PROF_USE_CLIP;
   }
   else {
-    prwdgt->flag &= ~PROF_USE_CLIP ;
+    prwdgt->flag &= ~PROF_USE_CLIP;
   }
 
   BKE_profilewidget_changed(prwdgt, false);
@@ -122,7 +122,7 @@ static void rna_ProfileWidget_evaluate(struct ProfileWidget *prwdgt,
                                        float *location)
 {
   if (!prwdgt->table) {
-    BKE_report(reports, RPT_ERROR,"ProfileWidget table not initialized, call initialize()");
+    BKE_report(reports, RPT_ERROR, "ProfileWidget table not initialized, call initialize()");
   }
   BKE_profilewidget_evaluate_length_portion(prwdgt, length_portion, &location[0], &location[1]);
 }
@@ -161,8 +161,8 @@ static void rna_def_profilepoint(BlenderRNA *brna)
   prop = RNA_def_property(srna, "handle_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "flag");
   RNA_def_property_enum_items(prop, prop_handle_type_items);
-  RNA_def_property_ui_text(prop, "Handle Type",
-                           "Path interpolation at this point: Bezier or vector");
+  RNA_def_property_ui_text(
+      prop, "Handle Type", "Path interpolation at this point: Bezier or vector");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_SELECT);
@@ -182,11 +182,25 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
 
   func = RNA_def_function(srna, "add", "BKE_profilewidget_insert");
   RNA_def_function_ui_description(func, "Add point to the profile widget");
-  parm = RNA_def_float(func, "x", 0.0f, -FLT_MAX, FLT_MAX, "X Position",
-                       "X Position for new point", -FLT_MAX, FLT_MAX);
+  parm = RNA_def_float(func,
+                       "x",
+                       0.0f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "X Position",
+                       "X Position for new point",
+                       -FLT_MAX,
+                       FLT_MAX);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_float(func, "y", 0.0f, -FLT_MAX, FLT_MAX, "Y Position",
-                       "Y Position for new point", -FLT_MAX, FLT_MAX);
+  parm = RNA_def_float(func,
+                       "y",
+                       0.0f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Y Position",
+                       "Y Position for new point",
+                       -FLT_MAX,
+                       FLT_MAX);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_pointer(func, "point", "ProfilePoint", "", "New point");
   RNA_def_function_return(func, parm);
@@ -199,7 +213,6 @@ static void rna_def_profilewidget_points_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
-
 static void rna_def_profilewidget(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -209,7 +222,10 @@ static void rna_def_profilewidget(BlenderRNA *brna)
 
   static const EnumPropertyItem rna_enum_profilewidget_preset_items[] = {
       {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
-      {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops",
+      {PROF_PRESET_SUPPORTS,
+       "SUPPORTS",
+       0,
+       "Support Loops",
        "Loops on either side of the profile"},
       {PROF_PRESET_CORNICE, "CORNICE", 0, "Cornice Moulding", ""},
       {PROF_PRESET_CROWN, "CROWN", 0, "Crown Moulding", ""},
@@ -218,7 +234,8 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "ProfileWidget", NULL);
-  RNA_def_struct_ui_text(srna,"ProfileWidget", "Profile Path editor used to build a profile path");
+  RNA_def_struct_ui_text(
+      srna, "ProfileWidget", "Profile Path editor used to build a profile path");
 
   prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "preset");
@@ -244,8 +261,16 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Update the profile widget");
 
   func = RNA_def_function(srna, "initialize", "rna_ProfileWidget_initialize");
-  parm = RNA_def_int(func, "totsegments", 1, 1, 1000, "", "The number of segment values to"
-                     " initialize the segments table with", 1, 100);
+  parm = RNA_def_int(func,
+                     "totsegments",
+                     1,
+                     1,
+                     1000,
+                     "",
+                     "The number of segment values to"
+                     " initialize the segments table with",
+                     1,
+                     100);
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   RNA_def_function_ui_description(func, "Set the number of display segments and fill tables");
 
@@ -257,7 +282,9 @@ static void rna_def_profilewidget(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "totsegments", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "totsegments");
-  RNA_def_property_ui_text(prop, "Number of Segments", "The number of segments to sample from"
+  RNA_def_property_ui_text(prop,
+                           "Number of Segments",
+                           "The number of segments to sample from"
                            " control points");
 
   prop = RNA_def_property(srna, "segments", PROP_COLLECTION, PROP_NONE);
@@ -268,11 +295,26 @@ static void rna_def_profilewidget(BlenderRNA *brna)
   func = RNA_def_function(srna, "evaluate", "rna_ProfileWidget_evaluate");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Evaluate the at the given portion of the path length");
-  parm = RNA_def_float(func, "length_portion", 0.0f, 0.0f, 1.0f, "Length Portion",
-                       "Portion of the path length to travel before evaluation", 0.0f, 1.0f);
+  parm = RNA_def_float(func,
+                       "length_portion",
+                       0.0f,
+                       0.0f,
+                       1.0f,
+                       "Length Portion",
+                       "Portion of the path length to travel before evaluation",
+                       0.0f,
+                       1.0f);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_float_vector(func, "location", 2, NULL, -100.0f, 100.0f, "Location",
-                              "The location at the given portion of the profile", -100.0f, 100.0f);
+  parm = RNA_def_float_vector(func,
+                              "location",
+                              2,
+                              NULL,
+                              -100.0f,
+                              100.0f,
+                              "Location",
+                              "The location at the given portion of the profile",
+                              -100.0f,
+                              100.0f);
   RNA_def_function_output(func, parm);
 }
 

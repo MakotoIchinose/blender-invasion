@@ -6881,11 +6881,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
 
 /** Interaction for profile widget.
  * \note Uses hardcoded keys rather than the keymap. */
-static int ui_do_but_PROFILE(bContext *C,
-                             uiBlock *block,
-                             uiBut *but,
-                             uiHandleButtonData *data,
-                             const wmEvent *event)
+static int ui_do_but_PROFILE(
+    bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
   int mx, my, i;
 

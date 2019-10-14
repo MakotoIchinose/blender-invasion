@@ -2204,8 +2204,9 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
-  float (*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < (uint)PROF_N_TABLE(prwdgt->totpoint); i++) { /* Only add the points from the table here */
+  float(*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
+  for (i = 0; i < (uint)PROF_N_TABLE(prwdgt->totpoint);
+       i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
   }
@@ -2239,7 +2240,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
 
   /* Calculate the table point indices of the triangles for the profile's fill */
-  uint (*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
+  uint(*tri_indices)[3] = MEM_mallocN(sizeof(*tri_indices) * tot_triangles, "return tri indices");
   BLI_polyfill_calc(table_coords, tot_points, -1, tri_indices);
 
   /* Draw the triangles for the profile fill */

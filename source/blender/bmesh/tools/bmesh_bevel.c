@@ -3040,7 +3040,6 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
   float second_best_dot = 0.0f, best_dot = 0.0f;
   float new_dot;
 
-
   /* Case 1: The next EdgeHalf is across a BevVert from the current EdgeHalf. */
   if (toward_bv) {
     /* Skip all the logic if there's only one beveled edge at the vertex, we're at an end. */
@@ -3054,9 +3053,8 @@ static EdgeHalf *next_edgehalf_bev(BevelParams *bp,
       new_edge = start_edge;
       do {
         new_edge = new_edge->next;
-      }
-      while (!new_edge->is_bev);
-      
+      } while (!new_edge->is_bev);
+
       return new_edge;
     }
 
