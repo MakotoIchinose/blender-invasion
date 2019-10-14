@@ -586,13 +586,18 @@ static void do_versions_fix_annotations(bGPdata *gpd)
   }
 }
 
-static void do_versions_remove_region(ListBase *regionbase, int regiontype)
+static void do_versions_remove_region(ListBase *regionbase, ARegion *ar)
+{
+  BLI_freelinkN(regionbase, ar);
+}
+
+static void do_versions_remove_regions_by_type(ListBase *regionbase, int regiontype)
 {
   ARegion *ar, *ar_next;
   for (ar = regionbase->first; ar; ar = ar_next) {
     ar_next = ar->next;
     if (ar->regiontype == regiontype) {
-      BLI_freelinkN(regionbase, ar);
+      do_versions_remove_region(regionbase, ar);
     }
   }
 }
@@ -1266,6 +1271,22 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           do_versions_material_convert_legacy_blend_mode(ntree, 2 /* MA_BM_MULTIPLY */);
         }
         ma->blend_method = MA_BM_BLEND;
+      }
+    }
+
+    {
+      /* Update all ruler layers to set new flag. */
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        bGPdata *gpd = scene->gpd;
+        if (gpd == NULL) {
+          continue;
+        }
+        for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+          if (STREQ(gpl->info, "RulerData3D")) {
+            gpl->flag |= GP_LAYER_IS_RULER;
+            break;
+          }
+        }
       }
     }
   }
@@ -3341,7 +3362,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
 
             /* Remove multiple footers that were added by mistake. */
-            do_versions_remove_region(regionbase, RGN_TYPE_FOOTER);
+            do_versions_remove_regions_by_type(regionbase, RGN_TYPE_FOOTER);
 
             /* Add footer. */
             ARegion *ar = do_versions_add_region(RGN_TYPE_FOOTER, "footer for text");
@@ -3845,30 +3866,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
   }
 
-  {
-    /* Versioning code until next subversion bump goes here. */
 
-    /* Add custom profile widget to toolsettings for bevel tool */
-    if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "ProfileWidget", "prwdgt")) {
-      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-        ToolSettings *ts = scene->toolsettings;
-        if ((ts) && (ts->prwdgt == NULL)) {
-          ts->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
-        }
-      }
-    }
-
-    /* Add custom profile widget to bevel modifier */
-    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifier", "ProfileWidget", "prwdgt")) {
-      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
-        for (ModifierData *md = object->modifiers.first; md; md = md->next) {
-          if (md->type == eModifierType_Bevel) {
-            BevelModifierData *bmd = (BevelModifierData *)md;
-            if (!bmd->prwdgt) {
-              bmd->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
-            }
-          }
-        }
+  if (!MAIN_VERSION_ATLEAST(bmain, 281, 15)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->toolsettings->snap_node_mode == SCE_SNAP_MODE_NODE_X) {
+        scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID;
       }
     }
 
@@ -3913,7 +3915,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
               /* We temporarily had two tools regions, get rid of the second one. */
               if (ar_next && ar_next->regiontype == RGN_TYPE_TOOLS) {
-                do_versions_remove_region(regionbase, RGN_TYPE_TOOLS);
+                do_versions_remove_region(regionbase, ar_next);
               }
 
               BLI_remlink(regionbase, ar_tools);
@@ -3923,6 +3925,34 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               ar_tools = do_versions_add_region(RGN_TYPE_TOOLS, "versioning file tools region");
               BLI_insertlinkafter(regionbase, ar_header, ar_tools);
               ar_tools->alignment = RGN_ALIGN_LEFT;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
+        
+    /* Add custom profile widget to toolsettings for bevel tool */
+    if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "ProfileWidget", "prwdgt")) {
+      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+        ToolSettings *ts = scene->toolsettings;
+        if ((ts) && (ts->prwdgt == NULL)) {
+          ts->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
+        }
+      }
+    }
+
+    /* Add custom profile widget to bevel modifier */
+    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifier", "ProfileWidget", "prwdgt")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        for (ModifierData *md = object->modifiers.first; md; md = md->next) {
+          if (md->type == eModifierType_Bevel) {
+            BevelModifierData *bmd = (BevelModifierData *)md;
+            if (!bmd->prwdgt) {
+              bmd->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
             }
           }
         }
