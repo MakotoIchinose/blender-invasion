@@ -3559,6 +3559,11 @@ static void gpencil_move_last_stroke_to_back(bContext *C)
 static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *event, tGPsdata *p)
 {
   Brush *brush = p->brush;
+  /* Lazy mode do not use fake events. */
+  if (GPENCIL_LAZY_MODE(brush, p->shift)) {
+    return;
+  }
+
   MaterialGPencilStyle *gp_style = p->material->gp_style;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   int input_samples = brush->gpencil_settings->input_samples;
