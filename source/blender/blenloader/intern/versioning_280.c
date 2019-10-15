@@ -3939,11 +3939,11 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (wmWindowManager *wm = bmain->wm.first; wm; wm = wm->id.next) {
         const View3D *v3d_default = DNA_struct_default_get(View3D);
 
-        wm->xr_session_settings.shading_type = OB_SOLID;
-        wm->xr_session_settings.draw_flags = (V3D_OFSDRAW_SHOW_GRIDFLOOR |
+        wm->xr.session_settings.shading_type = OB_SOLID;
+        wm->xr.session_settings.draw_flags = (V3D_OFSDRAW_SHOW_GRIDFLOOR |
                                               V3D_OFSDRAW_SHOW_ANNOTATION);
-        wm->xr_session_settings.clip_start = v3d_default->clip_start;
-        wm->xr_session_settings.clip_end = v3d_default->clip_end;
+        wm->xr.session_settings.clip_start = v3d_default->clip_start;
+        wm->xr.session_settings.clip_end = v3d_default->clip_end;
       }
     }
 #endif

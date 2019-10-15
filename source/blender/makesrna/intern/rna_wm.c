@@ -2466,6 +2466,7 @@ static void rna_def_windowmanager(BlenderRNA *brna)
 
 #  ifdef WITH_OPENXR
   prop = RNA_def_property(srna, "xr_session_settings", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "xr.session_settings");
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_ui_text(prop, "XR Session Settings", "");
 #  endif

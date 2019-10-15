@@ -100,16 +100,16 @@ static void wm_xr_error_handler(const GHOST_XrError *error)
   WM_report_banner_show();
   UI_popup_menu_reports(handler_data->evil_C, &wm->reports);
 
-  if (wm->xr_context) {
+  if (wm->xr.context) {
     /* Just play safe and destroy the entire context. */
-    GHOST_XrContextDestroy(wm->xr_context);
-    wm->xr_context = NULL;
+    GHOST_XrContextDestroy(wm->xr.context);
+    wm->xr.context = NULL;
   }
 }
 
 bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
 {
-  if (wm->xr_context) {
+  if (wm->xr.context) {
     return true;
   }
   static wmXrErrorHandlerData error_customdata;
@@ -137,25 +137,25 @@ bool wm_xr_context_ensure(bContext *C, wmWindowManager *wm)
       create_info.context_flag |= GHOST_kXrContextDebugTime;
     }
 
-    if (!(wm->xr_context = GHOST_XrContextCreate(&create_info))) {
+    if (!(wm->xr.context = GHOST_XrContextCreate(&create_info))) {
       return false;
     }
 
     /* Set up context callbacks */
-    GHOST_XrGraphicsContextBindFuncs(wm->xr_context,
+    GHOST_XrGraphicsContextBindFuncs(wm->xr.context,
                                      wm_xr_session_gpu_binding_context_create,
                                      wm_xr_session_gpu_binding_context_destroy);
-    GHOST_XrDrawViewFunc(wm->xr_context, wm_xr_draw_view);
+    GHOST_XrDrawViewFunc(wm->xr.context, wm_xr_draw_view);
   }
-  BLI_assert(wm->xr_context != NULL);
+  BLI_assert(wm->xr.context != NULL);
 
   return true;
 }
 
 void wm_xr_context_destroy(wmWindowManager *wm)
 {
-  if (wm->xr_context != NULL) {
-    GHOST_XrContextDestroy(wm->xr_context);
+  if (wm->xr.context != NULL) {
+    GHOST_XrContextDestroy(wm->xr.context);
   }
 }
 
@@ -261,10 +261,10 @@ static void wm_xr_session_surface_draw(bContext *C)
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
 
-  if (!GHOST_XrSessionIsRunning(wm->xr_context)) {
+  if (!GHOST_XrSessionIsRunning(wm->xr.context)) {
     return;
   }
-  GHOST_XrSessionDrawViews(wm->xr_context, C);
+  GHOST_XrSessionDrawViews(wm->xr.context, C);
   if (surface_data->viewport) {
     /* Still bound from view drawing. */
     wm_xr_surface_viewport_unbind(surface_data);
@@ -450,7 +450,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   bContext *C = customdata;
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
-  bXrSessionSettings *settings = &wm->xr_session_settings;
+  bXrSessionSettings *settings = &wm->xr.session_settings;
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
   const rcti rect = {
       .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
@@ -479,7 +479,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   CTX_data_scene(C),
                                   &shading,
-                                  wm->xr_session_settings.shading_type,
+                                  wm->xr.session_settings.shading_type,
                                   draw_view->width,
                                   draw_view->height,
                                   display_flags,

@@ -121,6 +121,14 @@ typedef struct ReportTimerInfo {
   float widthfac;
 } ReportTimerInfo;
 
+//#ifdef WITH_OPENXR
+typedef struct wmXrData {
+  void *context; /* GHOST_XrContextHandle */
+
+  bXrSessionSettings session_settings;
+} wmXrData;
+//#endif
+
 /* reports need to be before wmWindowManager */
 
 /* windowmanager is saved, tag WMAN */
@@ -183,8 +191,7 @@ typedef struct wmWindowManager {
   struct wmMsgBus *message_bus;
 
   //#ifdef WITH_OPENXR
-  bXrSessionSettings xr_session_settings;
-  void *xr_context; /* GHOST_XrContextHandle */
+  wmXrData xr;
   //#endif
 } wmWindowManager;
 
