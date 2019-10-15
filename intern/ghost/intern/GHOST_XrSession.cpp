@@ -129,11 +129,11 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
  * we can hand OpenXR a proper reference pose/space.
  */
   create_info.poseInReferenceSpace.position.x = base_pose->position[0];
-  create_info.poseInReferenceSpace.position.y = base_pose->position[2];
-  create_info.poseInReferenceSpace.position.z = -base_pose->position[1];
+  create_info.poseInReferenceSpace.position.y = base_pose->position[1];
+  create_info.poseInReferenceSpace.position.z = base_pose->position[2];
   create_info.poseInReferenceSpace.orientation.x = base_pose->orientation_quat[1];
-  create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[3];
-  create_info.poseInReferenceSpace.orientation.z = -base_pose->orientation_quat[2];
+  create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[2];
+  create_info.poseInReferenceSpace.orientation.z = base_pose->orientation_quat[3];
   create_info.poseInReferenceSpace.orientation.w = base_pose->orientation_quat[0];
 #else
   (void)base_pose;
@@ -408,16 +408,7 @@ void GHOST_XrSession::draw(void *draw_customdata)
 
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
-#if 0
   /* Set and convert to Blender coodinate space. */
-  r_info.pose.position[0] = view.pose.position.x;
-  r_info.pose.position[1] = -view.pose.position.z;
-  r_info.pose.position[2] = view.pose.position.y;
-  r_info.pose.orientation_quat[0] = view.pose.orientation.w;
-  r_info.pose.orientation_quat[1] = view.pose.orientation.x;
-  r_info.pose.orientation_quat[2] = -view.pose.orientation.z;
-  r_info.pose.orientation_quat[3] = view.pose.orientation.y;
-#else
   r_info.pose.position[0] = view.pose.position.x;
   r_info.pose.position[1] = view.pose.position.y;
   r_info.pose.position[2] = view.pose.position.z;
@@ -425,7 +416,6 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
   r_info.pose.orientation_quat[1] = view.pose.orientation.x;
   r_info.pose.orientation_quat[2] = view.pose.orientation.y;
   r_info.pose.orientation_quat[3] = view.pose.orientation.z;
-#endif
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;
