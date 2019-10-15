@@ -28,6 +28,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_xr_types.h"
 
 #include "DNA_ID.h"
 
@@ -182,6 +183,7 @@ typedef struct wmWindowManager {
   struct wmMsgBus *message_bus;
 
   //#ifdef WITH_OPENXR
+  bXrSessionSettings xr_session_settings;
   void *xr_context; /* GHOST_XrContextHandle */
   //#endif
 } wmWindowManager;

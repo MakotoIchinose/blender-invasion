@@ -34,6 +34,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
+#include "DNA_xr_types.h"
 
 #include "DRW_engine.h"
 
@@ -447,8 +448,10 @@ static void wm_xr_draw_matrices_create(const Scene *scene,
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
   bContext *C = customdata;
+  wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
-  const float clip_start = 0.01f, clip_end = 500.0f;
+  bXrSessionSettings *settings = &wm->xr_session_settings;
+  const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
   const rcti rect = {
       .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
 
@@ -457,7 +460,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   View3DShading shading;
   float viewmat[4][4], winmat[4][4];
 
-  wm_xr_draw_matrices_create(CTX_data_scene(C), draw_view, clip_start, clip_end, viewmat, winmat);
+  wm_xr_draw_matrices_create(
+      CTX_data_scene(C), draw_view, settings->clip_start, settings->clip_end, viewmat, winmat);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     return;
@@ -475,19 +479,18 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
                                   CTX_data_scene(C),
                                   &shading,
-                                  OB_SOLID,
+                                  wm->xr_session_settings.shading_type,
                                   draw_view->width,
                                   draw_view->height,
-                                  /* Draw floor for better orientation */
-                                  V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | V3D_OFSDRAW_SHOW_GRIDFLOOR,
+                                  display_flags,
                                   viewmat,
                                   winmat,
-                                  clip_start,
-                                  clip_end,
+                                  settings->clip_start,
+                                  settings->clip_end,
                                   true,
                                   true,
                                   NULL,
-                                  false,
+                                  true,
                                   offscreen,
                                   viewport);
 

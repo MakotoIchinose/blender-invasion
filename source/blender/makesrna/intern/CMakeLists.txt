@@ -122,6 +122,12 @@ set(APISRC
   rna_workspace_api.c
 )
 
+if(WITH_OPENXR)
+  list(APPEND DEFSRC
+    rna_xr.c
+  )
+endif()
+
 string(REGEX REPLACE "rna_([a-zA-Z0-9_-]*).c" "${CMAKE_CURRENT_BINARY_DIR}/rna_\\1_gen.c" GENSRC "${DEFSRC}")
 list(APPEND GENSRC
   "${CMAKE_CURRENT_BINARY_DIR}/rna_prototypes_gen.h"
@@ -320,6 +326,10 @@ endif()
 
 if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
+endif()
+
+if(WITH_OPENXR)
+  add_definitions(-DWITH_OPENXR)
 endif()
 
 # Build makesrna executable
