@@ -659,117 +659,90 @@ static void gp_smooth_segment(bGPdata *gpd, const float inf, int from_idx, int t
     tGPspoint *ptd = &points[i];
 
     float sco[2] = {0.0f};
+    float pressure = 0.0f;
+    float strength = 0.0f;
 
     /* Compute smoothed coordinate by taking the ones nearby */
     if (pta) {
       madd_v2_v2fl(sco, &pta->x, average_fac);
+      pressure += pta->pressure * average_fac;
+      strength += pta->strength * average_fac;
     }
     else {
       madd_v2_v2fl(sco, &ptc->x, average_fac);
+      pressure += ptc->pressure * average_fac;
+      strength += ptc->strength * average_fac;
     }
 
     if (ptb) {
       madd_v2_v2fl(sco, &ptb->x, average_fac);
+      pressure += ptb->pressure * average_fac;
+      strength += ptb->strength * average_fac;
     }
     else {
       madd_v2_v2fl(sco, &ptc->x, average_fac);
+      pressure += ptc->pressure * average_fac;
+      strength += ptc->strength * average_fac;
     }
 
     madd_v2_v2fl(sco, &ptc->x, average_fac);
+    pressure += ptc->pressure * average_fac;
+    strength += ptc->strength * average_fac;
 
     madd_v2_v2fl(sco, &ptd->x, average_fac);
+    pressure += ptd->pressure * average_fac;
+    strength += ptd->strength * average_fac;
 
     /* Based on influence factor, blend between original and optimal smoothed coordinate. */
     interp_v2_v2v2(&ptc->x, &ptc->x, sco, inf);
+
+    /* Interpolate pressure. */
+    ptc->pressure = interpf(ptc->pressure, pressure, inf);
+    /* Interpolate strength. */
+    ptc->strength = interpf(ptc->strength, strength, inf);
   }
 }
 
-/* Smooth all the sections created with fake events to avoid abrupt transitions.
- *
- * As the fake events add points between two real events, this produces a straight line, but if
- * there is 3 or more real points that used fakes, the stroke is not smooth and produces abrupt
- * angles.
- * This function reads these segments and finds the real points and smooth with the surrounding
- * points. */
-static void gp_smooth_fake_segments(tGPsdata *p)
+/* Add arc points between two mouse events using the previous segment to determine the vertice of
+ * the arc.
+ *        /* CTL
+ *       / |
+ *      /  |
+ * PtA +...|...+ PtB
+ *    /
+ *   /
+ *  + PtA - 1
+ * /
+ * CTL is the vertice of the triangle created between PtA and PtB */
+static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
 {
   bGPdata *gpd = p->gpd;
-  Brush *brush = p->brush;
-
-  if (brush->gpencil_settings->input_samples < 2) {
-    return;
-  }
-
-  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
-  tGPspoint *pt = NULL;
-  /* Index where segment starts. */
-  int from_idx = 0;
-  /* Index where segment ends. */
-  int to_idx = 0;
-
-  bool doit = false;
-  /* Loop all points except the extremes. */
-  for (int i = 1; i < gpd->runtime.sbuffer_used - 1; i++) {
-    pt = &points[i];
-    bool is_fake = (bool)(pt->tflag & GP_TPOINT_FAKE);
-    to_idx = i;
-
-    /* Detect fake points in the stroke. */
-    if ((!doit) && (is_fake)) {
-      from_idx = i;
-      doit = true;
-    }
-    /* If detect control point after fake points, select a segment with same length in both sides,
-     * except if it is more than stroke length. */
-    if ((doit) && (!is_fake)) {
-      if (i + (i - from_idx) < gpd->runtime.sbuffer_used - 1) {
-        to_idx = i + (i - from_idx);
-        /* Smooth this segments (need loop to get cumulative smooth). */
-        for (int r = 0; r < 5; r++) {
-          /* The factor is divided because a value > 0.5f is too aggressive, but in the UI is
-           * better to keep the range from 0.0f to 1.0f for usability reasons. */
-          gp_smooth_segment(gpd, brush->gpencil_settings->smart_smooth * 0.5f, from_idx, to_idx);
-        }
-      }
-      else {
-        break;
-      }
-      /* Reset to new segments. */
-      from_idx = i;
-      doit = false;
-    }
-  }
-}
-
-static void gp_add_arc_segments(tGPsdata *p)
-{
-  const int segments = 4;
-  const float minlen_sq = 20.0f * 20.0f;
-  bGPdata *gpd = p->gpd;
-  // Brush *brush = p->brush;
   if (gpd->runtime.sbuffer_used < 3) {
     return;
   }
 
-  int idx = gpd->runtime.sbuffer_used;
+  int idx_old = gpd->runtime.sbuffer_used;
+
+  /* Add space for new arc points. */
+  gpd->runtime.sbuffer_used += segments - 1;
+
+  /* Check if still room in buffer or add more. */
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+
   tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
   tGPspoint *pt = NULL;
-  tGPspoint *pt_before = &points[idx - 3]; /* current - 2 */
-  tGPspoint *pt_prev = &points[idx - 2];   /* previous */
-  tGPspoint *pt_cur = &points[idx - 1];    /* actual */
+  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
+  tGPspoint *pt_prev = &points[idx_old - 2];   /* previous */
 
   /* Create two vectors, previous and half way of the actual to get the vertex of the triangle for
    * arc curve.
    */
   float v_prev[2], v_cur[2], v_half[2];
-  sub_v2_v2v2(v_cur, &pt_cur->x, &pt_prev->x);
-  /* Do not add points to very short segments. */
-  if (len_squared_v2(v_cur) < minlen_sq) {
-    return;
-  }
+  sub_v2_v2v2(v_cur, mval, &pt_prev->x);
 
   sub_v2_v2v2(v_prev, &pt_prev->x, &pt_before->x);
-  interp_v2_v2v2(v_half, &pt_prev->x, &pt_cur->x, 0.5f);
+  interp_v2_v2v2(v_half, &pt_prev->x, mval, 0.5f);
   sub_v2_v2(v_half, &pt_prev->x);
 
   /* Project the half vector to the previous vector and calculate the mid projected point. */
@@ -783,83 +756,33 @@ static void gp_add_arc_segments(tGPsdata *p)
   float ctl[2];
   add_v2_v2v2(ctl, &pt_prev->x, v_prev);
 
-  /* Move last buffer point and add space for new arc points. */
-  gpd->runtime.sbuffer_used += segments;
-  pt = &points[gpd->runtime.sbuffer_used - 1];
-
-  copy_v2_v2(&pt->x, &pt_cur->x);
-  pt->pressure = pt_cur->pressure;
-  pt->strength = pt_cur->strength;
-
   float step = M_PI_2 / (float)(segments + 1);
   float a = step;
 
   float midpoint[2], start[2], end[2], cp1[2], corner[2];
-  mid_v2_v2v2(midpoint, &pt_prev->x, &pt_cur->x);
+  mid_v2_v2v2(midpoint, &pt_prev->x, mval);
   copy_v2_v2(start, &pt_prev->x);
-  copy_v2_v2(end, &pt_cur->x);
+  copy_v2_v2(end, mval);
   copy_v2_v2(cp1, ctl);
 
   corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
   corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
 
-  float fi = 1.0f / (float)(segments + 1.0f);
   for (int i = 0; i < segments; i++) {
-    pt = &points[idx + i - 1];
+    pt = &points[idx_old + i - 1];
     pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
     pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
 
-    /* Interpolate values */
-    float f = fi * (float)(i + 1.0f);
-    pt->pressure = interpf(pt_cur->pressure, pt_prev->pressure, f);
-    pt->strength = interpf(pt_cur->strength, pt_prev->strength, f);
+    /* Set pressure and strength equals to previous. It will be smoothed later. */
+    pt->pressure = pt_prev->pressure;
+    pt->strength = pt_prev->strength;
 
     a += step;
   }
 }
 
-/* Smooth the section added with fake events when pen moves very fast. */
-static void gp_smooth_fake_events(tGPsdata *p, int size_before, int size_after)
-{
-  bGPdata *gpd = p->gpd;
-  const short totpoints = size_after - size_before - 1;
-  /* Do nothing if not enough data to smooth out. */
-  if (totpoints < 1) {
-    return;
-  }
-
-  /* Back two points to get smoother effect. */
-  size_before -= 2;
-  CLAMP_MIN(size_before, 1);
-
-  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
-  /* Extreme points. */
-  const tGPspoint *pta = &points[size_before - 1];
-  const tGPspoint *ptb = &points[size_after - 1];
-  tGPspoint *pt1, *pt2;
-  int i;
-
-  /* Get total length of the segment to smooth. */
-  float totlen = 0.0f;
-  for (i = size_before; i < size_after; i++) {
-    pt1 = &points[i - 1];
-    pt2 = &points[i];
-    totlen += len_v2v2(&pt1->x, &pt2->x);
-  }
-  /* Smooth interpolating the position of the points. */
-  float pointlen = 0.0f;
-  for (i = size_before; i < size_after - 1; i++) {
-    pt1 = &points[i - 1];
-    pt2 = &points[i];
-    pointlen += len_v2v2(&pt1->x, &pt2->x);
-    pt2->pressure = interpf(ptb->pressure, pta->pressure, pointlen / totlen);
-    pt2->strength = interpf(ptb->strength, pta->strength, pointlen / totlen);
-  }
-}
-
 /* add current stroke-point to buffer (returns whether point was successfully added) */
-static short gp_stroke_addpoint(
-    tGPsdata *p, const float mval[2], float pressure, double curtime, bool is_fake)
+static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure, double curtime)
 {
   bGPdata *gpd = p->gpd;
   Brush *brush = p->brush;
@@ -917,14 +840,6 @@ static short gp_stroke_addpoint(
 
     /* get pointer to destination point */
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
-
-    /* Set if point was created by fake events. */
-    if (is_fake) {
-      pt->tflag |= GP_TPOINT_FAKE;
-    }
-    else {
-      pt->tflag &= ~GP_TPOINT_FAKE;
-    }
 
     /* store settings */
     /* pressure */
@@ -1436,11 +1351,6 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
           interp_sparse_array(depth_arr, gpd->runtime.sbuffer_used, FLT_MAX);
         }
       }
-    }
-
-    /* Smooth any point created with fake events when the mouse/pen move very fast. */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) == 0) {
-      gp_smooth_fake_segments(p);
     }
 
     pt = gps->points;
@@ -2826,8 +2736,7 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
 /* ------------------------------- */
 
 /* create a new stroke point at the point indicated by the painting context */
-static void gpencil_draw_apply(
-    bContext *C, wmOperator *op, tGPsdata *p, Depsgraph *depsgraph, bool is_fake)
+static void gpencil_draw_apply(bContext *C, wmOperator *op, tGPsdata *p, Depsgraph *depsgraph)
 {
   bGPdata *gpd = p->gpd;
   tGPspoint *pt = NULL;
@@ -2856,7 +2765,7 @@ static void gpencil_draw_apply(
     }
 
     /* try to add point */
-    short ok = gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime, is_fake);
+    short ok = gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
 
     /* handle errors while adding point */
     if ((ok == GP_STROKEADD_FULL) || (ok == GP_STROKEADD_OVERFLOW)) {
@@ -2870,12 +2779,12 @@ static void gpencil_draw_apply(
       /* XXX We only need to reuse previous point if overflow! */
       if (ok == GP_STROKEADD_OVERFLOW) {
         p->inittime = p->ocurtime;
-        gp_stroke_addpoint(p, p->mvalo, p->opressure, p->ocurtime, is_fake);
+        gp_stroke_addpoint(p, p->mvalo, p->opressure, p->ocurtime);
       }
       else {
         p->inittime = p->curtime;
       }
-      gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime, is_fake);
+      gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
     }
     else if (ok == GP_STROKEADD_INVALID) {
       /* the painting operation cannot continue... */
@@ -2905,9 +2814,6 @@ static void gpencil_draw_apply(
       ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
     }
   }
-
-  /* Add an arc when there are missing events due very fast drawing gesture. */
-  gp_add_arc_segments(p);
 }
 
 /* Helper to rotate point around origin */
@@ -3084,13 +2990,8 @@ static void gpencil_speed_guide(tGPsdata *p, GP_Sculpt_Guide *guide)
 }
 
 /* handle draw event */
-static void gpencil_draw_apply_event(bContext *C,
-                                     wmOperator *op,
-                                     const wmEvent *event,
-                                     Depsgraph *depsgraph,
-                                     float x,
-                                     float y,
-                                     const bool is_fake)
+static void gpencil_draw_apply_event(
+    bContext *C, wmOperator *op, const wmEvent *event, Depsgraph *depsgraph, float x, float y)
 {
   tGPsdata *p = op->customdata;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
@@ -3101,7 +3002,7 @@ static void gpencil_draw_apply_event(bContext *C,
                          (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
 
   /* convert from window-space to area-space mouse coordinates
-   * add any x,y override position for fake events
+   * add any x,y override position
    */
   p->mval[0] = (float)event->mval[0] - x;
   p->mval[1] = (float)event->mval[1] - y;
@@ -3243,10 +3144,10 @@ static void gpencil_draw_apply_event(bContext *C,
     /* create fake events */
     float tmp[2];
     copy_v2_v2(tmp, p->mval);
-    gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1], false);
+    gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1]);
     if (len_v2v2(p->mval, p->mvalo)) {
       sub_v2_v2v2(pt, p->mval, p->mvalo);
-      gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1], false);
+      gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1]);
     }
     copy_v2_v2(p->mval, tmp);
   }
@@ -3277,7 +3178,7 @@ static void gpencil_draw_apply_event(bContext *C,
   RNA_float_set(&itemptr, "time", p->curtime - p->inittime);
 
   /* apply the current latest drawing point */
-  gpencil_draw_apply(C, op, p, depsgraph, is_fake);
+  gpencil_draw_apply(C, op, p, depsgraph);
 
   /* force refresh */
   /* just active area for now, since doing whole screen is too slow */
@@ -3343,7 +3244,7 @@ static int gpencil_draw_exec(bContext *C, wmOperator *op)
     }
 
     /* apply this data as necessary now (as per usual) */
-    gpencil_draw_apply(C, op, p, depsgraph, false);
+    gpencil_draw_apply(C, op, p, depsgraph);
   }
   RNA_END;
 
@@ -3536,8 +3437,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     p->status = GP_STATUS_PAINTING;
 
     /* handle the initial drawing - i.e. for just doing a simple dot */
-    gpencil_draw_apply_event(
-        C, op, event, CTX_data_ensure_evaluated_depsgraph(C), 0.0f, 0.0f, false);
+    gpencil_draw_apply_event(C, op, event, CTX_data_ensure_evaluated_depsgraph(C), 0.0f, 0.0f);
     op->flag |= OP_IS_MODAL_CURSOR_REGION;
   }
   else {
@@ -3654,21 +3554,21 @@ static void gpencil_move_last_stroke_to_back(bContext *C)
   BLI_insertlinkbefore(&gpf->strokes, gpf->strokes.first, gps);
 }
 
-/* Add fake events for missing mouse movements when the artist draw very fast */
-static bool gpencil_add_fake_events(bContext *C, wmOperator *op, const wmEvent *event, tGPsdata *p)
+/* Add fake points for missing mouse movements when the artist draw very fast creating an arc
+ * with the vertice in the midle of the segment and using the angle of the previous segment. */
+static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *event, tGPsdata *p)
 {
   Brush *brush = p->brush;
+  MaterialGPencilStyle *gp_style = p->material->gp_style;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   int input_samples = brush->gpencil_settings->input_samples;
-  bool added_events = false;
   /* ensure sampling when using circular guide */
   if (guide->use_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
     input_samples = GP_MAX_INPUT_SAMPLES;
   }
 
   if (input_samples == 0) {
-    return added_events;
+    return;
   }
 
   RegionView3D *rv3d = p->ar->regiondata;
@@ -3676,7 +3576,7 @@ static bool gpencil_add_fake_events(bContext *C, wmOperator *op, const wmEvent *
   int samples = (GP_MAX_INPUT_SAMPLES - input_samples + 1);
   float thickness = (float)brush->size;
 
-  float pt[2], a[2], b[2];
+  float mouse_prv[2], mouse_cur[2];
   float vec[3];
   float scale = 1.0f;
 
@@ -3691,48 +3591,20 @@ static bool gpencil_add_fake_events(bContext *C, wmOperator *op, const wmEvent *
   }
 
   /* The thickness of the brush is reduced of thickness to get overlap dots */
-  float dot_factor = 0.50f;
-  if (samples < 2) {
-    dot_factor = 0.05f;
-  }
-  else if (samples < 4) {
-    dot_factor = 0.10f;
-  }
-  else if (samples < 7) {
-    dot_factor = 0.3f;
-  }
-  else if (samples < 10) {
-    dot_factor = 0.4f;
-  }
-  float factor = ((thickness * dot_factor) / scale) * samples;
+  float dot_factor = (gp_style->mode == GP_STYLE_MODE_LINE) ? 1.0f : 0.05f;
+  float min_dist = ((thickness * dot_factor) / scale) * samples;
 
-  copy_v2_v2(a, p->mvalo);
-  b[0] = (float)event->mval[0] + 1.0f;
-  b[1] = (float)event->mval[1] + 1.0f;
+  copy_v2_v2(mouse_prv, p->mvalo);
+  mouse_cur[0] = (float)event->mval[0] + 1.0f;
+  mouse_cur[1] = (float)event->mval[1] + 1.0f;
 
   /* get distance in pixels */
-  float dist = len_v2v2(a, b);
+  float dist = len_v2v2(mouse_prv, mouse_cur);
 
-  /* for very small distances, add a half way point */
-  if (dist <= 2.0f) {
-    interp_v2_v2v2(pt, a, b, 0.5f);
-    sub_v2_v2v2(pt, b, pt);
-    /* create fake event */
-    gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1], true);
-    added_events = true;
+  if ((dist > 3.0f) && (dist > min_dist)) {
+    int slices = (dist / min_dist) + 1;
+    gpencil_add_arc_points(p, mouse_cur, slices);
   }
-  else if (dist >= factor) {
-    int slices = 2 + (int)((dist - 1.0) / factor);
-    float n = 1.0f / slices;
-    for (int i = 1; i < slices; i++) {
-      interp_v2_v2v2(pt, a, b, n * i);
-      sub_v2_v2v2(pt, b, pt);
-      /* create fake event */
-      gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1], true);
-      added_events = true;
-    }
-  }
-  return added_events;
 }
 
 /* events handling during interactive drawing part of operator */
@@ -3741,7 +3613,6 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   tGPsdata *p = op->customdata;
   ToolSettings *ts = CTX_data_tool_settings(C);
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
-  tGPspoint *points = (tGPspoint *)p->gpd->runtime.sbuffer;
 
   /* default exit state - pass through to support MMB view nav, etc. */
   int estate = OPERATOR_PASS_THROUGH;
@@ -4041,21 +3912,23 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       /* printf("\t\tGP - add point\n"); */
 
       int size_before = p->gpd->runtime.sbuffer_used;
-      bool added_events = false;
       if (((p->flags & GP_PAINTFLAG_FIRSTRUN) == 0) && (p->paintmode != GP_PAINTMODE_ERASER)) {
-        added_events = gpencil_add_fake_events(C, op, event, p);
+        gpencil_add_fake_points(C, op, event, p);
       }
 
-      gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph_pointer(C), 0.0f, 0.0f, false);
+      gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph_pointer(C), 0.0f, 0.0f);
       int size_after = p->gpd->runtime.sbuffer_used;
 
-      /* Last point of the event is always real (not fake). */
-      tGPspoint *pt = &points[size_after - 1];
-      pt->tflag &= ~GP_TPOINT_FAKE;
-
-      /* Smooth the fake events to get smoother strokes, specially at ends. */
-      if (added_events) {
-        gp_smooth_fake_events(p, size_before, size_after);
+      /* Smooth segments if some fake points were added (need loop to get cumulative smooth). */
+      if (size_after - size_before > 1) {
+        for (int r = 0; r < 5; r++) {
+          /* The factor is divided because a value > 0.5f is too aggressive, but in the UI is
+           * better to keep the range from 0.0f to 1.0f for usability reasons. */
+          gp_smooth_segment(p->gpd,
+                            p->brush->gpencil_settings->smart_smooth * 0.5f,
+                            size_before - 1,
+                            size_after - 1);
+        }
       }
 
       /* finish painting operation if anything went wrong just now */
@@ -4177,7 +4050,7 @@ void GPENCIL_OT_draw(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Grease Pencil Draw";
   ot->idname = "GPENCIL_OT_draw";
-  ot->description = "Draw a new stroke in the active Grease Pencil Object";
+  ot->description = "Draw mouse_prv new stroke in the active Grease Pencil Object";
 
   /* api callbacks */
   ot->exec = gpencil_draw_exec;
