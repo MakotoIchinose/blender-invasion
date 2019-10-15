@@ -703,84 +703,6 @@ static void gp_smooth_segment(bGPdata *gpd, const float inf, int from_idx, int t
   }
 }
 
-/* Add arc points between two mouse events using the previous segment to determine the vertice of
- * the arc.
- *        /* CTL
- *       / |
- *      /  |
- * PtA +...|...+ PtB
- *    /
- *   /
- *  + PtA - 1
- * /
- * CTL is the vertice of the triangle created between PtA and PtB */
-static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
-{
-  bGPdata *gpd = p->gpd;
-  if (gpd->runtime.sbuffer_used < 3) {
-    return;
-  }
-
-  int idx_old = gpd->runtime.sbuffer_used;
-
-  /* Add space for new arc points. */
-  gpd->runtime.sbuffer_used += segments - 1;
-
-  /* Check if still room in buffer or add more. */
-  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
-      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
-
-  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
-  tGPspoint *pt = NULL;
-  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
-  tGPspoint *pt_prev = &points[idx_old - 2];   /* previous */
-
-  /* Create two vectors, previous and half way of the actual to get the vertex of the triangle for
-   * arc curve.
-   */
-  float v_prev[2], v_cur[2], v_half[2];
-  sub_v2_v2v2(v_cur, mval, &pt_prev->x);
-
-  sub_v2_v2v2(v_prev, &pt_prev->x, &pt_before->x);
-  interp_v2_v2v2(v_half, &pt_prev->x, mval, 0.5f);
-  sub_v2_v2(v_half, &pt_prev->x);
-
-  /* Project the half vector to the previous vector and calculate the mid projected point. */
-  float dot = dot_v2v2(v_prev, v_half);
-  float l = len_squared_v2(v_prev);
-  if (l > 0.0f) {
-    mul_v2_fl(v_prev, dot / l);
-  }
-
-  /* Calc the position of the control point. */
-  float ctl[2];
-  add_v2_v2v2(ctl, &pt_prev->x, v_prev);
-
-  float step = M_PI_2 / (float)(segments + 1);
-  float a = step;
-
-  float midpoint[2], start[2], end[2], cp1[2], corner[2];
-  mid_v2_v2v2(midpoint, &pt_prev->x, mval);
-  copy_v2_v2(start, &pt_prev->x);
-  copy_v2_v2(end, mval);
-  copy_v2_v2(cp1, ctl);
-
-  corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
-  corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
-
-  for (int i = 0; i < segments; i++) {
-    pt = &points[idx_old + i - 1];
-    pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
-    pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
-
-    /* Set pressure and strength equals to previous. It will be smoothed later. */
-    pt->pressure = pt_prev->pressure;
-    pt->strength = pt_prev->strength;
-
-    a += step;
-  }
-}
-
 /* add current stroke-point to buffer (returns whether point was successfully added) */
 static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure, double curtime)
 {
@@ -3554,6 +3476,84 @@ static void gpencil_move_last_stroke_to_back(bContext *C)
   BLI_insertlinkbefore(&gpf->strokes, gpf->strokes.first, gps);
 }
 
+/* Add arc points between two mouse events using the previous segment to determine the vertice of
+ * the arc.
+ *        /* CTL
+ *       / |
+ *      /  |
+ * PtA +...|...+ PtB
+ *    /
+ *   /
+ *  + PtA - 1
+ * /
+ * CTL is the vertice of the triangle created between PtA and PtB */
+static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
+{
+  bGPdata *gpd = p->gpd;
+  if (gpd->runtime.sbuffer_used < 3) {
+    return;
+  }
+
+  int idx_old = gpd->runtime.sbuffer_used;
+
+  /* Add space for new arc points. */
+  gpd->runtime.sbuffer_used += segments - 1;
+
+  /* Check if still room in buffer or add more. */
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+
+  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
+  tGPspoint *pt = NULL;
+  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
+  tGPspoint *pt_prev = &points[idx_old - 2];   /* previous */
+
+  /* Create two vectors, previous and half way of the actual to get the vertex of the triangle for
+   * arc curve.
+   */
+  float v_prev[2], v_cur[2], v_half[2];
+  sub_v2_v2v2(v_cur, mval, &pt_prev->x);
+
+  sub_v2_v2v2(v_prev, &pt_prev->x, &pt_before->x);
+  interp_v2_v2v2(v_half, &pt_prev->x, mval, 0.5f);
+  sub_v2_v2(v_half, &pt_prev->x);
+
+  /* Project the half vector to the previous vector and calculate the mid projected point. */
+  float dot = dot_v2v2(v_prev, v_half);
+  float l = len_squared_v2(v_prev);
+  if (l > 0.0f) {
+    mul_v2_fl(v_prev, dot / l);
+  }
+
+  /* Calc the position of the control point. */
+  float ctl[2];
+  add_v2_v2v2(ctl, &pt_prev->x, v_prev);
+
+  float step = M_PI_2 / (float)(segments + 1);
+  float a = step;
+
+  float midpoint[2], start[2], end[2], cp1[2], corner[2];
+  mid_v2_v2v2(midpoint, &pt_prev->x, mval);
+  copy_v2_v2(start, &pt_prev->x);
+  copy_v2_v2(end, mval);
+  copy_v2_v2(cp1, ctl);
+
+  corner[0] = midpoint[0] - (cp1[0] - midpoint[0]);
+  corner[1] = midpoint[1] - (cp1[1] - midpoint[1]);
+
+  for (int i = 0; i < segments; i++) {
+    pt = &points[idx_old + i - 1];
+    pt->x = corner[0] + (end[0] - corner[0]) * sinf(a) + (start[0] - corner[0]) * cosf(a);
+    pt->y = corner[1] + (end[1] - corner[1]) * sinf(a) + (start[1] - corner[1]) * cosf(a);
+
+    /* Set pressure and strength equals to previous. It will be smoothed later. */
+    pt->pressure = pt_prev->pressure;
+    pt->strength = pt_prev->strength;
+
+    a += step;
+  }
+}
+
 /* Add fake points for missing mouse movements when the artist draw very fast creating an arc
  * with the vertice in the midle of the segment and using the angle of the previous segment. */
 static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *event, tGPsdata *p)
@@ -3564,7 +3564,6 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
     return;
   }
 
-  MaterialGPencilStyle *gp_style = p->material->gp_style;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   int input_samples = brush->gpencil_settings->input_samples;
   /* ensure sampling when using circular guide */
@@ -3576,28 +3575,10 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
     return;
   }
 
-  RegionView3D *rv3d = p->ar->regiondata;
-  float defaultpixsize = rv3d->pixsize * 1000.0f;
   int samples = (GP_MAX_INPUT_SAMPLES - input_samples + 1);
-  float thickness = (float)brush->size;
 
   float mouse_prv[2], mouse_cur[2];
-  float vec[3];
-  float scale = 1.0f;
-
-  /* get pixel scale */
-  gp_get_3d_reference(p, vec);
-  mul_m4_v3(rv3d->persmat, vec);
-  if (rv3d->is_persp) {
-    scale = vec[2] * defaultpixsize;
-  }
-  else {
-    scale = defaultpixsize;
-  }
-
-  /* The thickness of the brush is reduced of thickness to get overlap dots */
-  float dot_factor = (gp_style->mode == GP_STYLE_MODE_LINE) ? 1.0f : 0.05f;
-  float min_dist = ((thickness * dot_factor) / scale) * samples;
+  float min_dist = 4.0f * samples;
 
   copy_v2_v2(mouse_prv, p->mvalo);
   mouse_cur[0] = (float)event->mval[0] + 1.0f;
