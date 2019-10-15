@@ -101,7 +101,6 @@ void wm_open_init_use_scripts(wmOperator *op, bool use_prefs);
 /* wm_draw.c */
 struct GPUOffScreen;
 void wm_draw_offscreen_texture_parameters(struct GPUOffScreen *offscreen);
-void wm_draw_upside_down(int sizex, int sizey, bool to_srgb);
 
 #ifdef WITH_OPENXR
 /* wm_xr.c */

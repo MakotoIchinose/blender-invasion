@@ -496,20 +496,16 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   GPU_framebuffer_bind(surface_data->fbo);
 
-  GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
-
   wm_draw_offscreen_texture_parameters(offscreen);
 
   wmViewport(&rect);
-  if (surface_data->secondary_ghost_ctx &&
-      GHOST_isUpsideDownContext(surface_data->secondary_ghost_ctx)) {
-    GPU_texture_bind(texture, 0);
-    wm_draw_upside_down(draw_view->width, draw_view->height, draw_view->expects_srgb_buffer);
-    GPU_texture_unbind(texture);
-  }
-  else {
-    GPU_viewport_draw_to_screen_ex(viewport, &rect, draw_view->expects_srgb_buffer);
-  }
+  const bool is_upside_down = surface_data->secondary_ghost_ctx &&
+                              GHOST_isUpsideDownContext(surface_data->secondary_ghost_ctx);
+  const int ymin = is_upside_down ? draw_view->height : 0;
+  const int ymax = is_upside_down ? 0 : draw_view->height;
+  GPU_viewport_draw_to_screen_ex(
+      viewport, 0, draw_view->width, ymin, ymax, draw_view->expects_srgb_buffer);
+
   /* Leave viewport bound so GHOST_Xr can use its context/framebuffer, its unbound in
    * wm_xr_session_surface_draw(). */
   // GPU_viewport_unbind(viewport);

@@ -756,39 +756,6 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   }
 }
 
-void wm_draw_upside_down(int sizex, int sizey, bool to_srgb)
-{
-  GPUVertFormat *format = immVertexFormat();
-  uint texcoord = GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(to_srgb ? GPU_SHADER_2D_IMAGE_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE);
-
-  /* wmOrtho for the screen has this same offset */
-  const float halfx = GLA_PIXEL_OFS / sizex;
-  const float halfy = GLA_PIXEL_OFS / sizex;
-
-  immUniform1i("image", 0); /* texture is already bound to GL_TEXTURE0 unit */
-
-  immBegin(GPU_PRIM_TRI_FAN, 4);
-
-  immAttr2f(texcoord, halfx, 1.0f + halfy);
-  immVertex2f(pos, 0.0f, 0.0f);
-
-  immAttr2f(texcoord, 1.0f + halfx, 1.0f + halfy);
-  immVertex2f(pos, sizex, 0.0f);
-
-  immAttr2f(texcoord, 1.0f + halfx, halfy);
-  immVertex2f(pos, sizex, sizey);
-
-  immAttr2f(texcoord, halfx, halfy);
-  immVertex2f(pos, 0.0f, sizey);
-
-  immEnd();
-
-  immUnbindProgram();
-}
-
 static void wm_draw_window(bContext *C, wmWindow *win)
 {
   bScreen *screen = WM_window_get_active_screen(win);

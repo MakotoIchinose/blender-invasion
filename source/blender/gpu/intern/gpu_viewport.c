@@ -505,32 +505,18 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   }
 }
 
-void GPU_viewport_draw_to_screen_ex(GPUViewport *viewport, const rcti *rect, bool to_srgb)
+void GPU_viewport_draw_to_screen_ex(
+    GPUViewport *viewport, float x1, float x2, float y1, float y2, bool to_srgb)
 {
-  DefaultFramebufferList *dfbl = viewport->fbl;
+  GPUTexture *color = GPU_viewport_color_texture(viewport);
 
-  if (dfbl->default_fb == NULL) {
+  if (!color) {
     return;
   }
 
-  DefaultTextureList *dtxl = viewport->txl;
-
-  GPUTexture *color = dtxl->color;
-
-  const float w = (float)GPU_texture_width(color);
-  const float h = (float)GPU_texture_height(color);
-
-  BLI_assert(w == BLI_rcti_size_x(rect) + 1);
-  BLI_assert(h == BLI_rcti_size_y(rect) + 1);
-
   /* wmOrtho for the screen has this same offset */
-  const float halfx = GLA_PIXEL_OFS / w;
-  const float halfy = GLA_PIXEL_OFS / h;
-
-  float x1 = rect->xmin;
-  float x2 = rect->xmin + w;
-  float y1 = rect->ymin;
-  float y2 = rect->ymin + h;
+  const float halfx = GLA_PIXEL_OFS / ABS(x2 - x1);
+  const float halfy = GLA_PIXEL_OFS / ABS(y2 - y1);
 
   GPUShader *shader = GPU_shader_get_builtin_shader(
       to_srgb ? GPU_SHADER_2D_IMAGE_RECT_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE_RECT_COLOR);
@@ -553,7 +539,18 @@ void GPU_viewport_draw_to_screen_ex(GPUViewport *viewport, const rcti *rect, boo
 
 void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
 {
-  GPU_viewport_draw_to_screen_ex(viewport, rect, false);
+  GPUTexture *color = GPU_viewport_color_texture(viewport);
+
+  if (color) {
+    const float w = (float)GPU_texture_width(color);
+    const float h = (float)GPU_texture_height(color);
+
+    BLI_assert(w == BLI_rcti_size_x(rect) + 1);
+    BLI_assert(h == BLI_rcti_size_y(rect) + 1);
+
+    GPU_viewport_draw_to_screen_ex(
+        viewport, rect->xmin, rect->xmin + w, rect->ymin, rect->ymin + h, false);
+  }
 }
 
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))
