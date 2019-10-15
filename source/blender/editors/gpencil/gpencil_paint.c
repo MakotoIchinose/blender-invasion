@@ -3518,6 +3518,14 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   interp_v2_v2v2(v_half, &pt_prev->x, mval, 0.5f);
   sub_v2_v2(v_half, &pt_prev->x);
 
+  /* If angle is too sharp undo all changes and return. */
+  const float min_angle = DEG2RADF(120.0f);
+  float angle = angle_v2v2(v_prev, v_half);
+  if (angle < min_angle) {
+    gpd->runtime.sbuffer_used -= segments - 1;
+    return;
+  }
+
   /* Project the half vector to the previous vector and calculate the mid projected point. */
   float dot = dot_v2v2(v_prev, v_half);
   float l = len_squared_v2(v_prev);
