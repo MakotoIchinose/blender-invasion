@@ -377,7 +377,7 @@ static const char *openxr_ext_name_from_wm_gpu_binding(GHOST_TXrGraphicsBinding 
       return XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
 #endif
     case GHOST_kXrGraphicsUnknown:
-      assert(false);
+      assert(!"Could not identify graphics binding to choose.");
       return nullptr;
   }
 

@@ -214,7 +214,7 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
 
     if (r_requirement_info) {
       std::ostringstream strstream;
-      strstream << "Min DirectX 11 Feature Level " << gpu_requirements.minFeatureLevel
+      strstream << "Minimum DirectX 11 Feature Level " << gpu_requirements.minFeatureLevel
                 << std::endl;
 
       *r_requirement_info = std::move(strstream.str());

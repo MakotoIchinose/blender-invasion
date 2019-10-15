@@ -117,7 +117,9 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
 
   create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
 #if 0
-/* Proper reference space set up is not supported yet. We simply hand OpenXR
+/* TODO
+ *
+ * Proper reference space set up is not supported yet. We simply hand OpenXR
  * the global space as reference space and apply its pose onto the active
  * camera matrix to get a basic viewing experience going. If there's no active
  * camera with stick to the world origin.
