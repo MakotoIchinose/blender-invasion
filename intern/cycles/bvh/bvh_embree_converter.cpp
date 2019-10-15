@@ -804,9 +804,13 @@ void BVHEmbreeConverter::fillPack(PackedBVH &pack) {
 
   BVHNode *root = this->getBVH2();
   if(root == nullptr) {
-    pack.root_index = 0;
     pack.nodes.clear();
-    pack.leaf_nodes.clear();
+    pack.leaf_nodes.resize(1);
+    pack.leaf_nodes[0].x = 0;
+    pack.leaf_nodes[0].y = 0;
+    pack.leaf_nodes[0].z = 0;
+    pack.leaf_nodes[0].w = 0;
+    pack.root_index = -1;
     return;
   }
 
