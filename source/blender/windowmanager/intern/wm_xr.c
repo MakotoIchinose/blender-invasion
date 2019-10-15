@@ -490,7 +490,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   true,
                                   true,
                                   NULL,
-                                  true,
+                                  false,
                                   offscreen,
                                   viewport);
 
