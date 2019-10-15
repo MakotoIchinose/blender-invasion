@@ -17,59 +17,59 @@
  * All rights reserved.
  */
 
-#ifndef BKE_PROFILEPATH_H
-#define BKE_PROFILEPATH_H
+#ifndef __BKE_PROFILEPATH_H__
+#define __BKE_PROFILEPATH_H__
 
 /** \file
  * \ingroup bke
  */
 
-struct ProfileWidget;
+struct ProfileCurve;
 struct ProfilePoint;
 
-void BKE_profilewidget_set_defaults(struct ProfileWidget *prwdgt);
+void BKE_profilecurve_set_defaults(struct ProfileCurve *prwdgt);
 
-struct ProfileWidget *BKE_profilewidget_add(int preset);
+struct ProfileCurve *BKE_profilecurve_add(int preset);
 
-void BKE_profilewidget_free_data(struct ProfileWidget *prwdgt);
+void BKE_profilecurve_free_data(struct ProfileCurve *prwdgt);
 
-void BKE_profilewidget_free(struct ProfileWidget *prwdgt);
+void BKE_profilecurve_free(struct ProfileCurve *prwdgt);
 
-void BKE_profilewidget_copy_data(struct ProfileWidget *target, const struct ProfileWidget *prwdgt);
+void BKE_profilecurve_copy_data(struct ProfileCurve *target, const struct ProfileCurve *prwdgt);
 
-struct ProfileWidget *BKE_profilewidget_copy(const struct ProfileWidget *prwdgt);
+struct ProfileCurve *BKE_profilecurve_copy(const struct ProfileCurve *prwdgt);
 
-bool BKE_profilewidget_remove_point(struct ProfileWidget *prwdgt, struct ProfilePoint *point);
+bool BKE_profilecurve_remove_point(struct ProfileCurve *prwdgt, struct ProfilePoint *point);
 
-void BKE_profilewidget_remove(struct ProfileWidget *prwdgt, const short flag);
+void BKE_profilecurve_remove_by_flag(struct ProfileCurve *prwdgt, const short flag);
 
-struct ProfilePoint *BKE_profilewidget_insert(struct ProfileWidget *prwdgt, float x, float y);
+struct ProfilePoint *BKE_profilecurve_insert(struct ProfileCurve *prwdgt, float x, float y);
 
-void BKE_profilewidget_handle_set(struct ProfileWidget *prwdgt, int type);
+void BKE_profilecurve_handle_set(struct ProfileCurve *prwdgt, int type_1, int type_2);
 
-void BKE_profilewidget_reverse(struct ProfileWidget *prwdgt);
+void BKE_profilecurve_reverse(struct ProfileCurve *prwdgt);
 
-void BKE_profilewidget_reset(struct ProfileWidget *prwdgt);
+void BKE_profilecurve_reset(struct ProfileCurve *prwdgt);
 
-void BKE_profilewidget_create_samples(struct ProfileWidget *prwdgt,
+void BKE_profilecurve_create_samples(struct ProfileCurve *prwdgt,
                                       int n_segments,
                                       bool sample_straight_edges,
                                       struct ProfilePoint *r_samples);
 
-void BKE_profilewidget_initialize(struct ProfileWidget *prwdgt, short nsegments);
+void BKE_profilecurve_initialize(struct ProfileCurve *prwdgt, short nsegments);
 
 /* Called for a complete update of the widget after modifications */
-void BKE_profilewidget_changed(struct ProfileWidget *prwdgt, const bool rem_doubles);
+void BKE_profilecurve_update(struct ProfileCurve *prwdgt, const bool rem_doubles);
 
 /* Need to find the total length of the curve to sample a portion of it */
-float BKE_profilewidget_total_length(const struct ProfileWidget *prwdgt);
+float BKE_profilecurve_total_length(const struct ProfileCurve *prwdgt);
 
-void BKE_profilewidget_create_samples_even_spacing(struct ProfileWidget *prwdgt,
+void BKE_profilecurve_create_samples_even_spacing(struct ProfileCurve *prwdgt,
                                                    int n_segments,
                                                    struct ProfilePoint *r_samples);
 
 /* Length portion is the fraction of the total path length where we want the location */
-void BKE_profilewidget_evaluate_length_portion(const struct ProfileWidget *prwdgt,
+void BKE_profilecurve_evaluate_length_portion(const struct ProfileCurve *prwdgt,
                                                float length_portion,
                                                float *x_out,
                                                float *y_out);

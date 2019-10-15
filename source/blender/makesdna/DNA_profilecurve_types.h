@@ -26,29 +26,33 @@
 
 #include "DNA_vec_types.h"
 
-/** Number of points in high resolution table is dynamic up to the maximum */
+/** Number of points in high resolution table is dynamic up to the maximum. */
 #define PROF_TABLE_MAX 512
-/** Number of table points per control point */
+/** Number of table points per control point. */
 #define PROF_RESOL 16
-/** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint */
+/** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint. */
 #define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts - 1)) * PROF_RESOL) + 1)
 
 typedef struct ProfilePoint {
-  /** Location of the point, keep together */
+  /** Location of the point, keep together. */
   float x, y;
-  /** Flag for handle type and selection state */
+  /** Flag selection state and others. */
   short flag;
-  char _pad[2];
+  /** Flags for both handle's type (eProfilePointHandle). */
+  char h1, h2;
 } ProfilePoint;
 
 /** ProfilePoint->flag */
 enum {
   PROF_SELECT = (1 << 0),
-  PROF_HANDLE_VECTOR = (1 << 1),
-  PROF_HANDLE_AUTO = (1 << 2),
 };
 
-typedef struct ProfileWidget {
+typedef enum eProfilePointHandle {
+  PROF_HANDLE_VECTOR = 0,
+  PROF_HANDLE_AUTO = 1,
+} eProfilePointHandle;
+
+typedef struct ProfileCurve {
   /** Number of user-added points that define the profile */
   short totpoint;
   /** Number of sampled points */
@@ -67,9 +71,9 @@ typedef struct ProfileWidget {
   int changed_timestamp;
   /** Current rect, clip rect (is default rect too). */
   rctf view_rect, clip_rect;
-} ProfileWidget;
+} ProfileCurve;
 
-/** ProfileWidget->flag */
+/** ProfileCurve->flag */
 enum {
   PROF_USE_CLIP = (1 << 0),              /* Keep control points inside bounding rectangle. */
   PROF_SYMMETRY_MODE = (1 << 1),         /* Unused for now. */
@@ -77,12 +81,12 @@ enum {
   PROF_SAMPLE_EVEN_LENGTHS = (1 << 3),   /* Put segments evenly spaced along the path. */
 };
 
-typedef enum eProfileWidgetPresets {
+typedef enum eProfileCurvePresets {
   PROF_PRESET_LINE = 0,     /* Default simple line between end points. */
   PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile. */
   PROF_PRESET_CORNICE = 2,  /* Moulding type example. */
   PROF_PRESET_CROWN = 3,    /* Second moulding example. */
   PROF_PRESET_STEPS = 4,    /* Dynamic number of steps defined by totsegments. */
-} ProfileWiedgetPresets;
+} eProfileCurvePresets;
 
 #endif

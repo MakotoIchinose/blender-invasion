@@ -3732,9 +3732,9 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
       prop, "Custom Profile", "Whether to use a user inputed curve for the bevel's profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "prwdgt", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ProfileWidget");
-  RNA_def_property_pointer_sdna(prop, NULL, "prwdgt");
+  prop = RNA_def_property(srna, "custom_profile", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ProfileCurve");
+  RNA_def_property_pointer_sdna(prop, NULL, "custom_profile");
   RNA_def_property_ui_text(prop, "Custom Profile Path", "The path for the custom profile");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 

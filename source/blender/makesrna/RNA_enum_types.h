@@ -216,7 +216,7 @@ extern const EnumPropertyItem rna_enum_dt_layers_select_dst_items[];
 extern const EnumPropertyItem rna_enum_abc_compression_items[];
 extern const EnumPropertyItem rna_enum_context_mode_items[];
 
-extern const EnumPropertyItem rna_enum_profilewidget_preset_items[];
+extern const EnumPropertyItem rna_enum_profilecurve_preset_items[];
 
 /* API calls */
 int rna_node_tree_type_to_enum(struct bNodeTreeType *typeinfo);

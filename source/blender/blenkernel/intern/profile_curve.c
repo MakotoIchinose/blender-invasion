@@ -28,7 +28,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_profilewidget_types.h"
+#include "DNA_profilecurve_types.h"
 #include "DNA_curve_types.h"
 
 #include "BLI_blenlib.h"
@@ -37,100 +37,83 @@
 #include "BLI_task.h"
 #include "BLI_threads.h"
 
-#include "BKE_profile_widget.h"
+#include "BKE_profile_curve.h"
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
 
-void BKE_profilewidget_free_data(ProfileWidget *prwdgt)
+void BKE_profilecurve_free_data(ProfileCurve *prwdgt)
 {
-  if (prwdgt->path) {
-    MEM_freeN(prwdgt->path);
-    prwdgt->path = NULL;
-  }
-  if (prwdgt->table) {
-    MEM_freeN(prwdgt->table);
-    prwdgt->table = NULL;
-  }
-  if (prwdgt->segments) {
-    MEM_freeN(prwdgt->segments);
-    prwdgt->segments = NULL;
-  }
+  MEM_SAFE_FREE(prwdgt->path);
+  MEM_SAFE_FREE(prwdgt->table);
+  MEM_SAFE_FREE(prwdgt->segments);
 }
 
-void BKE_profilewidget_free(ProfileWidget *prwdgt)
+void BKE_profilecurve_free(ProfileCurve *prwdgt)
 {
   if (prwdgt) {
-    BKE_profilewidget_free_data(prwdgt);
+    BKE_profilecurve_free_data(prwdgt);
     MEM_freeN(prwdgt);
   }
 }
 
-void BKE_profilewidget_copy_data(ProfileWidget *target, const ProfileWidget *prwdgt)
+void BKE_profilecurve_copy_data(ProfileCurve *target, const ProfileCurve *prwdgt)
 {
   *target = *prwdgt;
 
-  if (prwdgt->path) {
-    target->path = MEM_dupallocN(prwdgt->path);
-  }
-  if (prwdgt->table) {
-    target->table = MEM_dupallocN(prwdgt->table);
-  }
-  if (prwdgt->segments) {
-    target->segments = MEM_dupallocN(prwdgt->segments);
-  }
+  target->path = MEM_dupallocN(prwdgt->path);
+  target->table = MEM_dupallocN(prwdgt->table);
+  target->segments = MEM_dupallocN(prwdgt->segments);
 }
 
-ProfileWidget *BKE_profilewidget_copy(const ProfileWidget *prwdgt)
+ProfileCurve *BKE_profilecurve_copy(const ProfileCurve *prwdgt)
 {
   if (prwdgt) {
-    ProfileWidget *new_prdgt = MEM_dupallocN(prwdgt);
-    BKE_profilewidget_copy_data(new_prdgt, prwdgt);
+    ProfileCurve *new_prdgt = MEM_dupallocN(prwdgt);
+    BKE_profilecurve_copy_data(new_prdgt, prwdgt);
     return new_prdgt;
   }
   return NULL;
 }
 
 /** Removes a specific point from the path of control points.
- * \note: Requires profilewidget_changed call after. */
-bool BKE_profilewidget_remove_point(ProfileWidget *prwdgt, ProfilePoint *point)
+ * \note: Requires profilecurve_update call after. */
+bool BKE_profilecurve_remove_point(ProfileCurve *prwdgt, ProfilePoint *point)
 {
   ProfilePoint *pts;
-  int i_old, i_new, n_removed = 0;
 
   /* Must have 2 points minimum. */
   if (prwdgt->totpoint <= 2) {
     return false;
   }
 
-  pts = MEM_mallocN((size_t)prwdgt->totpoint * sizeof(ProfilePoint), "path points");
-
-  /* Build the new list without the point when it's found. Keep the first and last points. */
-  for (i_old = 1, i_new = 0; i_old < prwdgt->totpoint - 1; i_old++) {
-    if (&prwdgt->path[i_old] != point) {
-      pts[i_new] = prwdgt->path[i_old];
-      i_new++;
-    }
-    else {
-      n_removed++;
-    }
+  /* Input point must be within the array. */
+  if (!(point > prwdgt->path && point < prwdgt->path + prwdgt->totpoint)) {
+    return false;
   }
+
+  pts = MEM_mallocN(sizeof(ProfilePoint) * prwdgt->totpoint, "path points");
+
+  uint i_delete = (uint)(point - prwdgt->path);
+
+  /* Copy the before and after the deleted point. */
+  memcpy(pts, prwdgt->path, i_delete);
+  memcpy(pts + i_delete, prwdgt->path + i_delete + 1, (size_t)prwdgt->totpoint - i_delete - 1);
 
   MEM_freeN(prwdgt->path);
   prwdgt->path = pts;
-  prwdgt->totpoint -= n_removed;
-  return (n_removed != 0);
+  prwdgt->totpoint -= 1;
+  return true;
 }
 
 /** Removes every point in the widget with the supplied flag set, except for the first and last.
  * \param flag: ProfilePoint->flag.
- * \note: Requires profilewidget_changed call after. */
-void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
+ * \note: Requires profilecurve_update call after. */
+void BKE_profilecurve_remove_by_flag(ProfileCurve *prwdgt, const short flag)
 {
   int i_old, i_new, n_removed = 0;
 
   /* Copy every point without the flag into the new path. */
-  ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
-                                      "path points");
+  ProfilePoint *new_pts = MEM_mallocN(sizeof(ProfilePoint) * prwdgt->totpoint, "path points");
 
   /* Build the new list without any of the points with the flag. Keep the first and last points. */
   new_pts[0] = prwdgt->path[0];
@@ -153,8 +136,8 @@ void BKE_profilewidget_remove(ProfileWidget *prwdgt, const short flag)
 /** Adds a new point at the specified location. The choice for which points to place the new vertex
  * between is made by checking which control point line segment is closest to the new point and
  * placing the new vertex in between that segment's points.
- * \note: Requires profilewidget_changed call after. */
-ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
+ * \note: Requires profilecurve_update call after. */
+ProfilePoint *BKE_profilecurve_insert(ProfileCurve *prwdgt, float x, float y)
 {
   ProfilePoint *new_pt = NULL;
   float new_loc[2] = {x, y};
@@ -167,7 +150,7 @@ ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
   /* Find the index at the line segment that's closest to the new position. */
   float distance;
   float min_distance = FLT_MAX;
-  int insert_i = 0;
+  int i_insert = 0;
   for (int i = 0; i < prwdgt->totpoint - 1; i++) {
     float loc1[2] = {prwdgt->path[i].x, prwdgt->path[i].y};
     float loc2[2] = {prwdgt->path[i + 1].x, prwdgt->path[i + 1].y};
@@ -175,20 +158,21 @@ ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
     distance = dist_squared_to_line_segment_v2(new_loc, loc1, loc2);
     if (distance < min_distance) {
       min_distance = distance;
-      insert_i = i + 1;
+      i_insert = i + 1;
     }
   }
 
   /* Insert the new point at the location we found and copy all of the old points in as well. */
   prwdgt->totpoint++;
-  ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
-                                      "path points");
+  ProfilePoint *new_pts = MEM_mallocN(sizeof(ProfilePoint) * prwdgt->totpoint, "path points");
   for (int i_new = 0, i_old = 0; i_new < prwdgt->totpoint; i_new++) {
-    if (i_new != insert_i) {
+    if (i_new != i_insert) {
       /* Insert old points */
       new_pts[i_new].x = prwdgt->path[i_old].x;
       new_pts[i_new].y = prwdgt->path[i_old].y;
       new_pts[i_new].flag = prwdgt->path[i_old].flag & ~PROF_SELECT; /* Deselect old points. */
+      new_pts[i_new].h1 = prwdgt->path[i_old].h1;
+      new_pts[i_new].h2 = prwdgt->path[i_old].h2;
       i_old++;
     }
     else {
@@ -197,48 +181,72 @@ ProfilePoint *BKE_profilewidget_insert(ProfileWidget *prwdgt, float x, float y)
       new_pts[i_new].y = y;
       new_pts[i_new].flag = PROF_SELECT;
       new_pt = &new_pts[i_new];
+      /* Set handles of new point based on its neighbors. */
+      if (new_pts[i_new - 1].h2 == PROF_HANDLE_VECTOR &&
+          prwdgt->path[i_insert].h1 == PROF_HANDLE_VECTOR) {
+        new_pt->h1 = new_pt->h2 = PROF_HANDLE_VECTOR;
+      }
+      else {
+        new_pt->h1 = new_pt->h2 = PROF_HANDLE_AUTO;
+      }
     }
   }
 
-  /* Free the old points and use the new ones. */
+  /* Free the old path and use the new one. */
   MEM_freeN(prwdgt->path);
   prwdgt->path = new_pts;
   return new_pt;
 }
 
 /** Sets the handle type of the selected control points.
- * \param type: Either HD_VECT or HD_AUTO.
- * \note: Requires profilewidget_changed call after. */
-void BKE_profilewidget_handle_set(ProfileWidget *prwdgt, int type)
+ * \param type_*: Either HD_VECT or HD_AUTO. Handle types for the first and second handles.
+ * \note: Requires profilecurve_update call after. */
+void BKE_profilecurve_handle_set(ProfileCurve *prwdgt, int type_1, int type_2)
 {
   for (int i = 0; i < prwdgt->totpoint; i++) {
     if (prwdgt->path[i].flag & PROF_SELECT) {
-      prwdgt->path[i].flag &= ~(PROF_HANDLE_VECTOR | PROF_HANDLE_AUTO);
-      if (type == HD_VECT) {
-        prwdgt->path[i].flag |= PROF_HANDLE_VECTOR;
+      switch (type_1) {
+        case HD_AUTO:
+          prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+          break;
+        case HD_VECT:
+          prwdgt->path[i].h1 = PROF_HANDLE_VECTOR;
+          break;
+        default:
+          prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+          break;
       }
-      else if (type == HD_AUTO) {
-        prwdgt->path[i].flag |= PROF_HANDLE_AUTO;
+      switch (type_2) {
+        case HD_AUTO:
+          prwdgt->path[i].h2 = PROF_HANDLE_AUTO;
+          break;
+        case HD_VECT:
+          prwdgt->path[i].h2 = PROF_HANDLE_VECTOR;
+          break;
+      default:
+        prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+        break;
       }
     }
   }
 }
 
 /** Flips the profile across the diagonal so that its orientation is reversed.
- * \note: Requires profilewidget_changed call after.  */
-void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
+ * \note: Requires profilecurve_update call after.  */
+void BKE_profilecurve_reverse(ProfileCurve *prwdgt)
 {
   /* Quick fix for when there are only two points and reversing shouldn't do anything */
   if (prwdgt->totpoint == 2) {
     return;
   }
-  ProfilePoint *new_pts = MEM_mallocN(((size_t)prwdgt->totpoint) * sizeof(ProfilePoint),
-                                      "path points");
+  ProfilePoint *new_pts = MEM_mallocN(sizeof(ProfilePoint) * prwdgt->totpoint, "path points");
   /* Mirror the new points across the y = x line */
   for (int i = 0; i < prwdgt->totpoint; i++) {
     new_pts[prwdgt->totpoint - i - 1].x = prwdgt->path[i].y;
     new_pts[prwdgt->totpoint - i - 1].y = prwdgt->path[i].x;
     new_pts[prwdgt->totpoint - i - 1].flag = prwdgt->path[i].flag;
+    new_pts[prwdgt->totpoint - i - 1].h1 = prwdgt->path[i].h1;
+    new_pts[prwdgt->totpoint - i - 1].h2 = prwdgt->path[i].h2;
   }
 
   /* Free the old points and use the new ones */
@@ -247,30 +255,41 @@ void BKE_profilewidget_reverse(ProfileWidget *prwdgt)
 }
 
 /** Builds a quarter circle profile with space on each side for 'support loops.' */
-static void profilewidget_build_supports(ProfileWidget *prwdgt)
+static void profilecurve_build_supports(ProfileCurve *prwdgt)
 {
   int n = prwdgt->totpoint;
 
   prwdgt->path[0].x = 1.0;
   prwdgt->path[0].y = 0.0;
-  prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[0].flag = 0;
+  prwdgt->path[0].h1 = PROF_HANDLE_VECTOR;
+  prwdgt->path[0].h2 = PROF_HANDLE_VECTOR;
   prwdgt->path[1].x = 1.0;
   prwdgt->path[1].y = 0.5;
-  prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[1].flag = 0;
+  prwdgt->path[1].h1 = PROF_HANDLE_VECTOR;
+  prwdgt->path[1].h2 = PROF_HANDLE_VECTOR;
   for (int i = 1; i < n - 2; i++) {
     prwdgt->path[i + 1].x = 1.0f - (0.5f * (1.0f - cosf((float)((i / (float)(n - 3))) * M_PI_2)));
     prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / (float)(n - 3)) * M_PI_2));
+    prwdgt->path[i + 1].flag = 0;
+    prwdgt->path[i + 1].h1 = PROF_HANDLE_AUTO;
+    prwdgt->path[i + 1].h2 = PROF_HANDLE_AUTO;
   }
   prwdgt->path[n - 2].x = 0.5;
   prwdgt->path[n - 2].y = 1.0;
-  prwdgt->path[n - 2].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 2].flag = 0;
+  prwdgt->path[n - 2].h1 = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 2].h2 = PROF_HANDLE_VECTOR;
   prwdgt->path[n - 1].x = 0.0;
   prwdgt->path[n - 1].y = 1.0;
-  prwdgt->path[n - 1].flag = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 1].flag = 0;
+  prwdgt->path[n - 1].h1 = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 1].h2 = PROF_HANDLE_VECTOR;
 }
 
 /** Puts the widget's control points in a step pattern. Uses vector handles for each point. */
-static void profilewidget_build_steps(ProfileWidget *prwdgt)
+static void profilecurve_build_steps(ProfileCurve *prwdgt)
 {
   int n, step_x, step_y;
   float n_steps_x, n_steps_y;
@@ -281,10 +300,14 @@ static void profilewidget_build_steps(ProfileWidget *prwdgt)
   if (n == 2) {
     prwdgt->path[0].x = 1.0f;
     prwdgt->path[0].y = 0.0f;
-    prwdgt->path[0].flag = PROF_HANDLE_VECTOR;
+    prwdgt->path[0].flag = 0;
+    prwdgt->path[0].h1 = PROF_HANDLE_VECTOR;
+    prwdgt->path[0].h2 = PROF_HANDLE_VECTOR;
     prwdgt->path[1].x = 0.0f;
     prwdgt->path[1].y = 1.0f;
-    prwdgt->path[1].flag = PROF_HANDLE_VECTOR;
+    prwdgt->path[1].flag = 0;
+    prwdgt->path[1].h1 = PROF_HANDLE_VECTOR;
+    prwdgt->path[1].h2 = PROF_HANDLE_VECTOR;
     return;
   }
 
@@ -296,21 +319,25 @@ static void profilewidget_build_steps(ProfileWidget *prwdgt)
     step_y = i / 2;
     prwdgt->path[i].x = 1.0f - ((float)(2 * step_x) / n_steps_x);
     prwdgt->path[i].y = (float)(2 * step_y) / n_steps_y;
-    prwdgt->path[i].flag = PROF_HANDLE_VECTOR;
+    prwdgt->path[i].flag = 0;
+    prwdgt->path[i].h1 = PROF_HANDLE_VECTOR;
+    prwdgt->path[i].h2 = PROF_HANDLE_VECTOR;
   }
 }
 
 /** Shorthand helper function for setting location and interpolation of a point */
-static void inline set_point(ProfilePoint *point, float x, float y, short flag)
+static void point_init(ProfilePoint *point, float x, float y, short flag, char h1, char h2)
 {
   point->x = x;
   point->y = y;
   point->flag = flag;
+  point->h1 = h1;
+  point->h2 = h2;
 }
 
 /** Resets the profile to the current preset.
- * \note: Requires profilewidget_changed call after. */
-void BKE_profilewidget_reset(ProfileWidget *prwdgt)
+ * \note: Requires profilecurve_update call after. */
+void BKE_profilecurve_reset(ProfileCurve *prwdgt)
 {
   if (prwdgt->path) {
     MEM_freeN(prwdgt->path);
@@ -349,46 +376,46 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
       break;
   }
 
-  prwdgt->path = MEM_callocN((size_t)prwdgt->totpoint * sizeof(ProfilePoint), "path points");
+  prwdgt->path = MEM_callocN(sizeof(ProfilePoint) * prwdgt->totpoint, "path points");
 
   switch (preset) {
     case PROF_PRESET_LINE:
-      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[1], 0.0f, 1.0f, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[1], 0.0f, 1.0f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
       break;
     case PROF_PRESET_SUPPORTS:
-      profilewidget_build_supports(prwdgt);
+      profilecurve_build_supports(prwdgt);
       break;
     case PROF_PRESET_CORNICE:
-      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[1], 1.0f, 0.125f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[2], 0.92f, 0.16f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[3], 0.875f, 0.25f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[4], 0.8f, 0.25f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[5], 0.733f, 0.433f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[6], 0.582f, 0.522f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[7], 0.4f, 0.6f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[8], 0.289f, 0.727f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[9], 0.25f, 0.925f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[10], 0.175f, 0.925f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[11], 0.175f, 1.0f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[12], 0.0f, 1.0f, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[1], 1.0f, 0.125f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[2], 0.92f, 0.16f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[3], 0.875f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[4], 0.8f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[5], 0.733f, 0.433f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[6], 0.582f, 0.522f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[7], 0.4f, 0.6f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[8], 0.289f, 0.727f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[9], 0.25f, 0.925f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[10], 0.175f, 0.925f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[11], 0.175f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[12], 0.0f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
       break;
     case PROF_PRESET_CROWN:
-      set_point(&prwdgt->path[0], 1.0f, 0.0f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[1], 1.0f, 0.25f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[2], 0.75f, 0.25f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[3], 0.75f, 0.325f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[4], 0.925, 0.4f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[5], 0.975f, 0.5f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[6], 0.94f, 0.65f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[7], 0.85f, 0.75f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[8], 0.75f, 0.875f, PROF_HANDLE_AUTO);
-      set_point(&prwdgt->path[9], 0.7f, 1.0f, PROF_HANDLE_VECTOR);
-      set_point(&prwdgt->path[10], 0.0f, 1.0f, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[1], 1.0f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[2], 0.75f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[3], 0.75f, 0.325f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[4], 0.925, 0.4f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[5], 0.975f, 0.5f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[6], 0.94f, 0.65f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[7], 0.85f, 0.75f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[8], 0.75f, 0.875f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[9], 0.7f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[10], 0.0f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
       break;
     case PROF_PRESET_STEPS:
-      profilewidget_build_steps(prwdgt);
+      profilecurve_build_steps(prwdgt);
       break;
   }
 
@@ -398,7 +425,7 @@ void BKE_profilewidget_reset(ProfileWidget *prwdgt)
   }
 }
 
-/** Helper for 'profile_widget_create' samples. Returns whether both handles that make up the edge
+/** Helper for 'profile_curve_create' samples. Returns whether both handles that make up the edge
  * are vector handles. */
 static bool is_curved_edge(BezTriple *bezt, int i)
 {
@@ -486,7 +513,7 @@ static void calchandle_profile(BezTriple *bezt, const BezTriple *prev, const Bez
 #undef point_handle2
 }
 
-/** Helper function for 'BKE_profilewidget_create_samples.' Calculates the angle between the
+/** Helper function for 'BKE_profilecurve_create_samples.' Calculates the angle between the
  * handles on the inside of the edge starting at index i. A larger angle means the edge is
  * more curved.
  * \param i_edge: The start index of the edge to calculate the angle for. */
@@ -511,8 +538,8 @@ typedef struct {
   float bezt_curvature;
 } CurvatureSortPoint;
 
-/** Helper function for 'BKE_profilewidget_create_samples' for sorting edges based on curvature. */
-static int search_points_curvature(const void *in_a, const void *in_b)
+/** Helper function for 'BKE_profilecurve_create_samples' for sorting edges based on curvature. */
+static int sort_points_curvature(const void *in_a, const void *in_b)
 {
   const CurvatureSortPoint *a = (const CurvatureSortPoint *)in_a;
   const CurvatureSortPoint *b = (const CurvatureSortPoint *)in_b;
@@ -535,13 +562,13 @@ static int search_points_curvature(const void *in_a, const void *in_b)
  * \param r_samples: An array of points to put the sampled positions. Must have length n_segments.
  * \return r_samples: Fill the array with the sampled locations and if the point corresponds
  *         to a control point, its handle type */
-void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
+void BKE_profilecurve_create_samples(ProfileCurve *prwdgt,
                                       int n_segments,
                                       bool sample_straight_edges,
                                       ProfilePoint *r_samples)
 {
 #ifdef DEBUG_PRWDGT_TABLE
-  printf("PROFILEWIDGET CREATE SAMPLES\n");
+  printf("profilecurve CREATE SAMPLES\n");
 #endif
   BezTriple *bezt;
   int i, n_left, n_common, i_sample, n_curved_edges;
@@ -553,11 +580,12 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
   BLI_assert(n_segments > 0);
 
   /* Create Bezier points for calculating the higher resolution path. */
-  bezt = MEM_callocN((size_t)totpoints * sizeof(BezTriple), "beztarr");
+  bezt = MEM_callocN(sizeof(BezTriple) * totpoints, "beztarr");
   for (i = 0; i < totpoints; i++) {
     bezt[i].vec[1][0] = prwdgt->path[i].x;
     bezt[i].vec[1][1] = prwdgt->path[i].y;
-    bezt[i].h1 = bezt[i].h2 = (prwdgt->path[i].flag & PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
+    bezt[i].h1 = (prwdgt->path[i].h1 == PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
+    bezt[i].h2 = (prwdgt->path[i].h2 == PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
   }
   /* Give the first and last bezier points the same handle type as their neighbors. */
   if (totpoints > 2) {
@@ -572,7 +600,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
   calchandle_profile(&bezt[totpoints - 1], &bezt[totpoints - 2], NULL);
 
   /* Create a list of edge indices with the most curved at the start, least curved at the end. */
-  curve_sorted = MEM_callocN((size_t)totedges * sizeof(CurvatureSortPoint), "curve sorted");
+  curve_sorted = MEM_callocN(sizeof(CurvatureSortPoint) * totedges, "curve sorted");
   for (i = 0; i < totedges; i++) {
     curve_sorted[i].bezt_index = i;
   }
@@ -580,10 +608,10 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
   for (i = 0; i < totedges; i++) {
     curve_sorted[i].bezt_curvature = bezt_edge_handle_angle(bezt, i);
   }
-  qsort(curve_sorted, (size_t)totedges, sizeof(CurvatureSortPoint), search_points_curvature);
+  qsort(curve_sorted, (size_t)totedges, sizeof(CurvatureSortPoint), sort_points_curvature);
 
   /* Assign the number of sampled points for each edge. */
-  n_samples = MEM_callocN((size_t)totedges * sizeof(int), "create samples numbers");
+  n_samples = MEM_callocN(sizeof(int) * totedges, "create samples numbers");
   int n_added = 0;
   if (n_segments >= totedges) {
     if (sample_straight_edges) {
@@ -616,7 +644,7 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
       n_common = n_left / n_curved_edges;                /* Number assigned to all curved edges */
       if (n_common > 0) {
         for (i = 0; i < totedges; i++) {
-          /* Add the common number if it's a c  urved edges or if all of them will get it. */
+          /* Add the common number if it's a curved edge or if edges are curved. */
           if (is_curved_edge(bezt, i) || n_curved_edges == totedges) {
             n_samples[i] += n_common;
             n_added += n_common;
@@ -646,15 +674,18 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
   /* Sample the points and add them to the locations table. */
   for (i_sample = 0, i = 0; i < totedges; i++) {
     if (n_samples[i] > 0) {
-      /* Carry over the handle type from the control point to its first corresponding sample. */
-      r_samples[i_sample].flag = (bezt[i].h2 == HD_VECT) ? PROF_HANDLE_VECTOR : PROF_HANDLE_AUTO;
-      /* All extra sample points for this control point get "auto" handles */
+      /* Carry over the handle types from the control point to its first corresponding sample. */
+      r_samples[i_sample].h1 = prwdgt->path[i].h1;
+      r_samples[i_sample].h2 = prwdgt->path[i].h2;
+      /* All extra sample points for this control point get "auto" handles. */
       for (int j = i_sample + 1; j < i_sample + n_samples[i]; j++) {
-        r_samples[j].flag = PROF_HANDLE_AUTO;
+        r_samples[j].flag = 0;
+        r_samples[j].h1 = PROF_HANDLE_AUTO;
+        r_samples[j].h2 = PROF_HANDLE_AUTO;
         BLI_assert(j < n_segments);
       }
 
-      /* Do the sampling from bezier points, X values first, then Y values */
+      /* Do the sampling from bezier points, X values first, then Y values. */
       BKE_curve_forward_diff_bezier(bezt[i].vec[1][0],
                                     bezt[i].vec[2][0],
                                     bezt[i + 1].vec[0][0],
@@ -697,13 +728,12 @@ void BKE_profilewidget_create_samples(ProfileWidget *prwdgt,
 
 /** Creates a higher resolution table by sampling the curved points. This table is used for display
  * and evenly spaced evaluation. */
-static void profilewidget_make_table(ProfileWidget *prwdgt)
+static void profilecurve_make_table(ProfileCurve *prwdgt)
 {
   int n_samples = PROF_N_TABLE(prwdgt->totpoint);
-  ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
-                                        "high-res table");
+  ProfilePoint *new_table = MEM_callocN(sizeof(ProfilePoint) * (n_samples + 1), "high-res table");
 
-  BKE_profilewidget_create_samples(prwdgt, n_samples - 1, false, new_table);
+  BKE_profilecurve_create_samples(prwdgt, n_samples - 1, false, new_table);
   /* Manually add last point at the end of the profile */
   new_table[n_samples - 1].x = 0.0f;
   new_table[n_samples - 1].y = 1.0f;
@@ -724,21 +754,20 @@ static void profilewidget_make_table(ProfileWidget *prwdgt)
 
 /** Creates the table of points used for displaying a preview of the sampled segment locations on
  * the widget itself. */
-static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
+static void profilecurve_make_segments_table(ProfileCurve *prwdgt)
 {
   int n_samples = prwdgt->totsegments;
   if (n_samples <= 0) {
     return;
   }
-  ProfilePoint *new_table = MEM_callocN((size_t)(n_samples + 1) * sizeof(ProfilePoint),
-                                        "samples table");
+  ProfilePoint *new_table = MEM_callocN(sizeof(ProfilePoint) * (n_samples + 1), "samples table");
 
   if (prwdgt->flag & PROF_SAMPLE_EVEN_LENGTHS) {
     /* Even length sampling incompatible with only straight edge sampling for now. */
-    BKE_profilewidget_create_samples_even_spacing(prwdgt, n_samples, new_table);
+    BKE_profilecurve_create_samples_even_spacing(prwdgt, n_samples, new_table);
   }
   else {
-    BKE_profilewidget_create_samples(
+    BKE_profilecurve_create_samples(
         prwdgt, n_samples, prwdgt->flag & PROF_SAMPLE_STRAIGHT_EDGES, new_table);
   }
 
@@ -750,7 +779,7 @@ static void profilewidget_make_segments_table(ProfileWidget *prwdgt)
 
 /** Sets the default settings and clip range for the profile widget. Does not generate either
  * table. */
-void BKE_profilewidget_set_defaults(ProfileWidget *prwdgt)
+void BKE_profilecurve_set_defaults(ProfileCurve *prwdgt)
 {
   prwdgt->flag = PROF_USE_CLIP;
 
@@ -769,22 +798,22 @@ void BKE_profilewidget_set_defaults(ProfileWidget *prwdgt)
 }
 
 /** Returns a pointer to a newly allocated profile widget, using the given preset.
-  \param preset: Value in eProfileWidgetPresets. */
-struct ProfileWidget *BKE_profilewidget_add(int preset)
+  \param preset: Value in eprofilecurvePresets. */
+struct ProfileCurve *BKE_profilecurve_add(int preset)
 {
-  ProfileWidget *prwdgt = MEM_callocN(sizeof(ProfileWidget), "profile widget");
+  ProfileCurve *prwdgt = MEM_callocN(sizeof(ProfileCurve), "profile widget");
 
-  BKE_profilewidget_set_defaults(prwdgt);
+  BKE_profilecurve_set_defaults(prwdgt);
   prwdgt->preset = preset;
-  BKE_profilewidget_reset(prwdgt);
-  profilewidget_make_table(prwdgt);
+  BKE_profilecurve_reset(prwdgt);
+  profilecurve_make_table(prwdgt);
 
   return prwdgt;
 }
 
 /** Should be called after the widget is changed. Does profile and remove double checks and more
  * importantly, recreates the display / evaluation and segments tables. */
-void BKE_profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
+void BKE_profilecurve_update(ProfileCurve *prwdgt, const bool remove_double)
 {
   ProfilePoint *points = prwdgt->path;
   rctf *clipr = &prwdgt->clip_rect;
@@ -837,34 +866,34 @@ void BKE_profilewidget_changed(ProfileWidget *prwdgt, const bool remove_double)
       }
     }
     if (i != prwdgt->totpoint - 1) {
-      BKE_profilewidget_remove(prwdgt, 2);
+      BKE_profilecurve_remove_by_flag(prwdgt, 2);
     }
   }
 
   /* Create the high resolution table for drawing and some evaluation functions. */
-  profilewidget_make_table(prwdgt);
+  profilecurve_make_table(prwdgt);
 
   /* Store a table of samples for the segment locations for a preview and the table's user. */
   if (prwdgt->totsegments > 0) {
-    profilewidget_make_segments_table(prwdgt);
+    profilecurve_make_segments_table(prwdgt);
   }
 }
 
 /** Refreshes the higher resolution table sampled from the input points. A call to this or
- * profilewidget_changed is needed before evaluation functions that use the table. Also sets the
+ * profilecurve_update is needed before evaluation functions that use the table. Also sets the
  * number of segments used for the display preview of the locations of the sampled points. */
-void BKE_profilewidget_initialize(ProfileWidget *prwdgt, short nsegments)
+void BKE_profilecurve_initialize(ProfileCurve *prwdgt, short nsegments)
 {
   prwdgt->totsegments = nsegments;
 
   /* Calculate the higher resolution / segments tables for display and evaluation. */
-  BKE_profilewidget_changed(prwdgt, false);
+  BKE_profilecurve_update(prwdgt, false);
 }
 
 /** Gives the distance to the next point in the widget's sampled table, in other words the length
  * of the ith edge of the table.
- * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table. */
-static float profilewidget_distance_to_next_table_point(const ProfileWidget *prwdgt, int i)
+ * \note Requires profilecurve_initialize or profilecurve_update call before to fill table. */
+static float profilecurve_distance_to_next_table_point(const ProfileCurve *prwdgt, int i)
 {
   BLI_assert(i < PROF_N_TABLE(prwdgt->totpoint));
 
@@ -872,8 +901,8 @@ static float profilewidget_distance_to_next_table_point(const ProfileWidget *prw
 }
 
 /** Calculates the total length of the profile from the curves sampled in the table.
- * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table. */
-float BKE_profilewidget_total_length(const ProfileWidget *prwdgt)
+ * \note Requires profilecurve_initialize or profilecurve_update call before to fill table. */
+float BKE_profilecurve_total_length(const ProfileCurve *prwdgt)
 {
   float total_length = 0;
   for (int i = 0; i < PROF_N_TABLE(prwdgt->totpoint) - 1; i++) {
@@ -884,17 +913,17 @@ float BKE_profilewidget_total_length(const ProfileWidget *prwdgt)
 
 /** Samples evenly spaced positions along the profile widget's table (generated from path). Fills
  * an entire table at once for a speedup if all of the results are going to be used anyway.
- * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table.
+ * \note Requires profilecurve_initialize or profilecurve_update call before to fill table.
  * \note Working, but would conflict with "Sample Straight Edges" option, so this is unused for
  * now. */
-void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
+void BKE_profilecurve_create_samples_even_spacing(ProfileCurve *prwdgt,
                                                    int n_segments,
                                                    ProfilePoint *r_samples)
 {
-  const float total_length = BKE_profilewidget_total_length(prwdgt);
+  const float total_length = BKE_profilecurve_total_length(prwdgt);
   const float segment_length = total_length / n_segments;
   float length_travelled = 0.0f;
-  float distance_to_next_table_point = profilewidget_distance_to_next_table_point(prwdgt, 0);
+  float distance_to_next_table_point = profilecurve_distance_to_next_table_point(prwdgt, 0);
   float distance_to_previous_table_point = 0.0f;
   float segment_left, factor;
   int i_table = 0;
@@ -911,7 +940,7 @@ void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
       length_travelled += distance_to_next_table_point;
       segment_left -= distance_to_next_table_point;
       i_table++;
-      distance_to_next_table_point = profilewidget_distance_to_next_table_point(prwdgt, i_table);
+      distance_to_next_table_point = profilecurve_distance_to_next_table_point(prwdgt, i_table);
       distance_to_previous_table_point = 0.0f;
     }
     /* We're at the last table point that fits inside the current segment, use interpolation. */
@@ -944,8 +973,8 @@ void BKE_profilewidget_create_samples_even_spacing(ProfileWidget *prwdgt,
 /** Does a single evaluation along the profile's path. Travels down (length_portion * path) length
  * and returns the position at that point.
  * \param length_portion: The portion (0 to 1) of the path's full length to sample at.
- * \note Requires profilewidget_initialize or profilewidget_changed call before to fill table */
-void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
+ * \note Requires profilecurve_initialize or profilecurve_update call before to fill table */
+void BKE_profilecurve_evaluate_length_portion(const ProfileCurve *prwdgt,
                                                float length_portion,
                                                float *x_out,
                                                float *y_out)
@@ -953,7 +982,7 @@ void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
 #ifdef DEBUG_PRWDGT_EVALUATE
   printf("PROFILEPATH EVALUATE\n");
 #endif
-  const float total_length = BKE_profilewidget_total_length(prwdgt);
+  const float total_length = BKE_profilecurve_total_length(prwdgt);
   float requested_length = length_portion * total_length;
 
   /* Find the last point along the path with a lower length portion than the input. */
@@ -964,7 +993,7 @@ void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
     if (i == PROF_N_TABLE(prwdgt->totpoint) - 2) {
       break;
     }
-    float new_length = profilewidget_distance_to_next_table_point(prwdgt, i);
+    float new_length = profilecurve_distance_to_next_table_point(prwdgt, i);
     if (length_travelled + new_length >= requested_length) {
       break;
     }
@@ -974,7 +1003,7 @@ void BKE_profilewidget_evaluate_length_portion(const ProfileWidget *prwdgt,
 
   /* Now travel the remaining distance of length portion down the path to the next point and
    * find the location where we stop. */
-  float distance_to_next_point = profilewidget_distance_to_next_table_point(prwdgt, i);
+  float distance_to_next_point = profilecurve_distance_to_next_table_point(prwdgt, i);
   float lerp_factor = (requested_length - length_travelled) / distance_to_next_point;
 
 #ifdef DEBUG_PRWDGT_EVALUATE

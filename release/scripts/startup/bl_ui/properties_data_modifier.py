@@ -180,11 +180,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row()
         row.enabled = md.use_custom_profile
         if md.use_custom_profile:
-            layout.template_profilewidget(md, "prwdgt")
+            layout.template_profilecurve(md, "custom_profile")
             # If the number of segments has changed, update the table to show the new sampled
             # segment locations on the widget
-            if md.prwdgt.totsegments != md.segments:
-                md.prwdgt.initialize(md.segments)
+            if md.custom_profile.totsegments != md.segments:
+                md.custom_profile.initialize(md.segments)
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

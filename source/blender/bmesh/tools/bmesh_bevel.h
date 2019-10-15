@@ -21,7 +21,7 @@
  * \ingroup bmesh
  */
 
-struct ProfileWidget;
+struct ProfileCurve;
 struct MDeformVert;
 
 void BM_mesh_bevel(BMesh *bm,
@@ -45,6 +45,6 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct ProfileWidget *prwdgt,
+                   const struct ProfileCurve *prwdgt,
                    const int vmesh_method);
 #endif /* __BMESH_BEVEL_H__ */

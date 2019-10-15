@@ -31,7 +31,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_profilewidget_types.h"
+#include "DNA_profilecurve_types.h"
 
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
@@ -41,7 +41,7 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_profile_widget.h"
+#include "BKE_profile_curve.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -64,7 +64,7 @@ static void initData(ModifierData *md)
   bmd->profile = 0.5f;
   bmd->bevel_angle = DEG2RADF(30.0f);
   bmd->defgrp_name[0] = '\0';
-  bmd->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
+  bmd->custom_profile = BKE_profilecurve_add(PROF_PRESET_LINE);
 }
 
 static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
@@ -73,7 +73,7 @@ static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int
   BevelModifierData *bmd_dst = (BevelModifierData *)md_dst;
 
   modifier_copyData_generic(md_src, md_dst, flag);
-  bmd_dst->prwdgt = BKE_profilewidget_copy(bmd_src->prwdgt);
+  bmd_dst->custom_profile = BKE_profilecurve_copy(bmd_src->custom_profile);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -221,7 +221,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                 spread,
                 mesh->smoothresh,
                 use_custom_profile,
-                bmd->prwdgt,
+                bmd->custom_profile,
                 vmesh_method);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
@@ -244,7 +244,7 @@ static bool dependsOnNormals(ModifierData *UNUSED(md))
 static void freeData(ModifierData *md)
 {
   BevelModifierData *bmd = (BevelModifierData *)md;
-  BKE_profilewidget_free(bmd->prwdgt);
+  BKE_profilecurve_free(bmd->custom_profile);
 }
 
 static bool isDisabled(const Scene *UNUSED(scene), ModifierData *md, bool UNUSED(userRenderParams))

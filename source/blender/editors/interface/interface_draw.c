@@ -27,7 +27,7 @@
 #include "DNA_color_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_movieclip_types.h"
-#include "DNA_profilewidget_types.h"
+#include "DNA_profilecurve_types.h"
 
 #include "BLI_math.h"
 #include "BLI_rect.h"
@@ -41,7 +41,7 @@
 #include "BKE_colortools.h"
 #include "BKE_node.h"
 #include "BKE_tracking.h"
-#include "BKE_profile_widget.h"
+#include "BKE_profile_curve.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -2125,12 +2125,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 {
   uint i;
   float fx, fy;
-  ProfileWidget *prwdgt;
+  ProfileCurve *prwdgt;
   if (but->editprwdgt) {
     prwdgt = but->editprwdgt;
   }
   else {
-    prwdgt = (ProfileWidget *)but->poin;
+    prwdgt = (ProfileCurve *)but->poin;
   }
 
   /* Calculate offset and zoom */
@@ -2194,7 +2194,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Draw the path's fill */
   if (prwdgt->table == NULL) {
-    BKE_profilewidget_changed(prwdgt, false);
+    BKE_profilecurve_update(prwdgt, false);
   }
   ProfilePoint *pts = prwdgt->table;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */

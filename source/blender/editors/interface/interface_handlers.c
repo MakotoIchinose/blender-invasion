@@ -32,7 +32,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_profilewidget_types.h"
+#include "DNA_profilecurve_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
@@ -57,7 +57,7 @@
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
 #include "BKE_paint.h"
-#include "BKE_profile_widget.h"
+#include "BKE_profile_curve.h"
 
 #include "IMB_colormanagement.h"
 
@@ -426,7 +426,7 @@ static uiButMultiState *ui_multibut_lookup(uiHandleButtonData *data, const uiBut
 static ColorBand but_copypaste_coba = {0};
 static CurveMapping but_copypaste_curve = {0};
 static bool but_copypaste_curve_alive = false;
-static ProfileWidget but_copypaste_profile = {0};
+static ProfileCurve but_copypaste_profile = {0};
 static bool but_copypaste_profile_alive = false;
 
 /** \} */
@@ -1956,7 +1956,7 @@ static void ui_apply_but(
   float *editvec;
   ColorBand *editcoba;
   CurveMapping *editcumap;
-  ProfileWidget *editprwdgt;
+  ProfileCurve *editprwdgt;
 
   data->retval = 0;
 
@@ -2430,25 +2430,25 @@ static void ui_but_paste_curvemapping(bContext *C, uiBut *but)
   }
 }
 
-static void ui_but_copy_profilewidget(uiBut *but)
+static void ui_but_copy_profilecurve(uiBut *but)
 {
   if (but->poin != NULL) {
     but_copypaste_profile_alive = true;
-    BKE_profilewidget_free_data(&but_copypaste_profile);
-    BKE_profilewidget_copy_data(&but_copypaste_profile, (ProfileWidget *)but->poin);
+    BKE_profilecurve_free_data(&but_copypaste_profile);
+    BKE_profilecurve_copy_data(&but_copypaste_profile, (ProfileCurve *)but->poin);
   }
 }
 
-static void ui_but_paste_profilewidget(bContext *C, uiBut *but)
+static void ui_but_paste_profilecurve(bContext *C, uiBut *but)
 {
   if (but_copypaste_profile_alive) {
     if (!but->poin) {
-      but->poin = MEM_callocN(sizeof(ProfileWidget), "profilewidget");
+      but->poin = MEM_callocN(sizeof(ProfileCurve), "profilecurve");
     }
 
     button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
-    BKE_profilewidget_free_data((ProfileWidget *)but->poin);
-    BKE_profilewidget_copy_data((ProfileWidget *)but->poin, &but_copypaste_profile);
+    BKE_profilecurve_free_data((ProfileCurve *)but->poin);
+    BKE_profilecurve_copy_data((ProfileCurve *)but->poin, &but_copypaste_profile);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
   }
 }
@@ -2548,7 +2548,7 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
       break;
 
     case UI_BTYPE_PROFILE:
-      ui_but_copy_profilewidget(but);
+      ui_but_copy_profilecurve(but);
       break;
 
     case UI_BTYPE_BUT:
@@ -2632,7 +2632,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       break;
 
     case UI_BTYPE_PROFILE:
-      ui_but_paste_profilewidget(C, but);
+      ui_but_paste_profilecurve(C, but);
       break;
 
     default:
@@ -2645,7 +2645,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 void ui_but_clipboard_free(void)
 {
   BKE_curvemapping_free_data(&but_copypaste_curve);
-  BKE_profilewidget_free_data(&but_copypaste_profile);
+  BKE_profilecurve_free_data(&but_copypaste_profile);
 }
 
 /** \} */
@@ -3771,7 +3771,7 @@ static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
     but->editcumap = (CurveMapping *)but->poin;
   }
   if (but->type == UI_BTYPE_PROFILE) {
-    but->editprwdgt = (ProfileWidget *)but->poin;
+    but->editprwdgt = (ProfileCurve *)but->poin;
   }
   else if (but->type == UI_BTYPE_COLORBAND) {
     data->coba = (ColorBand *)but->poin;
@@ -6770,7 +6770,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
                                    bool snap,
                                    const bool shift)
 {
-  ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
+  ProfileCurve *prwdgt = (ProfileCurve *)but->poin;
   ProfilePoint *pts = prwdgt->path;
   float fx, fy, zoomx, zoomy;
   int mx, my, dragx, dragy;
@@ -6829,7 +6829,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
       }
     }
 
-    BKE_profilewidget_changed(prwdgt, false);
+    BKE_profilecurve_update(prwdgt, false);
 
     if (moved_point) {
       data->draglastx = evtx;
@@ -6900,12 +6900,12 @@ static int ui_do_but_PROFILE(
     return WM_UI_HANDLER_BREAK;
   }
 
-  ProfileWidget *prwdgt = (ProfileWidget *)but->poin;
+  ProfileCurve *prwdgt = (ProfileCurve *)but->poin;
 
   /* Delete selected control points. */
   if (event->type == XKEY && event->val == KM_RELEASE) {
-    BKE_profilewidget_remove(prwdgt, PROF_SELECT);
-    BKE_profilewidget_changed(prwdgt, false);
+    BKE_profilecurve_remove_by_flag(prwdgt, PROF_SELECT);
+    BKE_profilecurve_update(prwdgt, false);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
     return WM_UI_HANDLER_BREAK;
   }
@@ -6922,8 +6922,8 @@ static int ui_do_but_PROFILE(
         float f_xy[2];
         BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
 
-        BKE_profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
-        BKE_profilewidget_changed(prwdgt, false);
+        BKE_profilecurve_insert(prwdgt, f_xy[0], f_xy[1]);
+        BKE_profilecurve_update(prwdgt, false);
       }
 
       /* Check for selecting of a point by finding closest point in radius. */
@@ -6955,8 +6955,8 @@ static int ui_do_but_PROFILE(
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
             BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
 
-            ProfilePoint *new_pt = BKE_profilewidget_insert(prwdgt, f_xy[0], f_xy[1]);
-            BKE_profilewidget_changed(prwdgt, false);
+            ProfilePoint *new_pt = BKE_profilecurve_insert(prwdgt, f_xy[0], f_xy[1]);
+            BKE_profilecurve_update(prwdgt, false);
 
             /* reset pts back to the control points. */
             pts = prwdgt->path;
@@ -7025,7 +7025,7 @@ static int ui_do_but_PROFILE(
           }
         }
         else {
-          BKE_profilewidget_changed(prwdgt, true); /* Remove doubles after move. */
+          BKE_profilecurve_update(prwdgt, true); /* Remove doubles after move. */
         }
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);

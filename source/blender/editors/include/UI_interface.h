@@ -1975,7 +1975,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
                             bool brush,
                             bool neg_slope,
                             bool tone);
-void uiTemplateProfileWidget(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
+void uiTemplateProfileCurve(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
 void uiTemplateColorPicker(uiLayout *layout,
                            struct PointerRNA *ptr,
                            const char *propname,

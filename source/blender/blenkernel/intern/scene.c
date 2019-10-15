@@ -80,7 +80,7 @@
 #include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_profile_widget.h"
+#include "BKE_profile_curve.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -184,7 +184,7 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
   ts->gp_sculpt.cur_falloff = BKE_curvemapping_copy(ts->gp_sculpt.cur_falloff);
   ts->gp_sculpt.cur_primitive = BKE_curvemapping_copy(ts->gp_sculpt.cur_primitive);
 
-  ts->prwdgt = BKE_profilewidget_copy(ts->prwdgt);
+  ts->prwdgt = BKE_profilecurve_copy(ts->prwdgt);
   return ts;
 }
 
@@ -228,7 +228,7 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   }
 
   if (toolsettings->prwdgt) {
-    BKE_profilewidget_free(toolsettings->prwdgt);
+    BKE_profilecurve_free(toolsettings->prwdgt);
   }
 
   MEM_freeN(toolsettings);
@@ -737,7 +737,7 @@ void BKE_scene_init(Scene *sce)
   }
 
   /* Profile Widget */
-  sce->toolsettings->prwdgt = BKE_profilewidget_add(PROF_PRESET_LINE);
+  sce->toolsettings->prwdgt = BKE_profilecurve_add(PROF_PRESET_LINE);
 
   for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {
     sce->orientation_slots[i].index_custom = -1;
