@@ -1065,15 +1065,6 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_struct_path_func(srna, "rna_BrushGpencilSettings_path");
   RNA_def_struct_ui_text(srna, "Grease Pencil Brush Settings", "Settings for grease pencil brush");
 
-  /* Smart Smooth factor for new strokes */
-  prop = RNA_def_property(srna, "pen_smart_smooth_factor", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "smart_smooth");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_float_default(prop, 0.2f);
-  RNA_def_property_ui_text(prop, "Smart Smooth", "Factor of smoothing for fast movements");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
-
   /* Strength factor for new strokes */
   prop = RNA_def_property(srna, "pen_strength", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "draw_strength");

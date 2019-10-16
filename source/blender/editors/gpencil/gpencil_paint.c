@@ -3913,15 +3913,11 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph_pointer(C), 0.0f, 0.0f);
       int size_after = p->gpd->runtime.sbuffer_used;
 
-      /* Smooth segments if some fake points were added (need loop to get cumulative smooth). */
+      /* Smooth segments if some fake points were added (need loop to get cumulative smooth).
+       * the 0.15 value gets a good result in Windows and Linux. */
       if (size_after - size_before > 1) {
         for (int r = 0; r < 5; r++) {
-          /* The factor is divided because a value > 0.5f is too aggressive, but in the UI is
-           * better to keep the range from 0.0f to 1.0f for usability reasons. */
-          gp_smooth_segment(p->gpd,
-                            p->brush->gpencil_settings->smart_smooth * 0.5f,
-                            size_before - 1,
-                            size_after - 1);
+          gp_smooth_segment(p->gpd, 0.15f, size_before - 1, size_after - 1);
         }
       }
 
