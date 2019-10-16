@@ -579,6 +579,7 @@ static void gp_brush_angle(bGPdata *gpd, Brush *brush, tGPspoint *pt, const floa
 static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
 {
   bGPdata *gpd = p->gpd;
+  GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   const short num_points = gpd->runtime.sbuffer_used;
 
   /* Do nothing if not enough points to smooth out */
@@ -626,9 +627,12 @@ static void gp_smooth_buffer(tGPsdata *p, float inf, int idx)
     strength += ptd->strength * average_fac;
   }
 
-  /* Based on influence factor, blend between original and optimal smoothed coordinate. */
-  interp_v2_v2v2(c, c, sco, inf);
-  copy_v2_v2(&ptc->x, c);
+  /* Based on influence factor, blend between original and optimal smoothed coordinate but not
+   * for Guide mode. */
+  if (!guide->use_guide) {
+    interp_v2_v2v2(c, c, sco, inf);
+    copy_v2_v2(&ptc->x, c);
+  }
   /* Interpolate pressure. */
   ptc->pressure = interpf(ptc->pressure, pressure, inf);
   /* Interpolate strength. */
