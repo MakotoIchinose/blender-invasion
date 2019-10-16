@@ -37,7 +37,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_gpencil_modifier_types.h"
 
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
@@ -141,13 +140,9 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
 
   Object *ob = cache_ob->ob;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  const bool main_onion = draw_ctx->v3d != NULL ?
-                              (draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) :
-                              true;
+  const bool main_onion = stl->storage->is_main_onion;
   const bool playing = stl->storage->is_playing;
-  const bool overlay = draw_ctx->v3d != NULL ?
-                           (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
-                           true;
+  const bool overlay = stl->storage->is_main_overlay;
   const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
                         main_onion && !playing && gpencil_onion_active(gpd);
 
@@ -225,23 +220,6 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
   cache->b_point.tot_vertex = cache_ob->tot_vertex;
   cache->b_edit.tot_vertex = cache_ob->tot_vertex;
   cache->b_edlin.tot_vertex = cache_ob->tot_vertex;
-
-  /* some modifiers can change the number of points */
-  int factor = 0;
-  GpencilModifierData *md;
-  for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
-    /* only modifiers that change size */
-    if (mti && mti->getDuplicationFactor) {
-      factor = mti->getDuplicationFactor(md);
-
-      cache->b_fill.tot_vertex *= factor;
-      cache->b_stroke.tot_vertex *= factor;
-      cache->b_point.tot_vertex *= factor;
-      cache->b_edit.tot_vertex *= factor;
-      cache->b_edlin.tot_vertex *= factor;
-    }
-  }
 }
 
 /* Helper for doing all the checks on whether a stroke can be drawn */
@@ -1781,8 +1759,8 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
   const bool overlay = draw_ctx->v3d != NULL ?
                            (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
                            true;
-  const bool main_onion = v3d != NULL ? (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) : true;
-  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && main_onion &&
+  const bool screen_onion = v3d != NULL ? (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) : true;
+  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && screen_onion &&
                         overlay && gpencil_onion_active(gpd);
 
   int start_stroke = 0;
@@ -2062,13 +2040,9 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
   bGPdata *gpd_eval = (bGPdata *)ob->data;
   bGPdata *gpd = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
 
-  const bool main_onion = draw_ctx->v3d != NULL ?
-                              (draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) :
-                              true;
+  const bool main_onion = stl->storage->is_main_onion;
   const bool playing = stl->storage->is_playing;
-  const bool overlay = draw_ctx->v3d != NULL ?
-                           (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
-                           true;
+  const bool overlay = stl->storage->is_main_overlay;
   const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
                         main_onion && !playing && gpencil_onion_active(gpd);
 
