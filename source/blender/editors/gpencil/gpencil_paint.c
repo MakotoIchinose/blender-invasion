@@ -3574,10 +3574,17 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
 
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   int input_samples = brush->gpencil_settings->input_samples;
-  /* ensure sampling when using circular guide */
-  if (guide->use_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
-    input_samples = GP_MAX_INPUT_SAMPLES;
+
+  /* If using guides don't add points.*/
+  if (guide->use_guide) {
+    return;
   }
+  /* TODO: ensure sampling enough points when using circular guide,
+  but the arc must be around the center. (see if above to check other guides only)
+  */
+  // if (guide->use_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
+  //  input_samples = GP_MAX_INPUT_SAMPLES;
+  //}
 
   if (input_samples == 0) {
     return;
