@@ -2863,52 +2863,52 @@ static void gpencil_speed_guide_init(tGPsdata *p, GP_Sculpt_Guide *guide)
 }
 
 /* apply speed guide */
-static void gpencil_speed_guide(tGPsdata *p, GP_Sculpt_Guide *guide)
+static void gpencil_snap_to_guide(const tGPsdata *p, const GP_Sculpt_Guide *guide, float point[2])
 {
   switch (guide->type) {
     default:
     case GP_GUIDE_CIRCULAR: {
-      dist_ensure_v2_v2fl(p->mval, p->guide.origin, p->guide.origin_distance);
+      dist_ensure_v2_v2fl(point, p->guide.origin, p->guide.origin_distance);
       break;
     }
     case GP_GUIDE_RADIAL: {
       if (guide->use_snapping && (guide->angle_snap > 0.0f)) {
-        closest_to_line_v2(p->mval, p->mval, p->guide.rot_point, p->guide.origin);
+        closest_to_line_v2(point, point, p->guide.rot_point, p->guide.origin);
       }
       else {
-        closest_to_line_v2(p->mval, p->mval, p->mvali, p->guide.origin);
+        closest_to_line_v2(point, point, p->mvali, p->guide.origin);
       }
       break;
     }
     case GP_GUIDE_PARALLEL: {
-      closest_to_line_v2(p->mval, p->mval, p->mvali, p->guide.rot_point);
+      closest_to_line_v2(point, point, p->mvali, p->guide.rot_point);
       if (guide->use_snapping && (guide->spacing > 0.0f)) {
-        gp_snap_to_rotated_grid_fl(p->mval, p->guide.origin, p->guide.spacing, guide->angle);
+        gp_snap_to_rotated_grid_fl(point, p->guide.origin, p->guide.spacing, guide->angle);
       }
       break;
     }
     case GP_GUIDE_ISO: {
-      closest_to_line_v2(p->mval, p->mval, p->mvali, p->guide.rot_point);
+      closest_to_line_v2(point, point, p->mvali, p->guide.rot_point);
       if (guide->use_snapping && (guide->spacing > 0.0f)) {
-        gp_snap_to_rotated_grid_fl(p->mval, p->guide.origin, p->guide.spacing, p->guide.rot_angle);
+        gp_snap_to_rotated_grid_fl(point, p->guide.origin, p->guide.spacing, p->guide.rot_angle);
       }
       break;
     }
     case GP_GUIDE_GRID: {
       if (guide->use_snapping && (guide->spacing > 0.0f)) {
-        closest_to_line_v2(p->mval, p->mval, p->mvali, p->guide.rot_point);
+        closest_to_line_v2(point, point, p->mvali, p->guide.rot_point);
         if (p->straight == STROKE_HORIZONTAL) {
-          p->mval[1] = gp_snap_to_grid_fl(p->mval[1], p->guide.origin[1], p->guide.spacing);
+          point[1] = gp_snap_to_grid_fl(point[1], p->guide.origin[1], p->guide.spacing);
         }
         else {
-          p->mval[0] = gp_snap_to_grid_fl(p->mval[0], p->guide.origin[0], p->guide.spacing);
+          point[0] = gp_snap_to_grid_fl(point[0], p->guide.origin[0], p->guide.spacing);
         }
       }
       else if (p->straight == STROKE_HORIZONTAL) {
-        p->mval[1] = p->mvali[1]; /* replace y */
+        point[1] = p->mvali[1]; /* replace y */
       }
       else {
-        p->mval[0] = p->mvali[0]; /* replace x */
+        point[0] = p->mvali[0]; /* replace x */
       }
       break;
     }
@@ -2916,8 +2916,7 @@ static void gpencil_speed_guide(tGPsdata *p, GP_Sculpt_Guide *guide)
 }
 
 /* handle draw event */
-static void gpencil_draw_apply_event(
-    bContext *C, wmOperator *op, const wmEvent *event, Depsgraph *depsgraph, float x, float y)
+static void gpencil_draw_apply_event(bContext *C, wmOperator *op, const wmEvent *event, Depsgraph *depsgraph)
 {
   tGPsdata *p = op->customdata;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
@@ -2930,8 +2929,7 @@ static void gpencil_draw_apply_event(
   /* convert from window-space to area-space mouse coordinates
    * add any x,y override position
    */
-  p->mval[0] = (float)event->mval[0] - x;
-  p->mval[1] = (float)event->mval[1] - y;
+  copy_v2fl_v2i(p->mval, event->mval);
   p->shift = event->shift;
 
   /* verify direction for straight lines */
@@ -3011,12 +3009,12 @@ static void gpencil_draw_apply_event(
     p->flags &= ~GP_PAINTFLAG_FIRSTRUN;
 
     /* set values */
-    copy_v2_v2(p->mvalo, p->mval);
     p->opressure = p->pressure;
     p->inittime = p->ocurtime = p->curtime;
     p->straight = 0;
 
     /* save initial mouse */
+    copy_v2_v2(p->mvalo, p->mval);
     copy_v2_v2(p->mvali, p->mval);
 
     if (is_speed_guide && !ELEM(p->paintmode, GP_PAINTMODE_ERASER, GP_PAINTMODE_SET_CP) &&
@@ -3032,7 +3030,7 @@ static void gpencil_draw_apply_event(
   }
 
   /* wait for vector then add initial point */
-  if (is_speed_guide && p->flags & GP_PAINTFLAG_REQ_VECTOR) {
+  if (is_speed_guide && (p->flags & GP_PAINTFLAG_REQ_VECTOR)) {
     if (p->straight == 0) {
       return;
     }
@@ -3066,23 +3064,13 @@ static void gpencil_draw_apply_event(
                           p->mvali,
                           (p->straight == STROKE_VERTICAL) ? M_PI_2 : 0.0f);
     }
-
-    /* create fake events */
-    float tmp[2];
-    copy_v2_v2(tmp, p->mval);
-    gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1]);
-    if (len_v2v2(p->mval, p->mvalo)) {
-      sub_v2_v2v2(pt, p->mval, p->mvalo);
-      gpencil_draw_apply_event(C, op, event, depsgraph, pt[0], pt[1]);
-    }
-    copy_v2_v2(p->mval, tmp);
   }
 
   /* check if stroke is straight or guided */
   if ((p->paintmode != GP_PAINTMODE_ERASER) && ((p->straight) || (is_speed_guide))) {
     /* guided stroke */
     if (is_speed_guide) {
-      gpencil_speed_guide(p, guide);
+      gpencil_snap_to_guide(p, guide, p->mval);
     }
     else if (p->straight == STROKE_HORIZONTAL) {
       p->mval[1] = p->mvali[1]; /* replace y */
@@ -3363,7 +3351,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     p->status = GP_STATUS_PAINTING;
 
     /* handle the initial drawing - i.e. for just doing a simple dot */
-    gpencil_draw_apply_event(C, op, event, CTX_data_ensure_evaluated_depsgraph(C), 0.0f, 0.0f);
+    gpencil_draw_apply_event(C, op, event, CTX_data_ensure_evaluated_depsgraph(C));
     op->flag |= OP_IS_MODAL_CURSOR_REGION;
   }
   else {
@@ -3566,6 +3554,49 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   }
 }
 
+static void gpencil_add_guide_points(tGPsdata *p,
+                                     const GP_Sculpt_Guide *guide,
+                                     float mval[2],
+                                     int segments)
+{
+  bGPdata *gpd = p->gpd;
+  if ((gpd->runtime.sbuffer_used < 3)) {
+    return;
+  }
+
+  int idx_old = gpd->runtime.sbuffer_used;
+
+  /* Add space for new points. */
+  gpd->runtime.sbuffer_used += segments - 1;
+
+  /* Check if still room in buffer or add more. */
+  gpd->runtime.sbuffer = ED_gpencil_sbuffer_ensure(
+      gpd->runtime.sbuffer, &gpd->runtime.sbuffer_size, &gpd->runtime.sbuffer_used, false);
+
+  tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
+  tGPspoint *pt = NULL;
+  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
+
+  float step = 1.0f / (float)(segments + 1);
+  float a = step;
+
+  float start[2], end[2];
+  copy_v2_v2(start, p->mvalo);
+  copy_v2_v2(end, mval);
+
+  for (int i = 0; i < segments; i++) {
+    pt = &points[idx_old + i - 1];
+
+    interp_v2_v2v2(&pt->x, start, end, a);
+    gpencil_snap_to_guide(p, guide, &pt->x);
+    a += step;
+
+    /* Set pressure and strength equals to previous. It will be smoothed later. */
+    pt->pressure = pt_before->pressure;
+    pt->strength = pt_before->strength;
+  }
+}
+
 /* Add fake points for missing mouse movements when the artist draw very fast creating an arc
  * with the vertice in the midle of the segment and using the angle of the previous segment. */
 static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *event, tGPsdata *p)
@@ -3578,37 +3609,41 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
 
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   int input_samples = brush->gpencil_settings->input_samples;
+  bool is_speed_guide = ((guide->use_guide) &&
+                         (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
 
-  /* If using guides don't add points.*/
-  if (guide->use_guide) {
-    return;
-  }
   /* TODO: ensure sampling enough points when using circular guide,
   but the arc must be around the center. (see if above to check other guides only)
   */
-  // if (guide->use_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
-  //  input_samples = GP_MAX_INPUT_SAMPLES;
-  //}
+  if (is_speed_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
+    input_samples = GP_MAX_INPUT_SAMPLES;
+  }
 
   if (input_samples == 0) {
     return;
   }
 
-  int samples = (GP_MAX_INPUT_SAMPLES - input_samples + 1);
+  int samples = GP_MAX_INPUT_SAMPLES - input_samples + 1;
 
   float mouse_prv[2], mouse_cur[2];
   float min_dist = 4.0f * samples;
 
   copy_v2_v2(mouse_prv, p->mvalo);
-  mouse_cur[0] = (float)event->mval[0] + 1.0f;
-  mouse_cur[1] = (float)event->mval[1] + 1.0f;
+  copy_v2fl_v2i(mouse_cur, event->mval);
 
   /* get distance in pixels */
   float dist = len_v2v2(mouse_prv, mouse_cur);
 
   if ((dist > 3.0f) && (dist > min_dist)) {
     int slices = (dist / min_dist) + 1;
-    gpencil_add_arc_points(p, mouse_cur, slices);
+
+    if (is_speed_guide) {
+      gpencil_add_guide_points(p, guide, mouse_cur, slices);
+    }
+    else {
+      gpencil_add_arc_points(p, mouse_cur, slices);
+    }
+    
   }
 }
 
@@ -3916,17 +3951,21 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       /* handle drawing event */
       /* printf("\t\tGP - add point\n"); */
 
+      bool is_speed_guide = ((guide->use_guide) &&
+                             (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+
       int size_before = p->gpd->runtime.sbuffer_used;
-      if (((p->flags & GP_PAINTFLAG_FIRSTRUN) == 0) && (p->paintmode != GP_PAINTMODE_ERASER)) {
+      if (((p->flags & GP_PAINTFLAG_FIRSTRUN) == 0) && (p->paintmode != GP_PAINTMODE_ERASER) &&
+          !(is_speed_guide && (p->flags & GP_PAINTFLAG_REQ_VECTOR))) {
         gpencil_add_fake_points(C, op, event, p);
       }
 
-      gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph_pointer(C), 0.0f, 0.0f);
+      gpencil_draw_apply_event(C, op, event, CTX_data_depsgraph_pointer(C));
       int size_after = p->gpd->runtime.sbuffer_used;
 
       /* Smooth segments if some fake points were added (need loop to get cumulative smooth).
        * the 0.15 value gets a good result in Windows and Linux. */
-      if (size_after - size_before > 1) {
+      if (!is_speed_guide && (size_after - size_before > 1)) {
         for (int r = 0; r < 5; r++) {
           gp_smooth_segment(p->gpd, 0.15f, size_before - 1, size_after - 1);
         }
