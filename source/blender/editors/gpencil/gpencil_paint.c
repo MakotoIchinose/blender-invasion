@@ -2661,86 +2661,6 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
 
 /* ------------------------------- */
 
-/* create a new stroke point at the point indicated by the painting context */
-static void gpencil_draw_apply(bContext *C, wmOperator *op, tGPsdata *p, Depsgraph *depsgraph)
-{
-  bGPdata *gpd = p->gpd;
-  tGPspoint *pt = NULL;
-
-  /* handle drawing/erasing -> test for erasing first */
-  if (p->paintmode == GP_PAINTMODE_ERASER) {
-    /* do 'live' erasing now */
-    gp_stroke_doeraser(p);
-
-    /* store used values */
-    copy_v2_v2(p->mvalo, p->mval);
-    p->opressure = p->pressure;
-  }
-  /* Only add current point to buffer if mouse moved
-   * (even though we got an event, it might be just noise). */
-  else if (gp_stroke_filtermval(p, p->mval, p->mvalo)) {
-
-    /* if lazy mouse, interpolate the last and current mouse positions */
-    if (GPENCIL_LAZY_MODE(p->brush, p->shift)) {
-      float now_mouse[2];
-      float last_mouse[2];
-      copy_v2_v2(now_mouse, p->mval);
-      copy_v2_v2(last_mouse, p->mvalo);
-      interp_v2_v2v2(now_mouse, now_mouse, last_mouse, p->brush->smooth_stroke_factor);
-      copy_v2_v2(p->mval, now_mouse);
-    }
-
-    /* try to add point */
-    short ok = gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
-
-    /* handle errors while adding point */
-    if ((ok == GP_STROKEADD_FULL) || (ok == GP_STROKEADD_OVERFLOW)) {
-      /* finish off old stroke */
-      gp_paint_strokeend(p);
-      /* And start a new one!!! Else, projection errors! */
-      gp_paint_initstroke(p, p->paintmode, depsgraph);
-
-      /* start a new stroke, starting from previous point */
-      /* XXX Must manually reset inittime... */
-      /* XXX We only need to reuse previous point if overflow! */
-      if (ok == GP_STROKEADD_OVERFLOW) {
-        p->inittime = p->ocurtime;
-        gp_stroke_addpoint(p, p->mvalo, p->opressure, p->ocurtime);
-      }
-      else {
-        p->inittime = p->curtime;
-      }
-      gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
-    }
-    else if (ok == GP_STROKEADD_INVALID) {
-      /* the painting operation cannot continue... */
-      BKE_report(op->reports, RPT_ERROR, "Cannot paint stroke");
-      p->status = GP_STATUS_ERROR;
-
-      if (G.debug & G_DEBUG) {
-        printf("Error: Grease-Pencil Paint - Add Point Invalid\n");
-      }
-      return;
-    }
-
-    /* store used values */
-    copy_v2_v2(p->mvalo, p->mval);
-    p->opressure = p->pressure;
-    p->ocurtime = p->curtime;
-
-    pt = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
-    if (p->paintmode != GP_PAINTMODE_ERASER) {
-      ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
-    }
-  }
-  else if ((p->brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) &&
-           (gpd->runtime.sbuffer_used > 0)) {
-    pt = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
-    if (p->paintmode != GP_PAINTMODE_ERASER) {
-      ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
-    }
-  }
-}
 
 /* Helper to rotate point around origin */
 static void gp_rotate_v2_v2v2fl(float v[2],
@@ -2914,6 +2834,95 @@ static void gpencil_snap_to_guide(const tGPsdata *p, const GP_Sculpt_Guide *guid
     }
   }
 }
+
+/* create a new stroke point at the point indicated by the painting context */
+static void gpencil_draw_apply(bContext *C, wmOperator *op, tGPsdata *p, Depsgraph *depsgraph)
+{
+  bGPdata *gpd = p->gpd;
+  tGPspoint *pt = NULL;
+
+  /* handle drawing/erasing -> test for erasing first */
+  if (p->paintmode == GP_PAINTMODE_ERASER) {
+    /* do 'live' erasing now */
+    gp_stroke_doeraser(p);
+
+    /* store used values */
+    copy_v2_v2(p->mvalo, p->mval);
+    p->opressure = p->pressure;
+  }
+  /* Only add current point to buffer if mouse moved
+   * (even though we got an event, it might be just noise). */
+  else if (gp_stroke_filtermval(p, p->mval, p->mvalo)) {
+
+    /* if lazy mouse, interpolate the last and current mouse positions */
+    if (GPENCIL_LAZY_MODE(p->brush, p->shift)) {
+      float now_mouse[2];
+      float last_mouse[2];
+      copy_v2_v2(now_mouse, p->mval);
+      copy_v2_v2(last_mouse, p->mvalo);
+      interp_v2_v2v2(now_mouse, now_mouse, last_mouse, p->brush->smooth_stroke_factor);
+      copy_v2_v2(p->mval, now_mouse);
+
+      GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
+      bool is_speed_guide = ((guide->use_guide) &&
+                             (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+      if (is_speed_guide) {
+        gpencil_snap_to_guide(p, guide, p->mval);
+      }
+    }
+
+    /* try to add point */
+    short ok = gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
+
+    /* handle errors while adding point */
+    if ((ok == GP_STROKEADD_FULL) || (ok == GP_STROKEADD_OVERFLOW)) {
+      /* finish off old stroke */
+      gp_paint_strokeend(p);
+      /* And start a new one!!! Else, projection errors! */
+      gp_paint_initstroke(p, p->paintmode, depsgraph);
+
+      /* start a new stroke, starting from previous point */
+      /* XXX Must manually reset inittime... */
+      /* XXX We only need to reuse previous point if overflow! */
+      if (ok == GP_STROKEADD_OVERFLOW) {
+        p->inittime = p->ocurtime;
+        gp_stroke_addpoint(p, p->mvalo, p->opressure, p->ocurtime);
+      }
+      else {
+        p->inittime = p->curtime;
+      }
+      gp_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
+    }
+    else if (ok == GP_STROKEADD_INVALID) {
+      /* the painting operation cannot continue... */
+      BKE_report(op->reports, RPT_ERROR, "Cannot paint stroke");
+      p->status = GP_STATUS_ERROR;
+
+      if (G.debug & G_DEBUG) {
+        printf("Error: Grease-Pencil Paint - Add Point Invalid\n");
+      }
+      return;
+    }
+
+    /* store used values */
+    copy_v2_v2(p->mvalo, p->mval);
+    p->opressure = p->pressure;
+    p->ocurtime = p->curtime;
+
+    pt = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
+    if (p->paintmode != GP_PAINTMODE_ERASER) {
+      ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
+    }
+  }
+  else if ((p->brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) &&
+           (gpd->runtime.sbuffer_used > 0)) {
+    pt = (tGPspoint *)gpd->runtime.sbuffer + gpd->runtime.sbuffer_used - 1;
+    if (p->paintmode != GP_PAINTMODE_ERASER) {
+      ED_gpencil_toggle_brush_cursor(C, true, &pt->x);
+    }
+  }
+}
+
 
 /* handle draw event */
 static void gpencil_draw_apply_event(bContext *C,
