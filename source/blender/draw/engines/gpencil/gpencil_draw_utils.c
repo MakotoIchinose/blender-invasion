@@ -147,7 +147,7 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
 
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
-  /* Onion skining. */
+  /* Onion skinning. */
   const int step = gpd->gstep;
   const int mode = gpd->onion_mode;
   const short onion_keytype = gpd->onion_keytype;
@@ -169,7 +169,6 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
     int frame_to = 9999;
     if ((is_onion) && (mode == GP_ONION_MODE_RELATIVE)) {
       /* 1) Found first Frame. */
-      int step = gpd->gstep;
       int idx = 0;
       if (gpl->actframe) {
         for (bGPDframe *gf = gpl->actframe->prev; gf; gf = gf->prev) {
@@ -180,12 +179,11 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
           }
         }
         /* 2) Found last Frame. */
-        step = gpd->gstep_next;
         idx = 0;
         for (bGPDframe *gf = gpl->actframe->next; gf; gf = gf->next) {
           idx++;
           frame_to = gf->framenum;
-          if (idx >= step) {
+          if (idx >= gpd->gstep_next) {
             break;
           }
         }
@@ -1309,12 +1307,14 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
         if (!stl->g_data->shgrps_edit_line) {
           stl->g_data->shgrps_edit_line = DRW_shgroup_create(e_data->gpencil_line_sh,
                                                              psl->edit_pass);
+          DRW_shgroup_uniform_mat4(stl->g_data->shgrps_edit_line, "gpModelMatrix", ob->obmat);
         }
         if (!stl->g_data->shgrps_edit_point) {
           stl->g_data->shgrps_edit_point = DRW_shgroup_create(e_data->gpencil_edit_point_sh,
                                                               psl->edit_pass);
           const float *viewport_size = DRW_viewport_size_get();
           DRW_shgroup_uniform_vec2(stl->g_data->shgrps_edit_point, "Viewport", viewport_size, 1);
+          DRW_shgroup_uniform_mat4(stl->g_data->shgrps_edit_point, "gpModelMatrix", ob->obmat);
         }
 
         gpencil_add_editpoints_vertexdata(cache, ob, gpd, gpl, gpf, gps);
@@ -1404,7 +1404,7 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
                             NULL;
   int last = gpf->framenum;
 
-  colflag = (bool)gpd->onion_flag & GP_ONION_GHOST_PREVCOL;
+  colflag = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
   const short onion_keytype = gpd->onion_keytype;
   /* -------------------------------
    * 1) Draw Previous Frames First
