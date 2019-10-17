@@ -693,6 +693,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_circle
   ops.gpencil.primitive_curve
   ops.gpencil.primitive_line
+  ops.gpencil.primitive_polyline
   ops.gpencil.radius
   ops.gpencil.sculpt_clone
   ops.gpencil.sculpt_grab
