@@ -3582,18 +3582,25 @@ static void gpencil_add_guide_points(const tGPsdata *p,
 
   /* Use arc sampling for circular guide */
   if (guide->type == GP_GUIDE_CIRCULAR) {
-    float step = M_PI_2 / (float)(segments + 1);
-    float a = step;
     float start[2], end[2], midpoint[2];
     copy_v2_v2(start, p->mvalo);
     copy_v2_v2(end, mval);
     copy_v2_v2(midpoint, p->guide.origin);
 
+    float cw = cross_tri_v2(start, p->guide.origin, end);
+    float angle = angle_v2v2v2(start, p->guide.origin, end);
+    
+    float step = angle / (float)(segments + 1);
+    if (cw < 0.0f) {
+      step = -step;
+    }
+
+    float a = step;
+
     for (int i = 0; i < segments; i++) {
       pt = &points[idx_old + i - 1];
 
-      pt->x = midpoint[0] + (end[0] - midpoint[0]) * sinf(a) + (start[0] - midpoint[0]) * cosf(a);
-      pt->y = midpoint[1] + (end[1] - midpoint[1]) * sinf(a) + (start[1] - midpoint[1]) * cosf(a);
+      gp_rotate_v2_v2v2fl(&pt->x, start, p->guide.origin, -a);
       gpencil_snap_to_guide(p, guide, &pt->x);
       a += step;
 
