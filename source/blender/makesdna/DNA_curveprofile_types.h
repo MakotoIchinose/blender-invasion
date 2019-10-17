@@ -26,19 +26,22 @@
 
 #include "DNA_vec_types.h"
 
-/** Number of points in high resolution table is dynamic up to the maximum. */
+/** Number of points in high resolution table is dynamic up to a maximum. */
 #define PROF_TABLE_MAX 512
 /** Number of table points per control point. */
 #define PROF_RESOL 16
-/** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint. */
+/** Dynamic size of widget's high resolution table. Input should be prwdgt->totpoint. */
 #define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts - 1)) * PROF_RESOL) + 1)
 
+/** Each control point that makes up the profile.
+ * \note The flags use the same enum as Bezier curves, but they aren't garanteed
+ *       to have identical functionality, and all types aren't implemented. */
 typedef struct CurveProfilePoint {
   /** Location of the point, keep together. */
   float x, y;
   /** Flag selection state and others. */
   short flag;
-  /** Flags for both handle's type (eCurveProfilePointHandle). */
+  /** Flags for both handle's type (eBezTriple_Handle). */
   char h1, h2;
 } CurveProfilePoint;
 
@@ -47,29 +50,25 @@ enum {
   PROF_SELECT = (1 << 0),
 };
 
-typedef enum eCurveProfilePointHandle {
-  PROF_HANDLE_VECTOR = 0,
-  PROF_HANDLE_AUTO = 1,
-} eCurveProfilePointHandle;
-
+/** Defines a profile */
 typedef struct CurveProfile {
-  /** Number of user-added points that define the profile */
+  /** Number of user-added points that define the profile. */
   short totpoint;
-  /** Number of sampled points */
+  /** Number of sampled points. */
   short totsegments;
-  /** Preset to use when reset */
+  /** Preset to use when reset. */
   int preset;
-  /** Sequence of points defining the shape of the curve  */
+  /** Sequence of points defining the shape of the curve.  */
   CurveProfilePoint *path;
-  /** Display and evaluation table at higher resolution for curves */
+  /** Display and evaluation table at higher resolution for curves. */
   CurveProfilePoint *table;
-  /** The positions of the sampled points. Used to display a preview of where they will be */
+  /** The positions of the sampled points. Used to display a preview of where they will be. */
   CurveProfilePoint *segments;
   /** Flag for mode states, sampling options, etc... */
   int flag;
-  /** Used for keeping track how many times the widget is changed */
+  /** Used for keeping track how many times the widget is changed. */
   int changed_timestamp;
-  /** Current rect, clip rect (is default rect too). */
+  /** Widget's current view, and clipping rect (is default rect too). */
   rctf view_rect, clip_rect;
 } CurveProfile;
 

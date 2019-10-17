@@ -4789,7 +4789,7 @@ static void CurveProfile_buttons_setsharp(bContext *C, void *cb_v, void *prwdgt_
 {
   CurveProfile *prwdgt = prwdgt_v;
 
-  BKE_curveprofile_handle_set(prwdgt, HD_VECT, HD_VECT);
+  BKE_curveprofile_selected_handle_set(prwdgt, HD_VECT, HD_VECT);
   BKE_curveprofile_update(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
@@ -4799,7 +4799,7 @@ static void CurveProfile_buttons_setcurved(bContext *C, void *cb_v, void *prwdgt
 {
   CurveProfile *prwdgt = prwdgt_v;
 
-  BKE_curveprofile_handle_set(prwdgt, HD_AUTO, HD_AUTO);
+  BKE_curveprofile_selected_handle_set(prwdgt, HD_AUTO, HD_AUTO);
   BKE_curveprofile_update(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);

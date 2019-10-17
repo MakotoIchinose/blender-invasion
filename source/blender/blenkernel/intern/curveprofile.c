@@ -182,12 +182,12 @@ CurveProfilePoint *BKE_curveprofile_insert(CurveProfile *prwdgt, float x, float 
       new_pts[i_new].flag = PROF_SELECT;
       new_pt = &new_pts[i_new];
       /* Set handles of new point based on its neighbors. */
-      if (new_pts[i_new - 1].h2 == PROF_HANDLE_VECTOR &&
-          prwdgt->path[i_insert].h1 == PROF_HANDLE_VECTOR) {
-        new_pt->h1 = new_pt->h2 = PROF_HANDLE_VECTOR;
+      if (new_pts[i_new - 1].h2 == HD_VECT &&
+          prwdgt->path[i_insert].h1 == HD_VECT) {
+        new_pt->h1 = new_pt->h2 = HD_VECT;
       }
       else {
-        new_pt->h1 = new_pt->h2 = PROF_HANDLE_AUTO;
+        new_pt->h1 = new_pt->h2 = HD_AUTO;
       }
     }
   }
@@ -201,30 +201,30 @@ CurveProfilePoint *BKE_curveprofile_insert(CurveProfile *prwdgt, float x, float 
 /** Sets the handle type of the selected control points.
  * \param type_*: Either HD_VECT or HD_AUTO. Handle types for the first and second handles.
  * \note: Requires curveprofile_update call after. */
-void BKE_curveprofile_handle_set(CurveProfile *prwdgt, int type_1, int type_2)
+void BKE_curveprofile_selected_handle_set(CurveProfile *prwdgt, int type_1, int type_2)
 {
   for (int i = 0; i < prwdgt->totpoint; i++) {
     if (prwdgt->path[i].flag & PROF_SELECT) {
       switch (type_1) {
         case HD_AUTO:
-          prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+          prwdgt->path[i].h1 = HD_AUTO;
           break;
         case HD_VECT:
-          prwdgt->path[i].h1 = PROF_HANDLE_VECTOR;
+          prwdgt->path[i].h1 = HD_VECT;
           break;
         default:
-          prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+          prwdgt->path[i].h1 = HD_AUTO;
           break;
       }
       switch (type_2) {
         case HD_AUTO:
-          prwdgt->path[i].h2 = PROF_HANDLE_AUTO;
+          prwdgt->path[i].h2 = HD_AUTO;
           break;
         case HD_VECT:
-          prwdgt->path[i].h2 = PROF_HANDLE_VECTOR;
+          prwdgt->path[i].h2 = HD_VECT;
           break;
       default:
-        prwdgt->path[i].h1 = PROF_HANDLE_AUTO;
+        prwdgt->path[i].h1 = HD_AUTO;
         break;
       }
     }
@@ -235,7 +235,7 @@ void BKE_curveprofile_handle_set(CurveProfile *prwdgt, int type_1, int type_2)
  * \note: Requires curveprofile_update call after.  */
 void BKE_curveprofile_reverse(CurveProfile *prwdgt)
 {
-  /* Quick fix for when there are only two points and reversing shouldn't do anything */
+  /* When there are only two points, reversing shouldn't do anything. */
   if (prwdgt->totpoint == 2) {
     return;
   }
@@ -262,30 +262,30 @@ static void CurveProfile_build_supports(CurveProfile *prwdgt)
   prwdgt->path[0].x = 1.0;
   prwdgt->path[0].y = 0.0;
   prwdgt->path[0].flag = 0;
-  prwdgt->path[0].h1 = PROF_HANDLE_VECTOR;
-  prwdgt->path[0].h2 = PROF_HANDLE_VECTOR;
+  prwdgt->path[0].h1 = HD_VECT;
+  prwdgt->path[0].h2 = HD_VECT;
   prwdgt->path[1].x = 1.0;
   prwdgt->path[1].y = 0.5;
   prwdgt->path[1].flag = 0;
-  prwdgt->path[1].h1 = PROF_HANDLE_VECTOR;
-  prwdgt->path[1].h2 = PROF_HANDLE_VECTOR;
+  prwdgt->path[1].h1 = HD_VECT;
+  prwdgt->path[1].h2 = HD_VECT;
   for (int i = 1; i < n - 2; i++) {
     prwdgt->path[i + 1].x = 1.0f - (0.5f * (1.0f - cosf((float)((i / (float)(n - 3))) * M_PI_2)));
     prwdgt->path[i + 1].y = 0.5f + 0.5f * sinf((float)((i / (float)(n - 3)) * M_PI_2));
     prwdgt->path[i + 1].flag = 0;
-    prwdgt->path[i + 1].h1 = PROF_HANDLE_AUTO;
-    prwdgt->path[i + 1].h2 = PROF_HANDLE_AUTO;
+    prwdgt->path[i + 1].h1 = HD_AUTO;
+    prwdgt->path[i + 1].h2 = HD_AUTO;
   }
   prwdgt->path[n - 2].x = 0.5;
   prwdgt->path[n - 2].y = 1.0;
   prwdgt->path[n - 2].flag = 0;
-  prwdgt->path[n - 2].h1 = PROF_HANDLE_VECTOR;
-  prwdgt->path[n - 2].h2 = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 2].h1 = HD_VECT;
+  prwdgt->path[n - 2].h2 = HD_VECT;
   prwdgt->path[n - 1].x = 0.0;
   prwdgt->path[n - 1].y = 1.0;
   prwdgt->path[n - 1].flag = 0;
-  prwdgt->path[n - 1].h1 = PROF_HANDLE_VECTOR;
-  prwdgt->path[n - 1].h2 = PROF_HANDLE_VECTOR;
+  prwdgt->path[n - 1].h1 = HD_VECT;
+  prwdgt->path[n - 1].h2 = HD_VECT;
 }
 
 /** Puts the widget's control points in a step pattern. Uses vector handles for each point. */
@@ -301,13 +301,13 @@ static void CurveProfile_build_steps(CurveProfile *prwdgt)
     prwdgt->path[0].x = 1.0f;
     prwdgt->path[0].y = 0.0f;
     prwdgt->path[0].flag = 0;
-    prwdgt->path[0].h1 = PROF_HANDLE_VECTOR;
-    prwdgt->path[0].h2 = PROF_HANDLE_VECTOR;
+    prwdgt->path[0].h1 = HD_VECT;
+    prwdgt->path[0].h2 = HD_VECT;
     prwdgt->path[1].x = 0.0f;
     prwdgt->path[1].y = 1.0f;
     prwdgt->path[1].flag = 0;
-    prwdgt->path[1].h1 = PROF_HANDLE_VECTOR;
-    prwdgt->path[1].h2 = PROF_HANDLE_VECTOR;
+    prwdgt->path[1].h1 = HD_VECT;
+    prwdgt->path[1].h2 = HD_VECT;
     return;
   }
 
@@ -320,12 +320,12 @@ static void CurveProfile_build_steps(CurveProfile *prwdgt)
     prwdgt->path[i].x = 1.0f - ((float)(2 * step_x) / n_steps_x);
     prwdgt->path[i].y = (float)(2 * step_y) / n_steps_y;
     prwdgt->path[i].flag = 0;
-    prwdgt->path[i].h1 = PROF_HANDLE_VECTOR;
-    prwdgt->path[i].h2 = PROF_HANDLE_VECTOR;
+    prwdgt->path[i].h1 = HD_VECT;
+    prwdgt->path[i].h2 = HD_VECT;
   }
 }
 
-/** Shorthand helper function for setting location and interpolation of a point */
+/** Shorthand helper function for setting location and interpolation of a point. */
 static void point_init(CurveProfilePoint *point, float x, float y, short flag, char h1, char h2)
 {
   point->x = x;
@@ -380,39 +380,39 @@ void BKE_curveprofile_reset(CurveProfile *prwdgt)
 
   switch (preset) {
     case PROF_PRESET_LINE:
-      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[1], 0.0f, 1.0f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[1], 0.0f, 1.0f, 0, HD_AUTO, HD_AUTO);
       break;
     case PROF_PRESET_SUPPORTS:
       CurveProfile_build_supports(prwdgt);
       break;
     case PROF_PRESET_CORNICE:
-      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[1], 1.0f, 0.125f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[2], 0.92f, 0.16f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[3], 0.875f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[4], 0.8f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[5], 0.733f, 0.433f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[6], 0.582f, 0.522f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[7], 0.4f, 0.6f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[8], 0.289f, 0.727f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[9], 0.25f, 0.925f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[10], 0.175f, 0.925f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[11], 0.175f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[12], 0.0f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[1], 1.0f, 0.125f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[2], 0.92f, 0.16f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[3], 0.875f, 0.25f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[4], 0.8f, 0.25f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[5], 0.733f, 0.433f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[6], 0.582f, 0.522f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[7], 0.4f, 0.6f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[8], 0.289f, 0.727f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[9], 0.25f, 0.925f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[10], 0.175f, 0.925f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[11], 0.175f, 1.0f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[12], 0.0f, 1.0f, 0, HD_VECT, HD_VECT);
       break;
     case PROF_PRESET_CROWN:
-      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[1], 1.0f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[2], 0.75f, 0.25f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[3], 0.75f, 0.325f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[4], 0.925, 0.4f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[5], 0.975f, 0.5f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[6], 0.94f, 0.65f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[7], 0.85f, 0.75f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[8], 0.75f, 0.875f, 0, PROF_HANDLE_AUTO, PROF_HANDLE_AUTO);
-      point_init(&prwdgt->path[9], 0.7f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
-      point_init(&prwdgt->path[10], 0.0f, 1.0f, 0, PROF_HANDLE_VECTOR, PROF_HANDLE_VECTOR);
+      point_init(&prwdgt->path[0], 1.0f, 0.0f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[1], 1.0f, 0.25f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[2], 0.75f, 0.25f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[3], 0.75f, 0.325f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[4], 0.925f, 0.4f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[5], 0.975f, 0.5f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[6], 0.94f, 0.65f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[7], 0.85f, 0.75f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[8], 0.75f, 0.875f, 0, HD_AUTO, HD_AUTO);
+      point_init(&prwdgt->path[9], 0.7f, 1.0f, 0, HD_VECT, HD_VECT);
+      point_init(&prwdgt->path[10], 0.0f, 1.0f, 0, HD_VECT, HD_VECT);
       break;
     case PROF_PRESET_STEPS:
       CurveProfile_build_steps(prwdgt);
@@ -538,7 +538,7 @@ typedef struct {
   float bezt_curvature;
 } CurvatureSortPoint;
 
-/** Helper function for 'BKE_CurveProfile_create_samples' for sorting edges based on curvature. */
+/** Helper function for 'BKE_curveprofile_create_samples' for sorting edges based on curvature. */
 static int sort_points_curvature(const void *in_a, const void *in_b)
 {
   const CurvatureSortPoint *a = (const CurvatureSortPoint *)in_a;
@@ -581,8 +581,8 @@ void BKE_curveprofile_create_samples(CurveProfile *prwdgt,
   for (i = 0; i < totpoints; i++) {
     bezt[i].vec[1][0] = prwdgt->path[i].x;
     bezt[i].vec[1][1] = prwdgt->path[i].y;
-    bezt[i].h1 = (prwdgt->path[i].h1 == PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
-    bezt[i].h2 = (prwdgt->path[i].h2 == PROF_HANDLE_VECTOR) ? HD_VECT : HD_AUTO;
+    bezt[i].h1 = (prwdgt->path[i].h1 == HD_VECT) ? HD_VECT : HD_AUTO;
+    bezt[i].h2 = (prwdgt->path[i].h2 == HD_VECT) ? HD_VECT : HD_AUTO;
   }
   /* Give the first and last bezier points the same handle type as their neighbors. */
   if (totpoints > 2) {
@@ -600,11 +600,12 @@ void BKE_curveprofile_create_samples(CurveProfile *prwdgt,
   curve_sorted = MEM_callocN(sizeof(CurvatureSortPoint) * totedges, "curve sorted");
   for (i = 0; i < totedges; i++) {
     curve_sorted[i].bezt_index = i;
-  }
-  /* Calculate the curvature of each edge once for use when sorting for curvature. */
-  for (i = 0; i < totedges; i++) {
+    /* Calculate the curvature of each edge once for use when sorting for curvature. */
     curve_sorted[i].bezt_curvature = bezt_edge_handle_angle(bezt, i);
   }
+//  for (i = 0; i < totedges; i++) {
+//    curve_sorted[i].bezt_curvature = bezt_edge_handle_angle(bezt, i);
+//  }
   qsort(curve_sorted, (size_t)totedges, sizeof(CurvatureSortPoint), sort_points_curvature);
 
   /* Assign the number of sampled points for each edge. */
@@ -637,8 +638,8 @@ void BKE_curveprofile_create_samples(CurveProfile *prwdgt,
       n_curved_edges = (n_curved_edges == 0) ? totedges : n_curved_edges;
 
       /* Give all of the curved edges the same number of points and straight edges one point. */
-      n_left = n_segments - (totedges - n_curved_edges); /* Left after 1 for each straight edge */
-      n_common = n_left / n_curved_edges;                /* Number assigned to all curved edges */
+      n_left = n_segments - (totedges - n_curved_edges); /* Left after 1 for each straight edge. */
+      n_common = n_left / n_curved_edges; /* Number assigned to all curved edges */
       if (n_common > 0) {
         for (i = 0; i < totedges; i++) {
           /* Add the common number if it's a curved edge or if edges are curved. */
@@ -677,8 +678,8 @@ void BKE_curveprofile_create_samples(CurveProfile *prwdgt,
       /* All extra sample points for this control point get "auto" handles. */
       for (int j = i_sample + 1; j < i_sample + n_samples[i]; j++) {
         r_samples[j].flag = 0;
-        r_samples[j].h1 = PROF_HANDLE_AUTO;
-        r_samples[j].h2 = PROF_HANDLE_AUTO;
+        r_samples[j].h1 = HD_AUTO;
+        r_samples[j].h2 = HD_AUTO;
         BLI_assert(j < n_segments);
       }
 
@@ -843,13 +844,13 @@ void BKE_curveprofile_update(CurveProfile *prwdgt, const bool remove_double)
       dy = points[i].y - points[i + 1].y;
       if (sqrtf(dx * dx + dy * dy) < thresh) {
         if (i == 0) {
-          points[i + 1].flag |= PROF_HANDLE_VECTOR;
+          points[i + 1].flag |= HD_VECT;
           if (points[i + 1].flag & PROF_SELECT) {
             points[i].flag |= PROF_SELECT;
           }
         }
         else {
-          points[i].flag |= PROF_HANDLE_VECTOR;
+          points[i].flag |= HD_VECT;
           if (points[i].flag & PROF_SELECT) {
             points[i + 1].flag |= PROF_SELECT;
           }

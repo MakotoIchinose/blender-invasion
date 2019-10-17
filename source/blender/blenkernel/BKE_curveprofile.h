@@ -45,7 +45,7 @@ void BKE_curveprofile_remove_by_flag(struct CurveProfile *prwdgt, const short fl
 
 struct CurveProfilePoint *BKE_curveprofile_insert(struct CurveProfile *prwdgt, float x, float y);
 
-void BKE_curveprofile_handle_set(struct CurveProfile *prwdgt, int type_1, int type_2);
+void BKE_curveprofile_selected_handle_set(struct CurveProfile *prwdgt, int type_1, int type_2);
 
 void BKE_curveprofile_reverse(struct CurveProfile *prwdgt);
 

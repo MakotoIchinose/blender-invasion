@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include "DNA_curveprofile_types.h"
+#include "DNA_curve_types.h"
 #include "DNA_texture_types.h"
 
 #include "BLI_utildefines.h"
@@ -140,8 +141,8 @@ static void rna_CurveProfile_update(struct CurveProfile *prwdgt)
 #else
 
 static const EnumPropertyItem prop_handle_type_items[] = {
-    {PROF_HANDLE_AUTO, "AUTO", 0, "Auto Handle", ""},
-    {PROF_HANDLE_VECTOR, "VECTOR", 0, "Vector Handle", ""},
+    {HD_AUTO, "AUTO", 0, "Auto Handle", ""},
+    {HD_VECT, "VECTOR", 0, "Vector Handle", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
