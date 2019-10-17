@@ -3559,7 +3559,8 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
 
 static void gpencil_add_guide_points(const tGPsdata *p,
                                      const GP_Sculpt_Guide *guide,
-                                     float mval[2],
+                                     const float start[2],
+                                     const float end[2],
                                      int segments)
 {
   bGPdata *gpd = p->gpd;
@@ -3582,9 +3583,7 @@ static void gpencil_add_guide_points(const tGPsdata *p,
 
   /* Use arc sampling for circular guide */
   if (guide->type == GP_GUIDE_CIRCULAR) {
-    float start[2], end[2], midpoint[2];
-    copy_v2_v2(start, p->mvalo);
-    copy_v2_v2(end, mval);
+    float midpoint[2];
     copy_v2_v2(midpoint, p->guide.origin);
 
     float cw = cross_tri_v2(start, p->guide.origin, end);
@@ -3612,9 +3611,6 @@ static void gpencil_add_guide_points(const tGPsdata *p,
   else {
     float step = 1.0f / (float)(segments + 1);
     float a = step;
-    float start[2], end[2];
-    copy_v2_v2(start, p->mvalo);
-    copy_v2_v2(end, mval);
 
     for (int i = 0; i < segments; i++) {
       pt = &points[idx_old + i - 1];
@@ -3681,7 +3677,7 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
     int slices = (dist / min_dist) + 1;
 
     if (is_speed_guide) {
-      gpencil_add_guide_points(p, guide, mouse_cur, slices);
+      gpencil_add_guide_points(p, guide, mouse_prv, mouse_cur, slices);
     }
     else {
       gpencil_add_arc_points(p, mouse_cur, slices);
