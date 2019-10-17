@@ -2916,7 +2916,10 @@ static void gpencil_snap_to_guide(const tGPsdata *p, const GP_Sculpt_Guide *guid
 }
 
 /* handle draw event */
-static void gpencil_draw_apply_event(bContext *C, wmOperator *op, const wmEvent *event, Depsgraph *depsgraph)
+static void gpencil_draw_apply_event(bContext *C,
+                                     wmOperator *op,
+                                     const wmEvent *event,
+                                     Depsgraph *depsgraph)
 {
   tGPsdata *p = op->customdata;
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
@@ -2932,7 +2935,7 @@ static void gpencil_draw_apply_event(bContext *C, wmOperator *op, const wmEvent 
   copy_v2fl_v2i(p->mval, event->mval);
   p->shift = event->shift;
 
-  /* verify direction for straight lines */
+  /* verify direction for straight lines and guides */
   if ((is_speed_guide) ||
       ((event->alt > 0) && (RNA_boolean_get(op->ptr, "disable_straight") == false))) {
     if (p->straight == 0) {
@@ -3554,7 +3557,7 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   }
 }
 
-static void gpencil_add_guide_points(tGPsdata *p,
+static void gpencil_add_guide_points(const tGPsdata *p,
                                      const GP_Sculpt_Guide *guide,
                                      float mval[2],
                                      int segments)
@@ -3575,25 +3578,48 @@ static void gpencil_add_guide_points(tGPsdata *p,
 
   tGPspoint *points = (tGPspoint *)gpd->runtime.sbuffer;
   tGPspoint *pt = NULL;
-  tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
+  tGPspoint *pt_before = &points[idx_old - 1];
 
-  float step = 1.0f / (float)(segments + 1);
-  float a = step;
+  /* Use arc sampling for circular guide */
+  if (guide->type == GP_GUIDE_CIRCULAR) {
+    float step = M_PI_2 / (float)(segments + 1);
+    float a = step;
+    float start[2], end[2], midpoint[2];
+    copy_v2_v2(start, p->mvalo);
+    copy_v2_v2(end, mval);
+    copy_v2_v2(midpoint, p->guide.origin);
 
-  float start[2], end[2];
-  copy_v2_v2(start, p->mvalo);
-  copy_v2_v2(end, mval);
+    for (int i = 0; i < segments; i++) {
+      pt = &points[idx_old + i - 1];
 
-  for (int i = 0; i < segments; i++) {
-    pt = &points[idx_old + i - 1];
+      pt->x = midpoint[0] + (end[0] - midpoint[0]) * sinf(a) + (start[0] - midpoint[0]) * cosf(a);
+      pt->y = midpoint[1] + (end[1] - midpoint[1]) * sinf(a) + (start[1] - midpoint[1]) * cosf(a);
+      gpencil_snap_to_guide(p, guide, &pt->x);
+      a += step;
 
-    interp_v2_v2v2(&pt->x, start, end, a);
-    gpencil_snap_to_guide(p, guide, &pt->x);
-    a += step;
+      /* Set pressure and strength equals to previous. It will be smoothed later. */
+      pt->pressure = pt_before->pressure;
+      pt->strength = pt_before->strength;
+    }
+  }
+  else {
+    float step = 1.0f / (float)(segments + 1);
+    float a = step;
+    float start[2], end[2];
+    copy_v2_v2(start, p->mvalo);
+    copy_v2_v2(end, mval);
 
-    /* Set pressure and strength equals to previous. It will be smoothed later. */
-    pt->pressure = pt_before->pressure;
-    pt->strength = pt_before->strength;
+    for (int i = 0; i < segments; i++) {
+      pt = &points[idx_old + i - 1];
+
+      interp_v2_v2v2(&pt->x, start, end, a);
+      gpencil_snap_to_guide(p, guide, &pt->x);
+      a += step;
+
+      /* Set pressure and strength equals to previous. It will be smoothed later. */
+      pt->pressure = pt_before->pressure;
+      pt->strength = pt_before->strength;
+    }
   }
 }
 
@@ -3634,6 +3660,16 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
   /* get distance in pixels */
   float dist = len_v2v2(mouse_prv, mouse_cur);
 
+  /* get distance for circular guide */
+  if (is_speed_guide && (guide->type == GP_GUIDE_CIRCULAR)) {
+    float middle[2];
+    gpencil_snap_to_guide(p, guide, mouse_prv);
+    gpencil_snap_to_guide(p, guide, mouse_cur);
+    mid_v2_v2v2(middle, mouse_cur, mouse_prv);
+    gpencil_snap_to_guide(p, guide, middle);
+    dist = len_v2v2(mouse_prv, middle) + len_v2v2(middle, mouse_cur);
+  }
+
   if ((dist > 3.0f) && (dist > min_dist)) {
     int slices = (dist / min_dist) + 1;
 
@@ -3643,7 +3679,6 @@ static void gpencil_add_fake_points(bContext *C, wmOperator *op, const wmEvent *
     else {
       gpencil_add_arc_points(p, mouse_cur, slices);
     }
-    
   }
 }
 
