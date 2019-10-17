@@ -35,7 +35,7 @@
 #include "DNA_texture_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_shader_fx_types.h"
-#include "DNA_profilecurve_types.h"
+#include "DNA_curveprofile_types.h"
 
 #include "BLI_utildefines.h"
 #include "BLI_alloca.h"
@@ -70,7 +70,7 @@
 #include "BKE_packedFile.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
-#include "BKE_profile_curve.h"
+#include "BKE_curveprofile.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
@@ -4507,22 +4507,22 @@ void uiTemplateCurveMapping(uiLayout *layout,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Profile Curve Template
+/** \name Curve Profile Template
  * \{ */
 
-static void profilecurve_presets_dofunc(bContext *C, void *prwdgt_v, int event)
+static void CurveProfile_presets_dofunc(bContext *C, void *prwdgt_v, int event)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
   prwdgt->preset = event;
-  BKE_profilecurve_reset(prwdgt);
-  BKE_profilecurve_update(prwdgt, false);
+  BKE_curveprofile_reset(prwdgt);
+  BKE_curveprofile_update(prwdgt, false);
 
-  ED_undo_push(C, "ProfileCurve tools");
+  ED_undo_push(C, "CurveProfile tools");
   ED_region_tag_redraw(CTX_wm_region(C));
 }
 
-static uiBlock *profilecurve_presets_func(bContext *C, ARegion *ar, ProfileCurve *prwdgt)
+static uiBlock *CurveProfile_presets_func(bContext *C, ARegion *ar, CurveProfile *prwdgt)
 {
   uiBlock *block;
   short yco = 0;
@@ -4530,7 +4530,7 @@ static uiBlock *profilecurve_presets_func(bContext *C, ARegion *ar, ProfileCurve
   menuwidth = 0;
 
   block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
-  UI_block_func_butmenu_set(block, profilecurve_presets_dofunc, prwdgt);
+  UI_block_func_butmenu_set(block, CurveProfile_presets_dofunc, prwdgt);
 
   uiDefIconTextBut(block,
                    UI_BTYPE_BUT_MENU,
@@ -4614,42 +4614,42 @@ static uiBlock *profilecurve_presets_func(bContext *C, ARegion *ar, ProfileCurve
   return block;
 }
 
-static uiBlock *profilecurve_buttons_presets(bContext *C, ARegion *ar, void *prwdgt_v)
+static uiBlock *CurveProfile_buttons_presets(bContext *C, ARegion *ar, void *prwdgt_v)
 {
-  return profilecurve_presets_func(C, ar, (ProfileCurve *)prwdgt_v);
+  return CurveProfile_presets_func(C, ar, (CurveProfile *)prwdgt_v);
 }
 
-/* Only for ProfileCurve tools block */
+/* Only for CurveProfile tools block */
 enum {
   UIPROFILE_FUNC_RESET,
   UIPROFILE_FUNC_RESET_VIEW,
 };
 
-static void profilecurve_tools_dofunc(bContext *C, void *prwdgt_v, int event)
+static void CurveProfile_tools_dofunc(bContext *C, void *prwdgt_v, int event)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
   switch (event) {
     case UIPROFILE_FUNC_RESET: /* reset */
-      BKE_profilecurve_reset(prwdgt);
-      BKE_profilecurve_update(prwdgt, false);
+      BKE_curveprofile_reset(prwdgt);
+      BKE_curveprofile_update(prwdgt, false);
       break;
     case UIPROFILE_FUNC_RESET_VIEW: /* reset view to clipping rect */
       prwdgt->view_rect = prwdgt->clip_rect;
       break;
   }
-  ED_undo_push(C, "ProfileCurve tools");
+  ED_undo_push(C, "CurveProfile tools");
   ED_region_tag_redraw(CTX_wm_region(C));
 }
 
-static uiBlock *profilecurve_tools_func(bContext *C, ARegion *ar, ProfileCurve *prwdgt)
+static uiBlock *CurveProfile_tools_func(bContext *C, ARegion *ar, CurveProfile *prwdgt)
 {
   uiBlock *block;
   short yco = 0;
   short menuwidth = 10 * UI_UNIT_X;
 
   block = UI_block_begin(C, ar, __func__, UI_EMBOSS);
-  UI_block_func_butmenu_set(block, profilecurve_tools_dofunc, prwdgt);
+  UI_block_func_butmenu_set(block, CurveProfile_tools_dofunc, prwdgt);
 
   uiDefIconTextBut(block,
                    UI_BTYPE_BUT_MENU,
@@ -4688,14 +4688,14 @@ static uiBlock *profilecurve_tools_func(bContext *C, ARegion *ar, ProfileCurve *
   return block;
 }
 
-static uiBlock *profilecurve_buttons_tools(bContext *C, ARegion *ar, void *prwdgt_v)
+static uiBlock *CurveProfile_buttons_tools(bContext *C, ARegion *ar, void *prwdgt_v)
 {
-  return profilecurve_tools_func(C, ar, (ProfileCurve *)prwdgt_v);
+  return CurveProfile_tools_func(C, ar, (CurveProfile *)prwdgt_v);
 }
 
-static void profilecurve_buttons_zoom_in(bContext *C, void *prwdgt_v, void *UNUSED(arg))
+static void CurveProfile_buttons_zoom_in(bContext *C, void *prwdgt_v, void *UNUSED(arg))
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
   float d;
 
   /* we allow 20 times zoom */
@@ -4711,9 +4711,9 @@ static void profilecurve_buttons_zoom_in(bContext *C, void *prwdgt_v, void *UNUS
   ED_region_tag_redraw(CTX_wm_region(C));
 }
 
-static void profilecurve_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UNUSED(arg))
+static void CurveProfile_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UNUSED(arg))
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
   float d, d1;
 
   /* Allow 20 times zoom, but don't view outside clip */
@@ -4756,66 +4756,66 @@ static void profilecurve_buttons_zoom_out(bContext *C, void *prwdgt_v, void *UNU
   ED_region_tag_redraw(CTX_wm_region(C));
 }
 
-static void profilecurve_clipping_toggle(bContext *C, void *cb_v, void *prwdgt_v)
+static void CurveProfile_clipping_toggle(bContext *C, void *cb_v, void *prwdgt_v)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
   prwdgt->flag ^= PROF_USE_CLIP;
 
-  BKE_profilecurve_update(prwdgt, false);
+  BKE_curveprofile_update(prwdgt, false);
   rna_update_cb(C, cb_v, NULL);
 }
 
-static void profilecurve_buttons_reverse(bContext *C, void *cb_v, void *prwdgt_v)
+static void CurveProfile_buttons_reverse(bContext *C, void *cb_v, void *prwdgt_v)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
-  BKE_profilecurve_reverse(prwdgt);
-  BKE_profilecurve_update(prwdgt, false);
+  BKE_curveprofile_reverse(prwdgt);
+  BKE_curveprofile_update(prwdgt, false);
   rna_update_cb(C, cb_v, NULL);
 }
 
-static void profilecurve_buttons_delete(bContext *C, void *cb_v, void *prwdgt_v)
+static void CurveProfile_buttons_delete(bContext *C, void *cb_v, void *prwdgt_v)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
-  BKE_profilecurve_remove_by_flag(prwdgt, SELECT);
-  BKE_profilecurve_update(prwdgt, false);
-
-  rna_update_cb(C, cb_v, NULL);
-}
-
-static void profilecurve_buttons_setsharp(bContext *C, void *cb_v, void *prwdgt_v)
-{
-  ProfileCurve *prwdgt = prwdgt_v;
-
-  BKE_profilecurve_handle_set(prwdgt, HD_VECT, HD_VECT);
-  BKE_profilecurve_update(prwdgt, false);
+  BKE_curveprofile_remove_by_flag(prwdgt, SELECT);
+  BKE_curveprofile_update(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
 }
 
-static void profilecurve_buttons_setcurved(bContext *C, void *cb_v, void *prwdgt_v)
+static void CurveProfile_buttons_setsharp(bContext *C, void *cb_v, void *prwdgt_v)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
+  CurveProfile *prwdgt = prwdgt_v;
 
-  BKE_profilecurve_handle_set(prwdgt, HD_AUTO, HD_AUTO);
-  BKE_profilecurve_update(prwdgt, false);
+  BKE_curveprofile_handle_set(prwdgt, HD_VECT, HD_VECT);
+  BKE_curveprofile_update(prwdgt, false);
 
   rna_update_cb(C, cb_v, NULL);
 }
 
-static void profilecurve_buttons_update(bContext *C, void *arg1_v, void *prwdgt_v)
+static void CurveProfile_buttons_setcurved(bContext *C, void *cb_v, void *prwdgt_v)
 {
-  ProfileCurve *prwdgt = prwdgt_v;
-  BKE_profilecurve_update(prwdgt, true);
+  CurveProfile *prwdgt = prwdgt_v;
+
+  BKE_curveprofile_handle_set(prwdgt, HD_AUTO, HD_AUTO);
+  BKE_curveprofile_update(prwdgt, false);
+
+  rna_update_cb(C, cb_v, NULL);
+}
+
+static void CurveProfile_buttons_update(bContext *C, void *arg1_v, void *prwdgt_v)
+{
+  CurveProfile *prwdgt = prwdgt_v;
+  BKE_curveprofile_update(prwdgt, true);
   rna_update_cb(C, arg1_v, NULL);
 }
 
-static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUpdateCb *cb)
+static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUpdateCb *cb)
 {
-  ProfileCurve *prwdgt = ptr->data;
-  ProfilePoint *point = NULL;
+  CurveProfile *prwdgt = ptr->data;
+  CurveProfilePoint *point = NULL;
   uiLayout *row, *sub;
   uiBlock *block;
   uiBut *bt;
@@ -4833,7 +4833,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   bt = uiDefBlockBut(
-      block, profilecurve_buttons_presets, prwdgt, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
+      block, CurveProfile_buttons_presets, prwdgt, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
 
   row = uiLayoutRow(layout, false);
@@ -4857,7 +4857,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                     0.0,
                     0.0,
                     TIP_("Zoom in"));
-  UI_but_func_set(bt, profilecurve_buttons_zoom_in, prwdgt, NULL);
+  UI_but_func_set(bt, CurveProfile_buttons_zoom_in, prwdgt, NULL);
 
   /* Zoom out */
   bt = uiDefIconBut(block,
@@ -4874,7 +4874,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                     0.0,
                     0.0,
                     TIP_("Zoom out"));
-  UI_but_func_set(bt, profilecurve_buttons_zoom_out, prwdgt, NULL);
+  UI_but_func_set(bt, CurveProfile_buttons_zoom_out, prwdgt, NULL);
 
   /* (Right aligned) */
   sub = uiLayoutRow(row, true);
@@ -4882,7 +4882,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
 
   /* Reset view, reset curve */
   bt = uiDefIconBlockBut(
-      block, profilecurve_buttons_tools, prwdgt, 0, 0, 0, 0, UI_UNIT_X, UI_UNIT_X, TIP_("Tools"));
+      block, CurveProfile_buttons_tools, prwdgt, 0, 0, 0, 0, UI_UNIT_X, UI_UNIT_X, TIP_("Tools"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
 
   /* Flip path */
@@ -4900,7 +4900,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                     0.0,
                     0.0,
                     TIP_("Reverse Path"));
-  UI_but_funcN_set(bt, profilecurve_buttons_reverse, MEM_dupallocN(cb), prwdgt);
+  UI_but_funcN_set(bt, CurveProfile_buttons_reverse, MEM_dupallocN(cb), prwdgt);
 
   /* Clipping toggle */
   icon = (prwdgt->flag & PROF_USE_CLIP) ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
@@ -4918,7 +4918,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                     0.0,
                     0.0,
                     TIP_("Toggle Profile Clipping"));
-  UI_but_funcN_set(bt, profilecurve_clipping_toggle, MEM_dupallocN(cb), prwdgt);
+  UI_but_funcN_set(bt, CurveProfile_clipping_toggle, MEM_dupallocN(cb), prwdgt);
 
   UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
 
@@ -4964,7 +4964,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
     }
 
     uiLayoutRow(layout, true);
-    UI_block_funcN_set(block, profilecurve_buttons_update, MEM_dupallocN(cb), prwdgt);
+    UI_block_funcN_set(block, CurveProfile_buttons_update, MEM_dupallocN(cb), prwdgt);
 
     /* Sharp / Smooth */
     bt = uiDefIconBut(block,
@@ -4984,7 +4984,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
-    UI_but_funcN_set(bt, profilecurve_buttons_setsharp, MEM_dupallocN(cb), prwdgt);
+    UI_but_funcN_set(bt, CurveProfile_buttons_setsharp, MEM_dupallocN(cb), prwdgt);
     bt = uiDefIconBut(block,
                       UI_BTYPE_BUT,
                       0,
@@ -4999,7 +4999,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       TIP_("Set the point's handle type to sharp."));
-    UI_but_funcN_set(bt, profilecurve_buttons_setcurved, MEM_dupallocN(cb), prwdgt);
+    UI_but_funcN_set(bt, CurveProfile_buttons_setcurved, MEM_dupallocN(cb), prwdgt);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
@@ -5056,7 +5056,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
                       0.0,
                       0.0,
                       TIP_("Delete points"));
-    UI_but_funcN_set(bt, profilecurve_buttons_delete, MEM_dupallocN(cb), prwdgt);
+    UI_but_funcN_set(bt, CurveProfile_buttons_delete, MEM_dupallocN(cb), prwdgt);
     if (point_last_or_first) {
       UI_but_flag_enable(bt, UI_BUT_DISABLED);
     }
@@ -5070,7 +5070,7 @@ static void profilecurve_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
 
 /** Template for a path creation widget intended for custom bevel profiles.
  * This section is quite similar to uiTemplateCurveMapping, but with reduced complexity */
-void uiTemplateProfileCurve(uiLayout *layout, PointerRNA *ptr, const char *propname)
+void uiTemplateCurveProfile(uiLayout *layout, PointerRNA *ptr, const char *propname)
 {
   RNAUpdateCb *cb;
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
@@ -5091,7 +5091,7 @@ void uiTemplateProfileCurve(uiLayout *layout, PointerRNA *ptr, const char *propn
   }
 
   cptr = RNA_property_pointer_get(ptr, prop);
-  if (!cptr.data || !RNA_struct_is_a(cptr.type, &RNA_ProfileCurve)) {
+  if (!cptr.data || !RNA_struct_is_a(cptr.type, &RNA_CurveProfile)) {
     return;
   }
 
@@ -5103,7 +5103,7 @@ void uiTemplateProfileCurve(uiLayout *layout, PointerRNA *ptr, const char *propn
   id = cptr.owner_id;
   UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
 
-  profilecurve_buttons_layout(layout, &cptr, cb);
+  CurveProfile_buttons_layout(layout, &cptr, cb);
 
   UI_block_lock_clear(block);
 

@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #include "DNA_color_types.h" /* color management */
-#include "DNA_profilecurve_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_customdata_types.h" /* Scene's runtime cddata masks. */
 #include "DNA_vec_types.h"
 #include "DNA_listBase.h"
@@ -52,7 +52,7 @@ struct Brush;
 struct Collection;
 struct ColorSpace;
 struct CurveMapping;
-struct ProfileCurve;
+struct CurveProfile;
 struct CustomData_MeshMasks;
 struct Editing;
 struct Image;
@@ -1520,7 +1520,7 @@ typedef struct ToolSettings {
   char _pad6[4];
 
   /* Profile widget for bevel tool */
-  struct ProfileCurve *prwdgt;
+  struct CurveProfile *prwdgt;
 } ToolSettings;
 
 /* *************************************************************** */

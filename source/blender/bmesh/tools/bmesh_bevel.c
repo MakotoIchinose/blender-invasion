@@ -38,8 +38,8 @@
 
 #include "eigen_capi.h"
 
-#include "BKE_profile_curve.h"
-#include "DNA_profilecurve_types.h"
+#include "BKE_curveprofile.h"
+#include "DNA_curveprofile_types.h"
 
 #include "bmesh.h"
 #include "bmesh_bevel.h" /* own include */
@@ -334,7 +334,7 @@ typedef struct BevelParams {
   bool use_custom_profile;
   char _pad[3];
   /** The struct used to store the custom profile input */
-  const struct ProfileCurve *prwdgt;
+  const struct CurveProfile *prwdgt;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
   /** Vertex group index, maybe set if vertex_only. */
@@ -6976,7 +6976,7 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
     if (custom) {
       /* Make sure the profile widget's sample table is full. */
       if (bp->prwdgt->totsegments != seg || !bp->prwdgt->segments) {
-        BKE_profilecurve_initialize((ProfileCurve *)bp->prwdgt, (short)seg);
+        BKE_curveprofile_initialize((CurveProfile *)bp->prwdgt, (short)seg);
       }
 
       /* Copy segment locations into the profile spacing struct. */
@@ -7005,7 +7005,7 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
                                                           (size_t)(seg_2 + 1) * sizeof(double));
       if (custom) {
         /* Make sure the profile widget's sample table is full of the seg_2 samples. */
-        BKE_profilecurve_initialize((ProfileCurve *)bp->prwdgt, (short)seg_2);
+        BKE_curveprofile_initialize((CurveProfile *)bp->prwdgt, (short)seg_2);
 
         /* Copy segment locations into the profile spacing struct. */
         for (int i = 0; i < seg_2 + 1; i++) {
@@ -7280,7 +7280,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct ProfileCurve *prwdgt,
+                   const struct CurveProfile *prwdgt,
                    const int vmesh_method)
 {
   BMIter iter, liter;

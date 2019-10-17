@@ -33,10 +33,10 @@
 #include "BKE_unit.h"
 #include "BKE_layer.h"
 #include "BKE_mesh.h"
-#include "BKE_profile_curve.h"
+#include "BKE_curveprofile.h"
 
 #include "DNA_mesh_types.h"
-#include "DNA_profilecurve_types.h"
+#include "DNA_curveprofile_types.h"
 
 #include "RNA_define.h"
 #include "RNA_access.h"
@@ -100,7 +100,7 @@ typedef struct {
   short value_mode; /* Which value does mouse movement and numeric input affect? */
   float segments;   /* Segments as float so smooth mouse pan works in small increments */
 
-  ProfileCurve *prwdgt;
+  CurveProfile *prwdgt;
 } BevelData;
 
 enum {
@@ -981,7 +981,7 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
     /* Get an RNA pointer to ToolSettings to give to the profile widget template code */
     Scene *scene = CTX_data_scene(C);
     RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
-    uiTemplateProfileCurve(layout, &toolsettings_ptr, "prwdgt");
+    uiTemplateCurveProfile(layout, &toolsettings_ptr, "prwdgt");
   }
 }
 

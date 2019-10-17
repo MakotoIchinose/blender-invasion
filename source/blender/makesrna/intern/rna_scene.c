@@ -3303,10 +3303,10 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "MeshStatVis");
   RNA_def_property_ui_text(prop, "Mesh Statistics Visualization", NULL);
 
-  /* ProfileCurve */
+  /* CurveProfile */
   prop = RNA_def_property(srna, "prwdgt", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "prwdgt");
-  RNA_def_property_struct_type(prop, "ProfileCurve");
+  RNA_def_property_struct_type(prop, "CurveProfile");
   RNA_def_property_ui_text(prop, "Profile Widget", "Used for defining a profile's path");
 }
 

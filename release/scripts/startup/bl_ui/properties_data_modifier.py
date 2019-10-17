@@ -180,7 +180,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row = layout.row()
         row.enabled = md.use_custom_profile
         if md.use_custom_profile:
-            layout.template_profilecurve(md, "custom_profile")
+            layout.template_curveprofile(md, "custom_profile")
             # If the number of segments has changed, update the table to show the new sampled
             # segment locations on the widget
             if md.custom_profile.totsegments != md.segments:

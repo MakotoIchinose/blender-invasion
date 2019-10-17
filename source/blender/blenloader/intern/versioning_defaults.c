@@ -50,7 +50,7 @@
 #include "BKE_paint.h"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
-#include "BKE_profile_curve.h"
+#include "BKE_curveprofile.h"
 
 #include "BLO_readfile.h"
 
@@ -308,7 +308,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Make sure that the profile widget is initialized */
   if (ts->prwdgt == NULL) {
-    ts->prwdgt = BKE_profilecurve_add(PROF_PRESET_LINE);
+    ts->prwdgt = BKE_curveprofile_add(PROF_PRESET_LINE);
   }
 }
 

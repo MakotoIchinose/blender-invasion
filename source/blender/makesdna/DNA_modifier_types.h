@@ -393,7 +393,7 @@ typedef struct BevelModifierData {
   char defgrp_name[64];
 
   /** Curve info for the custom profile */
-  struct ProfileCurve *custom_profile;
+  struct CurveProfile *custom_profile;
 
 } BevelModifierData;
 

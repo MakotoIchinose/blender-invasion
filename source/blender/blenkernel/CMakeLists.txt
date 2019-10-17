@@ -185,7 +185,7 @@ set(SRC
   intern/pbvh_bmesh.c
   intern/pbvh_parallel.cc
   intern/pointcache.c
-  intern/profile_curve.c
+  intern/curveprofile.c
   intern/report.c
   intern/rigidbody.c
   intern/scene.c
@@ -331,7 +331,7 @@ set(SRC
   BKE_particle.h
   BKE_pbvh.h
   BKE_pointcache.h
-  BKE_profile_curve.h
+  BKE_curveprofile.h
   BKE_report.h
   BKE_rigidbody.h
   BKE_scene.h

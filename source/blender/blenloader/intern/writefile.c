@@ -139,7 +139,7 @@
 #include "DNA_workspace_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_profilecurve_types.h"
+#include "DNA_curveprofile_types.h"
 
 #include "MEM_guardedalloc.h"  // MEM_freeN
 #include "BLI_bitmap.h"
@@ -954,10 +954,10 @@ static void write_curvemapping(WriteData *wd, CurveMapping *cumap)
   write_curvemapping_curves(wd, cumap);
 }
 
-static void write_profilecurve(WriteData *wd, ProfileCurve *prwdgt)
+static void write_CurveProfile(WriteData *wd, CurveProfile *prwdgt)
 {
-  writestruct(wd, DATA, ProfileCurve, 1, prwdgt);
-  writestruct(wd, DATA, ProfilePoint, prwdgt->totpoint, prwdgt->path);
+  writestruct(wd, DATA, CurveProfile, 1, prwdgt);
+  writestruct(wd, DATA, CurveProfilePoint, prwdgt->totpoint, prwdgt->path);
 }
 
 static void write_node_socket(WriteData *wd, bNodeSocket *sock)
@@ -1769,7 +1769,7 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
     else if (md->type == eModifierType_Bevel) {
       BevelModifierData *bmd = (BevelModifierData *)md;
       if (bmd->custom_profile) {
-        write_profilecurve(wd, bmd->custom_profile);
+        write_CurveProfile(wd, bmd->custom_profile);
       }
     }
   }
@@ -2548,7 +2548,7 @@ static void write_scene(WriteData *wd, Scene *sce)
   }
   /* Write the profile widget to the file */
   if (tos->prwdgt) {
-    write_profilecurve(wd, tos->prwdgt);
+    write_CurveProfile(wd, tos->prwdgt);
   }
 
   write_paint(wd, &tos->imapaint.paint);

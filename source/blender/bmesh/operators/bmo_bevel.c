@@ -24,8 +24,8 @@
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
-#include "BKE_profile_curve.h"
-#include "DNA_profilecurve_types.h"
+#include "BKE_curveprofile.h"
+#include "DNA_curveprofile_types.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 
@@ -48,7 +48,7 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
   const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const bool use_custom_profile = BMO_slot_bool_get(op->slots_in, "use_custom_profile");
-  const ProfileCurve *prwdgt = BMO_slot_ptr_get(op->slots_in, "prwdgt");
+  const CurveProfile *prwdgt = BMO_slot_ptr_get(op->slots_in, "prwdgt");
   const int vmesh_method = BMO_slot_int_get(op->slots_in, "vmesh_method");
 
   if (offset > 0) {

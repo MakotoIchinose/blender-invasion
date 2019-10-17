@@ -74,7 +74,7 @@
 #include "DNA_object_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_profilecurve_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_text_types.h"
@@ -133,7 +133,7 @@
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_profile_curve.h"
+#include "BKE_curveprofile.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -2697,10 +2697,10 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Read ProfileCurve
+/** \name Read CurveProfile
  * \{ */
 
-static void direct_link_profilecurve(FileData *fd, ProfileCurve *prwdgt)
+static void direct_link_CurveProfile(FileData *fd, CurveProfile *prwdgt)
 {
   prwdgt->path = newdataadr(fd, prwdgt->path);
   prwdgt->table = NULL;
@@ -5814,7 +5814,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       BevelModifierData *bmd = (BevelModifierData *)md;
       bmd->custom_profile = newdataadr(fd, bmd->custom_profile);
       if (bmd->custom_profile) {
-        direct_link_profilecurve(fd, bmd->custom_profile);
+        direct_link_CurveProfile(fd, bmd->custom_profile);
       }
     }
   }
@@ -6777,7 +6777,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     /* Relink toolsettings profile widget */
     sce->toolsettings->prwdgt = newdataadr(fd, sce->toolsettings->prwdgt);
     if (sce->toolsettings->prwdgt) {
-      direct_link_profilecurve(fd, sce->toolsettings->prwdgt);
+      direct_link_CurveProfile(fd, sce->toolsettings->prwdgt);
     }
   }
 

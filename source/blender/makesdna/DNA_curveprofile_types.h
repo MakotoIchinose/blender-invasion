@@ -33,26 +33,26 @@
 /** Dynamic size of widget's high resolution table, input should be prwdgt->totpoint. */
 #define PROF_N_TABLE(n_pts) min_ii(PROF_TABLE_MAX, (((n_pts - 1)) * PROF_RESOL) + 1)
 
-typedef struct ProfilePoint {
+typedef struct CurveProfilePoint {
   /** Location of the point, keep together. */
   float x, y;
   /** Flag selection state and others. */
   short flag;
-  /** Flags for both handle's type (eProfilePointHandle). */
+  /** Flags for both handle's type (eCurveProfilePointHandle). */
   char h1, h2;
-} ProfilePoint;
+} CurveProfilePoint;
 
-/** ProfilePoint->flag */
+/** CurveProfilePoint->flag */
 enum {
   PROF_SELECT = (1 << 0),
 };
 
-typedef enum eProfilePointHandle {
+typedef enum eCurveProfilePointHandle {
   PROF_HANDLE_VECTOR = 0,
   PROF_HANDLE_AUTO = 1,
-} eProfilePointHandle;
+} eCurveProfilePointHandle;
 
-typedef struct ProfileCurve {
+typedef struct CurveProfile {
   /** Number of user-added points that define the profile */
   short totpoint;
   /** Number of sampled points */
@@ -60,20 +60,20 @@ typedef struct ProfileCurve {
   /** Preset to use when reset */
   int preset;
   /** Sequence of points defining the shape of the curve  */
-  ProfilePoint *path;
+  CurveProfilePoint *path;
   /** Display and evaluation table at higher resolution for curves */
-  ProfilePoint *table;
+  CurveProfilePoint *table;
   /** The positions of the sampled points. Used to display a preview of where they will be */
-  ProfilePoint *segments;
+  CurveProfilePoint *segments;
   /** Flag for mode states, sampling options, etc... */
   int flag;
   /** Used for keeping track how many times the widget is changed */
   int changed_timestamp;
   /** Current rect, clip rect (is default rect too). */
   rctf view_rect, clip_rect;
-} ProfileCurve;
+} CurveProfile;
 
-/** ProfileCurve->flag */
+/** CurveProfile->flag */
 enum {
   PROF_USE_CLIP = (1 << 0),              /* Keep control points inside bounding rectangle. */
   PROF_SYMMETRY_MODE = (1 << 1),         /* Unused for now. */
@@ -81,12 +81,12 @@ enum {
   PROF_SAMPLE_EVEN_LENGTHS = (1 << 3),   /* Put segments evenly spaced along the path. */
 };
 
-typedef enum eProfileCurvePresets {
+typedef enum eCurveProfilePresets {
   PROF_PRESET_LINE = 0,     /* Default simple line between end points. */
   PROF_PRESET_SUPPORTS = 1, /* Support loops for a regular curved profile. */
   PROF_PRESET_CORNICE = 2,  /* Moulding type example. */
   PROF_PRESET_CROWN = 3,    /* Second moulding example. */
   PROF_PRESET_STEPS = 4,    /* Dynamic number of steps defined by totsegments. */
-} eProfileCurvePresets;
+} eCurveProfilePresets;
 
 #endif

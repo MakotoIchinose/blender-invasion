@@ -68,7 +68,7 @@ set(DEFSRC
   rna_palette.c
   rna_particle.c
   rna_pose.c
-  rna_profilecurve.c
+  rna_curveprofile.c
   rna_render.c
   rna_rigidbody.c
   rna_rna.c
