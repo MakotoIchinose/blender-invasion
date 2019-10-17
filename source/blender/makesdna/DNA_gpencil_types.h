@@ -611,8 +611,6 @@ typedef enum eGPdata_Flag {
    * not valid.
    */
   GP_DATA_STROKE_FORCE_RECALC = (1 << 17),
-  /* Special mode drawing polygons */
-  GP_DATA_STROKE_POLYGON = (1 << 18),
   /* Use adaptive UV scales */
   GP_DATA_UV_ADAPTIVE = (1 << 19),
   /* Autolock not active layers */
