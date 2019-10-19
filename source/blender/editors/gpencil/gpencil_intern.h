@@ -214,6 +214,8 @@ typedef struct tGPDprimitive {
   int sel_cp;
   /** flag to determine operations in progress */
   int flag;
+  /** flag to determine operations previous mode */
+  int prev_flag;
   /** recorded mouse-position */
   float mval[2];
   /** previous recorded mouse-position */

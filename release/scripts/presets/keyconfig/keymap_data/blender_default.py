@@ -5802,8 +5802,6 @@ def km_3d_view_tool_paint_gpencil_polyline(params):
              {"properties": [("type", 'POLYLINE'), ("wait_for_input", False)]}),
             ("gpencil.primitive", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
              {"properties": [("type", 'POLYLINE'), ("wait_for_input", False)]}),
-            ("gpencil.primitive", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("type", 'POLYLINE'), ("wait_for_input", False)]}),
             # Lasso select
             ("gpencil.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True, "alt": True}, None),
         ]},
