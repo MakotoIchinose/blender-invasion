@@ -206,7 +206,7 @@ static void gpencil_primitive_constrain(tGPDprimitive *tgpi, bool line_mode)
   else {
     gpencil_primitive_to_square(tgpi, x, y);
   }
- }
+}
 
 /* Helper to rotate point around origin */
 static void gp_rotate_v2_v2v2fl(float v[2],
@@ -459,7 +459,12 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
                 UI_MAX_DRAW_STR);
   }
 
-  if (ELEM(tgpi->type, GP_STROKE_CIRCLE, GP_STROKE_ARC, GP_STROKE_LINE, GP_STROKE_BOX, GP_STROKE_POLYLINE)) {
+  if (ELEM(tgpi->type,
+           GP_STROKE_CIRCLE,
+           GP_STROKE_ARC,
+           GP_STROKE_LINE,
+           GP_STROKE_BOX,
+           GP_STROKE_POLYLINE)) {
     if (hasNumInput(&tgpi->num)) {
       char str_offs[NUM_STR_REP_LEN];
 
@@ -628,7 +633,6 @@ static void gp_primitive_arc(tGPDprimitive *tgpi, tGPspoint *points2D)
   }
   UI_GetThemeColor4fv(TH_GIZMO_SECONDARY, color);
   gp_primitive_set_cp(tgpi, tgpi->cp1, color, BIG_SIZE_CTL * 0.9f);
-  gp_primitive_set_cp(tgpi, corner, color, BIG_SIZE_CTL * 0.9f);
 }
 
 /* create a bezier */
@@ -1353,7 +1357,6 @@ static void gpencil_primitive_interaction_end(bContext *C,
 static void gpencil_primitive_edit_event_handling(
     bContext *C, wmOperator *op, wmWindow *win, const wmEvent *event, tGPDprimitive *tgpi)
 {
-  // printf("Edit: %d -- %d, %d\n", tgpi->flag, event->type, event->val);
   /* calculate nearest point then set cursor */
   int move = MOVE_NONE;
   float a = len_v2v2(tgpi->mval, tgpi->start);
@@ -1555,8 +1558,6 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
 
   copy_v2fl_v2i(tgpi->mval, event->mval);
 
-  // printf("Modal: %d -- %d, %d\n", tgpi->flag, event->type, event->val);
-
   if (tgpi->flag == IN_MOVE) {
 
     switch (event->type) {
@@ -1580,51 +1581,6 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
         break;
       }
     }
-    copy_v2_v2(tgpi->mvalo, tgpi->mval);
-    return OPERATOR_RUNNING_MODAL;
-  }
-  else if (tgpi->flag == IN_POLYLINE) {
-
-    switch (event->type) {
-
-      case ESCKEY:
-      case LEFTMOUSE: {
-        if (event->val == KM_PRESS) {
-          WM_cursor_modal_set(win, WM_CURSOR_CROSS);
-          gpencil_primitive_add_segment(tgpi);
-
-          gpencil_primitive_update(C, op, tgpi);
-          copy_v2_v2(tgpi->start, tgpi->end);
-          copy_v2_v2(tgpi->origin, tgpi->end);
-        }
-        break;
-      }
-      case SPACEKEY: /* confirm */
-      case MIDDLEMOUSE:
-      case RETKEY:
-      case RIGHTMOUSE: {
-        if (event->val == KM_PRESS) {
-          tgpi->flag = IDLE;
-          tgpi->tot_edges = tgpi->tot_stored_edges ? 1 : 0;
-          gp_primitive_update_strokes(C, tgpi);
-          gpencil_primitive_interaction_end(C, op, win, tgpi);
-          return OPERATOR_FINISHED;
-        }
-        break;
-      }
-      case MOUSEMOVE: {
-        WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
-        copy_v2_v2(tgpi->end, tgpi->mval);
-
-        if (event->shift) {
-          gpencil_primitive_constrain(tgpi, true);
-        }
-
-        gpencil_primitive_update(C, op, tgpi);
-        break;
-      }
-    }
-
     copy_v2_v2(tgpi->mvalo, tgpi->mval);
     return OPERATOR_RUNNING_MODAL;
   }
