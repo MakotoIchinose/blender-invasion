@@ -154,6 +154,9 @@ typedef struct tGP_BrushEditData {
   wmTimer *timer;
   bool timerTick; /* is this event from a timer */
 
+  /* Object invert matrix */
+  float inv_mat[4][4];
+
   RNG *rng;
 } tGP_BrushEditData;
 
@@ -631,9 +634,7 @@ static bool gp_brush_push_apply(tGP_BrushEditData *gso,
   mul_v3_v3fl(delta, gso->dvec, inf);
 
   /* apply */
-  float inv_mat[4][4];
-  invert_m4_m4(inv_mat, gso->object->obmat);
-  mul_mat3_m4_v3(inv_mat, delta); /* only rotation component */
+  mul_mat3_m4_v3(gso->inv_mat, delta); /* only rotation component */
   add_v3_v3(&pt->x, delta);
 
   /* compute lock axis */
@@ -1310,6 +1311,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
   gso->scene = scene;
   gso->object = ob;
   if (ob) {
+    invert_m4_m4(gso->inv_mat, ob->obmat);
     gso->vrgroup = ob->actdef - 1;
     if (!BLI_findlink(&ob->defbase, gso->vrgroup)) {
       gso->vrgroup = -1;
@@ -1318,6 +1320,7 @@ static bool gpsculpt_brush_init(bContext *C, wmOperator *op)
     gso->is_transformed = BKE_gpencil_has_transform_modifiers(ob);
   }
   else {
+    unit_m4(gso->inv_mat);
     gso->vrgroup = -1;
     gso->is_transformed = false;
   }
