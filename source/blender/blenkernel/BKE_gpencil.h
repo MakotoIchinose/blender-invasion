@@ -63,82 +63,6 @@ struct MDeformVert;
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_TINT)))
 
-struct GPUBatch;
-struct GPUVertBuf;
-struct GPUVertFormat;
-struct GpencilBatchGroup;
-
-#define GP_SIMPLIFY(scene) ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ENABLE))
-#define GP_SIMPLIFY_ONPLAY(playing) \
-  (((playing == true) && (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY)) || \
-   ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ON_PLAY) == 0))
-#define GP_SIMPLIFY_FILL(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FILL)))
-#define GP_SIMPLIFY_MODIF(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_MODIFIER)))
-#define GP_SIMPLIFY_FX(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_FX)))
-#define GP_SIMPLIFY_BLEND(scene, playing) \
-  ((GP_SIMPLIFY_ONPLAY(playing) && (GP_SIMPLIFY(scene)) && \
-    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_BLEND)))
-
-/* GPUBatch Cache Element */
-typedef struct GpencilBatchCacheElem {
-  struct GPUBatch *batch;
-  struct GPUVertBuf *vbo;
-  int vbo_len;
-  /* attr ids */
-  struct GPUVertFormat *format;
-  uint pos_id;
-  uint color_id;
-  uint thickness_id;
-  uint uvdata_id;
-  uint prev_pos_id;
-
-  /* size for VBO alloc */
-  int tot_vertex;
-} GpencilBatchCacheElem;
-
-/* Defines each batch group to define later the shgroup */
-typedef struct GpencilBatchGroup {
-  struct bGPDlayer *gpl;  /* reference to original layer */
-  struct bGPDframe *gpf;  /* reference to original frame */
-  struct bGPDstroke *gps; /* reference to original stroke */
-  short type;             /* type of element */
-  bool onion;             /* the group is part of onion skin */
-  int vertex_idx;         /* index of vertex data */
-} GpencilBatchGroup;
-
-typedef enum GpencilBatchGroup_Type {
-  eGpencilBatchGroupType_Stroke = 1,
-  eGpencilBatchGroupType_Point = 2,
-  eGpencilBatchGroupType_Fill = 3,
-  eGpencilBatchGroupType_Edit = 4,
-  eGpencilBatchGroupType_Edlin = 5,
-} GpencilBatchGroup_Type;
-
-/* Runtime data for GPU and derived frames after applying modifiers */
-typedef struct GpencilBatchCache {
-  struct GpencilBatchCacheElem b_stroke;
-  struct GpencilBatchCacheElem b_point;
-  struct GpencilBatchCacheElem b_fill;
-  struct GpencilBatchCacheElem b_edit;
-  struct GpencilBatchCacheElem b_edlin;
-
-  /* settings to determine if cache is invalid */
-  bool is_dirty;
-  bool is_editmode;
-  int cache_frame;
-
-  /* data with the shading groups */
-  int grp_used;                        /* total groups in arrays */
-  int grp_size;                        /* max size of the array */
-  struct GpencilBatchGroup *grp_cache; /* array of elements */
-} GpencilBatchCache;
-
 /* ------------ Grease-Pencil API ------------------ */
 
 void BKE_gpencil_free_point_weights(struct MDeformVert *dvert);
@@ -226,10 +150,6 @@ struct bGPDframe *BKE_gpencil_layer_getframe(struct bGPDlayer *gpl,
 struct bGPDframe *BKE_gpencil_layer_find_frame(struct bGPDlayer *gpl, int cframe);
 bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 
-struct bGPDlayer *BKE_gpencil_layer_get_index(struct bGPdata *gpd,
-                                              int index,
-                                              int first_if_not_found);
-
 struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
 void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
@@ -307,20 +227,10 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
                                     float (*points2d)[2],
                                     const float scale,
                                     int *r_direction);
-float BKE_gpencil_stroke_length(const struct bGPDstroke *gps, bool use_3d);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 
 bool BKE_gpencil_sample_stroke(struct bGPDstroke *gps, const float dist, const bool select);
-bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, const float dist);
-bool BKE_gpencil_trim_stroke_points(struct bGPDstroke *gps,
-                                    const int index_from,
-                                    const int index_to);
-bool BKE_gpencil_shrink_stroke(struct bGPDstroke *gps, const float dist);
-bool BKE_gpencil_split_stroke(struct bGPDframe *gpf,
-                              struct bGPDstroke *gps,
-                              const int before_index,
-                              struct bGPDstroke **remaining_gps);
 bool BKE_gpencil_smooth_stroke(struct bGPDstroke *gps, int i, float inf);
 bool BKE_gpencil_smooth_stroke_strength(struct bGPDstroke *gps, int point_index, float influence);
 bool BKE_gpencil_smooth_stroke_thickness(struct bGPDstroke *gps, int point_index, float influence);
