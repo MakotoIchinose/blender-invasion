@@ -241,10 +241,11 @@ static SeqCacheKey *seq_cache_choose_key(Scene *scene, SeqCacheKey *lkey, SeqCac
    * This can happen because only FINAL_OUT item insertion will trigger recycling
    * but that is also the point, where prefetch can be suspended.
    *
-   * We could use temp cache as a shield and later untemp entry,
+   * We could use temp cache as a shield and later make it a non-temporary entry,
    * but it is not worth of increasing system complexity.
    */
-  if (scene->ed->cache_flag & SEQ_CACHE_PREFETCH_ENABLE) {
+  if (scene->ed->cache_flag & SEQ_CACHE_PREFETCH_ENABLE &&
+      BKE_sequencer_prefetch_job_is_running(scene)) {
     int pfjob_start, pfjob_end;
     BKE_sequencer_prefetch_get_time_range(scene, &pfjob_start, &pfjob_end);
 
@@ -319,7 +320,7 @@ static void seq_cache_recycle_linked(Scene *scene, SeqCacheKey *base)
   }
 }
 
-SeqCacheKey *seq_cache_get_item_for_removal(Scene *scene)
+static SeqCacheKey *seq_cache_get_item_for_removal(Scene *scene)
 {
   SeqCache *cache = seq_cache_get_from_scene(scene);
   SeqCacheKey *finalkey = NULL;
