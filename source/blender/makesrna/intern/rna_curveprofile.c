@@ -64,52 +64,52 @@
 
 static void rna_CurveProfile_clip_set(PointerRNA *ptr, bool value)
 {
-  CurveProfile *prwdgt = (CurveProfile *)ptr->data;
+  CurveProfile *profile = (CurveProfile *)ptr->data;
 
   if (value) {
-    prwdgt->flag |= PROF_USE_CLIP;
+    profile->flag |= PROF_USE_CLIP;
   }
   else {
-    prwdgt->flag &= ~PROF_USE_CLIP;
+    profile->flag &= ~PROF_USE_CLIP;
   }
 
-  BKE_curveprofile_update(prwdgt, false);
+  BKE_curveprofile_update(profile, false);
 }
 
 static void rna_CurveProfile_sample_straight_set(PointerRNA *ptr, bool value)
 {
-  CurveProfile *prwdgt = (CurveProfile *)ptr->data;
+  CurveProfile *profile = (CurveProfile *)ptr->data;
 
   if (value) {
-    prwdgt->flag |= PROF_SAMPLE_STRAIGHT_EDGES;
+    profile->flag |= PROF_SAMPLE_STRAIGHT_EDGES;
   }
   else {
-    prwdgt->flag &= ~PROF_SAMPLE_STRAIGHT_EDGES;
+    profile->flag &= ~PROF_SAMPLE_STRAIGHT_EDGES;
   }
 
-  BKE_curveprofile_update(prwdgt, false);
+  BKE_curveprofile_update(profile, false);
 }
 
 static void rna_CurveProfile_sample_even_set(PointerRNA *ptr, bool value)
 {
-  CurveProfile *prwdgt = (CurveProfile *)ptr->data;
+  CurveProfile *profile = (CurveProfile *)ptr->data;
 
   if (value) {
-    prwdgt->flag |= PROF_SAMPLE_EVEN_LENGTHS;
+    profile->flag |= PROF_SAMPLE_EVEN_LENGTHS;
   }
   else {
-    prwdgt->flag &= ~PROF_SAMPLE_EVEN_LENGTHS;
+    profile->flag &= ~PROF_SAMPLE_EVEN_LENGTHS;
   }
 
-  BKE_curveprofile_update(prwdgt, false);
+  BKE_curveprofile_update(profile, false);
 }
 
-static void rna_CurveProfile_remove_point(CurveProfile *prwdgt,
+static void rna_CurveProfile_remove_point(CurveProfile *profile,
                                            ReportList *reports,
                                            PointerRNA *point_ptr)
 {
   CurveProfilePoint *point = point_ptr->data;
-  if (BKE_curveprofile_remove_point(prwdgt, point) == false) {
+  if (BKE_curveprofile_remove_point(profile, point) == false) {
     BKE_report(reports, RPT_ERROR, "Unable to remove path point");
     return;
   }
@@ -117,25 +117,25 @@ static void rna_CurveProfile_remove_point(CurveProfile *prwdgt,
   RNA_POINTER_INVALIDATE(point_ptr);
 }
 
-static void rna_CurveProfile_evaluate(struct CurveProfile *prwdgt,
+static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
                                        ReportList *reports,
                                        float length_portion,
                                        float *location)
 {
-  if (!prwdgt->table) {
+  if (!profile->table) {
     BKE_report(reports, RPT_ERROR, "CurveProfile table not initialized, call initialize()");
   }
-  BKE_curveprofile_evaluate_length_portion(prwdgt, length_portion, &location[0], &location[1]);
+  BKE_curveprofile_evaluate_length_portion(profile, length_portion, &location[0], &location[1]);
 }
 
-static void rna_CurveProfile_initialize(struct CurveProfile *prwdgt, int totsegments)
+static void rna_CurveProfile_initialize(struct CurveProfile *profile, int totsegments)
 {
-  BKE_curveprofile_initialize(prwdgt, (short)totsegments);
+  BKE_curveprofile_initialize(profile, (short)totsegments);
 }
 
-static void rna_CurveProfile_update(struct CurveProfile *prwdgt)
+static void rna_CurveProfile_update(struct CurveProfile *profile)
 {
-  BKE_curveprofile_update(prwdgt, false);
+  BKE_curveprofile_update(profile, false);
 }
 
 #else
@@ -188,7 +188,7 @@ static void rna_def_curveprofile_points_api(BlenderRNA *brna, PropertyRNA *cprop
   RNA_def_struct_ui_text(srna, "Profile Point", "Collection of Profile Points");
 
   func = RNA_def_function(srna, "add", "BKE_curveprofile_insert");
-  RNA_def_function_ui_description(func, "Add point to the profile widget");
+  RNA_def_function_ui_description(func, "Add point to the profile");
   parm = RNA_def_float(func,
                        "x",
                        0.0f,
@@ -214,7 +214,7 @@ static void rna_def_curveprofile_points_api(BlenderRNA *brna, PropertyRNA *cprop
 
   func = RNA_def_function(srna, "remove", "rna_CurveProfile_remove_point");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  RNA_def_function_ui_description(func, "Delete point from profile widget");
+  RNA_def_function_ui_description(func, "Delete point from the profile");
   parm = RNA_def_pointer(func, "point", "CurveProfilePoint", "", "Point to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
@@ -261,7 +261,7 @@ static void rna_def_curveprofile(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, NULL, "rna_CurveProfile_sample_even_set");
 
   func = RNA_def_function(srna, "update", "rna_CurveProfile_update");
-  RNA_def_function_ui_description(func, "Update the profile widget");
+  RNA_def_function_ui_description(func, "Update the profile");
 
   func = RNA_def_function(srna, "initialize", "rna_CurveProfile_initialize");
   parm = RNA_def_int(func,
@@ -280,7 +280,7 @@ static void rna_def_curveprofile(BlenderRNA *brna)
   prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
   RNA_def_property_struct_type(prop, "CurveProfilePoint");
-  RNA_def_property_ui_text(prop, "Points", "Profile widget control points");
+  RNA_def_property_ui_text(prop, "Points", "Profile control points");
   rna_def_curveprofile_points_api(brna, prop);
 
   prop = RNA_def_property(srna, "totsegments", PROP_INT, PROP_NONE);

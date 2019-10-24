@@ -306,9 +306,9 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     }
   }
 
-  /* Make sure that the profile widget is initialized */
-  if (ts->prwdgt == NULL) {
-    ts->prwdgt = BKE_curveprofile_add(PROF_PRESET_LINE);
+  /* Make sure that the curve profile is initialized */
+  if (ts->custom_profile == NULL) {
+    ts->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
   }
 }
 

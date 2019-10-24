@@ -2700,11 +2700,11 @@ static void direct_link_curvemapping(FileData *fd, CurveMapping *cumap)
 /** \name Read CurveProfile
  * \{ */
 
-static void direct_link_CurveProfile(FileData *fd, CurveProfile *prwdgt)
+static void direct_link_curveprofile(FileData *fd, CurveProfile *profile)
 {
-  prwdgt->path = newdataadr(fd, prwdgt->path);
-  prwdgt->table = NULL;
-  prwdgt->segments = NULL;
+  profile->path = newdataadr(fd, profile->path);
+  profile->table = NULL;
+  profile->segments = NULL;
 }
 
 /** \} */
@@ -5814,7 +5814,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       BevelModifierData *bmd = (BevelModifierData *)md;
       bmd->custom_profile = newdataadr(fd, bmd->custom_profile);
       if (bmd->custom_profile) {
-        direct_link_CurveProfile(fd, bmd->custom_profile);
+        direct_link_curveprofile(fd, bmd->custom_profile);
       }
     }
   }
@@ -6774,10 +6774,10 @@ static void direct_link_scene(FileData *fd, Scene *sce)
       direct_link_curvemapping(fd, sce->toolsettings->gp_sculpt.cur_primitive);
     }
 
-    /* Relink toolsettings profile widget */
-    sce->toolsettings->prwdgt = newdataadr(fd, sce->toolsettings->prwdgt);
-    if (sce->toolsettings->prwdgt) {
-      direct_link_CurveProfile(fd, sce->toolsettings->prwdgt);
+    /* Relink toolsettings curve profile */
+    sce->toolsettings->custom_profile = newdataadr(fd, sce->toolsettings->custom_profile);
+    if (sce->toolsettings->custom_profile) {
+      direct_link_curveprofile(fd, sce->toolsettings->custom_profile);
     }
   }
 

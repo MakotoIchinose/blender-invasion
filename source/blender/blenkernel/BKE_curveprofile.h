@@ -27,49 +27,49 @@
 struct CurveProfile;
 struct CurveProfilePoint;
 
-void BKE_curveprofile_set_defaults(struct CurveProfile *prwdgt);
+void BKE_curveprofile_set_defaults(struct CurveProfile *profile);
 
 struct CurveProfile *BKE_curveprofile_add(int preset);
 
-void BKE_curveprofile_free_data(struct CurveProfile *prwdgt);
+void BKE_curveprofile_free_data(struct CurveProfile *profile);
 
-void BKE_curveprofile_free(struct CurveProfile *prwdgt);
+void BKE_curveprofile_free(struct CurveProfile *profile);
 
-void BKE_curveprofile_copy_data(struct CurveProfile *target, const struct CurveProfile *prwdgt);
+void BKE_curveprofile_copy_data(struct CurveProfile *target, const struct CurveProfile *profile);
 
-struct CurveProfile *BKE_curveprofile_copy(const struct CurveProfile *prwdgt);
+struct CurveProfile *BKE_curveprofile_copy(const struct CurveProfile *profile);
 
-bool BKE_curveprofile_remove_point(struct CurveProfile *prwdgt, struct CurveProfilePoint *point);
+bool BKE_curveprofile_remove_point(struct CurveProfile *profile, struct CurveProfilePoint *point);
 
-void BKE_curveprofile_remove_by_flag(struct CurveProfile *prwdgt, const short flag);
+void BKE_curveprofile_remove_by_flag(struct CurveProfile *profile, const short flag);
 
-struct CurveProfilePoint *BKE_curveprofile_insert(struct CurveProfile *prwdgt, float x, float y);
+struct CurveProfilePoint *BKE_curveprofile_insert(struct CurveProfile *profile, float x, float y);
 
-void BKE_curveprofile_selected_handle_set(struct CurveProfile *prwdgt, int type_1, int type_2);
+void BKE_curveprofile_selected_handle_set(struct CurveProfile *profile, int type_1, int type_2);
 
-void BKE_curveprofile_reverse(struct CurveProfile *prwdgt);
+void BKE_curveprofile_reverse(struct CurveProfile *profile);
 
-void BKE_curveprofile_reset(struct CurveProfile *prwdgt);
+void BKE_curveprofile_reset(struct CurveProfile *profile);
 
-void BKE_curveprofile_create_samples(struct CurveProfile *prwdgt,
+void BKE_curveprofile_create_samples(struct CurveProfile *profile,
                                       int n_segments,
                                       bool sample_straight_edges,
                                       struct CurveProfilePoint *r_samples);
 
-void BKE_curveprofile_initialize(struct CurveProfile *prwdgt, short nsegments);
+void BKE_curveprofile_initialize(struct CurveProfile *profile, short nsegments);
 
 /* Called for a complete update of the widget after modifications */
-void BKE_curveprofile_update(struct CurveProfile *prwdgt, const bool rem_doubles);
+void BKE_curveprofile_update(struct CurveProfile *profile, const bool rem_doubles);
 
 /* Need to find the total length of the curve to sample a portion of it */
-float BKE_curveprofile_total_length(const struct CurveProfile *prwdgt);
+float BKE_curveprofile_total_length(const struct CurveProfile *profile);
 
-void BKE_curveprofile_create_samples_even_spacing(struct CurveProfile *prwdgt,
+void BKE_curveprofile_create_samples_even_spacing(struct CurveProfile *profile,
                                                    int n_segments,
                                                    struct CurveProfilePoint *r_samples);
 
 /* Length portion is the fraction of the total path length where we want the location */
-void BKE_curveprofile_evaluate_length_portion(const struct CurveProfile *prwdgt,
+void BKE_curveprofile_evaluate_length_portion(const struct CurveProfile *profile,
                                                float length_portion,
                                                float *x_out,
                                                float *y_out);

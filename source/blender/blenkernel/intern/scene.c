@@ -184,7 +184,7 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
   ts->gp_sculpt.cur_falloff = BKE_curvemapping_copy(ts->gp_sculpt.cur_falloff);
   ts->gp_sculpt.cur_primitive = BKE_curvemapping_copy(ts->gp_sculpt.cur_primitive);
 
-  ts->prwdgt = BKE_curveprofile_copy(ts->prwdgt);
+  ts->custom_profile = BKE_curveprofile_copy(ts->custom_profile);
   return ts;
 }
 
@@ -227,8 +227,8 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
     BKE_curvemapping_free(toolsettings->gp_sculpt.cur_primitive);
   }
 
-  if (toolsettings->prwdgt) {
-    BKE_curveprofile_free(toolsettings->prwdgt);
+  if (toolsettings->custom_profile) {
+    BKE_curveprofile_free(toolsettings->custom_profile);
   }
 
   MEM_freeN(toolsettings);
@@ -736,8 +736,8 @@ void BKE_scene_init(Scene *sce)
     copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
   }
 
-  /* Profile Widget */
-  sce->toolsettings->prwdgt = BKE_curveprofile_add(PROF_PRESET_LINE);
+  /* Curve Profile */
+  sce->toolsettings->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
 
   for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {
     sce->orientation_slots[i].index_custom = -1;

@@ -274,7 +274,7 @@ struct uiBut {
   float *editvec;
   void *editcoba;
   void *editcumap;
-  void *editprwdgt;
+  void *editprofile;
 
   uiButPushedStateFunc pushed_state_func;
   void *pushed_state_arg;

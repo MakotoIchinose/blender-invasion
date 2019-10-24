@@ -334,7 +334,7 @@ typedef struct BevelParams {
   bool use_custom_profile;
   char _pad[3];
   /** The struct used to store the custom profile input */
-  const struct CurveProfile *prwdgt;
+  const struct CurveProfile *custom_profile;
   /** Vertex group array, maybe set if vertex_only. */
   const struct MDeformVert *dvert;
   /** Vertex group index, maybe set if vertex_only. */
@@ -6974,15 +6974,15 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
     pro_spacing->yvals = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                       (size_t)(seg + 1) * sizeof(double));
     if (custom) {
-      /* Make sure the profile widget's sample table is full. */
-      if (bp->prwdgt->totsegments != seg || !bp->prwdgt->segments) {
-        BKE_curveprofile_initialize((CurveProfile *)bp->prwdgt, (short)seg);
+      /* Make sure the curve profile's sample table is full. */
+      if (bp->custom_profile->totsegments != seg || !bp->custom_profile->segments) {
+        BKE_curveprofile_initialize((CurveProfile *)bp->custom_profile, (short)seg);
       }
 
       /* Copy segment locations into the profile spacing struct. */
       for (int i = 0; i < seg + 1; i++) {
-        pro_spacing->xvals[i] = (double)bp->prwdgt->segments[i].y;
-        pro_spacing->yvals[i] = (double)bp->prwdgt->segments[i].x;
+        pro_spacing->xvals[i] = (double)bp->custom_profile->segments[i].y;
+        pro_spacing->yvals[i] = (double)bp->custom_profile->segments[i].x;
       }
     }
     else {
@@ -7004,13 +7004,13 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
       pro_spacing->yvals_2 = (double *)BLI_memarena_alloc(bp->mem_arena,
                                                           (size_t)(seg_2 + 1) * sizeof(double));
       if (custom) {
-        /* Make sure the profile widget's sample table is full of the seg_2 samples. */
-        BKE_curveprofile_initialize((CurveProfile *)bp->prwdgt, (short)seg_2);
+        /* Make sure the curve profile widget's sample table is full of the seg_2 samples. */
+        BKE_curveprofile_initialize((CurveProfile *)bp->custom_profile, (short)seg_2);
 
         /* Copy segment locations into the profile spacing struct. */
         for (int i = 0; i < seg_2 + 1; i++) {
-          pro_spacing->xvals_2[i] = (double)bp->prwdgt->segments[i].y;
-          pro_spacing->yvals_2[i] = (double)bp->prwdgt->segments[i].x;
+          pro_spacing->xvals_2[i] = (double)bp->custom_profile->segments[i].y;
+          pro_spacing->yvals_2[i] = (double)bp->custom_profile->segments[i].x;
         }
       }
       else {
@@ -7280,7 +7280,7 @@ void BM_mesh_bevel(BMesh *bm,
                    const float spread,
                    const float smoothresh,
                    const bool use_custom_profile,
-                   const struct CurveProfile *prwdgt,
+                   const struct CurveProfile *custom_profile,
                    const int vmesh_method)
 {
   BMIter iter, liter;
@@ -7314,7 +7314,7 @@ void BM_mesh_bevel(BMesh *bm,
   bp.smoothresh = smoothresh;
   bp.face_hash = NULL;
   bp.use_custom_profile = use_custom_profile;
-  bp.prwdgt = prwdgt;
+  bp.custom_profile = custom_profile;
   bp.vmesh_method = vmesh_method;
 
   /* Disable the miters with the cutoff vertex mesh method, this combination isn't useful anyway */

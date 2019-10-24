@@ -1956,7 +1956,7 @@ static void ui_apply_but(
   float *editvec;
   ColorBand *editcoba;
   CurveMapping *editcumap;
-  CurveProfile *editprwdgt;
+  CurveProfile *editprofile;
 
   data->retval = 0;
 
@@ -2014,13 +2014,13 @@ static void ui_apply_but(
   editvec = but->editvec;
   editcoba = but->editcoba;
   editcumap = but->editcumap;
-  editprwdgt = but->editprwdgt;
+  editprofile = but->editprofile;
   but->editstr = NULL;
   but->editval = NULL;
   but->editvec = NULL;
   but->editcoba = NULL;
   but->editcumap = NULL;
-  but->editprwdgt = NULL;
+  but->editprofile = NULL;
 
   /* handle different types */
   switch (but->type) {
@@ -2130,7 +2130,7 @@ static void ui_apply_but(
   but->editvec = editvec;
   but->editcoba = editcoba;
   but->editcumap = editcumap;
-  but->editprwdgt = editprwdgt;
+  but->editprofile = editprofile;
 }
 
 /** \} */
@@ -3771,7 +3771,7 @@ static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
     but->editcumap = (CurveMapping *)but->poin;
   }
   if (but->type == UI_BTYPE_PROFILE) {
-    but->editprwdgt = (CurveProfile *)but->poin;
+    but->editprofile = (CurveProfile *)but->poin;
   }
   else if (but->type == UI_BTYPE_COLORBAND) {
     data->coba = (ColorBand *)but->poin;
@@ -3812,7 +3812,7 @@ static void ui_numedit_end(uiBut *but, uiHandleButtonData *data)
   but->editvec = NULL;
   but->editcoba = NULL;
   but->editcumap = NULL;
-  but->editprwdgt = NULL;
+  but->editprofile = NULL;
 
   data->dragstartx = 0;
   data->draglastx = 0;
@@ -6770,8 +6770,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
                                    bool snap,
                                    const bool shift)
 {
-  CurveProfile *prwdgt = (CurveProfile *)but->poin;
-  CurveProfilePoint *pts = prwdgt->path;
+  CurveProfile *profile = (CurveProfile *)but->poin;
+  CurveProfilePoint *pts = profile->path;
   float fx, fy, zoomx, zoomy;
   int mx, my, dragx, dragy;
   int a;
@@ -6786,8 +6786,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   dragy = data->draglasty;
   ui_window_to_block(data->region, block, &dragx, &dragy);
 
-  zoomx = BLI_rctf_size_x(&but->rect) / BLI_rctf_size_x(&prwdgt->view_rect);
-  zoomy = BLI_rctf_size_y(&but->rect) / BLI_rctf_size_y(&prwdgt->view_rect);
+  zoomx = BLI_rctf_size_x(&but->rect) / BLI_rctf_size_x(&profile->view_rect);
+  zoomy = BLI_rctf_size_y(&but->rect) / BLI_rctf_size_y(&profile->view_rect);
 
   if (snap) {
     float d[2];
@@ -6812,7 +6812,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
     fy *= mval_factor;
 
     /* Move all the points that aren't the last or the first */
-    for (a = 1; a < prwdgt->totpoint - 1; a++) {
+    for (a = 1; a < profile->totpoint - 1; a++) {
       if (pts[a].flag & PROF_SELECT) {
         float origx = pts[a].x, origy = pts[a].y;
         pts[a].x += fx;
@@ -6829,7 +6829,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
       }
     }
 
-    BKE_curveprofile_update(prwdgt, false);
+    BKE_curveprofile_update(profile, false);
 
     if (moved_point) {
       data->draglastx = evtx;
@@ -6840,8 +6840,8 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
        * but in practice this isnt really an issue */
       if (ui_but_is_cursor_warp(but)) {
         /* OK but can go outside bounds */
-        data->ungrab_mval[0] = but->rect.xmin + ((point_last->x - prwdgt->view_rect.xmin) * zoomx);
-        data->ungrab_mval[1] = but->rect.ymin + ((point_last->y - prwdgt->view_rect.ymin) * zoomy);
+        data->ungrab_mval[0] = but->rect.xmin + ((point_last->x - profile->view_rect.xmin) * zoomx);
+        data->ungrab_mval[1] = but->rect.ymin + ((point_last->y - profile->view_rect.ymin) * zoomy);
         BLI_rctf_clamp_pt_v(&but->rect, data->ungrab_mval);
       }
 #endif
@@ -6850,25 +6850,25 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   }
   else {
     /* clamp for clip */
-    if (prwdgt->flag & PROF_USE_CLIP) {
-      if (prwdgt->view_rect.xmin - fx < prwdgt->clip_rect.xmin) {
-        fx = prwdgt->view_rect.xmin - prwdgt->clip_rect.xmin;
+    if (profile->flag & PROF_USE_CLIP) {
+      if (profile->view_rect.xmin - fx < profile->clip_rect.xmin) {
+        fx = profile->view_rect.xmin - profile->clip_rect.xmin;
       }
-      else if (prwdgt->view_rect.xmax - fx > prwdgt->clip_rect.xmax) {
-        fx = prwdgt->view_rect.xmax - prwdgt->clip_rect.xmax;
+      else if (profile->view_rect.xmax - fx > profile->clip_rect.xmax) {
+        fx = profile->view_rect.xmax - profile->clip_rect.xmax;
       }
-      if (prwdgt->view_rect.ymin - fy < prwdgt->clip_rect.ymin) {
-        fy = prwdgt->view_rect.ymin - prwdgt->clip_rect.ymin;
+      if (profile->view_rect.ymin - fy < profile->clip_rect.ymin) {
+        fy = profile->view_rect.ymin - profile->clip_rect.ymin;
       }
-      else if (prwdgt->view_rect.ymax - fy > prwdgt->clip_rect.ymax) {
-        fy = prwdgt->view_rect.ymax - prwdgt->clip_rect.ymax;
+      else if (profile->view_rect.ymax - fy > profile->clip_rect.ymax) {
+        fy = profile->view_rect.ymax - profile->clip_rect.ymax;
       }
     }
 
-    prwdgt->view_rect.xmin -= fx;
-    prwdgt->view_rect.ymin -= fy;
-    prwdgt->view_rect.xmax -= fx;
-    prwdgt->view_rect.ymax -= fy;
+    profile->view_rect.xmin -= fx;
+    profile->view_rect.ymin -= fy;
+    profile->view_rect.xmax -= fx;
+    profile->view_rect.ymax -= fy;
 
     data->draglastx = evtx;
     data->draglasty = evty;
@@ -6879,7 +6879,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
   return changed;
 }
 
-/** Interaction for profile widget.
+/** Interaction for curve profile widget.
  * \note Uses hardcoded keys rather than the keymap. */
 static int ui_do_but_PROFILE(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
@@ -6900,12 +6900,12 @@ static int ui_do_but_PROFILE(
     return WM_UI_HANDLER_BREAK;
   }
 
-  CurveProfile *prwdgt = (CurveProfile *)but->poin;
+  CurveProfile *profile = (CurveProfile *)but->poin;
 
   /* Delete selected control points. */
   if (event->type == XKEY && event->val == KM_RELEASE) {
-    BKE_curveprofile_remove_by_flag(prwdgt, PROF_SELECT);
-    BKE_curveprofile_update(prwdgt, false);
+    BKE_curveprofile_remove_by_flag(profile, PROF_SELECT);
+    BKE_curveprofile_update(profile, false);
     button_activate_state(C, but, BUTTON_STATE_EXIT);
     return WM_UI_HANDLER_BREAK;
   }
@@ -6920,18 +6920,18 @@ static int ui_do_but_PROFILE(
 
       if (event->ctrl) {
         float f_xy[2];
-        BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
+        BLI_rctf_transform_pt_v(&profile->view_rect, &but->rect, f_xy, m_xy);
 
-        BKE_curveprofile_insert(prwdgt, f_xy[0], f_xy[1]);
-        BKE_curveprofile_update(prwdgt, false);
+        BKE_curveprofile_insert(profile, f_xy[0], f_xy[1]);
+        BKE_curveprofile_update(profile, false);
       }
 
       /* Check for selecting of a point by finding closest point in radius. */
       dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius for selecting points. */
-      pts = prwdgt->path;
-      for (i = 0; i < prwdgt->totpoint; i++) {
+      pts = profile->path;
+      for (i = 0; i < profile->totpoint; i++) {
         float f_xy[2];
-        BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[i].x);
+        BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &pts[i].x);
         const float dist_sq = len_squared_v2v2(m_xy, f_xy);
         if (dist_sq < dist_min_sq) {
           i_selected = i;
@@ -6942,27 +6942,27 @@ static int ui_do_but_PROFILE(
       /* Add a point if the click was close to the path but not a control point. */
       if (i_selected == -1) { /* No control point selected. */
         float f_xy[2], f_xy_prev[2];
-        pts = prwdgt->table;
-        BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[0].x);
+        pts = profile->table;
+        BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &pts[0].x);
 
         dist_min_sq = SQUARE(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point. */
 
         /* Loop through the path's high resolution table and find what's near the click. */
-        for (i = 1; i <= PROF_N_TABLE(prwdgt->totpoint); i++) {
+        for (i = 1; i <= PROF_N_TABLE(profile->totpoint); i++) {
           copy_v2_v2(f_xy_prev, f_xy);
-          BLI_rctf_transform_pt_v(&but->rect, &prwdgt->view_rect, f_xy, &pts[i].x);
+          BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &pts[i].x);
 
           if (dist_squared_to_line_segment_v2(m_xy, f_xy_prev, f_xy) < dist_min_sq) {
-            BLI_rctf_transform_pt_v(&prwdgt->view_rect, &but->rect, f_xy, m_xy);
+            BLI_rctf_transform_pt_v(&profile->view_rect, &but->rect, f_xy, m_xy);
 
-            CurveProfilePoint *new_pt = BKE_curveprofile_insert(prwdgt, f_xy[0], f_xy[1]);
-            BKE_curveprofile_update(prwdgt, false);
+            CurveProfilePoint *new_pt = BKE_curveprofile_insert(profile, f_xy[0], f_xy[1]);
+            BKE_curveprofile_update(profile, false);
 
             /* reset pts back to the control points. */
-            pts = prwdgt->path;
+            pts = profile->path;
 
             /* Get the index of the newly added point. */
-            for (i = 0; i < prwdgt->totpoint; i++) {
+            for (i = 0; i < profile->totpoint; i++) {
               if (&pts[i] == new_pt) {
                 i_selected = i;
               }
@@ -6976,7 +6976,7 @@ static int ui_do_but_PROFILE(
       if (i_selected != -1) {
         /* Deselect all if this one is deselected, except if we hold shift. */
         if (!event->shift) {
-          for (i = 0; i < prwdgt->totpoint; i++) {
+          for (i = 0; i < profile->totpoint; i++) {
             pts[i].flag &= ~PROF_SELECT;
           }
           pts[i_selected].flag |= PROF_SELECT;
@@ -7013,19 +7013,19 @@ static int ui_do_but_PROFILE(
     else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
       /* Finish move. */
       if (data->dragsel != -1) {
-        CurveProfilePoint *pts = prwdgt->path;
+        CurveProfilePoint *pts = profile->path;
 
         if (data->dragchange == false) {
           /* Deselect all, select one. */
           if (!event->shift) {
-            for (i = 0; i < prwdgt->totpoint; i++) {
+            for (i = 0; i < profile->totpoint; i++) {
               pts[i].flag &= ~PROF_SELECT;
             }
             pts[data->dragsel].flag |= PROF_SELECT;
           }
         }
         else {
-          BKE_curveprofile_update(prwdgt, true); /* Remove doubles after move. */
+          BKE_curveprofile_update(profile, true); /* Remove doubles after move. */
         }
       }
       button_activate_state(C, but, BUTTON_STATE_EXIT);

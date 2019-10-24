@@ -2120,24 +2120,24 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
   immUnbindProgram();
 }
 
-/** Used to draw a profile widget. Somewhat similar to ui_draw_but_CURVE */
+/** Used to draw a curve profile widget. Somewhat similar to ui_draw_but_CURVE */
 void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
   uint i;
   float fx, fy;
-  CurveProfile *prwdgt;
-  if (but->editprwdgt) {
-    prwdgt = but->editprwdgt;
+  CurveProfile *profile;
+  if (but->editprofile) {
+    profile = but->editprofile;
   }
   else {
-    prwdgt = (CurveProfile *)but->poin;
+    profile = (CurveProfile *)but->poin;
   }
 
   /* Calculate offset and zoom */
-  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&prwdgt->view_rect);
-  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&prwdgt->view_rect);
-  float offsx = prwdgt->view_rect.xmin - (1.0f / zoomx);
-  float offsy = prwdgt->view_rect.ymin - (1.0f / zoomy);
+  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&profile->view_rect);
+  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&profile->view_rect);
+  float offsx = profile->view_rect.xmin - (1.0f / zoomx);
+  float offsy = profile->view_rect.ymin - (1.0f / zoomy);
 
   /* Exit early if too narrow */
   if (zoomx == 0.0f) {
@@ -2168,16 +2168,16 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Backdrop */
   float color_backdrop[4] = {0, 0, 0, 1};
-  if (prwdgt->flag & PROF_USE_CLIP) {
+  if (profile->flag & PROF_USE_CLIP) {
     gl_shaded_color_get_fl((uchar *)wcol->inner, -20, color_backdrop);
     immUniformColor3fv(color_backdrop);
     immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
     immUniformColor3ubv((uchar *)wcol->inner);
     immRectf(pos,
-             rect->xmin + zoomx * (prwdgt->clip_rect.xmin - offsx),
-             rect->ymin + zoomy * (prwdgt->clip_rect.ymin - offsy),
-             rect->xmin + zoomx * (prwdgt->clip_rect.xmax - offsx),
-             rect->ymin + zoomy * (prwdgt->clip_rect.ymax - offsy));
+             rect->xmin + zoomx * (profile->clip_rect.xmin - offsx),
+             rect->ymin + zoomy * (profile->clip_rect.ymin - offsy),
+             rect->xmin + zoomx * (profile->clip_rect.xmax - offsx),
+             rect->ymin + zoomy * (profile->clip_rect.ymax - offsy));
   }
   else {
     rgb_uchar_to_float(color_backdrop, (uchar *)wcol->inner);
@@ -2193,45 +2193,45 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 1.0f);
 
   /* Draw the path's fill */
-  if (prwdgt->table == NULL) {
-    BKE_curveprofile_update(prwdgt, false);
+  if (profile->table == NULL) {
+    BKE_curveprofile_update(profile, false);
   }
-  CurveProfilePoint *pts = prwdgt->table;
+  CurveProfilePoint *pts = profile->table;
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
-  bool add_left_tri = prwdgt->view_rect.xmin < 0.0f;
-  bool add_bottom_tri = prwdgt->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)PROF_N_TABLE(prwdgt->totpoint) + 1 + add_left_tri + add_bottom_tri;
+  bool add_left_tri = profile->view_rect.xmin < 0.0f;
+  bool add_bottom_tri = profile->view_rect.ymin < 0.0f;
+  uint tot_points = (uint)PROF_N_TABLE(profile->totpoint) + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
   float(*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < (uint)PROF_N_TABLE(prwdgt->totpoint);
+  for (i = 0; i < (uint)PROF_N_TABLE(profile->totpoint);
        i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
   }
   if (add_left_tri && add_bottom_tri) {
     /* Add left side, bottom left corner, and bottom side points */
-    table_coords[tot_points - 3][0] = prwdgt->view_rect.xmin;
+    table_coords[tot_points - 3][0] = profile->view_rect.xmin;
     table_coords[tot_points - 3][1] = 1.0f;
-    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmin;
-    table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
+    table_coords[tot_points - 2][0] = profile->view_rect.xmin;
+    table_coords[tot_points - 2][1] = profile->view_rect.ymin;
     table_coords[tot_points - 1][0] = 1.0f;
-    table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
+    table_coords[tot_points - 1][1] = profile->view_rect.ymin;
   }
   else if (add_left_tri) {
     /* Add the left side and bottom left corner points */
-    table_coords[tot_points - 2][0] = prwdgt->view_rect.xmin;
+    table_coords[tot_points - 2][0] = profile->view_rect.xmin;
     table_coords[tot_points - 2][1] = 1.0f;
-    table_coords[tot_points - 1][0] = prwdgt->view_rect.xmin;
+    table_coords[tot_points - 1][0] = profile->view_rect.xmin;
     table_coords[tot_points - 1][1] = 0.0f;
   }
   else if (add_bottom_tri) {
     /* Add the bottom side and bottom left corner points */
     table_coords[tot_points - 2][0] = 0.0f;
-    table_coords[tot_points - 2][1] = prwdgt->view_rect.ymin;
+    table_coords[tot_points - 2][1] = profile->view_rect.ymin;
     table_coords[tot_points - 1][0] = 1.0f;
-    table_coords[tot_points - 1][1] = prwdgt->view_rect.ymin;
+    table_coords[tot_points - 1][1] = profile->view_rect.ymin;
   }
   else {
     /* Just add the bottom corner point. Side points would be redundant anyway */
@@ -2297,8 +2297,8 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   }
 
   /* Draw the control points. */
-  pts = prwdgt->path;
-  tot_points = (uint)prwdgt->totpoint;
+  pts = profile->path;
+  tot_points = (uint)profile->totpoint;
   GPU_line_smooth(false);
   GPU_blend(false);
   GPU_point_size(max_ff(3.0f, min_ff(UI_DPI_FAC / but->block->aspect * 5.0f, 5.0f)));
@@ -2312,8 +2312,8 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   immEnd();
 
   /* Draw the sampled points in addition to the control points if they have been created */
-  pts = prwdgt->segments;
-  tot_points = (uint)prwdgt->totsegments;
+  pts = profile->segments;
+  tot_points = (uint)profile->totsegments;
   if (tot_points > 0 && pts) {
     GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 3.0f, 3.0f)));
     immBegin(GPU_PRIM_POINTS, tot_points);

@@ -100,7 +100,7 @@ typedef struct {
   short value_mode; /* Which value does mouse movement and numeric input affect? */
   float segments;   /* Segments as float so smooth mouse pan works in small increments */
 
-  CurveProfile *prwdgt;
+  CurveProfile *custom_profile;
 } BevelData;
 
 enum {
@@ -231,6 +231,7 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 
 static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 {
+  printf("EDBM BEVEL INIT\n");
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   BevelData *opdata;
@@ -247,8 +248,10 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   uint objects_used_len = 0;
   opdata->max_obj_scale = FLT_MIN;
 
-  /* Put the Profile Widget from the toolsettings into the opdata struct */
-  opdata->prwdgt = ts->prwdgt;
+//  /* Put the Curve Profile from the toolsettings into the opdata struct */
+//  opdata->custom_profile = ts->custom_profile;
+  /* Add a new curve curve profile. */
+  opdata->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
 
   {
     uint ob_store_len = 0;
@@ -318,6 +321,7 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 
 static bool edbm_bevel_calc(wmOperator *op)
 {
+  printf("EDBM BEVEL CALC\n");
   BevelData *opdata = op->customdata;
   BMEditMesh *em;
   BMOperator bmop;
@@ -367,7 +371,7 @@ static bool edbm_bevel_calc(wmOperator *op)
                  "clamp_overlap=%b material=%i loop_slide=%b mark_seam=%b mark_sharp=%b "
                  "harden_normals=%b face_strength_mode=%i "
                  "miter_outer=%i miter_inner=%i spread=%f smoothresh=%f use_custom_profile=%b "
-                 "prwdgt=%p vmesh_method=%i",
+                 "custom_profile=%p vmesh_method=%i",
                  BM_ELEM_SELECT,
                  offset,
                  segments,
@@ -386,7 +390,7 @@ static bool edbm_bevel_calc(wmOperator *op)
                  spread,
                  me->smoothresh,
                  use_custom_profile,
-                 opdata->prwdgt,
+                 opdata->custom_profile,
                  vmesh_method);
 
     BMO_op_exec(em->bm, &bmop);
@@ -414,6 +418,7 @@ static bool edbm_bevel_calc(wmOperator *op)
 
 static void edbm_bevel_exit(bContext *C, wmOperator *op)
 {
+  printf("EDBM BEVEL EXIT\n");
   BevelData *opdata = op->customdata;
   ScrArea *sa = CTX_wm_area(C);
 
@@ -433,6 +438,7 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
     }
     G.moving = 0;
   }
+  BKE_curveprofile_free(opdata->custom_profile);
   MEM_SAFE_FREE(opdata->ob_store);
   MEM_SAFE_FREE(op->customdata);
   op->customdata = NULL;
@@ -440,6 +446,7 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
 
 static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 {
+  printf("EDBM BEVEL CANCEL\n");
   BevelData *opdata = op->customdata;
   if (opdata->is_modal) {
     for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
@@ -455,9 +462,10 @@ static void edbm_bevel_cancel(bContext *C, wmOperator *op)
   ED_region_tag_redraw(CTX_wm_region(C));
 }
 
-/* bevel! yay!!*/
+/* bevel! yay!! */
 static int edbm_bevel_exec(bContext *C, wmOperator *op)
 {
+  printf("EDBM BEVEL EXEC\n");
   if (!edbm_bevel_init(C, op, false)) {
     return OPERATOR_CANCELLED;
   }
@@ -500,6 +508,7 @@ static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event,
 
 static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  printf("EDBM BEVEL INVOKE\n");
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BevelData *opdata;
   float center_3d[3];
@@ -978,15 +987,18 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
 
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
   if (RNA_boolean_get(&ptr, "use_custom_profile")) {
-    /* Get an RNA pointer to ToolSettings to give to the profile widget template code */
-    Scene *scene = CTX_data_scene(C);
-    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
-    uiTemplateCurveProfile(layout, &toolsettings_ptr, "prwdgt");
+//    /* Get an RNA pointer to ToolSettings to give to the curve profile template code */
+//    Scene *scene = CTX_data_scene(C);
+//    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+//    uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_profile");
+
+    uiTemplateCurveProfile(layout, &ptr, "custom_profile");
   }
 }
 
 void MESH_OT_bevel(wmOperatorType *ot)
 {
+  printf("MESH OT BEVEL\n");
   PropertyRNA *prop;
 
   static const EnumPropertyItem offset_type_items[] = {
@@ -1053,11 +1065,12 @@ void MESH_OT_bevel(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
+  /* properties */
   RNA_def_enum(
       ot->srna, "offset_type", offset_type_items, 0, "Width Type", "What distance Width measures");
   prop = RNA_def_property(ot->srna, "offset", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 0.0, 1e6);
-  RNA_def_property_ui_range(prop, 0.0f, 100.0, 1, 3);
+  RNA_def_property_ui_range(prop, 0.0, 100.0, 1, 3);
   RNA_def_property_ui_text(prop, "Width", "Bevel amount");
 
   prop = RNA_def_property(ot->srna, "offset_pct", PROP_FLOAT, PROP_PERCENTAGE);
@@ -1093,7 +1106,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
                   "Do not allow beveled edges/vertices to overlap each other");
 
   RNA_def_boolean(
-      ot->srna, "loop_slide", true, "Loop Slide", "Prefer slide along edge to even widths");
+      ot->srna, "loop_slide", true, "Loop Slide", "Prefer sliding along edges to even widths");
 
   RNA_def_boolean(ot->srna, "mark_seam", false, "Mark Seams", "Mark Seams along beveled edges");
 
@@ -1150,7 +1163,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
                   "use_custom_profile",
                   false,
                   "Custom Profile",
-                  "Define a custom profile for the bevel");
+                  "Use a custom profile for the bevel");
 
   RNA_def_enum(ot->srna,
                "vmesh_method",

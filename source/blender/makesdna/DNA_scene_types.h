@@ -1519,8 +1519,8 @@ typedef struct ToolSettings {
   float normal_vector[3];
   char _pad6[4];
 
-  /* Profile widget for bevel tool */
-  struct CurveProfile *prwdgt;
+  /* Custom Curve Profile for bevel tool */
+  struct CurveProfile *custom_profile;
 } ToolSettings;
 
 /* *************************************************************** */
