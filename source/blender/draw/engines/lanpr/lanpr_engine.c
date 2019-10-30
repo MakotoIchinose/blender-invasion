@@ -290,15 +290,15 @@ static void lanpr_cache_init(void *vedata)
     stl->g_data->dpix_transform_shgrp = DRW_shgroup_create(lanpr_share.dpix_transform_shader,
                                                            psl->dpix_transform_pass);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_transform_shgrp, "vert0_tex", &txl->dpix_in_pl);
+        stl->g_data->dpix_transform_shgrp, "tex_vert0", &txl->dpix_in_pl);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_transform_shgrp, "vert1_tex", &txl->dpix_in_pr);
+        stl->g_data->dpix_transform_shgrp, "tex_vert1", &txl->dpix_in_pr);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_transform_shgrp, "face_normal0_tex", &txl->dpix_in_nl);
+        stl->g_data->dpix_transform_shgrp, "tex_fnormal0", &txl->dpix_in_nl);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_transform_shgrp, "face_normal1_tex", &txl->dpix_in_nr);
+        stl->g_data->dpix_transform_shgrp, "tex_fnormal1", &txl->dpix_in_nr);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_transform_shgrp, "edge_mask_tex", &txl->dpix_in_edge_mask);
+        stl->g_data->dpix_transform_shgrp, "tex_edge_mask", &txl->dpix_in_edge_mask);
     DRW_shgroup_uniform_int(
         stl->g_data->dpix_transform_shgrp, "sample_step", &stl->g_data->dpix_sample_step, 1);
     DRW_shgroup_uniform_int(
@@ -328,41 +328,41 @@ static void lanpr_cache_init(void *vedata)
     stl->g_data->dpix_preview_shgrp = DRW_shgroup_create(lanpr_share.dpix_preview_shader,
                                                          psl->dpix_preview_pass);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_preview_shgrp, "vert0_tex", &txl->dpix_out_pl);
+        stl->g_data->dpix_preview_shgrp, "tex_vert0", &txl->dpix_out_pl);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_preview_shgrp, "vert1_tex", &txl->dpix_out_pr);
+        stl->g_data->dpix_preview_shgrp, "tex_vert1", &txl->dpix_out_pr);
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_preview_shgrp, "face_normal0_tex", &txl->dpix_in_nl);
+        stl->g_data->dpix_preview_shgrp, "tex_fnormal0", &txl->dpix_in_nl);
     DRW_shgroup_uniform_texture_ref(stl->g_data->dpix_preview_shgrp,
-                                    "face_normal1_tex",
+                                    "tex_fnormal1",
                                     &txl->dpix_in_nr); /*  these are for normal shading */
     DRW_shgroup_uniform_texture_ref(
-        stl->g_data->dpix_preview_shgrp, "edge_mask_tex", &txl->dpix_in_edge_mask);
+        stl->g_data->dpix_preview_shgrp, "tex_edge_mask", &txl->dpix_in_edge_mask);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp, "viewport", stl->g_data->dpix_viewport, 1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "contour_color",
+                             "color_contour",
                              (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
                                                                              ll->contour.color,
                              1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "crease_color",
+                             "color_crease",
                              (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
                                                                              ll->crease.color,
                              1);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp,
-        "material_color",
+        "color_material",
         (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color : ll->material_separate.color,
         1);
     DRW_shgroup_uniform_vec4(stl->g_data->dpix_preview_shgrp,
-                             "edge_mark_color",
+                             "color_edge_mark",
                              (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color :
                                                                              ll->edge_mark.color,
                              1);
     DRW_shgroup_uniform_vec4(
         stl->g_data->dpix_preview_shgrp,
-        "intersection_color",
+        "color_intersection",
         (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? ll->color : ll->intersection.color,
         1);
     static float use_background_color[4];
@@ -391,27 +391,27 @@ static void lanpr_cache_init(void *vedata)
         stl->g_data->dpix_preview_shgrp, "line_thickness", &ll->thickness, 1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp,
-        "line_thickness_contour",
+        "thickness_contour",
         (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->contour.thickness,
         1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp,
-        "line_thickness_crease",
+        "thickness_crease",
         (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->crease.thickness,
         1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness_material",
+                              "thickness_material",
                               (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ?
                                   &unit_thickness :
                                   &ll->material_separate.thickness,
                               1);
     DRW_shgroup_uniform_float(
         stl->g_data->dpix_preview_shgrp,
-        "line_thickness_edge_mark",
+        "thickness_edge_mark",
         (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ? &unit_thickness : &ll->edge_mark.thickness,
         1);
     DRW_shgroup_uniform_float(stl->g_data->dpix_preview_shgrp,
-                              "line_thickness_intersection",
+                              "thickness_intersection",
                               (ll->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) ?
                                   &unit_thickness :
                                   &ll->intersection.thickness,

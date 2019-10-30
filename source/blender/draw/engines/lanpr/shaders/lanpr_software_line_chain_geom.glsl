@@ -25,11 +25,11 @@ uniform float thickness_intersection;
 // uniform float zNear;
 // uniform float zFar;
 
-uniform vec4 contour_color;
-uniform vec4 crease_color;
-uniform vec4 material_color;
-uniform vec4 edge_mark_color;
-uniform vec4 intersection_color;
+uniform vec4 color_contour;
+uniform vec4 color_crease;
+uniform vec4 color_material;
+uniform vec4 color_edge_mark;
+uniform vec4 color_intersection;
 
 // for line width correction
 uniform vec4 output_viewport;
@@ -39,7 +39,7 @@ uniform float camdx;
 uniform float camdy;
 uniform float camzoom;
 
-out vec4 out_color;
+out vec4 color_out;
 
 float use_thickness;
 
@@ -106,27 +106,27 @@ void decide_color_and_thickness(float component_id)
   }
 
   if (component_id < 1.5) {
-    out_color = contour_color;
+    color_out = color_contour;
     use_thickness = th * thickness_contour;
     return;
   }
   if (component_id < 2.5) {
-    out_color = crease_color;
+    color_out = color_crease;
     use_thickness = th * thickness_crease;
     return;
   }
   if (component_id < 3.5) {
-    out_color = material_color;
+    color_out = color_material;
     use_thickness = th * thickness_material;
     return;
   }
   if (component_id < 4.5) {
-    out_color = edge_mark_color;
+    color_out = color_edge_mark;
     use_thickness = th * thickness_edge_mark;
     return;
   }
   if (component_id < 5.5) {
-    out_color = intersection_color;
+    color_out = color_intersection;
     use_thickness = th * thickness_intersection;
     return;
   }

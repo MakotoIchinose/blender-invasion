@@ -20,11 +20,11 @@ uniform int is_perspective;  // persp and orth use different crease line determi
 
 uniform vec4 viewport;
 
-uniform sampler2D vert0_tex;
-uniform sampler2D vert1_tex;
-uniform sampler2D face_normal0_tex;
-uniform sampler2D face_normal1_tex;
-uniform sampler2D edge_mask_tex;
+uniform sampler2D tex_vert0;
+uniform sampler2D tex_vert1;
+uniform sampler2D tex_fnormal0;
+uniform sampler2D tex_fnormal1;
+uniform sampler2D tex_edge_mask;
 
 // uniform sampler2D TexSample4;
 //#define path_start_end_ptrs TexSample4 // edge adjacent data
@@ -323,12 +323,12 @@ int testProfileEdge(ivec2 texcoord, vec3 world_position)
   // that only matters if the camera has a weird anisotropic scale or skew.
 
   mat3 nm = mat3(transpose(inverse(ModelMatrix)));
-  vec3 face_normal_0 = mat3(nm) * texelFetch(face_normal0_tex, texcoord, 0).xyz;
-  vec3 face_normal_1 = mat3(nm) * texelFetch(face_normal1_tex, texcoord, 0).xyz;
+  vec3 face_normal_0 = mat3(nm) * texelFetch(tex_fnormal0, texcoord, 0).xyz;
+  vec3 face_normal_1 = mat3(nm) * texelFetch(tex_fnormal1, texcoord, 0).xyz;
   vec3 camera_to_line = is_perspective == 1 ? world_position - view_pos :
                                               view_dir;  // modelview * vec4(world_position, 1.0);
 
-  vec4 edge_mask = texelFetch(edge_mask_tex, texcoord, 0);
+  vec4 edge_mask = texelFetch(tex_edge_mask, texcoord, 0);
 
   float dot0 = dot(camera_to_line.xyz, vec3(face_normal_0.xyz));
   float dot1 = dot(camera_to_line.xyz, vec3(face_normal_1.xyz));
@@ -368,8 +368,8 @@ void main()
   // look up the world positions of the segment vertices
   ivec2 texcoord = ivec2(gl_FragCoord.xy);
 
-  vec4 v0_world_pos = texelFetch(vert0_tex, texcoord, 0);
-  vec4 v1_world_pos = texelFetch(vert1_tex, texcoord, 0);
+  vec4 v0_world_pos = texelFetch(tex_vert0, texcoord, 0);
+  vec4 v1_world_pos = texelFetch(tex_vert1, texcoord, 0);
   v0_world_pos = ModelMatrix * vec4(v0_world_pos.xyz, 1);
   v1_world_pos = ModelMatrix * vec4(v1_world_pos.xyz, 1);
 

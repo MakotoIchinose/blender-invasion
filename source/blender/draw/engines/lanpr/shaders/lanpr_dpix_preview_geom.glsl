@@ -1,11 +1,11 @@
 layout(points) in;
 layout(triangle_strip, max_vertices = 6) out;
 
-uniform sampler2D vert0_tex;  // L
-uniform sampler2D vert1_tex;  // R
-uniform sampler2D face_normal0_tex;
-uniform sampler2D face_normal1_tex;  // caution: these are face normals!
-uniform sampler2D edge_mask_tex;
+uniform sampler2D tex_vert0;  // L
+uniform sampler2D tex_vert1;  // R
+uniform sampler2D tex_fnormal0;
+uniform sampler2D tex_fnormal1;  // caution: these are face normals!
+uniform sampler2D tex_edge_mask;
 
 // uniform float uValue0; // buffer_w
 uniform vec4 viewport;  // viewport
@@ -22,17 +22,17 @@ uniform float z_far;
 
 uniform vec4 background_color;
 
-uniform vec4 contour_color;
-uniform vec4 crease_color;
-uniform vec4 material_color;
-uniform vec4 edge_mark_color;
-uniform vec4 intersection_color;
+uniform vec4 color_contour;
+uniform vec4 color_crease;
+uniform vec4 color_material;
+uniform vec4 color_edge_mark;
+uniform vec4 color_intersection;
 
-uniform float line_thickness_contour;
-uniform float line_thickness_crease;
-uniform float line_thickness_material;
-uniform float line_thickness_edge_mark;
-uniform float line_thickness_intersection;
+uniform float thickness_contour;
+uniform float thickness_crease;
+uniform float thickness_material;
+uniform float thickness_edge_mark;
+uniform float thickness_intersection;
 
 // the same as software mode
 uniform int normal_mode;
@@ -45,7 +45,7 @@ uniform float normal_thickness_end;
 
 float use_thickness;
 
-out vec4 out_color;
+out vec4 color_out;
 
 vec4 use_color;
 
@@ -75,7 +75,7 @@ void emit_color_and_alpha(vec4 a, int is_crease, float crease_fading)
   float alpha_crease_fading = alpha_factor;
   if (is_crease > 0)
     alpha_crease_fading = mix(alpha_factor, 1, crease_fading * 2);  // fading=0.5 -> fade all
-  out_color = vec4(use_color.rgb, mix(1, 0, alpha_crease_fading));
+  color_out = vec4(use_color.rgb, mix(1, 0, alpha_crease_fading));
 }
 
 void draw_line(vec4 p1, vec4 p2, int is_crease)
@@ -139,18 +139,18 @@ float factor_to_thickness(float factor)
 
 void main()
 {
-  vec4 p1 = texelFetch(vert0_tex, ivec2(gl_in[0].gl_Position.xy), 0);
-  vec4 p2 = texelFetch(vert1_tex, ivec2(gl_in[0].gl_Position.xy), 0);
+  vec4 p1 = texelFetch(tex_vert0, ivec2(gl_in[0].gl_Position.xy), 0);
+  vec4 p2 = texelFetch(tex_vert1, ivec2(gl_in[0].gl_Position.xy), 0);
 
-  vec4 n1 = texelFetch(face_normal0_tex, ivec2(gl_in[0].gl_Position.xy), 0);
-  vec4 n2 = texelFetch(face_normal1_tex, ivec2(gl_in[0].gl_Position.xy), 0);
+  vec4 n1 = texelFetch(tex_fnormal0, ivec2(gl_in[0].gl_Position.xy), 0);
+  vec4 n2 = texelFetch(tex_fnormal1, ivec2(gl_in[0].gl_Position.xy), 0);
 
   vec3 use_normal = normalize(mix(n1, n2, 0.5).xyz);
 
   if (p1.w == 0 && p2.w == 0)
     return;
 
-  vec4 edge_mask = texelFetch(edge_mask_tex, ivec2(gl_in[0].gl_Position.xy), 0);
+  vec4 edge_mask = texelFetch(tex_edge_mask, ivec2(gl_in[0].gl_Position.xy), 0);
 
   int is_crease = 0;
 
@@ -168,25 +168,25 @@ void main()
   }
 
   if (edge_mask.g > 0) {
-    use_color = edge_mark_color;
-    use_thickness = th * line_thickness_edge_mark;
+    use_color = color_edge_mark;
+    use_thickness = th * thickness_edge_mark;
   }
   else if (edge_mask.r > 0) {
-    use_color = material_color;
-    use_thickness = th * line_thickness_material;
+    use_color = color_material;
+    use_thickness = th * thickness_material;
   }
   else if (edge_mask.b > 0) {
-    use_color = intersection_color;
-    use_thickness = th * line_thickness_intersection;
+    use_color = color_intersection;
+    use_thickness = th * thickness_intersection;
   }
   else if (p2.w != p1.w) {
-    use_color = crease_color;
-    use_thickness = th * line_thickness_crease;
+    use_color = color_crease;
+    use_thickness = th * thickness_crease;
     is_crease = 1;
   }
   else {
-    use_color = contour_color;
-    use_thickness = th * line_thickness_contour;
+    use_color = color_contour;
+    use_thickness = th * thickness_contour;
   }
 
   draw_line(p1, p2, is_crease);
