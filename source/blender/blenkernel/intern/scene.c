@@ -94,6 +94,9 @@
 #include "DEG_depsgraph_debug.h"
 #include "DEG_depsgraph_query.h"
 
+/* lanpr scene cache free function needs this. */
+#include "DRW_engine.h"
+
 #include "RE_engine.h"
 
 #include "engines/eevee/eevee_lightcache.h"
@@ -242,6 +245,7 @@ void BKE_lanpr_copy_data(const Scene *from, Scene *to)
     memcpy(new_ll, ll, sizeof(LANPR_LineLayer));
     memset(&new_ll->components, 0, sizeof(ListBase));
     new_ll->next = new_ll->prev = NULL;
+    new_ll->batch = NULL;
     BLI_addtail(&to->lanpr.line_layers, new_ll);
     for (llc = ll->components.first; llc; llc = llc->next) {
       new_llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Copied Line Layer Component");
@@ -518,6 +522,8 @@ void BKE_lanpr_free_everything(Scene *s)
   SceneLANPR *lanpr = &s->lanpr;
   LANPR_LineLayer *ll;
   LANPR_LineLayerComponent *llc;
+
+  DRW_scene_freecache(s);
 
   while ((ll = BLI_pophead(&lanpr->line_layers)) != NULL) {
     while ((llc = BLI_pophead(&ll->components)) != NULL) {
