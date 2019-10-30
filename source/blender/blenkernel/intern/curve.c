@@ -3402,8 +3402,9 @@ static void calchandleNurb_intern(BezTriple *bezt,
 
   len_ratio = len_a / len_b;
 
-  if (bezt->f1 & SELECT) {                               /* order of calculation */
-    if (ELEM(bezt->h2, HD_ALIGN, HD_ALIGN_DOUBLESIDE)) { /* aligned */
+  if ((bezt->f1 & SELECT) && (!(bezt->f3 & SELECT) || !(bezt->f3 & BEZT_FLAG_PRECEDENCE) ||
+                              (bezt->f1 & BEZT_FLAG_PRECEDENCE))) { /* order of calculation */
+    if (ELEM(bezt->h2, HD_ALIGN, HD_ALIGN_DOUBLESIDE)) {            /* aligned */
       if (len_a > eps) {
         len = 1.0f / len_ratio;
         p2_h2[0] = p2[0] + len * (p2[0] - p2_h1[0]);
@@ -3601,7 +3602,8 @@ static bool tridiagonal_solve_with_limits(
 
         float target = h[i] > hmax[i] ? hmax[i] : hmin[i];
 
-        /* heuristically only lock handles that go in the right direction if there are such ones */
+        /* heuristically only lock handles that go in the right direction if there are such ones
+         */
         if (target != 0.0f || all) {
           /* mark item locked */
           is_locked[i] = 1;

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -426,6 +426,7 @@ enum {
 typedef enum eBezTriple_Flag {
   /* SELECT */
   BEZT_FLAG_TEMP_TAG = (1 << 1), /* always clear. */
+  BEZT_FLAG_PRECEDENCE = (1 << 2),
 } eBezTriple_Flag;
 
 /* h1 h2 (beztriple) */

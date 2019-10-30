@@ -694,12 +694,19 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail)
 TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt)
 {
   TransDataCurveHandleFlags *hdata;
+
   td->flag |= TD_BEZTRIPLE;
   hdata = td->hdata = MEM_mallocN(sizeof(TransDataCurveHandleFlags), "CuHandle Data");
+
   hdata->ih1 = bezt->h1;
   hdata->h1 = &bezt->h1;
   hdata->ih2 = bezt->h2; /* in case the second is not selected */
   hdata->h2 = &bezt->h2;
+
+  hdata->f1 = &bezt->f1;
+  hdata->f2 = &bezt->f2;
+  hdata->f3 = &bezt->f3;
+
   return hdata;
 }
 
@@ -1090,7 +1097,7 @@ typedef struct BeztMap {
 /* This function converts an FCurve's BezTriple array to a BeztMap array
  * NOTE: this allocates memory that will need to get freed later
  */
-static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert, const short UNUSED(use_handle))
+static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert)
 {
   BezTriple *bezt = bezts;
   BezTriple *prevbezt = NULL;
@@ -1118,7 +1125,7 @@ static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert, const short UNUS
 }
 
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead */
-static void sort_time_beztmaps(BeztMap *bezms, int totvert, const short UNUSED(use_handle))
+static void sort_time_beztmaps(BeztMap *bezms, int totvert)
 {
   BeztMap *bezm;
   int i, ok = 1;
@@ -1163,8 +1170,7 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert, const short UNUSED(u
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple */
-static void beztmap_to_data(
-    TransInfo *t, FCurve *fcu, BeztMap *bezms, int totvert, const short UNUSED(use_handle))
+static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totvert)
 {
   BezTriple *bezts = fcu->bezt;
   BeztMap *bezm;
@@ -1235,11 +1241,18 @@ static void beztmap_to_data(
         if (bezm->swapHs == 1) {
           td->hdata->h1 = &(bezts + bezm->newIndex)->h2;
           td->hdata->h2 = &(bezts + bezm->newIndex)->h1;
+
+          td->hdata->f1 = &(bezts + bezm->newIndex)->f3;
+          td->hdata->f3 = &(bezts + bezm->newIndex)->f1;
         }
         else {
           td->hdata->h1 = &(bezts + bezm->newIndex)->h1;
           td->hdata->h2 = &(bezts + bezm->newIndex)->h2;
+
+          td->hdata->f1 = &(bezts + bezm->newIndex)->f1;
+          td->hdata->f3 = &(bezts + bezm->newIndex)->f3;
         }
+        td->hdata->f2 = &(bezts + bezm->newIndex)->f2;
       }
     }
   }
@@ -1259,7 +1272,13 @@ void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
   SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
   bAnimListElem *ale;
-  const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
+  const bool use_handle =
+#if 1
+      false;
+  UNUSED_VARS(sipo);
+#else
+      (sipo->flag & SIPO_NOHANDLES) == 0;
+#endif
 
   /* sort and reassign verts */
   for (ale = anim_data->first; ale; ale = ale->next) {
@@ -1270,9 +1289,9 @@ void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 
       /* adjust transform-data pointers */
       /* note, none of these functions use 'use_handle', it could be removed */
-      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert, use_handle);
-      sort_time_beztmaps(bezm, fcu->totvert, use_handle);
-      beztmap_to_data(t, fcu, bezm, fcu->totvert, use_handle);
+      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+      sort_time_beztmaps(bezm, fcu->totvert);
+      beztmap_to_data(t, fcu, bezm, fcu->totvert);
 
       /* free mapping stuff */
       MEM_freeN(bezm);
@@ -2074,7 +2093,12 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
   else if (t->spacetype == SPACE_GRAPH) {
     SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
     bAnimContext ac;
-    const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
+    const bool use_handle =
+#if 1
+        false;
+#else
+        (sipo->flag & SIPO_NOHANDLES) == 0;
+#endif
 
     /* initialize relevant anim-context 'context' data */
     if (ANIM_animdata_get_context(C, &ac) == 0) {

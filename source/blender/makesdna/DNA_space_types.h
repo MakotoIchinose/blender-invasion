@@ -467,6 +467,9 @@ typedef enum eGraphEdit_Runtime_Flag {
   SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC = (1 << 0),
   /** Temporary flag to force fcurves to recalculate colors. */
   SIPO_RUNTIME_FLAG_NEED_CHAN_SYNC_COLOR = (1 << 1),
+
+  SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT = (1 << 2),
+  SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT = (1 << 3),
 } eGraphEdit_Runtime_Flag;
 
 /** \} */

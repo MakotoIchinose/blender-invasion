@@ -1436,6 +1436,9 @@ static int mouse_graph_keys(bAnimContext *ac,
     wait_to_deselect_others = false;
   }
 
+  sipo->runtime.flag &= ~(SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT |
+                          SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT);
+
   const bool already_selected =
       nvi && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
               ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
@@ -1550,6 +1553,13 @@ static int mouse_graph_keys(bAnimContext *ac,
   if (nvi->fcu->flag & FCURVE_SELECTED) {
     int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
     ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, nvi->fcu, nvi->ctype);
+  }
+
+  if (nvi->hpoint == NEAREST_HANDLE_LEFT) {
+    sipo->runtime.flag |= SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT;
+  }
+  else if (nvi->hpoint == NEAREST_HANDLE_RIGHT) {
+    sipo->runtime.flag |= SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT;
   }
 
   /* free temp sample data for filtering */
