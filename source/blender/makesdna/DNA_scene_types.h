@@ -1646,6 +1646,81 @@ typedef struct SceneEEVEE {
   float light_threshold;
 } SceneEEVEE;
 
+/* LANPR Global Config */
+
+struct LANPR_RenderBuffer;
+struct LANPR_LineLayer;
+
+typedef enum LANPR_MasterMode {
+  LANPR_MASTER_MODE_SOFTWARE = 0,
+  LANPR_MASTER_MODE_DPIX = 1,
+  LANPR_MASTER_MODE_SNAKE = 2,
+} LANPR_MasterMode;
+
+typedef enum LANPR_PostProcessingStatus {
+  LANPR_POST_PROCESSING_DISABLED = 0,
+  LANPR_POST_PROCESSING_ENABLED = 1,
+} LANPR_PostProcessingStatus;
+
+typedef enum LANPR_MainFlags {
+  LANPR_ENABLED = (1 << 0),
+  /* For LANPR->GP and viewport to update automatically. */
+  LANPR_AUTO_UPDATE = (1 << 1),
+  LANPR_SAME_TAPER = (1 << 2),
+  /* Edge split modifier will cause problems in LANPR. */
+  LANPR_DISABLE_EDGE_SPLITS = (1 << 3),
+  LANPR_USE_CHAINING = (1 << 4),
+  LANPR_USE_INTERSECTIONS = (1 << 5),
+  /* Overwrite existing strokes in this frame. */
+  LANPR_GPENCIL_OVERWRITE = (1 << 6),
+} LANPR_MainFlags;
+
+typedef struct SceneLANPR {
+
+  int flags;
+
+  int master_mode; /* LANPR_MasterMode */
+
+  float taper_left_distance;
+  float taper_left_strength;
+  float taper_right_distance;
+  float taper_right_strength;
+
+  /* shared */
+
+  float contour_fade;          /* for dpix contour fading,reserved for future usage */
+  float crease_threshold;      /* 0-1 range for cosine angle */
+  float crease_fade_threshold; /* for dpix crease fading */
+
+  float line_color[4];
+
+  float depth_width_influence;
+  float depth_width_curve;
+  float depth_alpha_influence;
+  float depth_alpha_curve;
+
+  int gpu_cache_size; /* enum! */
+  int _pad;
+
+  int enable_chain_connection;
+
+  /* offline render */
+  ListBase line_layers;
+  struct LANPR_LineLayer *active_layer;
+
+  float chaining_geometry_threshold;
+  float chaining_image_threshold;
+} SceneLANPR;
+
+enum {
+  LANPR_GPU_CACHE_SIZE_512 = 0,
+  LANPR_GPU_CACHE_SIZE_1K = 1, /* default */
+  LANPR_GPU_CACHE_SIZE_2K = 2,
+  LANPR_GPU_CACHE_SIZE_4K = 3,
+  LANPR_GPU_CACHE_SIZE_8K = 4,
+  LANPR_GPU_CACHE_SIZE_16K = 5,
+};
+
 /* *************************************************************** */
 /* Scene ID-Block */
 
@@ -1776,6 +1851,9 @@ typedef struct Scene {
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
+
+  /* LANPR stuff */
+  struct SceneLANPR lanpr;
 } Scene;
 
 /* **************** RENDERDATA ********************* */

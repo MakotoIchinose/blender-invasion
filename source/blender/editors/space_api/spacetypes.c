@@ -64,6 +64,8 @@
 #include "ED_gizmo_library.h"
 #include "ED_transform.h"
 
+#include "ED_lanpr.h"
+
 #include "io_ops.h"
 
 /* only call once on startup, storage is global in BKE kernel listbase */
@@ -122,6 +124,8 @@ void ED_spacetypes_init(void)
 
   ED_operatortypes_view2d();
   ED_operatortypes_ui();
+
+  ED_operatortypes_lanpr();
 
   ED_screen_user_menu_register();
 

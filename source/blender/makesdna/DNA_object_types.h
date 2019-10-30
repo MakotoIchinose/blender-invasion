@@ -29,6 +29,7 @@
 
 #include "DNA_defs.h"
 #include "DNA_customdata_types.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_action_types.h" /* bAnimVizSettings */
@@ -186,6 +187,40 @@ typedef struct Object_Runtime {
   unsigned short local_collections_bits;
   short _pad2[3];
 } Object_Runtime;
+
+typedef struct ObjectLANPRLineType {
+  int use;
+  char _pad[4];
+  char target_layer[128];
+  char target_material[128];
+} ObjectLANPRLineType;
+
+typedef struct ObjectLANPR {
+  int usage;
+
+  /* Separate flags for LANPR shared flag values. */
+  int flags;
+
+  struct Object *target;
+  char target_layer[128];
+  char target_material[128];
+
+  ObjectLANPRLineType crease;
+  ObjectLANPRLineType contour;
+  ObjectLANPRLineType material;
+  ObjectLANPRLineType edge_mark;
+  /* Intersection not implemented as per-object */
+
+  int level_start;
+  int level_end;
+} ObjectLANPR;
+
+enum ObjectFeatureLine_Usage {
+  OBJECT_FEATURE_LINE_INHERENT = 0,
+  OBJECT_FEATURE_LINE_INCLUDE = (1 << 0),
+  OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 1),
+  OBJECT_FEATURE_LINE_EXCLUDE = (1 << 2),
+};
 
 typedef struct Object {
   ID id;
@@ -396,6 +431,8 @@ typedef struct Object {
   LodLevel *currentlod;
 
   struct PreviewImage *preview;
+
+  ObjectLANPR lanpr;
 
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;

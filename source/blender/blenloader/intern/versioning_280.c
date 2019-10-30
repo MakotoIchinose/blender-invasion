@@ -1951,6 +1951,20 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
+    if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
+      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+
+        scene->lanpr.crease_threshold = 0.7;
+
+        scene->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
+
+        scene->lanpr.line_color[0] = 0.39;
+        scene->lanpr.line_color[1] = 0.12;
+        scene->lanpr.line_color[2] = 0.04;
+        scene->lanpr.line_color[3] = 1;
+      }
+    }
+
     if (!MAIN_VERSION_ATLEAST(bmain, 280, 15)) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         scene->display.matcap_ssao_distance = 0.2f;
@@ -3652,6 +3666,22 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (scene->ed != NULL) {
         do_versions_seq_alloc_transform_and_crop(&scene->ed->seqbase);
       }
+    }
+    for (Scene *sce = bmain->scenes.first; sce; sce = sce->id.next) {
+      sce->lanpr.crease_threshold = 0.7;
+
+      zero_v4(sce->lanpr.line_color);
+
+      sce->lanpr.flags |= (LANPR_USE_CHAINING | LANPR_USE_INTERSECTIONS);
+      sce->lanpr.chaining_image_threshold = 0.01f;
+      sce->lanpr.chaining_geometry_threshold = 0.0f;
+    }
+    for (Collection *co = bmain->collections.first; co; co = co->id.next) {
+      co->lanpr.contour.use = 1;
+      co->lanpr.crease.use = 1;
+      co->lanpr.material.use = 1;
+      co->lanpr.edge_mark.use = 1;
+      co->lanpr.intersection.use = 1;
     }
   }
 
