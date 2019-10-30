@@ -125,6 +125,12 @@ struct bGPDstroke *BKE_gpencil_add_stroke(struct bGPDframe *gpf,
                                           int totpoints,
                                           short thickness);
 
+struct bGPDstroke *BKE_gpencil_add_stroke_existing_style(struct bGPDframe *gpf,
+                                                         struct bGPDstroke *existing,
+                                                         int mat_idx,
+                                                         int totpoints,
+                                                         short thickness);
+
 /* Stroke and Fill - Alpha Visibility Threshold */
 #define GPENCIL_ALPHA_OPACITY_THRESH 0.001f
 #define GPENCIL_STRENGTH_MIN 0.003f
