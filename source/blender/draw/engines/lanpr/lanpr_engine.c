@@ -161,7 +161,7 @@ static void lanpr_engine_init(void *ved)
 void DRW_scene_freecache(Scene *sce)
 {
   LANPR_LineLayer *ll;
-  
+
   for (ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
     if (ll->batch) {
       GPU_batch_discard(ll->batch);
@@ -490,7 +490,8 @@ static void lanpr_cache_init(void *vedata)
     }
   }
 
-  if (ED_lanpr_calculation_flag_check(LANPR_RENDER_FINISHED) || ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
+  if (ED_lanpr_calculation_flag_check(LANPR_RENDER_FINISHED) ||
+      ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
     ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
     ED_lanpr_calculation_set_flag(LANPR_RENDER_IDLE);
   }

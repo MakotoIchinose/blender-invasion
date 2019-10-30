@@ -2719,7 +2719,7 @@ static int lanpr_max_occlusion_in_targets(Depsgraph *depsgraph)
 static int lanpr_get_max_occlusion_level(Depsgraph *dg)
 {
   Scene *s = DEG_get_evaluated_scene(dg);
-  SceneLANPR *lanpr = &s->lanpr;
+  SceneLANPR *lanpr = s->id.orig_id ? &((Scene *)s->id.orig_id)->lanpr : &s->lanpr;
   if (!strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
     /* Use the line layers in scene LANPR settings */
     return ED_lanpr_max_occlusion_in_line_layers(lanpr);
