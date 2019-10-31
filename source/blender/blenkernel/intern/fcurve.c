@@ -1121,7 +1121,7 @@ void calchandles_fcurve(FCurve *fcu)
   }
 }
 
-void testhandles_fcurve(FCurve *fcu, const bool use_handle)
+void testhandles_fcurve(FCurve *fcu, const int sel_flag, const bool use_handle)
 {
   BezTriple *bezt;
   unsigned int a;
@@ -1133,7 +1133,7 @@ void testhandles_fcurve(FCurve *fcu, const bool use_handle)
 
   /* loop over beztriples */
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    BKE_nurb_bezt_handle_test(bezt, use_handle);
+    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle);
   }
 
   /* recalculate handles */

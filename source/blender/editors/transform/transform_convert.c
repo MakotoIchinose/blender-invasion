@@ -1043,7 +1043,7 @@ static void posttrans_fcurve_clean(FCurve *fcu, const bool use_handle)
   }
 
   /* 3) Recalculate handles */
-  testhandles_fcurve(fcu, use_handle);
+  testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
 
   /* cleanup */
   BLI_freelistN(&retained_keys);
@@ -1300,7 +1300,7 @@ void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
       sort_time_fcurve(fcu);
 
       /* make sure handles are all set correctly */
-      testhandles_fcurve(fcu, use_handle);
+      testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
     }
   }
 }

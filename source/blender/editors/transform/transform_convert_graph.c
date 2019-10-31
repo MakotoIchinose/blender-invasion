@@ -407,6 +407,11 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     /* only include BezTriples whose 'keyframe' occurs on the same side
      * of the current frame as mouse (if applicable) */
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+      /* Ensure temp flag is cleared for all triples, we use it. */
+      bezt->f1 &= ~BEZT_FLAG_TEMP_TAG;
+      bezt->f2 &= ~BEZT_FLAG_TEMP_TAG;
+      bezt->f3 &= ~BEZT_FLAG_TEMP_TAG;
+
       if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
         TransDataCurveHandleFlags *hdata = NULL;
 
@@ -457,6 +462,12 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
                             smtx,
                             unit_scale,
                             offset);
+
+          if (is_sel) {
+            bezt->f1 |= BEZT_FLAG_TEMP_TAG;
+            bezt->f2 |= BEZT_FLAG_TEMP_TAG;
+            bezt->f3 |= BEZT_FLAG_TEMP_TAG;
+          }
         }
         else {
           /* only include handles if selected, irrespective of the interpolation modes.
@@ -478,6 +489,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
                                 smtx,
                                 unit_scale,
                                 offset);
+              bezt->f1 |= BEZT_FLAG_TEMP_TAG;
             }
 
             if (sel_right) {
@@ -497,6 +509,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
                                 smtx,
                                 unit_scale,
                                 offset);
+              bezt->f3 |= BEZT_FLAG_TEMP_TAG;
 
               if (!sel_left && !sel_key) {
                 bezt->f3 |= BEZT_FLAG_PRECEDENCE;
@@ -536,6 +549,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
                               smtx,
                               unit_scale,
                               offset);
+            bezt->f2 |= BEZT_FLAG_TEMP_TAG;
           }
           /* Special hack (must be done after #initTransDataCurveHandles(),
            * as that stores handle settings to restore...):
@@ -556,7 +570,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     }
 
     /* Sets handles based on the selection */
-    testhandles_fcurve(fcu, use_handle);
+    testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
   }
 
   if (is_prop_edit) {

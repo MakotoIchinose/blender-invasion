@@ -4106,8 +4106,11 @@ void BKE_nurb_handle_calc_simple_auto(Nurb *nu, BezTriple *bezt)
  * Use when something has changed handle positions.
  *
  * The caller needs to recalculate handles.
+ *
+ * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
+ *                  but may want to use a different one at times.
  */
-void BKE_nurb_bezt_handle_test(BezTriple *bezt, const bool use_handle)
+void BKE_nurb_bezt_handle_test(BezTriple *bezt, const int sel_flag, const bool use_handle)
 {
   short flag = 0;
 
@@ -4116,18 +4119,18 @@ void BKE_nurb_bezt_handle_test(BezTriple *bezt, const bool use_handle)
 #define SEL_F3 (1 << 2)
 
   if (use_handle) {
-    if (bezt->f1 & SELECT) {
+    if (bezt->f1 & sel_flag) {
       flag |= SEL_F1;
     }
-    if (bezt->f2 & SELECT) {
+    if (bezt->f2 & sel_flag) {
       flag |= SEL_F2;
     }
-    if (bezt->f3 & SELECT) {
+    if (bezt->f3 & sel_flag) {
       flag |= SEL_F3;
     }
   }
   else {
-    flag = (bezt->f2 & SELECT) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
+    flag = (bezt->f2 & sel_flag) ? (SEL_F1 | SEL_F2 | SEL_F3) : 0;
   }
 
   /* check for partial selection */
@@ -4168,7 +4171,7 @@ void BKE_nurb_handles_test(Nurb *nu, const bool use_handle)
   bezt = nu->bezt;
   a = nu->pntsu;
   while (a--) {
-    BKE_nurb_bezt_handle_test(bezt, use_handle);
+    BKE_nurb_bezt_handle_test(bezt, SELECT, use_handle);
     bezt++;
   }
 
