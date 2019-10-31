@@ -246,6 +246,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 {
 #define SMOOTH_STROKE_RADIUS 40
 #define SMOOTH_STROKE_FACTOR 0.9f
+#define ACTIVE_SMOOTH 0.35f
 
   Paint *paint = &ts->gp_paint->paint;
 
@@ -265,7 +266,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.98f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 0.211f;
@@ -300,7 +301,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_strength = 1.0f;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.7f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
@@ -341,7 +342,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_strength = 1.0f;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.5f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
@@ -383,7 +384,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_strength = 0.3f;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.6f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
@@ -425,7 +426,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->draw_strength = 1.0f;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.5f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = DEG2RAD(20.0f);
   brush->gpencil_settings->draw_angle_factor = 1.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
@@ -461,7 +462,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.3f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
@@ -498,7 +499,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.64f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 0.8f;
@@ -536,7 +537,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
 
   brush->gpencil_settings->input_samples = 10;
-  brush->gpencil_settings->active_smooth = 0.55f;
+  brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
   brush->gpencil_settings->draw_angle = 0.0f;
   brush->gpencil_settings->draw_angle_factor = 0.0f;
   brush->gpencil_settings->gradient_f = 1.0f;
