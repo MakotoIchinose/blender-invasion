@@ -342,7 +342,6 @@ void gp_stroke_delete_tagged_points(bGPDframe *gpf,
 int gp_delete_selected_point_wrap(bContext *C);
 
 void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide);
-void gp_randomize_stroke(bGPDstroke *gps, Brush *brush, struct RNG *rng);
 
 /* Layers Enums -------------------------------------- */
 

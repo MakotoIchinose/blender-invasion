@@ -1172,11 +1172,6 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) && (subdivide > 0)) {
       gp_subdivide_stroke(gps, subdivide);
     }
-    /* apply randomness to stroke */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_random_sub > 0.0f)) {
-      gp_randomize_stroke(gps, brush, p->rng);
-    }
 
     /* Smooth stroke after subdiv - only if there's something to do for each iteration,
      * the factor is reduced to get a better smoothing
@@ -1197,16 +1192,6 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
         (brush->gpencil_settings->simplify_f > 0.0f)) {
       BKE_gpencil_simplify_stroke(gps, brush->gpencil_settings->simplify_f);
-    }
-
-    /* smooth thickness */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
-        (brush->gpencil_settings->thick_smoothfac > 0.0f)) {
-      for (int r = 0; r < brush->gpencil_settings->thick_smoothlvl * 2; r++) {
-        for (i = 0; i < gps->totpoints - 1; i++) {
-          BKE_gpencil_smooth_stroke_thickness(gps, i, brush->gpencil_settings->thick_smoothfac);
-        }
-      }
     }
 
     /* reproject to plane (only in 3d space) */

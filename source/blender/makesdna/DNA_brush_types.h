@@ -63,18 +63,11 @@ typedef struct BrushGpencilSettings {
   float draw_random_press;
   /** Factor of strength for strength. */
   float draw_random_strength;
-  /** Factor of randomness for subdivision. */
-  float draw_random_sub;
   /** Number of times to apply smooth factor to new strokes. */
   short draw_smoothlvl;
   /** Number of times to subdivide new strokes. */
   short draw_subdivide;
-  short _pad;
-
-  /** Number of times to apply thickness smooth factor to new strokes. */
-  short thick_smoothlvl;
-  /** Amount of thickness smoothing to apply to newly created strokes. */
-  float thick_smoothfac;
+  char _pad[4];
 
   /** Factor for transparency. */
   float fill_threshold;
@@ -525,7 +518,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \ \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)

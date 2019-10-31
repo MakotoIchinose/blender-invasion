@@ -1209,59 +1209,6 @@ void gp_subdivide_stroke(bGPDstroke *gps, const int subdivide)
   }
 }
 
-/**
- * Add randomness to stroke
- * \param gps: Stroke data
- * \param brush: Brush data
- */
-void gp_randomize_stroke(bGPDstroke *gps, Brush *brush, RNG *rng)
-{
-  bGPDspoint *pt1, *pt2, *pt3;
-  float v1[3];
-  float v2[3];
-  if (gps->totpoints < 3) {
-    return;
-  }
-
-  /* get two vectors using 3 points */
-  pt1 = &gps->points[0];
-  pt2 = &gps->points[1];
-  pt3 = &gps->points[(int)(gps->totpoints * 0.75)];
-
-  sub_v3_v3v3(v1, &pt2->x, &pt1->x);
-  sub_v3_v3v3(v2, &pt3->x, &pt2->x);
-  normalize_v3(v1);
-  normalize_v3(v2);
-
-  /* get normal vector to plane created by two vectors */
-  float normal[3];
-  cross_v3_v3v3(normal, v1, v2);
-  normalize_v3(normal);
-
-  /* get orthogonal vector to plane to rotate random effect */
-  float ortho[3];
-  cross_v3_v3v3(ortho, v1, normal);
-  normalize_v3(ortho);
-
-  /* Read all points and apply shift vector (first and last point not modified) */
-  for (int i = 1; i < gps->totpoints - 1; i++) {
-    bGPDspoint *pt = &gps->points[i];
-    /* get vector with shift (apply a division because random is too sensitive */
-    const float fac = BLI_rng_get_float(rng) * (brush->gpencil_settings->draw_random_sub / 10.0f);
-    float svec[3];
-    copy_v3_v3(svec, ortho);
-    if (BLI_rng_get_float(rng) > 0.5f) {
-      mul_v3_fl(svec, -fac);
-    }
-    else {
-      mul_v3_fl(svec, fac);
-    }
-
-    /* apply shift */
-    add_v3_v3(&pt->x, svec);
-  }
-}
-
 /* ******************************************************** */
 /* Layer Parenting  - Compute Parent Transforms */
 

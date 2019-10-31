@@ -310,10 +310,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.1f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.002f;
 
   brush->gpencil_settings->draw_random_press = 0.0f;
@@ -354,10 +351,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.0f;
   brush->gpencil_settings->draw_smoothlvl = 2;
-  brush->gpencil_settings->thick_smoothfac = 0.0f;
-  brush->gpencil_settings->thick_smoothlvl = 2;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.000f;
 
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_RANDOM;
@@ -399,10 +393,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.1f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.002f;
 
   brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_RANDOM;
@@ -444,10 +435,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.0f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0;
   brush->gpencil_settings->simplify_f = 0.002f;
 
   brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_RANDOM;
@@ -483,10 +471,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.0f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 1;
   brush->gpencil_settings->draw_subdivide = 1;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.002f;
 
   brush->gpencil_settings->draw_random_press = 0.0f;
@@ -523,10 +508,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.0f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.000f;
 
   brush->gpencil_settings->draw_random_press = 0.0f;
@@ -564,10 +546,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_GROUP_SETTINGS;
   brush->gpencil_settings->draw_smoothfac = 0.0f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 0;
-  brush->gpencil_settings->draw_random_sub = 0.0f;
   brush->gpencil_settings->simplify_f = 0.002f;
 
   brush->gpencil_settings->draw_random_press = 0.0f;
@@ -599,8 +578,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->gradient_s[1] = 1.0f;
   brush->gpencil_settings->draw_smoothfac = 0.1f;
   brush->gpencil_settings->draw_smoothlvl = 1;
-  brush->gpencil_settings->thick_smoothfac = 1.0f;
-  brush->gpencil_settings->thick_smoothlvl = 3;
   brush->gpencil_settings->draw_subdivide = 1;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_FILL;
