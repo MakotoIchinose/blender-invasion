@@ -41,8 +41,6 @@
 #include "transform.h"
 #include "transform_convert.h"
 
-#define USE_HANDLES_AS_CHILD
-
 typedef struct TransDataGraph {
   float unit_scale;
   float offset;
@@ -174,7 +172,7 @@ static void graph_bezt_get_transform_selection(const TransInfo *t,
   bool left = use_handle ? ((bezt->f1 & SELECT) != 0) : key;
   bool right = use_handle ? ((bezt->f3 & SELECT) != 0) : key;
 
-  if (t->is_launch_event_tweak) {
+  if (use_handle && t->is_launch_event_tweak) {
     if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT) {
       key = right = false;
     }
@@ -184,9 +182,17 @@ static void graph_bezt_get_transform_selection(const TransInfo *t,
   }
 
   *r_key = key;
-  /* Whenever we move the key, we also move both handles. */
-  *r_left_handle = key || left;
-  *r_right_handle = key || right;
+  /* Whenever we move the key, we also move both handles (with USE_HANDLES_AS_CHILD). */
+  *r_left_handle =
+#ifdef USE_HANDLES_AS_CHILD
+      key ||
+#endif
+      left;
+  *r_right_handle =
+#ifdef USE_HANDLES_AS_CHILD
+      key ||
+#endif
+      right;
 }
 
 static void graph_key_shortest_dist(
@@ -211,11 +217,18 @@ static void graph_key_shortest_dist(
   }
 }
 
+/**
+ * It is important to note that this doesn't always act on the selection (like it's usually done),
+ * it acts on a subset of it. E.g. the selection code may leave a hint that we just dragged on a
+ * left or right handle (SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT/RIGHT) and then we only transform the
+ * selected left or right handles accordingly.
+ * The points to be transformed are tagged with BEZT_FLAG_TEMP_TAG; some lower level curve
+ * functions may need to be made aware of this. It's ugly that these act based on selection state
+ * anyway.
+ */
 void createTransGraphEditData(bContext *C, TransInfo *t)
 {
-#ifndef USE_HANDLES_AS_CHILD
   SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
-#endif
   Scene *scene = t->scene;
   ARegion *ar = t->ar;
   View2D *v2d = &ar->v2d;
@@ -233,12 +246,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
   int count = 0, i;
   float mtx[3][3], smtx[3][3];
   const bool is_translation_mode = graph_edit_is_translation_mode(t);
-  const bool use_handle =
-#ifdef USE_HANDLES_AS_CHILD
-      true;
-#else
-      !(sipo->flag & SIPO_NOHANDLES);
-#endif
+  const bool use_handle = IS_USE_HANDLE(sipo);
   const bool use_local_center = graph_edit_use_local_center(t);
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   short anim_map_flag = ANIM_UNITCONV_ONLYSEL | ANIM_UNITCONV_SELVERTS;

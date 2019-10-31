@@ -35,6 +35,16 @@ struct bContext;
 struct bKinematicConstraint;
 struct bPoseChannel;
 
+/* Always transform handles with the key if this is defined. */
+#define USE_HANDLES_AS_CHILD
+/* If USE_HANDLES_AS_CHILD is enabled, we always use handles in transform code,
+ * otherwise only if handles are visible (SIPO_NOHANDLES is not set). */
+#ifdef USE_HANDLES_AS_CHILD
+#  define IS_USE_HANDLE(sipo) (UNUSED_VARS(sipo), true)
+#else
+#  define IS_USE_HANDLE(sipo) (((sipo)->flag & SIPO_NOHANDLES) == 0)
+#endif
+
 /* transform_convert.c */
 int count_set_pose_transflags(Object *ob,
                               const int mode,

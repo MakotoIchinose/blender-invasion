@@ -1258,13 +1258,7 @@ void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
   SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
   bAnimListElem *ale;
-  const bool use_handle =
-#if 1
-      true;
-  UNUSED_VARS(sipo);
-#else
-      (sipo->flag & SIPO_NOHANDLES) == 0;
-#endif
+  const bool use_handle = IS_USE_HANDLE(sipo);
 
   /* sort and reassign verts */
   for (ale = anim_data->first; ale; ale = ale->next) {
@@ -2079,12 +2073,7 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
   else if (t->spacetype == SPACE_GRAPH) {
     SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
     bAnimContext ac;
-    const bool use_handle =
-#if 1
-        true;
-#else
-        (sipo->flag & SIPO_NOHANDLES) == 0;
-#endif
+    const bool use_handle = IS_USE_HANDLE(sipo);
 
     /* initialize relevant anim-context 'context' data */
     if (ANIM_animdata_get_context(C, &ac) == 0) {
