@@ -940,10 +940,10 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
         (brush->gpencil_settings->draw_random_press > 0.0f)) {
       if (p2d->rnd[0] > 0.5f) {
-        pressure -= brush->gpencil_settings->draw_random_press * p2d->rnd[1];
+        pressure -= (brush->gpencil_settings->draw_random_press * 2.0f) * p2d->rnd[1];
       }
       else {
-        pressure += brush->gpencil_settings->draw_random_press * p2d->rnd[2];
+        pressure += (brush->gpencil_settings->draw_random_press * 2.0f) * p2d->rnd[2];
       }
     }
 

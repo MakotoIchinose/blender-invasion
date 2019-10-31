@@ -791,11 +791,11 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       float tmp_pressure = BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_sensitivity, 0, pressure);
       if (BLI_rng_get_float(p->rng) > 0.5f) {
-        pt->pressure -= tmp_pressure * brush->gpencil_settings->draw_random_press *
+        pt->pressure -= tmp_pressure * (brush->gpencil_settings->draw_random_press * 2.0f) *
                         BLI_rng_get_float(p->rng);
       }
       else {
-        pt->pressure += tmp_pressure * brush->gpencil_settings->draw_random_press *
+        pt->pressure += tmp_pressure * (brush->gpencil_settings->draw_random_press * 2.0f) *
                         BLI_rng_get_float(p->rng);
       }
       CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
