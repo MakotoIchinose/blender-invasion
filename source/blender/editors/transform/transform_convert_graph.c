@@ -171,8 +171,8 @@ static void graph_bezt_get_transform_selection(const TransInfo *t,
 {
   SpaceGraph *sipo = (SpaceGraph *)t->sa->spacedata.first;
   bool key = (bezt->f2 & SELECT) != 0;
-  bool left = use_handle ? key : (bezt->f1 & SELECT) != 0;
-  bool right = use_handle ? key : (bezt->f3 & SELECT) != 0;
+  bool left = use_handle ? ((bezt->f1 & SELECT) != 0) : key;
+  bool right = use_handle ? ((bezt->f3 & SELECT) != 0) : key;
 
   if (t->is_launch_event_tweak) {
     if (sipo->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT) {
@@ -235,7 +235,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
   const bool is_translation_mode = graph_edit_is_translation_mode(t);
   const bool use_handle =
 #ifdef USE_HANDLES_AS_CHILD
-      false;
+      true;
 #else
       !(sipo->flag & SIPO_NOHANDLES);
 #endif
@@ -556,7 +556,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     }
 
     /* Sets handles based on the selection */
-    testhandles_fcurve(fcu, true);
+    testhandles_fcurve(fcu, use_handle);
   }
 
   if (is_prop_edit) {

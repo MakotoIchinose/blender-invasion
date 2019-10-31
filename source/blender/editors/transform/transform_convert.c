@@ -1274,7 +1274,7 @@ void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
   bAnimListElem *ale;
   const bool use_handle =
 #if 1
-      false;
+      true;
   UNUSED_VARS(sipo);
 #else
       (sipo->flag & SIPO_NOHANDLES) == 0;
@@ -2095,7 +2095,7 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
     bAnimContext ac;
     const bool use_handle =
 #if 1
-        false;
+        true;
 #else
         (sipo->flag & SIPO_NOHANDLES) == 0;
 #endif
