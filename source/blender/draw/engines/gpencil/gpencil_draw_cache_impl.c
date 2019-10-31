@@ -141,9 +141,12 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
                             bGPDstroke *gps,
                             short thickness,
                             const float ink[4],
-                            const int alignment_mode)
+                            const int alignment_mode,
+                            const bool onion)
 {
+  float mix[4];
   int totvertex = gps->totpoints;
+
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
     be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -170,6 +173,11 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
     /* set point */
     alpha = ink[3] * pt->strength;
     CLAMP(alpha, GPENCIL_STRENGTH_MIN, 1.0f);
+    /* Apply the mix color. */
+    if (!onion) {
+      interp_v3_v3v3(ink, ink, pt->mix_color, pt->mix_color[3]);
+    }
+
     ARRAY_SET_ITEMS(col, ink[0], ink[1], ink[2], alpha);
 
     float thick = max_ff(pt->pressure * thickness, 1.0f);
@@ -222,13 +230,15 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
 void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              bGPDstroke *gps,
                              short thickness,
-                             const float ink[4])
+                             const float ink[4],
+                             const bool onion)
 {
   bGPDspoint *points = gps->points;
   int totpoints = gps->totpoints;
   /* if cyclic needs more vertex */
   int cyclic_add = (gps->flag & GP_STROKE_CYCLIC) ? 1 : 0;
   int totvertex = totpoints + cyclic_add + 2;
+  float mix_color[4];
 
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
@@ -248,6 +258,12 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
   /* draw stroke curve */
   const bGPDspoint *pt = points;
   for (int i = 0; i < totpoints; i++, pt++) {
+    /* Apply the mix color. */
+    copy_v4_v4(mix_color, ink);
+    if (!onion) {
+      interp_v3_v3v3(mix_color, ink, pt->mix_color, pt->mix_color[3]);
+    }
+
     /* first point for adjacency (not drawn) */
     if (i == 0) {
       if (gps->flag & GP_STROKE_CYCLIC && totpoints > 2) {
@@ -259,7 +275,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                                  be->thickness_id,
                                  be->uvdata_id,
                                  thickness,
-                                 ink);
+                                 mix_color);
         be->vbo_len++;
       }
       else {
@@ -271,7 +287,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                                  be->thickness_id,
                                  be->uvdata_id,
                                  thickness,
-                                 ink);
+                                 mix_color);
         be->vbo_len++;
       }
     }
@@ -284,7 +300,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
-                             ink);
+                             mix_color);
     be->vbo_len++;
   }
 
@@ -298,7 +314,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
-                             ink);
+                             mix_color);
     be->vbo_len++;
     /* now add adjacency point (not drawn) */
     gpencil_set_stroke_point(be->vbo,
@@ -309,7 +325,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
-                             ink);
+                             mix_color);
     be->vbo_len++;
   }
   /* last adjacency point (not drawn) */
@@ -322,7 +338,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
-                             ink);
+                             mix_color);
     be->vbo_len++;
   }
 }

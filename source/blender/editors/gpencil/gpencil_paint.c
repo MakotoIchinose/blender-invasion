@@ -1002,6 +1002,9 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->strength = ptc->strength;
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
+      /* Point mix color. */
+      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
+
       pt++;
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
@@ -1032,6 +1035,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->strength = ptc->strength;
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
+      /* Point mix color. */
+      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
@@ -1153,6 +1158,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->time = ptc->time;
       pt->uv_fac = ptc->uv_fac;
       pt->uv_rot = ptc->uv_rot;
+      /* Point mix color. */
+      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
 
       if (dvert != NULL) {
         dvert->totweight = 0;
@@ -1855,6 +1862,12 @@ static void gp_init_colors(tGPsdata *p)
     gpd->runtime.mode = (short)gp_style->mode;
     gpd->runtime.bstroke_style = gp_style->stroke_style;
     gpd->runtime.bfill_style = gp_style->fill_style;
+
+    /* Apply the mix color to stroke. */
+    interp_v3_v3v3(gpd->runtime.scolor,
+                   gpd->runtime.scolor,
+                   brush->gpencil_settings->mix_color,
+                   brush->gpencil_settings->mix_color[3]);
   }
 }
 
@@ -2507,7 +2520,6 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
 
 /* ------------------------------- */
 
-
 /* Helper to rotate point around origin */
 static void gp_rotate_v2_v2v2fl(float v[2],
                                 const float p[2],
@@ -2768,7 +2780,6 @@ static void gpencil_draw_apply(bContext *C, wmOperator *op, tGPsdata *p, Depsgra
     }
   }
 }
-
 
 /* handle draw event */
 static void gpencil_draw_apply_event(bContext *C,

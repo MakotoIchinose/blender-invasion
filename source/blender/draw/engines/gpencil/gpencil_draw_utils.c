@@ -1075,7 +1075,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
     if ((gps->totpoints > 1) && (gp_style->mode == GP_STYLE_MODE_LINE)) {
       /* create vertex data */
       const int old_len = cache->b_stroke.vbo_len;
-      gpencil_get_stroke_geom(&cache->b_stroke, gps, sthickness, ink);
+      gpencil_get_stroke_geom(&cache->b_stroke, gps, sthickness, ink, onion);
 
       /* add to list of groups */
       if (old_len < cache->b_stroke.vbo_len) {
@@ -1093,7 +1093,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
     else {
       /* create vertex data */
       const int old_len = cache->b_point.vbo_len;
-      gpencil_get_point_geom(&cache->b_point, gps, sthickness, ink, alignment_mode);
+      gpencil_get_point_geom(&cache->b_point, gps, sthickness, ink, alignment_mode, onion);
 
       /* add to list of groups */
       if (old_len < cache->b_point.vbo_len) {

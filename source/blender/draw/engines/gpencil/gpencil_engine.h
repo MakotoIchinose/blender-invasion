@@ -427,11 +427,13 @@ void gpencil_get_point_geom(struct GpencilBatchCacheElem *be,
                             struct bGPDstroke *gps,
                             short thickness,
                             const float ink[4],
-                            const int follow_mode);
+                            const int follow_mode,
+                            const bool onion);
 void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              struct bGPDstroke *gps,
                              short thickness,
-                             const float ink[4]);
+                             const float ink[4],
+                             const bool onion);
 void gpencil_get_fill_geom(struct GpencilBatchCacheElem *be,
                            struct Object *ob,
                            struct bGPDstroke *gps,
