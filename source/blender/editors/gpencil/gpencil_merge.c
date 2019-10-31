@@ -61,6 +61,7 @@ typedef struct tGPencilPointCache {
   float x, y, z;
   float pressure;
   float strength;
+  float mix_color[4];
 } tGPencilPointCache;
 
 /* helper function to sort points */
@@ -94,6 +95,7 @@ static void gpencil_insert_points_to_stroke(bGPDstroke *gps,
     pt_dst->uv_fac = 1.0f;
     pt_dst->uv_rot = 0;
     pt_dst->flag |= GP_SPOINT_SELECT;
+    copy_v4_v4(pt_dst->mix_color, point_elem->mix_color);
   }
 }
 
@@ -240,6 +242,7 @@ static void gpencil_calc_points_factor(bContext *C,
             copy_v3_v3(&pt2->x, &pt->x);
             pt2->pressure = pt->pressure;
             pt2->strength = pt->strength;
+            copy_v4_v4(pt2->mix_color, pt->mix_color);
             pt->flag &= ~GP_SPOINT_SELECT;
             if (clear_point) {
               pt->flag |= GP_SPOINT_TAG;
@@ -289,6 +292,7 @@ static void gpencil_calc_points_factor(bContext *C,
     copy_v3_v3(&sort_pt->x, &pt2->x);
     sort_pt->pressure = pt2->pressure;
     sort_pt->strength = pt2->strength;
+    copy_v4_v4(sort_pt->mix_color, pt2->mix_color);
 
     sort_pt->gps = gps_array[i];
 
@@ -337,6 +341,7 @@ static int gpencil_insert_to_array(tGPencilPointCache *src_array,
     dst_elem->pressure = src_elem->pressure;
     dst_elem->strength = src_elem->strength;
     dst_elem->factor = src_elem->factor;
+    copy_v4_v4(dst_elem->mix_color, src_elem->mix_color);
   }
 
   return last;

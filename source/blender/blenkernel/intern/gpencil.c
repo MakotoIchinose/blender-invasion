@@ -2525,6 +2525,7 @@ bool BKE_gpencil_close_stroke(bGPDstroke *gps)
     pt->pressure = interpf(pt2->pressure, pt1->pressure, step);
     pt->strength = interpf(pt2->strength, pt1->strength, step);
     pt->flag = 0;
+    interp_v4_v4v4(pt->mix_color, pt1->mix_color, pt2->mix_color, step);
 
     /* Set weights. */
     if (gps->dvert != NULL) {
