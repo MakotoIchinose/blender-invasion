@@ -115,6 +115,9 @@ typedef struct BrushGpencilSettings {
   /** Simplify adaptive factor */
   float simplify_f;
 
+  /** Mix color RGBA (A=mix factor) */
+  float mix_color[4];
+
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
   struct CurveMapping *curve_jitter;
@@ -516,7 +519,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)

@@ -81,6 +81,10 @@ typedef struct bGPDspoint {
 
   /** Runtime data */
   char _pad2[4];
+
+  /** Mix color RGBA (A=mix factor) */
+  float mix_color[4];
+
   bGPDspoint_Runtime runtime;
 } bGPDspoint;
 
