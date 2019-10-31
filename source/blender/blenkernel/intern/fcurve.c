@@ -1039,7 +1039,7 @@ static BezTriple *cycle_offset_triple(
 /* This function recalculates the handles of an F-Curve
  * If the BezTriples have been rearranged, sort them first before using this.
  */
-void calchandles_fcurve(FCurve *fcu)
+void calchandles_fcurve_ex(FCurve *fcu, int handle_sel_flag)
 {
   BezTriple *bezt, *prev, *next;
   int a = fcu->totvert;
@@ -1075,7 +1075,7 @@ void calchandles_fcurve(FCurve *fcu)
     }
 
     /* calculate auto-handles */
-    BKE_nurb_handle_calc(bezt, prev, next, true, fcu->auto_smoothing);
+    BKE_nurb_handle_calc_ex(bezt, prev, next, handle_sel_flag, true, fcu->auto_smoothing);
 
     /* for automatic ease in and out */
     if (BEZT_IS_AUTOH(bezt) && !cycle) {
@@ -1119,6 +1119,10 @@ void calchandles_fcurve(FCurve *fcu)
   if (fcu->auto_smoothing != FCURVE_SMOOTH_NONE) {
     BKE_nurb_handle_smooth_fcurve(fcu->bezt, fcu->totvert, cycle);
   }
+}
+void calchandles_fcurve(FCurve *fcu)
+{
+  calchandles_fcurve_ex(fcu, SELECT);
 }
 
 void testhandles_fcurve(FCurve *fcu, const int sel_flag, const bool use_handle)

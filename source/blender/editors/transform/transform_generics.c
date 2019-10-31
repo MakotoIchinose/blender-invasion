@@ -448,7 +448,7 @@ static void recalcData_graphedit(TransInfo *t)
       dosort++;
     }
     else {
-      calchandles_fcurve(fcu);
+      calchandles_fcurve_ex(fcu, BEZT_FLAG_TEMP_TAG);
     }
 
     /* set refresh tags for objects using this animation,
@@ -1900,10 +1900,6 @@ void postTrans(bContext *C, TransInfo *t)
         TransData *td = tc->data;
         for (int a = 0; a < tc->data_len; a++, td++) {
           if (td->flag & TD_BEZTRIPLE) {
-            *td->hdata->f1 &= ~BEZT_FLAG_PRECEDENCE;
-            *td->hdata->f2 &= ~BEZT_FLAG_PRECEDENCE;
-            *td->hdata->f3 &= ~BEZT_FLAG_PRECEDENCE;
-
             MEM_freeN(td->hdata);
           }
         }
@@ -2001,10 +1997,6 @@ static void restoreElement(TransData *td)
   if (td->flag & TD_BEZTRIPLE) {
     *(td->hdata->h1) = td->hdata->ih1;
     *(td->hdata->h2) = td->hdata->ih2;
-
-    *(td->hdata->f1) &= ~BEZT_FLAG_PRECEDENCE;
-    *(td->hdata->f2) &= ~BEZT_FLAG_PRECEDENCE;
-    *(td->hdata->f3) &= ~BEZT_FLAG_PRECEDENCE;
   }
 }
 

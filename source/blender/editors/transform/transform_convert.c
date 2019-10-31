@@ -694,19 +694,12 @@ void calc_distanceCurveVerts(TransData *head, TransData *tail)
 TransDataCurveHandleFlags *initTransDataCurveHandles(TransData *td, struct BezTriple *bezt)
 {
   TransDataCurveHandleFlags *hdata;
-
   td->flag |= TD_BEZTRIPLE;
   hdata = td->hdata = MEM_mallocN(sizeof(TransDataCurveHandleFlags), "CuHandle Data");
-
   hdata->ih1 = bezt->h1;
   hdata->h1 = &bezt->h1;
   hdata->ih2 = bezt->h2; /* in case the second is not selected */
   hdata->h2 = &bezt->h2;
-
-  hdata->f1 = &bezt->f1;
-  hdata->f2 = &bezt->f2;
-  hdata->f3 = &bezt->f3;
-
   return hdata;
 }
 
@@ -1241,18 +1234,11 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
         if (bezm->swapHs == 1) {
           td->hdata->h1 = &(bezts + bezm->newIndex)->h2;
           td->hdata->h2 = &(bezts + bezm->newIndex)->h1;
-
-          td->hdata->f1 = &(bezts + bezm->newIndex)->f3;
-          td->hdata->f3 = &(bezts + bezm->newIndex)->f1;
         }
         else {
           td->hdata->h1 = &(bezts + bezm->newIndex)->h1;
           td->hdata->h2 = &(bezts + bezm->newIndex)->h2;
-
-          td->hdata->f1 = &(bezts + bezm->newIndex)->f1;
-          td->hdata->f3 = &(bezts + bezm->newIndex)->f3;
         }
-        td->hdata->f2 = &(bezts + bezm->newIndex)->f2;
       }
     }
   }

@@ -3201,6 +3201,7 @@ void BKE_curve_bevelList_make(Object *ob, ListBase *nurbs, bool for_render)
 static void calchandleNurb_intern(BezTriple *bezt,
                                   const BezTriple *prev,
                                   const BezTriple *next,
+                                  int handle_sel_flag,
                                   bool is_fcurve,
                                   bool skip_align,
                                   char fcurve_smoothing)
@@ -3402,9 +3403,8 @@ static void calchandleNurb_intern(BezTriple *bezt,
 
   len_ratio = len_a / len_b;
 
-  if ((bezt->f1 & SELECT) && (!(bezt->f3 & SELECT) || !(bezt->f3 & BEZT_FLAG_PRECEDENCE) ||
-                              (bezt->f1 & BEZT_FLAG_PRECEDENCE))) { /* order of calculation */
-    if (ELEM(bezt->h2, HD_ALIGN, HD_ALIGN_DOUBLESIDE)) {            /* aligned */
+  if (bezt->f1 & handle_sel_flag) {                      /* order of calculation */
+    if (ELEM(bezt->h2, HD_ALIGN, HD_ALIGN_DOUBLESIDE)) { /* aligned */
       if (len_a > eps) {
         len = 1.0f / len_ratio;
         p2_h2[0] = p2[0] + len * (p2[0] - p2_h1[0]);
@@ -3444,7 +3444,7 @@ static void calchandleNurb_intern(BezTriple *bezt,
 #undef p2_h2
 }
 
-static void calchandlesNurb_intern(Nurb *nu, bool skip_align)
+static void calchandlesNurb_intern(Nurb *nu, int handle_sel_flag, bool skip_align)
 {
   BezTriple *bezt, *prev, *next;
   int a;
@@ -3467,7 +3467,7 @@ static void calchandlesNurb_intern(Nurb *nu, bool skip_align)
   next = bezt + 1;
 
   while (a--) {
-    calchandleNurb_intern(bezt, prev, next, 0, skip_align, 0);
+    calchandleNurb_intern(bezt, prev, next, handle_sel_flag, 0, skip_align, 0);
     prev = bezt;
     if (a == 1) {
       if (nu->flagu & CU_NURB_CYCLIC) {
@@ -4043,12 +4043,22 @@ void BKE_nurb_handle_smooth_fcurve(BezTriple *bezt, int total, bool cycle)
 void BKE_nurb_handle_calc(
     BezTriple *bezt, BezTriple *prev, BezTriple *next, const bool is_fcurve, const char smoothing)
 {
-  calchandleNurb_intern(bezt, prev, next, is_fcurve, false, smoothing);
+  calchandleNurb_intern(bezt, prev, next, SELECT, is_fcurve, false, smoothing);
+}
+
+void BKE_nurb_handle_calc_ex(BezTriple *bezt,
+                             BezTriple *prev,
+                             BezTriple *next,
+                             const int handle_sel_flag,
+                             const bool is_fcurve,
+                             const char smoothing)
+{
+  calchandleNurb_intern(bezt, prev, next, handle_sel_flag, is_fcurve, false, smoothing);
 }
 
 void BKE_nurb_handles_calc(Nurb *nu) /* first, if needed, set handle flags */
 {
-  calchandlesNurb_intern(nu, false);
+  calchandlesNurb_intern(nu, SELECT, false);
 }
 
 /**
@@ -4644,7 +4654,7 @@ void BKE_curve_nurbs_vert_coords_apply_with_mat4(ListBase *lb,
       }
     }
 
-    calchandlesNurb_intern(nu, true);
+    calchandlesNurb_intern(nu, SELECT, true);
   }
 }
 
@@ -4682,7 +4692,7 @@ void BKE_curve_nurbs_vert_coords_apply(ListBase *lb,
       }
     }
 
-    calchandlesNurb_intern(nu, true);
+    calchandlesNurb_intern(nu, SELECT, true);
   }
 }
 

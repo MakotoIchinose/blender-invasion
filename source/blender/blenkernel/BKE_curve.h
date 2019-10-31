@@ -242,6 +242,12 @@ void BKE_nurb_handle_calc(struct BezTriple *bezt,
                           struct BezTriple *next,
                           const bool is_fcurve,
                           const char smoothing);
+void BKE_nurb_handle_calc_ex(struct BezTriple *bezt,
+                             struct BezTriple *prev,
+                             struct BezTriple *next,
+                             const int handle_sel_flag,
+                             const bool is_fcurve,
+                             const char smoothing);
 void BKE_nurb_handle_calc_simple(struct Nurb *nu, struct BezTriple *bezt);
 void BKE_nurb_handle_calc_simple_auto(struct Nurb *nu, struct BezTriple *bezt);
 

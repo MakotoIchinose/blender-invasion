@@ -218,7 +218,6 @@ typedef struct TransData2D {
 typedef struct TransDataCurveHandleFlags {
   char ih1, ih2;
   char *h1, *h2;
-  char *f1, *f2, *f3;
 } TransDataCurveHandleFlags;
 
 /** Used for sequencer transform. */

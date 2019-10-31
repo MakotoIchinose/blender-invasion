@@ -510,10 +510,6 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
                                 unit_scale,
                                 offset);
               bezt->f3 |= BEZT_FLAG_TEMP_TAG;
-
-              if (!sel_left && !sel_key) {
-                bezt->f3 |= BEZT_FLAG_PRECEDENCE;
-              }
             }
           }
 
