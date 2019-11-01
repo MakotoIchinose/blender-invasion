@@ -2036,8 +2036,22 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
     @classmethod
     def poll(cls, context):
+        ob = context.object
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
+        if ob is None or brush is None or brush.gpencil_tool != 'DRAW':
+            return False
+
+        gp_settings = brush.gpencil_settings
+        if gp_settings.use_material_pin is False:
+            if ob.active_material_index >= 0:
+                ma = ob.material_slots[ob.active_material_index].material
+            else:
+                ma = gp_settings.material
+
+        if ma and ma.grease_pencil.stroke_style == 'TEXTURE' and ma.grease_pencil.use_stroke_pattern is False:
+            return False
+
+        return True
 
     def draw(self, context):
         layout = self.layout
