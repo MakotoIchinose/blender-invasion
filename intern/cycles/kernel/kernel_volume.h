@@ -301,6 +301,7 @@ ccl_device void kernel_volume_transmission_woodcock(KernelGlobals *kg,
     }
     s2 = lcg_step_float_addrspace(&lcg_state);
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     if (!volume_shader_extinction_sample(kg, sd, state, new_P, &sigma_t)) {
       continue;
     }
@@ -344,6 +345,7 @@ ccl_device void kernel_volume_transmission_residual_ratio(KernelGlobals *kg,
       break;
     }
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     if (!volume_shader_extinction_sample(kg, sd, state, new_P, &sigma_t)) {
       continue;
     }
@@ -910,6 +912,7 @@ kernel_volume_integrate_heterogeneous_spectral_tracking(KernelGlobals *kg,
       break;
     }
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     VolumeShaderCoefficients coeff;
     if (!volume_shader_sample(kg, sd, state, new_P, &coeff)) {
       continue;
@@ -978,6 +981,7 @@ kernel_volume_integrate_heterogeneous_woodcock_tracking(KernelGlobals *kg,
     }
     float s2 = lcg_step_float_addrspace(&lcg_state);
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     if (volume_shader_sample(kg, sd, state, new_P, &coeff)) {
       int closure_flag = sd->flag;
       if (L && (closure_flag & SD_EMISSION)) {
@@ -1028,6 +1032,7 @@ kernel_volume_integrate_heterogeneous_woodcock_mis_tracking(KernelGlobals *kg,
     }
     float s2 = lcg_step_float_addrspace(&lcg_state);
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     running_t = sigma_m * dt;
     const float Tc = expf(-running_t);
     coeff.sigma_t = make_float3(1.0f, 1.0f, 1.0f);
@@ -1102,6 +1107,7 @@ kernel_volume_integrate_heterogeneous_tracking(KernelGlobals *kg,
       break;
     }
     float3 new_P = ray->P + ray->D * t;
+    sd->ray_length = t;
     VolumeShaderCoefficients coeff;
     if (!volume_shader_sample(kg, sd, state, new_P, &coeff)) {
       continue;
