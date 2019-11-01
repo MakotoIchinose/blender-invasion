@@ -913,9 +913,10 @@ class GreasePencilMaterialsPanel:
 
             # Mix color
             if is_view3d and brush is not None:
-                gp_settings = brush.gpencil_settings                    
-                row = layout.row()
-                row.prop(gp_settings, "mix_color", text="Mix Color")
+                if gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern:                
+                    gp_settings = brush.gpencil_settings                    
+                    row = layout.row()
+                    row.prop(gp_settings, "mix_color", text="Mix Color")
 
         else:
             space = context.space_data
