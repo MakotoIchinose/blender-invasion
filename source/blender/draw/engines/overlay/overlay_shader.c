@@ -28,14 +28,18 @@
 
 extern char datatoc_facing_frag_glsl[];
 extern char datatoc_facing_vert_glsl[];
+extern char datatoc_grid_frag_glsl[];
+extern char datatoc_grid_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_geom_glsl[];
 extern char datatoc_wireframe_frag_glsl[];
 extern char datatoc_gpu_shader_depth_only_frag_glsl[];
 
 extern char datatoc_common_view_lib_glsl[];
+extern char datatoc_common_globals_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
+  struct GPUShader *grid;
   struct GPUShader *facing;
   struct GPUShader *wireframe_select;
   struct GPUShader *wireframe;
@@ -62,6 +66,25 @@ GPUShader *OVERLAY_shader_facing(void)
     });
   }
   return sh_data->facing;
+}
+
+GPUShader *OVERLAY_shader_grid(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->grid) {
+    /* Face orientation */
+    sh_data->grid = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_grid_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_grid_frag_glsl,
+                                 NULL},
+    });
+  }
+  return sh_data->grid;
 }
 
 GPUShader *OVERLAY_shader_wireframe_select(void)

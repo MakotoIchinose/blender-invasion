@@ -38,6 +38,7 @@ typedef struct OVERLAY_TextureList {
 } OVERLAY_TextureList;
 
 typedef struct OVERLAY_PassList {
+  struct DRWPass *grid_ps;
   struct DRWPass *facing_ps;
   struct DRWPass *wireframe_ps;
   struct DRWPass *wireframe_xray_ps;
@@ -45,6 +46,15 @@ typedef struct OVERLAY_PassList {
 
 /* Data used by GLSL shader. To be used as UBO. */
 typedef struct OVERLAY_ShadingData {
+  /** Grid */
+  float grid_axes[3], grid_distance;
+  float zplane_axes[3], grid_mesh_size;
+  float grid_steps[8];
+  float inv_viewport_size[2];
+  float grid_line_size;
+  int grid_flag;
+  int zpos_flag;
+  int zneg_flag;
   /** Wireframe */
   float wire_step_param;
 } OVERLAY_ShadingData;
@@ -88,6 +98,11 @@ void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_facing_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_grid_init(OVERLAY_Data *vedata);
+void OVERLAY_grid_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_grid_draw(OVERLAY_Data *vedata);
+
+GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);

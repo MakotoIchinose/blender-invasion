@@ -44,6 +44,10 @@ static void OVERLAY_engine_init(void *vedata)
     /* Alloc transient pointers */
     stl->pd = MEM_callocN(sizeof(*stl->pd), __func__);
   }
+
+  OVERLAY_grid_init(vedata);
+  OVERLAY_facing_init(vedata);
+  OVERLAY_wireframe_init(vedata);
 }
 
 static void OVERLAY_cache_init(void *vedata)
@@ -69,6 +73,7 @@ static void OVERLAY_cache_init(void *vedata)
 
   pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
 
+  OVERLAY_grid_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
 }
@@ -158,6 +163,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
 static void OVERLAY_draw_scene(void *vedata)
 {
+  OVERLAY_grid_draw(vedata);
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
 }

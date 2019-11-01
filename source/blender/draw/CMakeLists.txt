@@ -138,6 +138,7 @@ set(SRC
   engines/overlay/overlay_shader.c
   engines/overlay/overlay_wireframe.c
   engines/overlay/overlay_facing.c
+  engines/overlay/overlay_grid.c
 
   DRW_engine.h
   DRW_select_buffer.h
@@ -380,6 +381,8 @@ data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
 data_to_c_simple(engines/overlay/shaders/facing_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/facing_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/grid_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/grid_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_frag.glsl SRC)
