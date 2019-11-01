@@ -144,8 +144,8 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
                             const int alignment_mode,
                             const bool onion)
 {
-  float mix[4];
   int totvertex = gps->totpoints;
+  float mix_color[4];
 
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
@@ -175,10 +175,10 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
     CLAMP(alpha, GPENCIL_STRENGTH_MIN, 1.0f);
     /* Apply the mix color. */
     if (!onion) {
-      interp_v3_v3v3(ink, ink, pt->mix_color, pt->mix_color[3]);
+      interp_v3_v3v3(mix_color, ink, pt->mix_color, pt->mix_color[3]);
     }
 
-    ARRAY_SET_ITEMS(col, ink[0], ink[1], ink[2], alpha);
+    ARRAY_SET_ITEMS(col, mix_color[0], mix_color[1], mix_color[2], alpha);
 
     float thick = max_ff(pt->pressure * thickness, 1.0f);
 
