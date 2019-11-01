@@ -420,13 +420,6 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
-        if is_toolbar is False:
-            row = layout.row(align=True)
-            row.prop(gp_settings, "mix_color", text="")
-            row = layout.row(align=True)
-            row.template_color_picker(gp_settings, "mix_color", value_slider=True)
-
-
     # FIXME: tools must use their own UI drawing!
     if tool.idname in {
             "builtin.arc",
