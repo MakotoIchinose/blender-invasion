@@ -2029,6 +2029,32 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
         row.prop(gp_settings, "use_jitter_pressure", text="", icon='STYLUS_PRESSURE')
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_option'
+    bl_label = "Mix Color"
+    bl_category = "Tool"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        brush = context.tool_settings.gpencil_paint.brush
+        return brush is not None and brush.gpencil_tool == 'DRAW'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        settings = context.tool_settings.gpencil_paint
+        brush = settings.brush
+        gp_settings = brush.gpencil_settings
+        row = layout.row(align=True)
+        row.prop(gp_settings, "mix_color", text="")
+        row = layout.row(align=True)
+        row.template_color_picker(gp_settings, "mix_color", value_slider=True)
+
+
 # Grease Pencil drawingcurves
 class VIEW3D_PT_tools_grease_pencil_brushcurves(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
@@ -2275,6 +2301,7 @@ classes = (
     VIEW3D_PT_gpencil_brush_presets,
     VIEW3D_PT_tools_grease_pencil_brush,
     VIEW3D_PT_tools_grease_pencil_brush_option,
+    VIEW3D_PT_tools_grease_pencil_brush_mixcolor,
     VIEW3D_PT_tools_grease_pencil_brush_settings,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_brush_random,
