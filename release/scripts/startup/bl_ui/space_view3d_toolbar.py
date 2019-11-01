@@ -2031,10 +2031,8 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
 
 class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_option'
     bl_label = "Mix Color"
     bl_category = "Tool"
-    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -2300,8 +2298,8 @@ classes = (
 
     VIEW3D_PT_gpencil_brush_presets,
     VIEW3D_PT_tools_grease_pencil_brush,
-    VIEW3D_PT_tools_grease_pencil_brush_option,
     VIEW3D_PT_tools_grease_pencil_brush_mixcolor,
+    VIEW3D_PT_tools_grease_pencil_brush_option,
     VIEW3D_PT_tools_grease_pencil_brush_settings,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_brush_random,
