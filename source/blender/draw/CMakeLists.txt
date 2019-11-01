@@ -80,7 +80,6 @@ set(SRC
   modes/edit_metaball_mode.c
   modes/edit_text_mode.c
   modes/object_mode.c
-  modes/overlay_mode.c
   modes/paint_texture_mode.c
   modes/paint_vertex_mode.c
   modes/particle_mode.c
@@ -135,6 +134,10 @@ set(SRC
   engines/gpencil/gpencil_shader_fx.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
+  engines/overlay/overlay_engine.c
+  engines/overlay/overlay_shader.c
+  engines/overlay/overlay_wireframe.c
+  engines/overlay/overlay_facing.c
 
   DRW_engine.h
   DRW_select_buffer.h
@@ -163,6 +166,8 @@ set(SRC
   engines/workbench/workbench_private.h
   engines/select/select_engine.h
   engines/select/select_private.h
+  engines/overlay/overlay_engine.h
+  engines/overlay/overlay_private.h
 )
 
 set(LIB
@@ -302,11 +307,6 @@ data_to_c_simple(modes/shaders/edit_lattice_overlay_frag.glsl SRC)
 data_to_c_simple(modes/shaders/edit_lattice_overlay_loosevert_vert.glsl SRC)
 data_to_c_simple(modes/shaders/edit_normals_vert.glsl SRC)
 data_to_c_simple(modes/shaders/edit_normals_geom.glsl SRC)
-data_to_c_simple(modes/shaders/overlay_face_orientation_frag.glsl SRC)
-data_to_c_simple(modes/shaders/overlay_face_orientation_vert.glsl SRC)
-data_to_c_simple(modes/shaders/overlay_face_wireframe_vert.glsl SRC)
-data_to_c_simple(modes/shaders/overlay_face_wireframe_geom.glsl SRC)
-data_to_c_simple(modes/shaders/overlay_face_wireframe_frag.glsl SRC)
 data_to_c_simple(modes/shaders/object_camera_image_frag.glsl SRC)
 data_to_c_simple(modes/shaders/object_camera_image_vert.glsl SRC)
 data_to_c_simple(modes/shaders/object_color_axes_vert.glsl SRC)
@@ -378,6 +378,11 @@ data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_wave_frag.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
+data_to_c_simple(engines/overlay/shaders/facing_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/facing_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/wireframe_frag.glsl SRC)
 
 list(APPEND INC
 )

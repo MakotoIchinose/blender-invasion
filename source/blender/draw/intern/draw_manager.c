@@ -91,6 +91,7 @@
 #include "engines/external/external_engine.h"
 #include "engines/gpencil/gpencil_engine.h"
 #include "engines/select/select_engine.h"
+#include "engines/overlay/overlay_engine.h"
 
 #include "GPU_context.h"
 
@@ -1409,7 +1410,7 @@ static void drw_engines_enable_from_mode(int mode)
   }
 }
 
-static void drw_engines_enable_from_overlays(int UNUSED(overlay_flag))
+static void drw_engines_enable_overlays(void)
 {
   use_drw_engine(&draw_engine_overlay_type);
 }
@@ -1426,31 +1427,15 @@ static void drw_engines_enable(ViewLayer *view_layer,
                                bool gpencil_engine_needed)
 {
   Object *obact = OBACT(view_layer);
-  const enum eContextObjectMode mode = CTX_data_mode_enum_ex(
-      DST.draw_ctx.object_edit, obact, DST.draw_ctx.object_mode);
   View3D *v3d = DST.draw_ctx.v3d;
   const int drawtype = v3d->shading.type;
   const bool use_xray = XRAY_ENABLED(v3d);
 
   drw_engines_enable_from_engine(engine_type, drawtype, use_xray);
-  /* grease pencil */
   if (gpencil_engine_needed) {
     use_drw_engine(&draw_engine_gpencil_type);
   }
-
-  if (DRW_state_draw_support()) {
-    /* Draw paint modes first so that they are drawn below the wireframes. */
-    drw_engines_enable_from_paint_mode(mode);
-    drw_engines_enable_from_overlays(v3d->overlay.flag);
-    drw_engines_enable_from_object_mode();
-    drw_engines_enable_from_mode(mode);
-  }
-  else {
-    /* Force enable overlays engine for wireframe mode */
-    if (v3d->shading.type == OB_WIRE) {
-      drw_engines_enable_from_overlays(v3d->overlay.flag);
-    }
-  }
+  drw_engines_enable_overlays();
 }
 
 static void drw_engines_disable(void)
@@ -2299,16 +2284,14 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     /* grease pencil selection */
     use_drw_engine(&draw_engine_gpencil_type);
 
-    drw_engines_enable_from_overlays(v3d->overlay.flag);
-    drw_engines_enable_from_object_mode();
+    drw_engines_enable_overlays();
   }
   else {
     drw_engines_enable_basic();
     /* grease pencil selection */
     use_drw_engine(&draw_engine_gpencil_type);
 
-    drw_engines_enable_from_overlays(v3d->overlay.flag);
-    drw_engines_enable_from_object_mode();
+    drw_engines_enable_overlays();
   }
   drw_engines_data_validate();
 
