@@ -2001,11 +2001,6 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "enable_duplication", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_DUPLICATION);
-  RNA_def_property_ui_text(prop, "Duplication", "Enable stroke duplication");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
-
   prop = RNA_def_property(srna, "enable_angle_splitting", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MULTIPLY_ENABLE_ANGLE_SPLITTING);
   RNA_def_property_ui_text(prop, "Angle Splitting", "Enable angle splitting");

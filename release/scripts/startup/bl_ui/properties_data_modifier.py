@@ -2373,9 +2373,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         gpd = ob.data
         sp = layout.split(factor = 0.5)
         col = sp.column()
-        col.prop(md, "enable_duplication")
-        if md.enable_duplication:
-            col.prop(md,"duplications")
+        col.prop(md,"duplications")
+        if md.duplications > 0:
             col.prop(md,"distance")
             col.prop(md,"offset", slider=True)
         

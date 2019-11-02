@@ -255,7 +255,7 @@ static void bakeModifier(Main *UNUSED(bmain),
         if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
           splitStroke(gpf, gps, mmd->split_angle);
         }
-        if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
+        if (mmd->duplications > 0) {
           duplicateStroke(gpf,
                           gps,
                           mmd->duplications,
@@ -304,7 +304,7 @@ static void generateStrokes(
     if (mmd->flags & GP_MULTIPLY_ENABLE_ANGLE_SPLITTING) {
       splitStroke(gpf, gps, mmd->split_angle);
     }
-    if (mmd->flags & GP_MULTIPLY_ENABLE_DUPLICATION) {
+    if (mmd->duplications > 0) {
       duplicateStroke(gpf,
                       gps,
                       mmd->duplications,

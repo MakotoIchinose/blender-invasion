@@ -1889,7 +1889,8 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
 
   /* Handle remaining segments first. */
 
-  new_gps = BKE_gpencil_add_stroke_existing_style(gpf, gps, gps->mat_nr, new_count, gps->thickness);
+  new_gps = BKE_gpencil_add_stroke_existing_style(
+      gpf, gps, gps->mat_nr, new_count, gps->thickness);
 
   new_pt = new_gps->points; /* Allocated from above. */
 

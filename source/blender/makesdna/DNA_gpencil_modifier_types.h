@@ -695,7 +695,6 @@ typedef struct MultiplyGpencilModifierData {
 } MultiplyGpencilModifierData;
 
 typedef enum eMultiplyGpencil_Flag {
-  GP_MULTIPLY_ENABLE_DUPLICATION = (1 << 0),
   GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),
   GP_MULTIPLY_ENABLE_FADING = (1 << 2),
 } eMultiplyGpencil_Flag;
