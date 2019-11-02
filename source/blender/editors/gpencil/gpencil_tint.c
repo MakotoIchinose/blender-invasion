@@ -233,7 +233,7 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
 
 /* ************************************************ */
 /* Header Info */
-static void gptint_brush_header_set(bContext *C, tGP_BrushTintData *gso)
+static void gptint_brush_header_set(bContext *C, tGP_BrushTintData *UNUSED(gso))
 {
   ED_workspace_status_text(C,
                            TIP_("GPencil Tint: LMB to paint | RMB/Escape to Exit"
