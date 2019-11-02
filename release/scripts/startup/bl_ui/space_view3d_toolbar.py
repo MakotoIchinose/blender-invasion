@@ -2070,26 +2070,24 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
         row = layout.row(align=True)
 
+        row.prop(brush, "color", text="")
+        row = layout.row(align=True)
+        row.template_color_picker(brush, "color", value_slider=True)
+
         if brush.gpencil_tool == 'DRAW':
-            row.prop(gp_settings, "mix_color", text="")
             row = layout.row(align=True)
-            row.template_color_picker(gp_settings, "mix_color", value_slider=True)
+            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Factor")
 
-        if brush.gpencil_tool == 'TINT':
-            row.prop(brush, "color", text="")
-            row = layout.row(align=True)
-            row.template_color_picker(brush, "color", value_slider=True)
+        sub_row = layout.row(align=True)
+        sub_row.prop(brush, "color", text="")
+        sub_row.prop(brush, "secondary_color", text="")
 
-            sub_row = layout.row(align=True)
-            sub_row.prop(brush, "color", text="")
-            sub_row.prop(brush, "secondary_color", text="")
+        sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
-            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
-
-            row = layout.row(align=True)
-            row.template_ID(ts.gpencil_paint, "palette", new="palette.new")
-            if settings.palette:
-                layout.template_palette(ts.gpencil_paint, "palette", color=True)
+        row = layout.row(align=True)
+        row.template_ID(ts.gpencil_paint, "palette", new="palette.new")
+        if settings.palette:
+            layout.template_palette(ts.gpencil_paint, "palette", color=True)
 
 
 # Grease Pencil drawingcurves

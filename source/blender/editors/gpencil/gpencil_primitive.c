@@ -163,8 +163,8 @@ static void gp_init_colors(tGPDprimitive *p)
     /* Apply the mix color to stroke. */
     interp_v3_v3v3(gpd->runtime.scolor,
                    gpd->runtime.scolor,
-                   brush->gpencil_settings->mix_color,
-                   brush->gpencil_settings->mix_color[3]);
+                   brush->rgb,
+                   brush->gpencil_settings->vertex_factor);
   }
 }
 
@@ -1030,7 +1030,8 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     pt->flag = 0;
     pt->uv_fac = tpt->uv_fac;
     /* Point mix color. */
-    copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
+    copy_v3_v3(pt->mix_color, brush->rgb);
+    pt->mix_color[3] = brush->gpencil_settings->vertex_factor;
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];

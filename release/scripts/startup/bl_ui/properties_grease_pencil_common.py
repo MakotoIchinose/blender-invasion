@@ -909,14 +909,16 @@ class GreasePencilMaterialsPanel:
                         gpcolor.use_stroke_texture_mix
                 ):
                     row = layout.row()
-                    row.prop(gpcolor, "color", text="Stroke Color")
+                    row.prop(gpcolor, "color", text="Stroke Base Color")
 
             # Mix color
             if is_view3d and brush is not None and brush.gpencil_tool == 'DRAW':
                 if gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern:                
                     gp_settings = brush.gpencil_settings                    
                     row = layout.row()
-                    row.prop(gp_settings, "mix_color", text="Vertex Color")
+                    row.prop(brush, "color", text="Vertex Color")
+                    row = layout.row()
+                    row.prop(gp_settings, "vertex_color_factor", text="Vertex Factor")
 
         else:
             space = context.space_data

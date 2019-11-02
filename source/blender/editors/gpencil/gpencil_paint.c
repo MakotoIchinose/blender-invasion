@@ -1008,7 +1008,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
       /* Point mix color. */
-      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
+      copy_v3_v3(pt->mix_color, brush->rgb);
+      pt->mix_color[3] = brush->gpencil_settings->vertex_factor;
 
       pt++;
 
@@ -1041,7 +1042,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
       /* Point mix color. */
-      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
+      copy_v3_v3(pt->mix_color, brush->rgb);
+      pt->mix_color[3] = brush->gpencil_settings->vertex_factor;
 
       if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
         BKE_gpencil_dvert_ensure(gps);
@@ -1164,7 +1166,8 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->uv_fac = ptc->uv_fac;
       pt->uv_rot = ptc->uv_rot;
       /* Point mix color. */
-      copy_v4_v4(pt->mix_color, brush->gpencil_settings->mix_color);
+      copy_v3_v3(pt->mix_color, brush->rgb);
+      pt->mix_color[3] = brush->gpencil_settings->vertex_factor;
 
       if (dvert != NULL) {
         dvert->totweight = 0;
@@ -1856,8 +1859,8 @@ static void gp_init_colors(tGPsdata *p)
     /* Apply the mix color to stroke. */
     interp_v3_v3v3(gpd->runtime.scolor,
                    gpd->runtime.scolor,
-                   brush->gpencil_settings->mix_color,
-                   brush->gpencil_settings->mix_color[3]);
+                   brush->rgb,
+                   brush->gpencil_settings->vertex_factor);
   }
 }
 
