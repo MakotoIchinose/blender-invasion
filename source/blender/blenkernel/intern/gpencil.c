@@ -1889,10 +1889,7 @@ bool BKE_gpencil_split_stroke(bGPDframe *gpf,
 
   /* Handle remaining segments first. */
 
-  new_gps = BKE_gpencil_add_stroke(gpf, gps->mat_nr, new_count, gps->thickness);
-
-  /* This preserves the tmp_stroke_color and tmp_fill_color in modifier. */
-  memcpy(&new_gps->runtime, &gps->runtime, sizeof(bGPDstroke_Runtime));
+  new_gps = BKE_gpencil_add_stroke_existing_style(gpf, gps, gps->mat_nr, new_count, gps->thickness);
 
   new_pt = new_gps->points; /* Allocated from above. */
 
