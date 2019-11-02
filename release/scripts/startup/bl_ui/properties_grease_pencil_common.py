@@ -916,7 +916,7 @@ class GreasePencilMaterialsPanel:
                 if gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern:                
                     gp_settings = brush.gpencil_settings                    
                     row = layout.row()
-                    row.prop(gp_settings, "mix_color", text="Mix Color")
+                    row.prop(gp_settings, "mix_color", text="Vertex Color")
 
         else:
             space = context.space_data

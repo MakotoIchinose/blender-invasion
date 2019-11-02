@@ -363,7 +363,7 @@ class _draw_tool_settings_context_mode:
 
         if context.object and brush.gpencil_tool == 'TINT':
             row.separator(factor=0.4)
-            row.label(text="Mix")
+            row.label(text="Vertex Color")
             row.prop(brush, "color", text="")
 
         from bl_ui.properties_paint_common import (

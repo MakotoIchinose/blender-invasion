@@ -2032,7 +2032,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
 
 class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
-    bl_label = "Mix Color"
+    bl_label = "Vertex Color"
     bl_category = "Tool"
 
     @classmethod
