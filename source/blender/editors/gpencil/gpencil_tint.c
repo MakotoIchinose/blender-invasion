@@ -208,7 +208,7 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
                              const int co[2])
 {
   /* Attenuate factor to get a smoother tinting. */
-  float inf = brush_influence_calc(gso, radius, co) / 200.0f;
+  float inf = brush_influence_calc(gso, radius, co) / 100.0f;
   Brush *brush = gso->brush;
   bGPDspoint *pt = &gps->points[pt_index];
 
