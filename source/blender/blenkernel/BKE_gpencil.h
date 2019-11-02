@@ -238,7 +238,7 @@ bool BKE_gpencil_smooth_stroke_uv(struct bGPDstroke *gps, int point_index, float
 bool BKE_gpencil_close_stroke(struct bGPDstroke *gps);
 void BKE_gpencil_dissolve_points(struct bGPDframe *gpf, struct bGPDstroke *gps, const short tag);
 
-bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, const float dist);
+bool BKE_gpencil_stretch_stroke(struct bGPDstroke *gps, const float dist, const float tip_length);
 bool BKE_gpencil_trim_stroke_points(struct bGPDstroke *gps,
                                     const int index_from,
                                     const int index_to);

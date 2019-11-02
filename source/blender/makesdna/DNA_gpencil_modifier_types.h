@@ -657,9 +657,10 @@ typedef struct LengthGpencilModifierData {
   int flag;
   /** Custom index for passes. */
   int layer_pass;
-  char _pad[4];
   float length;
   float percentage;
+  /** This ignores tip jittering when extending stroke. */
+  float tip_length;
 } LengthGpencilModifierData;
 
 typedef struct MultiplyGpencilModifierData {

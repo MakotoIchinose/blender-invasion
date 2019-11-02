@@ -1756,11 +1756,13 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
  * Backbone stretch similar to Freestyle.
  * \param gps: Stroke to sample
  * \param dist: Distance of one segment
+ * \param tip_length: Ignore tip jittering, set zero to use default value.
  */
-bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist)
+bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist, const float tip_length)
 {
   bGPDspoint *pt = gps->points, *last_pt, *second_last, *next_pt;
   int i;
+  float threshold = (tip_length == 0 ? 0.001f : tip_length);
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
     return false;
@@ -1774,14 +1776,14 @@ bool BKE_gpencil_stretch_stroke(bGPDstroke *gps, const float dist)
   float len2 = 0.0f;
 
   i = 1;
-  while (len1 < 0.001f && gps->totpoints > i) {
+  while (len1 < threshold && gps->totpoints > i) {
     next_pt = &pt[i];
     len1 = len_v3v3(&next_pt->x, &pt->x);
     i++;
   }
 
   i = 2;
-  while (len2 < 0.001f && gps->totpoints >= i) {
+  while (len2 < threshold && gps->totpoints >= i) {
     second_last = &pt[gps->totpoints - i];
     len2 = len_v3v3(&last_pt->x, &second_last->x);
     i++;

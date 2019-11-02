@@ -1941,6 +1941,12 @@ static void rna_def_modifier_gpencillength(BlenderRNA *brna)
   RNA_def_property_range(prop, -1.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Percentage", "Length based on the curve's original length");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "tip_length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_float_default(prop, 0.01);
+  RNA_def_property_ui_text(prop, "Tip Length", "Ignore tip jittering when extending a stroke");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 
 static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)

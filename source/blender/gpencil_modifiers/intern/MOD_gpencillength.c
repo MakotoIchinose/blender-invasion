@@ -71,20 +71,20 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   BKE_gpencil_modifier_copyData_generic(md, target);
 }
 
-static void stretchOrShrinkStroke(bGPDstroke *gps, float length)
+static void stretchOrShrinkStroke(bGPDstroke *gps, float length, float tip_length)
 {
   if (length > 0.0f) {
-    BKE_gpencil_stretch_stroke(gps, length);
+    BKE_gpencil_stretch_stroke(gps, length, tip_length);
   }
   else {
     BKE_gpencil_shrink_stroke(gps, -length);
   }
 }
 
-static void applyLength(bGPDstroke *gps, float length, float percentage)
+static void applyLength(bGPDstroke *gps, float length, float percentage, float tip_length)
 {
 
-  stretchOrShrinkStroke(gps, length);
+  stretchOrShrinkStroke(gps, length, tip_length);
 
   float len = BKE_gpencil_stroke_length(gps, true);
   if (len < FLT_EPSILON) {
@@ -92,7 +92,7 @@ static void applyLength(bGPDstroke *gps, float length, float percentage)
   }
   float length2 = len * percentage / 2.0f; /* Srinking from two tips. */
 
-  stretchOrShrinkStroke(gps, length2);
+  stretchOrShrinkStroke(gps, length2, tip_length);
 }
 
 static void bakeModifier(Main *UNUSED(bmain),
@@ -120,10 +120,9 @@ static void bakeModifier(Main *UNUSED(bmain),
                                            lmd->flag & GP_MIRROR_INVERT_PASS,
                                            lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
                                            lmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
-          applyLength(gps, lmd->length, lmd->percentage);
+          applyLength(gps, lmd->length, lmd->percentage, lmd->tip_length);
         }
       }
-      return;
     }
   }
 }
@@ -151,7 +150,7 @@ static void deformStroke(GpencilModifierData *md,
                                      lmd->flag & GP_MIRROR_INVERT_PASS,
                                      lmd->flag & GP_MIRROR_INVERT_LAYERPASS,
                                      lmd->flag & GP_MIRROR_INVERT_MATERIAL)) {
-    applyLength(gps, lmd->length, lmd->percentage);
+    applyLength(gps, lmd->length, lmd->percentage, lmd->tip_length);
   }
 }
 

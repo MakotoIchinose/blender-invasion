@@ -2346,6 +2346,8 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "percentage")
 
         col = layout.column()
+        col.prop(md, "tip_length");
+
         col.separator()
 
         col.label(text="Material:")
