@@ -113,6 +113,12 @@ static bool gp_stroke_paintmode_fill_poll(bContext *C)
   return gp_stroke_paintmode_poll_with_tool(C, GPAINT_TOOL_FILL);
 }
 
+/* Poll callback for stroke painting (tint) */
+static bool gp_stroke_paintmode_tint_poll(bContext *C)
+{
+  return gp_stroke_paintmode_poll_with_tool(C, GPAINT_TOOL_TINT);
+}
+
 /* Poll callback for stroke sculpting mode */
 static bool gp_stroke_sculptmode_poll(bContext *C)
 {
@@ -177,6 +183,13 @@ static void ed_keymap_gpencil_painting_fill(wmKeyConfig *keyconf)
   keymap->poll = gp_stroke_paintmode_fill_poll;
 }
 
+/* keys for draw with a tint brush */
+static void ed_keymap_gpencil_painting_tint(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Paint (Tint)", 0, 0);
+  keymap->poll = gp_stroke_paintmode_tint_poll;
+}
+
 /* Stroke Painting Keymap - Only when paintmode is enabled */
 static void ed_keymap_gpencil_painting(wmKeyConfig *keyconf)
 {
@@ -210,6 +223,7 @@ void ED_keymap_gpencil(wmKeyConfig *keyconf)
   ed_keymap_gpencil_painting_draw(keyconf);
   ed_keymap_gpencil_painting_erase(keyconf);
   ed_keymap_gpencil_painting_fill(keyconf);
+  ed_keymap_gpencil_painting_tint(keyconf);
   ed_keymap_gpencil_sculpting(keyconf);
   ed_keymap_gpencil_weightpainting(keyconf);
 }

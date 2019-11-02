@@ -194,6 +194,7 @@ _km_hierarchy = [
         ('Grease Pencil Stroke Paint (Draw brush)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Paint (Fill)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Paint (Erase)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Paint (Tint)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Paint Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Sculpt Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Weight Mode', 'EMPTY', 'WINDOW', []),

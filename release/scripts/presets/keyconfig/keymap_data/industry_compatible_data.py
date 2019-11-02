@@ -2461,6 +2461,22 @@ def km_grease_pencil_stroke_paint_fill(params):
     return keymap
 
 
+def km_grease_pencil_stroke_paint_tint(params):
+    items = []
+    keymap = (
+        "Grease Pencil Stroke Paint (Tint)",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        # Tint
+        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
 def km_grease_pencil_stroke_sculpt_mode(params):
     items = []
     keymap = (
@@ -3790,6 +3806,7 @@ def generate_keymaps(params=None):
         km_grease_pencil_stroke_paint_draw_brush(params),
         km_grease_pencil_stroke_paint_erase(params),
         km_grease_pencil_stroke_paint_fill(params),
+        km_grease_pencil_stroke_paint_tint(params),
         km_grease_pencil_stroke_sculpt_mode(params),
         km_grease_pencil_stroke_weight_mode(params),
         km_face_mask(params),

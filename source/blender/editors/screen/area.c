@@ -1669,6 +1669,10 @@ static void ed_default_handlers(
         wm->defaultconf, "Grease Pencil Stroke Paint (Fill)", 0, 0);
     WM_event_add_keymap_handler(handlers, keymap_paint_fill);
 
+    wmKeyMap *keymap_paint_tint = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Paint (Tint)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_paint_tint);
+
     wmKeyMap *keymap_sculpt = WM_keymap_ensure(
         wm->defaultconf, "Grease Pencil Stroke Sculpt Mode", 0, 0);
     WM_event_add_keymap_handler(handlers, keymap_sculpt);
@@ -2869,7 +2873,7 @@ void ED_region_info_draw(ARegion *ar,
                          float fill_color[4],
                          const bool full_redraw)
 {
-  ED_region_info_draw_multiline(ar, (const char *[2]){text, NULL}, fill_color, full_redraw);
+  ED_region_info_draw_multiline(ar, (const char * [2]){text, NULL}, fill_color, full_redraw);
 }
 
 #define MAX_METADATA_STR 1024
