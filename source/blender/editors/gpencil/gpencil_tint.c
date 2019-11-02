@@ -225,7 +225,7 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
   CLAMP(alpha, 0.0f, 1.0f);
 
   /* Apply color to point. */
-  copy_v3_v3(pt->mix_color, brush->rgb);
+  interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
   pt->mix_color[3] = alpha;
 
   return true;
