@@ -91,11 +91,7 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
             layout.prop(lanpr,"target")
             
             if lanpr.target:
-
-                if not is_unit_transformation(lanpr.target):
-                    layout.label(text = "Target GP has self transformations.")
-                    layout.operator("lanpr.reset_object_transfromations").obj=lanpr.target.name
-
+                
                 layout.prop(lanpr,'use_multiple_levels', text="Multiple Levels")
                 
                 if lanpr.use_multiple_levels:
