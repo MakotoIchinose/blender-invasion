@@ -648,6 +648,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
     brush = BKE_brush_add_gpencil(bmain, ts, "Tint");
   }
 
+  if (brush->gpencil_settings == NULL) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
+
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
