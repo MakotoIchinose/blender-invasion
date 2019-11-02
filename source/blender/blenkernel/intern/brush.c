@@ -241,6 +241,20 @@ static void brush_gpencil_curvemap_reset(CurveMap *cuma, int tot, int preset)
   }
 }
 
+static Brush *gpencil_brush_ensure(Main *bmain, ToolSettings *ts, char *brush_name)
+{
+  Brush *brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, brush_name);
+  }
+
+  if (brush->gpencil_settings == NULL) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
+
+  return brush;
+}
+
 /* create a set of grease pencil presets. */
 void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 {
@@ -254,10 +268,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   CurveMapping *custom_curve;
 
   /* Airbrush brush. */
-  brush = BLI_findstring(&bmain->brushes, "Airbrush", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Airbrush");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Airbrush");
 
   brush->size = 300.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -291,10 +302,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_MATERIAL_PINNED;
 
   /* Ink Pen brush. */
-  brush = BLI_findstring(&bmain->brushes, "Ink Pen", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Ink Pen");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen");
+
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
@@ -331,10 +340,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Ink Pen Rough brush. */
-  brush = BLI_findstring(&bmain->brushes, "Ink Pen Rough", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Ink Pen Rough");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough");
 
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -374,10 +380,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Marker Bold brush. */
-  brush = BLI_findstring(&bmain->brushes, "Marker Bold", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Marker Bold");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Bold");
+
   brush->size = 150.0f;
   brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
 
@@ -416,10 +420,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Marker Chisel brush. */
-  brush = BLI_findstring(&bmain->brushes, "Marker Chisel", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Marker Chisel");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel");
+
   brush->size = 80.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
@@ -451,10 +453,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pen brush. */
-  brush = BLI_findstring(&bmain->brushes, "Pen", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Pen");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Pen");
+
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
@@ -487,10 +487,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pencil Soft brush. */
-  brush = BLI_findstring(&bmain->brushes, "Pencil Soft", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Pencil Soft");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft");
 
   brush->size = 80.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -524,10 +521,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pencil brush. */
-  brush = BLI_findstring(&bmain->brushes, "Pencil", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Pencil");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil");
   deft = brush; /* save default brush. */
 
   brush->size = 25.0f;
@@ -561,10 +555,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Fill brush. */
-  brush = BLI_findstring(&bmain->brushes, "Fill Area", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Fill Area");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Fill Area");
+
   brush->size = 20.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
@@ -588,10 +580,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Soft Eraser brush. */
-  brush = BLI_findstring(&bmain->brushes, "Eraser Soft", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Soft");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Soft");
+
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 0.5f;
   brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
@@ -604,10 +594,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->era_thickness_f = 10.0f;
 
   /* Hard Eraser brush. */
-  brush = BLI_findstring(&bmain->brushes, "Eraser Hard", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Hard");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Hard");
+
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 1.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
@@ -619,10 +607,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Point Eraser brush. */
-  brush = BLI_findstring(&bmain->brushes, "Eraser Point", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Point");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Point");
+
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_HARD;
@@ -631,10 +617,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Stroke Eraser brush. */
-  brush = BLI_findstring(&bmain->brushes, "Eraser Stroke", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Stroke");
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke");
+
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_STROKE;
@@ -643,23 +627,16 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Tint brush. */
-  brush = BLI_findstring(&bmain->brushes, "Tint", offsetof(ID, name) + 2);
-  if (brush == NULL) {
-    brush = BKE_brush_add_gpencil(bmain, ts, "Tint");
-  }
-
-  if (brush->gpencil_settings == NULL) {
-    BKE_brush_init_gpencil_settings(brush);
-  }
+  brush = gpencil_brush_ensure(bmain, ts, "Tint");
 
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
   brush->gpencil_settings->draw_strength = 0.6f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.8f;
-  brush->rgb[1] = 0.5f;
-  brush->rgb[2] = 0.0f;
+  brush->rgb[0] = 1.0f;
+  brush->rgb[1] = 1.0f;
+  brush->rgb[2] = 1.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
   brush->gpencil_tool = GPAINT_TOOL_TINT;
