@@ -2076,6 +2076,9 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
         case GP_BRUSH_ICON_ERASE_STROKE:
           br->id.icon_id = ICON_GPBRUSH_ERASE_STROKE;
           break;
+        case GP_BRUSH_ICON_TINT:
+          br->id.icon_id = ICON_BRUSH_TEXDRAW;
+          break;
         default:
           br->id.icon_id = ICON_GPBRUSH_PEN;
           break;

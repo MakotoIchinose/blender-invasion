@@ -144,7 +144,7 @@ const EnumPropertyItem rna_enum_brush_gpencil_types_items[] = {
      "The brush is used for erasing strokes"},
     {GPAINT_TOOL_TINT,
      "TINT",
-     ICON_STROKE,
+     ICON_BRUSH_TEXDRAW,
      "Tint",
      "The brush is of type used for tinting strokes"},
     {0, NULL, 0, NULL, NULL},

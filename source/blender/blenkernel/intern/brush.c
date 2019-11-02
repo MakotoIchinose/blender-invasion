@@ -642,6 +642,21 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_STROKE;
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
+  /* Tint brush. */
+  brush = BLI_findstring(&bmain->brushes, "Tint", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Tint");
+  }
+
+  brush->size = 25.0f;
+  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+  brush->gpencil_settings->draw_strength = 0.6f;
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
+  brush->gpencil_tool = GPAINT_TOOL_TINT;
+
   /* set default brush. */
   BKE_paint_brush_set(paint, deft);
 }

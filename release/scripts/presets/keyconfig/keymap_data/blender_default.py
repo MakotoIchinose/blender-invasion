@@ -3282,7 +3282,10 @@ def km_grease_pencil_stroke_paint_tint(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("wait_for_input", False)]}),
+        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("wait_for_input", False)]}),
     ])
 
     return keymap
