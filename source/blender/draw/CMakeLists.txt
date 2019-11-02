@@ -135,10 +135,11 @@ set(SRC
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
   engines/overlay/overlay_engine.c
-  engines/overlay/overlay_shader.c
-  engines/overlay/overlay_wireframe.c
   engines/overlay/overlay_facing.c
   engines/overlay/overlay_grid.c
+  engines/overlay/overlay_outline.c
+  engines/overlay/overlay_shader.c
+  engines/overlay/overlay_wireframe.c
 
   DRW_engine.h
   DRW_select_buffer.h
@@ -383,6 +384,13 @@ data_to_c_simple(engines/overlay/shaders/facing_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/facing_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/grid_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/grid_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_detect_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_expand_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_prepass_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_prepass_geom.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_prepass_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_lightprobe_grid_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/outline_resolve_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_frag.glsl SRC)

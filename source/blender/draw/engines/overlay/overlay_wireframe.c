@@ -69,13 +69,13 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
                         DRW_STATE_FIRST_VERTEX_CONVENTION;
   DRW_PASS_CREATE(psl->wireframe_xray_ps, state_xray | pd->clipping_state);
 
-  pd->wires_shgrp = DRW_shgroup_create(wires_sh, psl->wireframe_ps);
-  pd->wires_xray_shgrp = DRW_shgroup_create(wires_sh, psl->wireframe_xray_ps);
+  pd->wires_grp = DRW_shgroup_create(wires_sh, psl->wireframe_ps);
+  pd->wires_xray_grp = DRW_shgroup_create(wires_sh, psl->wireframe_xray_ps);
   pd->clear_stencil = (draw_ctx->v3d->shading.type > OB_SOLID);
   pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
   if (use_select || USE_GEOM_SHADER_WORKAROUND) {
-    geometry_shader_uniforms(pd->wires_shgrp);
-    geometry_shader_uniforms(pd->wires_xray_shgrp);
+    geometry_shader_uniforms(pd->wires_grp);
+    geometry_shader_uniforms(pd->wires_xray_grp);
   }
 }
 
@@ -166,7 +166,10 @@ static void wire_color_get(const View3D *v3d,
   BLI_assert(*rim_col && *wire_col);
 }
 
-void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata, Object *ob)
+void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
+                                      Object *ob,
+                                      OVERLAY_DupliData *dupli,
+                                      bool init_dupli)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
@@ -176,23 +179,16 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata, Object *ob)
   View3D *v3d = draw_ctx->v3d;
 
   /* Fast path for duplis. */
-  OVERLAY_DupliData **dupli_data = (OVERLAY_DupliData **)DRW_duplidata_get(vedata);
-  if (dupli_data) {
-    if (*dupli_data == NULL) {
-      *dupli_data = MEM_callocN(sizeof(OVERLAY_DupliData), "OVERLAY_DupliData");
-    }
-    else {
-      if ((*dupli_data)->shgrp && (*dupli_data)->geom) {
-        if ((*dupli_data)->base_flag == ob->base_flag) {
-          DRW_shgroup_call((*dupli_data)->shgrp, (*dupli_data)->geom, ob);
-        }
-        else {
-          /* Continue and create a new Shgroup. */
-        }
-      }
-      else {
+  if (dupli && !init_dupli) {
+    if (dupli->wire_shgrp && dupli->wire_geom) {
+      if (dupli->base_flag == ob->base_flag) {
+        DRW_shgroup_call(dupli->wire_shgrp, dupli->wire_geom, ob);
         return;
       }
+    }
+    else {
+      /* Nothing to draw for this dupli. */
+      return;
     }
   }
 
@@ -218,16 +214,14 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata, Object *ob)
     const bool use_coloring = (use_wire && !is_edit_mode && !use_sculpt_pbvh &&
                                !has_edit_mesh_cage);
     DRWShadingGroup *shgrp = NULL;
-
-    struct GPUBatch *geom;
-    geom = DRW_cache_object_face_wireframe_get(ob);
+    struct GPUBatch *geom = DRW_cache_object_face_wireframe_get(ob);
 
     if (geom || use_sculpt_pbvh) {
       if (is_wire && is_xray) {
-        shgrp = DRW_shgroup_create_sub(pd->wires_xray_shgrp);
+        shgrp = DRW_shgroup_create_sub(pd->wires_xray_grp);
       }
       else {
-        shgrp = DRW_shgroup_create_sub(pd->wires_shgrp);
+        shgrp = DRW_shgroup_create_sub(pd->wires_grp);
       }
 
       float wire_step_param = 10.0f;
@@ -253,10 +247,9 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata, Object *ob)
       }
     }
 
-    if (dupli_data) {
-      (*dupli_data)->shgrp = shgrp;
-      (*dupli_data)->geom = geom;
-      (*dupli_data)->base_flag = ob->base_flag;
+    if (dupli) {
+      dupli->wire_shgrp = shgrp;
+      dupli->wire_geom = geom;
     }
   }
 }

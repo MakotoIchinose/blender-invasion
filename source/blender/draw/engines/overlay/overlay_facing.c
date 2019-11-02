@@ -37,7 +37,7 @@ void OVERLAY_facing_cache_init(OVERLAY_Data *vedata)
   DRW_PASS_CREATE(psl->facing_ps, state | pd->clipping_state);
 
   GPUShader *sh = OVERLAY_shader_facing();
-  pd->facing_shgrp = DRW_shgroup_create(sh, psl->facing_ps);
+  pd->facing_grp = DRW_shgroup_create(sh, psl->facing_ps);
 }
 
 void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob)
@@ -46,7 +46,7 @@ void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
-    DRW_shgroup_call(pd->facing_shgrp, geom, ob);
+    DRW_shgroup_call(pd->facing_grp, geom, ob);
   }
 }
 

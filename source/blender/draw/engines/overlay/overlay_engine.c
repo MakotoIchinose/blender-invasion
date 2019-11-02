@@ -25,6 +25,10 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "ED_view3d.h"
+
+#include "BKE_object.h"
+
 #include "overlay_engine.h"
 #include "overlay_private.h"
 
@@ -47,6 +51,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   OVERLAY_grid_init(vedata);
   OVERLAY_facing_init(vedata);
+  OVERLAY_outline_init(vedata);
   OVERLAY_wireframe_init(vedata);
 }
 
@@ -62,9 +67,11 @@ static void OVERLAY_cache_init(void *vedata)
 
   if (v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
     pd->overlay = v3d->overlay;
+    pd->v3d_flag = v3d->flag;
   }
   else {
     memset(&pd->overlay, 0, sizeof(pd->overlay));
+    pd->v3d_flag = 0;
   }
 
   if (v3d->shading.type == OB_WIRE) {
@@ -72,26 +79,66 @@ static void OVERLAY_cache_init(void *vedata)
   }
 
   pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
+  pd->xray_enabled = XRAY_ACTIVE(v3d);
+  pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
 
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
+  OVERLAY_outline_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
+}
+
+BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *init)
+{
+  OVERLAY_DupliData **dupli_data = (OVERLAY_DupliData **)DRW_duplidata_get(vedata);
+  *init = false;
+  if (!ELEM(ob->type, OB_MESH, OB_SURF, OB_LATTICE, OB_CURVE, OB_FONT)) {
+    return NULL;
+  }
+
+  if (dupli_data) {
+    if (*dupli_data == NULL) {
+      *dupli_data = MEM_callocN(sizeof(OVERLAY_DupliData), __func__);
+      *init = true;
+    }
+    else if ((*dupli_data)->base_flag != ob->base_flag) {
+      /* Select state might have change, reinit. */
+      *init = true;
+    }
+    return *dupli_data;
+  }
+  return NULL;
 }
 
 static void OVERLAY_cache_populate(void *vedata, Object *ob)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool renderable = DRW_object_is_renderable(ob);
+  const bool in_edit_mode = BKE_object_is_in_editmode(ob);
+  const bool in_paint_mode = (ob == draw_ctx->obact) &&
+                             (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
   const bool draw_wires = draw_surface && ((pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) ||
                                            (ob->dtx & OB_DRAWWIRE) || (ob->dt == OB_WIRE));
+  const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
+                             (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
+                             ((ob->base_flag & BASE_SELECTED) ||
+                              (DRW_state_is_select() && ob->type == OB_LIGHTPROBE));
+
+  bool init;
+  OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &init);
+
   if (draw_facing) {
     OVERLAY_facing_cache_populate(vedata, ob);
   }
   if (draw_wires) {
-    OVERLAY_wireframe_cache_populate(vedata, ob);
+    OVERLAY_wireframe_cache_populate(vedata, ob, dupli, init);
+  }
+  if (draw_outlines) {
+    OVERLAY_outline_cache_populate(vedata, ob, dupli, init);
   }
   // if (is_geom) {
   //   if (edit_mode) {
@@ -159,6 +206,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   // if (draw_extra) {
   //   OVERLAY_extra_cache_populate();
   // }
+
+  if (dupli) {
+    dupli->base_flag = ob->base_flag;
+  }
 }
 
 static void OVERLAY_draw_scene(void *vedata)
@@ -166,6 +217,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_grid_draw(vedata);
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
+  OVERLAY_outline_draw(vedata);
 }
 
 static void OVERLAY_engine_free(void)
