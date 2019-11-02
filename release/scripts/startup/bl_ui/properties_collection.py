@@ -63,13 +63,6 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
         col.prop(collection,"hide_viewport")
         col.prop(collection,"hide_render")
 
-def is_unit_transformation(ob):
-    if ob.scale.xyz==Vector((1,1,1)) and ob.location.xyz==Vector((0,0,0)) and \
-        ob.rotation_euler.x == 0.0 and ob.rotation_euler.y == 0.0 and ob.rotation_euler.z == 0.0:
-        return True
-    return False
-
-
 class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
     bl_label = "Collection LANPR"
 
@@ -91,7 +84,7 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
             layout.prop(lanpr,"target")
             
             if lanpr.target:
-                
+
                 layout.prop(lanpr,'use_multiple_levels', text="Multiple Levels")
                 
                 if lanpr.use_multiple_levels:
