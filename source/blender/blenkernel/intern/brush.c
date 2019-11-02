@@ -653,6 +653,9 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   brush->gpencil_settings->draw_strength = 0.6f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  brush->rgb[0] = 0.8f;
+  brush->rgb[1] = 0.5f;
+  brush->rgb[2] = 0.0f;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
   brush->gpencil_tool = GPAINT_TOOL_TINT;

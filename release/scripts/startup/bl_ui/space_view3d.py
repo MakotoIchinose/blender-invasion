@@ -347,9 +347,11 @@ class _draw_tool_settings_context_mode:
 
             row.prop(gp_settings, "use_material_pin", text="")
 
-            if ma and (ma.grease_pencil.stroke_style != 'TEXTURE' or ma.grease_pencil.use_stroke_pattern):
-                row.separator(factor=0.4)
-                row.prop(gp_settings, "mix_color", text="")
+            if brush.gpencil_tool == 'DRAW':
+                if ma and (ma.grease_pencil.stroke_style != 'TEXTURE' or
+                    ma.grease_pencil.use_stroke_pattern):
+                    row.separator(factor=0.4)
+                    row.prop(gp_settings, "mix_color", text="")
 
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
@@ -358,6 +360,11 @@ class _draw_tool_settings_context_mode:
 
         if context.object and brush.gpencil_tool in {'FILL', 'DRAW'}:
             draw_color_selector()
+
+        if context.object and brush.gpencil_tool == 'TINT':
+            row.separator(factor=0.4)
+            row.label(text="Mix")
+            row.prop(brush, "color", text="")
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,

@@ -145,22 +145,20 @@ static float brush_influence_calc(tGP_BrushTintData *gso, const int radius, cons
   float influence = brush->size;
 
   /* use pressure? */
-  if (brush->flag & GP_SCULPT_FLAG_USE_PRESSURE) {
+  if (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) {
     influence *= gso->pressure;
   }
 
   /* distance fading */
-  if (brush->flag & GP_SCULPT_FLAG_USE_FALLOFF) {
-    int mval_i[2];
-    round_v2i_v2fl(mval_i, gso->mval);
-    float distance = (float)len_v2v2_int(mval_i, co);
-    float fac;
+  int mval_i[2];
+  round_v2i_v2fl(mval_i, gso->mval);
+  float distance = (float)len_v2v2_int(mval_i, co);
+  float fac;
 
-    CLAMP(distance, 0.0f, (float)radius);
-    fac = 1.0f - (distance / (float)radius);
+  CLAMP(distance, 0.0f, (float)radius);
+  fac = 1.0f - (distance / (float)radius);
 
-    influence *= fac;
-  }
+  influence *= fac;
 
   /* apply multiframe falloff */
   influence *= gso->mf_falloff;
@@ -209,25 +207,26 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
                              const int radius,
                              const int co[2])
 {
-  float inf;
-  /* Compute strength of effect
-   * - We divide the strength by 10, so that users can set "sane" values.
-   *   Otherwise, good default values are in the range of 0.093
-   */
-  inf = brush_influence_calc(gso, radius, co) / 10.0f;
+  /* Attenuate factor to get a smoother tinting. */
+  float inf = brush_influence_calc(gso, radius, co) / 200.0f;
+  Brush *brush = gso->brush;
+  bGPDspoint *pt = &gps->points[pt_index];
 
-  float curweight = 0.0f;
-
+  float alpha = pt->mix_color[3];
   if (brush_invert_check(gso)) {
-    curweight -= inf;
+    alpha -= inf;
   }
   else {
-    /* increase weight */
-    curweight += inf;
-    /* verify maximum target weight */
-    CLAMP_MAX(curweight, gso->brush->weight);
+    alpha += inf;
+    /* Limit max strength target. */
+    CLAMP_MAX(alpha, brush->gpencil_settings->draw_strength);
   }
-  printf("%f  ", curweight);
+
+  CLAMP(alpha, 0.0f, 1.0f);
+
+  /* Apply color to point. */
+  copy_v3_v3(pt->mix_color, brush->rgb);
+  pt->mix_color[3] = alpha;
 
   return true;
 }

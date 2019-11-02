@@ -19,7 +19,7 @@
 # <pep8 compliant>
 
 import bpy
-from bpy.types import Menu, UIList
+from bpy.types import Menu, UIList, Operator
 from bpy.app.translations import pgettext_iface as iface_
 
 
@@ -912,7 +912,7 @@ class GreasePencilMaterialsPanel:
                     row.prop(gpcolor, "color", text="Stroke Color")
 
             # Mix color
-            if is_view3d and brush is not None:
+            if is_view3d and brush is not None and brush.gpencil_tool == 'DRAW':
                 if gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern:                
                     gp_settings = brush.gpencil_settings                    
                     row = layout.row()
@@ -989,6 +989,35 @@ class GreasePencilSimplifyPanel:
         sub.active = rd.simplify_gpencil_view_fill
         sub.prop(rd, "simplify_gpencil_remove_lines", text="Lines")
 
+class GreasePencilFlipTintColors(Operator):
+    bl_label = "Flip Colors"
+    bl_idname = "gpencil.tint_flip"
+    bl_description = "Switch Tint colors"
+
+    def execute(self, context):
+        try:
+            ts = context.tool_settings
+            settings = ts.gpencil_paint
+            brush = settings.brush
+            if brush is not None:
+                color = brush.color
+                secondary_color = brush.secondary_color
+
+                orig_prim = color.hsv
+                orig_sec = secondary_color.hsv
+
+                color.hsv = orig_sec
+                secondary_color.hsv = orig_prim
+
+            return {'FINISHED'}
+
+        except Exception as e:
+            utils_core.error_handlers(self, "gpencil.tint_flip", e,
+                                     "Flip Colors could not be completed")
+
+            return {'CANCELLED'}
+
+
 
 classes = (
     GPENCIL_MT_pie_tool_palette,
@@ -1004,6 +1033,8 @@ classes = (
 
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
+
+    GreasePencilFlipTintColors,
 )
 
 if __name__ == "__main__":  # only for live edit.

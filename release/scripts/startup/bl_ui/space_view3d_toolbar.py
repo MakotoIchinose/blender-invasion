@@ -23,6 +23,7 @@ from bl_ui.properties_grease_pencil_common import (
     GreasePencilStrokeSculptPanel,
     GreasePencilSculptOptionsPanel,
     GreasePencilAppearancePanel,
+    GreasePencilFlipTintColors,
 )
 from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
@@ -1885,7 +1886,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL'}
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
 
     def draw_header_preset(self, _context):
         VIEW3D_PT_gpencil_brush_presets.draw_panel_header(self.layout)
@@ -2038,7 +2039,13 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
     def poll(cls, context):
         ob = context.object
         brush = context.tool_settings.gpencil_paint.brush
-        if ob is None or brush is None or brush.gpencil_tool != 'DRAW':
+        if ob is None or brush is None:
+            return False
+            
+        if brush.gpencil_tool == 'TINT':
+            return True
+
+        if brush.gpencil_tool != 'DRAW':
             return False
 
         gp_settings = brush.gpencil_settings
@@ -2057,14 +2064,32 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-
-        settings = context.tool_settings.gpencil_paint
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
         row = layout.row(align=True)
-        row.prop(gp_settings, "mix_color", text="")
-        row = layout.row(align=True)
-        row.template_color_picker(gp_settings, "mix_color", value_slider=True)
+
+        if brush.gpencil_tool == 'DRAW':
+            row.prop(gp_settings, "mix_color", text="")
+            row = layout.row(align=True)
+            row.template_color_picker(gp_settings, "mix_color", value_slider=True)
+
+        if brush.gpencil_tool == 'TINT':
+            row.prop(brush, "color", text="")
+            row = layout.row(align=True)
+            row.template_color_picker(brush, "color", value_slider=True)
+
+            sub_row = layout.row(align=True)
+            sub_row.prop(brush, "color", text="")
+            sub_row.prop(brush, "secondary_color", text="")
+
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+            row = layout.row(align=True)
+            row.template_ID(ts.gpencil_paint, "palette", new="palette.new")
+            if settings.palette:
+                layout.template_palette(ts.gpencil_paint, "palette", color=True)
 
 
 # Grease Pencil drawingcurves
@@ -2077,7 +2102,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL'}
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
 
     def draw(self, context):
         pass
