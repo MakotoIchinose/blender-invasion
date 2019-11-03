@@ -648,6 +648,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->rgb[0] = 1.0f;
   brush->rgb[1] = 1.0f;
   brush->rgb[2] = 1.0f;
+  zero_v3(brush->secondary_rgb);
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
   brush->gpencil_tool = GPAINT_TOOL_TINT;
