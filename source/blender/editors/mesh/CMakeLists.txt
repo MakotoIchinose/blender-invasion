@@ -88,6 +88,10 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
+if(WITH_LANPR)
+  add_definitions(-DWITH_LANPR)
+endif()
+
 if(WITH_BULLET)
   add_definitions(-DWITH_BULLET)
 endif()
