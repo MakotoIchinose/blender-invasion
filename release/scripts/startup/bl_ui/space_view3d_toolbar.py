@@ -2039,6 +2039,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
     def poll(cls, context):
         ob = context.object
         brush = context.tool_settings.gpencil_paint.brush
+        if context.area.type != 'PROPERTIES':
+            return False
+
         if ob is None or brush is None:
             return False
             
@@ -2077,7 +2080,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         if brush.gpencil_tool == 'DRAW':
             row = layout.row(align=True)
-            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Color Factor")
+            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
         sub_row = layout.row(align=True)
         sub_row.prop(brush, "color", text="")
@@ -2097,6 +2100,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
     def poll(cls, context):
         ob = context.object
         brush = context.tool_settings.gpencil_paint.brush
+
         if ob is None or brush is None:
             return False
             

@@ -353,6 +353,11 @@ class _draw_tool_settings_context_mode:
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
                     row.prop(brush, "color", text="")
+                    row.separator(factor=0.4)
+                    row.popover(
+                        panel="TOPBAR_PT_gpencil_vertexcolor",
+                        text="Vertex Color",
+                    )
 
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
@@ -365,6 +370,11 @@ class _draw_tool_settings_context_mode:
         if context.object and brush.gpencil_tool == 'TINT':
             row.separator(factor=0.4)
             row.prop(brush, "color", text="")
+            row.separator(factor=0.4)
+            row.popover(
+                panel="TOPBAR_PT_gpencil_vertexcolor",
+                text="Vertex Color",
+            )
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
@@ -6750,6 +6760,18 @@ class TOPBAR_PT_gpencil_materials(GreasePencilMaterialsPanel, Panel):
         return ob and ob.type == 'GPENCIL'
 
 
+class TOPBAR_PT_gpencil_vertexcolor(GreasePencilVertexcolorPanel, Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Vertex Color"
+    bl_ui_units_x = 14
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        return ob and ob.type == 'GPENCIL'
+
+
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -6962,6 +6984,7 @@ classes = (
     VIEW3D_PT_gpencil_draw_context_menu,
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,
+    TOPBAR_PT_gpencil_vertexcolor,
     TOPBAR_PT_annotation_layers,
 )
 

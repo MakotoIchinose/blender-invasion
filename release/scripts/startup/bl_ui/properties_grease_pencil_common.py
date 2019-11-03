@@ -930,13 +930,13 @@ class GreasePencilVertexcolorPanel:
         if ob:
             row = layout.row(align=True)
 
-            row.prop(brush, "color", text="")
-            row = layout.row(align=True)
-            row.template_color_picker(brush, "color", value_slider=True)
+            # row.prop(brush, "color", text="")
+            # row = layout.row(align=True)
+            # row.template_color_picker(brush, "color", value_slider=True)
 
             if brush.gpencil_tool == 'DRAW':
                 row = layout.row(align=True)
-                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Color Factor")
+                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
             sub_row = layout.row(align=True)
             sub_row.prop(brush, "color", text="")
