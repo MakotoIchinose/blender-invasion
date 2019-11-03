@@ -394,7 +394,6 @@ set(LIB
   bf_editor_object
   bf_editor_physics
   bf_editor_render
-  bf_editor_lanpr
   bf_editor_scene
   bf_editor_sculpt_paint
   bf_editor_space_clip
@@ -405,6 +404,12 @@ set(LIB
   bf_editor_space_view3d
   bf_editor_transform
 )
+
+if(WITH_LANPR)
+  list(APPEND LIB
+    bf_editor_lanpr
+  )
+endif()
 
 add_definitions(${GL_DEFINITIONS})
 

@@ -523,7 +523,9 @@ void BKE_lanpr_free_everything(Scene *s)
   LANPR_LineLayer *ll;
   LANPR_LineLayerComponent *llc;
 
+#ifdef WITH_LANPR
   DRW_scene_freecache(s);
+#endif
 
   while ((ll = BLI_pophead(&lanpr->line_layers)) != NULL) {
     while ((llc = BLI_pophead(&ll->components)) != NULL) {

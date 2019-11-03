@@ -2548,7 +2548,11 @@ extern bool ED_lanpr_dpix_shader_error(void);
 
 static bool rna_lanpr_shader_error_get(PointerRNA *UNUSED(ptr))
 {
+#  ifdef WITH_LANPR
   return ED_lanpr_dpix_shader_error();
+#  else
+  return false;
+#  endif
 }
 
 #else
