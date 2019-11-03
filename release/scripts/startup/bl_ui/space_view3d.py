@@ -3698,8 +3698,8 @@ class VIEW3D_MT_edit_mesh_edges_data(Menu):
         if scene.lanpr.enabled or render.engine=="BLENDER_LANPR":
             layout.separator()
 
-            layout.operator("mesh.mark_lanpr_edge").clear = False
-            layout.operator("mesh.mark_lanpr_edge", text="Clear Freestyle Edge").clear = True
+            layout.operator("mesh.mark_freestyle_edge").clear = False
+            layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
 
 
 class VIEW3D_MT_edit_mesh_edges(Menu):
@@ -3755,8 +3755,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         if with_freestyle:
             layout.separator()
 
-            layout.operator("mesh.mark_lanpr_edge").clear = False
-            layout.operator("mesh.mark_lanpr_edge", text="Clear Freestyle Edge").clear = True
+            layout.operator("mesh.mark_freestyle_edge").clear = False
+            layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
 
 
 class VIEW3D_MT_edit_mesh_faces_data(Menu):
@@ -3780,8 +3780,8 @@ class VIEW3D_MT_edit_mesh_faces_data(Menu):
         if scene.lanpr.enabled or render.engine=="BLENDER_LANPR":
             layout.separator()
 
-            layout.operator("mesh.mark_lanpr_face").clear = False
-            layout.operator("mesh.mark_lanpr_cface", text="Clear Freestyle Face").clear = True
+            layout.operator("mesh.mark_freestyle_face").clear = False
+            layout.operator("mesh.mark_freestyle_cface", text="Clear Freestyle Face").clear = True
 
 
 class VIEW3D_MT_edit_mesh_faces(Menu):
