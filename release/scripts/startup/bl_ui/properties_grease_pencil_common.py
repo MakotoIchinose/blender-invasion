@@ -911,18 +911,43 @@ class GreasePencilMaterialsPanel:
                     row = layout.row()
                     row.prop(gpcolor, "color", text="Stroke Base Color")
 
-            # Mix color
-            if is_view3d and brush is not None and brush.gpencil_tool == 'DRAW':
-                if gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern:                
-                    gp_settings = brush.gpencil_settings                    
-                    row = layout.row()
-                    row.prop(brush, "color", text="Vertex Color")
-                    row = layout.row()
-                    row.prop(gp_settings, "vertex_color_factor", text="Vertex Color Factor")
-
         else:
             space = context.space_data
             row.template_ID(space, "pin_id")
+
+
+class GreasePencilVertexcolorPanel:
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.scene.tool_settings
+        gpencil_paint = ts.gpencil_paint
+        brush = gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        ob = context.object
+
+        if ob:
+            row = layout.row(align=True)
+
+            row.prop(brush, "color", text="")
+            row = layout.row(align=True)
+            row.template_color_picker(brush, "color", value_slider=True)
+
+            if brush.gpencil_tool == 'DRAW':
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Color Factor")
+
+            sub_row = layout.row(align=True)
+            sub_row.prop(brush, "color", text="")
+            sub_row.prop(brush, "secondary_color", text="")
+
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+            row = layout.row(align=True)
+            row.template_ID(gpencil_paint, "palette", new="palette.new")
+            if gpencil_paint.palette:
+                layout.template_palette(gpencil_paint, "palette", color=True)
 
 
 class GPENCIL_UL_layer(UIList):
