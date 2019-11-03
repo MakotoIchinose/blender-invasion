@@ -2084,10 +2084,50 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
+
+class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Color Palette"
+    bl_category = "Tool"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_mixcolor'
+
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        brush = context.tool_settings.gpencil_paint.brush
+        if ob is None or brush is None:
+            return False
+            
+        if brush.gpencil_tool == 'TINT':
+            return True
+
+        if brush.gpencil_tool != 'DRAW':
+            return False
+
+        gp_settings = brush.gpencil_settings
+        if gp_settings.use_material_pin is False:
+            if ob.active_material_index >= 0:
+                ma = ob.material_slots[ob.active_material_index].material
+            else:
+                ma = gp_settings.material
+
+        if ma and ma.grease_pencil.stroke_style == 'TEXTURE' and ma.grease_pencil.use_stroke_pattern is False:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+
         row = layout.row(align=True)
-        row.template_ID(ts.gpencil_paint, "palette", new="palette.new")
+        row.template_ID(settings, "palette", new="palette.new")
         if settings.palette:
-            layout.template_palette(ts.gpencil_paint, "palette", color=True)
+            layout.template_palette(settings, "palette", color=True)
 
 
 # Grease Pencil drawingcurves
@@ -2336,6 +2376,7 @@ classes = (
     VIEW3D_PT_gpencil_brush_presets,
     VIEW3D_PT_tools_grease_pencil_brush,
     VIEW3D_PT_tools_grease_pencil_brush_mixcolor,
+    VIEW3D_PT_tools_grease_pencil_brush_mix_palette,
     VIEW3D_PT_tools_grease_pencil_brush_option,
     VIEW3D_PT_tools_grease_pencil_brush_settings,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
