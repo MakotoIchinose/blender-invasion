@@ -358,7 +358,6 @@ class _draw_tool_settings_context_mode:
                         text="",
                     )
 
-
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
