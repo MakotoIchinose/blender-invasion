@@ -353,7 +353,6 @@ class _draw_tool_settings_context_mode:
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
                     row.prop(brush, "color", text="")
-                    row.separator(factor=0.4)
                     row.popover(
                         panel="TOPBAR_PT_gpencil_vertexcolor",
                         text="Vertex Color",
@@ -370,7 +369,6 @@ class _draw_tool_settings_context_mode:
         if context.object and brush.gpencil_tool == 'TINT':
             row.separator(factor=0.4)
             row.prop(brush, "color", text="")
-            row.separator(factor=0.4)
             row.popover(
                 panel="TOPBAR_PT_gpencil_vertexcolor",
                 text="Vertex Color",
