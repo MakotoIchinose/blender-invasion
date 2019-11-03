@@ -918,7 +918,7 @@ class GreasePencilMaterialsPanel:
                     row = layout.row()
                     row.prop(brush, "color", text="Vertex Color")
                     row = layout.row()
-                    row.prop(gp_settings, "vertex_color_factor", text="Vertex Factor")
+                    row.prop(gp_settings, "vertex_color_factor", text="Vertex Color Factor")
 
         else:
             space = context.space_data

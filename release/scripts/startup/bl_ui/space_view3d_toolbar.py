@@ -2076,7 +2076,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         if brush.gpencil_tool == 'DRAW':
             row = layout.row(align=True)
-            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Factor")
+            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Vertex Color Factor")
 
         sub_row = layout.row(align=True)
         sub_row.prop(brush, "color", text="")
