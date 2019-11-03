@@ -157,7 +157,7 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                         col.prop(gpcolor, "mix_stroke_factor", text="Factor")
 
             if (gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern or gpcolor.use_stroke_texture_mix):
-                col.prop(gpcolor, "color", text="Color")
+                col.prop(gpcolor, "color", text="Base Color")
 
             if gpcolor.mode in {'DOTS', 'BOX'}:
                 col.prop(gpcolor, "alignment_mode")
@@ -192,7 +192,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.prop(gpcolor, "gradient_type")
 
         if gpcolor.fill_style != 'TEXTURE':
-            col.prop(gpcolor, "fill_color", text="Color")
+            col.prop(gpcolor, "fill_color", text="Base Color")
 
             if gpcolor.fill_style in {'GRADIENT', 'CHECKER'}:
                 col.prop(gpcolor, "mix_color", text="Secondary Color")
@@ -222,7 +222,7 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             if gpcolor.fill_style == 'TEXTURE':
                 col.prop(gpcolor, "use_fill_pattern", text="Use as Stencil Mask")
                 if gpcolor.use_fill_pattern is True:
-                    col.prop(gpcolor, "fill_color", text="Color")
+                    col.prop(gpcolor, "fill_color", text="Base Color")
 
             col.prop(gpcolor, "texture_offset", text="Offset")
             col.prop(gpcolor, "texture_scale", text="Scale")
