@@ -2070,9 +2070,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         gp_settings = brush.gpencil_settings
         row = layout.row(align=True)
 
-        row.prop(brush, "color", text="")
-        row = layout.row(align=True)
-        row.template_color_picker(brush, "color", value_slider=True)
+        if context.area.type == 'PROPERTIES':
+            row.prop(brush, "color", text="")
+            row = layout.row(align=True)
+            row.template_color_picker(brush, "color", value_slider=True)
 
         if brush.gpencil_tool == 'DRAW':
             row = layout.row(align=True)
