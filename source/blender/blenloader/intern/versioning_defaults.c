@@ -46,6 +46,7 @@
 #include "BKE_layer.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 #include "BKE_node.h"
 #include "BKE_paint.h"
 #include "BKE_screen.h"
@@ -525,6 +526,27 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     if (brush) {
       BKE_id_delete(bmain, brush);
     }
+
+    /* Rename and fix materials. */
+    Material *ma = NULL;
+    rename_id_for_versioning(bmain, ID_MA, "Black", "Solid Stroke");
+    rename_id_for_versioning(bmain, ID_MA, "Red", "Boxes Stroke");
+    rename_id_for_versioning(bmain, ID_MA, "Grey", "Solid Fill");
+    rename_id_for_versioning(bmain, ID_MA, "Black Dots", "Dots Stroke");
+
+    /* Dots Stroke. */
+    ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
+    if (ma == NULL) {
+      ma = BKE_material_add_gpencil(bmain, "Dots Stroke");
+    }
+    ma->gp_style->mode = GP_STYLE_MODE_DOTS;
+
+    /* Boxes Stroke. */
+    ma = BLI_findstring(&bmain->materials, "Boxes Stroke", offsetof(ID, name) + 2);
+    if (ma == NULL) {
+      ma = BKE_material_add_gpencil(bmain, "Boxes Stroke");
+    }
+    ma->gp_style->mode = GP_STYLE_MODE_BOX;
 
     /* Reset all grease pencil brushes. */
     Scene *scene = bmain->scenes.first;

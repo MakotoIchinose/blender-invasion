@@ -293,9 +293,9 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   /* Create and link Black Dots material to brush.
    * This material is required because the brush uses the material to define how the stroke is
    * drawn. */
-  Material *ma = BLI_findstring(&bmain->materials, "Black Dots", offsetof(ID, name) + 2);
+  Material *ma = BLI_findstring(&bmain->materials, "Dots Stroke", offsetof(ID, name) + 2);
   if (ma == NULL) {
-    ma = BKE_material_add_gpencil(bmain, "Black Dots");
+    ma = BKE_material_add_gpencil(bmain, "Dots Stroke");
   }
   brush->gpencil_settings->material = ma;
   /* Pin the matterial to the brush. */
