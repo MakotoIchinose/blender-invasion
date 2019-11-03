@@ -325,6 +325,8 @@ class _draw_tool_settings_context_mode:
 
         def draw_color_selector():
             ma = gp_settings.material
+            ts = context.tool_settings
+            settings = ts.gpencil_paint
             row = layout.row(align=True)
             if not gp_settings.use_material_pin:
                 ma = context.object.active_material
@@ -352,8 +354,11 @@ class _draw_tool_settings_context_mode:
                 gp_style = ma.grease_pencil
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
-                    row.prop(brush, "color", text="")
-                    row.popover(
+                    row.prop(settings, "use_vertex_color", text="")
+                    sub_row = row.row(align=True)
+                    sub_row.enabled = settings.use_vertex_color
+                    sub_row.prop(brush, "color", text="")
+                    sub_row.popover(
                         panel="TOPBAR_PT_gpencil_vertexcolor",
                         text="Vertex Color",
                     )

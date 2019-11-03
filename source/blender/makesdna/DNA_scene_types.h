@@ -984,7 +984,15 @@ typedef struct UvSculpt {
 /* grease pencil drawing brushes */
 typedef struct GpPaint {
   Paint paint;
+  int flag;
+  char _pad_[4];
 } GpPaint;
+
+/* GpPaint.flag */
+enum {
+  /* weight paint only */
+  GPPAINT_FLAG_USE_VERTEXCOLOR = (1 << 0),
+};
 
 /* ------------------------------------------- */
 /* Vertex Paint */

@@ -131,6 +131,7 @@ static void gp_init_colors(tGPDprimitive *p)
 {
   bGPdata *gpd = p->gpd;
   Brush *brush = p->brush;
+  ToolSettings *ts = p->scene->toolsettings;
 
   MaterialGPencilStyle *gp_style = NULL;
 
@@ -161,10 +162,12 @@ static void gp_init_colors(tGPDprimitive *p)
     gpd->runtime.bfill_style = gp_style->fill_style;
 
     /* Apply the mix color to stroke. */
-    interp_v3_v3v3(gpd->runtime.scolor,
-                   gpd->runtime.scolor,
-                   brush->rgb,
-                   brush->gpencil_settings->vertex_factor);
+    if (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) {
+      interp_v3_v3v3(gpd->runtime.scolor,
+                     gpd->runtime.scolor,
+                     brush->rgb,
+                     brush->gpencil_settings->vertex_factor);
+    }
   }
 }
 
@@ -1031,7 +1034,9 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
     pt->uv_fac = tpt->uv_fac;
     /* Point mix color. */
     copy_v3_v3(pt->mix_color, brush->rgb);
-    pt->mix_color[3] = brush->gpencil_settings->vertex_factor;
+    pt->mix_color[3] = (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) ?
+                           brush->gpencil_settings->vertex_factor :
+                           0.0f;
 
     if (gps->dvert != NULL) {
       MDeformVert *dvert = &gps->dvert[i];

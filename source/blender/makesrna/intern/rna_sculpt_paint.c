@@ -882,10 +882,18 @@ static void rna_def_uv_sculpt(BlenderRNA *brna)
 static void rna_def_gp_paint(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "GpPaint", "Paint");
   RNA_def_struct_path_func(srna, "rna_GpPaint_path");
   RNA_def_struct_ui_text(srna, "Grease Pencil Paint", "");
+
+  /* Use vertex color */
+  prop = RNA_def_property(srna, "use_vertex_color", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GPPAINT_FLAG_USE_VERTEXCOLOR);
+  RNA_def_property_ui_text(prop, "Use Vertex Color", "Use Vertex Color to manage colors");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 }
 
 /* use for weight paint too */
