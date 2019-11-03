@@ -36,6 +36,7 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
     {(char *)"cycles", NULL},
     {(char *)"cycles_osl", NULL},
     {(char *)"freestyle", NULL},
+    {(char *)"lanpr", NULL},
     {(char *)"image_cineon", NULL},
     {(char *)"image_dds", NULL},
     {(char *)"image_hdr", NULL},
