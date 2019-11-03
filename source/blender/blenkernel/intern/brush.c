@@ -252,6 +252,17 @@ static Brush *gpencil_brush_ensure(Main *bmain, ToolSettings *ts, char *brush_na
     BKE_brush_init_gpencil_settings(brush);
   }
 
+  /* Set default at brush level. */
+  zero_v3(brush->rgb);
+  brush->secondary_rgb[0] = 1.0f;
+  brush->secondary_rgb[1] = 1.0f;
+  brush->secondary_rgb[2] = 1.0f;
+
+  /* Set vertex mix factor. */
+  if (brush->gpencil_settings) {
+    brush->gpencil_settings->vertex_factor = 1.0f;
+  }
+
   return brush;
 }
 
