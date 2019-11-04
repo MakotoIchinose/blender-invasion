@@ -980,6 +980,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   const int subdivide = brush->gpencil_settings->draw_subdivide;
 
   gps->points = MEM_callocN(sizeof(bGPDspoint) * gps->totpoints, "gp_stroke_points");
+  gps->dvert = NULL;
 
   /* initialize triangle memory to dummy data */
   gps->triangles = MEM_callocN(sizeof(bGPDtriangle), "GP Stroke triangulation");
