@@ -6768,7 +6768,7 @@ class TOPBAR_PT_gpencil_vertexcolor(GreasePencilVertexcolorPanel, Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Vertex Color"
-    bl_ui_units_x = 14
+    bl_ui_units_x = 10
 
     @classmethod
     def poll(cls, context):
