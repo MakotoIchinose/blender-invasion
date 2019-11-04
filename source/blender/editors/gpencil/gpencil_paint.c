@@ -973,7 +973,13 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   gps->inittime = p->inittime;
   gps->uv_scale = 1.0f;
 
-  /* enable recalculation flag by default (only used if hq fill) */
+  /* Apply the mix color to fill. */
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    gps->mix_color_fill[3] = brush->gpencil_settings->vertex_factor;
+  }
+
+  /* enable recalculation flag by default */
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
   /* allocate enough memory for a continuous array for storage points */
@@ -1858,6 +1864,14 @@ static void gp_init_colors(tGPsdata *p)
     /* add some alpha to make easy the filling without hide strokes */
     if (gpd->runtime.sfill[3] > 0.8f) {
       gpd->runtime.sfill[3] = 0.8f;
+    }
+
+    /* Apply the mix color to fill. */
+    if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+      interp_v3_v3v3(gpd->runtime.sfill,
+                     gpd->runtime.sfill,
+                     brush->rgb,
+                     brush->gpencil_settings->vertex_factor);
     }
 
     gpd->runtime.mode = (short)gp_style->mode;
@@ -3330,8 +3344,8 @@ static void gpencil_add_arc_points(tGPsdata *p, float mval[2], int segments)
   tGPspoint *pt_before = &points[idx_old - 1]; /* current - 2 */
   tGPspoint *pt_prev = &points[idx_old - 2];   /* previous */
 
-  /* Create two vectors, previous and half way of the actual to get the vertex of the triangle for
-   * arc curve.
+  /* Create two vectors, previous and half way of the actual to get the vertex of the triangle
+   * for arc curve.
    */
   float v_prev[2], v_cur[2], v_half[2];
   sub_v2_v2v2(v_cur, mval, &pt_prev->x);

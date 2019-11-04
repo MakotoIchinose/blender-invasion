@@ -156,6 +156,13 @@ static void gp_init_colors(tGPDprimitive *p)
     if (gpd->runtime.sfill[3] > 0.8f) {
       gpd->runtime.sfill[3] = 0.8f;
     }
+    /* Apply the mix color to fill. */
+    if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+      interp_v3_v3v3(gpd->runtime.sfill,
+                     gpd->runtime.sfill,
+                     brush->rgb,
+                     brush->gpencil_settings->vertex_factor);
+    }
 
     gpd->runtime.mode = (short)gp_style->mode;
     gpd->runtime.bstroke_style = gp_style->stroke_style;
@@ -331,6 +338,8 @@ static void gpencil_primitive_allocate_memory(tGPDprimitive *tgpi)
 static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 {
   Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+  Brush *brush = tgpi->brush;
   int cfra = CFRA;
 
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
@@ -353,6 +362,12 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->gradient_s[1] = 1.0f;
   gps->uv_scale = 1.0f;
   gps->inittime = 0.0f;
+
+  /* Apply the mix color to fill. */
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    gps->mix_color_fill[3] = brush->gpencil_settings->vertex_factor;
+  }
 
   /* enable recalculation flag by default */
   gps->flag |= GP_STROKE_RECALC_GEOMETRY;
