@@ -551,5 +551,38 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     /* Reset all grease pencil brushes. */
     Scene *scene = bmain->scenes.first;
     BKE_brush_gpencil_presets(bmain, scene->toolsettings);
+
+    /* Ensure Palette by default. */
+    const int totcol = 122;
+    static char *hexcol[] = {
+        "FF0000", "FFFF00", "00FF00", "00FFFF", "0000FF", "FF00FF", "FFFFFF", "E5E5E5", "D9D9D9",
+        "CCCCCC", "BFBFBF", "B2B2B2", "A6A6A6", "999999", "8C8C8C", "808080", "FF0000", "FFFF00",
+        "00FF00", "00FFFF", "0000FF", "FF00FF", "737373", "666666", "595959", "4C4C4C", "404040",
+        "33333",  "262626", "191919", "0D0D0D", "000000", "FF8080", "FF9E80", "FFBF80", "FFFF80",
+        "BFFF80", "9EFF80", "80FF80", "80FFBF", "80FFFF", "80BFFF", "809EFF", "8080FF", "9E80FF",
+        "BF80FF", "FF80FF", "FF80BF", "FF4747", "FF7547", "FFA347", "FFFF47", "A3FF47", "75FF47",
+        "47FF47", "47FFA3", "47FFFF", "47A3FF", "4775FF", "4747FF", "7547FF", "A347FF", "FF47FF",
+        "FF47A3", "FF0000", "FF4000", "FF8000", "FFFF00", "80FF00", "40FF00", "00FF00", "00FF80",
+        "00FFFF", "0080FF", "0040FF", "0000FF", "4000FF", "8000FF", "FF00FF", "FF0080", "990000",
+        "992600", "994D00", "999900", "4D9900", "269900", "009900", "00994D", "009999", "004D99",
+        "002699", "000099", "260099", "4D0099", "990099", "99004D", "660000", "661900", "663300",
+        "666600", "336600", "196600", "006600", "006633", "006666", "003366", "001966", "000066",
+        "190066", "330066", "660066", "660033", "BFA88F", "8E7E6D", "635A4F", "3F3A36", "202020",
+        "BF8F60", "9D6F42", "7F5428", "643B12", "4D2600"};
+
+    ToolSettings *ts = scene->toolsettings;
+    GpPaint *gp_paint = ts->gp_paint;
+    Paint *paint = &gp_paint->paint;
+    paint->palette = BLI_findstring(&bmain->palettes, "Grease Pencil", offsetof(ID, name) + 2);
+    if (paint->palette == NULL) {
+      paint->palette = BKE_palette_add(bmain, "Grease Pencil");
+      /* Create Colors. */
+      for (int i = 0; i < totcol; i++) {
+        PaletteColor *palcol = BKE_palette_color_add(paint->palette);
+        if (palcol) {
+          hex_to_rgb(hexcol[i], palcol->rgb, palcol->rgb + 1, palcol->rgb + 2);
+        }
+      }
+    }
   }
 }
