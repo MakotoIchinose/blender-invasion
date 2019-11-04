@@ -64,6 +64,18 @@ struct MDeformVert;
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_TINT)))
 
+/* Vertex Color macros. */
+#define GPENCIL_USE_VERTEX_COLOR(toolsettings) \
+  ((toolsettings->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR))
+#define GPENCIL_USE_VERTEX_COLOR_STROKE(toolsettings) \
+  ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
+    ((toolsettings->gp_paint->mode == GPPAINT_MODE_STROKE) || \
+     (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))))
+#define GPENCIL_USE_VERTEX_COLOR_FILL(toolsettings) \
+  ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
+    ((toolsettings->gp_paint->mode == GPPAINT_MODE_FILL) || \
+     (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))))
+
 /* ------------ Grease-Pencil API ------------------ */
 
 void BKE_gpencil_free_point_weights(struct MDeformVert *dvert);

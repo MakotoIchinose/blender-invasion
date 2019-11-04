@@ -1009,7 +1009,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->time = ptc->time;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1045,7 +1045,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->time = ptc->time;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1171,7 +1171,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->uv_rot = ptc->uv_rot;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1864,7 +1864,7 @@ static void gp_init_colors(tGPsdata *p)
     gpd->runtime.bfill_style = gp_style->fill_style;
 
     /* Apply the mix color to stroke. */
-    if (ts->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR) {
+    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts)) {
       interp_v3_v3v3(gpd->runtime.scolor,
                      gpd->runtime.scolor,
                      brush->rgb,
