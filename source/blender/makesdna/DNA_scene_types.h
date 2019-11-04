@@ -985,7 +985,8 @@ typedef struct UvSculpt {
 typedef struct GpPaint {
   Paint paint;
   int flag;
-  char _pad_[4];
+  /** Define if affect stroke, fill or both. */
+  int mode;
 } GpPaint;
 
 /* GpPaint.flag */
@@ -993,6 +994,16 @@ enum {
   /* weight paint only */
   GPPAINT_FLAG_USE_VERTEXCOLOR = (1 << 0),
 };
+
+/* GpPaint.mode */
+typedef enum eGpPaint_Mode {
+  /* Affect to Stroke only. */
+  GPPAINT_MODE_STROKE = 0,
+  /* Affect to Fill only. */
+  GPPAINT_MODE_FILL = 1,
+  /* Affect to both. */
+  GPPAINT_MODE_BOTH = 2,
+} eGpPaint_Mode;
 
 /* ------------------------------------------- */
 /* Vertex Paint */

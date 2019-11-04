@@ -884,15 +884,30 @@ static void rna_def_gp_paint(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  /* modes */
+  static EnumPropertyItem gppaint_mode_types_items[] = {
+      {GPPAINT_MODE_STROKE, "STROKE", 0, "Stroke", "Vertex Color affects to Stroke only"},
+      {GPPAINT_MODE_FILL, "FILL", 0, "Fill", "Vertex Color affects to Fill only"},
+      {GPPAINT_MODE_BOTH, "BOTH", 0, "Both", "Vertex Color affects to Stroke and Fill"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "GpPaint", "Paint");
   RNA_def_struct_path_func(srna, "rna_GpPaint_path");
   RNA_def_struct_ui_text(srna, "Grease Pencil Paint", "");
 
-  /* Use vertex color */
+  /* Use vertex color (main swith). */
   prop = RNA_def_property(srna, "use_vertex_color", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GPPAINT_FLAG_USE_VERTEXCOLOR);
   RNA_def_property_ui_text(prop, "Use Vertex Color", "Use Vertex Color to manage colors");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  /* Mode type. */
+  prop = RNA_def_property(srna, "use_vertex_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "mode");
+  RNA_def_property_enum_items(prop, gppaint_mode_types_items);
+  RNA_def_property_ui_text(prop, "Mode Type", "Defines how vertex color affect to the strokes");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 }
 

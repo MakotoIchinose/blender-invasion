@@ -929,10 +929,9 @@ class GreasePencilVertexcolorPanel:
 
         if ob:
             row = layout.row(align=True)
+            row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
 
-            # row.prop(brush, "color", text="")
-            # row = layout.row(align=True)
-            # row.template_color_picker(brush, "color", value_slider=True)
+            row = layout.row(align=True)
 
             if brush.gpencil_tool == 'DRAW':
                 row = layout.row(align=True)

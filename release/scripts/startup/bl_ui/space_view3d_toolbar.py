@@ -2078,6 +2078,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         settings = ts.gpencil_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
+
+        row = layout.row(align=True)
+        row.prop(settings, "use_vertex_mode", text="Mode")
+
         row = layout.row(align=True)
 
         if context.area.type == 'PROPERTIES':
