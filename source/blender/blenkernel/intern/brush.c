@@ -253,9 +253,9 @@ static Brush *gpencil_brush_ensure(Main *bmain, ToolSettings *ts, char *brush_na
   }
 
   /* Set default at brush level. */
-  brush->rgb[0] = 1.0;
-  brush->rgb[1] = 0.498f;
-  brush->rgb[2] = 0.498f;
+  brush->rgb[0] = 0.757f;
+  brush->rgb[1] = 0.659f;
+  brush->rgb[2] = 0.824f;
 
   brush->secondary_rgb[0] = 1.0f;
   brush->secondary_rgb[1] = 1.0f;
