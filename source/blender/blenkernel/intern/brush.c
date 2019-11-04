@@ -643,7 +643,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
 
-  brush->gpencil_settings->draw_strength = 0.6f;
+  brush->gpencil_settings->draw_strength = 0.8f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
   brush->rgb[0] = 1.0f;
   brush->rgb[1] = 1.0f;
