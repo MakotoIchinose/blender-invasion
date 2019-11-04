@@ -2041,23 +2041,21 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         ob = context.object
         ts = context.tool_settings
         settings = ts.gpencil_paint
-
-        brush = context.tool_settings.gpencil_paint.brush
-        if context.area.type != 'PROPERTIES':
-            return False
+        brush = ts.gpencil_paint.brush
+        # if context.area.type != 'PROPERTIES':
+        #     return False
 
         if ob is None or brush is None:
+            return False
+
+        if context.region.type == 'TOOL_HEADER':
             return False
             
         if brush.gpencil_tool == 'TINT':
             return True
 
-
         if brush.gpencil_tool != 'DRAW':
             return False
-
-        # if brush.gpencil_tool == 'DRAW' and settings.use_vertex_color is False:
-        #     return False
 
         gp_settings = brush.gpencil_settings
         if gp_settings.use_material_pin is False:
@@ -2158,6 +2156,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_paint
+        brush = ts.gpencil_paint.brush
 
         col = layout.column()
         col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
