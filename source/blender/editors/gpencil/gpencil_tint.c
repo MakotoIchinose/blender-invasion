@@ -199,6 +199,35 @@ static void brush_grab_calc_dvec(tGP_BrushTintData *gso)
 /* This section defines the callbacks used by each brush to perform their magic.
  * These are called on each point within the brush's radius. */
 
+static bool brush_fill_asspply(tGP_BrushTintData *gso,
+                               bGPDstroke *gps,
+                               const int radius,
+                               const int co[2])
+{
+  ToolSettings *ts = gso->scene->toolsettings;
+  Brush *brush = gso->brush;
+  float inf = gso->pressure;
+
+  float alpha_fill = gps->mix_color_fill[3];
+  if (brush_invert_check(gso)) {
+    alpha_fill -= inf;
+  }
+  else {
+    alpha_fill += inf;
+    /* Limit max strength target. */
+    CLAMP_MAX(alpha_fill, brush->gpencil_settings->draw_strength);
+  }
+
+  /* Apply color to Fill area. */
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(ts)) {
+    CLAMP(alpha_fill, 0.0f, 1.0f);
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    gps->mix_color_fill[3] = alpha_fill;
+  }
+
+  return true;
+}
+
 /* Tint Brush */
 static bool brush_tint_apply(tGP_BrushTintData *gso,
                              bGPDstroke *gps,
@@ -208,28 +237,41 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
                              const int co[2])
 {
   ToolSettings *ts = gso->scene->toolsettings;
+  Brush *brush = gso->brush;
 
   /* Attenuate factor to get a smoother tinting. */
   float inf = brush_influence_calc(gso, radius, co) / 100.0f;
-  Brush *brush = gso->brush;
+  float inf_fill = gso->pressure / 1000.0f;
+
   bGPDspoint *pt = &gps->points[pt_index];
 
   float alpha = pt->mix_color[3];
+  float alpha_fill = gps->mix_color_fill[3];
+
   if (brush_invert_check(gso)) {
     alpha -= inf;
+    alpha_fill -= inf_fill;
   }
   else {
     alpha += inf;
+    alpha_fill += inf_fill;
     /* Limit max strength target. */
     CLAMP_MAX(alpha, brush->gpencil_settings->draw_strength);
+    CLAMP_MAX(alpha_fill, brush->gpencil_settings->draw_strength);
   }
 
-  CLAMP(alpha, 0.0f, 1.0f);
-
-  /* Apply color Stroke to point. */
+  /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(ts)) {
+    CLAMP(alpha, 0.0f, 1.0f);
     interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
     pt->mix_color[3] = alpha;
+  }
+
+  /* Apply color to Fill area (all with same color and factor). */
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(ts)) {
+    CLAMP(alpha_fill, 0.0f, 1.0f);
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    gps->mix_color_fill[3] = alpha_fill;
   }
 
   return true;
@@ -459,6 +501,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
          */
         if (gp_stroke_inside_circle(
                 gso->mval, gso->mval_prev, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
+
           /* Apply operation to these points */
           bool ok = false;
 
