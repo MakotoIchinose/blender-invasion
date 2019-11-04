@@ -79,11 +79,11 @@ typedef struct bGPDspoint {
   /** Uv rotation for dot mode. */
   float uv_rot;
 
-  /** Runtime data */
-  char _pad2[4];
-
   /** Mix color RGBA (A=mix factor) */
   float mix_color[4];
+
+  /** Runtime data */
+  char _pad2[4];
 
   bGPDspoint_Runtime runtime;
 } bGPDspoint;
@@ -225,9 +225,6 @@ typedef struct bGPDstroke {
   float gradient_s[2];
   char _pad_3[4];
 
-  /** Vertex mix color for Fill (one for all stroke). */
-  float mix_color_fill[4];
-
   /** UV rotation */
   float uv_rotation;
   /** UV translation (X and Y axis) */
@@ -237,6 +234,9 @@ typedef struct bGPDstroke {
   /** Vertex weight data. */
   struct MDeformVert *dvert;
   void *_pad3;
+
+  /** Vertex mix color for Fill (one for all stroke). */
+  float mix_color_fill[4];
 
   bGPDstroke_Runtime runtime;
 } bGPDstroke;
