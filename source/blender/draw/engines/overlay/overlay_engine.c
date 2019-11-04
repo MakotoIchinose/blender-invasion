@@ -40,15 +40,49 @@ static void OVERLAY_engine_init(void *vedata)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
-
-  // const enum eContextObjectMode mode = CTX_data_mode_enum_ex(
-  //     DST.draw_ctx.object_edit, obact, DST.draw_ctx.object_mode);
+  const DRWContextState *draw_ctx = DRW_context_state_get();
 
   if (!stl->pd) {
     /* Alloc transient pointers */
     stl->pd = MEM_callocN(sizeof(*stl->pd), __func__);
   }
 
+  stl->pd->ctx_mode = CTX_data_mode_enum_ex(
+      draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
+
+  switch (stl->pd->ctx_mode) {
+    case CTX_MODE_EDIT_MESH:
+      OVERLAY_edit_mesh_init(vedata);
+      break;
+    case CTX_MODE_EDIT_SURFACE:
+    case CTX_MODE_EDIT_CURVE:
+      break;
+    case CTX_MODE_EDIT_TEXT:
+      break;
+    case CTX_MODE_EDIT_ARMATURE:
+      break;
+    case CTX_MODE_EDIT_METABALL:
+      break;
+    case CTX_MODE_EDIT_LATTICE:
+      break;
+    case CTX_MODE_PARTICLE:
+      break;
+    case CTX_MODE_POSE:
+    case CTX_MODE_PAINT_WEIGHT:
+      break;
+    case CTX_MODE_SCULPT:
+    case CTX_MODE_PAINT_VERTEX:
+    case CTX_MODE_PAINT_TEXTURE:
+    case CTX_MODE_OBJECT:
+    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL:
+      break;
+    default:
+      BLI_assert(!"Draw mode invalid");
+      break;
+  }
   OVERLAY_grid_init(vedata);
   OVERLAY_facing_init(vedata);
   OVERLAY_outline_init(vedata);
@@ -82,6 +116,39 @@ static void OVERLAY_cache_init(void *vedata)
   pd->xray_enabled = XRAY_ACTIVE(v3d);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
 
+  switch (pd->ctx_mode) {
+    case CTX_MODE_EDIT_MESH:
+      OVERLAY_edit_mesh_cache_init(vedata);
+      break;
+    case CTX_MODE_EDIT_SURFACE:
+    case CTX_MODE_EDIT_CURVE:
+      break;
+    case CTX_MODE_EDIT_TEXT:
+      break;
+    case CTX_MODE_EDIT_ARMATURE:
+      break;
+    case CTX_MODE_EDIT_METABALL:
+      break;
+    case CTX_MODE_EDIT_LATTICE:
+      break;
+    case CTX_MODE_PARTICLE:
+      break;
+    case CTX_MODE_POSE:
+    case CTX_MODE_PAINT_WEIGHT:
+      break;
+    case CTX_MODE_SCULPT:
+    case CTX_MODE_PAINT_VERTEX:
+    case CTX_MODE_PAINT_TEXTURE:
+    case CTX_MODE_OBJECT:
+    case CTX_MODE_PAINT_GPENCIL:
+    case CTX_MODE_EDIT_GPENCIL:
+    case CTX_MODE_SCULPT_GPENCIL:
+    case CTX_MODE_WEIGHT_GPENCIL:
+      break;
+    default:
+      BLI_assert(!"Draw mode invalid");
+      break;
+  }
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
@@ -140,29 +207,24 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   if (draw_outlines) {
     OVERLAY_outline_cache_populate(vedata, ob, dupli, init);
   }
+  if (in_edit_mode) {
+    switch (ob->type) {
+      case OB_MESH:
+        OVERLAY_edit_mesh_cache_populate(vedata, ob);
+        break;
+      case OB_CURVE:
+        break;
+      case OB_SURF:
+        break;
+      case OB_LATTICE:
+        break;
+      case OB_MBALL:
+        break;
+      case OB_FONT:
+        break;
+    }
+  }
   // if (is_geom) {
-  //   if (edit_mode) {
-  //     switch (ob->type) {
-  //       case OB_MESH:
-  //         OVERLAY_edit_mesh_cache_populate();
-  //         break;
-  //       case OB_CURVE:
-  //         OVERLAY_edit_curve_cache_populate();
-  //         break;
-  //       case OB_SURF:
-  //         OVERLAY_edit_surf_cache_populate();
-  //         break;
-  //       case OB_LATTICE:
-  //         OVERLAY_edit_lattive_cache_populate();
-  //         break;
-  //       case OB_MBALL:
-  //         OVERLAY_edit_metaball_cache_populate();
-  //         break;
-  //       case OB_FONT:
-  //         OVERLAY_edit_font_cache_populate();
-  //         break;
-  //     }
-  //   }
   //   if (paint_vertex_mode) {
   //     OVERLAY_paint_vertex_cache_populate();
   //   }
@@ -214,10 +276,21 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
 static void OVERLAY_draw_scene(void *vedata)
 {
-  OVERLAY_grid_draw(vedata);
+  OVERLAY_Data *data = vedata;
+  OVERLAY_PrivateData *pd = data->stl->pd;
+
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
+  OVERLAY_grid_draw(vedata);
   OVERLAY_outline_draw(vedata);
+
+  switch (pd->ctx_mode) {
+    case CTX_MODE_EDIT_MESH:
+      OVERLAY_edit_mesh_draw(vedata);
+      break;
+    default:
+      break;
+  }
 }
 
 static void OVERLAY_engine_free(void)

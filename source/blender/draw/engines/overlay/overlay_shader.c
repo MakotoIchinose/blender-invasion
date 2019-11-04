@@ -26,6 +26,17 @@
 
 #include "overlay_private.h"
 
+extern char datatoc_depth_only_vert_glsl[];
+extern char datatoc_edit_mesh_common_lib_glsl[];
+extern char datatoc_edit_mesh_frag_glsl[];
+extern char datatoc_edit_mesh_geom_glsl[];
+extern char datatoc_edit_mesh_vert_glsl[];
+extern char datatoc_edit_mesh_normal_geom_glsl[];
+extern char datatoc_edit_mesh_normal_vert_glsl[];
+extern char datatoc_edit_mesh_mix_occlude_frag_glsl[];
+extern char datatoc_edit_mesh_skin_root_vert_glsl[];
+extern char datatoc_edit_mesh_analysis_vert_glsl[];
+extern char datatoc_edit_mesh_analysis_frag_glsl[];
 extern char datatoc_facing_frag_glsl[];
 extern char datatoc_facing_vert_glsl[];
 extern char datatoc_grid_frag_glsl[];
@@ -37,11 +48,17 @@ extern char datatoc_outline_prepass_geom_glsl[];
 extern char datatoc_outline_prepass_vert_glsl[];
 extern char datatoc_outline_lightprobe_grid_vert_glsl[];
 extern char datatoc_outline_resolve_frag_glsl[];
+extern char datatoc_paint_weight_frag_glsl[];
+extern char datatoc_paint_weight_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_geom_glsl[];
 extern char datatoc_wireframe_frag_glsl[];
 
 extern char datatoc_gpu_shader_depth_only_frag_glsl[];
+extern char datatoc_gpu_shader_point_varying_color_frag_glsl[];
+extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
+extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
+extern char datatoc_gpu_shader_flat_color_frag_glsl[];
 
 extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_common_fxaa_lib_glsl[];
@@ -49,23 +66,277 @@ extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
-  struct GPUShader *grid;
-  struct GPUShader *facing;
-  struct GPUShader *outline_prepass;
-  struct GPUShader *outline_prepass_wire;
-  struct GPUShader *outline_prepass_lightprobe_grid;
-  struct GPUShader *outline_resolve;
-  struct GPUShader *outline_fade;
-  struct GPUShader *outline_fade_large;
-  struct GPUShader *outline_detect;
-  struct GPUShader *outline_detect_wire;
-  struct GPUShader *wireframe_select;
-  struct GPUShader *wireframe;
+  GPUShader *depth_only;
+  GPUShader *grid;
+  GPUShader *facing;
+  GPUShader *edit_mesh_vert;
+  GPUShader *edit_mesh_edge;
+  GPUShader *edit_mesh_edge_flat;
+  GPUShader *edit_mesh_face;
+  GPUShader *edit_mesh_facedot;
+  GPUShader *edit_mesh_skin_root;
+  GPUShader *edit_mesh_vnormals;
+  GPUShader *edit_mesh_lnormals;
+  GPUShader *edit_mesh_fnormals;
+  GPUShader *edit_mesh_mix_occlude;
+  GPUShader *edit_mesh_analysis;
+  GPUShader *outline_prepass;
+  GPUShader *outline_prepass_wire;
+  GPUShader *outline_prepass_lightprobe_grid;
+  GPUShader *outline_resolve;
+  GPUShader *outline_fade;
+  GPUShader *outline_fade_large;
+  GPUShader *outline_detect;
+  GPUShader *outline_detect_wire;
+  GPUShader *paint_weight;
+  GPUShader *wireframe_select;
+  GPUShader *wireframe;
 } OVERLAY_Shaders;
 
 static struct {
   OVERLAY_Shaders sh_data[GPU_SHADER_CFG_LEN];
 } e_data = {{{NULL}}};
+
+GPUShader *OVERLAY_shader_depth_only(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->depth_only) {
+    sh_data->depth_only = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_depth_only_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_depth_only_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->depth_only;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_vert(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_vert) {
+    sh_data->edit_mesh_vert = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_common_lib_glsl,
+                                 datatoc_edit_mesh_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define VERT\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_vert;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  GPUShader **sh = use_flat_interp ? &sh_data->edit_mesh_edge_flat : &sh_data->edit_mesh_edge;
+  if (*sh == NULL) {
+    /* Use geometry shader to draw edge wire-frame. This ensure us
+     * the same result across platforms and more flexibility.
+     * But we pay the cost of running a geometry shader.
+     * In the future we might consider using only the vertex shader
+     * and loading data manually with buffer textures. */
+    const bool use_geom_shader = true;
+    const bool use_smooth_wires = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
+    const char *geom_sh_code[] = {use_geom_shader ? sh_cfg->lib : NULL,
+                                  datatoc_common_globals_lib_glsl,
+                                  datatoc_common_view_lib_glsl,
+                                  datatoc_edit_mesh_geom_glsl,
+                                  NULL};
+    const char *vert_sh_code[] = {sh_cfg->lib,
+                                  datatoc_common_globals_lib_glsl,
+                                  datatoc_common_view_lib_glsl,
+                                  datatoc_edit_mesh_common_lib_glsl,
+                                  datatoc_edit_mesh_vert_glsl,
+                                  NULL};
+    const char *frag_sh_code[] = {sh_cfg->lib,
+                                  datatoc_common_globals_lib_glsl,
+                                  datatoc_common_view_lib_glsl,
+                                  datatoc_edit_mesh_common_lib_glsl,
+                                  datatoc_edit_mesh_frag_glsl,
+                                  NULL};
+    const char *defs[] = {sh_cfg->def,
+                          use_geom_shader ? "#define USE_GEOM_SHADER\n" : "",
+                          use_smooth_wires ? "#define USE_SMOOTH_WIRE\n" : "",
+                          use_flat_interp ? "#define FLAT\n" : "",
+                          "#define EDGE\n",
+                          NULL};
+
+    *sh = GPU_shader_create_from_arrays({
+        .vert = vert_sh_code,
+        .frag = frag_sh_code,
+        .geom = geom_sh_code,
+        .defs = defs,
+    });
+  }
+  return *sh;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_face(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_face) {
+    sh_data->edit_mesh_face = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_common_lib_glsl,
+                                 datatoc_edit_mesh_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define FACE\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_face;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_facedot(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_facedot) {
+    sh_data->edit_mesh_facedot = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_common_lib_glsl,
+                                 datatoc_edit_mesh_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define FACEDOT\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_facedot;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_normal_face(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+
+  if (!sh_data->edit_mesh_fnormals) {
+    sh_data->edit_mesh_fnormals = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define FACE_NORMALS\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_fnormals;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_vnormals) {
+    sh_data->edit_mesh_vnormals = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define VERT_NORMALS\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_vnormals;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_lnormals) {
+    sh_data->edit_mesh_lnormals = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_normal_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define LOOP_NORMALS\n", NULL},
+    });
+  }
+  return sh_data->edit_mesh_lnormals;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->edit_mesh_mix_occlude) {
+    sh_data->edit_mesh_mix_occlude = DRW_shader_create_fullscreen(
+        datatoc_edit_mesh_mix_occlude_frag_glsl, NULL);
+  }
+  return sh_data->edit_mesh_mix_occlude;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_analysis(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_analysis) {
+    sh_data->edit_mesh_analysis = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_analysis_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_edit_mesh_analysis_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_mesh_analysis;
+}
+
+GPUShader *OVERLAY_shader_edit_mesh_skin_root(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_mesh_skin_root) {
+    sh_data->edit_mesh_skin_root = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_mesh_common_lib_glsl,
+                                 datatoc_edit_mesh_skin_root_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_mesh_skin_root;
+}
 
 GPUShader *OVERLAY_shader_facing(void)
 {
@@ -199,6 +470,27 @@ GPUShader *OVERLAY_shader_outline_detect(bool use_wire)
                                                          NULL);
   }
   return (use_wire) ? sh_data->outline_detect_wire : sh_data->outline_detect;
+}
+
+GPUShader *OVERLAY_shader_paint_weight(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->paint_weight) {
+    sh_data->paint_weight = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_paint_weight_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_common_globals_lib_glsl,
+                                 datatoc_paint_weight_frag_glsl,
+                                 NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->paint_weight;
 }
 
 GPUShader *OVERLAY_shader_wireframe_select(void)

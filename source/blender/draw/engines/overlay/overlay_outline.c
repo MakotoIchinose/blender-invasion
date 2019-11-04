@@ -31,29 +31,24 @@
 void OVERLAY_outline_init(OVERLAY_Data *vedata)
 {
   OVERLAY_FramebufferList *fbl = vedata->fbl;
-  OVERLAY_PrivateData *pd = vedata->stl->pd;
+  OVERLAY_TextureList *txl = vedata->txl;
 
   if (DRW_state_is_fbo()) {
-    const float *size = DRW_viewport_size_get();
-
+    /* TODO only alloc if needed. */
     /* XXX TODO GPU_R16UI can overflow, it would cause no harm
      * (only bad colored or missing outlines) but we should
      * use 32bits only if the scene have that many objects */
-    pd->outlines_id_tx = DRW_texture_pool_query_2d(
-        size[0], size[1], GPU_R16UI, (DrawEngineType *)&OVERLAY_outline_init);
-    pd->outlines_depth_tx = DRW_texture_pool_query_2d(
-        size[0], size[1], GPU_DEPTH_COMPONENT24, (DrawEngineType *)&OVERLAY_outline_init);
-
-    GPU_framebuffer_ensure_config(&fbl->outlines_prepass_fb,
-                                  {GPU_ATTACHMENT_TEXTURE(pd->outlines_depth_tx),
-                                   GPU_ATTACHMENT_TEXTURE(pd->outlines_id_tx)});
+    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH_COMPONENT24, 0);
+    DRW_texture_ensure_fullscreen_2d(&txl->outlines_id_tx, GPU_R16UI, 0);
+    GPU_framebuffer_ensure_config(
+        &fbl->outlines_prepass_fb,
+        {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(txl->outlines_id_tx)});
 
     for (int i = 0; i < 2; i++) {
-      pd->outlines_color_tx[i] = DRW_texture_pool_query_2d(
-          size[0], size[1], GPU_RGBA8, (DrawEngineType *)&OVERLAY_outline_init);
+      DRW_texture_ensure_fullscreen_2d(&txl->outlines_color_tx[i], GPU_RGBA8, 0);
       GPU_framebuffer_ensure_config(
           &fbl->outlines_process_fb[i],
-          {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(pd->outlines_color_tx[i])});
+          {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->outlines_color_tx[i])});
     }
   }
 }
@@ -154,6 +149,7 @@ static DRWShadingGroup *outline_shgroup(DRWPass *pass, int outline_id, GPUShader
 void OVERLAY_outline_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
+  OVERLAY_TextureList *txl = vedata->txl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   DRWShadingGroup *grp = NULL;
@@ -200,8 +196,8 @@ void OVERLAY_outline_cache_init(OVERLAY_Data *vedata)
     grp = DRW_shgroup_create(sh, psl->outlines_detect_ps);
     /* Don't occlude the "outline" detection pass if in xray mode (too much flickering). */
     DRW_shgroup_uniform_float_copy(grp, "alphaOcclu", (pd->xray_enabled) ? 1.0f : 0.35f);
-    DRW_shgroup_uniform_texture_ref(grp, "outlineId", &pd->outlines_id_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "outlineDepth", &pd->outlines_depth_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "outlineId", &txl->outlines_id_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "outlineDepth", &txl->temp_depth_tx);
     DRW_shgroup_uniform_texture_ref(grp, "sceneDepth", &dtxl->depth);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
@@ -209,25 +205,25 @@ void OVERLAY_outline_cache_init(OVERLAY_Data *vedata)
     if (do_outline_expand) {
       sh = OVERLAY_shader_outline_expand(do_large_expand);
       grp = DRW_shgroup_create(sh, psl->outlines_expand_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &pd->outlines_color_tx[0]);
+      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &txl->outlines_color_tx[0]);
       DRW_shgroup_uniform_bool_copy(grp, "doExpand", true);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
       sh = OVERLAY_shader_outline_expand(false);
       grp = DRW_shgroup_create(sh, psl->outlines_bleed_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &pd->outlines_color_tx[1]);
+      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &txl->outlines_color_tx[1]);
       DRW_shgroup_uniform_bool_copy(grp, "doExpand", false);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
     else {
       sh = OVERLAY_shader_outline_expand(false);
       grp = DRW_shgroup_create(sh, psl->outlines_expand_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &pd->outlines_color_tx[0]);
+      DRW_shgroup_uniform_texture_ref(grp, "outlineColor", &txl->outlines_color_tx[0]);
       DRW_shgroup_uniform_bool_copy(grp, "doExpand", false);
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
 
-    GPUTexture **outline_tx = &pd->outlines_color_tx[do_outline_expand ? 0 : 1];
+    GPUTexture **outline_tx = &txl->outlines_color_tx[do_outline_expand ? 0 : 1];
     sh = OVERLAY_shader_outline_resolve();
 
     grp = DRW_shgroup_create(sh, psl->outlines_resolve_ps);

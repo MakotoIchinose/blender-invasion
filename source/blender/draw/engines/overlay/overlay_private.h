@@ -32,22 +32,38 @@
 typedef struct OVERLAY_FramebufferList {
   struct GPUFrameBuffer *outlines_prepass_fb;
   struct GPUFrameBuffer *outlines_process_fb[2];
+  struct GPUFrameBuffer *edit_mesh_occlude_wire_fb;
 } OVERLAY_FramebufferList;
 
 typedef struct OVERLAY_TextureList {
-  struct GPUTexture *tx;
+  struct GPUTexture *temp_depth_tx;
+  struct GPUTexture *outlines_id_tx;
+  struct GPUTexture *outlines_color_tx[2];
+  struct GPUTexture *edit_mesh_occlude_wire_tx;
 } OVERLAY_TextureList;
 
+#define NOT_IN_FRONT 0
+#define IN_FRONT 1
+
 typedef struct OVERLAY_PassList {
-  struct DRWPass *grid_ps;
-  struct DRWPass *facing_ps;
-  struct DRWPass *outlines_prepass_ps;
-  struct DRWPass *outlines_detect_ps;
-  struct DRWPass *outlines_expand_ps;
-  struct DRWPass *outlines_bleed_ps;
-  struct DRWPass *outlines_resolve_ps;
-  struct DRWPass *wireframe_ps;
-  struct DRWPass *wireframe_xray_ps;
+  DRWPass *edit_mesh_depth_ps[2];
+  DRWPass *edit_mesh_verts_ps[2];
+  DRWPass *edit_mesh_edges_ps[2];
+  DRWPass *edit_mesh_faces_ps[2];
+  DRWPass *edit_mesh_faces_cage_ps[2];
+  DRWPass *edit_mesh_analysis_ps;
+  DRWPass *edit_mesh_mix_occlude_ps;
+  DRWPass *edit_mesh_normals_ps;
+  DRWPass *edit_mesh_weight_ps;
+  DRWPass *facing_ps;
+  DRWPass *grid_ps;
+  DRWPass *outlines_prepass_ps;
+  DRWPass *outlines_detect_ps;
+  DRWPass *outlines_expand_ps;
+  DRWPass *outlines_bleed_ps;
+  DRWPass *outlines_resolve_ps;
+  DRWPass *wireframe_ps;
+  DRWPass *wireframe_xray_ps;
 } OVERLAY_PassList;
 
 /* Data used by GLSL shader. To be used as UBO. */
@@ -63,9 +79,23 @@ typedef struct OVERLAY_ShadingData {
   int zneg_flag;
   /** Wireframe */
   float wire_step_param;
+  /** Edit Mesh */
+  int data_mask[4];
 } OVERLAY_ShadingData;
 
 typedef struct OVERLAY_PrivateData {
+  DRWShadingGroup *edit_mesh_depth_grp[2];
+  DRWShadingGroup *edit_mesh_faces_grp[2];
+  DRWShadingGroup *edit_mesh_faces_cage_grp[2];
+  DRWShadingGroup *edit_mesh_verts_grp[2];
+  DRWShadingGroup *edit_mesh_edges_grp[2];
+  DRWShadingGroup *edit_mesh_facedots_grp[2];
+  DRWShadingGroup *edit_mesh_skin_roots_grp[2];
+  DRWShadingGroup *edit_mesh_fnormals_grp;
+  DRWShadingGroup *edit_mesh_vnormals_grp;
+  DRWShadingGroup *edit_mesh_lnormals_grp;
+  DRWShadingGroup *edit_mesh_analysis_grp;
+  DRWShadingGroup *edit_mesh_weight_grp;
   DRWShadingGroup *facing_grp;
   DRWShadingGroup *wires_grp;
   DRWShadingGroup *wires_xray_grp;
@@ -79,19 +109,32 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *outlines_probe_active_grp;
   DRWShadingGroup *outlines_probe_grid_grp;
 
-  /* Temp buffer textures */
-  struct GPUTexture *outlines_depth_tx;
-  struct GPUTexture *outlines_id_tx;
-  struct GPUTexture *outlines_color_tx[2];
-
   DRWView *view_wires;
+  DRWView *view_edit_faces;
+  DRWView *view_edit_faces_cage;
+  DRWView *view_edit_edges;
+  DRWView *view_edit_verts;
+
   View3DOverlay overlay;
+  enum eContextObjectMode ctx_mode;
   bool clear_stencil;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
   short v3d_flag;
   DRWState clipping_state;
   OVERLAY_ShadingData shdata;
+
+  struct {
+    int ghost_ob;
+    int edit_ob;
+    bool do_zbufclip;
+    bool do_faces;
+    bool do_edges;
+    bool select_vert;
+    bool select_face;
+    bool select_edge;
+    int flag; /** Copy of v3d->overlay.edit_flag.  */
+  } edit_mesh;
 } OVERLAY_PrivateData; /* Transient data */
 
 typedef struct OVERLAY_StorageList {
@@ -115,6 +158,11 @@ typedef struct OVERLAY_DupliData {
   struct GPUBatch *extra_geom;
   short base_flag;
 } OVERLAY_DupliData;
+
+void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_facing_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);
@@ -141,13 +189,25 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
                                       bool init_dupli);
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 
-GPUShader *OVERLAY_shader_grid(void);
+GPUShader *OVERLAY_shader_depth_only(void);
+GPUShader *OVERLAY_shader_edit_mesh_vert(void);
+GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);
+GPUShader *OVERLAY_shader_edit_mesh_face(void);
+GPUShader *OVERLAY_shader_edit_mesh_facedot(void);
+GPUShader *OVERLAY_shader_edit_mesh_skin_root(void);
+GPUShader *OVERLAY_shader_edit_mesh_normal_face(void);
+GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void);
+GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void);
+GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
+GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
 GPUShader *OVERLAY_shader_facing(void);
+GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
 GPUShader *OVERLAY_shader_outline_prepass_grid(void);
 GPUShader *OVERLAY_shader_outline_resolve(void);
 GPUShader *OVERLAY_shader_outline_expand(bool high_dpi);
 GPUShader *OVERLAY_shader_outline_detect(bool use_wire);
+GPUShader *OVERLAY_shader_paint_weight(void);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);
 void OVERLAY_shader_free(void);
