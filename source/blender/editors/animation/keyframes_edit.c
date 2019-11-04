@@ -1064,6 +1064,11 @@ static short set_bezier_auto(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
 
     ENSURE_HANDLES_MATCH(bezt);
   }
+  /* If no handle is selected, but the key is, apply to both handles. */
+  else if (bezt->f2 & SELECT) {
+    bezt->h1 = bezt->h2 = HD_AUTO;
+  }
+
   return 0;
 }
 
@@ -1082,6 +1087,11 @@ static short set_bezier_auto_clamped(KeyframeEditData *UNUSED(ked), BezTriple *b
 
     ENSURE_HANDLES_MATCH(bezt);
   }
+  /* If no handle is selected, but the key is, apply to both handles. */
+  else if (bezt->f2 & SELECT) {
+    bezt->h1 = bezt->h2 = HD_AUTO_ANIM;
+  }
+
   return 0;
 }
 
@@ -1094,6 +1104,11 @@ static short set_bezier_vector(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
   if (bezt->f3 & SELECT) {
     bezt->h2 = HD_VECT;
   }
+  /* If no handle is selected, but the key is, apply to both handles. */
+  if ((((bezt->f1 | bezt->f3) & SELECT) == 0) && (bezt->f2 & SELECT)) {
+    bezt->h1 = bezt->h2 = HD_VECT;
+  }
+
   return 0;
 }
 
@@ -1120,6 +1135,11 @@ static short set_bezier_align(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
   if (bezt->f3 & SELECT) {
     bezt->h2 = HD_ALIGN;
   }
+  /* If no handle is selected, but the key is, apply to both handles. */
+  if ((((bezt->f1 | bezt->f3) & SELECT) == 0) && (bezt->f2 & SELECT)) {
+    bezt->h1 = bezt->h2 = HD_ALIGN;
+  }
+
   return 0;
 }
 
@@ -1132,6 +1152,11 @@ static short set_bezier_free(KeyframeEditData *UNUSED(ked), BezTriple *bezt)
   if (bezt->f3 & SELECT) {
     bezt->h2 = HD_FREE;
   }
+  /* If no handle is selected, but the key is, apply to both handles. */
+  if ((((bezt->f1 | bezt->f3) & SELECT) == 0) && (bezt->f2 & SELECT)) {
+    bezt->h1 = bezt->h2 = HD_FREE;
+  }
+
   return 0;
 }
 
