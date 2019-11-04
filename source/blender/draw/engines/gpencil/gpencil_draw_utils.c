@@ -996,6 +996,9 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
       if (cache->is_dirty) {
         const float *color;
         if (!onion) {
+          /* Apply the mix color of the fill. */
+          interp_v3_v3v3(tfill, tfill, gps->mix_color_fill, gps->mix_color_fill[3]);
+
           color = tfill;
         }
         else {

@@ -225,6 +225,9 @@ typedef struct bGPDstroke {
   float gradient_s[2];
   char _pad_3[4];
 
+  /** Vertex mix color for Fill (one for all stroke). */
+  float mix_color_fill[4];
+
   /** UV rotation */
   float uv_rotation;
   /** UV translation (X and Y axis) */
