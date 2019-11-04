@@ -354,7 +354,8 @@ class _draw_tool_settings_context_mode:
                 gp_style = ma.grease_pencil
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
-                    row.prop(settings, "use_vertex_color", text="")
+                    row.prop(settings, "use_vertex_color", text="",
+                                icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
                     sub_row = row.row(align=True)
                     sub_row.enabled = settings.use_vertex_color
                     sub_row.prop(brush, "color", text="")
