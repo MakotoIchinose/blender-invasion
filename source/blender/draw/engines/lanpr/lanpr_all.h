@@ -61,12 +61,6 @@
 
 #define LANPR_ENGINE "BLENDER_LANPR"
 
-#define deg(r) r / M_PI * 180.0
-#define rad(d) d *M_PI / 180.0
-
-#define tMatDist2v(p1, p2) \
-  sqrt(((p1)[0] - (p2)[0]) * ((p1)[0] - (p2)[0]) + ((p1)[1] - (p2)[1]) * ((p1)[1] - (p2)[1]))
-
 extern struct RenderEngineType DRW_engine_viewport_lanpr_type;
 extern struct DrawEngineType draw_engine_lanpr_type;
 

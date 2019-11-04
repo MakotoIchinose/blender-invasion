@@ -63,7 +63,9 @@ float use_thickness;
 
 #define M_PI 3.1415926535897932384626433832795
 
-vec4 END_POINT = vec4(vec2(3e30f), 0, 1);  // end point flag
+#define LANPR_CHAIN_ENDPOINT_FLAG 3e30f
+
+vec4 END_POINT = vec4(vec2(LANPR_CHAIN_ENDPOINT_FLAG), 0, 1);
 
 vec4 MakeLeftTaperLinear(vec4 L, vec4 a, float offset)
 {

@@ -92,6 +92,12 @@ static int lanpr_get_gpu_line_type(LANPR_RenderLineChainItem *rlci)
   }
 }
 
+/** Endpoint flag,
+ * use an unreasonably big value in lanpr but within float range.
+ * This value is used to determin endpoint in the shader.
+ * Keep in sync with the one in lanpr_software_chain_geom.glsl */
+#define LANPR_CHAIN_ENDPOINT_FLAG 3e30f
+
 void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
@@ -178,9 +184,10 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
       i++;
     }
   }
-  /*  set end point flag value. */
-  length_target[0] = 3e30f;
-  length_target[1] = 3e30f;
+
+  /* set end point flag value. */
+  length_target[0] = LANPR_CHAIN_ENDPOINT_FLAG;
+  length_target[1] = LANPR_CHAIN_ENDPOINT_FLAG;
   GPU_vertbuf_attr_set(vbo, attr_id.pos, vert_count, length_target);
 
   MEM_freeN(lengths);
