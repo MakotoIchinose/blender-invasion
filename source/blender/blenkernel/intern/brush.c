@@ -253,7 +253,10 @@ static Brush *gpencil_brush_ensure(Main *bmain, ToolSettings *ts, char *brush_na
   }
 
   /* Set default at brush level. */
-  zero_v3(brush->rgb);
+  brush->rgb[0] = 1.0;
+  brush->rgb[1] = 0.498f;
+  brush->rgb[2] = 0.498f;
+
   brush->secondary_rgb[0] = 1.0f;
   brush->secondary_rgb[1] = 1.0f;
   brush->secondary_rgb[2] = 1.0f;
@@ -645,9 +648,9 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   brush->gpencil_settings->draw_strength = 0.8f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 1.0f;
+  brush->rgb[0] = 0.498f;
   brush->rgb[1] = 1.0f;
-  brush->rgb[2] = 1.0f;
+  brush->rgb[2] = 0.498f;
   zero_v3(brush->secondary_rgb);
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
