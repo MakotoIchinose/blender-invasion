@@ -75,6 +75,12 @@ struct MDeformVert;
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
     ((toolsettings->gp_paint->mode == GPPAINT_MODE_FILL) || \
      (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))))
+#define GPENCIL_TINT_VERTEX_COLOR_STROKE(toolsettings) \
+  ((toolsettings->gp_paint->mode == GPPAINT_MODE_STROKE) || \
+   (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))
+#define GPENCIL_TINT_VERTEX_COLOR_FILL(toolsettings) \
+  ((toolsettings->gp_paint->mode == GPPAINT_MODE_FILL) || \
+   (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))
 
 /* ------------ Grease-Pencil API ------------------ */
 

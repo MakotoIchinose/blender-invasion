@@ -207,6 +207,8 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
                              const int radius,
                              const int co[2])
 {
+  ToolSettings *ts = gso->scene->toolsettings;
+
   /* Attenuate factor to get a smoother tinting. */
   float inf = brush_influence_calc(gso, radius, co) / 100.0f;
   Brush *brush = gso->brush;
@@ -224,9 +226,11 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
 
   CLAMP(alpha, 0.0f, 1.0f);
 
-  /* Apply color to point. */
-  interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
-  pt->mix_color[3] = alpha;
+  /* Apply color Stroke to point. */
+  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(ts)) {
+    interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
+    pt->mix_color[3] = alpha;
+  }
 
   return true;
 }
