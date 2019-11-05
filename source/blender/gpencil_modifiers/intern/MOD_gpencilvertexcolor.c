@@ -154,10 +154,10 @@ static void deformStroke(GpencilModifierData *md,
         BKE_colorband_evaluate(mmd->colorband, 1.0f, coba_res);
         interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, coba_res, mmd->factor);
         gps->mix_color_fill[3] = mmd->factor;
-      }
-      /* If no stroke, cancel loop. */
-      if (mmd->mode != GPPAINT_MODE_BOTH) {
-        break;
+        /* If no stroke, cancel loop. */
+        if (mmd->mode != GPPAINT_MODE_BOTH) {
+          break;
+        }
       }
 
       doit = true;
