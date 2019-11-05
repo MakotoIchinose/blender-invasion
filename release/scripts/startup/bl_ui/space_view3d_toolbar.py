@@ -2082,7 +2082,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_split = True
         layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_paint
@@ -2092,19 +2091,17 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         col = layout.column()
         col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
 
-        row = col.row(align=True)
-        row.prop(settings, "use_vertex_mode", text="Mode")
-
-        row = col.row(align=True)
-
-        if context.area.type == 'PROPERTIES':
-            row.prop(brush, "color", text="")
-            row = col.row(align=True)
-            row.template_color_picker(brush, "color", value_slider=True)
-
         if brush.gpencil_tool == 'DRAW':
-            row = col.row(align=True)
-            row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+            sub_row = col.row()
+            sub_row.prop(settings, "use_vertex_mode", text="Mode")
+            sub_row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+
+        if brush.gpencil_tool == 'TINT':
+            col.prop(settings, "use_vertex_mode", text="Mode")
+
+        # if context.area.type == 'PROPERTIES':
+        col.prop(brush, "color", text="")
+        col.template_color_picker(brush, "color", value_slider=True)
 
         sub_row = col.row(align=True)
         sub_row.prop(brush, "color", text="")
