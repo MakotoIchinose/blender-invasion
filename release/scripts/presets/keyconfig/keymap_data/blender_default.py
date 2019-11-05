@@ -409,9 +409,12 @@ def km_window(params):
         items.extend([
             ("wm.doc_view_manual_ui_context", {"type": 'F1', "value": 'PRESS'}, None),
             op_panel("TOPBAR_PT_name", {"type": 'F2', "value": 'PRESS'}, [("keep_open", False)]),
-            ("wm.batch_rename", {"type": 'F2', "value": 'PRESS', "alt": True}, None),
+            ("wm.batch_rename", {"type": 'F2', "value": 'PRESS', "ctrl": True}, None),
             ("wm.search_menu", {"type": 'F3', "value": 'PRESS'}, None),
             op_menu("TOPBAR_MT_file_context_menu", {"type": 'F4', "value": 'PRESS'}),
+            # Alt as "Leader-Key".
+            ("wm.toolbar_prompt", {"type": 'LEFT_ALT', "value": 'CLICK'}, None),
+            ("wm.toolbar_prompt", {"type": 'RIGHT_ALT', "value": 'CLICK'}, None),
         ])
 
         if params.spacebar_action == 'TOOL':
@@ -2856,6 +2859,17 @@ def km_animation(params):
         {"items": items},
     )
 
+    if not params.legacy:
+        items.extend([
+            ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
+            ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
+        ])
+    else:
+        items.extend([
+            ("anim.start_frame_set", {"type": 'S', "value": 'PRESS'}, None),
+            ("anim.end_frame_set", {"type": 'E', "value": 'PRESS'}, None),
+        ])
+
     items.extend([
         # Frame management.
         ("wm.context_toggle", {"type": 'T', "value": 'PRESS', "ctrl": True},
@@ -2863,8 +2877,6 @@ def km_animation(params):
         # Preview range.
         ("anim.previewrange_set", {"type": 'P', "value": 'PRESS'}, None),
         ("anim.previewrange_clear", {"type": 'P', "value": 'PRESS', "alt": True}, None),
-        ("anim.start_frame_set", {"type": 'HOME', "value": 'PRESS', "ctrl": True}, None),
-        ("anim.end_frame_set", {"type": 'END', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
@@ -4949,6 +4961,7 @@ def km_popup_toolbar(_params):
         "Toolbar Popup",
         {"space_type": 'EMPTY', "region_type": 'TEMPORARY'},
         {"items": [
+            op_tool("builtin.cursor", {"type": 'SPACE', "value": 'PRESS'}),
             op_tool("builtin.select", {"type": 'W', "value": 'PRESS'}),
             op_tool("builtin.select_lasso", {"type": 'L', "value": 'PRESS'}),
             op_tool("builtin.transform", {"type": 'T', "value": 'PRESS'}),
@@ -5793,6 +5806,19 @@ def km_3d_view_tool_paint_gpencil_line(params):
         ]},
     )
 
+def km_3d_view_tool_paint_gpencil_polyline(params):
+    return (
+        "3D View Tool: Paint Gpencil, Polyline",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("gpencil.primitive", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("type", 'POLYLINE'), ("wait_for_input", False)]}),
+            ("gpencil.primitive", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": [("type", 'POLYLINE'), ("wait_for_input", False)]}),
+            # Lasso select
+            ("gpencil.select_lasso", {"type": params.action_tweak, "value": 'ANY', "ctrl": True, "alt": True}, None),
+        ]},
+    )
 
 def km_3d_view_tool_paint_gpencil_box(params):
     return (
@@ -6214,6 +6240,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_paint_weight_sample_vertex_group(params),
         km_3d_view_tool_paint_weight_gradient(params),
         km_3d_view_tool_paint_gpencil_line(params),
+        km_3d_view_tool_paint_gpencil_polyline(params),
         km_3d_view_tool_paint_gpencil_box(params),
         km_3d_view_tool_paint_gpencil_circle(params),
         km_3d_view_tool_paint_gpencil_arc(params),
