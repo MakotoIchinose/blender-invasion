@@ -298,7 +298,14 @@ class _draw_tool_settings_context_mode:
 
         # is_paint = True
         # FIXME: tools must use their own UI drawing!
-        if tool.idname in {"builtin.line", "builtin.box", "builtin.circle", "builtin.arc", "builtin.curve"}:
+        if tool.idname in {
+                "builtin.line",
+                "builtin.box",
+                "builtin.circle",
+                "builtin.arc",
+                "builtin.curve",
+                "builtin.polyline",
+        }:
             # is_paint = False
             pass
         elif tool.idname == "Cutter":
@@ -686,10 +693,18 @@ class VIEW3D_HT_header(Header):
         row = layout.row()
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
-        if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="", icon='XRAY')
-        else:
-            row.prop(shading, "show_xray", text="", icon='XRAY')
+        # While exposing 'shading.show_xray(_wireframe)' is correct.
+        # this hides the key shortcut from users: T70433.
+        row.operator(
+            "view3d.toggle_xray",
+            text="",
+            icon='XRAY',
+            depress=getattr(
+                shading,
+                "show_xray_wireframe" if shading.type == 'WIREFRAME' else
+                "show_xray"
+            ),
+        )
 
         row = layout.row(align=True)
         row.prop(shading, "type", text="", expand=True)
@@ -2326,8 +2341,8 @@ class VIEW3D_MT_object_context_menu(Menu):
 
         elif obj.type == 'GPENCIL':
             layout.operator("gpencil.convert", text="Convert to Path").type = 'PATH'
-            layout.operator("gpencil.convert", text="Convert to Bezier Curves").type = 'CURVE'
-            layout.operator("gpencil.convert", text="Convert to Mesh").type = 'POLY'
+            layout.operator("gpencil.convert", text="Convert to Bezier Curve").type = 'CURVE'
+            layout.operator("gpencil.convert", text="Convert to Polygon Curve").type = 'POLY'
 
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
 
@@ -2892,7 +2907,7 @@ class VIEW3D_MT_mask(Menu):
 class VIEW3D_MT_sculpt_set_pivot(Menu):
     bl_label = "Sculpt Set Pivot"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         props = layout.operator("sculpt.set_pivot_position", text="Pivot to Origin")
@@ -6026,8 +6041,6 @@ class VIEW3D_PT_pivot_point(Panel):
 
     def draw(self, context):
         tool_settings = context.tool_settings
-        obj = context.active_object
-        mode = context.mode
 
         layout = self.layout
         col = layout.column()
@@ -6423,8 +6436,6 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
         is_point_mode = context.tool_settings.gpencil_selectmode_edit == 'POINT'
         is_stroke_mode = context.tool_settings.gpencil_selectmode_edit == 'STROKE'
         is_segment_mode = context.tool_settings.gpencil_selectmode_edit == 'SEGMENT'
-
-        is_3d_view = context.space_data.type == 'VIEW_3D'
 
         layout = self.layout
 

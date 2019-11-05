@@ -346,7 +346,7 @@ enum {
 
 enum {
   SPECIAL_IMG_DOCUMENT = 0,
-  SPECIAL_IMG_UNSUPORTED = 1,
+  SPECIAL_IMG_DRIVE_DISK = 1,
   SPECIAL_IMG_FOLDER = 2,
   SPECIAL_IMG_PARENT = 3,
   SPECIAL_IMG_DRIVE_FIXED = 4,
@@ -784,7 +784,7 @@ void filelist_setfilter_options(FileList *filelist,
   }
   if ((filelist->filter_data.filter != filter) || (filelist->filter_data.filter_id != filter_id)) {
     filelist->filter_data.filter = filter;
-    filelist->filter_data.filter_id = filter_id;
+    filelist->filter_data.filter_id = (filter & FILE_TYPE_BLENDERLIB) ? filter_id : FILTER_ID_ALL;
     update = true;
   }
   if (!STREQ(filelist->filter_data.filter_glob, filter_glob)) {

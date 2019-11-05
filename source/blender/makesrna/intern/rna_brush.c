@@ -1661,7 +1661,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gpencil_tool", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "gpencil_tool");
   RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
-  RNA_def_property_ui_text(prop, "Type", "Category of the brush");
+  RNA_def_property_ui_text(prop, "Grease Pencil Draw Tool", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   /** End per mode tool properties. */
 
@@ -1959,7 +1959,7 @@ static void rna_def_brush(BlenderRNA *brna)
   /* flag */
   /* This is an enum but its unlikely we add other shapes, so expose as a boolean. */
   prop = RNA_def_property(srna, "use_projected", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", BRUSH_AIRBRUSH);
+  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", PAINT_FALLOFF_SHAPE_TUBE);
   RNA_def_property_ui_text(
       prop, "2D Falloff", "Apply brush influence in 2D circle instead of a sphere");
   RNA_def_property_update(prop, 0, "rna_Brush_update");

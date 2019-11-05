@@ -119,7 +119,6 @@ class FILEBROWSER_PT_display(Panel):
 
         space = context.space_data
         params = space.params
-        is_lib_browser = params.use_library_browsing
 
         layout.label(text="Display as")
         layout.column().prop(params, "display_type", expand=True)
@@ -501,7 +500,6 @@ class FILEBROWSER_MT_select(Menu):
 
     def draw(self, context):
         layout = self.layout
-        st = context.space_data
 
         layout.operator("file.select_all", text="All").action = 'SELECT'
         layout.operator("file.select_all", text="None").action = 'DESELECT'

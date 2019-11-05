@@ -2481,7 +2481,7 @@ static void file_rename_state_activate(SpaceFile *sfile, int file_idx, bool requ
   if (sfile->params) {
     const int numfiles = filelist_files_ensure(sfile->files, sfile->params);
 
-    if ((file_idx > 0) && (file_idx < numfiles)) {
+    if ((file_idx >= 0) && (file_idx < numfiles)) {
       FileDirEntry *file = filelist_file(sfile->files, file_idx);
 
       if ((require_selected == false) ||
