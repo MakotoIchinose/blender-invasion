@@ -31,21 +31,6 @@ extern "C" {
 #endif
 
 /**
- * Creates a "handle" for a C++ GHOST object.
- * A handle is just an opaque pointer to an empty struct.
- * In the API the pointer is cast to the actual C++ class.
- * The 'name' argument to the macro is the name of the handle to create.
- */
-
-GHOST_DECLARE_HANDLE(GHOST_SystemHandle);
-GHOST_DECLARE_HANDLE(GHOST_TimerTaskHandle);
-GHOST_DECLARE_HANDLE(GHOST_WindowHandle);
-GHOST_DECLARE_HANDLE(GHOST_EventHandle);
-GHOST_DECLARE_HANDLE(GHOST_RectangleHandle);
-GHOST_DECLARE_HANDLE(GHOST_EventConsumerHandle);
-GHOST_DECLARE_HANDLE(GHOST_ContextHandle);
-
-/**
  * Definition of a callback routine that receives events.
  * \param event The event received.
  * \param userdata The callback's user data, supplied to GHOST_CreateSystem.
@@ -1000,6 +985,36 @@ extern void GHOST_BeginIME(GHOST_WindowHandle windowhandle,
  * \param windowhandle The window handle of the caller
  */
 extern void GHOST_EndIME(GHOST_WindowHandle windowhandle);
+
+#ifdef WITH_OPENXR
+
+/* XR-context */
+
+/**
+ * Set a custom callback to be executed whenever an error occurs. Should be set before calling
+ * #GHOST_XrContextCreate().
+ */
+void GHOST_XrErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *customdata);
+
+GHOST_XrContextHandle GHOST_XrContextCreate(const GHOST_XrContextCreateInfo *create_info);
+void GHOST_XrContextDestroy(GHOST_XrContextHandle xr_context);
+
+void GHOST_XrGraphicsContextBindFuncs(GHOST_XrContextHandle xr_context,
+                                      GHOST_XrGraphicsContextBindFn bind_fn,
+                                      GHOST_XrGraphicsContextUnbindFn unbind_fn);
+
+void GHOST_XrDrawViewFunc(GHOST_XrContextHandle xr_context, GHOST_XrDrawViewFn draw_view_fn);
+
+/* sessions */
+int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
+void GHOST_XrSessionStart(GHOST_XrContextHandle xr_context,
+                          const GHOST_XrSessionBeginInfo *begin_info);
+void GHOST_XrSessionEnd(GHOST_XrContextHandle xr_context);
+void GHOST_XrSessionDrawViews(GHOST_XrContextHandle xr_context, void *customdata);
+
+/* events */
+GHOST_TSuccess GHOST_XrEventsHandle(GHOST_XrContextHandle xr_context);
+#endif
 
 #ifdef __cplusplus
 }
