@@ -2350,6 +2350,55 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
+    def GP_VERTEXCOLOR(self, layout, ob, md):
+        gpd = ob.data
+        split = layout.split()
+
+        col = split.column()
+        col.label(text="Object:")
+        col.prop(md, "object", text="")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+        row.prop(md, "radius")
+        row = layout.row(align=True)
+        row.prop(md, "factor", slider=True)
+
+        col = layout.column()
+        col.separator()
+        col.label(text="Colors:")
+        col.template_color_ramp(md, "colors")
+
+        col = layout.column()
+        col.separator()
+        col.label(text="Vertex Group:")
+        row = col.row(align=True)
+        row.prop_search(md, "vertex_group", ob, "vertex_groups", text="")
+        row.prop(md, "invert_vertex", text="", icon='ARROW_LEFTRIGHT')
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Material:")
+        row = col.row(align=True)
+        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
+        row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "pass_index", text="Pass")
+        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Layer:")
+        row = col.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
+        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "layer_pass", text="Pass")
+        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
+
 
 classes = (
     DATA_PT_modifiers,

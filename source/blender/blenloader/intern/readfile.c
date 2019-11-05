@@ -5834,6 +5834,10 @@ static void direct_link_gpencil_modifiers(FileData *fd, ListBase *lb)
         BKE_curvemapping_initialize(gpmd->curve_thickness);
       }
     }
+    else if (md->type == eGpencilModifierType_Vertexcolor) {
+      VertexcolorGpencilModifierData *hmd = (VertexcolorGpencilModifierData *)md;
+      hmd->colorband = newdataadr(fd, hmd->colorband);
+    }
   }
 }
 

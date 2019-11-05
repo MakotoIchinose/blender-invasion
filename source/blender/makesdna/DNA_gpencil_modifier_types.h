@@ -46,6 +46,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Mirror = 14,
   eGpencilModifierType_Armature = 15,
   eGpencilModifierType_Time = 16,
+  eGpencilModifierType_Vertexcolor = 20,
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
 
@@ -639,5 +640,39 @@ typedef struct ArmatureGpencilModifierData {
   char vgname[64];
 
 } ArmatureGpencilModifierData;
+
+typedef struct VertexcolorGpencilModifierData {
+  GpencilModifierData modifier;
+
+  struct Object *object;
+  /** Layer name. */
+  char layername[64];
+  /** Material name. */
+  char materialname[64];
+  /** Optional vertexgroup name, MAX_VGROUP_NAME. */
+  char vgname[64];
+  /** Custom index for passes. */
+  int pass_index;
+  /** Custom index for passes. */
+  int layer_pass;
+  /** Flags. */
+  int flag;
+  /** Mode. */
+  int mode;
+
+  float factor;
+  float radius;
+
+  struct ColorBand *colorband;
+} VertexcolorGpencilModifierData;
+
+typedef enum eVertexcolorGpencil_Flag {
+  GP_VERTEXCOL_INVERT_LAYER = (1 << 0),
+  GP_VERTEXCOL_INVERT_PASS = (1 << 1),
+  GP_VERTEXCOL_INVERT_VGROUP = (1 << 2),
+  GP_VERTEXCOL_UNIFORM_SPACE = (1 << 3),
+  GP_VERTEXCOL_INVERT_LAYERPASS = (1 << 4),
+  GP_VERTEXCOL_INVERT_MATERIAL = (1 << 5),
+} eVertexcolorGpencil_Flag;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */
