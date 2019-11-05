@@ -2363,7 +2363,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col.separator()
         col.prop(md, "radius")
         col.prop(md, "factor", slider=True)
-        col.prop(md, "use_decay_color")
+        col.prop(md, "use_decay_color", text="Decay color with distance")
 
         col.separator()
         col.label(text="Colors:")

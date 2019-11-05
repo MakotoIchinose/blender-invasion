@@ -175,7 +175,11 @@ static void deformStroke(GpencilModifierData *md,
       BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
 
       interp_v3_v3v3(pt->mix_color, pt->mix_color, coba_res, mmd->factor * weight);
-      pt->mix_color[3] = mmd->factor * (1.0f - mix_factor);
+      pt->mix_color[3] = mmd->factor;
+      /* Apply Decay. */
+      if (mmd->flag & GP_VERTEXCOL_DECAY_COLOR) {
+        pt->mix_color[3] *= (1.0f - mix_factor);
+      }
     }
   }
 }
