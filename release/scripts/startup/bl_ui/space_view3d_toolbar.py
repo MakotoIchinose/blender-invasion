@@ -2082,6 +2082,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+        layout.use_property_split = True
         layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_paint
@@ -2092,9 +2093,8 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
 
         if brush.gpencil_tool == 'DRAW':
-            sub_row = col.row()
-            sub_row.prop(settings, "use_vertex_mode", text="Mode")
-            sub_row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+            col.prop(settings, "use_vertex_mode", text="Mode")
+            col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
         if brush.gpencil_tool == 'TINT':
             col.prop(settings, "use_vertex_mode", text="Mode")

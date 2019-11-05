@@ -920,6 +920,9 @@ class GreasePencilVertexcolorPanel:
 
     def draw(self, context):
         layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
         ts = context.scene.tool_settings
         gpencil_paint = ts.gpencil_paint
         brush = gpencil_paint.brush
@@ -928,11 +931,10 @@ class GreasePencilVertexcolorPanel:
         ob = context.object
 
         if ob:
-            row = layout.row(align=True)
-
             if brush.gpencil_tool == 'DRAW':
-                row = layout.row()
+                row = layout.row(align=True)
                 row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
+                row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
             if brush.gpencil_tool == 'TINT':
