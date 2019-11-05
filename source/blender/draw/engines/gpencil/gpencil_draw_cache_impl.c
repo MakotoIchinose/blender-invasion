@@ -141,6 +141,7 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
                             bGPDstroke *gps,
                             short thickness,
                             const float ink[4],
+                            const float tintcolor[4],
                             const int alignment_mode,
                             const bool onion)
 {
@@ -175,7 +176,9 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
     CLAMP(alpha, GPENCIL_STRENGTH_MIN, 1.0f);
     /* Apply the mix color. */
     if (!onion) {
-      interp_v3_v3v3(mix_color, ink, pt->mix_color, pt->mix_color[3]);
+      float mixtint[3];
+      interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
+      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3]);
     }
 
     ARRAY_SET_ITEMS(col, mix_color[0], mix_color[1], mix_color[2], alpha);
@@ -231,6 +234,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              bGPDstroke *gps,
                              short thickness,
                              const float ink[4],
+                             const float tintcolor[4],
                              const bool onion)
 {
   bGPDspoint *points = gps->points;
@@ -261,7 +265,9 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
     /* Apply the mix color. */
     copy_v4_v4(mix_color, ink);
     if (!onion) {
-      interp_v3_v3v3(mix_color, ink, pt->mix_color, pt->mix_color[3]);
+      float mixtint[3];
+      interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
+      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3]);
     }
 
     /* first point for adjacency (not drawn) */
