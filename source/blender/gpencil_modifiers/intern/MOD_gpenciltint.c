@@ -113,6 +113,22 @@ static void deformStroke(GpencilModifierData *md,
       CLAMP(pt->strength, 0.0f, 1.0f);
     }
   }
+
+  /* Apply to mix color. */
+  float mixfac = mmd->factor;
+  CLAMP(mixfac, 0.0, 1.0f);
+  /* Fill */
+  if (mmd->modify_color != GP_MODIFY_COLOR_STROKE) {
+    interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, mmd->rgb, mixfac);
+  }
+
+  /* Stroke */
+  if (mmd->modify_color != GP_MODIFY_COLOR_FILL) {
+    for (int i = 0; i < gps->totpoints; i++) {
+      bGPDspoint *pt = &gps->points[i];
+      interp_v3_v3v3(pt->mix_color, pt->mix_color, mmd->rgb, mixfac);
+    }
+  }
 }
 
 static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData *md, Object *ob)
