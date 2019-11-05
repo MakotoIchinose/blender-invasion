@@ -2077,7 +2077,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         if brush.gpencil_tool != 'TINT':
             self.layout.prop(settings, "use_vertex_color", text="",
-                icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT', 
                 toggle=False)
 
 
