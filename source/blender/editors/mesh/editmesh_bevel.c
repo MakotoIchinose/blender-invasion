@@ -248,10 +248,8 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   uint objects_used_len = 0;
   opdata->max_obj_scale = FLT_MIN;
 
-//  /* Put the Curve Profile from the toolsettings into the opdata struct */
-//  opdata->custom_profile = ts->custom_profile;
-  /* Add a new curve curve profile. */
-  opdata->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
+  /* Put the Curve Profile from the toolsettings into the opdata struct */
+  opdata->custom_profile = ts->custom_profile;
 
   {
     uint ob_store_len = 0;
@@ -321,7 +319,6 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 
 static bool edbm_bevel_calc(wmOperator *op)
 {
-  printf("EDBM BEVEL CALC\n");
   BevelData *opdata = op->customdata;
   BMEditMesh *em;
   BMOperator bmop;
@@ -418,7 +415,6 @@ static bool edbm_bevel_calc(wmOperator *op)
 
 static void edbm_bevel_exit(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL EXIT\n");
   BevelData *opdata = op->customdata;
   ScrArea *sa = CTX_wm_area(C);
 
@@ -438,7 +434,6 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
     }
     G.moving = 0;
   }
-  BKE_curveprofile_free(opdata->custom_profile);
   MEM_SAFE_FREE(opdata->ob_store);
   MEM_SAFE_FREE(op->customdata);
   op->customdata = NULL;
@@ -446,7 +441,6 @@ static void edbm_bevel_exit(bContext *C, wmOperator *op)
 
 static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL CANCEL\n");
   BevelData *opdata = op->customdata;
   if (opdata->is_modal) {
     for (uint ob_index = 0; ob_index < opdata->ob_store_len; ob_index++) {
@@ -465,7 +459,6 @@ static void edbm_bevel_cancel(bContext *C, wmOperator *op)
 /* bevel! yay!! */
 static int edbm_bevel_exec(bContext *C, wmOperator *op)
 {
-  printf("EDBM BEVEL EXEC\n");
   if (!edbm_bevel_init(C, op, false)) {
     return OPERATOR_CANCELLED;
   }
@@ -508,7 +501,6 @@ static void edbm_bevel_calc_initial_length(wmOperator *op, const wmEvent *event,
 
 static int edbm_bevel_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  printf("EDBM BEVEL INVOKE\n");
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BevelData *opdata;
   float center_3d[3];
@@ -987,18 +979,15 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
 
   uiItemR(layout, &ptr, "use_custom_profile", 0, NULL, ICON_NONE);
   if (RNA_boolean_get(&ptr, "use_custom_profile")) {
-//    /* Get an RNA pointer to ToolSettings to give to the curve profile template code */
-//    Scene *scene = CTX_data_scene(C);
-//    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
-//    uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_profile");
-
-    uiTemplateCurveProfile(layout, &ptr, "custom_profile");
+    /* Get an RNA pointer to ToolSettings to give to the curve profile template code */
+    Scene *scene = CTX_data_scene(C);
+    RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
+    uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_profile");
   }
 }
 
 void MESH_OT_bevel(wmOperatorType *ot)
 {
-  printf("MESH OT BEVEL\n");
   PropertyRNA *prop;
 
   static const EnumPropertyItem offset_type_items[] = {
