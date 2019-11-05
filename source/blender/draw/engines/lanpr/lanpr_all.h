@@ -73,7 +73,6 @@ typedef struct LANPR_PassList {
   struct DRWPass *normal_pass;
   struct DRWPass *edge_intermediate;
   struct DRWPass *edge_thinning;
-  struct DRWPass *snake_pass;
 
   /* GPU */
   struct DRWPass *dpix_transform_pass;
@@ -131,7 +130,6 @@ typedef struct LANPR_PrivateData {
   DRWShadingGroup *multipass_shgrp;
   DRWShadingGroup *edge_detect_shgrp;
   DRWShadingGroup *edge_thinning_shgrp;
-  DRWShadingGroup *snake_shgrp;
 
   DRWShadingGroup *dpix_transform_shgrp;
   DRWShadingGroup *dpix_preview_shgrp;
@@ -187,9 +185,6 @@ typedef struct LANPR_PrivateData {
   unsigned v_buf;
   unsigned i_buf;
   unsigned l_buf;
-
-  GPUVertFormat snake_gwn_format;
-  GPUBatch *snake_batch;
 } LANPR_PrivateData;
 
 typedef struct LANPR_StorageList {
@@ -242,14 +237,6 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
                            SceneLANPR *lanpr,
                            GPUFrameBuffer *DefaultFB,
                            int is_render);
-
-void lanpr_snake_draw_scene(LANPR_TextureList *txl,
-                            LANPR_FramebufferList *fbl,
-                            LANPR_PassList *psl,
-                            LANPR_PrivateData *pd,
-                            SceneLANPR *lanpr,
-                            GPUFrameBuffer *DefaultFB,
-                            int is_render);
 
 void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render);
 

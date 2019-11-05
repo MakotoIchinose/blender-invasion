@@ -317,11 +317,8 @@ typedef struct LANPR_SharedResource {
   struct BLI_mempool *mp_line_strip_point;
   struct BLI_mempool *mp_batch_list;
 
-  /* Image filtering */
+  /* Shared */
   struct GPUShader *multichannel_shader;
-  struct GPUShader *edge_detect_shader;
-  struct GPUShader *edge_thinning_shader;
-  struct GPUShader *snake_connection_shader;
 
   /* GPU */
   struct GPUShader *dpix_transform_shader;

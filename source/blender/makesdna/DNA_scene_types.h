@@ -1654,7 +1654,6 @@ struct LANPR_LineLayer;
 typedef enum LANPR_MasterMode {
   LANPR_MASTER_MODE_SOFTWARE = 0,
   LANPR_MASTER_MODE_DPIX = 1,
-  LANPR_MASTER_MODE_SNAKE = 2,
 } LANPR_MasterMode;
 
 typedef enum LANPR_PostProcessingStatus {

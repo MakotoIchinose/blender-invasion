@@ -911,88 +911,7 @@ class RENDER_PT_lanpr_line_gpu_effects(RenderButtonsPanel, Panel):
         col = layout.column(align = True)
         col.prop(lanpr, "depth_alpha_influence")
         col.prop(lanpr, "depth_alpha_curve", text="Curve")
-
-
-class RENDER_PT_lanpr_snake_sobel_parameters(RenderButtonsPanel, Panel):
-    bl_label = "Sobel Parameters"
-    bl_parent_id = "RENDER_PT_lanpr"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.master_mode == "SNAKE"
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        lanpr = scene.lanpr
-        layout.prop(lanpr, "depth_clamp")
-        layout.prop(lanpr, "depth_strength")
-        layout.prop(lanpr, "normal_clamp")
-        layout.prop(lanpr, "normal_strength")
-        if lanpr.enable_vector_trace == "DISABLED":
-            layout.prop(lanpr, "display_thinning_result")
-
-class RENDER_PT_lanpr_snake_settings(RenderButtonsPanel, Panel):
-    bl_label = "Snake Settings"
-    bl_parent_id = "RENDER_PT_lanpr"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        return scene.render.engine=="BLENDER_LANPR" and lanpr.master_mode == "SNAKE" and lanpr.enable_vector_trace == "ENABLED"
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        lanpr = scene.lanpr
-
-        split = layout.split()
-        col = split.column()
-        col.prop(lanpr, "background_color")
-        col = split.column()
-        col.prop(lanpr, "line_color")
         
-        layout.prop(lanpr, "line_thickness")
-
-        split = layout.split()
-        col = split.column()
-        col.prop(lanpr, "depth_width_influence")
-        col.prop(lanpr, "depth_alpha_influence")
-        col = split.column()
-        col.prop(lanpr, "depth_width_curve")
-        col.prop(lanpr, "depth_alpha_curve")
-        
-        layout.label(text="Taper:")
-        layout.prop(lanpr, "use_same_taper", expand = True)
-        if lanpr.use_same_taper == "DISABLED":
-            split = layout.split()
-            col = split.column(align = True)
-            col.label(text="Left:")
-            col.prop(lanpr,"taper_left_distance")
-            col.prop(lanpr,"taper_left_strength", text="Strength")
-            col = split.column(align = True)
-            col.label(text="Right:")
-            col.prop(lanpr,"taper_right_distance")
-            col.prop(lanpr,"taper_right_strength", text="Strength")
-        else:
-            split = layout.split()
-            col = split.column(align = True)
-            col.prop(lanpr,"taper_left_distance")
-            col.prop(lanpr,"taper_left_strength") 
-
-        layout.label(text="Tip Extend:")
-        layout.prop(lanpr, "enable_tip_extend",  expand = True)
-        if lanpr.enable_tip_extend == "ENABLED":
-            layout.label(text="---INOP---")
-            layout.prop(lanpr,"extend_length")
-
 class RENDER_PT_lanpr_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
     bl_parent_id = "RENDER_PT_lanpr"
@@ -1128,8 +1047,6 @@ classes = (
     RENDER_PT_lanpr_gpencil,
     RENDER_PT_lanpr_line_normal_effects,
     RENDER_PT_lanpr_line_gpu_effects,
-    RENDER_PT_lanpr_snake_sobel_parameters,
-    RENDER_PT_lanpr_snake_settings,
     RENDER_PT_lanpr_software_chain_styles,
     RENDER_PT_lanpr_options,
     LANPR_UL_linesets,

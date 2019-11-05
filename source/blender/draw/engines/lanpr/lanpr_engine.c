@@ -56,12 +56,6 @@
 extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_vert_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
-extern char datatoc_lanpr_snake_multichannel_frag_glsl[];
-extern char datatoc_lanpr_snake_edge_frag_glsl[];
-extern char datatoc_lanpr_snake_image_peel_frag_glsl[];
-extern char datatoc_lanpr_snake_line_connection_vert_glsl[];
-extern char datatoc_lanpr_snake_line_connection_frag_glsl[];
-extern char datatoc_lanpr_snake_line_connection_geom_glsl[];
 extern char datatoc_lanpr_software_line_chain_geom_glsl[];
 extern char datatoc_lanpr_software_chain_geom_glsl[];
 extern char datatoc_lanpr_dpix_project_passthrough_vert_glsl[];
@@ -83,28 +77,6 @@ static void lanpr_engine_init(void *ved)
   if (!lanpr_share.init_complete) {
     BLI_spin_init(&lanpr_share.lock_render_status);
   }
-
-#if 0 /* Deprecated: snake mode */
-  GPU_framebuffer_ensure_config(&fbl->edge_thinning,
-                                {GPU_ATTACHMENT_LEAVE,
-                                 GPU_ATTACHMENT_TEXTURE(txl->color)});
-
-  if (!lanpr_share.edge_detect_shader) {
-    lanpr_share.edge_detect_shader = DRW_shader_create(
-        datatoc_common_fullscreen_vert_glsl, NULL, datatoc_lanpr_snake_edge_frag_glsl, NULL);
-  }
-  if (!lanpr_share.edge_thinning_shader) {
-    lanpr_share.edge_thinning_shader = DRW_shader_create(
-        datatoc_common_fullscreen_vert_glsl, NULL, datatoc_lanpr_snake_image_peel_frag_glsl, NULL);
-  }
-  if (!lanpr_share.snake_connection_shader) {
-    lanpr_share.snake_connection_shader = DRW_shader_create(
-        datatoc_lanpr_snake_line_connection_vert_glsl,
-        datatoc_lanpr_snake_line_connection_geom_glsl,
-        datatoc_lanpr_snake_line_connection_frag_glsl,
-        NULL);
-  }
-#endif
 
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->depth, GPU_DEPTH_COMPONENT32F, 8, 0);
   DRW_texture_ensure_fullscreen_2D_multisample(&txl->color, GPU_RGBA32F, 8, 0);
@@ -191,12 +163,9 @@ static void lanpr_dpix_batch_free(void)
 static void lanpr_engine_free(void)
 {
   DRW_SHADER_FREE_SAFE(lanpr_share.multichannel_shader);
-  DRW_SHADER_FREE_SAFE(lanpr_share.snake_connection_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.software_chaining_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.dpix_preview_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.dpix_transform_shader);
-  DRW_SHADER_FREE_SAFE(lanpr_share.edge_detect_shader);
-  DRW_SHADER_FREE_SAFE(lanpr_share.edge_thinning_shader);
   DRW_SHADER_FREE_SAFE(lanpr_share.software_shader);
 
   lanpr_dpix_batch_free();
@@ -256,46 +225,7 @@ static void lanpr_cache_init(void *vedata)
   stl->g_data->multipass_shgrp = DRW_shgroup_create(lanpr_share.multichannel_shader,
                                                     psl->color_pass);
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_SNAKE) {
-    struct GPUBatch *quad = DRW_cache_fullscreen_quad_get();
-
-    psl->edge_intermediate = DRW_pass_create("Edge Detection", DRW_STATE_WRITE_COLOR);
-    stl->g_data->edge_detect_shgrp = DRW_shgroup_create(lanpr_share.edge_detect_shader,
-                                                        psl->edge_intermediate);
-    DRW_shgroup_uniform_texture_ref(stl->g_data->edge_detect_shgrp, "tex_sample_0", &txl->depth);
-    DRW_shgroup_uniform_texture_ref(stl->g_data->edge_detect_shgrp, "tex_sample_1", &txl->color);
-    DRW_shgroup_uniform_texture_ref(stl->g_data->edge_detect_shgrp, "tex_sample_2", &txl->normal);
-
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp, "z_near", &stl->g_data->znear, 1);
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp, "z_far", &stl->g_data->zfar, 1);
-
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
-                              "normal_clamp",
-                              &stl->g_data->normal_clamp,
-                              1); /*  normal clamp */
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
-                              "normal_strength",
-                              &stl->g_data->normal_strength,
-                              1); /*  normal strength */
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
-                              "depth_clamp",
-                              &stl->g_data->depth_clamp,
-                              1); /*  depth clamp */
-    DRW_shgroup_uniform_float(stl->g_data->edge_detect_shgrp,
-                              "depth_strength",
-                              &stl->g_data->depth_strength,
-                              1); /*  depth strength */
-    DRW_shgroup_call(stl->g_data->edge_detect_shgrp, quad, NULL);
-
-    psl->edge_thinning = DRW_pass_create("Edge Thinning Stage 1", DRW_STATE_WRITE_COLOR);
-    stl->g_data->edge_thinning_shgrp = DRW_shgroup_create(lanpr_share.edge_thinning_shader,
-                                                          psl->edge_thinning);
-    DRW_shgroup_uniform_texture_ref(
-        stl->g_data->edge_thinning_shgrp, "tex_sample_0", &dtxl->color);
-    DRW_shgroup_uniform_int(stl->g_data->edge_thinning_shgrp, "stage", &stl->g_data->stage, 1);
-    DRW_shgroup_call(stl->g_data->edge_thinning_shgrp, quad, NULL);
-  }
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
+  if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
            !lanpr_share.dpix_shader_error) {
     LANPR_LineLayer *ll = lanpr->line_layers.first;
     psl->dpix_transform_pass = DRW_pass_create("DPIX Transform Stage", DRW_STATE_WRITE_COLOR);
@@ -632,12 +562,6 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     DRW_draw_pass(psl->color_pass);
     lanpr_dpix_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
-  /* Deprecated
-  else if (lanpr->master_mode == LANPR_MASTER_MODE_SNAKE) {
-    DRW_draw_pass(psl->color_pass);
-    lanpr_snake_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
-  }
-  */
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
     /*  should isolate these into a seperate function. */
     lanpr_software_draw_scene(vedata, dfb, is_render);
