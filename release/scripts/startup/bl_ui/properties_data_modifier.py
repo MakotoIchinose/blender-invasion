@@ -2352,25 +2352,23 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
     def GP_VERTEXCOLOR(self, layout, ob, md):
         gpd = ob.data
-        split = layout.split()
 
-        col = split.column()
+        col = layout.column()
+        col.prop(md, "vertex_mode")
+
+        col. separator()
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
-        layout.separator()
+        col.separator()
+        col.prop(md, "radius")
+        col.prop(md, "factor", slider=True)
+        col.prop(md, "use_decay_color")
 
-        row = layout.row(align=True)
-        row.prop(md, "radius")
-        row = layout.row(align=True)
-        row.prop(md, "factor", slider=True)
-
-        col = layout.column()
         col.separator()
         col.label(text="Colors:")
         col.template_color_ramp(md, "colors")
 
-        col = layout.column()
         col.separator()
         col.label(text="Vertex Group:")
         row = col.row(align=True)

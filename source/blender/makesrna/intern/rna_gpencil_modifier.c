@@ -1963,6 +1963,11 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Inverse Pass", "Inverse filter");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
+  prop = RNA_def_property(srna, "use_decay_color", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_VERTEXCOL_DECAY_COLOR);
+  RNA_def_property_ui_text(prop, "Decay", "The tinting decrease with the distance");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -1980,8 +1985,9 @@ static void rna_def_modifier_gpencilvertexcolor(BlenderRNA *brna)
   prop = RNA_def_property(srna, "vertex_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "mode");
   RNA_def_property_enum_items(prop, vertexcol_mode_types_items);
-  RNA_def_property_ui_text(prop, "Mode Type", "Defines how vertex color affect to the strokes");
+  RNA_def_property_ui_text(prop, "Mode", "Defines how vertex color affect to the strokes");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   /* Color band */
   prop = RNA_def_property(srna, "colors", PROP_POINTER, PROP_NONE);

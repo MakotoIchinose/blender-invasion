@@ -63,19 +63,22 @@ static void initData(GpencilModifierData *md)
   gpmd->materialname[0] = '\0';
   gpmd->vgname[0] = '\0';
   gpmd->object = NULL;
+  gpmd->radius = 1.0f;
+  gpmd->factor = 1.0f;
+
+  /* Add default color ramp. */
   gpmd->colorband = BKE_colorband_add(false);
   if (gpmd->colorband) {
     BKE_colorband_init(gpmd->colorband, true);
-  }
-  CBData *ramp = gpmd->colorband->data;
-  /* Add default smooth-falloff ramp. */
-  ramp[0].r = ramp[0].g = ramp[0].b = ramp[0].a = 1.0f;
-  ramp[0].pos = 0.0f;
-  ramp[1].r = ramp[1].g = ramp[1].b = 0.0f;
-  ramp[1].a = 1.0f;
-  ramp[1].pos = 1.0f;
+    CBData *ramp = gpmd->colorband->data;
+    ramp[0].r = ramp[0].g = ramp[0].b = ramp[0].a = 1.0f;
+    ramp[0].pos = 0.0f;
+    ramp[1].r = ramp[1].g = ramp[1].b = 0.0f;
+    ramp[1].a = 1.0f;
+    ramp[1].pos = 1.0f;
 
-  gpmd->colorband->tot = 2;
+    gpmd->colorband->tot = 2;
+  }
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -122,11 +125,13 @@ static void deformStroke(GpencilModifierData *md,
   }
 
   float radius_sqr = mmd->radius * mmd->radius;
+  float coba_res[4];
 
   /* loop points and apply deform */
   float target_loc[3];
   copy_v3_v3(target_loc, mmd->object->loc);
 
+  bool doit = false;
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
     MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
@@ -143,19 +148,35 @@ static void deformStroke(GpencilModifierData *md,
       continue;
     }
 
-    /* Verify vertex group. */
-    const float weight = get_modifier_point_weight(
-        dvert, (mmd->flag & GP_HOOK_INVERT_VGROUP) != 0, def_nr);
-    if (weight < 0.0f) {
-      continue;
-    }
-    /* Calc the factor using the distance and get mix color. */
-    float mix_factor = dist_sqr / radius_sqr;
-    float coba_res[4];
-    BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
+    if (!doit) {
+      /* Apply to fill. */
+      if (mmd->mode != GPPAINT_MODE_STROKE) {
+        BKE_colorband_evaluate(mmd->colorband, 1.0f, coba_res);
+        interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, coba_res, mmd->factor);
+        gps->mix_color_fill[3] = mmd->factor;
+      }
+      /* If no stroke, cancel loop. */
+      if (mmd->mode != GPPAINT_MODE_BOTH) {
+        break;
+      }
 
-    interp_v3_v3v3(pt->mix_color, pt->mix_color, coba_res, mmd->factor);
-    pt->mix_color[3] = mmd->factor;
+      doit = true;
+    }
+
+    /* Verify vertex group. */
+    if (mmd->mode != GPPAINT_MODE_FILL) {
+      const float weight = get_modifier_point_weight(
+          dvert, (mmd->flag & GP_HOOK_INVERT_VGROUP) != 0, def_nr);
+      if (weight < 0.0f) {
+        continue;
+      }
+      /* Calc the factor using the distance and get mix color. */
+      float mix_factor = dist_sqr / radius_sqr;
+      BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
+
+      interp_v3_v3v3(pt->mix_color, pt->mix_color, coba_res, mmd->factor * weight);
+      pt->mix_color[3] = mmd->factor * (1.0f - mix_factor);
+    }
   }
 }
 
