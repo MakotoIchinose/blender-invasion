@@ -224,6 +224,13 @@ int GHOST_IsDialogWindow(GHOST_WindowHandle windowhandle)
   return (int)window->isDialog();
 }
 
+int GHOST_isUpsideDownWindow(GHOST_WindowHandle windowhandle)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+
+  return window->isUpsideDown();
+}
+
 GHOST_TSuccess GHOST_DisposeWindow(GHOST_SystemHandle systemhandle,
                                    GHOST_WindowHandle windowhandle)
 {
@@ -700,6 +707,20 @@ GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthandle)
   GHOST_IContext *context = (GHOST_IContext *)contexthandle;
 
   return context->releaseDrawingContext();
+}
+
+unsigned int GHOST_GetContextDefaultOpenGLFramebuffer(GHOST_ContextHandle contexthandle)
+{
+  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
+
+  return context->getDefaultFramebuffer();
+}
+
+int GHOST_isUpsideDownContext(GHOST_ContextHandle contexthandle)
+{
+  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
+
+  return context->isUpsideDown();
 }
 
 unsigned int GHOST_GetDefaultOpenGLFramebuffer(GHOST_WindowHandle windowhandle)

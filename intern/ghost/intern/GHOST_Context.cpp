@@ -149,3 +149,4 @@ void GHOST_Context::initClearGL()
   glClear(GL_COLOR_BUFFER_BIT);
   glClearColor(0.000, 0.000, 0.000, 0.000);
 }
+

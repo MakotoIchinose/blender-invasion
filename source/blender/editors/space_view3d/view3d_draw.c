@@ -1681,6 +1681,89 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 }
 
 /**
+ * Creates own fake 3d views (wrapping #ED_view3d_draw_offscreen). Similar too
+ * #ED_view_draw_offscreen_imbuf_simple, but takes view/projection matrices as arguments.
+ */
+void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
+                                     Scene *scene,
+                                     View3DShading *shading_override,
+                                     int drawtype,
+                                     int winx,
+                                     int winy,
+                                     uint draw_flags,
+                                     float viewmat[4][4],
+                                     float winmat[4][4],
+                                     float clip_start,
+                                     float clip_end,
+                                     bool do_sky,
+                                     bool is_persp,
+                                     const char *viewname,
+                                     const bool do_color_management,
+                                     GPUOffScreen *ofs,
+                                     GPUViewport *viewport)
+{
+  View3D v3d = {NULL};
+  ARegion ar = {NULL};
+  RegionView3D rv3d = {{{0}}};
+
+  v3d.regionbase.first = v3d.regionbase.last = &ar;
+  ar.regiondata = &rv3d;
+  ar.regiontype = RGN_TYPE_WINDOW;
+
+  View3DShading *source_shading_settings = &scene->display.shading;
+  if (draw_flags & V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS && shading_override != NULL) {
+    source_shading_settings = shading_override;
+  }
+  memcpy(&v3d.shading, source_shading_settings, sizeof(View3DShading));
+  v3d.shading.type = drawtype;
+
+  if (drawtype == OB_MATERIAL) {
+    v3d.shading.flag = V3D_SHADING_SCENE_WORLD | V3D_SHADING_SCENE_LIGHTS;
+  }
+
+  if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
+    v3d.flag2 |= V3D_SHOW_ANNOTATION;
+  }
+  if (draw_flags & V3D_OFSDRAW_SHOW_GRIDFLOOR) {
+    v3d.gridflag |= V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y;
+    v3d.grid = 1.0f;
+    v3d.gridlines = 16;
+    v3d.gridsubdiv = 10;
+
+    /* Show grid, disable other overlays (set all available _HIDE_ flags). */
+    v3d.overlay.flag |= V3D_OVERLAY_HIDE_CURSOR | V3D_OVERLAY_HIDE_TEXT |
+                        V3D_OVERLAY_HIDE_MOTION_PATHS | V3D_OVERLAY_HIDE_BONES |
+                        V3D_OVERLAY_HIDE_OBJECT_XTRAS | V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
+    v3d.flag |= V3D_HIDE_HELPLINES;
+  }
+  else {
+    v3d.flag2 = V3D_HIDE_OVERLAYS;
+  }
+
+  rv3d.persp = RV3D_PERSP;
+  v3d.clip_start = clip_start;
+  v3d.clip_end = clip_end;
+  /* Actually not used since we pass in the projection matrix. */
+  v3d.lens = 0;
+
+  ED_view3d_draw_offscreen(depsgraph,
+                           scene,
+                           drawtype,
+                           &v3d,
+                           &ar,
+                           winx,
+                           winy,
+                           viewmat,
+                           winmat,
+                           do_sky,
+                           is_persp,
+                           viewname,
+                           do_color_management,
+                           ofs,
+                           viewport);
+}
+
+/**
  * Utility func for ED_view3d_draw_offscreen
  *
  * \param ofs: Optional off-screen buffer, can be NULL.
@@ -1875,6 +1958,9 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
   if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
     v3d.flag2 |= V3D_SHOW_ANNOTATION;
+  }
+  if (draw_flags & V3D_OFSDRAW_SHOW_GRIDFLOOR) {
+    v3d.gridflag |= V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y;
   }
 
   v3d.shading.background_type = V3D_SHADING_BACKGROUND_WORLD;

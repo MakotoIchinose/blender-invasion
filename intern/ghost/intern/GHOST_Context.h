@@ -38,7 +38,8 @@ class GHOST_Context : public GHOST_IContext {
    * Constructor.
    * \param stereoVisual      Stereo visual for quad buffered stereo.
    */
-  GHOST_Context(bool stereoVisual) : m_stereoVisual(stereoVisual)
+  GHOST_Context(bool stereoVisual)
+      : m_stereoVisual(stereoVisual)
   {
   }
 
@@ -117,6 +118,14 @@ class GHOST_Context : public GHOST_IContext {
   inline bool isStereoVisual() const
   {
     return m_stereoVisual;
+  }
+
+  /**
+   * Returns if the window is rendered upside down compared to OpenGL.
+   */
+  inline bool isUpsideDown() const
+  {
+    return false;
   }
 
   /**

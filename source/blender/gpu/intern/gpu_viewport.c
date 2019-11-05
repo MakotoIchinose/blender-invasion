@@ -505,34 +505,21 @@ void GPU_viewport_bind(GPUViewport *viewport, const rcti *rect)
   }
 }
 
-void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+void GPU_viewport_draw_to_screen_ex(
+    GPUViewport *viewport, float x1, float x2, float y1, float y2, bool to_srgb)
 {
-  DefaultFramebufferList *dfbl = viewport->fbl;
+  GPUTexture *color = GPU_viewport_color_texture(viewport);
 
-  if (dfbl->default_fb == NULL) {
+  if (!color) {
     return;
   }
 
-  DefaultTextureList *dtxl = viewport->txl;
-
-  GPUTexture *color = dtxl->color;
-
-  const float w = (float)GPU_texture_width(color);
-  const float h = (float)GPU_texture_height(color);
-
-  BLI_assert(w == BLI_rcti_size_x(rect) + 1);
-  BLI_assert(h == BLI_rcti_size_y(rect) + 1);
-
   /* wmOrtho for the screen has this same offset */
-  const float halfx = GLA_PIXEL_OFS / w;
-  const float halfy = GLA_PIXEL_OFS / h;
+  const float halfx = GLA_PIXEL_OFS / ABS(x2 - x1);
+  const float halfy = GLA_PIXEL_OFS / ABS(y2 - y1);
 
-  float x1 = rect->xmin;
-  float x2 = rect->xmin + w;
-  float y1 = rect->ymin;
-  float y2 = rect->ymin + h;
-
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_RECT_COLOR);
+  GPUShader *shader = GPU_shader_get_builtin_shader(
+      to_srgb ? GPU_SHADER_2D_IMAGE_RECT_LINEAR_TO_SRGB : GPU_SHADER_2D_IMAGE_RECT_COLOR);
   GPU_shader_bind(shader);
 
   GPU_texture_bind(color, 0);
@@ -548,6 +535,22 @@ void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
   GPU_draw_primitive(GPU_PRIM_TRI_STRIP, 4);
 
   GPU_texture_unbind(color);
+}
+
+void GPU_viewport_draw_to_screen(GPUViewport *viewport, const rcti *rect)
+{
+  GPUTexture *color = GPU_viewport_color_texture(viewport);
+
+  if (color) {
+    const float w = (float)GPU_texture_width(color);
+    const float h = (float)GPU_texture_height(color);
+
+    BLI_assert(w == BLI_rcti_size_x(rect) + 1);
+    BLI_assert(h == BLI_rcti_size_y(rect) + 1);
+
+    GPU_viewport_draw_to_screen_ex(
+        viewport, rect->xmin, rect->xmin + w, rect->ymin, rect->ymin + h, false);
+  }
 }
 
 void GPU_viewport_unbind(GPUViewport *UNUSED(viewport))

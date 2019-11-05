@@ -69,6 +69,7 @@
 #include "wm_draw.h"
 #include "wm_window.h"
 #include "wm_event_system.h"
+#include "wm_surface.h"
 
 #ifdef WITH_OPENSUBDIV
 #  include "BKE_subsurf.h"
@@ -312,7 +313,7 @@ static void wm_draw_region_buffer_free(ARegion *ar)
   }
 }
 
-static void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
+void wm_draw_offscreen_texture_parameters(GPUOffScreen *offscreen)
 {
   /* Setup offscreen color texture for drawing. */
   GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
@@ -825,6 +826,20 @@ static void wm_draw_window(bContext *C, wmWindow *win)
   screen->do_draw = false;
 }
 
+/**
+ * Draw offscreen contexts not bound to a specific window.
+ */
+static void wm_draw_surface(bContext *C, wmSurface *surface)
+{
+  wm_window_clear_drawable(CTX_wm_manager(C));
+  wm_surface_make_drawable(surface);
+
+  surface->draw(C);
+
+  /* Avoid interference with window drawable */
+  wm_surface_clear_drawable();
+}
+
 /****************** main update call **********************/
 
 /* quick test to prevent changing window drawable */
@@ -952,6 +967,9 @@ void wm_draw_update(bContext *C)
       CTX_wm_window_set(C, NULL);
     }
   }
+
+  /* Draw non-windows (surfaces) */
+  wm_surfaces_iter(C, wm_draw_surface);
 }
 
 void wm_draw_region_clear(wmWindow *win, ARegion *UNUSED(ar))

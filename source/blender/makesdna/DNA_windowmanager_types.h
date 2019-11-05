@@ -28,6 +28,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_userdef_types.h"
+#include "DNA_xr_types.h"
 
 #include "DNA_ID.h"
 
@@ -42,6 +43,7 @@ struct wmKeyMap;
 struct wmMsgBus;
 struct wmOperator;
 struct wmOperatorType;
+struct GHOST_XrContext;
 
 /* forwards */
 struct PointerRNA;
@@ -119,6 +121,14 @@ typedef struct ReportTimerInfo {
   float widthfac;
 } ReportTimerInfo;
 
+//#ifdef WITH_OPENXR
+typedef struct wmXrData {
+  void *context; /* GHOST_XrContextHandle */
+
+  bXrSessionSettings session_settings;
+} wmXrData;
+//#endif
+
 /* reports need to be before wmWindowManager */
 
 /* windowmanager is saved, tag WMAN */
@@ -180,6 +190,9 @@ typedef struct wmWindowManager {
 
   struct wmMsgBus *message_bus;
 
+  //#ifdef WITH_OPENXR
+  wmXrData xr;
+  //#endif
 } wmWindowManager;
 
 /* wmWindowManager.initialized */
