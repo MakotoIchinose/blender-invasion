@@ -45,8 +45,8 @@
 #include "BKE_library_query.h"
 #include "BKE_main.h"
 
-/* Asset managing - TODO: we most likely want to turn this into a hashing at some point, could become a bit slow
- *                        when having huge assets (or many of them)... */
+/* Asset managing - TODO: we most likely want to turn this into a hashing at some point, could
+ * become a bit slow when having huge assets (or many of them)... */
 void BKE_library_asset_repository_init(Library *lib,
                                        const AssetEngineType *aet,
                                        const char *repo_root)
@@ -198,17 +198,13 @@ static int library_asset_dependencies_rebuild_cb(void *userdata,
 static void library_asset_dependencies_rebuild(ID *asset)
 {
   Library *lib = asset->lib;
-  BLI_assert(lib && lib->asset_repository);
-
-  if (!(lib && lib->asset_repository)) {
-    printf("asset: %s\n", asset->name);
-    printf("lib: %p\n", lib);
-    printf("lib: %s\n", lib->id.name);
-    printf("lib: %s\n", lib->name);
-    printf("lib: %p\n\n\n", lib->asset_repository);
-  }
 
   asset->tag |= LIB_TAG_ASSET;
+
+  if (!(lib && lib->asset_repository)) {
+    /* 'local' definition of an asset, nothing else to do. */
+    return;
+  }
 
   AssetRef *aref = BKE_library_asset_repository_asset_add(lib, asset);
 
@@ -253,7 +249,8 @@ AssetRef *BKE_libraries_asset_repository_uuid_find(Main *bmain, const AssetUUID 
   return NULL;
 }
 
-/** Find or add the 'virtual' library datablock matching this asset engine, used for non-blend-data assets. */
+/** Find or add the 'virtual' library datablock matching this asset engine, used for non-blend-data
+ * assets. */
 Library *BKE_library_asset_virtual_ensure(Main *bmain, const AssetEngineType *aet)
 {
   Library *lib;

@@ -710,7 +710,6 @@ static void write_iddata(void *wd, const ID *id)
     }
   }
   if (id->uuid) {
-    BLI_assert(id->lib && id->lib->asset_repository);
     writestruct(wd, DATA, AssetUUID, 1, id->uuid);
   }
 

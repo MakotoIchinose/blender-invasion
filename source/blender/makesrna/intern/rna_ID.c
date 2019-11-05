@@ -607,6 +607,19 @@ static void rna_ID_animation_data_free(ID *id, Main *bmain)
   DEG_relations_tag_update(bmain);
 }
 
+static void rna_ID_asset_uuid_free(ID *id)
+{
+  MEM_SAFE_FREE(id->uuid);
+  id->tag &= ~LIB_TAG_ASSET;
+}
+
+static void rna_ID_asset_uuid_create(ID *id)
+{
+  rna_ID_asset_uuid_free(id);
+  id->uuid = MEM_callocN(sizeof(*id->uuid), __func__);
+  id->tag |= LIB_TAG_ASSET;
+}
+
 #  ifdef WITH_PYTHON
 void **rna_ID_instance(PointerRNA *ptr)
 {
@@ -1646,6 +1659,12 @@ static void rna_def_ID(BlenderRNA *brna)
                                   "Tag the ID to update its display data, "
                                   "e.g. when calling :class:`bpy.types.Scene.update`");
   RNA_def_enum_flag(func, "refresh", update_flag_items, 0, "", "Type of updates to perform");
+
+  func = RNA_def_function(srna, "asset_uuid_create", "rna_ID_asset_uuid_create");
+  RNA_def_function_ui_description(func, "Create asset uuid data to this ID");
+
+  func = RNA_def_function(srna, "asset_uuid_clear", "rna_ID_asset_uuid_free");
+  RNA_def_function_ui_description(func, "Clear asset uuid from this ID");
 
 #  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, NULL, NULL, "rna_ID_instance");
