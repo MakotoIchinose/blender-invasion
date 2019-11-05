@@ -71,8 +71,10 @@ static void initData(GpencilModifierData *md)
   /* Add default smooth-falloff ramp. */
   ramp[0].r = ramp[0].g = ramp[0].b = ramp[0].a = 1.0f;
   ramp[0].pos = 0.0f;
-  ramp[1].r = ramp[1].g = ramp[1].b = ramp[1].pos = 1.0f;
-  ramp[1].a = 0.0f;
+  ramp[1].r = ramp[1].g = ramp[1].b = 0.0f;
+  ramp[1].a = 1.0f;
+  ramp[1].pos = 1.0f;
+
   gpmd->colorband->tot = 2;
 }
 
@@ -85,7 +87,7 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 
   BKE_gpencil_modifier_copyData_generic(md, target);
   if (gmd->colorband) {
-    memcpy(tgmd->colorband, gmd->colorband, sizeof(gmd->colorband));
+    tgmd->colorband = MEM_dupallocN(gmd->colorband);
   }
 }
 
@@ -175,8 +177,10 @@ static void bakeModifier(Main *bmain, Depsgraph *depsgraph, GpencilModifierData 
 static void freeData(GpencilModifierData *md)
 {
   VertexcolorGpencilModifierData *mmd = (VertexcolorGpencilModifierData *)md;
-
-  MEM_SAFE_FREE(mmd->colorband);
+  if (mmd->colorband) {
+    MEM_freeN(mmd->colorband);
+    mmd->colorband = NULL;
+  }
 }
 
 static bool isDisabled(GpencilModifierData *md, int UNUSED(userRenderParams))
