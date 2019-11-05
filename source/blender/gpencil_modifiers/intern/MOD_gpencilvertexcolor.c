@@ -121,22 +121,41 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  //  /* just object target */
-  //  copy_m4_m4(dmat, mmd->object->obmat);
+  float radius_sqr = mmd->radius * mmd->radius;
 
   /* loop points and apply deform */
+  float target_loc[3];
+  copy_v3_v3(target_loc, mmd->object->loc);
+
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
     MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
 
-    /* verify vertex group */
+    /* Calc world position of point. */
+    float pt_loc[3];
+    mul_v3_m4v3(pt_loc, ob->obmat, &pt->x);
+
+    /* Cal distance to point (squared) */
+    float dist_sqr = len_squared_v3v3(pt_loc, target_loc);
+
+    /* Only points in the radius. */
+    if (dist_sqr > radius_sqr) {
+      continue;
+    }
+
+    /* Verify vertex group. */
     const float weight = get_modifier_point_weight(
         dvert, (mmd->flag & GP_HOOK_INVERT_VGROUP) != 0, def_nr);
     if (weight < 0.0f) {
       continue;
     }
-    printf("Do\n");
-    // gp_hook_co_apply(&tData, weight, pt);
+    /* Calc the factor using the distance and get mix color. */
+    float mix_factor = dist_sqr / radius_sqr;
+    float coba_res[4];
+    BKE_colorband_evaluate(mmd->colorband, mix_factor, coba_res);
+
+    interp_v3_v3v3(pt->mix_color, pt->mix_color, coba_res, mmd->factor);
+    pt->mix_color[3] = mmd->factor;
   }
 }
 
