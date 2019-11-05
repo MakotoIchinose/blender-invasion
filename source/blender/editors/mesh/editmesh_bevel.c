@@ -231,7 +231,6 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 
 static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
 {
-  printf("EDBM BEVEL INIT\n");
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   BevelData *opdata;
