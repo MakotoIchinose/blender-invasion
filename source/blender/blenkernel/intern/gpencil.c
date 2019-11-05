@@ -1532,6 +1532,7 @@ static int stroke_march_next_point(const bGPDstroke *gps,
                                    float *result,
                                    float *pressure,
                                    float *strength,
+                                   float *mix_color,
                                    float *ratio_result,
                                    int *index_from,
                                    int *index_to)
@@ -1571,6 +1572,7 @@ static int stroke_march_next_point(const bGPDstroke *gps,
     copy_v3_v3(result, &pt->x);
     *pressure = gps->points[next_point_index].pressure;
     *strength = gps->points[next_point_index].strength;
+    memcpy(mix_color, gps->points[next_point_index].mix_color, sizeof(float) * 4);
 
     *index_from = next_point_index - 1;
     *index_to = next_point_index;
@@ -1585,6 +1587,10 @@ static int stroke_march_next_point(const bGPDstroke *gps,
         gps->points[next_point_index].pressure, gps->points[next_point_index - 1].pressure, ratio);
     *strength = interpf(
         gps->points[next_point_index].strength, gps->points[next_point_index - 1].strength, ratio);
+    interp_v4_v4v4(mix_color,
+                   gps->points[next_point_index - 1].mix_color,
+                   gps->points[next_point_index].mix_color,
+                   ratio);
 
     *index_from = next_point_index - 1;
     *index_to = next_point_index;
@@ -1696,6 +1702,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
   int next_point_index = 1;
   i = 0;
   float pressure, strength, ratio_result;
+  float mix_color[4];
   int index_from, index_to;
   float last_coord[3];
 
@@ -1706,6 +1713,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
   copy_v3_v3(&pt2->x, last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
+  memcpy(new_pt[i].mix_color, pt[0].mix_color, sizeof(float) * 4);
   if (select) {
     new_pt[i].flag |= GP_SPOINT_SELECT;
   }
@@ -1723,6 +1731,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
                                                      last_coord,
                                                      &pressure,
                                                      &strength,
+                                                     mix_color,
                                                      &ratio_result,
                                                      &index_from,
                                                      &index_to)) > -1) {
@@ -1730,6 +1739,7 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
     copy_v3_v3(&pt2->x, last_coord);
     new_pt[i].pressure = pressure;
     new_pt[i].strength = strength;
+    memcpy(new_pt[i].mix_color, mix_color, sizeof(float) * 4);
     if (select) {
       new_pt[i].flag |= GP_SPOINT_SELECT;
     }
