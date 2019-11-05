@@ -245,7 +245,6 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
   BezTriple *bezt;
   int count = 0, i;
   float mtx[3][3], smtx[3][3];
-  const bool is_translation_mode = graph_edit_is_translation_mode(t);
   const bool use_handle = IS_USE_HANDLE(sipo);
   const bool use_local_center = graph_edit_use_local_center(t);
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
@@ -301,9 +300,9 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
       cfra = (float)CFRA;
     }
 
-    /* Only include BezTriples whose 'keyframe'
-     * occurs on the same side of the current frame as mouse. */
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+      /* Only include BezTriples whose 'keyframe'
+       * occurs on the same side of the current frame as mouse. */
       if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
         graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
 
@@ -314,14 +313,12 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
           }
         }
         else {
-          if (!is_translation_mode || !(sel_key)) {
-            if (sel_left) {
-              count++;
-            }
+          if (sel_left) {
+            count++;
+          }
 
-            if (sel_right) {
-              count++;
-            }
+          if (sel_right) {
+            count++;
           }
 
           /* only include main vert if selected */
@@ -412,14 +409,14 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
     unit_scale = ANIM_unit_mapping_get_factor(
         ac.scene, ale->id, ale->key_data, anim_map_flag, &offset);
 
-    /* only include BezTriples whose 'keyframe' occurs on the same side
-     * of the current frame as mouse (if applicable) */
     for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
       /* Ensure temp flag is cleared for all triples, we use it. */
       bezt->f1 &= ~BEZT_FLAG_TEMP_TAG;
       bezt->f2 &= ~BEZT_FLAG_TEMP_TAG;
       bezt->f3 &= ~BEZT_FLAG_TEMP_TAG;
 
+      /* only include BezTriples whose 'keyframe' occurs on the same side
+       * of the current frame as mouse (if applicable) */
       if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
         TransDataCurveHandleFlags *hdata = NULL;
 
@@ -481,56 +478,52 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
           /* only include handles if selected, irrespective of the interpolation modes.
            * also, only treat handles specially if the center point isn't selected.
            */
-          if (!is_translation_mode || !(sel_key)) {
-            if (sel_left) {
-              hdata = initTransDataCurveHandles(td, bezt);
-              bezt_to_transdata(td++,
-                                td2d++,
-                                tdg++,
-                                adt,
-                                bezt,
-                                0,
-                                sel_left,
-                                true,
-                                intvals,
-                                mtx,
-                                smtx,
-                                unit_scale,
-                                offset);
-              bezt->f1 |= BEZT_FLAG_TEMP_TAG;
-            }
+          if (sel_left) {
+            hdata = initTransDataCurveHandles(td, bezt);
+            bezt_to_transdata(td++,
+                              td2d++,
+                              tdg++,
+                              adt,
+                              bezt,
+                              0,
+                              sel_left,
+                              true,
+                              intvals,
+                              mtx,
+                              smtx,
+                              unit_scale,
+                              offset);
+            bezt->f1 |= BEZT_FLAG_TEMP_TAG;
+          }
 
-            if (sel_right) {
-              if (hdata == NULL) {
-                hdata = initTransDataCurveHandles(td, bezt);
-              }
-              bezt_to_transdata(td++,
-                                td2d++,
-                                tdg++,
-                                adt,
-                                bezt,
-                                2,
-                                sel_right,
-                                true,
-                                intvals,
-                                mtx,
-                                smtx,
-                                unit_scale,
-                                offset);
-              bezt->f3 |= BEZT_FLAG_TEMP_TAG;
+          if (sel_right) {
+            if (hdata == NULL) {
+              hdata = initTransDataCurveHandles(td, bezt);
             }
+            bezt_to_transdata(td++,
+                              td2d++,
+                              tdg++,
+                              adt,
+                              bezt,
+                              2,
+                              sel_right,
+                              true,
+                              intvals,
+                              mtx,
+                              smtx,
+                              unit_scale,
+                              offset);
+            bezt->f3 |= BEZT_FLAG_TEMP_TAG;
           }
 
           /* only include main vert if selected */
           if (sel_key && !use_local_center) {
             /* move handles relative to center */
-            if (is_translation_mode) {
-              if (sel_left) {
-                td->flag |= TD_MOVEHANDLE1;
-              }
-              if (sel_right) {
-                td->flag |= TD_MOVEHANDLE2;
-              }
+            if (sel_left) {
+              td->flag |= TD_MOVEHANDLE1;
+            }
+            if (sel_right) {
+              td->flag |= TD_MOVEHANDLE2;
             }
 
             /* if handles were not selected, store their selection status */
@@ -602,9 +595,9 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
         cfra = (float)CFRA;
       }
 
-      /* only include BezTriples whose 'keyframe' occurs on the
-       * same side of the current frame as mouse (if applicable) */
       for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+        /* only include BezTriples whose 'keyframe' occurs on the
+         * same side of the current frame as mouse (if applicable) */
         if (FrameOnMouseSide(t->frame_side, bezt->vec[1][0], cfra)) {
           graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
 
