@@ -1,0 +1,28 @@
+diff -Naur orig/src/loader/CMakeLists.txt external_openxr_sdk/src/loader/CMakeLists.txt
+--- orig/src/loader/CMakeLists.txt	2019-07-29 07:06:59 -0600
++++ external_openxr_sdk/src/loader/CMakeLists.txt	2019-08-20 07:56:51 -0600
+@@ -128,24 +128,6 @@
+     configure_file("openxr.pc.in" "openxr.pc" @ONLY)
+     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/openxr.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+-    foreach(configuration in CMAKE_C_FLAGS_DEBUG
+-                             CMAKE_C_FLAGS_RELEASE
+-                             CMAKE_C_FLAGS_RELWITHDEBINFO
+-                             CMAKE_CXX_FLAGS_DEBUG
+-                             CMAKE_CXX_FLAGS_RELEASE
+-                             CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+-        # If building DLLs, force static CRT linkage
+-        if(DYNAMIC_LOADER)
+-            if (${configuration} MATCHES "/MD")
+-                string(REGEX REPLACE "/MD" "/MT" ${configuration} "${${configuration}}")
+-            endif()
+-        else()  # Otherwise for static libs, link the CRT dynamically
+-            if (${configuration} MATCHES "/MT")
+-                string(REGEX REPLACE "/MT" "/MD" ${configuration} "${${configuration}}")
+-            endif()
+-        endif()
+-    endforeach()
+-
+     target_link_libraries(${LOADER_NAME} shlwapi)
+     target_compile_options(${LOADER_NAME} PRIVATE)
+     generate_export_header(${LOADER_NAME})

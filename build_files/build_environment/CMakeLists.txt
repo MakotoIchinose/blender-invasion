@@ -98,6 +98,7 @@ else()
   include(cmake/pugixml.cmake)
 endif()
 include(cmake/openimagedenoise.cmake)
+include(cmake/openxr.cmake)
 
 if(WITH_WEBP)
   include(cmake/webp.cmake)
