@@ -1293,7 +1293,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Grease Pencil Icon", "");
 
   /* Vertex Color mix factor. */
-  prop = RNA_def_property(srna, "vertex_color_factor", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "vertex_color_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "vertex_factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
