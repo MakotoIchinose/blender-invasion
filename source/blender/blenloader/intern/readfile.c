@@ -7006,6 +7006,13 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     }
   }
 
+  sce->lanpr.active_layer = newdataadr(fd, sce->lanpr.active_layer);
+  link_list(fd, &(sce->lanpr.line_layers));
+  for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
+    link_list(fd, &ll->components);
+    ll->batch = NULL;
+    ll->shgrp = NULL;
+  }
   direct_link_view3dshading(fd, &sce->display.shading);
 
   sce->layer_properties = newdataadr(fd, sce->layer_properties);
