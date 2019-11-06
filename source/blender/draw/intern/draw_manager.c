@@ -1422,11 +1422,10 @@ static void drw_engines_enable_basic(void)
   use_drw_engine(DRW_engine_viewport_basic_type.draw_engine);
 }
 
-static void drw_engines_enable(ViewLayer *view_layer,
+static void drw_engines_enable(ViewLayer *UNUSED(view_layer),
                                RenderEngineType *engine_type,
                                bool gpencil_engine_needed)
 {
-  Object *obact = OBACT(view_layer);
   View3D *v3d = DST.draw_ctx.v3d;
   const int drawtype = v3d->shading.type;
   const bool use_xray = XRAY_ENABLED(v3d);

@@ -44,6 +44,16 @@
 #include "draw_cache_impl.h"
 #include "draw_manager.h"
 
+#define VCLASS_LIGHT_AREA_SHAPE (1 << 0)
+#define VCLASS_LIGHT_SPOT_SHAPE (1 << 1)
+#define VCLASS_LIGHT_SPOT_BLEND (1 << 2)
+#define VCLASS_LIGHT_SPOT_CONE (1 << 3)
+#define VCLASS_LIGHT_DIST (1 << 4)
+
+#define VCLASS_SCREENSPACE (1 << 8)
+#define VCLASS_SCREENALIGNED (1 << 9)
+#define VCLASS_GROUND_POINT (1 << 10)
+
 /* Batch's only (free'd as an array) */
 static struct DRWShapeCache {
   GPUBatch *drw_procedural_verts;
@@ -78,16 +88,20 @@ static struct DRWShapeCache {
   GPUBatch *drw_field_vortex;
   GPUBatch *drw_field_tube_limit;
   GPUBatch *drw_field_cone_limit;
-  GPUBatch *drw_light;
-  GPUBatch *drw_light_shadows;
-  GPUBatch *drw_light_sunrays;
-  GPUBatch *drw_light_area_square;
-  GPUBatch *drw_light_area_disk;
-  GPUBatch *drw_light_hemi;
-  GPUBatch *drw_light_spot;
-  GPUBatch *drw_light_spot_volume;
-  GPUBatch *drw_light_spot_square;
-  GPUBatch *drw_light_spot_square_volume;
+  GPUBatch *drw_light_point_lines;
+  GPUBatch *drw_light_sun_lines;
+  GPUBatch *drw_light_spot_lines;
+  GPUBatch *drw_light_area_disk_lines;
+  GPUBatch *drw_light_area_square_lines;
+  GPUBatch *drw_light;                    /* TODO Remove */
+  GPUBatch *drw_light_shadows;            /* TODO Remove */
+  GPUBatch *drw_light_sunrays;            /* TODO Remove */
+  GPUBatch *drw_light_area_square;        /* TODO Remove */
+  GPUBatch *drw_light_area_disk;          /* TODO Remove */
+  GPUBatch *drw_light_spot;               /* TODO Remove */
+  GPUBatch *drw_light_spot_volume;        /* TODO Remove */
+  GPUBatch *drw_light_spot_square;        /* TODO Remove */
+  GPUBatch *drw_light_spot_square_volume; /* TODO Remove */
   GPUBatch *drw_speaker;
   GPUBatch *drw_lightprobe_cube;
   GPUBatch *drw_lightprobe_planar;
@@ -1439,6 +1453,273 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
 /** \name Lights
  * \{ */
 
+#define DIAMOND_NSEGMENTS 4
+#define INNER_NSEGMENTS 8
+#define OUTER_NSEGMENTS 10
+#define CIRCLE_NSEGMENTS 32
+
+typedef struct Vert {
+  float pos[3];
+  int class;
+} Vert;
+
+static void circle_verts(
+    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
+{
+  for (int a = 0; a < segments; a++) {
+    for (int b = 0; b < 2; b++) {
+      float angle = (2.0f * M_PI * (a + b)) / segments;
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      int v = *vert_idx;
+      *vert_idx = v + 1;
+      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
+    }
+  }
+}
+
+static void circle_dashed_verts(
+    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
+{
+  for (int a = 0; a < segments * 2; a += 2) {
+    for (int b = 0; b < 2; b++) {
+      float angle = (2.0f * M_PI * (a + b)) / (segments * 2);
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      int v = *vert_idx;
+      *vert_idx = v + 1;
+      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
+    }
+  }
+}
+
+GPUBatch *DRW_cache_light_point_lines_get(void)
+{
+  if (!SHC.drw_light_point_lines) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
+    /* Light Icon */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+    /* Light area */
+    int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, flag);
+
+    SHC.drw_light_point_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_point_lines;
+}
+
+GPUBatch *DRW_cache_light_sun_lines_get(void)
+{
+  if (!SHC.drw_light_sun_lines) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + 8 * 2 + 1);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
+    /* Light Icon */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+    /* Sun Rays */
+    for (int a = 0; a < 8; a++) {
+      float angle = (2.0f * M_PI * a) / 8.0f;
+      float s = sinf(angle) * r;
+      float c = cosf(angle) * r;
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.6f, c * 1.6f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.9f, c * 1.9f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.2f, c * 2.2f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.5f, c * 2.5f, 0.0f}, VCLASS_SCREENSPACE});
+    }
+    /* Direction Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, -20.0}, 0}); /* Good default. */
+
+    SHC.drw_light_sun_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_sun_lines;
+}
+
+GPUBatch *DRW_cache_light_spot_lines_get(void)
+{
+  if (!SHC.drw_light_spot_lines) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
+                     CIRCLE_NSEGMENTS * 4 + 1);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
+    /* Light Icon */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+    /* Light area */
+    int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, flag);
+    /* Cone cap */
+    flag = VCLASS_LIGHT_SPOT_SHAPE;
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+    flag = VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_BLEND;
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+    /* Cone silhouette */
+    flag = VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_CONE;
+    for (int a = 0; a < CIRCLE_NSEGMENTS; a++) {
+      float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
+      float s = sinf(angle);
+      float c = cosf(angle);
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 0.0f}, 0});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s, c, -1.0f}, flag});
+    }
+    /* Direction Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+
+    SHC.drw_light_spot_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_spot_lines;
+}
+
+GPUBatch *DRW_cache_light_spot_volume_get(void)
+{
+  if (!SHC.drw_light_spot_volume) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    int v_len = CIRCLE_NSEGMENTS + 1 + 1;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    /* Cone apex */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 0.0f}, 0});
+    /* Cone silhouette */
+    int flag = VCLASS_LIGHT_SPOT_SHAPE;
+    for (int a = 0; a < CIRCLE_NSEGMENTS + 1; a++) {
+      float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
+      float s = sinf(-angle);
+      float c = cosf(-angle);
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s, c, -1.0f}, flag});
+    }
+
+    SHC.drw_light_spot_volume = GPU_batch_create_ex(
+        GPU_PRIM_TRI_FAN, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_spot_volume;
+}
+
+GPUBatch *DRW_cache_light_area_disk_lines_get(void)
+{
+  if (!SHC.drw_light_area_disk_lines) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
+                     CIRCLE_NSEGMENTS + 1);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
+    /* Light Icon */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+    /* Light area */
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
+    /* Direction Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+
+    SHC.drw_light_area_disk_lines = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_area_disk_lines;
+}
+
+GPUBatch *DRW_cache_light_area_square_lines_get(void)
+{
+  if (!SHC.drw_light_area_square_lines) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + 4 + 1);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
+    /* Light Icon */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+    circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+    /* Light area */
+    int flag = VCLASS_LIGHT_AREA_SHAPE;
+    for (int a = 0; a < 4; a++) {
+      for (int b = 0; b < 2; b++) {
+        float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+        float x = p[(a + b) % 4][0];
+        float y = p[(a + b) % 4][1];
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x * 0.5f, y * 0.5f, 0.0f}, flag});
+      }
+    }
+    /* Direction Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+
+    SHC.drw_light_area_square_lines = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_area_square_lines;
+}
+
+#undef CIRCLE_NSEGMENTS
+#undef OUTER_NSEGMENTS
+#undef INNER_NSEGMENTS
+
 GPUBatch *DRW_cache_light_get(void)
 {
 #define NSEGMENTS 8
@@ -1613,70 +1894,6 @@ GPUBatch *DRW_cache_light_area_disk_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_light_hemi_get(void)
-{
-#define CIRCLE_RESOL 32
-  if (!SHC.drw_light_hemi) {
-    float v[3];
-    int vidx = 0;
-
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL * 2 * 2 - 6 * 2 * 2);
-
-    /* XZ plane */
-    for (int a = 3; a < CIRCLE_RESOL / 2 - 3; a++) {
-      v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL) - M_PI / 2);
-      v[2] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL) - M_PI / 2) - 1.0f;
-      v[1] = 0.0f;
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-
-      v[0] = sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL) - M_PI / 2);
-      v[2] = cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL) - M_PI / 2) - 1.0f;
-      v[1] = 0.0f;
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-    }
-
-    /* XY plane */
-    for (int a = 3; a < CIRCLE_RESOL / 2 - 3; a++) {
-      v[2] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL)) - 1.0f;
-      v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      v[0] = 0.0f;
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-
-      v[2] = sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL)) - 1.0f;
-      v[1] = cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-      v[0] = 0.0f;
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-    }
-
-    /* YZ plane full circle */
-    /* lease v[2] as it is */
-    const float rad = cosf((2.0f * M_PI * 3) / ((float)CIRCLE_RESOL));
-    for (int a = 0; a < CIRCLE_RESOL; a++) {
-      v[1] = rad * sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      v[0] = rad * cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-
-      v[1] = rad * sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-      v[0] = rad * cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
-    }
-
-    SHC.drw_light_hemi = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
-  }
-  return SHC.drw_light_hemi;
-#undef CIRCLE_RESOL
-}
-
 GPUBatch *DRW_cache_light_spot_get(void)
 {
 #define NSEGMENTS 32
@@ -1747,53 +1964,6 @@ GPUBatch *DRW_cache_light_spot_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_light_spot_volume_get(void)
-{
-#define NSEGMENTS 32
-  if (!SHC.drw_light_spot_volume) {
-    /* a single ring of vertices */
-    float p[NSEGMENTS][2];
-    for (int i = 0; i < NSEGMENTS; i++) {
-      float angle = 2 * M_PI * ((float)i / (float)NSEGMENTS);
-      p[i][0] = cosf(angle);
-      p[i][1] = sinf(angle);
-    }
-
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, NSEGMENTS * 3);
-
-    uint v_idx = 0;
-    for (int i = 0; i < NSEGMENTS; i++) {
-      float cv[2], v[3];
-
-      ARRAY_SET_ITEMS(v, 0.0f, 0.0f, 0.0f);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-
-      cv[0] = p[i % NSEGMENTS][0];
-      cv[1] = p[i % NSEGMENTS][1];
-      ARRAY_SET_ITEMS(v, cv[0], cv[1], -1.0f);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-
-      cv[0] = p[(i + 1) % NSEGMENTS][0];
-      cv[1] = p[(i + 1) % NSEGMENTS][1];
-      ARRAY_SET_ITEMS(v, cv[0], cv[1], -1.0f);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-    }
-
-    SHC.drw_light_spot_volume = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
-  }
-  return SHC.drw_light_spot_volume;
-#undef NSEGMENTS
-}
-
 GPUBatch *DRW_cache_light_spot_square_get(void)
 {
   if (!SHC.drw_light_spot_square) {
@@ -1804,6 +1974,10 @@ GPUBatch *DRW_cache_light_spot_square_get(void)
         {-1.0f, -1.0f, -1.0f},
         {-1.0f, 1.0f, -1.0f},
     };
+    const float n[2][3] = {
+        {-1.0f, 0.0f, 0.0f},
+        {1.0f, 0.0f, 0.0f},
+    };
 
     uint v_idx = 0;
 
@@ -1811,9 +1985,13 @@ GPUBatch *DRW_cache_light_spot_square_get(void)
     static GPUVertFormat format = {0};
     static struct {
       uint pos;
+      uint n1;
+      uint n2;
     } attr_id;
     if (format.attr_len == 0) {
       attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+      attr_id.n1 = GPU_vertformat_attr_add(&format, "N1", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+      attr_id.n2 = GPU_vertformat_attr_add(&format, "N2", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     }
 
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -1821,10 +1999,20 @@ GPUBatch *DRW_cache_light_spot_square_get(void)
 
     /* piramid sides */
     for (int i = 1; i <= 4; i++) {
+      GPU_vertbuf_attr_set(vbo, attr_id.n1, v_idx, n[0]);
+      GPU_vertbuf_attr_set(vbo, attr_id.n2, v_idx, n[1]);
       GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, p[0]);
+
+      GPU_vertbuf_attr_set(vbo, attr_id.n1, v_idx, n[0]);
+      GPU_vertbuf_attr_set(vbo, attr_id.n2, v_idx, n[1]);
       GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, p[i]);
 
+      GPU_vertbuf_attr_set(vbo, attr_id.n1, v_idx, n[0]);
+      GPU_vertbuf_attr_set(vbo, attr_id.n2, v_idx, n[1]);
       GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, p[(i % 4) + 1]);
+
+      GPU_vertbuf_attr_set(vbo, attr_id.n1, v_idx, n[0]);
+      GPU_vertbuf_attr_set(vbo, attr_id.n2, v_idx, n[1]);
       GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, p[((i + 1) % 4) + 1]);
     }
 
@@ -3498,10 +3686,14 @@ GPUBatch **DRW_cache_mball_surface_shaded_get(Object *ob,
 GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
 {
   BLI_assert(ob->type == OB_FONT);
-
   struct Curve *cu = ob->data;
   struct Mesh *mesh_eval = ob->runtime.mesh_eval;
-  if (mesh_eval != NULL) {
+  const bool has_surface = (cu->flag & (CU_FRONT | CU_BACK)) || cu->ext1 != 0.0f ||
+                           cu->ext2 != 0.0f;
+  if (!has_surface) {
+    return NULL;
+  }
+  else if (mesh_eval != NULL) {
     return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
   }
   else {

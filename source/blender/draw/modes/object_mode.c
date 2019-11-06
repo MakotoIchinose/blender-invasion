@@ -222,7 +222,6 @@ typedef struct OBJECT_ShadingGroupList {
   DRWCallBuffer *light_area_sphere;
   DRWCallBuffer *light_area_square;
   DRWCallBuffer *light_area_disk;
-  DRWCallBuffer *light_hemi;
   DRWCallBuffer *light_spot_cone;
   DRWCallBuffer *light_spot_blend;
   DRWCallBuffer *light_spot_pyramid;
@@ -1675,9 +1674,6 @@ static void OBJECT_cache_init(void *vedata)
 
     geom = DRW_cache_light_area_disk_get();
     sgl->light_area_disk = buffer_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_light_hemi_get();
-    sgl->light_hemi = buffer_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
     geom = DRW_cache_single_line_get();
     sgl->light_distance = buffer_distance_lines_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);

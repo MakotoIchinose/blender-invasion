@@ -55,6 +55,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_mesh_mix_occlude_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_mesh_weight_ps;
+  DRWPass *extra_ps[2];
   DRWPass *facing_ps;
   DRWPass *grid_ps;
   DRWPass *outlines_prepass_ps;
@@ -82,6 +83,18 @@ typedef struct OVERLAY_ShadingData {
   /** Edit Mesh */
   int data_mask[4];
 } OVERLAY_ShadingData;
+
+typedef struct OVERLAY_ExtraCallBuffers {
+  DRWCallBuffer *light_groundpoint;
+  DRWCallBuffer *light_groundline;
+
+  DRWCallBuffer *light_point;
+  DRWCallBuffer *light_sun;
+  DRWCallBuffer *light_spot;
+  DRWCallBuffer *light_spot_volume_outside;
+  DRWCallBuffer *light_spot_volume_inside;
+  DRWCallBuffer *light_area[2];
+} OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_mesh_depth_grp[2];
@@ -114,6 +127,9 @@ typedef struct OVERLAY_PrivateData {
   DRWView *view_edit_faces_cage;
   DRWView *view_edit_edges;
   DRWView *view_edit_verts;
+
+  /** Two instances for in_front option and without. */
+  OVERLAY_ExtraCallBuffers extra_call_buffers[2];
 
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
@@ -159,10 +175,41 @@ typedef struct OVERLAY_DupliData {
   short base_flag;
 } OVERLAY_DupliData;
 
+typedef struct OVERLAY_InstanceFormats {
+  struct GPUVertFormat *instance_screenspace;
+  struct GPUVertFormat *instance_color;
+  struct GPUVertFormat *instance_screen_aligned;
+  struct GPUVertFormat *instance_scaled;
+  struct GPUVertFormat *instance_sized;
+  struct GPUVertFormat *instance_outline;
+  struct GPUVertFormat *instance_camera;
+  struct GPUVertFormat *instance_distance_lines;
+  struct GPUVertFormat *instance_spot;
+  struct GPUVertFormat *instance_bone;
+  struct GPUVertFormat *instance_bone_dof;
+  struct GPUVertFormat *instance_bone_stick;
+  struct GPUVertFormat *instance_bone_outline;
+  struct GPUVertFormat *instance_bone_envelope;
+  struct GPUVertFormat *instance_bone_envelope_distance;
+  struct GPUVertFormat *instance_bone_envelope_outline;
+  struct GPUVertFormat *instance_mball_handles;
+  struct GPUVertFormat *pos_color;
+  struct GPUVertFormat *pos;
+
+  struct GPUVertFormat *instance_extra;
+} OVERLAY_InstanceFormats;
+
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_extra_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
+                                  Object *ob,
+                                  OVERLAY_DupliData *dupli,
+                                  bool init_dupli);
+void OVERLAY_extra_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_facing_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);
@@ -200,6 +247,7 @@ GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void);
 GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
+GPUShader *OVERLAY_shader_extra(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
@@ -210,6 +258,9 @@ GPUShader *OVERLAY_shader_outline_detect(bool use_wire);
 GPUShader *OVERLAY_shader_paint_weight(void);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);
+
+OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void);
+
 void OVERLAY_shader_free(void);
 
 #endif /* __OVERLAY_PRIVATE_H__ */

@@ -149,6 +149,7 @@ static void OVERLAY_cache_init(void *vedata)
       BLI_assert(!"Draw mode invalid");
       break;
   }
+  OVERLAY_extra_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
@@ -224,6 +225,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
+
   // if (is_geom) {
   //   if (paint_vertex_mode) {
   //     OVERLAY_paint_vertex_cache_populate();
@@ -238,33 +240,25 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   //     OVERLAY_wireframe_cache_populate();
   //   }
   // }
-  // /* Non-Meshes */
-  // switch (ob->type) {
-  //   case OB_ARMATURE:
-  //     OVERLAY_armature_cache_populate();
-  //     break;
-  //   case OB_EMPTY:
-  //     OVERLAY_empty_cache_populate();
-  //     break;
-  //   case OB_MBALL:
-  //     OVERLAY_mball_cache_populate();
-  //     break;
-  //   case OB_LAMP:
-  //     OVERLAY_lamp_cache_populate();
-  //     break;
-  //   case OB_CAMERA:
-  //     OVERLAY_camera_cache_populate();
-  //     break;
-  //   case OB_SPEAKER:
-  //     OVERLAY_speaker_cache_populate();
-  //     break;
-  //   case OB_LIGHTPROBE:
-  //     OVERLAY_lightprobe_cache_populate();
-  //     break;
-  //   case OB_FONT:
-  //     OVERLAY_font_cache_populate();
-  //     break;
-  // }
+  /* Non-Meshes */
+  switch (ob->type) {
+    // case OB_ARMATURE:
+    //   OVERLAY_armature_cache_populate();
+    //   break;
+    // case OB_MBALL:
+    //   OVERLAY_mball_cache_populate();
+    //   break;
+    // case OB_FONT:
+    //   OVERLAY_font_cache_populate();
+    //   break;
+    case OB_EMPTY:
+    case OB_LAMP:
+    case OB_CAMERA:
+    case OB_SPEAKER:
+    case OB_LIGHTPROBE:
+      OVERLAY_extra_cache_populate(vedata, ob, dupli, init);
+      break;
+  }
   // if (draw_extra) {
   //   OVERLAY_extra_cache_populate();
   // }
@@ -281,6 +275,7 @@ static void OVERLAY_draw_scene(void *vedata)
 
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
+  OVERLAY_extra_draw(vedata);
   OVERLAY_grid_draw(vedata);
   OVERLAY_outline_draw(vedata);
 

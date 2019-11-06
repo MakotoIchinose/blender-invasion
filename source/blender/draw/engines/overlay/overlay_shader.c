@@ -37,6 +37,7 @@ extern char datatoc_edit_mesh_mix_occlude_frag_glsl[];
 extern char datatoc_edit_mesh_skin_root_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
+extern char datatoc_extra_vert_glsl[];
 extern char datatoc_facing_frag_glsl[];
 extern char datatoc_facing_vert_glsl[];
 extern char datatoc_grid_frag_glsl[];
@@ -80,6 +81,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_fnormals;
   GPUShader *edit_mesh_mix_occlude;
   GPUShader *edit_mesh_analysis;
+  GPUShader *extra;
   GPUShader *outline_prepass;
   GPUShader *outline_prepass_wire;
   GPUShader *outline_prepass_lightprobe_grid;
@@ -338,6 +340,25 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void)
   return sh_data->edit_mesh_skin_root;
 }
 
+GPUShader *OVERLAY_shader_extra(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->extra) {
+    sh_data->extra = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_extra_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->extra;
+}
+
 GPUShader *OVERLAY_shader_facing(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -536,6 +557,19 @@ GPUShader *OVERLAY_shader_wireframe(void)
   return sh_data->wireframe;
 }
 
+static OVERLAY_InstanceFormats g_formats = {NULL};
+
+OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void)
+{
+  DRW_shgroup_instance_format(g_formats.pos, {{"pos", DRW_ATTR_FLOAT, 3}});
+  DRW_shgroup_instance_format(g_formats.instance_extra,
+                              {
+                                  {"color", DRW_ATTR_FLOAT, 4},
+                                  {"inst_obmat", DRW_ATTR_FLOAT, 16},
+                              });
+  return &g_formats;
+}
+
 void OVERLAY_shader_free(void)
 {
   for (int sh_data_index = 0; sh_data_index < ARRAY_SIZE(e_data.sh_data); sh_data_index++) {
@@ -544,5 +578,9 @@ void OVERLAY_shader_free(void)
     for (int i = 0; i < (sizeof(OVERLAY_Shaders) / sizeof(GPUShader *)); i++) {
       DRW_SHADER_FREE_SAFE(sh_data_as_array[i]);
     }
+  }
+  struct GPUVertFormat **format = (struct GPUVertFormat **)&g_formats;
+  for (int i = 0; i < sizeof(g_formats) / sizeof(void *); i++, format++) {
+    MEM_SAFE_FREE(*format);
   }
 }
