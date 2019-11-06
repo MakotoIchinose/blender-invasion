@@ -503,3 +503,64 @@ void BKE_asset_uuid_print(const AssetUUID *uuid)
          uuid->uuid_view[2],
          uuid->uuid_view[3]);
 }
+
+void BKE_asset_uuid_list_free(struct AssetUUIDList *uuid_list)
+{
+  MEM_SAFE_FREE(uuid_list->uuids);
+  MEM_freeN(uuid_list);
+}
+
+/** Search the whole Main for a given asset uuid.
+ *
+ * \note if found, ID is put into uuid->id pointer. */
+void BKE_asset_main_search(Main *bmain, AssetUUID *uuid)
+{
+  uuid->id = NULL;
+
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    if (id->uuid == NULL) {
+      continue;
+    }
+    if (ASSETUUID_EQUAL(id->uuid, uuid)) {
+      uuid->id = id;
+      return;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+}
+
+/** Get a list of all IDs/assets and their uuids present in current bmain
+ * (includes local ones and linked ones).
+ * Returned uuid list should be freed with \a BKE_asset_uuid_list_free. */
+struct AssetUUIDList *BKE_asset_main_list(struct Main *bmain)
+{
+  ID *id;
+  AssetUUIDList *uuid_list = MEM_callocN(sizeof(*uuid_list), __func__);
+
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    if (id->uuid != NULL) {
+      uuid_list->nbr_uuids++;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+
+  if (uuid_list->nbr_uuids == 0) {
+    return uuid_list;
+  }
+
+  uuid_list->uuids = MEM_mallocN(sizeof(*uuid_list->uuids) * (size_t)uuid_list->nbr_uuids,
+                                 __func__);
+  int uuid_index = 0;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    if (id->uuid != NULL) {
+      uuid_list->uuids[uuid_index] = *id->uuid;
+      uuid_list->uuids[uuid_index].id = id;
+      uuid_index++;
+    }
+  }
+  FOREACH_MAIN_ID_END;
+  BLI_assert(uuid_index == uuid_list->nbr_uuids);
+
+  return uuid_list;
+}

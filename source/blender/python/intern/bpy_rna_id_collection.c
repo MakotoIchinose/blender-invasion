@@ -28,6 +28,11 @@
 #include "BLI_utildefines.h"
 #include "BLI_bitmap.h"
 
+#include "RNA_access.h"
+#include "RNA_types.h"
+#include "RNA_enum_types.h"
+
+#include "BKE_asset_engine.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_library_query.h"
@@ -47,10 +52,6 @@
 
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_utildefines.h"
-
-#include "RNA_access.h"
-#include "RNA_types.h"
-#include "RNA_enum_types.h"
 
 #include "bpy_rna.h"
 
@@ -375,6 +376,107 @@ error:
   return ret;
 }
 
+PyDoc_STRVAR(
+    bpy_asset_uuid_search_doc,
+    ".. method:: asset_uuid_search([uuid_repository=(0,0,0,0)], [uuid_asset=(0,0,0,0)], "
+    "[uuid_variant=(0,0,0,0)], [uuid_revision=(0,0,0,0)], [uuid_view=(0,0,0,0)])\n"
+    "\n"
+    "   Search for a given set of uuid elements (defining a single asset) in current list of "
+    "IDs.\n"
+    "\n"
+    "   :arg uuid_repository: The uuid of the repository, as an iterable of four integers.\n"
+    "   :type uuid_repository: sequence\n"
+    "   :arg uuid_asset: The uuid of the asset, as an iterable of four integers.\n"
+    "   :type uuid_asset: sequence\n"
+    "   :arg uuid_variant: The uuid of the variant, as an iterable of four integers.\n"
+    "   :type uuid_variant: sequence\n"
+    "   :arg uuid_revision: The uuid of the revision, as an iterable of four integers.\n"
+    "   :type uuid_revision: sequence\n"
+    "   :arg uuid_view: The uuid of the view, as an iterable of four integers.\n"
+    "   :type uuid_view: sequence\n"
+    "   :return: Found ID or None.\n"
+    "   :rtype: ID\n");
+static PyObject *bpy_asset_uuid_search(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
+{
+#if 0 /* If someone knows how to get a proper 'self' in that case... */
+  BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
+  Main *bmain = pyrna->ptr.data;
+#else
+  Main *bmain = G_MAIN; /* XXX Ugly, but should work! */
+#endif
+
+  PyObject *uuid_tupples[5] = {NULL, NULL, NULL, NULL, NULL};
+
+  PyObject *ret = NULL;
+
+  static const char *_keywords[] = {
+      "uuid_repository", "uuid_asset", "uuid_variant", "uuid_revision", "uuid_view", NULL};
+  static _PyArg_Parser _parser = {"|OOOOO:asset_uuid_search", _keywords, 0};
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kwds,
+                                        &_parser,
+                                        &uuid_tupples[0],
+                                        &uuid_tupples[1],
+                                        &uuid_tupples[2],
+                                        &uuid_tupples[3],
+                                        &uuid_tupples[4])) {
+    return ret;
+  }
+
+  int uuid_int_array[5][4] = {0};
+
+  for (int i = 0; i < 5; i++) {
+    if (uuid_tupples[i] == NULL) {
+      continue;
+    }
+
+    PyObject *uuid_items_fast = PySequence_Fast(uuid_tupples[i], __func__);
+    if (uuid_items_fast == NULL) {
+      goto error;
+    }
+
+    PyObject **uuid_items = PySequence_Fast_ITEMS(uuid_items_fast);
+    Py_ssize_t uuid_items_len = PySequence_Fast_GET_SIZE(uuid_items_fast);
+
+    if (uuid_items_len != 4) {
+      PyErr_Format(PyExc_TypeError,
+                   "Expected an uuid item to be an iterable of four integers, not %d %.200s",
+                   uuid_items_len,
+                   Py_TYPE(*uuid_items)->tp_name);
+      Py_DECREF(uuid_items_fast);
+      goto error;
+    }
+
+    int *it = uuid_int_array[i];
+    for (; uuid_items_len; uuid_items++, it++, uuid_items_len--) {
+      *it = PyLong_AsLong(*uuid_items);
+    }
+    Py_DECREF(uuid_items_fast);
+  }
+
+  AssetUUID asset_uuid = {
+      .uuid_repository = {UNPACK4(uuid_int_array[0])},
+      .uuid_asset = {UNPACK4(uuid_int_array[1])},
+      .uuid_variant = {UNPACK4(uuid_int_array[2])},
+      .uuid_revision = {UNPACK4(uuid_int_array[3])},
+      .uuid_view = {UNPACK4(uuid_int_array[4])},
+  };
+
+  BKE_asset_main_search(bmain, &asset_uuid);
+
+  if (asset_uuid.id != NULL) {
+    ret = pyrna_id_CreatePyObject(asset_uuid.id);
+  }
+
+  else {
+    Py_INCREF(Py_None);
+    ret = Py_None;
+  }
+
+error:
+  return ret;
+}
+
 int BPY_rna_id_collection_module(PyObject *mod_par)
 {
   static PyMethodDef user_map = {
@@ -391,6 +493,16 @@ int BPY_rna_id_collection_module(PyObject *mod_par)
 
   PyModule_AddObject(
       mod_par, "_rna_id_collection_batch_remove", PyCFunction_New(&batch_remove, NULL));
+
+  static PyMethodDef asset_uuid_search = {
+      "asset_uuid_search",
+      (PyCFunction)bpy_asset_uuid_search,
+      METH_VARARGS | METH_KEYWORDS,
+      bpy_asset_uuid_search_doc,
+  };
+
+  PyModule_AddObject(
+      mod_par, "_rna_id_collection_asset_uuid_search", PyCFunction_New(&asset_uuid_search, NULL));
 
   return 0;
 }
