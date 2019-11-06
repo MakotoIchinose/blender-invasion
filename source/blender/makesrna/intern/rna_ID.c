@@ -85,8 +85,10 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
 
 #  include "DNA_anim_types.h"
 
+#  include "BLI_hash_mm2a.h"
 #  include "BLI_listbase.h"
 #  include "BLI_math_base.h"
+#  include "PIL_time.h"
 
 #  include "BKE_font.h"
 #  include "BKE_idprop.h"
@@ -617,6 +619,11 @@ static void rna_ID_asset_uuid_create(ID *id)
 {
   rna_ID_asset_uuid_free(id);
   id->uuid = MEM_callocN(sizeof(*id->uuid), __func__);
+  /* Add some dummy init for the asset part of the uuid. */
+  for (int i = 0; i < 4; i++) {
+    id->uuid->uuid_asset[i] = (int)BLI_hash_mm2(
+        id->name + i, sizeof(id->name) - i, (uint)PIL_check_seconds_timer_i());
+  }
   id->tag |= LIB_TAG_ASSET;
 }
 
