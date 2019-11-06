@@ -94,9 +94,55 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   }
 }
 
+static void gpencil_parent_location(const Depsgraph *depsgraph,
+                                    Object *ob,
+                                    bGPDlayer *gpl,
+                                    float diff_mat[4][4])
+{
+  Object *ob_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, ob) : ob;
+  Object *obparent = gpl->parent;
+  Object *obparent_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, obparent) :
+                                              obparent;
+
+  /* if not layer parented, try with object parented */
+  if (obparent_eval == NULL) {
+    if (ob_eval != NULL) {
+      copy_m4_m4(diff_mat, ob_eval->obmat);
+      return;
+    }
+    unit_m4(diff_mat);
+    return;
+  }
+  else {
+    if ((gpl->partype == PAROBJECT) || (gpl->partype == PARSKEL)) {
+      mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
+      add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      return;
+    }
+    else if (gpl->partype == PARBONE) {
+      bPoseChannel *pchan = BKE_pose_channel_find_name(obparent_eval->pose, gpl->parsubstr);
+      if (pchan) {
+        float tmp_mat[4][4];
+        mul_m4_m4m4(tmp_mat, obparent_eval->obmat, pchan->pose_mat);
+        mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
+        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      }
+      else {
+        /* if bone not found use object (armature) */
+        mul_m4_m4m4(diff_mat, obparent_eval->obmat, gpl->inverse);
+        add_v3_v3(diff_mat[3], ob_eval->obmat[3]);
+      }
+      return;
+    }
+    else {
+      unit_m4(diff_mat); /* not defined type */
+    }
+  }
+}
+
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
-                         Depsgraph *UNUSED(depsgraph),
+                         Depsgraph *depsgraph,
                          Object *ob,
                          bGPDlayer *gpl,
                          bGPDframe *UNUSED(gpf),
@@ -126,6 +172,10 @@ static void deformStroke(GpencilModifierData *md,
 
   float radius_sqr = mmd->radius * mmd->radius;
   float coba_res[4];
+  float mat[4][4];
+
+  /* Get object matrix. */
+  gpencil_parent_location(depsgraph, ob, gpl, mat);
 
   /* loop points and apply deform */
   float target_loc[3];
@@ -138,7 +188,7 @@ static void deformStroke(GpencilModifierData *md,
 
     /* Calc world position of point. */
     float pt_loc[3];
-    mul_v3_m4v3(pt_loc, ob->obmat, &pt->x);
+    mul_v3_m4v3(pt_loc, mat, &pt->x);
 
     /* Cal distance to point (squared) */
     float dist_sqr = len_squared_v3v3(pt_loc, target_loc);
