@@ -688,6 +688,8 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
           return "builtin_brush.Push";
         case CTX_MODE_WEIGHT_GPENCIL:
           return "builtin_brush.Weight";
+        case CTX_MODE_VERTEX_GPENCIL:
+          return "builtin_brush.Draw";
           /* end temporary hack. */
 
         case CTX_MODE_PARTICLE:

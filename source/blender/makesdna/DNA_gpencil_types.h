@@ -617,6 +617,10 @@ typedef enum eGPdata_Flag {
    * not valid.
    */
   GP_DATA_STROKE_FORCE_RECALC = (1 << 17),
+
+  /* Vertex Paint Mode - Toggle paint mode */
+  GP_DATA_STROKE_VERTEXMODE = (1 << 18),
+
   /* Use adaptive UV scales */
   GP_DATA_UV_ADAPTIVE = (1 << 19),
   /* Autolock not active layers */
@@ -670,8 +674,9 @@ typedef enum eGP_DrawMode {
 
 /* Macros to check grease pencil modes */
 #define GPENCIL_ANY_MODE(gpd) \
-  ((gpd) && (gpd->flag & (GP_DATA_STROKE_PAINTMODE | GP_DATA_STROKE_EDITMODE | \
-                          GP_DATA_STROKE_SCULPTMODE | GP_DATA_STROKE_WEIGHTMODE)))
+  ((gpd) && \
+   (gpd->flag & (GP_DATA_STROKE_PAINTMODE | GP_DATA_STROKE_EDITMODE | GP_DATA_STROKE_SCULPTMODE | \
+                 GP_DATA_STROKE_WEIGHTMODE | GP_DATA_STROKE_VERTEXMODE)))
 #define GPENCIL_EDIT_MODE(gpd) ((gpd) && (gpd->flag & GP_DATA_STROKE_EDITMODE))
 #define GPENCIL_ANY_EDIT_MODE(gpd) \
   ((gpd) && (gpd->flag & \
@@ -679,6 +684,7 @@ typedef enum eGP_DrawMode {
 #define GPENCIL_PAINT_MODE(gpd) ((gpd) && (gpd->flag & (GP_DATA_STROKE_PAINTMODE)))
 #define GPENCIL_SCULPT_MODE(gpd) ((gpd) && (gpd->flag & GP_DATA_STROKE_SCULPTMODE))
 #define GPENCIL_WEIGHT_MODE(gpd) ((gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE))
+#define GPENCIL_VERTEX_MODE(gpd) ((gpd) && (gpd->flag & (GP_DATA_STROKE_VERTEXMODE)))
 #define GPENCIL_SCULPT_OR_WEIGHT_MODE(gpd) \
   ((gpd) && (gpd->flag & (GP_DATA_STROKE_SCULPTMODE | GP_DATA_STROKE_WEIGHTMODE)))
 #define GPENCIL_NONE_EDIT_MODE(gpd) \

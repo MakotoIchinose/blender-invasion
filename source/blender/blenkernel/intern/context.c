@@ -1112,6 +1112,9 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
       else if (object_mode & OB_MODE_WEIGHT_GPENCIL) {
         return CTX_MODE_WEIGHT_GPENCIL;
       }
+      else if (object_mode & OB_MODE_VERTEX_GPENCIL) {
+        return CTX_MODE_VERTEX_GPENCIL;
+      }
     }
   }
 

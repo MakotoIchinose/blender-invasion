@@ -2229,6 +2229,42 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                       use_negative_slope=True)
 
+# Grease Pecil Vertex Paint tools
+# Grease Pencil drawing brushes
+
+
+class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Brush"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        is_3d_view = context.space_data.type == 'VIEW_3D'
+        if is_3d_view:
+            if context.gpencil_data is None:
+                return False
+
+            gpd = context.gpencil_data
+            return bool(gpd.is_stroke_vertex_mode)
+        else:
+            return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        tool_settings = context.scene.tool_settings
+        gpencil_paint = tool_settings.gpencil_vertex_paint
+
+        row = layout.row()
+        col = row.column()
+        col.template_ID_preview(gpencil_paint, "brush", new="brush.add", rows=3, cols=8)
+
+        col = row.column()
+        brush = gpencil_paint.brush
+
 
 # Grease Pencil stroke editing tools
 class VIEW3D_PT_tools_grease_pencil_edit(GreasePencilStrokeEditPanel, Panel):
@@ -2425,6 +2461,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_sculpt_appearance,
     VIEW3D_PT_tools_grease_pencil_weight_appearance,
     VIEW3D_PT_tools_grease_pencil_interpolate,
+    VIEW3D_PT_tools_grease_pencil_vertex_brush,
 )
 
 if __name__ == "__main__":  # only for live edit.

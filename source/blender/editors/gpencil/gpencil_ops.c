@@ -253,6 +253,7 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_paintmode_toggle);
   WM_operatortype_append(GPENCIL_OT_sculptmode_toggle);
   WM_operatortype_append(GPENCIL_OT_weightmode_toggle);
+  WM_operatortype_append(GPENCIL_OT_vertexmode_toggle);
   WM_operatortype_append(GPENCIL_OT_selection_opacity_toggle);
 
   WM_operatortype_append(GPENCIL_OT_select);

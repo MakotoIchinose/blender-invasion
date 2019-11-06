@@ -111,6 +111,9 @@ class VIEW3D_HT_tool_header(Header):
         elif tool_mode == 'PAINT_GPENCIL':
             if (tool is not None) and tool.has_datablock:
                 layout.popover_group(context=".greasepencil_paint", **popover_kw)
+        elif tool_mode == 'VERTEX_GPENCIL':
+            if (tool is not None) and tool.has_datablock:
+                layout.popover_group(context=".greasepencil_vertex", **popover_kw)
         elif tool_mode == 'SCULPT_GPENCIL':
             layout.popover_group(context=".greasepencil_sculpt", **popover_kw)
         elif tool_mode == 'WEIGHT_GPENCIL':
@@ -198,7 +201,7 @@ class VIEW3D_HT_tool_header(Header):
             layout.popover_group(context=".particlemode", **popover_kw)
         elif mode_string == 'OBJECT':
             layout.popover_group(context=".objectmode", **popover_kw)
-        elif mode_string in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
+        elif mode_string in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             # Grease pencil layer.
             gpl = context.active_gpencil_layer
             if gpl and gpl.info is not None:
@@ -410,6 +413,37 @@ class _draw_tool_settings_context_mode:
             brush_basic_gpencil_weight_settings,
         )
         brush_basic_gpencil_weight_settings(layout, context, brush, compact=True)
+
+    @staticmethod
+    def VERTEX_GPENCIL(context, layout, tool):
+        if tool is None:
+            return
+
+        if not tool.has_datablock:
+            return
+
+        paint = context.tool_settings.gpencil_vertex_paint
+        brush = paint.brush
+        if brush is None:
+            return
+
+        row = layout.row(align=True)
+        tool_settings = context.scene.tool_settings
+        settings = tool_settings.gpencil_vertex_paint
+        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
+
+        row.separator(factor=0.4)
+        row.prop(brush, "color", text="")
+        # row.popover(
+        #     panel="TOPBAR_PT_gpencil_vertexcolor",
+        #     text="Vertex Color",
+        # )
+
+        from bl_ui.properties_paint_common import (
+            brush_basic_gpencil_paint_settings,
+        )
+
+        brush_basic_gpencil_paint_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
 
     @staticmethod
     def PARTICLE(context, layout, tool):
@@ -743,14 +777,15 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}
+        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 
+                                        'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
         ts = context.scene.tool_settings
 
         layout.menu("VIEW3D_MT_view")
 
         # Select Menu
         if gp_edit:
-            if mode_string not in {'PAINT_GPENCIL', 'WEIGHT_GPENCIL'}:
+            if mode_string not in {'PAINT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
                 if mode_string == 'SCULPT_GPENCIL' and \
                     (ts.use_gpencil_select_mask_point or
                      ts.use_gpencil_select_mask_stroke or
@@ -791,6 +826,8 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_gpencil_point")
             elif obj and obj.mode == 'WEIGHT_GPENCIL':
                 layout.menu("VIEW3D_MT_weight_gpencil")
+            elif obj and obj.mode == 'VERTEX_GPENCIL':
+                layout.menu("VIEW3D_MT_paint_gpencil")
 
         elif edit_object:
             layout.menu("VIEW3D_MT_edit_%s" % edit_object.type.lower())
@@ -6255,6 +6292,7 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             'EDIT_GPENCIL': "Edit Grease Pencil",
             'SCULPT_GPENCIL': "Sculpt Grease Pencil",
             'WEIGHT_GPENCIL': "Weight Grease Pencil",
+            'VERTEX_GPENCIL': "Vertex Paint Grease Pencil",
             'OBJECT': "Grease Pencil",
         }[context.mode])
 

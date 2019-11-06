@@ -995,7 +995,15 @@ enum {
   GPPAINT_FLAG_USE_VERTEXCOLOR = (1 << 0),
 };
 
-/* GpPaint.mode */
+/* Grease pencil vertex paint. */
+typedef struct GpVertexPaint {
+  Paint paint;
+  int flag;
+  /** Define if affect stroke, fill or both. */
+  int mode;
+} GpVertexPaint;
+
+/* GpPaint.mode and GpVertexPaint.mode */
 typedef enum eGpPaint_Mode {
   /* Affect to Stroke only. */
   GPPAINT_MODE_STROKE = 0,
@@ -1404,6 +1412,8 @@ typedef struct ToolSettings {
   UvSculpt *uvsculpt;
   /** Gpencil paint. */
   GpPaint *gp_paint;
+  /** Gpencil vertex paint. */
+  GpVertexPaint *gp_vertexpaint;
 
   /* Vertex group weight - used only for editmode, not weight
    * paint */

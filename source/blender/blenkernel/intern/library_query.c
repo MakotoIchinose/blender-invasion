@@ -552,6 +552,9 @@ static void library_foreach_ID_link(Main *bmain,
           if (toolsett->gp_paint) {
             library_foreach_paint(&data, &toolsett->gp_paint->paint);
           }
+          if (toolsett->gp_vertexpaint) {
+            library_foreach_paint(&data, &toolsett->gp_vertexpaint->paint);
+          }
 
           CALLBACK_INVOKE(toolsett->gp_sculpt.guide.reference_object, IDWALK_CB_NOP);
         }

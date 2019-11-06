@@ -580,6 +580,104 @@ void GPENCIL_OT_weightmode_toggle(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
+/* Vertex Paint Mode Management */
+
+static bool gpencil_vertexmode_toggle_poll(bContext *C)
+{
+  /* if using gpencil object, use this gpd */
+  Object *ob = CTX_data_active_object(C);
+  if ((ob) && (ob->type == OB_GPENCIL)) {
+    return ob->data != NULL;
+  }
+  return ED_gpencil_data_get_active(C) != NULL;
+}
+static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
+{
+  const bool back = RNA_boolean_get(op->ptr, "back");
+
+  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  Main *bmain = CTX_data_main(C);
+  bGPdata *gpd = ED_gpencil_data_get_active(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  bool is_object = false;
+  short mode;
+  /* if using a gpencil object, use this datablock */
+  Object *ob = CTX_data_active_object(C);
+  if ((ob) && (ob->type == OB_GPENCIL)) {
+    gpd = ob->data;
+    is_object = true;
+  }
+
+  if (gpd == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Just toggle paintmode flag... */
+  gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
+  /* set mode */
+  if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
+    mode = OB_MODE_VERTEX_GPENCIL;
+  }
+  else {
+    mode = OB_MODE_OBJECT;
+  }
+
+  if (is_object) {
+    /* try to back previous mode */
+    if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
+      mode = ob->restore_mode;
+    }
+    ob->restore_mode = ob->mode;
+    ob->mode = mode;
+  }
+
+  if (mode == OB_MODE_VERTEX_GPENCIL) {
+    /* be sure we have brushes */
+    BKE_paint_ensure(ts, (Paint **)&ts->gp_vertexpaint);
+    BKE_paint_toolslots_brush_validate(bmain, &ts->gp_vertexpaint->paint);
+  }
+
+  /* setup other modes */
+  ED_gpencil_setup_modes(C, gpd, mode);
+  /* set cache as dirty */
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, NULL);
+  WM_event_add_notifier(C, NC_SCENE | ND_MODE, NULL);
+
+  if (is_object) {
+    WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
+  }
+  if (G.background == false) {
+    WM_toolsystem_update_from_context_view3d(C);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_vertexmode_toggle(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Strokes Vertex Mode Toggle";
+  ot->idname = "GPENCIL_OT_vertexmode_toggle";
+  ot->description = "Enter/Exit vertex paint mode for Grease Pencil strokes";
+
+  /* callbacks */
+  ot->exec = gpencil_vertexmode_toggle_exec;
+  ot->poll = gpencil_vertexmode_toggle_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  /* properties */
+  prop = RNA_def_boolean(
+      ot->srna, "back", 0, "Return to Previous Mode", "Return to previous mode");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
 /* ************************************************ */
 /* Stroke Editing Operators */
 
@@ -4619,11 +4717,11 @@ bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
     bGPdata *gpd = (bGPdata *)ob->data;
 
     gpd->flag &= ~(GP_DATA_STROKE_PAINTMODE | GP_DATA_STROKE_EDITMODE | GP_DATA_STROKE_SCULPTMODE |
-                   GP_DATA_STROKE_WEIGHTMODE);
+                   GP_DATA_STROKE_WEIGHTMODE | GP_DATA_STROKE_VERTEXMODE);
 
     ob->restore_mode = ob->mode;
     ob->mode &= ~(OB_MODE_PAINT_GPENCIL | OB_MODE_EDIT_GPENCIL | OB_MODE_SCULPT_GPENCIL |
-                  OB_MODE_WEIGHT_GPENCIL);
+                  OB_MODE_WEIGHT_GPENCIL | OB_MODE_VERTEX_GPENCIL);
 
     /* Inform all CoW versions that we changed the mode. */
     DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);

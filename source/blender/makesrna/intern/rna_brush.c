@@ -150,6 +150,14 @@ const EnumPropertyItem rna_enum_brush_gpencil_types_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+const EnumPropertyItem rna_enum_brush_gpencil_vertex_types_items[] = {
+    {GPVERTEX_TOOL_DRAW, "DRAW", ICON_BRUSH_MIX, "Draw", ""},
+    {GPVERTEX_TOOL_BLUR, "BLUR", ICON_BRUSH_BLUR, "Blur", ""},
+    {GPVERTEX_TOOL_AVERAGE, "AVERAGE", ICON_BRUSH_BLUR, "Average", ""},
+    {GPVERTEX_TOOL_SMEAR, "SMEAR", ICON_BRUSH_BLUR, "Smear", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
 #ifndef RNA_RUNTIME
 static EnumPropertyItem rna_enum_gpencil_brush_eraser_modes_items[] = {
     {GP_BRUSH_ERASER_SOFT, "SOFT", 0, "Soft", "Use soft eraser"},
@@ -1638,6 +1646,13 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
   RNA_def_property_ui_text(prop, "Grease Pencil Draw Tool", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "gpencil_vertex_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "gpencil_vertex_tool");
+  RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_vertex_types_items);
+  RNA_def_property_ui_text(prop, "Grease Pencil Vertex Paint Tool", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
   /** End per mode tool properties. */
 
   prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
@@ -2230,7 +2245,12 @@ static void rna_def_brush(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_paint_grease_pencil", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "ob_mode", OB_MODE_PAINT_GPENCIL);
-  RNA_def_property_ui_text(prop, "Use Sculpt", "Use this brush in grease pencil drawing mode");
+  RNA_def_property_ui_text(prop, "Use Paint", "Use this brush in grease pencil drawing mode");
+
+  prop = RNA_def_property(srna, "use_vertex_grease_pencil", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "ob_mode", OB_MODE_VERTEX_GPENCIL);
+  RNA_def_property_ui_text(
+      prop, "Use Vertex", "Use this brush in grease pencil vertex color mode");
 
   /* texture */
   prop = RNA_def_property(srna, "texture_slot", PROP_POINTER, PROP_NONE);

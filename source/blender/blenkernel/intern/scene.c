@@ -170,6 +170,10 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
     ts->gp_paint = MEM_dupallocN(ts->gp_paint);
     BKE_paint_copy(&ts->gp_paint->paint, &ts->gp_paint->paint, flag);
   }
+  if (ts->gp_vertexpaint) {
+    ts->gp_vertexpaint = MEM_dupallocN(ts->gp_vertexpaint);
+    BKE_paint_copy(&ts->gp_vertexpaint->paint, &ts->gp_vertexpaint->paint, flag);
+  }
 
   BKE_paint_copy(&ts->imapaint.paint, &ts->imapaint.paint, flag);
   ts->imapaint.paintcursor = NULL;
@@ -209,6 +213,10 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   if (toolsettings->gp_paint) {
     BKE_paint_free(&toolsettings->gp_paint->paint);
     MEM_freeN(toolsettings->gp_paint);
+  }
+  if (toolsettings->gp_vertexpaint) {
+    BKE_paint_free(&toolsettings->gp_vertexpaint->paint);
+    MEM_freeN(toolsettings->gp_vertexpaint);
   }
   BKE_paint_free(&toolsettings->imapaint.paint);
 

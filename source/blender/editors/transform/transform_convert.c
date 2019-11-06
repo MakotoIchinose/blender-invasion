@@ -2690,9 +2690,11 @@ void createTransData(bContext *C, TransInfo *t)
       has_transform_context = false;
     }
   }
-  else if ((ob) &&
-           (ELEM(
-               ob->mode, OB_MODE_PAINT_GPENCIL, OB_MODE_SCULPT_GPENCIL, OB_MODE_WEIGHT_GPENCIL))) {
+  else if ((ob) && (ELEM(ob->mode,
+                         OB_MODE_PAINT_GPENCIL,
+                         OB_MODE_SCULPT_GPENCIL,
+                         OB_MODE_WEIGHT_GPENCIL,
+                         OB_MODE_VERTEX_GPENCIL))) {
     /* In grease pencil all transformations must be canceled if not Object or Edit. */
     has_transform_context = false;
   }

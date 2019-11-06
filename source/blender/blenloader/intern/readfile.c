@@ -6431,6 +6431,9 @@ static void lib_link_scene(FileData *fd, Main *main)
       if (sce->toolsettings->gp_paint) {
         link_paint(fd, sce, &sce->toolsettings->gp_paint->paint);
       }
+      if (sce->toolsettings->gp_vertexpaint) {
+        link_paint(fd, sce, &sce->toolsettings->gp_vertexpaint->paint);
+      }
 
       if (sce->toolsettings->sculpt) {
         sce->toolsettings->sculpt->gravity_object = newlibadr(
@@ -6728,6 +6731,7 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->wpaint);
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->uvsculpt);
     direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->gp_paint);
+    direct_link_paint_helper(fd, sce, (Paint **)&sce->toolsettings->gp_vertexpaint);
 
     direct_link_paint(fd, sce, &sce->toolsettings->imapaint.paint);
 

@@ -1559,6 +1559,7 @@ class _defs_gpencil_edit:
             draw_settings=draw_settings,
         )
 
+
 class _defs_gpencil_sculpt:
 
     @staticmethod
@@ -1599,6 +1600,23 @@ class _defs_gpencil_weight:
             tooldef_keywords=dict(
                 operator="gpencil.sculpt_paint",
                 keymap="3D View Tool: Sculpt Gpencil, Paint",
+            ),
+        )
+
+
+class _defs_gpencil_vertex:
+
+    @staticmethod
+    def generate_from_brushes(context):
+        return generate_from_enum_ex(
+            context,
+            idname_prefix="builtin_brush.",
+            icon_prefix="brush.paint_vertex.",
+            type=bpy.types.Brush,
+            attr="gpencil_vertex_tool",
+            cursor='DOT',
+            tooldef_keywords=dict(
+                operator="gpencil.tint",
             ),
         )
 
@@ -2116,6 +2134,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'WEIGHT_GPENCIL': [
             _defs_gpencil_weight.generate_from_brushes,
+        ],
+        'VERTEX_GPENCIL': [
+            _defs_gpencil_vertex.generate_from_brushes,
         ],
     }
 

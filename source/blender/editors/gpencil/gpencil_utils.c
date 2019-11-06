@@ -1579,8 +1579,11 @@ static bool gp_check_cursor_region(bContext *C, int mval_i[2])
   ScrArea *sa = CTX_wm_area(C);
   Object *ob = CTX_data_active_object(C);
 
-  if ((ob == NULL) ||
-      (!ELEM(ob->mode, OB_MODE_PAINT_GPENCIL, OB_MODE_SCULPT_GPENCIL, OB_MODE_WEIGHT_GPENCIL))) {
+  if ((ob == NULL) || (!ELEM(ob->mode,
+                             OB_MODE_PAINT_GPENCIL,
+                             OB_MODE_SCULPT_GPENCIL,
+                             OB_MODE_WEIGHT_GPENCIL,
+                             OB_MODE_VERTEX_GPENCIL))) {
     return false;
   }
 
@@ -1869,6 +1872,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
       gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, false, NULL);
       break;
     case OB_MODE_PAINT_GPENCIL:
@@ -1876,6 +1880,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag |= GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
       gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
     case OB_MODE_SCULPT_GPENCIL:
@@ -1883,6 +1888,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag |= GP_DATA_STROKE_SCULPTMODE;
       gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       gpencil_verify_brush_type(C, OB_MODE_SCULPT_GPENCIL);
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
@@ -1891,7 +1897,16 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
       gpd->flag |= GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       gpencil_verify_brush_type(C, OB_MODE_WEIGHT_GPENCIL);
+      ED_gpencil_toggle_brush_cursor(C, true, NULL);
+      break;
+    case OB_MODE_VERTEX_GPENCIL:
+      gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
+      gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag |= GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
     default:
@@ -1899,6 +1914,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
       gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
+      gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
       ED_gpencil_toggle_brush_cursor(C, false, NULL);
       break;
   }

@@ -89,6 +89,11 @@ const EnumPropertyItem rna_enum_object_mode_items[] = {
      ICON_WPAINT_HLT,
      "Weight Paint",
      "Grease Pencil Weight Paint Strokes"},
+    {OB_MODE_VERTEX_GPENCIL,
+     "VERTEX_GPENCIL",
+     ICON_VPAINT_HLT,
+     "Vertex Paint",
+     "Grease Pencil Vertex Paint Strokes"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -122,6 +127,11 @@ const EnumPropertyItem rna_enum_workspace_object_mode_items[] = {
      ICON_WPAINT_HLT,
      "Grease Pencil Weight Paint",
      "Grease Pencil Weight Paint Strokes"},
+    {OB_MODE_VERTEX_GPENCIL,
+     "VERTEX_GPENCIL",
+     ICON_VPAINT_HLT,
+     "Grease Pencil Vertex Paint",
+     "Grease Pencil Vertex Paint Strokes"},
     {0, NULL, 0, NULL, NULL},
 };
 
