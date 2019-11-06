@@ -519,11 +519,13 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
           /* only include main vert if selected */
           if (sel_key && !use_local_center) {
             /* move handles relative to center */
-            if (sel_left) {
-              td->flag |= TD_MOVEHANDLE1;
-            }
-            if (sel_right) {
-              td->flag |= TD_MOVEHANDLE2;
+            if (graph_edit_is_translation_mode(t)) {
+              if (sel_left) {
+                td->flag |= TD_MOVEHANDLE1;
+              }
+              if (sel_right) {
+                td->flag |= TD_MOVEHANDLE2;
+              }
             }
 
             /* if handles were not selected, store their selection status */
