@@ -240,8 +240,9 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
   Brush *brush = gso->brush;
 
   /* Attenuate factor to get a smoother tinting. */
-  float inf = brush_influence_calc(gso, radius, co) / 100.0f;
-  float inf_fill = gso->pressure / 1000.0f;
+  float inf = (brush_influence_calc(gso, radius, co) * brush->gpencil_settings->draw_strength) /
+              100.0f;
+  float inf_fill = (gso->pressure * brush->gpencil_settings->draw_strength) / 1000.0f;
 
   bGPDspoint *pt = &gps->points[pt_index];
 
@@ -255,9 +256,6 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
   else {
     alpha += inf;
     alpha_fill += inf_fill;
-    /* Limit max strength target. */
-    CLAMP_MAX(alpha, brush->gpencil_settings->draw_strength);
-    CLAMP_MAX(alpha_fill, brush->gpencil_settings->draw_strength);
   }
 
   /* Apply color to Stroke point. */
