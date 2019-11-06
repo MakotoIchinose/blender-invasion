@@ -333,6 +333,8 @@ typedef struct LANPR_SharedResource {
   struct GPUShader *software_shader;
   struct GPUShader *software_chaining_shader;
 
+  struct TaskPool *background_render_task;
+
   void *ved_viewport;
   void *ved_render;
 

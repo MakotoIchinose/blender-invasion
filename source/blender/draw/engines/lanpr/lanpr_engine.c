@@ -23,6 +23,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
+#include "BLI_task.h"
 #include "BLI_math_matrix.h"
 #include "BLI_rect.h"
 
@@ -174,6 +175,10 @@ static void lanpr_engine_free(void)
     LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
     ED_lanpr_destroy_render_data(rb);
 
+    if (lanpr_share.background_render_task) {
+      BLI_task_pool_free(lanpr_share.background_render_task);
+    }
+
     GPU_BATCH_DISCARD_SAFE(rb->chain_draw_batch);
 
     MEM_freeN(rb);
@@ -226,7 +231,7 @@ static void lanpr_cache_init(void *vedata)
                                                     psl->color_pass);
 
   if (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && lanpr->active_layer &&
-           !lanpr_share.dpix_shader_error) {
+      !lanpr_share.dpix_shader_error) {
     LANPR_LineLayer *ll = lanpr->line_layers.first;
     psl->dpix_transform_pass = DRW_pass_create("DPIX Transform Stage", DRW_STATE_WRITE_COLOR);
     stl->g_data->dpix_transform_shgrp = DRW_shgroup_create(lanpr_share.dpix_transform_shader,

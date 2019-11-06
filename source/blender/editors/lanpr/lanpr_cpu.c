@@ -3863,9 +3863,19 @@ static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool)
 
 void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_only)
 {
+  TaskPool *tp_read;
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  tp_read = lanpr_share.background_render_task;
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
+
   /* If the calculation is already started then bypass it. */
   if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
     return;
+  }
+
+  if (tp_read) {
+    BLI_task_pool_free(lanpr_share.background_render_task);
+    lanpr_share.background_render_task = NULL;
   }
 
   ED_lanpr_calculation_set_flag(LANPR_RENDER_RUNNING);
@@ -3877,6 +3887,9 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_o
   flw->intersection_only = intersection_only;
 
   TaskPool *tp = BLI_task_pool_create_background(scheduler, flw);
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  lanpr_share.background_render_task = tp;
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
 
   BLI_task_pool_push(tp, lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
 }
