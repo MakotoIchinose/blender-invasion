@@ -52,7 +52,6 @@
 
 #define VCLASS_SCREENSPACE (1 << 8)
 #define VCLASS_SCREENALIGNED (1 << 9)
-#define VCLASS_GROUND_POINT (1 << 10)
 
 /* Batch's only (free'd as an array) */
 static struct DRWShapeCache {
@@ -88,6 +87,7 @@ static struct DRWShapeCache {
   GPUBatch *drw_field_vortex;
   GPUBatch *drw_field_tube_limit;
   GPUBatch *drw_field_cone_limit;
+  GPUBatch *drw_ground_line;
   GPUBatch *drw_light_point_lines;
   GPUBatch *drw_light_sun_lines;
   GPUBatch *drw_light_spot_lines;
@@ -1493,6 +1493,29 @@ static void circle_dashed_verts(
   }
 }
 
+GPUBatch *DRW_cache_groundline_get(void)
+{
+  if (!SHC.drw_ground_line) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT); /* Unused */
+
+    int v_len = 2 * (1 + DIAMOND_NSEGMENTS);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    /* Ground Point */
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.35f, 0.0f, 0);
+    /* Ground Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, 0});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
+
+    SHC.drw_ground_line = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_ground_line;
+}
+
 GPUBatch *DRW_cache_light_point_lines_get(void)
 {
   if (!SHC.drw_light_point_lines) {
@@ -1500,15 +1523,12 @@ GPUBatch *DRW_cache_light_point_lines_get(void)
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
 
-    int v_len = 2 * (1 + DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS);
+    int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     const float r = 9.0f;
     int v = 0;
-    /* Ground Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
     /* Light Icon */
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
@@ -1529,15 +1549,12 @@ GPUBatch *DRW_cache_light_sun_lines_get(void)
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
 
-    int v_len = 2 * (1 + DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + 8 * 2 + 1);
+    int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + 8 * 2 + 1);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     const float r = 9.0f;
     int v = 0;
-    /* Ground Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
     /* Light Icon */
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
@@ -1568,16 +1585,13 @@ GPUBatch *DRW_cache_light_spot_lines_get(void)
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
 
-    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
+    int v_len = 2 * (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
                      CIRCLE_NSEGMENTS * 4 + 1);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     const float r = 9.0f;
     int v = 0;
-    /* Ground Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
     /* Light Icon */
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
@@ -1646,16 +1660,13 @@ GPUBatch *DRW_cache_light_area_disk_lines_get(void)
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
 
-    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
-                     CIRCLE_NSEGMENTS + 1);
+    int v_len = 2 *
+                (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS + 1);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     const float r = 9.0f;
     int v = 0;
-    /* Ground Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
     /* Light Icon */
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
@@ -1682,14 +1693,11 @@ GPUBatch *DRW_cache_light_area_square_lines_get(void)
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
 
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + 4 + 1);
+    int v_len = 2 * (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + 4 + 1);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     const float r = 9.0f;
     int v = 0;
-    /* Ground Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_GROUND_POINT});
     /* Light Icon */
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);

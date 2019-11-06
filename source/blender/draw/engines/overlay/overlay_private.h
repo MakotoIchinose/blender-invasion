@@ -85,8 +85,7 @@ typedef struct OVERLAY_ShadingData {
 } OVERLAY_ShadingData;
 
 typedef struct OVERLAY_ExtraCallBuffers {
-  DRWCallBuffer *light_groundpoint;
-  DRWCallBuffer *light_groundline;
+  DRWCallBuffer *groundline;
 
   DRWCallBuffer *light_point;
   DRWCallBuffer *light_sun;
@@ -196,6 +195,7 @@ typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *pos_color;
   struct GPUVertFormat *pos;
 
+  struct GPUVertFormat *instance_pos;
   struct GPUVertFormat *instance_extra;
 } OVERLAY_InstanceFormats;
 
@@ -248,6 +248,7 @@ GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void);
 GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
 GPUShader *OVERLAY_shader_extra(void);
+GPUShader *OVERLAY_shader_extra_grounline(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);

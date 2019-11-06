@@ -24,7 +24,6 @@ in vec4 color;
 
 #define VCLASS_SCREENSPACE (1 << 8)
 #define VCLASS_SCREENALIGNED (1 << 9)
-#define VCLASS_GROUND_POINT (1 << 10)
 
 flat out vec4 finalColor;
 
@@ -80,11 +79,6 @@ void main()
     /* World sized, camera facing geometry. */
     vec3 screen_pos = screen_vecs[0].xyz * vpos.x + screen_vecs[1].xyz * vpos.y;
     world_pos = (obmat * vec4(vofs, 1.0)).xyz + screen_pos;
-  }
-  else if ((vclass & VCLASS_GROUND_POINT) != 0) {
-    /* Projected object center. */
-    world_pos = vec3(obmat[3].xy, 0.0);
-    finalColor = colorLight;
   }
   else {
     world_pos = (obmat * vec4(vofs + vpos, 1.0)).xyz;

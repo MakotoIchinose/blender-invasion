@@ -41,7 +41,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     DRWShadingGroup *grp, *grp_sub;
     float pixelsize = *DRW_viewport_pixelsize_get() * U.pixelsize;
 
-    const GlobalsUboStorage *gb = &G_draw.block;
     OVERLAY_InstanceFormats *formats = OVERLAY_shader_instance_formats_get();
     OVERLAY_ExtraCallBuffers *cb = &pd->extra_call_buffers[i];
     DRWPass **p_extra_ps = &psl->extra_ps[i];
@@ -50,9 +49,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     DRW_PASS_CREATE(*p_extra_ps, state | pd->clipping_state);
 
     DRWPass *extra_ps = *p_extra_ps;
-
-    const DRWContextState *draw_ctx = DRW_context_state_get();
-    const eGPUShaderConfig sh_cfg = draw_ctx->sh_cfg;
 
 #if 0
     /* Empties */
@@ -199,13 +195,16 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
           grp_sub, format, DRW_cache_light_spot_volume_get());
     }
     {
-      format = formats->pos;
-      sh = GPU_shader_get_builtin_shader_with_config(GPU_SHADER_3D_GROUNDLINE, sh_cfg);
+      format = formats->instance_pos;
+      sh = OVERLAY_shader_extra_grounline();
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_vec4(grp, "color", gb->colorLight, 1);
-      DRW_shgroup_state_enable(grp_sub, DRW_STATE_BLEND_ALPHA);
-      cb->light_groundline = BUF_POINT(grp, format);
+      DRW_shgroup_uniform_float_copy(grp, "pixel_size", pixelsize);
+      DRW_shgroup_uniform_vec3(grp, "screen_vecs[0]", DRW_viewport_screenvecs_get(), 2);
+      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
+
+      cb->groundline = BUF_INSTANCE(grp, format, DRW_cache_groundline_get());
     }
 
 #if 0
@@ -305,7 +304,7 @@ static void DRW_shgroup_light(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLaye
         float spot_blend;
       };
       float _pad02[3], clip_sta;
-      float _pad03[3], clip_end;
+      float pos[3], clip_end;
     };
   } instdata;
 
@@ -315,6 +314,8 @@ static void DRW_shgroup_light(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLaye
    * Clip end is computed automatically based on light power. */
   instdata.clip_end = la->clipend;
   instdata.clip_sta = la->clipsta;
+
+  DRW_buffer_add_entry(cb->groundline, instdata.pos);
 
   if (la->type == LA_LOCAL) {
     instdata.area_size_x = instdata.area_size_y = la->area_size;
