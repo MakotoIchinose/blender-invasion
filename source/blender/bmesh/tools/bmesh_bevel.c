@@ -5085,7 +5085,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   float length;
   float down_direction[3], new_vert[3];
   bool build_center_face;
-  BMFace *repface;
+  /* BMFace *repface; */
   BMVert **face_bmverts = NULL;
   BMEdge **bmedges = NULL;
   BMFace **bmfaces = NULL;
@@ -5206,7 +5206,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     }
 
     /* Create the profile cutoff face for this boundvert. */
-    repface = boundvert_rep_face(bndv, NULL);
+    /* repface = boundvert_rep_face(bndv, NULL); */
     bev_create_ngon(bm,
                     face_bmverts,
                     bp->seg + 2 + build_center_face,
@@ -5230,7 +5230,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
       /* Add verts from each cutoff face. */
       face_bmverts[i] = mesh_vert(bv->vmesh, i, 1, 0)->v;
     }
-    //    BLI_array_append(bmfaces, repface);
+    /* BLI_array_append(bmfaces, repface); */
     bev_create_ngon(bm, face_bmverts, n_bndv, bmfaces, NULL, bmedges, bp->mat_nr, true);
 
     BLI_array_free(bmedges);
