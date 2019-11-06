@@ -140,6 +140,31 @@ static void gpencil_parent_location(const Depsgraph *depsgraph,
   }
 }
 
+/* Check if a point is inside a ellipsoid. */
+static bool gpencil_check_inside_ellipsoide(float co[3],
+                                            float radius[3],
+                                            float obmat[4][4],
+                                            float inv_mat[4][4])
+{
+  float fpt[3];
+
+  /* Translate to Ellipsoid space. */
+  sub_v3_v3v3(fpt, co, obmat[3]);
+
+  /* Rotate point to ellipsoid rotation. */
+  mul_mat3_m4_v3(inv_mat, fpt);
+
+  /* Standard equation of an ellipsoid. */
+  float r = ((fpt[0] / radius[0]) * (fpt[0] / radius[0])) +
+            ((fpt[1] / radius[1]) * (fpt[1] / radius[1])) +
+            ((fpt[2] / radius[2]) * (fpt[2] / radius[2]));
+
+  if (r < 1.0f) {
+    return true;
+  }
+  return false;
+}
+
 /* deform stroke */
 static void deformStroke(GpencilModifierData *md,
                          Depsgraph *depsgraph,
@@ -170,17 +195,23 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  float radius_sqr = mmd->radius * mmd->radius;
+  float target_scale = mat4_to_scale(mmd->object->obmat);
+  float radius_sqr = (mmd->radius * mmd->radius) * target_scale;
   float coba_res[4];
   float mat[4][4];
 
-  /* Get object matrix. */
   gpencil_parent_location(depsgraph, ob, gpl, mat);
 
-  /* loop points and apply deform */
-  float target_loc[3];
-  copy_v3_v3(target_loc, mmd->object->loc);
+  /* Radius and matrix for Ellipsoid. */
+  float radius[3];
+  float inv_mat[4][4];
+  mul_v3_v3fl(radius, mmd->object->scale, mmd->radius);
+  /* Clamp to avoid division by zero. */
+  CLAMP3_MIN(radius, 0.0001f);
 
+  invert_m4_m4(inv_mat, mmd->object->obmat);
+
+  /* loop points and apply deform */
   bool doit = false;
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
@@ -189,12 +220,9 @@ static void deformStroke(GpencilModifierData *md,
     /* Calc world position of point. */
     float pt_loc[3];
     mul_v3_m4v3(pt_loc, mat, &pt->x);
+    float dist_sqr = len_squared_v3v3(pt_loc, mmd->object->loc);
 
-    /* Cal distance to point (squared) */
-    float dist_sqr = len_squared_v3v3(pt_loc, target_loc);
-
-    /* Only points in the radius. */
-    if (dist_sqr > radius_sqr) {
+    if (!gpencil_check_inside_ellipsoide(pt_loc, radius, mmd->object->obmat, inv_mat)) {
       continue;
     }
 
