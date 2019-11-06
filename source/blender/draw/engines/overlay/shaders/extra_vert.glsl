@@ -58,7 +58,7 @@ void main()
   }
   else if ((vclass & VCLASS_LIGHT_DIST) != 0) {
     vofs.xy = vec2(0.0);
-    vofs.z = -mix(lamp_clip_sta, lamp_clip_end, pos.z);
+    vofs.z = -mix(lamp_clip_sta, lamp_clip_end, pos.z) / length(obmat[2].xyz);
     vpos.z = 0.0;
   }
 
