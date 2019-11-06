@@ -202,7 +202,6 @@ void GPU_vertbuf_vert_set(GPUVertBuf *verts, uint v_idx, const void *data)
   const GPUVertFormat *format = &verts->format;
 
 #if TRUST_NO_ONE
-  assert(a_idx < format->attr_len);
   assert(v_idx < verts->vertex_alloc);
   assert(verts->data != NULL);
 #endif
