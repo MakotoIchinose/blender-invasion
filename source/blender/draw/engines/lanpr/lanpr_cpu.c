@@ -246,11 +246,16 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
     int texw = GPU_texture_width(txl->ms_resolve_color),
         texh = GPU_texture_height(txl->ms_resolve_color);
-    ;
-    pd->output_viewport[2] = scene->r.xsch;
-    pd->output_viewport[3] = scene->r.ysch;
+        
     pd->dpix_viewport[2] = texw;
     pd->dpix_viewport[3] = texh;
+    if(is_render){
+      pd->output_viewport[2] = scene->r.xsch;
+      pd->output_viewport[3] = scene->r.ysch;
+    }else{
+      pd->output_viewport[2] = texw;
+      pd->output_viewport[3] = texh;
+    }
 
     unit_m4(indentity_mat);
     copy_m4_m4(win_mat, indentity_mat);
@@ -266,7 +271,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
     }
 
     RegionView3D *rv3d = v3d ? draw_ctx->rv3d : NULL;
-    if (rv3d) {
+    if ((!is_render) && (rv3d && rv3d->view == RV3D_CAMOB)) {
       camdx = rv3d->camdx;
       camdy = rv3d->camdy;
       camzoom = BKE_screen_view3d_zoom_to_fac(rv3d->camzoom);
