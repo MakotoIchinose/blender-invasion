@@ -294,7 +294,8 @@ static bool gptint_brush_init(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   Object *ob = CTX_data_active_object(C);
-  Paint *paint = &ts->gp_paint->paint;
+  Paint *paint = ob->mode == OB_MODE_VERTEX_GPENCIL ? &ts->gp_vertexpaint->paint :
+                                                      &ts->gp_paint->paint;
 
   /* set the brush using the tool */
   tGP_BrushTintData *gso;
