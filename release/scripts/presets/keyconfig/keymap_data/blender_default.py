@@ -3320,7 +3320,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_mode(_params):
+def km_grease_pencil_stroke_weight_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight Mode",
@@ -3347,7 +3347,7 @@ def km_grease_pencil_stroke_weight_mode(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_mode(_params):
+def km_grease_pencil_stroke_vertex_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex Mode",
@@ -3356,11 +3356,8 @@ def km_grease_pencil_stroke_vertex_mode(_params):
     )
 
     items.extend([
-        # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("wait_for_input", False)]}),
+        # Selection
+        *_grease_pencil_selection(params),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_vertex_paint.brush.gpencil_settings.pen_strength')]}),

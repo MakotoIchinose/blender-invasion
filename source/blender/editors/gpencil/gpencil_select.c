@@ -104,10 +104,16 @@ static int gpencil_select_mode_from_vertex(eGP_Sculpt_SelectMaskFlag mode)
 static bool gpencil_select_poll(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
 
   if (GPENCIL_SCULPT_MODE(gpd)) {
-    ToolSettings *ts = CTX_data_tool_settings(C);
     if (!(GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt))) {
+      return false;
+    }
+  }
+
+  if (GPENCIL_VERTEX_MODE(gpd)) {
+    if (!(GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex))) {
       return false;
     }
   }
@@ -1125,9 +1131,16 @@ static int gpencil_generic_select_exec(bContext *C,
   ToolSettings *ts = CTX_data_tool_settings(C);
   ScrArea *sa = CTX_wm_area(C);
 
-  const short selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
-                               gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
-                               ts->gpencil_selectmode_edit;
+  int selectmode;
+  if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) {
+    selectmode = gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt);
+  }
+  else if (ob && ob->mode == OB_MODE_VERTEX_GPENCIL) {
+    selectmode = gpencil_select_mode_from_vertex(ts->gpencil_selectmode_vertex);
+  }
+  else {
+    selectmode = ts->gpencil_selectmode_edit;
+  }
 
   const bool strokemode = ((selectmode == GP_SELECTMODE_STROKE) &&
                            ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0));
@@ -1444,6 +1457,10 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
     whole = (bool)(gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) ==
                    GP_SELECTMODE_STROKE);
   }
+  else if ((ob) && (ob->mode == OB_MODE_VERTEX_GPENCIL)) {
+    whole = (bool)(gpencil_select_mode_from_vertex(ts->gpencil_selectmode_sculpt) ==
+                   GP_SELECTMODE_STROKE);
+  }
   else {
     whole = (bool)(ts->gpencil_selectmode_edit == GP_SELECTMODE_STROKE);
   }
@@ -1551,9 +1568,16 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
       hit_stroke->flag |= GP_STROKE_SELECT;
 
       /* expand selection to segment */
-      const short selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
-                                   gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
-                                   ts->gpencil_selectmode_edit;
+      int selectmode;
+      if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) {
+        selectmode = gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt);
+      }
+      else if (ob && ob->mode == OB_MODE_VERTEX_GPENCIL) {
+        selectmode = gpencil_select_mode_from_vertex(ts->gpencil_selectmode_vertex);
+      }
+      else {
+        selectmode = ts->gpencil_selectmode_edit;
+      }
 
       if (selectmode == GP_SELECTMODE_SEGMENT) {
         float r_hita[3], r_hitb[3];
