@@ -1731,11 +1731,12 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
         /* Only Tint tool must show big cursor. */
         if (brush->gpencil_tool == GPAINT_TOOL_TINT) {
           radius = brush->size;
+          copy_v3_v3(color, brush->rgb);
         }
         else {
           radius = 5.0f;
+          copy_v3_v3(color, brush->add_col);
         }
-        copy_v3_v3(color, brush->add_col);
       }
     }
   }
