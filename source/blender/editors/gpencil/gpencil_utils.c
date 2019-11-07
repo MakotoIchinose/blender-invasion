@@ -1757,6 +1757,16 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     }
   }
 
+  /* For Vertex Paint use brush size. */
+  if (GPENCIL_VERTEX_MODE(gpd)) {
+    brush = scene->toolsettings->gp_vertexpaint->paint.brush;
+    if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
+      return;
+    }
+    radius = brush->size;
+    copy_v3_v3(color, brush->rgb);
+  }
+
   /* draw icon */
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
