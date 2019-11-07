@@ -23,6 +23,7 @@
 #include <stdlib.h>
 
 #include "DNA_armature_types.h"
+#include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_gpencil_modifier_types.h"

@@ -1073,6 +1073,14 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  /* modes */
+  static EnumPropertyItem gppaint_mode_types_items[] = {
+      {GPPAINT_MODE_STROKE, "STROKE", 0, "Stroke", "Vertex Color affects to Stroke only"},
+      {GPPAINT_MODE_FILL, "FILL", 0, "Fill", "Vertex Color affects to Fill only"},
+      {GPPAINT_MODE_BOTH, "BOTH", 0, "Both", "Vertex Color affects to Stroke and Fill"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "BrushGpencilSettings", NULL);
   RNA_def_struct_sdna(srna, "BrushGpencilSettings");
   RNA_def_struct_path_func(srna, "rna_BrushGpencilSettings_path");
@@ -1299,6 +1307,13 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_gpencil_brush_icons_items);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Grease Pencil Icon", "");
+
+  /* Mode type. */
+  prop = RNA_def_property(srna, "vertex_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_bitflag_sdna(prop, NULL, "vertex_mode");
+  RNA_def_property_enum_items(prop, gppaint_mode_types_items);
+  RNA_def_property_ui_text(prop, "Mode Type", "Defines how vertex color affect to the strokes");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* Vertex Color mix factor. */
   prop = RNA_def_property(srna, "vertex_color_factor", PROP_FLOAT, PROP_FACTOR);

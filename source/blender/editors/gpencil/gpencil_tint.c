@@ -204,7 +204,6 @@ static bool brush_fill_asspply(tGP_BrushTintData *gso,
                                const int radius,
                                const int co[2])
 {
-  ToolSettings *ts = gso->scene->toolsettings;
   Brush *brush = gso->brush;
   float inf = gso->pressure;
 
@@ -219,7 +218,7 @@ static bool brush_fill_asspply(tGP_BrushTintData *gso,
   }
 
   /* Apply color to Fill area. */
-  if (GPENCIL_TINT_VERTEX_COLOR_FILL(ts)) {
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
     copy_v3_v3(gps->mix_color_fill, brush->rgb);
     gps->mix_color_fill[3] = alpha_fill;
@@ -236,7 +235,6 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
                              const int radius,
                              const int co[2])
 {
-  ToolSettings *ts = gso->scene->toolsettings;
   Brush *brush = gso->brush;
 
   /* Attenuate factor to get a smoother tinting. */
@@ -259,14 +257,14 @@ static bool brush_tint_apply(tGP_BrushTintData *gso,
   }
 
   /* Apply color to Stroke point. */
-  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(ts)) {
+  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     CLAMP(alpha, 0.0f, 1.0f);
     interp_v3_v3v3(pt->mix_color, pt->mix_color, brush->rgb, inf);
     pt->mix_color[3] = alpha;
   }
 
   /* Apply color to Fill area (all with same color and factor). */
-  if (GPENCIL_TINT_VERTEX_COLOR_FILL(ts)) {
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
     copy_v3_v3(gps->mix_color_fill, brush->rgb);
     gps->mix_color_fill[3] = alpha_fill;

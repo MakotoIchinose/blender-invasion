@@ -110,7 +110,7 @@ typedef struct BrushGpencilSettings {
 
   /** Mix colorfactor */
   float vertex_factor;
-  char _pad_[4];
+  int vertex_mode;
 
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
@@ -209,6 +209,16 @@ typedef enum eBrushElasticDeformType {
   BRUSH_ELASTIC_DEFORM_SCALE = 3,
   BRUSH_ELASTIC_DEFORM_TWIST = 4,
 } eBrushElasticDeformType;
+
+/* Gpencilsettings.Vertex_mode */
+typedef enum eGp_Vertex_Mode {
+  /* Affect to Stroke only. */
+  GPPAINT_MODE_STROKE = 0,
+  /* Affect to Fill only. */
+  GPPAINT_MODE_FILL = 1,
+  /* Affect to both. */
+  GPPAINT_MODE_BOTH = 2,
+} eGp_Vertex_Mode;
 
 typedef enum eAutomasking_flag {
   BRUSH_AUTOMASKING_TOPOLOGY = (1 << 0),
@@ -525,7 +535,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)

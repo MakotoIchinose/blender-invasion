@@ -266,6 +266,7 @@ static Brush *gpencil_brush_ensure(Main *bmain,
 
   /* Set vertex mix factor. */
   if (brush->gpencil_settings) {
+    brush->gpencil_settings->vertex_mode = GPPAINT_MODE_STROKE;
     brush->gpencil_settings->vertex_factor = 1.0f;
   }
 
@@ -593,6 +594,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_FILL;
   brush->gpencil_tool = GPAINT_TOOL_FILL;
+  brush->gpencil_settings->vertex_mode = GPPAINT_MODE_FILL;
 
   brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;

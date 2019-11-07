@@ -67,20 +67,20 @@ struct MDeformVert;
 /* Vertex Color macros. */
 #define GPENCIL_USE_VERTEX_COLOR(toolsettings) \
   ((toolsettings->gp_paint->flag & GPPAINT_FLAG_USE_VERTEXCOLOR))
-#define GPENCIL_USE_VERTEX_COLOR_STROKE(toolsettings) \
+#define GPENCIL_USE_VERTEX_COLOR_STROKE(toolsettings, brush) \
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
-    ((toolsettings->gp_paint->mode == GPPAINT_MODE_STROKE) || \
-     (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))))
-#define GPENCIL_USE_VERTEX_COLOR_FILL(toolsettings) \
+    ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
+     (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
+#define GPENCIL_USE_VERTEX_COLOR_FILL(toolsettings, brush) \
   ((GPENCIL_USE_VERTEX_COLOR(toolsettings) && \
-    ((toolsettings->gp_paint->mode == GPPAINT_MODE_FILL) || \
-     (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))))
-#define GPENCIL_TINT_VERTEX_COLOR_STROKE(toolsettings) \
-  ((toolsettings->gp_paint->mode == GPPAINT_MODE_STROKE) || \
-   (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))
-#define GPENCIL_TINT_VERTEX_COLOR_FILL(toolsettings) \
-  ((toolsettings->gp_paint->mode == GPPAINT_MODE_FILL) || \
-   (toolsettings->gp_paint->mode == GPPAINT_MODE_BOTH))
+    ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
+     (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))))
+#define GPENCIL_TINT_VERTEX_COLOR_STROKE(brush) \
+  ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) || \
+   (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
+#define GPENCIL_TINT_VERTEX_COLOR_FILL(brush) \
+  ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
+   (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
 
 /* ------------ Grease-Pencil API ------------------ */
 

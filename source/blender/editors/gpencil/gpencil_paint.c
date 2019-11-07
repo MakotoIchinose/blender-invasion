@@ -995,7 +995,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   }
 
   /* Apply the mix color to fill for stroke. */
-  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
     copy_v3_v3(gps->mix_color_fill, brush->rgb);
     gps->mix_color_fill[3] = brush->gpencil_settings->vertex_factor;
   }
@@ -1016,7 +1016,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->time = ptc->time;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1052,7 +1052,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->time = ptc->time;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1178,7 +1178,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
       pt->uv_rot = ptc->uv_rot;
       /* Point mix color. */
       copy_v3_v3(pt->mix_color, brush->rgb);
-      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
+      pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush) ?
                              brush->gpencil_settings->vertex_factor :
                              0.0f;
 
@@ -1867,7 +1867,7 @@ static void gp_init_colors(tGPsdata *p)
     }
 
     /* Apply the mix color to fill. */
-    if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+    if (GPENCIL_USE_VERTEX_COLOR_FILL(ts, brush)) {
       interp_v3_v3v3(gpd->runtime.sfill,
                      gpd->runtime.sfill,
                      brush->rgb,
@@ -1879,7 +1879,7 @@ static void gp_init_colors(tGPsdata *p)
     gpd->runtime.bfill_style = gp_style->fill_style;
 
     /* Apply the mix color to stroke. */
-    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts)) {
+    if (GPENCIL_USE_VERTEX_COLOR_STROKE(ts, brush)) {
       interp_v3_v3v3(gpd->runtime.scolor,
                      gpd->runtime.scolor,
                      brush->rgb,
@@ -3064,7 +3064,8 @@ static void gpencil_guide_event_handling(bContext *C,
 
   /* Enter or exit set center point mode */
   if ((event->type == OKEY) && (event->val == KM_RELEASE)) {
-    if ((p->paintmode == GP_PAINTMODE_DRAW) && guide->use_guide && (guide->reference_point != GP_GUIDE_REF_OBJECT)) {
+    if ((p->paintmode == GP_PAINTMODE_DRAW) && guide->use_guide &&
+        (guide->reference_point != GP_GUIDE_REF_OBJECT)) {
       add_notifier = true;
       p->paintmode = GP_PAINTMODE_SET_CP;
       ED_gpencil_toggle_brush_cursor(C, false, NULL);

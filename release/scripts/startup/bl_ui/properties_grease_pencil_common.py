@@ -935,13 +935,13 @@ class GreasePencilVertexcolorPanel:
         if ob:
             if tool in ('DRAW', 'FILL') and is_vertex is False:
                 row = layout.row(align=True)
-                row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
+                row.prop(gp_settings, "vertex_mode", text="Mode")
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
             if tool == 'TINT' or is_vertex is True:
                 row = layout.row(align=True)
-                row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
+                row.prop(gp_settings, "vertex_mode", text="Mode")
 
             sub_row = layout.row(align=True)
             sub_row.prop(brush, "color", text="")
