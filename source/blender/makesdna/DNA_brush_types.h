@@ -184,6 +184,10 @@ typedef enum eGP_BrushIcons {
   GP_BRUSH_ICON_AIRBRUSH = 11,
   GP_BRUSH_ICON_CHISEL = 12,
   GP_BRUSH_ICON_TINT = 13,
+  GP_BRUSH_ICON_VERTEX_DRAW = 14,
+  GP_BRUSH_ICON_VERTEX_BLUR = 15,
+  GP_BRUSH_ICON_VERTEX_AVERAGE = 16,
+  GP_BRUSH_ICON_VERTEX_SMEAR = 17,
 } eGP_BrushIcons;
 
 typedef enum eBrushCurvePreset {
@@ -521,7 +525,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)

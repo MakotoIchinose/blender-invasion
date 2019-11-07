@@ -282,7 +282,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   Paint *paint = &ts->gp_paint->paint;
   Paint *vertexpaint = &ts->gp_vertexpaint->paint;
 
-  Brush *brush, *deft;
+  Brush *brush, *deft_draw, *deft_vertex;
   CurveMapping *custom_curve;
 
   /* Airbrush brush. */
@@ -540,7 +540,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   /* Pencil brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Pencil", OB_MODE_PAINT_GPENCIL);
-  deft = brush; /* save default brush. */
+  deft_draw = brush; /* save default brush. */
 
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -661,13 +661,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
   brush->gpencil_tool = GPAINT_TOOL_TINT;
 
-  /* Set default Draw brush. */
-  BKE_paint_brush_set(paint, deft);
-
   /* Vertex Paint Brushes. */
   /* Vertex Draw brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Vertex Draw", OB_MODE_VERTEX_GPENCIL);
-  deft = brush; /* save default brush. */
+  deft_vertex = brush; /* save default brush. */
 
   brush->size = 25.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -680,7 +677,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   zero_v3(brush->secondary_rgb);
 
-  //  brush->gpencil_settings->icon_id = ICON_BRUSH_MIX;
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_DRAW;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_DRAW;
 
   /* Vertex Blur brush. */
@@ -697,7 +694,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   zero_v3(brush->secondary_rgb);
 
-  //  brush->gpencil_settings->icon_id = ICON_BRUSH_MIX;
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_BLUR;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_BLUR;
 
   /* Vertex Average brush. */
@@ -714,7 +711,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   zero_v3(brush->secondary_rgb);
 
-  //  brush->gpencil_settings->icon_id = ICON_BRUSH_MIX;
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_AVERAGE;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_AVERAGE;
 
   /* Vertex Smear brush. */
@@ -731,11 +728,14 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   zero_v3(brush->secondary_rgb);
 
-  //  brush->gpencil_settings->icon_id = ICON_BRUSH_MIX;
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_SMEAR;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_SMEAR;
 
   /* Set default Vertex brush. */
-  BKE_paint_brush_set(vertexpaint, deft);
+  BKE_paint_brush_set(vertexpaint, deft_vertex);
+
+  /* Set default Draw brush. */
+  BKE_paint_brush_set(paint, deft_draw);
 }
 
 struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mode)

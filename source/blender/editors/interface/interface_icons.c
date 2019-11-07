@@ -2038,7 +2038,8 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
     }
 
     /* reset the icon */
-    if ((ob != NULL) && (ob->mode & OB_MODE_PAINT_GPENCIL) && (br->gpencil_settings != NULL)) {
+    if ((ob != NULL) && (ob->mode & (OB_MODE_PAINT_GPENCIL | OB_MODE_VERTEX_GPENCIL)) &&
+        (br->gpencil_settings != NULL)) {
       switch (br->gpencil_settings->icon_id) {
         case GP_BRUSH_ICON_PENCIL:
           br->id.icon_id = ICON_GPBRUSH_PENCIL;
@@ -2078,6 +2079,18 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
           break;
         case GP_BRUSH_ICON_TINT:
           br->id.icon_id = ICON_BRUSH_TEXDRAW;
+          break;
+        case GP_BRUSH_ICON_VERTEX_DRAW:
+          br->id.icon_id = ICON_BRUSH_MIX;
+          break;
+        case GP_BRUSH_ICON_VERTEX_BLUR:
+          br->id.icon_id = ICON_BRUSH_BLUR;
+          break;
+        case GP_BRUSH_ICON_VERTEX_AVERAGE:
+          br->id.icon_id = ICON_BRUSH_BLUR;
+          break;
+        case GP_BRUSH_ICON_VERTEX_SMEAR:
+          br->id.icon_id = ICON_BRUSH_BLUR;
           break;
         default:
           br->id.icon_id = ICON_GPBRUSH_PEN;
