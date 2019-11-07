@@ -18,13 +18,19 @@
 
 # <pep8 compliant>
 
-import buildbot_utils
 import os
 import shutil
 
+import buildbot_utils
+
 def get_cmake_options(builder):
+    post_install_script = os.path.join(
+        builder.blender_dir, 'build_files', 'buildbot', 'slave_codesign.cmake')
+
     config_file = "build_files/cmake/config/blender_release.cmake"
-    options = ['-DCMAKE_BUILD_TYPE:STRING=Release', '-DWITH_GTESTS=ON']
+    options = ['-DCMAKE_BUILD_TYPE:STRING=Release',
+               '-DWITH_GTESTS=ON',
+               '-DPOSTINSTALL_SCRIPT:PATH=' + post_install_script]
 
     if builder.platform == 'mac':
         options.append('-DCMAKE_OSX_ARCHITECTURES:STRING=x86_64')
@@ -84,8 +90,15 @@ def cmake_build(builder):
     # CMake build
     os.chdir(builder.build_dir)
 
+    # NOTE: On platforms where CPack is used for producing the final bundle
+    # install target is NOT to be used. This is because install target will
+    # ask codesign server to sign executables in the installation folder.
+    # Since CPack runs install target for its own needs to its own location
+    # building install target here would mean double amount of work for
+    # signing. While this isn't really bad, it could spend quite a bit of
+    # time once notarization server is involved.
     if builder.platform == 'win':
-        command = ['cmake', '--build', '.', '--target', 'install', '--config', 'Release']
+        command = ['cmake', '--build', '.', '--target', 'ALL_BUILD', '--config', 'Release']
     else:
         command = ['make', '-s', '-j2', 'install']
 
