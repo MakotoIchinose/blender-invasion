@@ -58,6 +58,7 @@
 #include "DNA_world_types.h"
 
 #include "BKE_animsys.h"
+#include "BKE_brush.h"
 #include "BKE_cloth.h"
 #include "BKE_collection.h"
 #include "BKE_constraint.h"
@@ -65,6 +66,7 @@
 #include "BKE_customdata.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
+#include "BKE_gpencil.h"
 #include "BKE_idprop.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
@@ -1273,8 +1275,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
       }
     }
 
-    {
-      /* Update all ruler layers to set new flag. */
+    { /* Update all ruler layers to set new flag. */
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         bGPdata *gpd = scene->gpd;
         if (gpd == NULL) {
@@ -1287,6 +1288,17 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           }
         }
       }
+    }
+
+    /* Init all Vertex Paint brushes. */
+    for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      BKE_brush_gpencil_presets(bmain, scene->toolsettings);
+
+      /* Ensure new Vertex Paint mode. */
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_GPENCIL_VERTEX);
+
+      /* Ensure Palette by default. */
+      BKE_gpencil_palette_ensure(bmain, scene);
     }
   }
 }
@@ -1426,7 +1438,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (error & NTREE_DOVERSION_NEED_OUTPUT) {
       BKE_report(fd->reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
       printf(
-          "You need to connect Principled and Eevee Specular shader nodes to new material output "
+          "You need to connect Principled and Eevee Specular shader nodes to new material "
+          "output "
           "nodes.\n");
     }
 
