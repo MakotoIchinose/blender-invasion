@@ -93,6 +93,12 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *light_spot_volume_outside;
   DRWCallBuffer *light_spot_volume_inside;
   DRWCallBuffer *light_area[2];
+
+  DRWCallBuffer *camera_frame;
+  DRWCallBuffer *camera_tria[2];
+  DRWCallBuffer *camera_distances;
+  DRWCallBuffer *camera_volume;
+  DRWCallBuffer *camera_volume_frame;
 } OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_PrivateData {

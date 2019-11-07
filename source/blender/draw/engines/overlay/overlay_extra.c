@@ -24,6 +24,12 @@
 
 #include "UI_resources.h"
 
+#include "BKE_camera.h"
+
+#include "DNA_camera_types.h"
+
+#include "DEG_depsgraph_query.h"
+
 #include "overlay_private.h"
 
 #include "draw_common.h"
@@ -176,12 +182,19 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_vec3(grp, "screen_vecs[0]", DRW_viewport_screenvecs_get(), 2);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
 
-      cb->light_point = BUF_INSTANCE(grp, format, DRW_cache_light_point_lines_get());
-      cb->light_sun = BUF_INSTANCE(grp, format, DRW_cache_light_sun_lines_get());
-      cb->light_area[0] = BUF_INSTANCE(grp, format, DRW_cache_light_area_disk_lines_get());
-      cb->light_area[1] = BUF_INSTANCE(grp, format, DRW_cache_light_area_square_lines_get());
-      cb->light_spot = BUF_INSTANCE(grp, format, DRW_cache_light_spot_lines_get());
+      grp_sub = DRW_shgroup_create_sub(grp);
+      cb->light_point = BUF_INSTANCE(grp_sub, format, DRW_cache_light_point_lines_get());
+      cb->light_sun = BUF_INSTANCE(grp_sub, format, DRW_cache_light_sun_lines_get());
+      cb->light_area[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_disk_lines_get());
+      cb->light_area[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_square_lines_get());
+      cb->light_spot = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_lines_get());
 
+      cb->camera_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_frame_get());
+      cb->camera_tria[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_wire_get());
+      cb->camera_tria[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_get());
+      cb->camera_distances = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_distances_get());
+
+      /* TODO Own move to transparent pass. */
       grp_sub = DRW_shgroup_create_sub(grp);
       DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK | DRW_STATE_BLEND_ALPHA);
       DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
@@ -193,6 +206,12 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
       cb->light_spot_volume_inside = BUF_INSTANCE(
           grp_sub, format, DRW_cache_light_spot_volume_get());
+
+      grp_sub = DRW_shgroup_create_sub(grp);
+      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK | DRW_STATE_BLEND_ALPHA);
+      DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
+      cb->camera_volume = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_volume_get());
+      cb->camera_volume_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_volume_wire_get());
     }
     {
       format = formats->instance_pos;
@@ -282,6 +301,10 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Lights
+ * \{ */
+
 static void DRW_shgroup_light(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLayer *view_layer)
 {
   Light *la = ob->data;
@@ -357,6 +380,293 @@ static void DRW_shgroup_light(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLaye
   }
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Camera
+ * \{ */
+
+typedef union OVERLAY_CameraInstanceData {
+  /* Pack render data into object matrix and object color. */
+  struct {
+    float color[4];
+    float mat[4][4];
+  };
+  struct {
+    float _pad0[2];
+    float volume_sta;
+    union {
+      float depth;
+      float focus;
+      float volume_end;
+    };
+    float _pad00[3];
+    union {
+      float corner_x;
+      float dist_color_id;
+    };
+    float _pad01[3];
+    union {
+      float corner_y;
+    };
+    float _pad02[3];
+    union {
+      float center_x;
+      float clip_sta;
+      float mist_sta;
+    };
+    float pos[3];
+    union {
+      float center_y;
+      float clip_end;
+      float mist_end;
+    };
+  };
+} OVERLAY_CameraInstanceData;
+
+static float camera_offaxis_shiftx_get(Scene *scene,
+                                       Object *ob,
+                                       const OVERLAY_CameraInstanceData *instdata,
+                                       bool right_eye)
+{
+  Camera *cam = ob->data;
+  if (cam->stereo.convergence_mode == CAM_S3D_OFFAXIS) {
+    const char *viewnames[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
+    const float shiftx = BKE_camera_multiview_shift_x(&scene->r, ob, viewnames[right_eye]);
+    const float delta_shiftx = shiftx - cam->shiftx;
+    const float width = instdata->corner_x * 2.0f;
+    return delta_shiftx * width;
+  }
+  else {
+    return 0.0;
+  }
+}
+/**
+ * Draw the stereo 3d support elements (cameras, plane, volume).
+ * They are only visible when not looking through the camera:
+ */
+static void camera_stereoscopy_extra(OVERLAY_ExtraCallBuffers *cb,
+                                     Scene *scene,
+                                     View3D *v3d,
+                                     Object *ob,
+                                     const OVERLAY_CameraInstanceData *instdata)
+{
+  OVERLAY_CameraInstanceData stereodata = *instdata;
+  Camera *cam = ob->data;
+  const bool is_select = DRW_state_is_select();
+  const char *viewnames[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
+
+  const bool is_stereo3d_cameras = (v3d->stereo3d_flag & V3D_S3D_DISPCAMERAS) != 0;
+  const bool is_stereo3d_plane = (v3d->stereo3d_flag & V3D_S3D_DISPPLANE) != 0;
+  const bool is_stereo3d_volume = (v3d->stereo3d_flag & V3D_S3D_DISPVOLUME) != 0;
+
+  for (int eye = 0; eye < 2; eye++) {
+    ob = BKE_camera_multiview_render(scene, ob, viewnames[eye]);
+    BKE_camera_multiview_model_matrix(&scene->r, ob, viewnames[eye], stereodata.mat);
+
+    stereodata.corner_x = instdata->corner_x;
+    stereodata.corner_y = instdata->corner_y;
+    stereodata.center_x = instdata->center_x + camera_offaxis_shiftx_get(scene, ob, instdata, eye);
+    stereodata.center_y = instdata->center_y;
+    stereodata.depth = instdata->depth;
+
+    if (is_stereo3d_cameras) {
+      DRW_buffer_add_entry_struct(cb->camera_frame, &stereodata);
+
+      /* Connecting line between cameras. */
+      /* TODO */
+      // DRW_buffer_add_entry(cb->relationship_lines, obmat[3]);
+    }
+
+    if (is_stereo3d_volume && !is_select) {
+      float r = (eye == 1) ? 2.0f : 1.0f;
+
+      stereodata.volume_sta = -cam->clip_start;
+      stereodata.volume_end = -cam->clip_end;
+      /* Encode eye + intensity and alpha (see shader) */
+      copy_v2_fl2(stereodata.color, r + 0.15f, 1.0f);
+      DRW_buffer_add_entry_struct(cb->camera_volume_frame, &stereodata);
+
+      if (v3d->stereo3d_volume_alpha > 0.0f) {
+        /* Encode eye + intensity and alpha (see shader) */
+        copy_v2_fl2(stereodata.color, r + 0.999f, v3d->stereo3d_volume_alpha);
+        DRW_buffer_add_entry_struct(cb->camera_volume, &stereodata);
+      }
+      /* restore */
+      copy_v3_v3(stereodata.color, instdata->color);
+    }
+  }
+
+  if (is_stereo3d_plane && !is_select) {
+    if (cam->stereo.convergence_mode == CAM_S3D_TOE) {
+      /* There is no real convergence plane but we highlight the center
+       * point where the views are pointing at. */
+      // zero_v3(stereodata.mat[0]); /* We reconstruct from Z and Y */
+      // zero_v3(stereodata.mat[1]); /* Y doesn't change */
+      zero_v3(stereodata.mat[2]);
+      zero_v3(stereodata.mat[3]);
+      for (int i = 0; i < 2; i++) {
+        float mat[4][4];
+        /* Need normalized version here. */
+        BKE_camera_multiview_model_matrix(&scene->r, ob, viewnames[i], mat);
+        add_v3_v3(stereodata.mat[2], mat[2]);
+        madd_v3_v3fl(stereodata.mat[3], mat[3], 0.5f);
+      }
+      normalize_v3(stereodata.mat[2]);
+      cross_v3_v3v3(stereodata.mat[0], stereodata.mat[1], stereodata.mat[2]);
+    }
+    else if (cam->stereo.convergence_mode == CAM_S3D_PARALLEL) {
+      /* Show plane at the given distance between the views even if it makes no sense. */
+      zero_v3(stereodata.pos);
+      for (int i = 0; i < 2; i++) {
+        float mat[4][4];
+        BKE_camera_multiview_model_matrix_scaled(&scene->r, ob, viewnames[i], mat);
+        madd_v3_v3fl(stereodata.pos, mat[3], 0.5f);
+      }
+    }
+    else if (cam->stereo.convergence_mode == CAM_S3D_OFFAXIS) {
+      /* Nothing to do. Everything is already setup. */
+    }
+    stereodata.volume_sta = -cam->stereo.convergence_distance;
+    stereodata.volume_end = -cam->stereo.convergence_distance;
+    /* Encode eye + intensity and alpha (see shader) */
+    copy_v2_fl2(stereodata.color, 0.1f, 1.0f);
+    DRW_buffer_add_entry_struct(cb->camera_volume_frame, &stereodata);
+
+    if (v3d->stereo3d_convergence_alpha > 0.0f) {
+      /* Encode eye + intensity and alpha (see shader) */
+      copy_v2_fl2(stereodata.color, 0.0f, v3d->stereo3d_convergence_alpha);
+      DRW_buffer_add_entry_struct(cb->camera_volume, &stereodata);
+    }
+  }
+}
+
+static void DRW_shgroup_camera(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLayer *view_layer)
+{
+  OVERLAY_CameraInstanceData instdata;
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
+  Scene *scene = draw_ctx->scene;
+  RegionView3D *rv3d = draw_ctx->rv3d;
+
+  Camera *cam = ob->data;
+  Object *camera_object = DEG_get_evaluated_object(draw_ctx->depsgraph, v3d->camera);
+  const bool is_select = DRW_state_is_select();
+  const bool is_active = (ob == camera_object);
+  const bool look_through = (is_active && (rv3d->persp == RV3D_CAMOB));
+
+  const bool is_multiview = (scene->r.scemode & R_MULTIVIEW) != 0;
+  const bool is_stereo3d_view = (scene->r.views_format == SCE_VIEWS_FORMAT_STEREO_3D);
+  const bool is_stereo3d_display_extra = is_active && is_multiview && (!look_through) &&
+                                         ((v3d->stereo3d_flag) != 0);
+  const bool is_selection_camera_stereo = is_select && look_through && is_multiview &&
+                                          is_stereo3d_view;
+
+  float vec[4][3], asp[2], shift[2], scale[3], drawsize, center[2], corner[2];
+
+  float *color_p;
+  DRW_object_wire_theme_get(ob, view_layer, &color_p);
+  copy_v4_v4(instdata.color, color_p);
+
+  normalize_m4_m4(instdata.mat, ob->obmat);
+
+  /* BKE_camera_multiview_model_matrix already accounts for scale, don't do it here. */
+  if (is_selection_camera_stereo) {
+    copy_v3_fl(scale, 1.0f);
+  }
+  else {
+    copy_v3_fl3(scale, len_v3(ob->obmat[0]), len_v3(ob->obmat[1]), len_v3(ob->obmat[2]));
+    invert_v3(scale);
+  }
+
+  BKE_camera_view_frame_ex(
+      scene, cam, cam->drawsize, look_through, scale, asp, shift, &drawsize, vec);
+
+  /* Apply scale to simplify the rest of the drawing. */
+  invert_v3(scale);
+  for (int i = 0; i < 4; i++) {
+    mul_v3_v3(vec[i], scale);
+    /* Project to z=-1 plane. Makes positionning / scaling easier. (see shader) */
+    mul_v2_fl(vec[i], 1.0f / fabsf(vec[i][2]));
+  }
+
+  /* Frame coords */
+  mid_v2_v2v2(center, vec[0], vec[2]);
+  sub_v2_v2v2(corner, vec[0], center);
+  instdata.corner_x = corner[0];
+  instdata.corner_y = corner[1];
+  instdata.center_x = center[0];
+  instdata.center_y = center[1];
+  instdata.depth = vec[0][2];
+
+  if (look_through) {
+    if (!DRW_state_is_image_render()) {
+      /* Only draw the frame. */
+      if (is_multiview) {
+        float mat[4][4];
+        const bool is_right = v3d->multiview_eye == STEREO_RIGHT_ID;
+        const char *view_name = is_right ? STEREO_RIGHT_NAME : STEREO_LEFT_NAME;
+        BKE_camera_multiview_model_matrix(&scene->r, ob, view_name, mat);
+        instdata.center_x += camera_offaxis_shiftx_get(scene, ob, &instdata, is_right);
+        for (int i = 0; i < 4; i++) {
+          /* Partial copy to avoid overriding packed data. */
+          copy_v3_v3(instdata.mat[i], mat[i]);
+        }
+      }
+      instdata.depth = -instdata.depth; /* Hides the back of the camera wires (see shader). */
+      DRW_buffer_add_entry_struct(cb->camera_frame, &instdata);
+    }
+  }
+  else {
+    /* Stereo cameras, volumes, plane drawing. */
+    if (is_stereo3d_display_extra) {
+      camera_stereoscopy_extra(cb, scene, v3d, ob, &instdata);
+    }
+    else {
+      DRW_buffer_add_entry_struct(cb->camera_frame, &instdata);
+    }
+  }
+
+  {
+    /* Triangle. */
+    float tria_size = 0.7f * drawsize / fabsf(instdata.depth);
+    float tria_margin = 0.1f * drawsize / fabsf(instdata.depth);
+    instdata.center_x = center[0];
+    instdata.center_y = center[1] + instdata.corner_y + tria_margin + tria_size;
+    instdata.corner_x = instdata.corner_y = -tria_size;
+    DRW_buffer_add_entry_struct(cb->camera_tria[is_active], &instdata);
+  }
+
+  if (cam->flag & CAM_SHOWLIMITS) {
+    /* Scale focus point. */
+    mul_v3_fl(instdata.mat[0], cam->drawsize);
+    mul_v3_fl(instdata.mat[1], cam->drawsize);
+
+    instdata.dist_color_id = (is_active) ? 3 : 2;
+    instdata.focus = -BKE_camera_object_dof_distance(ob);
+    instdata.clip_sta = cam->clip_start;
+    instdata.clip_end = cam->clip_end;
+    DRW_buffer_add_entry_struct(cb->camera_distances, &instdata);
+  }
+
+  if (cam->flag & CAM_SHOWMIST) {
+    World *world = scene->world;
+    if (world) {
+      instdata.dist_color_id = (is_active) ? 1 : 0;
+      instdata.focus = 1.0f; /* Disable */
+      instdata.mist_sta = world->miststa;
+      instdata.mist_end = world->miststa + world->mistdist;
+      DRW_buffer_add_entry_struct(cb->camera_distances, &instdata);
+    }
+  }
+
+#if 0
+  /* Motion Tracking. */
+  camera_view3d_reconstruction(sgl, scene, v3d, camera_object, ob, color, is_select);
+#endif
+}
+
 void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
                                   Object *ob,
                                   OVERLAY_DupliData *UNUSED(dupli),
@@ -413,7 +723,7 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
       DRW_shgroup_light(cb, ob, view_layer);
       break;
     case OB_CAMERA:
-      // DRW_shgroup_camera(sgl, ob, view_layer);
+      DRW_shgroup_camera(cb, ob, view_layer);
       // DRW_shgroup_camera_background_images(sh_data, psl, ob, rv3d);
       break;
     case OB_SPEAKER:

@@ -16,11 +16,22 @@ in vec4 color;
 #define lamp_spot_cosine inst_data.x
 #define lamp_spot_blend inst_data.y
 
+#define camera_corner inst_data.xy
+#define camera_center inst_data.zw
+#define camera_dist inst_color_data
+#define camera_dist_sta inst_data.z
+#define camera_dist_end inst_data.w
+#define camera_distance_color inst_data.x
+
 #define VCLASS_LIGHT_AREA_SHAPE (1 << 0)
 #define VCLASS_LIGHT_SPOT_SHAPE (1 << 1)
 #define VCLASS_LIGHT_SPOT_BLEND (1 << 2)
 #define VCLASS_LIGHT_SPOT_CONE (1 << 3)
 #define VCLASS_LIGHT_DIST (1 << 4)
+
+#define VCLASS_CAMERA_FRAME (1 << 5)
+#define VCLASS_CAMERA_DIST (1 << 6)
+#define VCLASS_CAMERA_VOLUME (1 << 7)
 
 #define VCLASS_SCREENSPACE (1 << 8)
 #define VCLASS_SCREENALIGNED (1 << 9)
@@ -37,17 +48,24 @@ void main()
 {
   /* Extract data packed inside the unused mat4 members. */
   vec4 inst_data = vec4(inst_obmat[0][3], inst_obmat[1][3], inst_obmat[2][3], inst_obmat[3][3]);
+  float inst_color_data = color.a;
   mat4 obmat = inst_obmat;
   obmat[0][3] = obmat[1][3] = obmat[2][3] = 0.0;
   obmat[3][3] = 1.0;
 
+  finalColor = color;
+  if (color.a < 0.0) {
+    finalColor.a = 1.0;
+  }
+
   float lamp_spot_sine;
   vec3 vpos = pos;
   vec3 vofs = vec3(0.0);
+  /* Lights */
   if ((vclass & VCLASS_LIGHT_AREA_SHAPE) != 0) {
     /* HACK: use alpha color for spots to pass the area_size. */
-    if (color.a < 0.0) {
-      lamp_area_size.xy = vec2(-color.a);
+    if (inst_color_data < 0.0) {
+      lamp_area_size.xy = vec2(-inst_color_data);
     }
     vpos.xy *= lamp_area_size.xy;
   }
@@ -61,10 +79,70 @@ void main()
     vofs.z = -mix(lamp_clip_sta, lamp_clip_end, pos.z) / length(obmat[2].xyz);
     vpos.z = 0.0;
   }
+  /* Camera */
+  else if ((vclass & VCLASS_CAMERA_FRAME) != 0) {
+    if ((vclass & VCLASS_CAMERA_VOLUME) != 0) {
+      vpos.z = mix(color.b, color.a, pos.z);
+    }
+    else if (camera_dist > 0.0) {
+      vpos.z = -abs(camera_dist);
+    }
+    else {
+      vpos.z *= -abs(camera_dist);
+    }
+    vpos.xy = (camera_center + camera_corner * vpos.xy) * abs(vpos.z);
+  }
+  else if ((vclass & VCLASS_CAMERA_DIST) != 0) {
+    vofs.xy = vec2(0.0);
+    vofs.z = -mix(camera_dist_sta, camera_dist_end, pos.z);
+    vpos.z = 0.0;
+    /* Distance line endpoints color */
+    if (any(notEqual(pos.xy, vec2(0.0)))) {
+      /* Override color. */
+      switch (int(camera_distance_color)) {
+        case 0: /* Mist */
+          finalColor = vec4(0.5, 0.5, 0.5, 1.0);
+          break;
+        case 1: /* Mist Active */
+          finalColor = vec4(1.0, 1.0, 1.0, 1.0);
+          break;
+        case 2: /* Clip */
+          finalColor = vec4(0.5, 0.5, 0.25, 1.0);
+          break;
+        case 3: /* Clip Active */
+          finalColor = vec4(1.0, 1.0, 0.5, 1.0);
+          break;
+      }
+    }
+    /* Focus cross */
+    if (pos.z == 2.0) {
+      vofs.z = 0.0;
+      if (camera_dist < 0.0) {
+        vpos.z = -abs(camera_dist);
+      }
+      else {
+        /* Disabled */
+        vpos = vec3(0.0);
+      }
+    }
+  }
 
-  finalColor = color;
-  if (color.a < 0.0) {
-    finalColor.a = 1.0;
+  if ((vclass & VCLASS_CAMERA_VOLUME) != 0) {
+    /* Unpack final color. */
+    int color_class = int(floor(color.r));
+    float color_intensity = fract(color.r);
+    switch (color_class) {
+      case 0: /* No eye (convergence plane) */
+        finalColor = vec4(1.0, 1.0, 1.0, 1.0);
+        break;
+      case 1: /* Left eye  */
+        finalColor = vec4(0.0, 1.0, 1.0, 1.0);
+        break;
+      case 2: /* Right eye */
+        finalColor = vec4(1.0, 0.0, 0.0, 1.0);
+        break;
+    }
+    finalColor *= vec4(vec3(color_intensity), color.g);
   }
 
   vec3 world_pos;

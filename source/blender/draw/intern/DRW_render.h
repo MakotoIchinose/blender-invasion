@@ -449,6 +449,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shading_group,
                                                 struct GPUVertFormat *format,
                                                 struct GPUBatch *geom);
 
+void DRW_buffer_add_entry_struct(DRWCallBuffer *callbuf, const void *data);
 void DRW_buffer_add_entry_array(DRWCallBuffer *buffer, const void *attr[], uint attr_len);
 
 #define DRW_buffer_add_entry(buffer, ...) \

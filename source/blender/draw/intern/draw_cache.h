@@ -103,9 +103,12 @@ struct GPUBatch *DRW_cache_light_spot_square_get(void);
 struct GPUBatch *DRW_cache_light_spot_square_volume_get(void);
 
 /* Camera */
-struct GPUBatch *DRW_cache_camera_get(void);
 struct GPUBatch *DRW_cache_camera_frame_get(void);
+struct GPUBatch *DRW_cache_camera_volume_get(void);
+struct GPUBatch *DRW_cache_camera_volume_wire_get(void);
+struct GPUBatch *DRW_cache_camera_tria_wire_get(void);
 struct GPUBatch *DRW_cache_camera_tria_get(void);
+struct GPUBatch *DRW_cache_camera_distances_get(void);
 
 /* Speaker */
 struct GPUBatch *DRW_cache_speaker_get(void);

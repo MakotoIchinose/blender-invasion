@@ -50,8 +50,17 @@
 #define VCLASS_LIGHT_SPOT_CONE (1 << 3)
 #define VCLASS_LIGHT_DIST (1 << 4)
 
+#define VCLASS_CAMERA_FRAME (1 << 5)
+#define VCLASS_CAMERA_DIST (1 << 6)
+#define VCLASS_CAMERA_VOLUME (1 << 7)
+
 #define VCLASS_SCREENSPACE (1 << 8)
 #define VCLASS_SCREENALIGNED (1 << 9)
+
+typedef struct Vert {
+  float pos[3];
+  int class;
+} Vert;
 
 /* Batch's only (free'd as an array) */
 static struct DRWShapeCache {
@@ -118,9 +127,12 @@ static struct DRWShapeCache {
   GPUBatch *drw_bone_arrows;
   GPUBatch *drw_bone_dof_sphere;
   GPUBatch *drw_bone_dof_lines;
-  GPUBatch *drw_camera;
   GPUBatch *drw_camera_frame;
   GPUBatch *drw_camera_tria;
+  GPUBatch *drw_camera_tria_wire;
+  GPUBatch *drw_camera_distances;
+  GPUBatch *drw_camera_volume;
+  GPUBatch *drw_camera_volume_wire;
   GPUBatch *drw_particle_cross;
   GPUBatch *drw_particle_circle;
   GPUBatch *drw_particle_axis;
@@ -200,6 +212,14 @@ GPUBatch *drw_cache_procedural_triangles_get(void)
 /* -------------------------------------------------------------------- */
 /** \name Helper functions
  * \{ */
+
+static GPUVertFormat extra_vert_format(void)
+{
+  GPUVertFormat format = {0};
+  GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+  return format;
+}
 
 static void UNUSED_FUNCTION(add_fancy_edge)(GPUVertBuf *vbo,
                                             uint pos_id,
@@ -1458,11 +1478,6 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
 #define OUTER_NSEGMENTS 10
 #define CIRCLE_NSEGMENTS 32
 
-typedef struct Vert {
-  float pos[3];
-  int class;
-} Vert;
-
 static void circle_verts(
     GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
 {
@@ -1496,9 +1511,7 @@ static void circle_dashed_verts(
 GPUBatch *DRW_cache_groundline_get(void)
 {
   if (!SHC.drw_ground_line) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT); /* Unused */
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = 2 * (1 + DIAMOND_NSEGMENTS);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -1519,9 +1532,7 @@ GPUBatch *DRW_cache_groundline_get(void)
 GPUBatch *DRW_cache_light_point_lines_get(void)
 {
   if (!SHC.drw_light_point_lines) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -1535,7 +1546,7 @@ GPUBatch *DRW_cache_light_point_lines_get(void)
     circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
     /* Light area */
     int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
-    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, flag);
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
 
     SHC.drw_light_point_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
@@ -1545,9 +1556,7 @@ GPUBatch *DRW_cache_light_point_lines_get(void)
 GPUBatch *DRW_cache_light_sun_lines_get(void)
 {
   if (!SHC.drw_light_sun_lines) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS + 8 * 2 + 1);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -1581,9 +1590,7 @@ GPUBatch *DRW_cache_light_sun_lines_get(void)
 GPUBatch *DRW_cache_light_spot_lines_get(void)
 {
   if (!SHC.drw_light_spot_lines) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = 2 * (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS +
                      CIRCLE_NSEGMENTS * 4 + 1);
@@ -1598,7 +1605,7 @@ GPUBatch *DRW_cache_light_spot_lines_get(void)
     circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
     /* Light area */
     int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
-    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, flag);
+    circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
     /* Cone cap */
     flag = VCLASS_LIGHT_SPOT_SHAPE;
     circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
@@ -1627,9 +1634,7 @@ GPUBatch *DRW_cache_light_spot_lines_get(void)
 GPUBatch *DRW_cache_light_spot_volume_get(void)
 {
   if (!SHC.drw_light_spot_volume) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = CIRCLE_NSEGMENTS + 1 + 1;
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
@@ -1656,9 +1661,7 @@ GPUBatch *DRW_cache_light_spot_volume_get(void)
 GPUBatch *DRW_cache_light_area_disk_lines_get(void)
 {
   if (!SHC.drw_light_area_disk_lines) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     int v_len = 2 *
                 (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + CIRCLE_NSEGMENTS + 1);
@@ -1688,9 +1691,7 @@ GPUBatch *DRW_cache_light_area_disk_lines_get(void)
 GPUBatch *DRW_cache_light_area_square_lines_get(void)
 {
   if (!SHC.drw_light_area_square_lines) {
-    GPUVertFormat format = {0};
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPUVertFormat format = extra_vert_format();
 
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     int v_len = 2 * (DIAMOND_NSEGMENTS * 3 + INNER_NSEGMENTS + OUTER_NSEGMENTS + 4 + 1);
@@ -2470,11 +2471,11 @@ static const float bone_box_smooth_normals[8][3] = {
     {-M_SQRT3, M_SQRT3, M_SQRT3},
 };
 
-#if 0 /* UNUSED */
 static const uint bone_box_wire[24] = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
+#if 0 /* UNUSED */
 /* aligned with bone_octahedral_wire
  * Contains adjacent normal index */
 static const uint bone_box_wire_adjacent_face[24] = {
@@ -3256,154 +3257,155 @@ GPUBatch *DRW_cache_bone_dof_lines_get(void)
 /** \name Camera
  * \{ */
 
-/**
- * We could make these more generic functions.
- * although filling 1d lines is not common.
- *
- * \note Use x coordinate to identify the vertex the vertex shader take care to place it
- * appropriately.
- */
-
-static const float camera_coords_frame_bounds[5] = {
-    0.0f, /* center point */
-    1.0f, /* + X + Y */
-    2.0f, /* + X - Y */
-    3.0f, /* - X - Y */
-    4.0f, /* - X + Y */
-};
-
-static const float camera_coords_frame_tri[3] = {
-    5.0f, /* tria + X */
-    6.0f, /* tria - X */
-    7.0f, /* tria + Y */
-};
-
-/** Draw a loop of lines. */
-static void camera_fill_lines_loop_fl_v1(GPUVertBufRaw *pos_step,
-                                         const float *coords,
-                                         const uint coords_len)
-{
-  for (uint i = 0, i_prev = coords_len - 1; i < coords_len; i_prev = i++) {
-    *((float *)GPU_vertbuf_raw_step(pos_step)) = coords[i_prev];
-    *((float *)GPU_vertbuf_raw_step(pos_step)) = coords[i];
-  }
-}
-
-/** Fan lines out from the first vertex. */
-static void camera_fill_lines_fan_fl_v1(GPUVertBufRaw *pos_step,
-                                        const float *coords,
-                                        const uint coords_len)
-{
-  for (uint i = 1; i < coords_len; i++) {
-    *((float *)GPU_vertbuf_raw_step(pos_step)) = coords[0];
-    *((float *)GPU_vertbuf_raw_step(pos_step)) = coords[i];
-  }
-}
-
-/** Simply fill the array. */
-static void camera_fill_array_fl_v1(GPUVertBufRaw *pos_step,
-                                    const float *coords,
-                                    const uint coords_len)
-{
-  for (uint i = 0; i < coords_len; i++) {
-    *((float *)GPU_vertbuf_raw_step(pos_step)) = coords[i];
-  }
-}
-
-GPUBatch *DRW_cache_camera_get(void)
-{
-  if (!SHC.drw_camera) {
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-    }
-
-    /* Vertices */
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    const int vbo_len_capacity = 22;
-    GPU_vertbuf_data_alloc(vbo, vbo_len_capacity);
-    GPUVertBufRaw pos_step;
-    GPU_vertbuf_attr_get_raw_data(vbo, attr_id.pos, &pos_step);
-
-    /* camera cone (from center to frame) */
-    camera_fill_lines_fan_fl_v1(
-        &pos_step, camera_coords_frame_bounds, ARRAY_SIZE(camera_coords_frame_bounds));
-
-    /* camera frame (skip center) */
-    camera_fill_lines_loop_fl_v1(
-        &pos_step, &camera_coords_frame_bounds[1], ARRAY_SIZE(camera_coords_frame_bounds) - 1);
-
-    /* camera triangle (above the frame) */
-    camera_fill_lines_loop_fl_v1(
-        &pos_step, camera_coords_frame_tri, ARRAY_SIZE(camera_coords_frame_tri));
-
-    BLI_assert(vbo_len_capacity == GPU_vertbuf_raw_used(&pos_step));
-
-    SHC.drw_camera = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
-  }
-  return SHC.drw_camera;
-}
-
 GPUBatch *DRW_cache_camera_frame_get(void)
 {
   if (!SHC.drw_camera_frame) {
+    GPUVertFormat format = extra_vert_format();
 
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-    }
-
-    /* Vertices */
+    const int v_len = 2 * (4 + 4);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    const int vbo_len_capacity = 8;
-    GPU_vertbuf_data_alloc(vbo, vbo_len_capacity);
-    GPUVertBufRaw pos_step;
-    GPU_vertbuf_attr_get_raw_data(vbo, attr_id.pos, &pos_step);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
-    /* camera frame (skip center) */
-    camera_fill_lines_loop_fl_v1(
-        &pos_step, &camera_coords_frame_bounds[1], ARRAY_SIZE(camera_coords_frame_bounds) - 1);
-
-    BLI_assert(vbo_len_capacity == GPU_vertbuf_raw_used(&pos_step));
+    int v = 0;
+    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    /* Frame */
+    for (int a = 0; a < 4; a++) {
+      for (int b = 0; b < 2; b++) {
+        float x = p[(a + b) % 4][0];
+        float y = p[(a + b) % 4][1];
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 1.0f}, VCLASS_CAMERA_FRAME});
+      }
+    }
+    /* Wires to origin. */
+    for (int a = 0; a < 4; a++) {
+      float x = p[a][0];
+      float y = p[a][1];
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 1.0f}, VCLASS_CAMERA_FRAME});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 0.0f}, VCLASS_CAMERA_FRAME});
+    }
 
     SHC.drw_camera_frame = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_camera_frame;
 }
 
+GPUBatch *DRW_cache_camera_volume_get(void)
+{
+  if (!SHC.drw_camera_volume) {
+    GPUVertFormat format = extra_vert_format();
+
+    const int v_len = ARRAY_SIZE(bone_box_solid_tris) * 3;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    int flag = VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME;
+    for (int i = 0; i < ARRAY_SIZE(bone_box_solid_tris); i++) {
+      for (int a = 0; a < 3; a++) {
+        float x = bone_box_verts[bone_box_solid_tris[i][a]][2];
+        float y = bone_box_verts[bone_box_solid_tris[i][a]][0];
+        float z = bone_box_verts[bone_box_solid_tris[i][a]][1];
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, z}, flag});
+      }
+    }
+
+    SHC.drw_camera_volume = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_camera_volume;
+}
+
+GPUBatch *DRW_cache_camera_volume_wire_get(void)
+{
+  if (!SHC.drw_camera_volume_wire) {
+    GPUVertFormat format = extra_vert_format();
+
+    const int v_len = ARRAY_SIZE(bone_box_wire);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    int flag = VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME;
+    for (int i = 0; i < ARRAY_SIZE(bone_box_wire); i++) {
+      float x = bone_box_verts[bone_box_wire[i]][2];
+      float y = bone_box_verts[bone_box_wire[i]][0];
+      float z = bone_box_verts[bone_box_wire[i]][1];
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, z}, flag});
+    }
+
+    SHC.drw_camera_volume_wire = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_camera_volume_wire;
+}
+
+GPUBatch *DRW_cache_camera_tria_wire_get(void)
+{
+  if (!SHC.drw_camera_tria_wire) {
+    GPUVertFormat format = extra_vert_format();
+
+    const int v_len = 2 * 3;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    float p[3][2] = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+    for (int a = 0; a < 3; a++) {
+      for (int b = 0; b < 2; b++) {
+        float x = p[(a + b) % 3][0];
+        float y = p[(a + b) % 3][1];
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 1.0f}, VCLASS_CAMERA_FRAME});
+      }
+    }
+
+    SHC.drw_camera_tria_wire = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_camera_tria_wire;
+}
+
 GPUBatch *DRW_cache_camera_tria_get(void)
 {
   if (!SHC.drw_camera_tria) {
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-    }
+    GPUVertFormat format = extra_vert_format();
 
-    /* Vertices */
+    const int v_len = 3;
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    const int vbo_len_capacity = 3;
-    GPU_vertbuf_data_alloc(vbo, vbo_len_capacity);
-    GPUVertBufRaw pos_step;
-    GPU_vertbuf_attr_get_raw_data(vbo, attr_id.pos, &pos_step);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
-    /* camera triangle (above the frame) */
-    camera_fill_array_fl_v1(
-        &pos_step, camera_coords_frame_tri, ARRAY_SIZE(camera_coords_frame_tri));
-
-    BLI_assert(vbo_len_capacity == GPU_vertbuf_raw_used(&pos_step));
+    int v = 0;
+    /* Use camera frame position */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{-1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_FRAME});
 
     SHC.drw_camera_tria = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_camera_tria;
+}
+
+GPUBatch *DRW_cache_camera_distances_get(void)
+{
+  if (!SHC.drw_camera_distances) {
+    GPUVertFormat format = extra_vert_format();
+
+    const int v_len = 2 * (1 + DIAMOND_NSEGMENTS * 2 + 2);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    /* Direction Line */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_CAMERA_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_CAMERA_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.5f, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.5f, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    /* Focus cross */
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{-1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 1.0, 2.0}, VCLASS_CAMERA_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, -1.0, 2.0}, VCLASS_CAMERA_DIST});
+
+    SHC.drw_camera_distances = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_camera_distances;
 }
 
 /** \} */

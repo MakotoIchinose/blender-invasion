@@ -1563,7 +1563,7 @@ static void OBJECT_cache_init(void *vedata)
         sgl->non_meshes, geom, &probePlanarSize, draw_ctx->sh_cfg);
 
     /* Camera */
-    geom = DRW_cache_camera_get();
+    geom = DRW_cache_camera_frame_get();
     sgl->camera = buffer_camera_instance(sgl->non_meshes, geom, draw_ctx->sh_cfg);
 
     geom = DRW_cache_camera_frame_get();
