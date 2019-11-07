@@ -1168,6 +1168,16 @@ typedef enum eGP_Sculpt_SelectMaskFlag {
   GP_SCULPT_MASK_SELECTMODE_SEGMENT = (1 << 2),
 } eGP_Sculpt_SelectMaskFlag;
 
+/* GP_Sculpt_Settings.gpencil_selectmode_vertex */
+typedef enum eGP_vertex_SelectMaskFlag {
+  /* only affect selected points */
+  GP_VERTEX_MASK_SELECTMODE_POINT = (1 << 0),
+  /* only affect selected strokes */
+  GP_VERTEX_MASK_SELECTMODE_STROKE = (1 << 1),
+  /* only affect selected segmenst */
+  GP_VERTEX_MASK_SELECTMODE_SEGMENT = (1 << 2),
+} eGP_Vertex_SelectMaskFlag;
+
 /* Settings for GP Interpolation Operators */
 typedef struct GP_Interpolate_Settings {
   /** #eGP_Interpolate_SettingsFlag. */
@@ -1515,8 +1525,11 @@ typedef struct ToolSettings {
   /** Subset selection filter in wpaint. */
   char vgroupsubset;
 
+  /** Stroke selection mode for Vertex Paint. */
+  char gpencil_selectmode_vertex;
+
   /* UV painting */
-  char _pad2[3];
+  char _pad2[2];
   char uv_sculpt_settings;
   char uv_relax_method;
   /* XXX: these sculpt_paint_* fields are deprecated, use the

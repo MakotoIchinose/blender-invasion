@@ -3170,6 +3170,32 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Gpencil_mask_segment_update");
 
+  /* Grease Pencil - Select mode Vertex Paint */
+  prop = RNA_def_property(srna, "use_gpencil_vertex_select_mask_point", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "gpencil_selectmode_vertex", GP_VERTEX_MASK_SELECTMODE_POINT);
+  RNA_def_property_ui_text(prop, "Selection Mask", "Only paint selected stroke points");
+  RNA_def_property_ui_icon(prop, ICON_GP_SELECT_POINTS, 0);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Gpencil_mask_point_update");
+
+  prop = RNA_def_property(srna, "use_gpencil_vertex_select_mask_stroke", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "gpencil_selectmode_vertex", GP_VERTEX_MASK_SELECTMODE_STROKE);
+  RNA_def_property_ui_text(prop, "Selection Mask", "Only paint selected stroke");
+  RNA_def_property_ui_icon(prop, ICON_GP_SELECT_STROKES, 0);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Gpencil_mask_stroke_update");
+
+  prop = RNA_def_property(srna, "use_gpencil_vertex_select_mask_segment", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "gpencil_selectmode_vertex", GP_VERTEX_MASK_SELECTMODE_SEGMENT);
+  RNA_def_property_ui_text(
+      prop, "Selection Mask", "Only paint selected stroke points between other strokes");
+  RNA_def_property_ui_icon(prop, ICON_GP_SELECT_BETWEEN_STROKES, 0);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Gpencil_mask_segment_update");
+
   /* Annotations - 2D Views Stroke Placement */
   prop = RNA_def_property(srna, "annotation_stroke_placement_view2d", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "gpencil_v2d_align");

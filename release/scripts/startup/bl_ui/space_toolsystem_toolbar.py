@@ -1606,6 +1606,17 @@ class _defs_gpencil_weight:
 
 class _defs_gpencil_vertex:
 
+    
+    @staticmethod
+    def poll_select_mask(context):
+        if context is None:
+            return True
+        ob = context.active_object
+        ts = context.scene.tool_settings
+        return ob and ob.type == 'GPENCIL' and (ts.use_gpencil_vertex_select_mask_point or
+                                                ts.use_gpencil_vertex_select_mask_stroke or
+                                                ts.use_gpencil_vertex_select_mask_segment)
+    
     @staticmethod
     def generate_from_brushes(context):
         return generate_from_enum_ex(
@@ -2137,6 +2148,12 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'VERTEX_GPENCIL': [
             _defs_gpencil_vertex.generate_from_brushes,
+            None,
+            lambda context: (
+                VIEW3D_PT_tools_active._tools_gpencil_select
+                if _defs_gpencil_vertex.poll_select_mask(context)
+                else ()
+            ),
         ],
     }
 
