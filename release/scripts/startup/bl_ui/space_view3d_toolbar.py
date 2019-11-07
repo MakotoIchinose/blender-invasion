@@ -2042,8 +2042,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         ts = context.tool_settings
         settings = ts.gpencil_paint
         brush = ts.gpencil_paint.brush
-        # if context.area.type != 'PROPERTIES':
-        #     return False
 
         if ob is None or brush is None:
             return False
@@ -2099,7 +2097,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         if brush.gpencil_tool == 'TINT':
             col.prop(settings, "use_vertex_mode", text="Mode")
 
-        # if context.area.type == 'PROPERTIES':
         col.prop(brush, "color", text="")
         col.template_color_picker(brush, "color", value_slider=True)
 
@@ -2152,7 +2149,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         layout.use_property_decorate = False
         ts = context.tool_settings
         settings = ts.gpencil_paint
-        brush = ts.gpencil_paint.brush
+        brush = settings.brush
 
         col = layout.column()
         col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
@@ -2276,6 +2273,83 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
                 )
                 tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
                 brush_basic_gpencil_paint_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_vertex(View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Vertex Color"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+            
+        if context.region.type == 'TOOL_HEADER':
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        col = layout.column()
+
+        col.prop(settings, "use_vertex_mode", text="Mode")
+
+        col.prop(brush, "color", text="")
+        col.template_color_picker(brush, "color", value_slider=True)
+
+        sub_row = col.row(align=True)
+        sub_row.prop(brush, "color", text="")
+        sub_row.prop(brush, "secondary_color", text="")
+
+        sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Color Palette"
+    bl_category = "Tool"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex'
+
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+            
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        col = layout.column()
+
+        row = col.row(align=True)
+        row.template_ID(settings, "palette", new="palette.new")
+        if settings.palette:
+            col.template_palette(settings, "palette", color=True)
 
 
 # Grease Pencil stroke editing tools
@@ -2474,6 +2548,8 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_weight_appearance,
     VIEW3D_PT_tools_grease_pencil_interpolate,
     VIEW3D_PT_tools_grease_pencil_vertex_brush,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
 )
 
 if __name__ == "__main__":  # only for live edit.
