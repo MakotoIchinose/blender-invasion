@@ -76,6 +76,8 @@ typedef struct tGP_BrushTintData {
   Brush *brush;
   eGP_Sculpt_Flag flag;
 
+  eGP_Vertex_SelectMaskFlag mask;
+
   /* Space Conversion Data */
   GP_SpaceConversion gsc;
 
@@ -324,6 +326,9 @@ static bool gptint_brush_init(bContext *C, wmOperator *op)
   gso->sa = CTX_wm_area(C);
   gso->ar = CTX_wm_region(C);
 
+  /* save mask */
+  gso->mask = ts->gpencil_selectmode_vertex;
+
   /* multiframe settings */
   gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
   gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
@@ -481,6 +486,15 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
       /* Get points to work with */
       pt1 = gps->points + i;
       pt2 = gps->points + i + 1;
+
+      /* Skip if neither one is selected
+       * (and we are only allowed to edit/consider selected points) */
+      if (GPENCIL_ANY_VERTEX_MASK(gso->mask)) {
+        if (!(pt1->flag & GP_SPOINT_SELECT) && !(pt2->flag & GP_SPOINT_SELECT)) {
+          include_last = false;
+          continue;
+        }
+      }
 
       bGPDspoint npt;
       gp_point_to_parent_space(pt1, diff_mat, &npt);
