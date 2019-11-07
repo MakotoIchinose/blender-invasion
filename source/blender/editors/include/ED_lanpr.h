@@ -236,9 +236,6 @@ typedef struct LANPR_RenderBuffer {
   struct Material *material_pointers[2048];
 
   /*  Render status */
-
-  int cached_for_frame;
-
   real view_vector[3];
 
   int triangle_size;
@@ -351,6 +348,7 @@ typedef struct LANPR_SharedResource {
   struct RenderEngine *re_render;
 
   /** When drawing in the viewport, use the following values. */
+  /** Set to override to -1 before creating lanpr render buffer to use scene camera. */
   int viewport_camera_override;
   double camera_pos[3];
   double near_clip, far_clip;

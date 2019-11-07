@@ -224,8 +224,10 @@ static void lanpr_cache_init(void *vedata)
   View3D *v3d = draw_ctx->v3d;
   RegionView3D *rv3d = v3d ? draw_ctx->rv3d : NULL;
 
+  bool is_render = (lanpr_share.viewport_camera_override < 0);
+
   BLI_spin_lock(&lanpr_share.lock_render_status);
-  if (rv3d) {
+  if (rv3d && lanpr_share.viewport_camera_override >= 0) {
     copy_v3db_v3fl(lanpr_share.camera_pos, rv3d->viewinv[3]);
     copy_m4d_m4(lanpr_share.viewinv, rv3d->viewinv);
     copy_m4d_m4(lanpr_share.persp, rv3d->persmat);
@@ -429,15 +431,22 @@ static void lanpr_cache_init(void *vedata)
 
   /* Intersection cache must be calculated before drawing. */
   int updated = 0;
-  if ((draw_ctx->scene->lanpr.flags & LANPR_AUTO_UPDATE) &&
-      (!lanpr_share.render_buffer_shared ||
-       lanpr_share.render_buffer_shared->cached_for_frame != draw_ctx->scene->r.cfra)) {
+  if (draw_ctx->scene->lanpr.flags & LANPR_AUTO_UPDATE) {
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
-
-      ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 0);
+      if (is_render) {
+        ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
+      }
+      else {
+        ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 0);
+      }
     }
     else if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_DPIX) {
-      ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 1);
+      if (is_render) {
+        ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
+      }
+      else {
+        ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 1);
+      }
     }
   }
 
@@ -446,7 +455,7 @@ static void lanpr_cache_init(void *vedata)
     ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
     ED_lanpr_calculation_set_flag(LANPR_RENDER_IDLE);
   }
-  else {
+  else if (!is_render) {
     DRW_viewport_request_redraw();
   }
 }
@@ -584,7 +593,6 @@ static void lanpr_draw_scene_exec(void *vedata, GPUFrameBuffer *dfb, int is_rend
     lanpr_dpix_draw_scene(txl, fbl, psl, stl->g_data, lanpr, dfb, is_render);
   }
   else if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE) {
-    /*  should isolate these into a seperate function. */
     lanpr_software_draw_scene(vedata, dfb, is_render);
   }
 }
@@ -665,18 +673,6 @@ static void lanpr_render_to_image(void *vedata,
 
   RE_engine_update_stats(engine, NULL, "LANPR: Initializing");
 
-  if (lanpr->master_mode == LANPR_MASTER_MODE_SOFTWARE ||
-      (lanpr->master_mode == LANPR_MASTER_MODE_DPIX && (lanpr->flags & LANPR_USE_INTERSECTIONS))) {
-    if (!lanpr_share.render_buffer_shared) {
-      ED_lanpr_create_render_buffer();
-    }
-    if (lanpr_share.render_buffer_shared->cached_for_frame != scene->r.cfra ||
-        LANPR_GLOBAL_update_tag) {
-      int intersections_only = (lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
-      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, intersections_only);
-    }
-  }
-
   lanpr_render_matrices_init(engine, draw_ctx->depsgraph);
 
   /* refered to eevee's code */
@@ -696,7 +692,13 @@ static void lanpr_render_to_image(void *vedata,
       {GPU_ATTACHMENT_TEXTURE(dtxl->depth), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
 
   lanpr_engine_init(vedata);
-  lanpr_share.dpix_reloaded_deg = 1; /*  force dpix batch to re-create */
+
+  /*  force dpix batch to re-create */
+  lanpr_share.dpix_reloaded_deg = 1;
+
+  /* force use actual camera instead of viewport camera. */
+  /* Do this before creating render buffer. */
+  lanpr_share.viewport_camera_override = -1;
   lanpr_cache_init(vedata);
   DRW_render_object_iter(vedata, engine, draw_ctx->depsgraph, lanpr_render_cache);
   lanpr_cache_finish(vedata);

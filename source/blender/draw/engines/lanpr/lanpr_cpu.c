@@ -246,13 +246,14 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
     int texw = GPU_texture_width(txl->ms_resolve_color),
         texh = GPU_texture_height(txl->ms_resolve_color);
-        
+
     pd->dpix_viewport[2] = texw;
     pd->dpix_viewport[3] = texh;
-    if(is_render){
+    if (is_render) {
       pd->output_viewport[2] = scene->r.xsch;
       pd->output_viewport[3] = scene->r.ysch;
-    }else{
+    }
+    else {
       pd->output_viewport[2] = texw;
       pd->output_viewport[3] = texh;
     }

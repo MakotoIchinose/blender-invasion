@@ -2665,8 +2665,6 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
   rb->viewport_override = lanpr_share.viewport_camera_override;
   copy_v3_v3_db(rb->camera_pos, lanpr_share.camera_pos);
 
-  rb->cached_for_frame = -1;
-
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
 
@@ -3876,8 +3874,6 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersecto
     ED_lanpr_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
   }
 
-  rb->cached_for_frame = rb->scene->r.cfra;
-
   ED_lanpr_calculation_set_flag(LANPR_RENDER_FINISHED);
 
   return OPERATOR_FINISHED;
@@ -4385,8 +4381,7 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 {
   int frame = scene->r.cfra;
 
-  if (!lanpr_share.render_buffer_shared ||
-      lanpr_share.render_buffer_shared->cached_for_frame != frame) {
+  if (scene->lanpr.flags & LANPR_AUTO_UPDATE) {
     ED_lanpr_compute_feature_lines_internal(dg, 0);
   }
 
@@ -4442,8 +4437,7 @@ static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *UN
 
   int frame = scene->r.cfra;
 
-  if (!lanpr_share.render_buffer_shared ||
-      lanpr_share.render_buffer_shared->cached_for_frame != frame) {
+  if (scene->lanpr.flags & LANPR_AUTO_UPDATE) {
     ED_lanpr_compute_feature_lines_internal(dg, 0);
   }
 
@@ -4467,8 +4461,7 @@ static int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *UN
 
   int frame = scene->r.cfra;
 
-  if (!lanpr_share.render_buffer_shared ||
-      lanpr_share.render_buffer_shared->cached_for_frame != frame) {
+  if (scene->lanpr.flags & LANPR_AUTO_UPDATE) {
     ED_lanpr_compute_feature_lines_internal(dg, 0);
   }
 
@@ -4550,8 +4543,7 @@ void ED_lanpr_post_frame_update_external(Scene *s, Depsgraph *dg)
   if (strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR)) {
     /* Not LANPR engine, do GPencil updates. */
     /* LANPR engine will automatically update when drawing the viewport. */
-    if (!lanpr_share.render_buffer_shared ||
-        lanpr_share.render_buffer_shared->cached_for_frame != s->r.cfra) {
+    if (s->lanpr.flags & LANPR_AUTO_UPDATE) {
       ED_lanpr_compute_feature_lines_internal(dg, 0);
       lanpr_update_gp_strokes_actual(s, dg);
     }
