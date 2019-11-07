@@ -3369,6 +3369,11 @@ def km_grease_pencil_stroke_vertex_mode(_params):
          {"properties": [("data_path_primary", 'tool_settings.gpencil_vertex_paint.brush.size')]}),
         # Display
         *_grease_pencil_display(),
+        # Tools
+        op_tool("builtin_brush.Draw", {"type": 'D', "value": 'PRESS'}),
+        op_tool("builtin_brush.Blur", {"type": 'F', "value": 'PRESS'}),
+        op_tool("builtin_brush.Average", {"type": 'E', "value": 'PRESS'}),
+        op_tool("builtin.brush.Smear", {"type": 'K', "value": 'PRESS'}),
     ])
 
     return keymap
