@@ -670,6 +670,7 @@ class TOPBAR_PT_gpencil_fill(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
     bl_label = "Advanced"
+    bl_ui_units_x = 13
 
     def draw(self, context):
         paint = context.tool_settings.gpencil_paint
@@ -678,6 +679,10 @@ class TOPBAR_PT_gpencil_fill(Panel):
 
         layout = self.layout
         # Fill
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_factor", text="Resolution")
         if gp_settings.fill_draw_mode != 'STROKE':
