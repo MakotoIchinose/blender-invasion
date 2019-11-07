@@ -1034,6 +1034,12 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
   gps->inittime = 0.0f;
 
+  /* Apply the mix color to fill. */
+  if (GPENCIL_USE_VERTEX_COLOR_FILL(ts)) {
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    gps->mix_color_fill[3] = brush->gpencil_settings->vertex_factor;
+  }
+
   /* the polygon must be closed, so enabled cyclic */
   gps->flag |= GP_STROKE_CYCLIC;
   gps->flag |= GP_STROKE_3DSPACE;
@@ -1090,6 +1096,12 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
     pt->time = 0.0f;
+
+    /* Point mix color. */
+    copy_v3_v3(pt->mix_color, brush->rgb);
+    pt->mix_color[3] = GPENCIL_USE_VERTEX_COLOR_STROKE(ts) ?
+                           brush->gpencil_settings->vertex_factor :
+                           0.0f;
 
     if ((ts->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) && (have_weight)) {
       MDeformWeight *dw = defvert_verify_index(dvert, def_nr);

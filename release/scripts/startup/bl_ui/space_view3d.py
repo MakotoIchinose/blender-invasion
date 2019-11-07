@@ -353,7 +353,7 @@ class _draw_tool_settings_context_mode:
 
             row.prop(gp_settings, "use_material_pin", text="")
 
-            if brush.gpencil_tool == 'DRAW' and ma:
+            if brush.gpencil_tool in ('DRAW', 'FILL') and ma:
                 gp_style = ma.grease_pencil
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
