@@ -3149,6 +3149,8 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
   paint->palette = BLI_findstring(&bmain->palettes, "Grease Pencil", offsetof(ID, name) + 2);
   if (paint->palette == NULL) {
     paint->palette = BKE_palette_add(bmain, "Grease Pencil");
+    ts->gp_vertexpaint->paint.palette = paint->palette;
+
     /* Create Colors. */
     for (int i = 0; i < totcol; i++) {
       PaletteColor *palcol = BKE_palette_color_add(paint->palette);
