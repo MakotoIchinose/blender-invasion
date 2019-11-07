@@ -84,6 +84,23 @@ static int gpencil_select_mode_from_sculpt(eGP_Sculpt_SelectMaskFlag mode)
   }
 }
 
+/* Convert vertex mask mode to Select mode */
+static int gpencil_select_mode_from_vertex(eGP_Sculpt_SelectMaskFlag mode)
+{
+  if (mode & GP_VERTEX_MASK_SELECTMODE_POINT) {
+    return GP_SELECTMODE_POINT;
+  }
+  else if (mode & GP_VERTEX_MASK_SELECTMODE_STROKE) {
+    return GP_SELECTMODE_STROKE;
+  }
+  else if (mode & GP_VERTEX_MASK_SELECTMODE_SEGMENT) {
+    return GP_SELECTMODE_SEGMENT;
+  }
+  else {
+    return GP_SELECTMODE_POINT;
+  }
+}
+
 static bool gpencil_select_poll(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
@@ -976,13 +993,21 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Object *ob = CTX_data_active_object(C);
 
-  const int selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
-                             gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
-                             ts->gpencil_selectmode_edit;
+  int selectmode;
+  if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) {
+    selectmode = gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt);
+  }
+  else if (ob && ob->mode == OB_MODE_VERTEX_GPENCIL) {
+    selectmode = gpencil_select_mode_from_vertex(ts->gpencil_selectmode_vertex);
+  }
+  else {
+    selectmode = ts->gpencil_selectmode_edit;
+  }
+
   const float scale = ts->gp_sculpt.isect_threshold;
 
   /* if not edit/sculpt mode, the event is catched but not processed */
-  if (GPENCIL_NONE_EDIT_MODE(gpd)) {
+  if ((GPENCIL_NONE_EDIT_MODE(gpd)) && (GPENCIL_VERTEX_MODE(gpd))) {
     return OPERATOR_CANCELLED;
   }
 

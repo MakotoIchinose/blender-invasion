@@ -966,7 +966,7 @@ void GPENCIL_draw_scene(void *ved)
   const bool playing = stl->storage->is_playing;
   const bool is_render = stl->storage->is_render;
   bGPdata *gpd_act = (obact) && (obact->type == OB_GPENCIL) ? (bGPdata *)obact->data : NULL;
-  const bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd_act);
+  const bool is_edit = (GPENCIL_ANY_EDIT_MODE(gpd_act) || GPENCIL_VERTEX_MODE(gpd_act));
   const bool overlay = v3d != NULL ? (bool)((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) : true;
 
   /* if the draw is for select, do a basic drawing and return */

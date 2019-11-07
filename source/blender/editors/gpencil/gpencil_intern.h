@@ -648,6 +648,10 @@ struct GP_EditableStrokes_Iter {
   ((flag & (GP_SCULPT_MASK_SELECTMODE_POINT | GP_SCULPT_MASK_SELECTMODE_STROKE | \
             GP_SCULPT_MASK_SELECTMODE_SEGMENT)))
 
+#define GPENCIL_ANY_VERTEX_MASK(flag) \
+  ((flag & (GP_VERTEX_MASK_SELECTMODE_POINT | GP_VERTEX_MASK_SELECTMODE_STROKE | \
+            GP_VERTEX_MASK_SELECTMODE_SEGMENT)))
+
 /**
  * Iterate over all editable strokes using evaluated data in the current context,
  * stopping on each usable layer + stroke pair (i.e. gpl and gps)
