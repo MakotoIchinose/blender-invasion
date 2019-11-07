@@ -221,6 +221,22 @@ static void lanpr_cache_init(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
+  View3D *v3d = draw_ctx->v3d;
+  RegionView3D *rv3d = v3d ? draw_ctx->rv3d : NULL;
+
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  if (rv3d) {
+    copy_v3db_v3fl(lanpr_share.camera_pos, rv3d->viewinv[3]);
+    copy_m4d_m4(lanpr_share.viewinv, rv3d->viewinv);
+    copy_m4d_m4(lanpr_share.persp, rv3d->persmat);
+    lanpr_share.near_clip = v3d->clip_start;
+    lanpr_share.far_clip = v3d->clip_end;
+    lanpr_share.viewport_camera_override = 1;
+  }
+  else {
+    lanpr_share.viewport_camera_override = 0;
+  }
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
 
   int texture_size = lanpr_dpix_texture_size(lanpr);
   lanpr_share.texture_size = texture_size;

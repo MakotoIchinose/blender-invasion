@@ -297,6 +297,9 @@ typedef struct LANPR_RenderBuffer {
   int use_intersections;
   int _pad;
 
+  int viewport_override;
+  double camera_pos[3];
+
 } LANPR_RenderBuffer;
 
 typedef enum LANPR_RenderStatus {
@@ -346,6 +349,13 @@ typedef struct LANPR_SharedResource {
 
   /** Set before rendering and cleared upon finish! */
   struct RenderEngine *re_render;
+
+  /** When drawing in the viewport, use the following values. */
+  int viewport_camera_override;
+  double camera_pos[3];
+  double near_clip, far_clip;
+  double viewinv[4][4];
+  double persp[4][4];
 } LANPR_SharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8

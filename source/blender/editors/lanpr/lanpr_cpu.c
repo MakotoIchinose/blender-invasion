@@ -94,6 +94,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
                                                           Object *cam,
+                                                          double *override_camera_loc,
                                                           double vp[4][4],
                                                           double *CameraDir,
                                                           double *From,
@@ -686,8 +687,16 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
         continue;
       }
       rt->testing[thread_id] = rl;
-      if (lanpr_triangle_line_imagespace_intersection_v2(
-              &rb->lock_task, (void *)rt, rl, c, rb->view_projection, rb->view_vector, &l, &r)) {
+      if (lanpr_triangle_line_imagespace_intersection_v2(&rb->lock_task,
+                                                         (void *)rt,
+                                                         rl,
+                                                         c,
+                                                         rb->viewport_override ? rb->camera_pos :
+                                                                                 NULL,
+                                                         rb->view_projection,
+                                                         rb->view_vector,
+                                                         &l,
+                                                         &r)) {
         lanpr_cut_render_line(rb, rl, l, r);
         if (rl->min_occ > rb->max_occlusion_level) {
           return; /* No need to caluclate any longer. */
@@ -1805,30 +1814,42 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   double proj[4][4], view[4][4], result[4][4];
   float inv[4][4];
   Camera *cam = c->data;
+  int cam_override;
 
-  float sensor = BKE_camera_sensor_size(cam->sensor_fit, cam->sensor_x, cam->sensor_y);
-  real fov = focallength_to_fov(cam->lens, sensor);
+  /* lock becore accessing shared status data */
+  BLI_spin_lock(&lanpr_share.lock_render_status);
 
-  memset(rb->material_pointers, 0, sizeof(void *) * 2048);
-
-  real asp = ((real)rb->w / (real)rb->h);
-
-  if (cam->type == CAM_PERSP) {
-    tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
+  if (lanpr_share.viewport_camera_override) {
+    copy_m4_m4_db(proj, lanpr_share.persp);
+    invert_m4_m4(inv, lanpr_share.viewinv);
+    unit_m4_db(lanpr_share.viewinv);
+    mul_m4_m4m4_db_uniq(result, proj, lanpr_share.viewinv);
+    copy_m4_m4_db(proj, result);
+    copy_m4_m4_db(rb->view_projection, proj);
   }
-  else if (cam->type == CAM_ORTHO) {
-    real w = cam->ortho_scale / 2;
-    tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
+  else {
+    float sensor = BKE_camera_sensor_size(cam->sensor_fit, cam->sensor_x, cam->sensor_y);
+    real fov = focallength_to_fov(cam->lens, sensor);
+
+    memset(rb->material_pointers, 0, sizeof(void *) * 2048);
+
+    real asp = ((real)rb->w / (real)rb->h);
+
+    if (cam->type == CAM_PERSP) {
+      tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
+    }
+    else if (cam->type == CAM_ORTHO) {
+      real w = cam->ortho_scale / 2;
+      tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
+    }
+    invert_m4_m4(inv, c->obmat);
+    mul_m4db_m4db_m4fl_uniq(result, proj, inv);
+    copy_m4_m4_db(proj, result);
+    copy_m4_m4_db(rb->view_projection, proj);
   }
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
 
   unit_m4_db(view);
-
-  /*  tObjApplyself_transformMatrix(c, 0); */
-  /*  tObjApplyGlobalTransformMatrixReverted(c); */
-  invert_m4_m4(inv, c->obmat);
-  mul_m4db_m4db_m4fl_uniq(result, proj, inv);
-  copy_m4_m4_db(proj, result);
-  copy_m4_m4_db(rb->view_projection, proj);
 
   BLI_listbase_clear(&rb->triangle_buffer_pointers);
   BLI_listbase_clear(&rb->vertex_buffer_pointers);
@@ -1842,14 +1863,6 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
     lanpr_make_render_geometry_buffers_object(o, view, proj, rb, usage);
   }
   DEG_OBJECT_ITER_END;
-
-  /*  for (collection = s->master_collection.first; collection; collection = collection->ID.next) {
-   */
-  /* 	for (co = collection->gobject.first; co; co = co->next) { */
-  /* 		//tObjApplyGlobalTransformMatrixRecursive(o); */
-  /* 		lanpr_make_render_geometry_buffers_object(o, view, proj, rb); */
-  /* 	} */
-  /* } */
 }
 
 #define INTERSECT_SORT_MIN_TO_MAX_3(ia, ib, ic, lst) \
@@ -1902,6 +1915,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
                                                           Object *cam,
+                                                          double *override_cam_loc,
                                                           double vp[4][4],
                                                           double *CameraDir,
                                                           double *From,
@@ -1955,7 +1969,12 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
 
   copy_v3_v3_db(Cv, CameraDir);
 
-  copy_v4db_v4fl(vd4, cam->obmat[3]);
+  if (override_cam_loc) {
+    copy_v3_v3_db(vd4, override_cam_loc);
+  }
+  else {
+    copy_v4db_v4fl(vd4, cam->obmat[3]);
+  }
   if (((Camera *)cam->data)->type == CAM_PERSP) {
     sub_v3_v3v3_db(Cv, vd4, rt->v[0]->gloc);
   }
@@ -2476,7 +2495,14 @@ static void lanpr_compute_view_vector(LANPR_RenderBuffer *rb)
   float trans[3];
   float inv[4][4];
 
-  invert_m4_m4(inv, rb->scene->camera->obmat);
+  BLI_spin_lock(&lanpr_share.lock_render_status);
+  if (lanpr_share.viewport_camera_override) {
+    invert_m4_m4(inv, lanpr_share.viewinv);
+  }
+  else {
+    invert_m4_m4(inv, rb->scene->camera->obmat);
+  }
+  BLI_spin_unlock(&lanpr_share.lock_render_status);
   transpose_m4(inv);
   mul_v3_mat3_m4v3(trans, inv, direction);
   copy_v3db_v3fl(rb->view_vector, trans);
@@ -2487,17 +2513,21 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
   real *view_vector = rb->view_vector;
   real Dot1 = 0, Dot2 = 0;
   real Result;
-  tnsVector3d cam_location;
   int Add = 0;
   Object *cam_obj = rb->scene->camera;
-  Camera *c = cam_obj->data;
+  Camera *c = cam_obj ? cam_obj->data : NULL;
   LANPR_RenderLine *rl;
   int contour_count = 0;
   int crease_count = 0;
   int MaterialCount = 0;
 
-  if (c->type == CAM_ORTHO) {
-    lanpr_compute_view_vector(rb);
+  if (!rb->viewport_override) {
+    if (c->type == CAM_ORTHO) {
+      lanpr_compute_view_vector(rb);
+    }
+    else if (c->type == CAM_PERSP) {
+      copy_v3db_v3fl(rb->camera_pos, cam_obj->obmat[3]);
+    }
   }
 
   for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
@@ -2510,8 +2540,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
     Dot2 = 0;
 
     if (c->type == CAM_PERSP) {
-      copy_v3db_v3fl(cam_location, cam_obj->obmat[3]);
-      sub_v3_v3v3_db(view_vector, rl->l->gloc, cam_location);
+      sub_v3_v3v3_db(view_vector, rl->l->gloc, rb->camera_pos);
     }
 
     if (use_smooth_contour_modifier_contour) {
@@ -2623,13 +2652,18 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 {
   if (lanpr_share.render_buffer_shared) {
+    LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
     ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-    return lanpr_share.render_buffer_shared;
+    rb->viewport_override = lanpr_share.viewport_camera_override;
+    copy_v3_v3_db(rb->camera_pos, lanpr_share.camera_pos);
+    return rb;
   }
 
   LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");
 
   lanpr_share.render_buffer_shared = rb;
+  rb->viewport_override = lanpr_share.viewport_camera_override;
+  copy_v3_v3_db(rb->camera_pos, lanpr_share.camera_pos);
 
   rb->cached_for_frame = -1;
 
