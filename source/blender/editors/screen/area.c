@@ -1676,6 +1676,26 @@ static void ed_default_handlers(
     wmKeyMap *keymap_sculpt = WM_keymap_ensure(
         wm->defaultconf, "Grease Pencil Stroke Sculpt Mode", 0, 0);
     WM_event_add_keymap_handler(handlers, keymap_sculpt);
+
+    wmKeyMap *keymap_vertex = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex Mode", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex);
+
+    wmKeyMap *keymap_vertex_draw = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex (Draw)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex_draw);
+
+    wmKeyMap *keymap_vertex_blur = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex (Blur)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex_blur);
+
+    wmKeyMap *keymap_vertex_average = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex (Average)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex_average);
+
+    wmKeyMap *keymap_vertex_smear = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex (Smear)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex_smear);
   }
 }
 

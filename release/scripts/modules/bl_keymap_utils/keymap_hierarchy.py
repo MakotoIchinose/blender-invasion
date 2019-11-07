@@ -199,6 +199,10 @@ _km_hierarchy = [
         ('Grease Pencil Stroke Sculpt Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Weight Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex Mode', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Vertex (Draw)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Vertex (Blur)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Vertex (Average)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Vertex (Smear)', 'EMPTY', 'WINDOW', []),
     ]),
     ('Mask Editing', 'EMPTY', 'WINDOW', []),
     ('Frames', 'EMPTY', 'WINDOW', []),    # frame navigation (per region)

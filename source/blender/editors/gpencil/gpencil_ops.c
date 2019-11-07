@@ -95,6 +95,24 @@ static bool gp_stroke_paintmode_poll_with_tool(bContext *C, const char gpencil_t
           WM_toolsystem_active_tool_is_brush(C) && (brush->gpencil_tool == gpencil_tool));
 }
 
+static bool gp_stroke_vertexmode_poll_with_tool(bContext *C, const char gpencil_vertex_tool)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  if (!gpd) {
+    return false;
+  }
+
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  if (!ts || !ts->gp_vertexpaint) {
+    return false;
+  }
+
+  Brush *brush = BKE_paint_brush(&ts->gp_vertexpaint->paint);
+  return ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) && (brush && brush->gpencil_settings) &&
+          WM_toolsystem_active_tool_is_brush(C) &&
+          (brush->gpencil_vertex_tool == gpencil_vertex_tool));
+}
+
 /* Poll callback for stroke painting (draw brush) */
 static bool gp_stroke_paintmode_draw_poll(bContext *C)
 {
@@ -151,6 +169,43 @@ static bool gp_stroke_weightmode_poll(bContext *C)
   }
 
   return 0;
+}
+
+/* Poll callback for stroke vertex paint mode */
+static bool gp_stroke_vertexmode_poll(bContext *C)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  Object *ob = CTX_data_active_object(C);
+
+  if ((ob) && (ob->type == OB_GPENCIL)) {
+    return (gpd && (gpd->flag & GP_DATA_STROKE_VERTEXMODE));
+  }
+
+  return 0;
+}
+
+/* Poll callback for vertex painting (draw) */
+static bool gp_stroke_vertexmode_draw_poll(bContext *C)
+{
+  return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_DRAW);
+}
+
+/* Poll callback for vertex painting (blur) */
+static bool gp_stroke_vertexmode_blur_poll(bContext *C)
+{
+  return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_BLUR);
+}
+
+/* Poll callback for vertex painting (average) */
+static bool gp_stroke_vertexmode_average_poll(bContext *C)
+{
+  return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_AVERAGE);
+}
+
+/* Poll callback for vertex painting (smear) */
+static bool gp_stroke_vertexmode_smear_poll(bContext *C)
+{
+  return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_SMEAR);
 }
 
 /* Stroke Editing Keymap - Only when editmode is enabled */
@@ -213,6 +268,40 @@ static void ed_keymap_gpencil_weightpainting(wmKeyConfig *keyconf)
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Weight Mode", 0, 0);
   keymap->poll = gp_stroke_weightmode_poll;
 }
+
+static void ed_keymap_gpencil_vertexpainting(wmKeyConfig *keyconf)
+{
+  /* set poll callback - so that this keymap only gets enabled when stroke vertex is enabled */
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex Mode", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_poll;
+}
+
+/* keys for vertex with a draw brush */
+static void ed_keymap_gpencil_vertexpainting_draw(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Draw)", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_draw_poll;
+}
+
+/* keys for vertex with a draw brush */
+static void ed_keymap_gpencil_vertexpainting_blur(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Blur)", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_blur_poll;
+}
+/* keys for vertex with a draw brush */
+static void ed_keymap_gpencil_vertexpainting_average(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Average)", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_average_poll;
+}
+/* keys for vertex with a draw brush */
+static void ed_keymap_gpencil_vertexpainting_smear(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Smear)", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_smear_poll;
+}
+
 /* ==================== */
 
 void ED_keymap_gpencil(wmKeyConfig *keyconf)
@@ -226,6 +315,11 @@ void ED_keymap_gpencil(wmKeyConfig *keyconf)
   ed_keymap_gpencil_painting_tint(keyconf);
   ed_keymap_gpencil_sculpting(keyconf);
   ed_keymap_gpencil_weightpainting(keyconf);
+  ed_keymap_gpencil_vertexpainting(keyconf);
+  ed_keymap_gpencil_vertexpainting_draw(keyconf);
+  ed_keymap_gpencil_vertexpainting_blur(keyconf);
+  ed_keymap_gpencil_vertexpainting_average(keyconf);
+  ed_keymap_gpencil_vertexpainting_smear(keyconf);
 }
 
 /* ****************************************** */
