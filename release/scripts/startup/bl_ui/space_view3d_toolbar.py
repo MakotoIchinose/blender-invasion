@@ -2229,10 +2229,8 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                       use_negative_slope=True)
 
+
 # Grease Pecil Vertex Paint tools
-# Grease Pencil drawing brushes
-
-
 class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Brush"
@@ -2256,14 +2254,28 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_vertex_paint
+        gpencil_vertex_paint = tool_settings.gpencil_vertex_paint
 
         row = layout.row()
         col = row.column()
-        col.template_ID_preview(gpencil_paint, "brush", new="brush.add", rows=3, cols=8)
+        col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add", rows=3, cols=8)
 
         col = row.column()
-        brush = gpencil_paint.brush
+        brush = gpencil_vertex_paint.brush
+
+        # sub = col.column(align=True)
+        # sub.operator("gpencil.brush_presets_create", icon='PRESET_NEW', text="")
+
+        if brush is not None:
+            gp_settings = brush.gpencil_settings
+
+            # if brush.gpencil_tool in {'DRAW', 'BLUR'}:
+            if not self.is_popover:
+                from bl_ui.properties_paint_common import (
+                    brush_basic_gpencil_paint_settings,
+                )
+                tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+                brush_basic_gpencil_paint_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
 
 
 # Grease Pencil stroke editing tools

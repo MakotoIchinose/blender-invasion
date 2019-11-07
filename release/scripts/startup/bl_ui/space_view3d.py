@@ -434,16 +434,16 @@ class _draw_tool_settings_context_mode:
 
         row.separator(factor=0.4)
         row.prop(brush, "color", text="")
-        # row.popover(
-        #     panel="TOPBAR_PT_gpencil_vertexcolor",
-        #     text="Vertex Color",
-        # )
-
-        from bl_ui.properties_paint_common import (
-            brush_basic_gpencil_paint_settings,
+        row.popover(
+            panel="TOPBAR_PT_gpencil_vertexcolor",
+            text="Vertex Color",
         )
 
-        brush_basic_gpencil_paint_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
+        from bl_ui.properties_paint_common import (
+            brush_basic_gpencil_vertex_settings,
+        )
+
+        brush_basic_gpencil_vertex_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
 
     @staticmethod
     def PARTICLE(context, layout, tool):

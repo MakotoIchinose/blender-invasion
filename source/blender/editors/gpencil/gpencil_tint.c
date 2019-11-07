@@ -567,7 +567,8 @@ static bool gptint_brush_do_frame(bContext *C,
 {
   bool changed = false;
   Object *ob = CTX_data_active_object(C);
-
+  char tool = ob->mode == OB_MODE_VERTEX_GPENCIL ? gso->brush->gpencil_vertex_tool :
+                                                   gso->brush->gpencil_tool;
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
     /* skip strokes that are invalid for current view */
     if (ED_gpencil_stroke_can_use(C, gps) == false) {
@@ -578,8 +579,9 @@ static bool gptint_brush_do_frame(bContext *C,
       continue;
     }
 
-    switch (gso->brush->gpencil_tool) {
-      case GPAINT_TOOL_TINT: {
+    switch (tool) {
+      case GPAINT_TOOL_TINT:
+      case GPVERTEX_TOOL_DRAW: {
         changed |= gptint_brush_do_stroke(gso, gps, diff_mat, brush_tint_apply);
         break;
       }

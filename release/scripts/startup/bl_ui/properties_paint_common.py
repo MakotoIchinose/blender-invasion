@@ -497,6 +497,19 @@ def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=Fals
     layout.prop(brush, "weight", slider=True)
 
 
+def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compact=True, is_toolbar=False):
+    gp_settings = brush.gpencil_settings
+
+    # Brush details
+    if brush.gpencil_vertex_tool == 'DRAW':
+        row = layout.row(align=True)
+        row.prop(brush, "size", text="Radius")
+        row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+        row = layout.row(align=True)
+        row.prop(gp_settings, "pen_strength", slider=True)
+        row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+
+
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
 )

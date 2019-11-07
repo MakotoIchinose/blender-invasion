@@ -924,20 +924,22 @@ class GreasePencilVertexcolorPanel:
         layout.use_property_decorate = False
 
         ts = context.scene.tool_settings
-        gpencil_paint = ts.gpencil_paint
+        is_vertex = context.mode == 'VERTEX_GPENCIL'
+        gpencil_paint = ts.gpencil_vertex_paint if is_vertex else ts.gpencil_paint
         brush = gpencil_paint.brush
         gp_settings = brush.gpencil_settings
+        tool = brush.gpencil_vertex_tool if is_vertex else brush.gpencil_tool
 
         ob = context.object
 
         if ob:
-            if brush.gpencil_tool == 'DRAW':
+            if tool == 'DRAW' and is_vertex is False:
                 row = layout.row(align=True)
                 row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
-            if brush.gpencil_tool == 'TINT':
+            if tool == 'TINT' or is_vertex is True:
                 row = layout.row(align=True)
                 row.prop(gpencil_paint, "use_vertex_mode", text="Mode")
 

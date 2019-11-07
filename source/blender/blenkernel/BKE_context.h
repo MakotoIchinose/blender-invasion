@@ -117,7 +117,7 @@ typedef enum eContextObjectMode {
   CTX_MODE_WEIGHT_GPENCIL,
   CTX_MODE_VERTEX_GPENCIL,
 } eContextObjectMode;
-#define CTX_MODE_NUM (CTX_MODE_WEIGHT_GPENCIL + 1)
+#define CTX_MODE_NUM (CTX_MODE_VERTEX_GPENCIL + 1)
 
 /* Context */
 
