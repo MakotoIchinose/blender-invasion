@@ -296,7 +296,7 @@ typedef struct LANPR_RenderBuffer {
 
   int viewport_override;
   double camera_pos[3];
-
+  double near_clip, far_clip;
 } LANPR_RenderBuffer;
 
 typedef enum LANPR_RenderStatus {
