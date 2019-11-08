@@ -50,10 +50,16 @@ static void gpencil_set_stroke_point(GPUVertBuf *vbo,
                                      uint thickness_id,
                                      uint uvdata_id,
                                      short thickness,
+                                     const bool attenuate,
                                      const float ink[4])
 {
-
   float alpha = ink[3] * pt->strength;
+
+  /* If using vertex paint mask, attenuate not selected. */
+  if ((attenuate) && ((pt->flag & GP_SPOINT_SELECT) == 0)) {
+    alpha *= GP_VERTEX_MASK_ATTENUATE;
+  }
+
   CLAMP(alpha, GPENCIL_STRENGTH_MIN, 1.0f);
   float col[4];
   ARRAY_SET_ITEMS(col, ink[0], ink[1], ink[2], alpha);
@@ -145,8 +151,14 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
                             const int alignment_mode,
                             const bool onion)
 {
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  ToolSettings *ts = draw_ctx->scene->toolsettings;
+  Object *ob = draw_ctx->obact;
+  bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
   int totvertex = gps->totpoints;
   float mix_color[4];
+  const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
+                          GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
@@ -179,6 +191,10 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
       float mixtint[3];
       interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
       interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3]);
+    }
+    /* If using vertex paint mask, attenuate not selected. */
+    if ((attenuate) && ((pt->flag & GP_SPOINT_SELECT) == 0)) {
+      alpha *= GP_VERTEX_MASK_ATTENUATE;
     }
 
     ARRAY_SET_ITEMS(col, mix_color[0], mix_color[1], mix_color[2], alpha);
@@ -244,6 +260,14 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
   int totvertex = totpoints + cyclic_add + 2;
   float mix_color[4];
 
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  ToolSettings *ts = draw_ctx->scene->toolsettings;
+  Object *ob = draw_ctx->obact;
+  bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
+
+  const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
+                          GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
+
   if (be->vbo == NULL) {
     gpencil_elem_format_ensure(be);
     be->pos_id = GPU_vertformat_attr_add(be->format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -281,6 +305,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                                  be->thickness_id,
                                  be->uvdata_id,
                                  thickness,
+                                 attenuate,
                                  mix_color);
         be->vbo_len++;
       }
@@ -293,6 +318,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                                  be->thickness_id,
                                  be->uvdata_id,
                                  thickness,
+                                 attenuate,
                                  mix_color);
         be->vbo_len++;
       }
@@ -306,6 +332,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
+                             attenuate,
                              mix_color);
     be->vbo_len++;
   }
@@ -320,6 +347,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
+                             attenuate,
                              mix_color);
     be->vbo_len++;
     /* now add adjacency point (not drawn) */
@@ -331,6 +359,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
+                             attenuate,
                              mix_color);
     be->vbo_len++;
   }
@@ -344,6 +373,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                              be->thickness_id,
                              be->uvdata_id,
                              thickness,
+                             attenuate,
                              mix_color);
     be->vbo_len++;
   }
@@ -450,6 +480,7 @@ GPUBatch *gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
                                  thickness_id,
                                  uvdata_id,
                                  thickness,
+                                 false,
                                  gpd->runtime.scolor);
         idx++;
       }
@@ -463,14 +494,23 @@ GPUBatch *gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
                                  thickness_id,
                                  uvdata_id,
                                  thickness,
+                                 false,
                                  gpd->runtime.scolor);
         idx++;
       }
     }
 
     /* set point */
-    gpencil_set_stroke_point(
-        vbo, &pt, idx, pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+    gpencil_set_stroke_point(vbo,
+                             &pt,
+                             idx,
+                             pos_id,
+                             color_id,
+                             thickness_id,
+                             uvdata_id,
+                             thickness,
+                             false,
+                             gpd->runtime.scolor);
     idx++;
   }
 
@@ -478,20 +518,44 @@ GPUBatch *gpencil_get_buffer_stroke_geom(bGPdata *gpd, short thickness)
   if (gpd->runtime.sbuffer_sflag & GP_STROKE_CYCLIC && totpoints > 2) {
     /* draw line to first point to complete the cycle */
     ED_gpencil_tpoint_to_point(ar, origin, &points[0], &pt2);
-    gpencil_set_stroke_point(
-        vbo, &pt2, idx, pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+    gpencil_set_stroke_point(vbo,
+                             &pt2,
+                             idx,
+                             pos_id,
+                             color_id,
+                             thickness_id,
+                             uvdata_id,
+                             thickness,
+                             false,
+                             gpd->runtime.scolor);
     idx++;
     /* now add adjacency point (not drawn) */
     ED_gpencil_tpoint_to_point(ar, origin, &points[1], &pt3);
-    gpencil_set_stroke_point(
-        vbo, &pt3, idx, pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+    gpencil_set_stroke_point(vbo,
+                             &pt3,
+                             idx,
+                             pos_id,
+                             color_id,
+                             thickness_id,
+                             uvdata_id,
+                             thickness,
+                             false,
+                             gpd->runtime.scolor);
     idx++;
   }
   /* last adjacency point (not drawn) */
   else {
     ED_gpencil_tpoint_to_point(ar, origin, &points[totpoints - 2], &pt2);
-    gpencil_set_stroke_point(
-        vbo, &pt2, idx, pos_id, color_id, thickness_id, uvdata_id, thickness, gpd->runtime.scolor);
+    gpencil_set_stroke_point(vbo,
+                             &pt2,
+                             idx,
+                             pos_id,
+                             color_id,
+                             thickness_id,
+                             uvdata_id,
+                             thickness,
+                             false,
+                             gpd->runtime.scolor);
     idx++;
   }
 

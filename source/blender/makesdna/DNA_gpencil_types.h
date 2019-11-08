@@ -694,4 +694,12 @@ typedef enum eGP_DrawMode {
   (((brush) && ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) && (shift == 0))) || \
    (((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) == 0) && (shift == 1)))
 
+#define GPENCIL_ANY_SCULPT_MASK(flag) \
+  ((flag & (GP_SCULPT_MASK_SELECTMODE_POINT | GP_SCULPT_MASK_SELECTMODE_STROKE | \
+            GP_SCULPT_MASK_SELECTMODE_SEGMENT)))
+
+#define GPENCIL_ANY_VERTEX_MASK(flag) \
+  ((flag & (GP_VERTEX_MASK_SELECTMODE_POINT | GP_VERTEX_MASK_SELECTMODE_STROKE | \
+            GP_VERTEX_MASK_SELECTMODE_SEGMENT)))
+
 #endif /*  __DNA_GPENCIL_TYPES_H__ */

@@ -156,6 +156,7 @@ struct bGPDstroke *BKE_gpencil_add_stroke_existing_style(struct bGPDframe *gpf,
 /* Stroke and Fill - Alpha Visibility Threshold */
 #define GPENCIL_ALPHA_OPACITY_THRESH 0.001f
 #define GPENCIL_STRENGTH_MIN 0.003f
+#define GP_VERTEX_MASK_ATTENUATE 0.3f
 
 bool gpencil_layer_is_editable(const struct bGPDlayer *gpl);
 
