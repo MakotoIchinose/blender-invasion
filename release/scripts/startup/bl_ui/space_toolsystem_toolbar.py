@@ -1627,7 +1627,7 @@ class _defs_gpencil_vertex:
             attr="gpencil_vertex_tool",
             cursor='DOT',
             tooldef_keywords=dict(
-                operator="gpencil.tint",
+                operator="gpencil.vertex_paint",
             ),
         )
 

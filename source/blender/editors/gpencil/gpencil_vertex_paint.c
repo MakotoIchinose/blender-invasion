@@ -59,7 +59,7 @@
 /* ************************************************ */
 /* General Brush Editing Context */
 
-/* Temp Flags while Tinting. */
+/* Temp Flags while Painting. */
 typedef enum eGPDvertex_brush_Flag {
   /* invert the effect of the brush */
   GP_VERTEX_FLAG_INVERT = (1 << 0),
@@ -68,7 +68,7 @@ typedef enum eGPDvertex_brush_Flag {
 } eGPDvertex_brush_Flag;
 
 /* Context for brush operators */
-typedef struct tGP_BrushTintData {
+typedef struct tGP_BrushVertexpaintData {
   struct Main *bmain;
   Scene *scene;
   Object *object;
@@ -90,7 +90,7 @@ typedef struct tGP_BrushTintData {
   bool is_painting;
   bool is_transformed;
 
-  /* Start of new tint */
+  /* Start of new paint */
   bool first;
 
   /* Is multiframe editing enabled, and are we using falloff for that? */
@@ -116,16 +116,19 @@ typedef struct tGP_BrushTintData {
   /* Object invert matrix */
   float inv_mat[4][4];
 
-} tGP_BrushTintData;
+} tGP_BrushVertexpaintData;
 
 /* Callback for performing some brush operation on a single point */
-typedef bool (*GP_TintApplyCb)(
-    tGP_BrushTintData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2]);
+typedef bool (*GP_VertexpaintApplyCb)(tGP_BrushVertexpaintData *gso,
+                                      bGPDstroke *gps,
+                                      int pt_index,
+                                      const int radius,
+                                      const int co[2]);
 
 /* Brush Operations ------------------------------- */
 
 /* Invert behavior of brush? */
-static bool brush_invert_check(tGP_BrushTintData *gso)
+static bool brush_invert_check(tGP_BrushVertexpaintData *gso)
 {
   /* The basic setting is no inverted */
   bool invert = false;
@@ -139,7 +142,7 @@ static bool brush_invert_check(tGP_BrushTintData *gso)
 }
 
 /* Compute strength of effect. */
-static float brush_influence_calc(tGP_BrushTintData *gso, const int radius, const int co[2])
+static float brush_influence_calc(tGP_BrushVertexpaintData *gso, const int radius, const int co[2])
 {
   Brush *brush = gso->brush;
   float influence = brush->size;
@@ -168,7 +171,7 @@ static float brush_influence_calc(tGP_BrushTintData *gso, const int radius, cons
 }
 
 /* Compute effect vector for directional brushes. */
-static void brush_grab_calc_dvec(tGP_BrushTintData *gso)
+static void brush_grab_calc_dvec(tGP_BrushVertexpaintData *gso)
 {
   /* Convert mouse-movements to movement vector */
   RegionView3D *rv3d = gso->ar->regiondata;
@@ -189,7 +192,7 @@ static void brush_grab_calc_dvec(tGP_BrushTintData *gso)
 /* This section defines the callbacks used by each brush to perform their magic.
  * These are called on each point within the brush's radius. */
 
-static bool brush_fill_asspply(tGP_BrushTintData *gso,
+static bool brush_fill_asspply(tGP_BrushVertexpaintData *gso,
                                bGPDstroke *gps,
                                const int radius,
                                const int co[2])
@@ -218,8 +221,11 @@ static bool brush_fill_asspply(tGP_BrushTintData *gso,
 }
 
 /* Tint Brush */
-static bool brush_tint_apply(
-    tGP_BrushTintData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
+static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
+                             bGPDstroke *gps,
+                             int pt_index,
+                             const int radius,
+                             const int co[2])
 {
   Brush *brush = gso->brush;
 
@@ -261,19 +267,19 @@ static bool brush_tint_apply(
 
 /* ************************************************ */
 /* Header Info */
-static void gptint_brush_header_set(bContext *C, tGP_BrushTintData *UNUSED(gso))
+static void gp_vertexpaint_brush_header_set(bContext *C, tGP_BrushVertexpaintData *UNUSED(gso))
 {
   ED_workspace_status_text(C,
-                           TIP_("GPencil Tint: LMB to paint | RMB/Escape to Exit"
+                           TIP_("GPencil Vertex Paint: LMB to paint | RMB/Escape to Exit"
                                 " | Ctrl to Invert Action"));
 }
 
 /* ************************************************ */
-/* Grease Pencil Tinting Operator */
+/* Grease Pencil Vertex Paint Operator */
 
 /* Init/Exit ----------------------------------------------- */
 
-static bool gptint_brush_init(bContext *C, wmOperator *op)
+static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
@@ -282,10 +288,10 @@ static bool gptint_brush_init(bContext *C, wmOperator *op)
                                                       &ts->gp_paint->paint;
 
   /* set the brush using the tool */
-  tGP_BrushTintData *gso;
+  tGP_BrushVertexpaintData *gso;
 
   /* setup operator data */
-  gso = MEM_callocN(sizeof(tGP_BrushTintData), "tGP_BrushTintData");
+  gso = MEM_callocN(sizeof(tGP_BrushVertexpaintData), "tGP_BrushVertexpaintData");
   op->customdata = gso;
 
   gso->bmain = CTX_data_main(C);
@@ -327,16 +333,16 @@ static bool gptint_brush_init(bContext *C, wmOperator *op)
   gp_point_conversion_init(C, &gso->gsc);
 
   /* update header */
-  gptint_brush_header_set(C, gso);
+  gp_vertexpaint_brush_header_set(C, gso);
 
   /* setup cursor drawing */
   ED_gpencil_toggle_brush_cursor(C, true, NULL);
   return true;
 }
 
-static void gptint_brush_exit(bContext *C, wmOperator *op)
+static void gp_vertexpaint_brush_exit(bContext *C, wmOperator *op)
 {
-  tGP_BrushTintData *gso = op->customdata;
+  tGP_BrushVertexpaintData *gso = op->customdata;
 
   /* disable cursor and headerprints */
   ED_workspace_status_text(C, NULL);
@@ -350,8 +356,8 @@ static void gptint_brush_exit(bContext *C, wmOperator *op)
   op->customdata = NULL;
 }
 
-/* poll callback for stroke sculpting operator(s) */
-static bool gptint_brush_poll(bContext *C)
+/* Poll callback for stroke vertex paint operator(s) */
+static bool gp_vertexpaint_brush_poll(bContext *C)
 {
   /* NOTE: this is a bit slower, but is the most accurate... */
   return CTX_DATA_COUNT(C, editable_gpencil_strokes) != 0;
@@ -360,10 +366,10 @@ static bool gptint_brush_poll(bContext *C)
 /* Apply ----------------------------------------------- */
 
 /* Apply brush operation to points in this stroke */
-static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
-                                   bGPDstroke *gps,
-                                   const float diff_mat[4][4],
-                                   GP_TintApplyCb apply)
+static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
+                                           bGPDstroke *gps,
+                                           const float diff_mat[4][4],
+                                           GP_VertexpaintApplyCb apply)
 {
   GP_SpaceConversion *gsc = &gso->gsc;
   rcti *rect = &gso->brush_rect;
@@ -493,11 +499,11 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
 }
 
 /* Apply sculpt brushes to strokes in the given frame */
-static bool gptint_brush_do_frame(bContext *C,
-                                  tGP_BrushTintData *gso,
-                                  bGPDlayer *gpl,
-                                  bGPDframe *gpf,
-                                  const float diff_mat[4][4])
+static bool gp_vertexpaint_brush_do_frame(bContext *C,
+                                          tGP_BrushVertexpaintData *gso,
+                                          bGPDlayer *gpl,
+                                          bGPDframe *gpf,
+                                          const float diff_mat[4][4])
 {
   bool changed = false;
   Object *ob = CTX_data_active_object(C);
@@ -516,12 +522,12 @@ static bool gptint_brush_do_frame(bContext *C,
     switch (tool) {
       case GPAINT_TOOL_TINT:
       case GPVERTEX_TOOL_DRAW: {
-        changed |= gptint_brush_do_stroke(gso, gps, diff_mat, brush_tint_apply);
+        changed |= gp_vertexpaint_brush_do_stroke(gso, gps, diff_mat, brush_tint_apply);
         break;
       }
 
       default:
-        printf("ERROR: Unknown type of GPencil Tint brush\n");
+        printf("ERROR: Unknown type of GPencil Vertex paint brush\n");
         break;
     }
   }
@@ -530,7 +536,7 @@ static bool gptint_brush_do_frame(bContext *C,
 }
 
 /* Perform two-pass brushes which modify the existing strokes */
-static bool gptint_brush_apply_standard(bContext *C, tGP_BrushTintData *gso)
+static bool gp_vertexpaint_brush_apply_standard(bContext *C, tGP_BrushVertexpaintData *gso)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -581,14 +587,14 @@ static bool gptint_brush_apply_standard(bContext *C, tGP_BrushTintData *gso)
           }
 
           /* affect strokes in this frame */
-          changed |= gptint_brush_do_frame(C, gso, gpl, gpf, diff_mat);
+          changed |= gp_vertexpaint_brush_do_frame(C, gso, gpl, gpf, diff_mat);
         }
       }
     }
     else {
       /* Apply to active frame's strokes */
       gso->mf_falloff = 1.0f;
-      changed |= gptint_brush_do_frame(C, gso, gpl, gpf_eval, diff_mat);
+      changed |= gp_vertexpaint_brush_do_frame(C, gso, gpl, gpf_eval, diff_mat);
     }
   }
   CTX_DATA_END;
@@ -597,9 +603,9 @@ static bool gptint_brush_apply_standard(bContext *C, tGP_BrushTintData *gso)
 }
 
 /* Calculate settings for applying brush */
-static void gptint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
+static void gp_vertexpaint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 {
-  tGP_BrushTintData *gso = op->customdata;
+  tGP_BrushVertexpaintData *gso = op->customdata;
   Brush *brush = gso->brush;
   const int radius = ((brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                               gso->brush->size);
@@ -634,7 +640,7 @@ static void gptint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
   gso->brush_rect.xmax = mouse[0] + radius;
   gso->brush_rect.ymax = mouse[1] + radius;
 
-  changed = gptint_brush_apply_standard(C, gso);
+  changed = gp_vertexpaint_brush_apply_standard(C, gso);
 
   /* Updates */
   if (changed) {
@@ -652,9 +658,9 @@ static void gptint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 /* Running --------------------------------------------- */
 
 /* helper - a record stroke, and apply paint event */
-static void gptint_brush_apply_event(bContext *C, wmOperator *op, const wmEvent *event)
+static void gp_vertexpaint_brush_apply_event(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  tGP_BrushTintData *gso = op->customdata;
+  tGP_BrushVertexpaintData *gso = op->customdata;
   PointerRNA itemptr;
   float mouse[2];
   int tablet = 0;
@@ -689,42 +695,42 @@ static void gptint_brush_apply_event(bContext *C, wmOperator *op, const wmEvent 
   }
 
   /* apply */
-  gptint_brush_apply(C, op, &itemptr);
+  gp_vertexpaint_brush_apply(C, op, &itemptr);
 }
 
 /* reapply */
-static int gptint_brush_exec(bContext *C, wmOperator *op)
+static int gp_vertexpaint_brush_exec(bContext *C, wmOperator *op)
 {
-  if (!gptint_brush_init(C, op)) {
+  if (!gp_vertexpaint_brush_init(C, op)) {
     return OPERATOR_CANCELLED;
   }
 
   RNA_BEGIN (op->ptr, itemptr, "stroke") {
-    gptint_brush_apply(C, op, &itemptr);
+    gp_vertexpaint_brush_apply(C, op, &itemptr);
   }
   RNA_END;
 
-  gptint_brush_exit(C, op);
+  gp_vertexpaint_brush_exit(C, op);
 
   return OPERATOR_FINISHED;
 }
 
 /* start modal painting */
-static int gptint_brush_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int gp_vertexpaint_brush_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  tGP_BrushTintData *gso = NULL;
+  tGP_BrushVertexpaintData *gso = NULL;
   const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
   const bool is_playing = ED_screen_animation_playing(CTX_wm_manager(C)) != NULL;
 
   /* the operator cannot work while play animation */
   if (is_playing) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot tint while play animation");
+    BKE_report(op->reports, RPT_ERROR, "Cannot Paint while play animation");
 
     return OPERATOR_CANCELLED;
   }
 
   /* init painting data */
-  if (!gptint_brush_init(C, op)) {
+  if (!gp_vertexpaint_brush_init(C, op)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -739,7 +745,7 @@ static int gptint_brush_invoke(bContext *C, wmOperator *op, const wmEvent *event
 
     /* apply first dab... */
     gso->is_painting = true;
-    gptint_brush_apply_event(C, op, event);
+    gp_vertexpaint_brush_apply_event(C, op, event);
 
     /* redraw view with feedback */
     ED_region_tag_redraw(ar);
@@ -749,9 +755,9 @@ static int gptint_brush_invoke(bContext *C, wmOperator *op, const wmEvent *event
 }
 
 /* painting - handle events */
-static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
+static int gp_vertexpaint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  tGP_BrushTintData *gso = op->customdata;
+  tGP_BrushVertexpaintData *gso = op->customdata;
   const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
   bool redraw_region = false;
   bool redraw_toolsettings = false;
@@ -764,7 +770,7 @@ static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case MOUSEMOVE:
       case INBETWEEN_MOUSEMOVE:
         /* apply brush effect at new position */
-        gptint_brush_apply_event(C, op, event);
+        gp_vertexpaint_brush_apply_event(C, op, event);
 
         /* force redraw, so that the cursor will at least be valid */
         redraw_region = true;
@@ -777,10 +783,10 @@ static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
           gso->is_painting = false;
         }
         else {
-          /* end tint, since we're not modal */
+          /* end painting, since we're not modal */
           gso->is_painting = false;
 
-          gptint_brush_exit(C, op);
+          gp_vertexpaint_brush_exit(C, op);
           return OPERATOR_FINISHED;
         }
         break;
@@ -789,7 +795,7 @@ static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case MIDDLEMOUSE:
       case RIGHTMOUSE:
       case ESCKEY:
-        gptint_brush_exit(C, op);
+        gp_vertexpaint_brush_exit(C, op);
         return OPERATOR_FINISHED;
     }
   }
@@ -804,13 +810,13 @@ static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
         gso->is_painting = true;
         gso->first = true;
 
-        gptint_brush_apply_event(C, op, event);
+        gp_vertexpaint_brush_apply_event(C, op, event);
         break;
 
       /* Exit modal operator, based on the "standard" ops */
       case RIGHTMOUSE:
       case ESCKEY:
-        gptint_brush_exit(C, op);
+        gp_vertexpaint_brush_exit(C, op);
         return OPERATOR_FINISHED;
 
       /* MMB is often used for view manipulations */
@@ -865,19 +871,19 @@ static int gptint_brush_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return OPERATOR_RUNNING_MODAL;
 }
 
-void GPENCIL_OT_tint(wmOperatorType *ot)
+void GPENCIL_OT_vertex_paint(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Stroke Tint";
-  ot->idname = "GPENCIL_OT_tint";
-  ot->description = "Tint strokes with a mix color";
+  ot->name = "Stroke Vertex Paint";
+  ot->idname = "GPENCIL_OT_vertex_paint";
+  ot->description = "Paint stroke points with a color";
 
   /* api callbacks */
-  ot->exec = gptint_brush_exec;
-  ot->invoke = gptint_brush_invoke;
-  ot->modal = gptint_brush_modal;
-  ot->cancel = gptint_brush_exit;
-  ot->poll = gptint_brush_poll;
+  ot->exec = gp_vertexpaint_brush_exec;
+  ot->invoke = gp_vertexpaint_brush_invoke;
+  ot->modal = gp_vertexpaint_brush_modal;
+  ot->cancel = gp_vertexpaint_brush_exit;
+  ot->poll = gp_vertexpaint_brush_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;

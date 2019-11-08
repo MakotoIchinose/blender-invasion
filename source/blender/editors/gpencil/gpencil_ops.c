@@ -334,7 +334,7 @@ void ED_operatortypes_gpencil(void)
 
   WM_operatortype_append(GPENCIL_OT_draw);
   WM_operatortype_append(GPENCIL_OT_fill);
-  WM_operatortype_append(GPENCIL_OT_tint);
+  WM_operatortype_append(GPENCIL_OT_vertex_paint);
 
   /* Guides ----------------------- */
 

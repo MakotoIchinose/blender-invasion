@@ -365,7 +365,7 @@ void GPENCIL_OT_annotate(struct wmOperatorType *ot);
 
 void GPENCIL_OT_draw(struct wmOperatorType *ot);
 void GPENCIL_OT_fill(struct wmOperatorType *ot);
-void GPENCIL_OT_tint(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_paint(struct wmOperatorType *ot);
 
 /* Guides ----------------------- */
 

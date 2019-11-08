@@ -3282,9 +3282,9 @@ def km_grease_pencil_stroke_paint_tint(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
     ])
 
@@ -3386,9 +3386,9 @@ def km_grease_pencil_stroke_vertex_draw(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
@@ -3411,9 +3411,9 @@ def km_grease_pencil_stroke_vertex_blur(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
@@ -3436,9 +3436,9 @@ def km_grease_pencil_stroke_vertex_average(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
@@ -3461,9 +3461,9 @@ def km_grease_pencil_stroke_vertex_smear(params):
 
     items.extend([
         # Tint
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("wait_for_input", False)]}),
-        ("gpencil.tint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        ("gpencil.vertex_paint", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("wait_for_input", False)]}),
         # Brush strength
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
