@@ -701,7 +701,7 @@ static void DRW_shgroup_camera(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLay
     }
   }
 
-  {
+  if (!look_through) {
     /* Triangle. */
     float tria_size = 0.7f * drawsize / fabsf(instdata.depth);
     float tria_margin = 0.1f * drawsize / fabsf(instdata.depth);
