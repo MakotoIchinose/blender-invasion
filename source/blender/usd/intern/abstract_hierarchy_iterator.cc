@@ -51,6 +51,10 @@ void HierarchyContext::mark_as_not_instanced()
   original_export_path.clear();
 }
 
+AbstractHierarchyWriter::~AbstractHierarchyWriter()
+{
+}
+
 AbstractHierarchyIterator::AbstractHierarchyIterator(Depsgraph *depsgraph)
     : depsgraph(depsgraph), writers()
 {

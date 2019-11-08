@@ -24,20 +24,22 @@ set(INC
   ../../../source/blender/blenlib
   ../../../source/blender/blenloader
   ../../../source/blender/blenkernel
-  ../../../source/blender/alembic
+  ../../../source/blender/usd
   ../../../source/blender/makesdna
+  ../../../source/blender/makesrna
   ../../../source/blender/depsgraph
-  ${ALEMBIC_INCLUDE_DIRS}
+  ../../../intern/guardedalloc
+  ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
   ${HDF5_INCLUDE_DIRS}
   ${OPENEXR_INCLUDE_DIRS}
 )
 
 set(LIB
-  bf_blenloader  # Should not be needed but gives linking error without it.
+  bf_blenloader
   bf_intern_opencolorio # Should not be needed but gives windows linker errors if the ocio libs are linked before this
   bf_gpu # Should not be needed but gives windows linker errors if the ocio libs are linked before this
-  bf_alembic
+  bf_usd
 )
 
 include_directories(${INC})
@@ -52,8 +54,8 @@ else()
 endif()
 
 # For motivation on doubling BLENDER_SORTED_LIBS, see ../bmesh/CMakeLists.txt
-BLENDER_SRC_GTEST(alembic "abc_matrix_test.cc;abc_export_test.cc;${_buildinfo_src}" "${LIB}")
+BLENDER_SRC_GTEST(usd "usd_export_hierarchy_iterator_test.cc;${_buildinfo_src}" "${LIB}")
 
 unset(_buildinfo_src)
 
-setup_liblinks(alembic_test)
+setup_liblinks(usd_test)
