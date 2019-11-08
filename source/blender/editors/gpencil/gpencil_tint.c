@@ -59,10 +59,16 @@
 /* ************************************************ */
 /* General Brush Editing Context */
 
+/* Temp Flags while Tinting. */
+typedef enum eGPDvertex_brush_Flag {
+  /* invert the effect of the brush */
+  GP_VERTEX_FLAG_INVERT = (1 << 0),
+  /* temporary invert action */
+  GP_VERTEX_FLAG_TMP_INVERT = (1 << 1),
+} eGPDvertex_brush_Flag;
+
 /* Context for brush operators */
 typedef struct tGP_BrushTintData {
-  /* Current editor/region/etc. */
-  /* NOTE: This stuff is mainly needed to handle 3D view projection stuff... */
   struct Main *bmain;
   Scene *scene;
   Object *object;
@@ -74,8 +80,7 @@ typedef struct tGP_BrushTintData {
   bGPdata *gpd;
 
   Brush *brush;
-  eGP_Sculpt_Flag flag;
-
+  eGPDvertex_brush_Flag flag;
   eGP_Vertex_SelectMaskFlag mask;
 
   /* Space Conversion Data */
@@ -102,9 +107,6 @@ typedef struct tGP_BrushTintData {
   /* - effect vector */
   float dvec[3];
 
-  /* rotation for evaluated data */
-  float rot_eval;
-
   /* - multiframe falloff factor */
   float mf_falloff;
 
@@ -117,12 +119,8 @@ typedef struct tGP_BrushTintData {
 } tGP_BrushTintData;
 
 /* Callback for performing some brush operation on a single point */
-typedef bool (*GP_TintApplyCb)(tGP_BrushTintData *gso,
-                               bGPDstroke *gps,
-                               float rotation,
-                               int pt_index,
-                               const int radius,
-                               const int co[2]);
+typedef bool (*GP_TintApplyCb)(
+    tGP_BrushTintData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2]);
 
 /* Brush Operations ------------------------------- */
 
@@ -133,7 +131,7 @@ static bool brush_invert_check(tGP_BrushTintData *gso)
   bool invert = false;
 
   /* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
-  if (gso->flag & GP_SCULPT_FLAG_INVERT) {
+  if (gso->flag & GP_VERTEX_FLAG_INVERT) {
     invert ^= true;
   }
 
@@ -183,16 +181,6 @@ static void brush_grab_calc_dvec(tGP_BrushTintData *gso)
   mval_f[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
   mval_f[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
 
-  /* apply evaluated data transformation */
-  if (gso->rot_eval != 0.0f) {
-    const float cval = cos(gso->rot_eval);
-    const float sval = sin(gso->rot_eval);
-    float r[2];
-    r[0] = (mval_f[0] * cval) - (mval_f[1] * sval);
-    r[1] = (mval_f[0] * sval) + (mval_f[1] * cval);
-    copy_v2_v2(mval_f, r);
-  }
-
   ED_view3d_win_to_delta(gso->ar, mval_f, gso->dvec, zfac);
 }
 
@@ -230,12 +218,8 @@ static bool brush_fill_asspply(tGP_BrushTintData *gso,
 }
 
 /* Tint Brush */
-static bool brush_tint_apply(tGP_BrushTintData *gso,
-                             bGPDstroke *gps,
-                             float UNUSED(rot_eval),
-                             int pt_index,
-                             const int radius,
-                             const int co[2])
+static bool brush_tint_apply(
+    tGP_BrushTintData *gso, bGPDstroke *gps, int pt_index, const int radius, const int co[2])
 {
   Brush *brush = gso->brush;
 
@@ -359,7 +343,7 @@ static void gptint_brush_exit(bContext *C, wmOperator *op)
   ED_gpencil_toggle_brush_cursor(C, false, NULL);
 
   /* disable temp invert flag */
-  gso->brush->flag &= ~GP_SCULPT_FLAG_TMP_INVERT;
+  gso->brush->flag &= ~GP_VERTEX_FLAG_TMP_INVERT;
 
   /* free operator data */
   MEM_freeN(gso);
@@ -375,63 +359,6 @@ static bool gptint_brush_poll(bContext *C)
 
 /* Apply ----------------------------------------------- */
 
-/* Get angle of the segment relative to the original segment before any transformation
- * For strokes with one point only this is impossible to calculate because there isn't a
- * valid reference point.
- */
-static float gptint_rotation_eval_get(tGP_BrushTintData *gso,
-                                      bGPDstroke *gps_eval,
-                                      bGPDspoint *pt_eval,
-                                      int idx_eval)
-{
-  /* If multiframe or no modifiers, return 0. */
-  if ((GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd)) || (!gso->is_transformed)) {
-    return 0.0f;
-  }
-
-  GP_SpaceConversion *gsc = &gso->gsc;
-  bGPDstroke *gps_orig = gps_eval->runtime.gps_orig;
-  bGPDspoint *pt_orig = &gps_orig->points[pt_eval->runtime.idx_orig];
-  bGPDspoint *pt_prev_eval = NULL;
-  bGPDspoint *pt_orig_prev = NULL;
-  if (idx_eval != 0) {
-    pt_prev_eval = &gps_eval->points[idx_eval - 1];
-  }
-  else {
-    if (gps_eval->totpoints > 1) {
-      pt_prev_eval = &gps_eval->points[idx_eval + 1];
-    }
-    else {
-      return 0.0f;
-    }
-  }
-
-  if (pt_eval->runtime.idx_orig != 0) {
-    pt_orig_prev = &gps_orig->points[pt_eval->runtime.idx_orig - 1];
-  }
-  else {
-    if (gps_orig->totpoints > 1) {
-      pt_orig_prev = &gps_orig->points[pt_eval->runtime.idx_orig + 1];
-    }
-    else {
-      return 0.0f;
-    }
-  }
-
-  /* create 2D vectors of the stroke segments */
-  float v_orig_a[2], v_orig_b[2], v_eval_a[2], v_eval_b[2];
-
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig->x, v_orig_a);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_orig_prev->x, v_orig_b);
-  sub_v2_v2(v_orig_a, v_orig_b);
-
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_eval->x, v_eval_a);
-  gp_point_3d_to_xy(gsc, GP_STROKE_3DSPACE, &pt_prev_eval->x, v_eval_b);
-  sub_v2_v2(v_eval_a, v_eval_b);
-
-  return angle_v2v2(v_orig_a, v_eval_a);
-}
-
 /* Apply brush operation to points in this stroke */
 static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
                                    bGPDstroke *gps,
@@ -441,9 +368,8 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
   GP_SpaceConversion *gsc = &gso->gsc;
   rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
-  const int radius = (brush->flag & GP_SCULPT_FLAG_PRESSURE_RADIUS) ?
-                         gso->brush->size * gso->pressure :
-                         gso->brush->size;
+  const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
+                                                             gso->brush->size;
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
   bGPDstroke *gps_active = (!is_multiedit) ? gps->runtime.gps_orig : gps;
   bGPDspoint *pt_active = NULL;
@@ -456,7 +382,6 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
   int index;
   bool include_last = false;
   bool changed = false;
-  float rot_eval = 0.0f;
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
     pt = &gps->points[0];
@@ -472,8 +397,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
       if (len_v2v2_int(mval_i, pc1) <= radius) {
         /* apply operation to this point */
         if (pt_active != NULL) {
-          rot_eval = gptint_rotation_eval_get(gso, gps, pt, 0);
-          changed = apply(gso, gps_active, rot_eval, 0, radius, pc1);
+          changed = apply(gso, gps_active, 0, radius, pc1);
         }
       }
     }
@@ -489,7 +413,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
 
       /* Skip if neither one is selected
        * (and we are only allowed to edit/consider selected points) */
-      if (GPENCIL_ANY_VERTEX_MASK(gso->mask)) {
+      if ((GPENCIL_ANY_VERTEX_MASK(gso->mask)) && (GPENCIL_VERTEX_MODE(gso->gpd))) {
         if (!(pt1->flag & GP_SPOINT_SELECT) && !(pt2->flag & GP_SPOINT_SELECT)) {
           include_last = false;
           continue;
@@ -521,8 +445,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
           pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
           index = (!is_multiedit) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
-            rot_eval = gptint_rotation_eval_get(gso, gps, pt, i);
-            ok = apply(gso, gps_active, rot_eval, index, radius, pc1);
+            ok = apply(gso, gps_active, index, radius, pc1);
           }
 
           /* Only do the second point if this is the last segment,
@@ -538,8 +461,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
             pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
             index = (!is_multiedit) ? pt->runtime.idx_orig : i + 1;
             if (pt_active != NULL) {
-              rot_eval = gptint_rotation_eval_get(gso, gps, pt, i + 1);
-              ok |= apply(gso, gps_active, rot_eval, index, radius, pc2);
+              ok |= apply(gso, gps_active, index, radius, pc2);
               include_last = false;
             }
           }
@@ -559,8 +481,7 @@ static bool gptint_brush_do_stroke(tGP_BrushTintData *gso,
           pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
           index = (!is_multiedit) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
-            rot_eval = gptint_rotation_eval_get(gso, gps, pt, i);
-            changed |= apply(gso, gps_active, rot_eval, index, radius, pc1);
+            changed |= apply(gso, gps_active, index, radius, pc1);
             include_last = false;
           }
         }
@@ -680,9 +601,8 @@ static void gptint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 {
   tGP_BrushTintData *gso = op->customdata;
   Brush *brush = gso->brush;
-  const int radius = ((brush->flag & GP_SCULPT_FLAG_PRESSURE_RADIUS) ?
-                          gso->brush->size * gso->pressure :
-                          gso->brush->size);
+  const int radius = ((brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
+                                                              gso->brush->size);
   float mousef[2];
   int mouse[2];
   bool changed = false;
@@ -695,10 +615,10 @@ static void gptint_brush_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
   gso->pressure = RNA_float_get(itemptr, "pressure");
 
   if (RNA_boolean_get(itemptr, "pen_flip")) {
-    gso->flag |= GP_SCULPT_FLAG_INVERT;
+    gso->flag |= GP_VERTEX_FLAG_INVERT;
   }
   else {
-    gso->flag &= ~GP_SCULPT_FLAG_INVERT;
+    gso->flag &= ~GP_VERTEX_FLAG_INVERT;
   }
 
   /* Store coordinates as reference, if operator just started running */
