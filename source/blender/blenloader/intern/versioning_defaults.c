@@ -27,6 +27,7 @@
 #include "BLI_system.h"
 
 #include "DNA_camera_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -307,8 +308,8 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   }
 
   /* Make sure that the curve profile is initialized */
-  if (ts->custom_profile == NULL) {
-    ts->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
+  if (ts->custom_bevel_profile_preset == NULL) {
+    ts->custom_bevel_profile_preset = BKE_curveprofile_add(PROF_PRESET_LINE);
   }
 }
 

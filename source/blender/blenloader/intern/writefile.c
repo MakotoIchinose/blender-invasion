@@ -957,7 +957,7 @@ static void write_curvemapping(WriteData *wd, CurveMapping *cumap)
 static void write_CurveProfile(WriteData *wd, CurveProfile *profile)
 {
   writestruct(wd, DATA, CurveProfile, 1, profile);
-  writestruct(wd, DATA, CurveProfilePoint, profile->totpoint, profile->path);
+  writestruct(wd, DATA, CurveProfilePoint, profile->path_len, profile->path);
 }
 
 static void write_node_socket(WriteData *wd, bNodeSocket *sock)
@@ -2547,8 +2547,8 @@ static void write_scene(WriteData *wd, Scene *sce)
     write_curvemapping(wd, tos->gp_sculpt.cur_primitive);
   }
   /* Write the curve profile to the file. */
-  if (tos->custom_profile) {
-    write_CurveProfile(wd, tos->custom_profile);
+  if (tos->custom_bevel_profile_preset) {
+    write_CurveProfile(wd, tos->custom_bevel_profile_preset);
   }
 
   write_paint(wd, &tos->imapaint.paint);

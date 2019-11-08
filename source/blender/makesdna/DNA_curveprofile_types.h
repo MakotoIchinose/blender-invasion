@@ -45,7 +45,7 @@ typedef struct CurveProfilePoint {
   char h1, h2;
 } CurveProfilePoint;
 
-/** CurveProfilePoint->flag */
+/** #CurveProfilePoint.flag */
 enum {
   PROF_SELECT = (1 << 0),
 };
@@ -53,9 +53,9 @@ enum {
 /** Defines a profile */
 typedef struct CurveProfile {
   /** Number of user-added points that define the profile. */
-  short totpoint;
+  short path_len;
   /** Number of sampled points. */
-  short totsegments;
+  short segments_len;
   /** Preset to use when reset. */
   int preset;
   /** Sequence of points defining the shape of the curve.  */
@@ -72,7 +72,7 @@ typedef struct CurveProfile {
   rctf view_rect, clip_rect;
 } CurveProfile;
 
-/** CurveProfile->flag */
+/** #CurveProfile.flag */
 enum {
   PROF_USE_CLIP = (1 << 0),              /* Keep control points inside bounding rectangle. */
   PROF_SYMMETRY_MODE = (1 << 1),         /* Unused for now. */

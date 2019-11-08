@@ -1518,8 +1518,10 @@ typedef struct ToolSettings {
   float normal_vector[3];
   char _pad6[4];
 
-  /* Custom Curve Profile for bevel tool */
-  struct CurveProfile *custom_profile;
+  /* Custom Curve Profile for bevel tool:
+   * Temporary until there is a proper preset system that stores the profiles or maybe stores
+   * entire bevel configurations. */
+  struct CurveProfile *custom_bevel_profile_preset;
 } ToolSettings;
 
 /* *************************************************************** */

@@ -133,13 +133,14 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.prop(md, "end_cap")
 
     def BEVEL(self, layout, ob, md):
-        if md.offset_type == 'PERCENT':
+        offset_type = md.offset_type
+        if offset_type == 'PERCENT':
             layout.prop(md, "width_pct")
         else:
             offset_text = "Width"
-            if md.offset_type == 'DEPTH':
+            if offset_type == 'DEPTH':
                 offset_text = "Depth"
-            elif md.offset_type == 'OFFSET':
+            elif offset_type == 'OFFSET':
                 offset_text = "Offset"
             layout.prop(md, "width", text=offset_text)
         layout.row().prop(md, "offset_type", expand=True)
@@ -181,10 +182,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         row.enabled = md.use_custom_profile
         if md.use_custom_profile:
             layout.template_curveprofile(md, "custom_profile")
-            # If the number of segments has changed, update the table to show the new sampled
-            # segment locations on the widget
-            if md.custom_profile.totsegments != md.segments:
-                md.custom_profile.initialize(md.segments)
 
     def BOOLEAN(self, layout, _ob, md):
         split = layout.split()

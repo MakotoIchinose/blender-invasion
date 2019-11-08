@@ -105,8 +105,8 @@ static void rna_CurveProfile_sample_even_set(PointerRNA *ptr, bool value)
 }
 
 static void rna_CurveProfile_remove_point(CurveProfile *profile,
-                                           ReportList *reports,
-                                           PointerRNA *point_ptr)
+                                          ReportList *reports,
+                                          PointerRNA *point_ptr)
 {
   CurveProfilePoint *point = point_ptr->data;
   if (BKE_curveprofile_remove_point(profile, point) == false) {
@@ -118,9 +118,9 @@ static void rna_CurveProfile_remove_point(CurveProfile *profile,
 }
 
 static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
-                                       ReportList *reports,
-                                       float length_portion,
-                                       float *location)
+                                      ReportList *reports,
+                                      float length_portion,
+                                      float *location)
 {
   if (!profile->table) {
     BKE_report(reports, RPT_ERROR, "CurveProfile table not initialized, call initialize()");
@@ -128,9 +128,9 @@ static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
   BKE_curveprofile_evaluate_length_portion(profile, length_portion, &location[0], &location[1]);
 }
 
-static void rna_CurveProfile_initialize(struct CurveProfile *profile, int totsegments)
+static void rna_CurveProfile_initialize(struct CurveProfile *profile, int segments_len)
 {
-  BKE_curveprofile_initialize(profile, (short)totsegments);
+  BKE_curveprofile_initialize(profile, (short)segments_len);
 }
 
 static void rna_CurveProfile_update(struct CurveProfile *profile)
@@ -229,7 +229,7 @@ static void rna_def_curveprofile(BlenderRNA *brna)
 
   static const EnumPropertyItem rna_enum_curveprofile_preset_items[] = {
       {PROF_PRESET_LINE, "LINE", 0, "Line", "Default"},
-      {PROF_PRESET_SUPPORTS,  "SUPPORTS", 0, "Support Loops", "Loops on each side of the profile"},
+      {PROF_PRESET_SUPPORTS, "SUPPORTS", 0, "Support Loops", "Loops on each side of the profile"},
       {PROF_PRESET_CORNICE, "CORNICE", 0, "Cornice Moulding", ""},
       {PROF_PRESET_CROWN, "CROWN", 0, "Crown Moulding", ""},
       {PROF_PRESET_STEPS, "STEPS", 0, "Steps", "A number of steps defined by the segments"},
@@ -237,8 +237,7 @@ static void rna_def_curveprofile(BlenderRNA *brna)
   };
 
   srna = RNA_def_struct(brna, "CurveProfile", NULL);
-  RNA_def_struct_ui_text(
-      srna, "CurveProfile", "Profile Path editor used to build a profile path");
+  RNA_def_struct_ui_text(srna, "CurveProfile", "Profile Path editor used to build a profile path");
 
   prop = RNA_def_property(srna, "preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "preset");
@@ -250,12 +249,12 @@ static void rna_def_curveprofile(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Clip", "Force the path view to fit a defined boundary");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_CurveProfile_clip_set");
 
-  prop = RNA_def_property(srna, "sample_straight_edges", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_sample_straight_edges", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_SAMPLE_STRAIGHT_EDGES);
   RNA_def_property_ui_text(prop, "Sample Straight Edges", "Sample edges with vector handles");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_CurveProfile_sample_straight_set");
 
-  prop = RNA_def_property(srna, "sample_even_lengths", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_sample_even_lengths", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", PROF_SAMPLE_EVEN_LENGTHS);
   RNA_def_property_ui_text(prop, "Sample Even Lengths", "Sample edges with even lengths");
   RNA_def_property_boolean_funcs(prop, NULL, "rna_CurveProfile_sample_even_set");
@@ -278,20 +277,13 @@ static void rna_def_curveprofile(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Set the number of display segments and fill tables");
 
   prop = RNA_def_property(srna, "points", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "path", "totpoint");
+  RNA_def_property_collection_sdna(prop, NULL, "path", "path_len");
   RNA_def_property_struct_type(prop, "CurveProfilePoint");
   RNA_def_property_ui_text(prop, "Points", "Profile control points");
   rna_def_curveprofile_points_api(brna, prop);
 
-  prop = RNA_def_property(srna, "totsegments", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, NULL, "totsegments");
-  RNA_def_property_ui_text(prop,
-                           "Number of Segments",
-                           "The number of segments to sample from"
-                           " control points");
-
   prop = RNA_def_property(srna, "segments", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "segments", "totsegments");
+  RNA_def_property_collection_sdna(prop, NULL, "segments", "segments_len");
   RNA_def_property_struct_type(prop, "CurveProfilePoint");
   RNA_def_property_ui_text(prop, "Segments", "Segments sampled from control points");
 

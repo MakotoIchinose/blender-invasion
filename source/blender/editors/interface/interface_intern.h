@@ -741,10 +741,10 @@ void ui_draw_but_CURVE(ARegion *ar,
                        uiBut *but,
                        const struct uiWidgetColors *wcol,
                        const rcti *rect);
-void ui_draw_but_PROFILE(ARegion *ar,
-                         uiBut *but,
-                         const struct uiWidgetColors *wcol,
-                         const rcti *rect);
+void ui_draw_but_CURVEPROFILE(ARegion *ar,
+                              uiBut *but,
+                              const struct uiWidgetColors *wcol,
+                              const rcti *rect);
 void ui_draw_but_IMAGE(ARegion *ar,
                        uiBut *but,
                        const struct uiWidgetColors *wcol,

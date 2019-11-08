@@ -52,11 +52,11 @@ void BKE_curveprofile_reverse(struct CurveProfile *profile);
 void BKE_curveprofile_reset(struct CurveProfile *profile);
 
 void BKE_curveprofile_create_samples(struct CurveProfile *profile,
-                                      int n_segments,
-                                      bool sample_straight_edges,
-                                      struct CurveProfilePoint *r_samples);
+                                     int segments_len,
+                                     bool sample_straight_edges,
+                                     struct CurveProfilePoint *r_samples);
 
-void BKE_curveprofile_initialize(struct CurveProfile *profile, short nsegments);
+void BKE_curveprofile_initialize(struct CurveProfile *profile, short segments_len);
 
 /* Called for a complete update of the widget after modifications */
 void BKE_curveprofile_update(struct CurveProfile *profile, const bool rem_doubles);
@@ -65,12 +65,12 @@ void BKE_curveprofile_update(struct CurveProfile *profile, const bool rem_double
 float BKE_curveprofile_total_length(const struct CurveProfile *profile);
 
 void BKE_curveprofile_create_samples_even_spacing(struct CurveProfile *profile,
-                                                   int n_segments,
+                                                   int segments_len,
                                                    struct CurveProfilePoint *r_samples);
 
 /* Length portion is the fraction of the total path length where we want the location */
 void BKE_curveprofile_evaluate_length_portion(const struct CurveProfile *profile,
-                                               float length_portion,
-                                               float *x_out,
-                                               float *y_out);
+                                              float length_portion,
+                                              float *x_out,
+                                              float *y_out);
 #endif

@@ -37,6 +37,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_animsys.h"
+#include "BKE_curveprofile.h"
 #include "BKE_data_transfer.h"
 #include "BKE_dynamicpaint.h"
 #include "BKE_effect.h"
@@ -433,7 +434,6 @@ const EnumPropertyItem rna_enum_axis_flag_xyz_items[] = {
 };
 
 #ifdef RNA_RUNTIME
-
 #  include "DNA_particle_types.h"
 #  include "DNA_curve_types.h"
 #  include "DNA_smoke_types.h"
@@ -996,6 +996,18 @@ static PointerRNA rna_CollisionModifier_settings_get(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   return rna_pointer_inherit_refine(ptr, &RNA_CollisionSettings, ob->pd);
+}
+
+/* Special update function for setting the number of segments of the modifier that also resamples
+ * the segments in the custom profile. */
+static void rna_BevelModifier_update_segments(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  BevelModifierData *bmd = (BevelModifierData *)ptr->data;
+  if (RNA_boolean_get(ptr, "use_custom_profile")) {
+    short segments = (short)RNA_int_get(ptr, "segments");
+    BKE_curveprofile_initialize(bmd->custom_profile, segments);
+  }
+  rna_Modifier_update(bmain, scene, ptr);
 }
 
 static void rna_UVProjectModifier_num_projectors_set(PointerRNA *ptr, int value)
@@ -3630,7 +3642,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "res");
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_text(prop, "Segments", "Number of segments for round edges/verts");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_BevelModifier_update_segments");
 
   prop = RNA_def_property(srna, "use_only_vertices", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_BEVEL_VERT);

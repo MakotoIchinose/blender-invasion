@@ -248,7 +248,7 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
   opdata->max_obj_scale = FLT_MIN;
 
   /* Put the Curve Profile from the toolsettings into the opdata struct */
-  opdata->custom_profile = ts->custom_profile;
+  opdata->custom_profile = ts->custom_bevel_profile_preset;
 
   {
     uint ob_store_len = 0;
@@ -981,7 +981,7 @@ static void edbm_bevel_ui(bContext *C, wmOperator *op)
     /* Get an RNA pointer to ToolSettings to give to the curve profile template code */
     Scene *scene = CTX_data_scene(C);
     RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
-    uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_profile");
+    uiTemplateCurveProfile(layout, &toolsettings_ptr, "custom_bevel_profile_preset");
   }
 }
 

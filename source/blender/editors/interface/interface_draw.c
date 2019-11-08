@@ -2121,7 +2121,10 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
 }
 
 /** Used to draw a curve profile widget. Somewhat similar to ui_draw_but_CURVE */
-void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
+void ui_draw_but_CURVEPROFILE(ARegion *ar,
+                              uiBut *but,
+                              const uiWidgetColors *wcol,
+                              const rcti *rect)
 {
   uint i;
   float fx, fy;
@@ -2200,12 +2203,12 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
   /* Also add the last points on the right and bottom edges to close off the fill polygon */
   bool add_left_tri = profile->view_rect.xmin < 0.0f;
   bool add_bottom_tri = profile->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)PROF_N_TABLE(profile->totpoint) + 1 + add_left_tri + add_bottom_tri;
+  uint tot_points = (uint)PROF_N_TABLE(profile->path_len) + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points */
   float(*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < (uint)PROF_N_TABLE(profile->totpoint);
+  for (i = 0; i < (uint)PROF_N_TABLE(profile->path_len);
        i++) { /* Only add the points from the table here */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
@@ -2298,7 +2301,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Draw the control points. */
   pts = profile->path;
-  tot_points = (uint)profile->totpoint;
+  tot_points = (uint)profile->path_len;
   GPU_line_smooth(false);
   GPU_blend(false);
   GPU_point_size(max_ff(3.0f, min_ff(UI_DPI_FAC / but->block->aspect * 5.0f, 5.0f)));
@@ -2313,7 +2316,7 @@ void ui_draw_but_PROFILE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, co
 
   /* Draw the sampled points in addition to the control points if they have been created */
   pts = profile->segments;
-  tot_points = (uint)profile->totsegments;
+  tot_points = (uint)profile->segments_len;
   if (tot_points > 0 && pts) {
     GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 3.0f, 3.0f)));
     immBegin(GPU_PRIM_POINTS, tot_points);

@@ -6779,9 +6779,10 @@ static void direct_link_scene(FileData *fd, Scene *sce)
     }
 
     /* Relink toolsettings curve profile */
-    sce->toolsettings->custom_profile = newdataadr(fd, sce->toolsettings->custom_profile);
-    if (sce->toolsettings->custom_profile) {
-      direct_link_curveprofile(fd, sce->toolsettings->custom_profile);
+    sce->toolsettings->custom_bevel_profile_preset = newdataadr(
+        fd, sce->toolsettings->custom_bevel_profile_preset);
+    if (sce->toolsettings->custom_bevel_profile_preset) {
+      direct_link_curveprofile(fd, sce->toolsettings->custom_bevel_profile_preset);
     }
   }
 

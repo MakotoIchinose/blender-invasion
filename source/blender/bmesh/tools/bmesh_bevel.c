@@ -6975,7 +6975,7 @@ static void set_profile_spacing(BevelParams *bp, ProfileSpacing *pro_spacing, bo
                                                       (size_t)(seg + 1) * sizeof(double));
     if (custom) {
       /* Make sure the curve profile's sample table is full. */
-      if (bp->custom_profile->totsegments != seg || !bp->custom_profile->segments) {
+      if (bp->custom_profile->segments_len != seg || !bp->custom_profile->segments) {
         BKE_curveprofile_initialize((CurveProfile *)bp->custom_profile, (short)seg);
       }
 

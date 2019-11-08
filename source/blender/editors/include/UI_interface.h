@@ -347,7 +347,7 @@ typedef enum {
   UI_BTYPE_UNITVEC = 31 << 9,
   UI_BTYPE_CURVE = 32 << 9,
   /** Profile editing widget */
-  UI_BTYPE_PROFILE = 33 << 9,
+  UI_BTYPE_CURVEPROFILE = 33 << 9,
   UI_BTYPE_LISTBOX = 36 << 9,
   UI_BTYPE_LISTROW = 37 << 9,
   UI_BTYPE_HSVCIRCLE = 38 << 9,

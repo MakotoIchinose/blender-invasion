@@ -4928,7 +4928,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   path_height = path_width;
   uiLayoutRow(layout, false);
   uiDefBut(block,
-           UI_BTYPE_PROFILE,
+           UI_BTYPE_CURVEPROFILE,
            0,
            "",
            0,
@@ -4943,13 +4943,13 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
            "");
 
   /* Position sliders for (first) selected point */
-  for (i = 0; i < profile->totpoint; i++) {
+  for (i = 0; i < profile->path_len; i++) {
     if (profile->path[i].flag & PROF_SELECT) {
       point = &profile->path[i];
       break;
     }
   }
-  if (i == 0 || i == profile->totpoint - 1) {
+  if (i == 0 || i == profile->path_len - 1) {
     point_last_or_first = true;
   }
 
@@ -5062,8 +5062,8 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
     }
   }
 
-  uiItemR(layout, ptr, "sample_straight_edges", 0, NULL, ICON_NONE);
-  uiItemR(layout, ptr, "sample_even_lengths", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_sample_straight_edges", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_sample_even_lengths", 0, NULL, ICON_NONE);
 
   UI_block_funcN_set(block, NULL, NULL, NULL);
 }

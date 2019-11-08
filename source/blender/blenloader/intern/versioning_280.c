@@ -36,6 +36,7 @@
 #include "DNA_cloth_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_gpu_types.h"
 #include "DNA_light_types.h"
 #include "DNA_layer_types.h"
@@ -3944,8 +3945,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "ToolSettings", "CurveProfile", "custom_profile")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         ToolSettings *ts = scene->toolsettings;
-        if ((ts) && (ts->custom_profile == NULL)) {
-          ts->custom_profile = BKE_curveprofile_add(PROF_PRESET_LINE);
+        if ((ts) && (ts->custom_bevel_profile_preset == NULL)) {
+          ts->custom_bevel_profile_preset = BKE_curveprofile_add(PROF_PRESET_LINE);
         }
       }
     }

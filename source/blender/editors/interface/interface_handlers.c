@@ -1070,7 +1070,7 @@ static void ui_apply_but_CURVE(bContext *C, uiBut *but, uiHandleButtonData *data
   data->applied = true;
 }
 
-static void ui_apply_but_PROFILE(bContext *C, uiBut *but, uiHandleButtonData *data)
+static void ui_apply_but_CURVEPROFILE(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
   ui_apply_but_func(C, but);
   data->retval = but->retval;
@@ -2097,8 +2097,8 @@ static void ui_apply_but(
     case UI_BTYPE_CURVE:
       ui_apply_but_CURVE(C, but, data);
       break;
-    case UI_BTYPE_PROFILE:
-      ui_apply_but_PROFILE(C, but, data);
+    case UI_BTYPE_CURVEPROFILE:
+      ui_apply_but_CURVEPROFILE(C, but, data);
       break;
     case UI_BTYPE_KEY_EVENT:
     case UI_BTYPE_HOTKEY_EVENT:
@@ -2564,7 +2564,7 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
       ui_but_copy_curvemapping(but);
       break;
 
-    case UI_BTYPE_PROFILE:
+    case UI_BTYPE_CURVEPROFILE:
       ui_but_copy_CurveProfile(but);
       break;
 
@@ -2648,7 +2648,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       ui_but_paste_curvemapping(C, but);
       break;
 
-    case UI_BTYPE_PROFILE:
+    case UI_BTYPE_CURVEPROFILE:
       ui_but_paste_CurveProfile(C, but);
       break;
 
@@ -3787,7 +3787,7 @@ static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
   if (but->type == UI_BTYPE_CURVE) {
     but->editcumap = (CurveMapping *)but->poin;
   }
-  if (but->type == UI_BTYPE_PROFILE) {
+  if (but->type == UI_BTYPE_CURVEPROFILE) {
     but->editprofile = (CurveProfile *)but->poin;
   }
   else if (but->type == UI_BTYPE_COLORBAND) {
@@ -6838,13 +6838,13 @@ static int ui_do_but_CURVE(
 }
 
 /* Same as ui_numedit_but_CURVE with some smaller changes. */
-static bool ui_numedit_but_PROFILE(uiBlock *block,
-                                   uiBut *but,
-                                   uiHandleButtonData *data,
-                                   int evtx,
-                                   int evty,
-                                   bool snap,
-                                   const bool shift)
+static bool ui_numedit_but_CURVEPROFILE(uiBlock *block,
+                                        uiBut *but,
+                                        uiHandleButtonData *data,
+                                        int evtx,
+                                        int evty,
+                                        bool snap,
+                                        const bool shift)
 {
   CurveProfile *profile = (CurveProfile *)but->poin;
   CurveProfilePoint *pts = profile->path;
@@ -6888,7 +6888,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
     fy *= mval_factor;
 
     /* Move all the points that aren't the last or the first */
-    for (a = 1; a < profile->totpoint - 1; a++) {
+    for (a = 1; a < profile->path_len - 1; a++) {
       if (pts[a].flag & PROF_SELECT) {
         float origx = pts[a].x, origy = pts[a].y;
         pts[a].x += fx;
@@ -6957,7 +6957,7 @@ static bool ui_numedit_but_PROFILE(uiBlock *block,
 
 /** Interaction for curve profile widget.
  * \note Uses hardcoded keys rather than the keymap. */
-static int ui_do_but_PROFILE(
+static int ui_do_but_CURVEPROFILE(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
   int mx, my, i;
@@ -7005,7 +7005,7 @@ static int ui_do_but_PROFILE(
       /* Check for selecting of a point by finding closest point in radius. */
       dist_min_sq = SQUARE(U.dpi_fac * 14.0f); /* 14 pixels radius for selecting points. */
       pts = profile->path;
-      for (i = 0; i < profile->totpoint; i++) {
+      for (i = 0; i < profile->path_len; i++) {
         float f_xy[2];
         BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &pts[i].x);
         const float dist_sq = len_squared_v2v2(m_xy, f_xy);
@@ -7024,7 +7024,7 @@ static int ui_do_but_PROFILE(
         dist_min_sq = SQUARE(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point. */
 
         /* Loop through the path's high resolution table and find what's near the click. */
-        for (i = 1; i <= PROF_N_TABLE(profile->totpoint); i++) {
+        for (i = 1; i <= PROF_N_TABLE(profile->path_len); i++) {
           copy_v2_v2(f_xy_prev, f_xy);
           BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &pts[i].x);
 
@@ -7038,7 +7038,7 @@ static int ui_do_but_PROFILE(
             pts = profile->path;
 
             /* Get the index of the newly added point. */
-            for (i = 0; i < profile->totpoint; i++) {
+            for (i = 0; i < profile->path_len; i++) {
               if (&pts[i] == new_pt) {
                 i_selected = i;
               }
@@ -7052,7 +7052,7 @@ static int ui_do_but_PROFILE(
       if (i_selected != -1) {
         /* Deselect all if this one is deselected, except if we hold shift. */
         if (!event->shift) {
-          for (i = 0; i < profile->totpoint; i++) {
+          for (i = 0; i < profile->path_len; i++) {
             pts[i].flag &= ~PROF_SELECT;
           }
           pts[i_selected].flag |= PROF_SELECT;
@@ -7080,7 +7080,7 @@ static int ui_do_but_PROFILE(
   else if (data->state == BUTTON_STATE_NUM_EDITING) { /* Do control point movement. */
     if (event->type == MOUSEMOVE) {
       if (mx != data->draglastx || my != data->draglasty) {
-        if (ui_numedit_but_PROFILE(
+        if (ui_numedit_but_CURVEPROFILE(
                 block, but, data, mx, my, event->ctrl != 0, event->shift != 0)) {
           ui_numedit_apply(C, block, but, data);
         }
@@ -7094,7 +7094,7 @@ static int ui_do_but_PROFILE(
         if (data->dragchange == false) {
           /* Deselect all, select one. */
           if (!event->shift) {
-            for (i = 0; i < profile->totpoint; i++) {
+            for (i = 0; i < profile->path_len; i++) {
               pts[i].flag &= ~PROF_SELECT;
             }
             pts[data->dragsel].flag |= PROF_SELECT;
@@ -7517,8 +7517,8 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
     case UI_BTYPE_CURVE:
       retval = ui_do_but_CURVE(C, block, but, data, event);
       break;
-    case UI_BTYPE_PROFILE:
-      retval = ui_do_but_PROFILE(C, block, but, data, event);
+    case UI_BTYPE_CURVEPROFILE:
+      retval = ui_do_but_CURVEPROFILE(C, block, but, data, event);
       break;
     case UI_BTYPE_HSVCUBE:
       retval = ui_do_but_HSVCUBE(C, block, but, data, event);
@@ -7911,7 +7911,7 @@ static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonA
   copy_v2_fl(data->ungrab_mval, FLT_MAX);
 #endif
 
-  if (ELEM(but->type, UI_BTYPE_CURVE, UI_BTYPE_PROFILE, UI_BTYPE_SEARCH_MENU)) {
+  if (ELEM(but->type, UI_BTYPE_CURVE, UI_BTYPE_CURVEPROFILE, UI_BTYPE_SEARCH_MENU)) {
     /* XXX curve is temp */
   }
   else {
