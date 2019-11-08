@@ -239,34 +239,6 @@ static void brush_grab_calc_dvec(tGP_BrushVertexpaintData *gso)
 /* This section defines the callbacks used by each brush to perform their magic.
  * These are called on each point within the brush's radius. */
 
-static bool brush_fill_asspply(tGP_BrushVertexpaintData *gso,
-                               bGPDstroke *gps,
-                               const int radius,
-                               const int co[2])
-{
-  Brush *brush = gso->brush;
-  float inf = gso->pressure;
-
-  float alpha_fill = gps->mix_color_fill[3];
-  if (brush_invert_check(gso)) {
-    alpha_fill -= inf;
-  }
-  else {
-    alpha_fill += inf;
-    /* Limit max strength target. */
-    CLAMP_MAX(alpha_fill, brush->gpencil_settings->draw_strength);
-  }
-
-  /* Apply color to Fill area. */
-  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
-    CLAMP(alpha_fill, 0.0f, 1.0f);
-    copy_v3_v3(gps->mix_color_fill, brush->rgb);
-    gps->mix_color_fill[3] = alpha_fill;
-  }
-
-  return true;
-}
-
 /* Tint Brush */
 static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
                              bGPDstroke *gps,
@@ -358,10 +330,10 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->sa = CTX_wm_area(C);
   gso->ar = CTX_wm_region(C);
 
-  /* save mask */
+  /* Save mask. */
   gso->mask = ts->gpencil_selectmode_vertex;
 
-  /* multiframe settings */
+  /* Multiframe settings. */
   gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
   gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
 
@@ -371,13 +343,13 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
     BKE_curvemapping_initialize(ts->gp_sculpt.cur_falloff);
   }
 
-  /* setup space conversions */
+  /* Setup space conversions. */
   gp_point_conversion_init(C, &gso->gsc);
 
-  /* update header */
+  /* Update header. */
   gp_vertexpaint_brush_header_set(C, gso);
 
-  /* setup cursor drawing */
+  /* Setup cursor drawing. */
   ED_gpencil_toggle_brush_cursor(C, true, NULL);
   return true;
 }
@@ -386,20 +358,20 @@ static void gp_vertexpaint_brush_exit(bContext *C, wmOperator *op)
 {
   tGP_BrushVertexpaintData *gso = op->customdata;
 
-  /* disable cursor and headerprints */
+  /* Disable cursor and headerprints. */
   ED_workspace_status_text(C, NULL);
   ED_gpencil_toggle_brush_cursor(C, false, NULL);
 
-  /* disable temp invert flag */
+  /* Disable temp invert flag. */
   gso->brush->flag &= ~GP_VERTEX_FLAG_TMP_INVERT;
 
-  /* free operator data */
-  MEM_freeN(gso->pbuffer);
-  MEM_freeN(gso);
+  /* Free operator data */
+  MEM_SAFE_FREE(gso->pbuffer);
+  MEM_SAFE_FREE(gso);
   op->customdata = NULL;
 }
 
-/* Poll callback for stroke vertex paint operator(s) */
+/* Poll callback for stroke vertex paint operator. */
 static bool gp_vertexpaint_brush_poll(bContext *C)
 {
   /* NOTE: this is a bit slower, but is the most accurate... */
@@ -425,7 +397,7 @@ static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
   gso->pbuffer_used++;
 }
 
-/* Select points in this stroke */
+/* Select points in this stroke and add to an array to be used later. */
 static void gp_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
                                          bGPDstroke *gps,
                                          const float diff_mat[4][4])
