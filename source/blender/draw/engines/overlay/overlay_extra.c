@@ -164,10 +164,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     cb->mball_handle = buffer_instance_mball_handles(cb->non_meshes, draw_ctx->sh_cfg);
 
 #endif
-    /* Lights */
-    /* TODO
-     * for now we create multiple times the same VBO with only light center coordinates
-     * but ideally we would only create it once */
 
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 #define BUF_POINT(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_POINTS)
@@ -193,6 +189,18 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->camera_tria[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_wire_get());
       cb->camera_tria[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_get());
       cb->camera_distances = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_distances_get());
+
+      cb->empty_axes = BUF_INSTANCE(grp_sub, format, DRW_cache_bone_arrows_get());
+      cb->empty_capsule_body = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_capsule_body_get());
+      cb->empty_capsule_cap = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_capsule_cap_get());
+      cb->empty_circle = BUF_INSTANCE(grp_sub, format, DRW_cache_circle_get());
+      cb->empty_cone = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cone_get());
+      cb->empty_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cube_get());
+      cb->empty_cylinder = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cylinder_get());
+      cb->empty_plain_axes = BUF_INSTANCE(grp_sub, format, DRW_cache_plain_axes_get());
+      cb->empty_single_arrow = BUF_INSTANCE(grp_sub, format, DRW_cache_single_arrow_get());
+      cb->empty_sphere = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_sphere_get());
+      cb->empty_sphere_solid = BUF_INSTANCE(grp_sub, format, DRW_cache_sphere_get());
 
       /* TODO Own move to transparent pass. */
       grp_sub = DRW_shgroup_create_sub(grp);
@@ -300,6 +308,71 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 #endif
   }
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Empties
+ * \{ */
+
+static void DRW_shgroup_empty_ex(OVERLAY_ExtraCallBuffers *cb,
+                                 const float mat[4][4],
+                                 const float *draw_size,
+                                 char draw_type,
+                                 const float color[4])
+{
+  float instdata[4][4];
+  copy_m4_m4(instdata, mat);
+  instdata[3][3] = *draw_size;
+
+  switch (draw_type) {
+    case OB_PLAINAXES:
+      DRW_buffer_add_entry(cb->empty_plain_axes, color, instdata);
+      break;
+    case OB_SINGLE_ARROW:
+      DRW_buffer_add_entry(cb->empty_single_arrow, color, instdata);
+      break;
+    case OB_CUBE:
+      DRW_buffer_add_entry(cb->empty_cube, color, instdata);
+      break;
+    case OB_CIRCLE:
+      DRW_buffer_add_entry(cb->empty_circle, color, instdata);
+      break;
+    case OB_EMPTY_SPHERE:
+      DRW_buffer_add_entry(cb->empty_sphere, color, instdata);
+      break;
+    case OB_EMPTY_CONE:
+      DRW_buffer_add_entry(cb->empty_cone, color, instdata);
+      break;
+    case OB_ARROWS:
+      DRW_buffer_add_entry(cb->empty_axes, color, instdata);
+      break;
+    case OB_EMPTY_IMAGE:
+      BLI_assert(!"Should never happen, use DRW_shgroup_empty instead.");
+      break;
+  }
+}
+
+static void DRW_shgroup_empty(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLayer *view_layer)
+{
+  float *color;
+  DRW_object_wire_theme_get(ob, view_layer, &color);
+
+  switch (ob->empty_drawtype) {
+    case OB_PLAINAXES:
+    case OB_SINGLE_ARROW:
+    case OB_CUBE:
+    case OB_CIRCLE:
+    case OB_EMPTY_SPHERE:
+    case OB_EMPTY_CONE:
+    case OB_ARROWS:
+      DRW_shgroup_empty_ex(cb, ob->obmat, &ob->empty_drawsize, ob->empty_drawtype, color);
+      break;
+    case OB_EMPTY_IMAGE:
+      // DRW_shgroup_empty_image(sh_data, sgl, ob, color, rv3d, sh_cfg);
+      break;
+  }
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Lights
@@ -733,10 +806,10 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
       // DRW_shgroup_lightprobe(sh_data, stl, psl, ob, view_layer, draw_ctx->sh_cfg);
       break;
     case OB_EMPTY:
-      // if (!(((ob->base_flag & BASE_FROM_DUPLI) != 0) &&
-      //       ((ob->transflag & OB_DUPLICOLLECTION) != 0) && ob->instance_collection)) {
-      //   DRW_shgroup_empty(sh_data, sgl, ob, view_layer, rv3d, draw_ctx->sh_cfg);
-      // }
+      if (!(((ob->base_flag & BASE_FROM_DUPLI) != 0) &&
+            ((ob->transflag & OB_DUPLICOLLECTION) != 0) && ob->instance_collection)) {
+        DRW_shgroup_empty(cb, ob, view_layer);
+      }
       break;
   }
 

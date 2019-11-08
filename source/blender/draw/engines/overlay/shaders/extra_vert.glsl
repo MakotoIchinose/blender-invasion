@@ -23,6 +23,8 @@ in vec4 color;
 #define camera_dist_end inst_data.w
 #define camera_distance_color inst_data.x
 
+#define empty_scale inst_data.w
+
 #define VCLASS_LIGHT_AREA_SHAPE (1 << 0)
 #define VCLASS_LIGHT_SPOT_SHAPE (1 << 1)
 #define VCLASS_LIGHT_SPOT_BLEND (1 << 2)
@@ -35,6 +37,11 @@ in vec4 color;
 
 #define VCLASS_SCREENSPACE (1 << 8)
 #define VCLASS_SCREENALIGNED (1 << 9)
+
+#define VCLASS_EMPTY_SCALED (1 << 10)
+#define VCLASS_EMPTY_AXES (1 << 11)
+#define VCLASS_EMPTY_AXES_NAME (1 << 12)
+#define VCLASS_EMPTY_AXES_SHADOW (1 << 13)
 
 flat out vec4 finalColor;
 
@@ -126,7 +133,20 @@ void main()
       }
     }
   }
+  /* Empties */
+  else if ((vclass & VCLASS_EMPTY_SCALED) != 0) {
+    /* This is a bit silly but we avoid scalling the object matrix on CPU (saving a mat4 mul) */
+    vpos *= empty_scale;
+  }
+  else if ((vclass & VCLASS_EMPTY_AXES) != 0) {
+    float axis = vpos.z;
+    vec3 chosen_axis = obmat[int(axis)].xyz;
+    vofs = chosen_axis * (1.0 + fract(axis)) * empty_scale;
+    /* Scale uniformly by axis length */
+    vpos *= length(chosen_axis) * empty_scale;
+  }
 
+  /* Not exclusive with previous flags. */
   if ((vclass & VCLASS_CAMERA_VOLUME) != 0) {
     /* Unpack final color. */
     int color_class = int(floor(color.r));

@@ -87,6 +87,19 @@ typedef struct OVERLAY_ShadingData {
 typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *groundline;
 
+  DRWCallBuffer *empty_axes;
+  DRWCallBuffer *empty_capsule_body;
+  DRWCallBuffer *empty_capsule_cap;
+  DRWCallBuffer *empty_circle;
+  DRWCallBuffer *empty_cone;
+  DRWCallBuffer *empty_cube;
+  DRWCallBuffer *empty_cylinder;
+  DRWCallBuffer *empty_plain_axes;
+  DRWCallBuffer *empty_single_arrow_line;
+  DRWCallBuffer *empty_single_arrow;
+  DRWCallBuffer *empty_sphere;
+  DRWCallBuffer *empty_sphere_solid;
+
   DRWCallBuffer *light_point;
   DRWCallBuffer *light_sun;
   DRWCallBuffer *light_spot;
