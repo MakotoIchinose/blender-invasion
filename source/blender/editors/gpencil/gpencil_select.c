@@ -1013,7 +1013,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
   const float scale = ts->gp_sculpt.isect_threshold;
 
   /* if not edit/sculpt mode, the event is catched but not processed */
-  if ((GPENCIL_NONE_EDIT_MODE(gpd)) && (!GPENCIL_VERTEX_MODE(gpd))) {
+  if (GPENCIL_NONE_EDIT_MODE(gpd)) {
     return OPERATOR_CANCELLED;
   }
 
