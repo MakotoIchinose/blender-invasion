@@ -1,11 +1,18 @@
 
 in vec3 pos;
-in vec3 dash_pos;   /* Start point of the stippling pattern. */
-in float dash_with; /* Screen space width of the stippling. */
+in vec3 dash_pos; /* Start point of the stippling pattern. */
 in vec4 color;
-in int colorid; /* if equal 0 use color attrib. */
+in int colorid; /* if equal 0 (i.e: Not specified) use color attrib and stippling. */
 
-flat out vec4 finalColor;
+uniform vec2 viewport_size;
+
+noperspective out vec4 finalColor;
+
+vec2 screen_position(vec4 p)
+{
+  vec2 s = p.xy / p.w;
+  return s * viewport_size * 0.5;
+}
 
 void main()
 {
@@ -17,6 +24,15 @@ void main()
   }
   else {
     finalColor = color;
+
+    world_pos = point_object_to_world(dash_pos);
+
+    vec2 s0 = screen_position(gl_Position);
+
+    vec4 p = point_world_to_ndc(world_pos);
+    vec2 s1 = screen_position(p);
+    /* Put Stipple distance in alpha. */
+    finalColor.a = -distance(s0, s1);
   }
 
 #ifdef USE_WORLD_CLIP_PLANES

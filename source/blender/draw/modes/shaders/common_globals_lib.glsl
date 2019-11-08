@@ -69,6 +69,8 @@ layout(std140) uniform globalsBlock
   vec4 colorGridAxisY;
   vec4 colorGridAxisZ;
 
+  float sizePixel;
+  float sizeObjectCenter;
   float sizeLightCenter;
   float sizeLightCircle;
   float sizeLightCircleShadow;

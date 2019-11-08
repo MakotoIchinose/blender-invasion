@@ -195,6 +195,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                              (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              ((ob->base_flag & BASE_SELECTED) ||
                               (DRW_state_is_select() && ob->type == OB_LIGHTPROBE));
+  const bool draw_extras =
+      ((pd->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) == 0) ||
+      /* Show if this is the camera we're looking through since it's useful for selecting. */
+      ((draw_ctx->rv3d->persp == RV3D_CAMOB) && ((ID *)draw_ctx->v3d->camera == ob->id.orig_id));
 
   bool init;
   OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &init);
@@ -240,7 +244,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   //     OVERLAY_wireframe_cache_populate();
   //   }
   // }
-  /* Non-Meshes */
+
   switch (ob->type) {
     // case OB_ARMATURE:
     //   OVERLAY_armature_cache_populate();
@@ -251,17 +255,30 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     // case OB_FONT:
     //   OVERLAY_font_cache_populate();
     //   break;
-    case OB_EMPTY:
-    case OB_LAMP:
-    case OB_CAMERA:
-    case OB_SPEAKER:
-    case OB_LIGHTPROBE:
-      OVERLAY_extra_cache_populate(vedata, ob, dupli, init);
+    case OB_GPENCIL:
+      OVERLAY_gpencil_cache_populate(vedata, ob);
       break;
   }
-  // if (draw_extra) {
-  //   OVERLAY_extra_cache_populate();
-  // }
+  /* Non-Meshes */
+  if (draw_extras) {
+    switch (ob->type) {
+      case OB_EMPTY:
+        OVERLAY_empty_cache_populate(vedata, ob);
+        break;
+      case OB_LAMP:
+        OVERLAY_light_cache_populate(vedata, ob);
+        break;
+      case OB_CAMERA:
+        OVERLAY_camera_cache_populate(vedata, ob);
+        break;
+      case OB_SPEAKER:
+      case OB_LIGHTPROBE:
+        break;
+    }
+  }
+
+  /* Relationship, object center, bounbox ... */
+  OVERLAY_extra_cache_populate(vedata, ob);
 
   if (dupli) {
     dupli->base_flag = ob->base_flag;

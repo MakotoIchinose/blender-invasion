@@ -112,10 +112,11 @@ typedef struct GlobalsUboStorage {
   /* NOTE! Put all color before UBO_LAST_COLOR */
 
   /* Pack individual float at the end of the buffer to avoid alignment errors */
-  float sizeLightCenter, sizeLightCircle, sizeLightCircleShadow;
+  float sizePixel;
+  float sizeObjectCenter, sizeLightCenter, sizeLightCircle, sizeLightCircleShadow;
   float sizeVertex, sizeEdge, sizeEdgeFix, sizeFaceDot;
 
-  float pad_globalsBlock;
+  float pad_globalsBlock[3];
 } GlobalsUboStorage;
 /* Keep in sync with globalsBlock in shaders */
 BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)

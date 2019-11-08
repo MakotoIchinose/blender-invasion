@@ -41,6 +41,7 @@ extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
 extern char datatoc_extra_vert_glsl[];
 extern char datatoc_extra_groundline_vert_glsl[];
+extern char datatoc_extra_point_vert_glsl[];
 extern char datatoc_extra_wire_frag_glsl[];
 extern char datatoc_extra_wire_vert_glsl[];
 extern char datatoc_facing_frag_glsl[];
@@ -65,6 +66,7 @@ extern char datatoc_gpu_shader_point_varying_color_frag_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 extern char datatoc_gpu_shader_flat_color_frag_glsl[];
+extern char datatoc_gpu_shader_point_varying_color_varying_outline_aa_frag_glsl[];
 
 extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_common_fxaa_lib_glsl[];
@@ -73,8 +75,6 @@ extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
   GPUShader *depth_only;
-  GPUShader *grid;
-  GPUShader *facing;
   GPUShader *edit_mesh_vert;
   GPUShader *edit_mesh_edge;
   GPUShader *edit_mesh_edge_flat;
@@ -89,6 +89,9 @@ typedef struct OVERLAY_Shaders {
   GPUShader *extra;
   GPUShader *extra_groundline;
   GPUShader *extra_wire;
+  GPUShader *extra_point;
+  GPUShader *facing;
+  GPUShader *grid;
   GPUShader *outline_prepass;
   GPUShader *outline_prepass_wire;
   GPUShader *outline_prepass_lightprobe_grid;
@@ -366,7 +369,7 @@ GPUShader *OVERLAY_shader_extra(void)
   return sh_data->extra;
 }
 
-GPUShader *OVERLAY_shader_extra_grounline(void)
+GPUShader *OVERLAY_shader_extra_groundline(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
@@ -405,6 +408,27 @@ GPUShader *OVERLAY_shader_extra_wire(void)
     });
   }
   return sh_data->extra_wire;
+}
+
+GPUShader *OVERLAY_shader_extra_point(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->extra_point) {
+    sh_data->extra_point = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_extra_point_vert_glsl,
+                                 NULL},
+        .frag =
+            (const char *[]){datatoc_gpu_shader_point_varying_color_varying_outline_aa_frag_glsl,
+                             NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->extra_point;
 }
 
 GPUShader *OVERLAY_shader_facing(void)
@@ -622,6 +646,7 @@ OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void)
                                {"color", DRW_ATTR_FLOAT, 4}});
   DRW_shgroup_instance_format(g_formats.wire_extra,
                               {{"pos", DRW_ATTR_FLOAT, 3}, {"colorid", DRW_ATTR_INT, 1}});
+  DRW_shgroup_instance_format(g_formats.pos, {{"pos", DRW_ATTR_FLOAT, 3}});
   return &g_formats;
 }
 
