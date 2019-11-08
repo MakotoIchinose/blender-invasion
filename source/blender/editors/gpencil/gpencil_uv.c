@@ -183,6 +183,8 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
     if (gps->flag & GP_STROKE_SELECT) {
       float r_center[3];
       gpencil_stroke_center(gps, r_center);
+      /* Add object location. */
+      add_v3_v3(r_center, opdata->ob->obmat[3]);
       add_v3_v3(center, r_center);
       i++;
     }
