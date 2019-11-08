@@ -30,6 +30,7 @@
 
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
+#  include "BLI_utildefines.h"
 
 #  include "RNA_access.h"
 #  include "RNA_define.h"
@@ -59,11 +60,14 @@ const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+/* Stored in the wmOperator's customdata field to indicate it should run as a background job.
+ * This is set when the operator is invoked, and not set when it is only executed. */
+#  define AS_BACKGROUND_JOB 1
+
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
-    RNA_boolean_set(op->ptr, "as_background_job", true);
-  }
+  /* Mark this operator call as 'invoked', so that it'll run as a background job. */
+  op->customdata = POINTER_FROM_INT(AS_BACKGROUND_JOB);
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     Main *bmain = CTX_data_main(C);
@@ -97,7 +101,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
-  const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
+  const bool as_background_job = (POINTER_AS_INT(op->customdata) & AS_BACKGROUND_JOB) != 0;
   const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
@@ -218,15 +222,6 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                DAG_EVAL_RENDER,
                "Evaluation Mode",
                "Determines visibility of objects and modifier settings");
-
-  RNA_def_boolean(
-      ot->srna,
-      "as_background_job",
-      false,
-      "Run as Background Job",
-      "Enable this to run the import in the background, disable to block Blender while importing. "
-      "This option is deprecated; EXECUTE this operator to run in the foreground, and INVOKE it "
-      "to run as a background job");
 }
 
 #endif /* WITH_USD */
