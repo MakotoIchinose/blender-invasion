@@ -1661,7 +1661,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gpencil_tool", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "gpencil_tool");
   RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
-  RNA_def_property_ui_text(prop, "Type", "Category of the brush");
+  RNA_def_property_ui_text(prop, "Grease Pencil Draw Tool", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   /** End per mode tool properties. */
 
@@ -1885,8 +1885,8 @@ static void rna_def_brush(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "normal_radius_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "normal_radius_factor");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 3);
+  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.001, 3);
   RNA_def_property_ui_text(prop,
                            "Normal Radius",
                            "Ratio between the brush radius and the radius that is going to be "
@@ -1959,7 +1959,7 @@ static void rna_def_brush(BlenderRNA *brna)
   /* flag */
   /* This is an enum but its unlikely we add other shapes, so expose as a boolean. */
   prop = RNA_def_property(srna, "use_projected", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", BRUSH_AIRBRUSH);
+  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", PAINT_FALLOFF_SHAPE_TUBE);
   RNA_def_property_ui_text(
       prop, "2D Falloff", "Apply brush influence in 2D circle instead of a sphere");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
@@ -2005,6 +2005,11 @@ static void rna_def_brush(BlenderRNA *brna)
       prop,
       "Grab Active Vertex",
       "Apply the maximum grab strength to the active vertex instead of the cursor location");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "use_paint_antialiasing", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "sampling_flag", BRUSH_PAINT_ANTIALIASING);
+  RNA_def_property_ui_text(prop, "Antialasing", "Smooths the edges of the strokes");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "use_pressure_strength", PROP_BOOLEAN, PROP_NONE);

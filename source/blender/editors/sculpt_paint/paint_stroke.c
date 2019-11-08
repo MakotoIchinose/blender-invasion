@@ -256,6 +256,7 @@ static bool paint_tool_require_inbetween_mouse_events(Brush *brush, ePaintMode m
                SCULPT_TOOL_GRAB,
                SCULPT_TOOL_ROTATE,
                SCULPT_TOOL_THUMB,
+               SCULPT_TOOL_SNAKE_HOOK,
                SCULPT_TOOL_ELASTIC_DEFORM,
                SCULPT_TOOL_POSE)) {
         return false;
@@ -668,7 +669,7 @@ static float paint_space_stroke_spacing(bContext *C,
     return max_ff(0.001f, size_clamp * spacing / 50.f);
   }
   else {
-    return max_ff(1.0, size_clamp * spacing / 50.0f);
+    return max_ff(stroke->zoom_2d, size_clamp * spacing / 50.0f);
   }
 }
 

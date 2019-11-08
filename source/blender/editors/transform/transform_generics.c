@@ -111,6 +111,7 @@
 
 #include "transform.h"
 #include "transform_convert.h"
+#include "transform_snap.h"
 
 /* ************************** Functions *************************** */
 
@@ -791,6 +792,12 @@ static void pose_transform_mirror_update(Object *ob, PoseInitData_Mirror *pid)
   float flip_mtx[4][4];
   unit_m4(flip_mtx);
   flip_mtx[0][0] = -1;
+
+  for (bPoseChannel *pchan_orig = ob->pose->chanbase.first; pchan_orig;
+       pchan_orig = pchan_orig->next) {
+    /* Clear the MIRROR flag from previous runs */
+    pchan_orig->bone->flag &= ~BONE_TRANSFORM_MIRROR;
+  }
 
   for (bPoseChannel *pchan_orig = ob->pose->chanbase.first; pchan_orig;
        pchan_orig = pchan_orig->next) {
@@ -1707,7 +1714,9 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
   else {
-    if (ISMOUSE(t->launch_event) && (U.flag & USER_RELEASECONFIRM)) {
+    /* Release confirms preference should not affect node editor (T69288, T70504). */
+    if (ISMOUSE(t->launch_event) &&
+        ((U.flag & USER_RELEASECONFIRM) || (t->spacetype == SPACE_NODE))) {
       /* Global "release confirm" on mouse bindings */
       t->flag |= T_RELEASE_CONFIRM;
     }
@@ -1832,7 +1841,7 @@ static void freeTransCustomData(TransInfo *t, TransDataContainer *tc, TransCusto
     custom_data->data = NULL;
   }
   /* In case modes are switched in the same transform session. */
-  custom_data->free_cb = false;
+  custom_data->free_cb = NULL;
   custom_data->use_free = false;
 }
 

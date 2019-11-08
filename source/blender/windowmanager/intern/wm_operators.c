@@ -429,21 +429,11 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
     } \
     (void)0
 
-#  define CTX_TEST_PTR_DATA_TYPE(C, member, rna_type, rna_ptr, dataptr_cmp) \
+#  define TEST_PTR_DATA_TYPE(member, rna_type, rna_ptr, dataptr_cmp) \
     { \
       const char *ctx_member = member; \
-      if (RNA_struct_is_a((ptr)->type, &(rna_type)) && (ptr)->data == (dataptr_cmp)) { \
+      if (RNA_struct_is_a((rna_ptr)->type, &(rna_type)) && (rna_ptr)->data == (dataptr_cmp)) { \
         member_id = ctx_member; \
-        break; \
-      } \
-    } \
-    (void)0
-
-#  define CTX_TEST_SPACE_TYPE(space_data_type, member_full, dataptr_cmp) \
-    { \
-      const char *ctx_member_full = member_full; \
-      if (space_data->spacetype == space_data_type && ptr->data == dataptr_cmp) { \
-        member_id = ctx_member_full; \
         break; \
       } \
     } \
@@ -484,19 +474,50 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 
         SpaceLink *space_data = CTX_wm_space_data(C);
 
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_Space, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_View3DOverlay, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_View3DShading, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "area", RNA_Area, ptr, CTX_wm_area(C));
-        CTX_TEST_PTR_DATA_TYPE(C, "region", RNA_Region, ptr, CTX_wm_region(C));
+        TEST_PTR_DATA_TYPE("space_data", RNA_Space, ptr, space_data);
+        TEST_PTR_DATA_TYPE("area", RNA_Area, ptr, CTX_wm_area(C));
+        TEST_PTR_DATA_TYPE("region", RNA_Region, ptr, CTX_wm_region(C));
 
-        CTX_TEST_SPACE_TYPE(SPACE_IMAGE, "space_data.uv_editor", space_data);
-        CTX_TEST_SPACE_TYPE(
-            SPACE_VIEW3D, "space_data.fx_settings", &(CTX_wm_view3d(C)->fx_settings));
-        CTX_TEST_SPACE_TYPE(SPACE_NLA, "space_data.dopesheet", CTX_wm_space_nla(C)->ads);
-        CTX_TEST_SPACE_TYPE(SPACE_GRAPH, "space_data.dopesheet", CTX_wm_space_graph(C)->ads);
-        CTX_TEST_SPACE_TYPE(SPACE_ACTION, "space_data.dopesheet", &(CTX_wm_space_action(C)->ads));
-        CTX_TEST_SPACE_TYPE(SPACE_FILE, "space_data.params", CTX_wm_space_file(C)->params);
+        switch (space_data->spacetype) {
+          case SPACE_VIEW3D: {
+            const View3D *v3d = (View3D *)space_data;
+            const View3DShading *shading = &v3d->shading;
+
+            TEST_PTR_DATA_TYPE("space_data", RNA_View3DOverlay, ptr, v3d);
+            TEST_PTR_DATA_TYPE("space_data", RNA_View3DShading, ptr, shading);
+            break;
+          }
+          case SPACE_GRAPH: {
+            const SpaceGraph *sipo = (SpaceGraph *)space_data;
+            const bDopeSheet *ads = sipo->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+          case SPACE_FILE: {
+            const SpaceFile *sfile = (SpaceFile *)space_data;
+            const FileSelectParams *params = sfile->params;
+            TEST_PTR_DATA_TYPE("space_data", RNA_FileSelectParams, ptr, params);
+            break;
+          }
+          case SPACE_IMAGE: {
+            const SpaceImage *sima = (SpaceImage *)space_data;
+            TEST_PTR_DATA_TYPE("space_data", RNA_SpaceUVEditor, ptr, sima);
+            break;
+          }
+          case SPACE_NLA: {
+            const SpaceNla *snla = (SpaceNla *)space_data;
+            const bDopeSheet *ads = snla->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+          case SPACE_ACTION: {
+            const SpaceAction *sact = (SpaceAction *)space_data;
+            const bDopeSheet *ads = &sact->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+        }
+
         break;
       }
       default:
@@ -504,7 +525,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
     }
 #  undef CTX_TEST_PTR_ID
 #  undef CTX_TEST_PTR_ID_CAST
-#  undef CTX_TEST_SPACE_TYPE
+#  undef TEST_PTR_DATA_TYPE
   }
 
   return member_id;
@@ -699,6 +720,82 @@ void WM_operator_properties_free(PointerRNA *ptr)
 /* -------------------------------------------------------------------- */
 /** \name Default Operator Callbacks
  * \{ */
+
+int WM_generic_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  PropertyRNA *wait_to_deselect_prop = RNA_struct_find_property(op->ptr,
+                                                                "wait_to_deselect_others");
+  const short init_event_type = (short)POINTER_AS_INT(op->customdata);
+  int ret_value = 0;
+
+  /* get settings from RNA properties for operator */
+  int mval[2];
+  mval[0] = RNA_int_get(op->ptr, "mouse_x");
+  mval[1] = RNA_int_get(op->ptr, "mouse_y");
+
+  if (init_event_type == 0) {
+    if (event->val == KM_PRESS) {
+      RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, true);
+
+      ret_value = op->type->exec(C, op);
+      OPERATOR_RETVAL_CHECK(ret_value);
+
+      op->customdata = POINTER_FROM_INT((int)event->type);
+      if (ret_value & OPERATOR_RUNNING_MODAL) {
+        WM_event_add_modal_handler(C, op);
+      }
+      return ret_value | OPERATOR_PASS_THROUGH;
+    }
+    else {
+      /* If we are in init phase, and cannot validate init of modal operations,
+       * just fall back to basic exec.
+       */
+      RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, false);
+
+      ret_value = op->type->exec(C, op);
+      OPERATOR_RETVAL_CHECK(ret_value);
+
+      return ret_value | OPERATOR_PASS_THROUGH;
+    }
+  }
+  else if (event->type == init_event_type && event->val == KM_RELEASE) {
+    RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, false);
+
+    ret_value = op->type->exec(C, op);
+    OPERATOR_RETVAL_CHECK(ret_value);
+
+    return ret_value | OPERATOR_PASS_THROUGH;
+  }
+  else if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
+    const int drag_delta[2] = {
+        mval[0] - event->mval[0],
+        mval[1] - event->mval[1],
+    };
+    /* If user moves mouse more than defined threshold, we consider select operator as
+     * finished. Otherwise, it is still running until we get an 'release' event. In any
+     * case, we pass through event, but select op is not finished yet. */
+    if (WM_event_drag_test_with_delta(event, drag_delta)) {
+      return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+    }
+    else {
+      /* Important not to return anything other than PASS_THROUGH here,
+       * otherwise it prevents underlying tweak detection code to work properly. */
+      return OPERATOR_PASS_THROUGH;
+    }
+  }
+
+  return OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH;
+}
+
+int WM_generic_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
+  RNA_int_set(op->ptr, "mouse_y", event->mval[1]);
+
+  op->customdata = POINTER_FROM_INT(0);
+
+  return op->type->modal(C, op, event);
+}
 
 void WM_operator_view3d_unit_defaults(struct bContext *C, struct wmOperator *op)
 {
@@ -2641,14 +2738,18 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
           }
           else {
             delta[0] = rc->initial_mouse[0] - event->x;
-            delta[1] = 0.0f;
-
+            delta[1] = rc->initial_mouse[1] - event->y;
             if (rc->zoom_prop) {
               RNA_property_float_get_array(&rc->zoom_ptr, rc->zoom_prop, zoom);
               delta[0] /= zoom[0];
+              delta[1] /= zoom[1];
             }
-
-            dist = clamp_f(-delta[0], 0.0f, FLT_MAX);
+            if (rc->subtype == PROP_ANGLE) {
+              dist = len_v2(delta);
+            }
+            else {
+              dist = clamp_f(-delta[0], 0.0f, FLT_MAX);
+            }
           }
 
           /* calculate new value and apply snapping  */

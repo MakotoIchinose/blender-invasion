@@ -84,6 +84,7 @@ static void brush_defaults(Brush *brush)
   FROM_DEFAULT(normal_weight);
   FROM_DEFAULT(fill_threshold);
   FROM_DEFAULT(flag);
+  FROM_DEFAULT(sampling_flag);
   FROM_DEFAULT_PTR(rgb);
   FROM_DEFAULT_PTR(secondary_rgb);
   FROM_DEFAULT(spacing);
@@ -590,7 +591,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Fill brush. */
-  brush = BKE_brush_add_gpencil(bmain, ts, "Fill Area");
+  brush = BLI_findstring(&bmain->brushes, "Fill Area", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Fill Area");
+  }
   brush->size = 20.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
@@ -618,7 +622,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Soft Eraser brush. */
-  brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Soft");
+  brush = BLI_findstring(&bmain->brushes, "Eraser Soft", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Soft");
+  }
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 0.5f;
   brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
@@ -631,7 +638,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->era_thickness_f = 10.0f;
 
   /* Hard Eraser brush. */
-  brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Hard");
+  brush = BLI_findstring(&bmain->brushes, "Eraser Hard", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Hard");
+  }
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 1.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
@@ -643,7 +653,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Point Eraser brush. */
-  brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Point");
+  brush = BLI_findstring(&bmain->brushes, "Eraser Point", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Point");
+  }
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_HARD;
@@ -652,7 +665,10 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Stroke Eraser brush. */
-  brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Stroke");
+  brush = BLI_findstring(&bmain->brushes, "Eraser Stroke", offsetof(ID, name) + 2);
+  if (brush == NULL) {
+    brush = BKE_brush_add_gpencil(bmain, ts, "Eraser Stroke");
+  }
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_STROKE;
@@ -909,6 +925,13 @@ void BKE_brush_sculpt_reset(Brush *br)
     case SCULPT_TOOL_CLAY:
       br->flag |= BRUSH_FRONTFACE;
       break;
+    case SCULPT_TOOL_CLAY_STRIPS:
+      br->flag |= BRUSH_ACCUMULATE;
+      br->alpha = 0.7f;
+      br->normal_radius_factor = 1.55f;
+      br->curve_preset = BRUSH_CURVE_SPHERE;
+      br->spacing = 6;
+      break;
     case SCULPT_TOOL_CREASE:
       br->flag |= BRUSH_DIR_IN;
       br->alpha = 0.25;
@@ -928,6 +951,7 @@ void BKE_brush_sculpt_reset(Brush *br)
       break;
     case SCULPT_TOOL_SNAKE_HOOK:
       br->alpha = 1.0f;
+      br->rake_factor = 1.0f;
       break;
     case SCULPT_TOOL_THUMB:
       br->size = 75;

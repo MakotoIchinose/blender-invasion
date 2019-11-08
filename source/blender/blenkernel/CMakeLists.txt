@@ -183,6 +183,7 @@ set(SRC
   intern/particle_system.c
   intern/pbvh.c
   intern/pbvh_bmesh.c
+  intern/pbvh_parallel.cc
   intern/pointcache.c
   intern/report.c
   intern/rigidbody.c
@@ -439,13 +440,13 @@ if(WITH_BULLET)
   add_definitions(-DWITH_BULLET)
 endif()
 
-#if(WITH_MOD_CLOTH_ELTOPO)
+# if(WITH_MOD_CLOTH_ELTOPO)
 #   list(APPEND INC
-#       ../../../extern/eltopo
-#       ../../../extern/eltopo/eltopo3d
+#     ../../../extern/eltopo
+#     ../../../extern/eltopo/eltopo3d
 #   )
 #   add_definitions(-DWITH_ELTOPO)
-#endif()
+# endif()
 
 if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
@@ -637,10 +638,18 @@ if(WITH_QUADRIFLOW)
   add_definitions(-DWITH_QUADRIFLOW)
 endif()
 
-## Warnings as errors, this is too strict!
-#if(MSVC)
-#   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
-#endif()
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+endif()
+
+# # Warnings as errors, this is too strict!
+# if(MSVC)
+#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
+# endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
