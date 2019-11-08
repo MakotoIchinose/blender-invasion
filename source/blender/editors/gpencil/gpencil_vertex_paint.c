@@ -80,11 +80,9 @@ typedef struct tGP_selected {
 
 /* Context for brush operators */
 typedef struct tGP_BrushVertexpaintData {
-  struct Main *bmain;
   Scene *scene;
   Object *object;
 
-  ScrArea *sa;
   ARegion *ar;
 
   /* Current GPencil datablock */
@@ -313,7 +311,6 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso = MEM_callocN(sizeof(tGP_BrushVertexpaintData), "tGP_BrushVertexpaintData");
   op->customdata = gso;
 
-  gso->bmain = CTX_data_main(C);
   gso->brush = paint->brush;
 
   gso->is_painting = false;
@@ -327,7 +324,6 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->scene = scene;
   gso->object = ob;
 
-  gso->sa = CTX_wm_area(C);
   gso->ar = CTX_wm_region(C);
 
   /* Save mask. */
