@@ -36,7 +36,7 @@ bool USDHierarchyIterator::should_export_object(const Object *object) const
   if (params.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
     return false;
   }
-  if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE) == 0) {
+  if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE_DEPSGRAPH) == 0) {
     return false;
   }
   return true;
