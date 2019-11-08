@@ -99,7 +99,6 @@ typedef struct tGP_BrushVertexpaintData {
 
   /* Is the brush currently painting? */
   bool is_painting;
-  bool is_transformed;
 
   /* Start of new paint */
   bool first;
@@ -123,9 +122,6 @@ typedef struct tGP_BrushVertexpaintData {
 
   /* brush geometry (bounding box) */
   rcti brush_rect;
-
-  /* Object invert matrix */
-  float inv_mat[4][4];
 
   /* Temp data to save selected points */
   /** Stroke buffer. */
@@ -365,15 +361,6 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->gpd = ED_gpencil_data_get_active(C);
   gso->scene = scene;
   gso->object = ob;
-  if (ob) {
-    invert_m4_m4(gso->inv_mat, ob->obmat);
-    /* Check if some modifier can transform the stroke. */
-    gso->is_transformed = BKE_gpencil_has_transform_modifiers(ob);
-  }
-  else {
-    unit_m4(gso->inv_mat);
-    gso->is_transformed = false;
-  }
 
   gso->sa = CTX_wm_area(C);
   gso->ar = CTX_wm_region(C);
