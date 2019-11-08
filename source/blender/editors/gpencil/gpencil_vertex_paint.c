@@ -58,6 +58,7 @@
 
 /* ************************************************ */
 /* General Brush Editing Context */
+#define GP_SELECT_BUFFER_CHUNK 256
 
 /* Temp Flags while Painting. */
 typedef enum eGPDvertex_brush_Flag {
@@ -66,6 +67,16 @@ typedef enum eGPDvertex_brush_Flag {
   /* temporary invert action */
   GP_VERTEX_FLAG_TMP_INVERT = (1 << 1),
 } eGPDvertex_brush_Flag;
+
+/* List of points affected by brush. */
+typedef struct tGP_selected {
+  /** Referenced stroke. */
+  bGPDstroke *gps;
+  /** Point index in points array. */
+  int pt_index;
+  /** Position */
+  int pc[2];
+} tGP_selected;
 
 /* Context for brush operators */
 typedef struct tGP_BrushVertexpaintData {
@@ -116,7 +127,54 @@ typedef struct tGP_BrushVertexpaintData {
   /* Object invert matrix */
   float inv_mat[4][4];
 
+  /* Temp data to save selected points */
+  /** Stroke buffer. */
+  tGP_selected *pbuffer;
+  /** Number of elements currently used in cache. */
+  int pbuffer_used;
+  /** Number of total elements available in cache. */
+  int pbuffer_size;
+
 } tGP_BrushVertexpaintData;
+
+/* Ensure the buffer to hold temp selwcted point size is enough to save all points selected. */
+static tGP_selected *gpencil_select_buffer_ensure(tGP_selected *buffer_array,
+                                                  int *buffer_size,
+                                                  int *buffer_used,
+                                                  const bool clear)
+{
+  tGP_selected *p = NULL;
+
+  /* By default a buffer is created with one block with a predefined number of free slots,
+   * if the size is not enough, the cache is reallocated adding a new block of free slots.
+   * This is done in order to keep cache small and improve speed. */
+  if (*buffer_used + 1 > *buffer_size) {
+    if ((*buffer_size == 0) || (buffer_array == NULL)) {
+      p = MEM_callocN(sizeof(struct tGP_selected) * GP_SELECT_BUFFER_CHUNK, __func__);
+      *buffer_size = GP_SELECT_BUFFER_CHUNK;
+    }
+    else {
+      *buffer_size += GP_SELECT_BUFFER_CHUNK;
+      p = MEM_recallocN(buffer_array, sizeof(struct tGP_selected) * *buffer_size);
+    }
+
+    if (p == NULL) {
+      *buffer_size = *buffer_used = 0;
+    }
+
+    buffer_array = p;
+  }
+
+  /* clear old data */
+  if (clear) {
+    *buffer_used = 0;
+    if (buffer_array != NULL) {
+      memset(buffer_array, 0, sizeof(tGP_selected) * *buffer_size);
+    }
+  }
+
+  return buffer_array;
+}
 
 /* Callback for performing some brush operation on a single point */
 typedef bool (*GP_VertexpaintApplyCb)(tGP_BrushVertexpaintData *gso,
@@ -300,6 +358,10 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->is_painting = false;
   gso->first = true;
 
+  gso->pbuffer = NULL;
+  gso->pbuffer_size = 0;
+  gso->pbuffer_used = 0;
+
   gso->gpd = ED_gpencil_data_get_active(C);
   gso->scene = scene;
   gso->object = ob;
@@ -352,6 +414,7 @@ static void gp_vertexpaint_brush_exit(bContext *C, wmOperator *op)
   gso->brush->flag &= ~GP_VERTEX_FLAG_TMP_INVERT;
 
   /* free operator data */
+  MEM_freeN(gso->pbuffer);
   MEM_freeN(gso);
   op->customdata = NULL;
 }
@@ -363,13 +426,29 @@ static bool gp_vertexpaint_brush_poll(bContext *C)
   return CTX_DATA_COUNT(C, editable_gpencil_strokes) != 0;
 }
 
-/* Apply ----------------------------------------------- */
+/* Helper to save the points selected by the brush. */
+static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
+                                   bGPDstroke *gps,
+                                   int index,
+                                   int pc[2])
+{
+  tGP_selected *selected;
+  /* Ensure the array to save the list of selected points is big enough. */
+  gso->pbuffer = gpencil_select_buffer_ensure(
+      gso->pbuffer, &gso->pbuffer_size, &gso->pbuffer_used, false);
 
-/* Apply brush operation to points in this stroke */
-static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
-                                           bGPDstroke *gps,
-                                           const float diff_mat[4][4],
-                                           GP_VertexpaintApplyCb apply)
+  selected = &gso->pbuffer[gso->pbuffer_used];
+  selected->gps = gps;
+  selected->pt_index = index;
+  copy_v2_v2_int(selected->pc, pc);
+
+  gso->pbuffer_used++;
+}
+
+/* Select points in this stroke */
+static void gp_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
+                                         bGPDstroke *gps,
+                                         const float diff_mat[4][4])
 {
   GP_SpaceConversion *gsc = &gso->gsc;
   rcti *rect = &gso->brush_rect;
@@ -387,7 +466,7 @@ static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
   int i;
   int index;
   bool include_last = false;
-  bool changed = false;
+
   if (gps->totpoints == 1) {
     bGPDspoint pt_temp;
     pt = &gps->points[0];
@@ -403,7 +482,7 @@ static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
       if (len_v2v2_int(mval_i, pc1) <= radius) {
         /* apply operation to this point */
         if (pt_active != NULL) {
-          changed = apply(gso, gps_active, 0, radius, pc1);
+          gp_save_selected_point(gso, gps_active, 0, pc1);
         }
       }
     }
@@ -443,15 +522,12 @@ static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
         if (gp_stroke_inside_circle(
                 gso->mval, gso->mval_prev, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
 
-          /* Apply operation to these points */
-          bool ok = false;
-
           /* To each point individually... */
           pt = &gps->points[i];
           pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
           index = (!is_multiedit) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
-            ok = apply(gso, gps_active, index, radius, pc1);
+            gp_save_selected_point(gso, gps_active, index, pc1);
           }
 
           /* Only do the second point if this is the last segment,
@@ -467,15 +543,13 @@ static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
             pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
             index = (!is_multiedit) ? pt->runtime.idx_orig : i + 1;
             if (pt_active != NULL) {
-              ok |= apply(gso, gps_active, index, radius, pc2);
+              gp_save_selected_point(gso, gps_active, index, pc2);
               include_last = false;
             }
           }
           else {
             include_last = true;
           }
-
-          changed |= ok;
         }
         else if (include_last) {
           /* This case is for cases where for whatever reason the second vert (1st here)
@@ -487,56 +561,80 @@ static bool gp_vertexpaint_brush_do_stroke(tGP_BrushVertexpaintData *gso,
           pt_active = (!is_multiedit) ? pt->runtime.pt_orig : pt;
           index = (!is_multiedit) ? pt->runtime.idx_orig : i;
           if (pt_active != NULL) {
-            changed |= apply(gso, gps_active, index, radius, pc1);
+            gp_save_selected_point(gso, gps_active, index, pc1);
+
             include_last = false;
           }
         }
       }
     }
   }
-
-  return changed;
 }
 
-/* Apply sculpt brushes to strokes in the given frame */
+/* Apply sculpt brushes to strokes in the given frame. */
 static bool gp_vertexpaint_brush_do_frame(bContext *C,
                                           tGP_BrushVertexpaintData *gso,
                                           bGPDlayer *gpl,
                                           bGPDframe *gpf,
                                           const float diff_mat[4][4])
 {
-  bool changed = false;
   Object *ob = CTX_data_active_object(C);
   char tool = ob->mode == OB_MODE_VERTEX_GPENCIL ? gso->brush->gpencil_vertex_tool :
                                                    gso->brush->gpencil_tool;
+  const int radius = (gso->brush->flag & GP_BRUSH_USE_PRESSURE) ?
+                         gso->brush->size * gso->pressure :
+                         gso->brush->size;
+
+  /*---------------------------------------------------------------------
+   * First step: select the points affected. This step is required to have
+   * all selected points before apply the effect, because it could be
+   * required to average data.
+   *--------------------------------------------------------------------- */
   for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-    /* skip strokes that are invalid for current view */
+    /* Skip strokes that are invalid for current view. */
     if (ED_gpencil_stroke_can_use(C, gps) == false) {
       continue;
     }
-    /* check if the color is editable */
+    /* Check if the color is editable. */
     if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
       continue;
     }
 
+    /* Check points below the brush. */
+    gp_vertexpaint_select_stroke(gso, gps, diff_mat);
+  }
+
+  /*---------------------------------------------------------------------
+   * Second step: Apply effect.
+   *--------------------------------------------------------------------- */
+  bool changed = false;
+  tGP_selected *selected = NULL;
+  for (int i = 0; i < gso->pbuffer_used; i++) {
+    changed = true;
+    selected = &gso->pbuffer[i];
+
     switch (tool) {
       case GPAINT_TOOL_TINT:
       case GPVERTEX_TOOL_DRAW: {
-        changed |= gp_vertexpaint_brush_do_stroke(gso, gps, diff_mat, brush_tint_apply);
+        brush_tint_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
+        changed |= true;
         break;
       }
 
       default:
-        printf("ERROR: Unknown type of GPencil Vertex paint brush\n");
+        printf("ERROR: Unknown type of GPencil Vertex Paint brush\n");
         break;
     }
   }
+  /* Clear the selected array, but keep the memory allocation.*/
+  gso->pbuffer = gpencil_select_buffer_ensure(
+      gso->pbuffer, &gso->pbuffer_size, &gso->pbuffer_used, true);
 
   return changed;
 }
 
-/* Perform two-pass brushes which modify the existing strokes */
-static bool gp_vertexpaint_brush_apply_standard(bContext *C, tGP_BrushVertexpaintData *gso)
+/* Apply brush effect to all layers. */
+static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpaintData *gso)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -640,7 +738,7 @@ static void gp_vertexpaint_brush_apply(bContext *C, wmOperator *op, PointerRNA *
   gso->brush_rect.xmax = mouse[0] + radius;
   gso->brush_rect.ymax = mouse[1] + radius;
 
-  changed = gp_vertexpaint_brush_apply_standard(C, gso);
+  changed = gp_vertexpaint_brush_apply_to_layers(C, gso);
 
   /* Updates */
   if (changed) {
