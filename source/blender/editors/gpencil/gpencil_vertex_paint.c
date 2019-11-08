@@ -172,13 +172,6 @@ static tGP_selected *gpencil_select_buffer_ensure(tGP_selected *buffer_array,
   return buffer_array;
 }
 
-/* Callback for performing some brush operation on a single point */
-typedef bool (*GP_VertexpaintApplyCb)(tGP_BrushVertexpaintData *gso,
-                                      bGPDstroke *gps,
-                                      int pt_index,
-                                      const int radius,
-                                      const int co[2]);
-
 /* Brush Operations ------------------------------- */
 
 /* Invert behavior of brush? */
