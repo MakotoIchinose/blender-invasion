@@ -14,6 +14,7 @@ layout(std140) uniform globalsBlock
   vec4 colorLight;
   vec4 colorSpeaker;
   vec4 colorCamera;
+  vec4 colorCameraPath;
   vec4 colorEmpty;
   vec4 colorVertex;
   vec4 colorVertexSelect;

@@ -25,14 +25,20 @@
 #include "UI_resources.h"
 
 #include "BKE_camera.h"
+#include "BKE_movieclip.h"
+#include "BKE_object.h"
+#include "BKE_tracking.h"
 
 #include "DNA_camera_types.h"
 
 #include "DEG_depsgraph_query.h"
 
+#include "ED_view3d.h"
+
 #include "overlay_private.h"
 
 #include "draw_common.h"
+#include "draw_manager_text.h"
 
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 {
@@ -167,6 +173,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 #define BUF_POINT(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_POINTS)
+#define BUF_LINE(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_LINES)
 
     /* Sorted by shader to avoid state changes during render. */
     {
@@ -233,6 +240,17 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 
       cb->groundline = BUF_INSTANCE(grp, format, DRW_cache_groundline_get());
     }
+    {
+      sh = OVERLAY_shader_extra_wire();
+
+      grp = DRW_shgroup_create(sh, extra_ps);
+      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+
+      /* This one is suboptimal (gl_lines instead of gl_line_strip)
+       * but we keep this for simplicity */
+      cb->camera_path = DRW_shgroup_call_buffer(grp, formats->wire_extra, GPU_PRIM_LINES);
+    }
+    // sh = OVERLAY_shader_extra_points();
 
 #if 0
     /* -------- STIPPLES ------- */
@@ -265,46 +283,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     /* TODO port to shader stipple */
     geom = DRW_cache_field_cone_limit_get();
     cb->field_cone_limit = buffer_instance_scaled(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* Transparent Shapes */
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-            DRW_STATE_CULL_FRONT;
-    cb->transp_shapes = psl->transp_shapes[i] = DRW_pass_create("Transparent Shapes", state);
-
-    sh = GPU_shader_get_builtin_shader_with_config(
-        GPU_SHADER_INSTANCE_VARIYING_COLOR_VARIYING_SIZE, draw_ctx->sh_cfg);
-
-    DRWShadingGroup *grp_transp = DRW_shgroup_create(sh, cb->transp_shapes);
-    if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-      DRW_shgroup_state_enable(grp_transp, DRW_STATE_CLIP_PLANES);
-    }
-
-    DRWShadingGroup *grp_cull_back = DRW_shgroup_create_sub(grp_transp);
-    DRW_shgroup_state_disable(grp_cull_back, DRW_STATE_CULL_FRONT);
-    DRW_shgroup_state_enable(grp_cull_back, DRW_STATE_CULL_BACK);
-
-    DRWShadingGroup *grp_cull_none = DRW_shgroup_create_sub(grp_transp);
-    DRW_shgroup_state_disable(grp_cull_none, DRW_STATE_CULL_FRONT);
-
-    /* Spot cones */
-    geom = DRW_cache_light_spot_volume_get();
-    cb->light_spot_volume = buffer_instance_alpha(grp_transp, geom);
-
-    geom = DRW_cache_light_spot_square_volume_get();
-    cb->light_spot_volume_rect = buffer_instance_alpha(grp_transp, geom);
-
-    geom = DRW_cache_light_spot_volume_get();
-    cb->light_spot_volume_outside = buffer_instance_alpha(grp_cull_back, geom);
-
-    geom = DRW_cache_light_spot_square_volume_get();
-    cb->light_spot_volume_rect_outside = buffer_instance_alpha(grp_cull_back, geom);
-
-    /* Camera stereo volumes */
-    geom = DRW_cache_cube_get();
-    cb->camera_stereo_volume = buffer_instance_alpha(grp_transp, geom);
-
-    geom = DRW_cache_quad_get();
-    cb->camera_stereo_plane = buffer_instance_alpha(grp_cull_none, geom);
 #endif
   }
 }
@@ -353,6 +331,11 @@ static void DRW_shgroup_empty_ex(OVERLAY_ExtraCallBuffers *cb,
 
 static void DRW_shgroup_empty(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLayer *view_layer)
 {
+  if (((ob->base_flag & BASE_FROM_DUPLI) != 0) && ((ob->transflag & OB_DUPLICOLLECTION) != 0) &&
+      ob->instance_collection) {
+    return;
+  }
+
   float *color;
   DRW_object_wire_theme_get(ob, view_layer, &color);
 
@@ -496,6 +479,146 @@ typedef union OVERLAY_CameraInstanceData {
     };
   };
 } OVERLAY_CameraInstanceData;
+
+static void camera_view3d_reconstruction(OVERLAY_ExtraCallBuffers *cb,
+                                         Scene *scene,
+                                         View3D *v3d,
+                                         Object *camera_object,
+                                         Object *ob,
+                                         const float color[4])
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const bool is_select = DRW_state_is_select();
+  const Object *orig_camera_object = DEG_get_original_object(camera_object);
+
+  MovieClip *clip = BKE_object_movieclip_get(scene, ob, false);
+  if (clip == NULL) {
+    return;
+  }
+
+  const bool is_solid_bundle = (v3d->bundle_drawtype == OB_EMPTY_SPHERE) &&
+                               ((v3d->shading.type != OB_SOLID) || !XRAY_FLAG_ENABLED(v3d));
+
+  MovieTracking *tracking = &clip->tracking;
+  /* Index must start in 1, to mimic BKE_tracking_track_get_indexed. */
+  int track_index = 1;
+
+  uchar text_color_selected[4], text_color_unselected[4];
+  float bundle_color_unselected[4], bundle_color_solid[4];
+
+  UI_GetThemeColor4ubv(TH_SELECT, text_color_selected);
+  UI_GetThemeColor4ubv(TH_TEXT, text_color_unselected);
+  UI_GetThemeColor4fv(TH_WIRE, bundle_color_unselected);
+  UI_GetThemeColor4fv(TH_BUNDLE_SOLID, bundle_color_solid);
+
+  float camera_mat[4][4], normal_mat[4][4];
+  BKE_tracking_get_camera_object_matrix(scene, ob, camera_mat);
+
+  normalize_m4_m4(normal_mat, ob->obmat);
+
+  LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking->objects) {
+    float tracking_object_mat[4][4];
+
+    if (tracking_object->flag & TRACKING_OBJECT_CAMERA) {
+      copy_m4_m4(tracking_object_mat, camera_mat);
+    }
+    else {
+      const int framenr = BKE_movieclip_remap_scene_to_clip_frame(
+          clip, DEG_get_ctime(draw_ctx->depsgraph));
+      float object_mat[4][4];
+      BKE_tracking_camera_get_reconstructed_interpolate(
+          tracking, tracking_object, framenr, object_mat);
+
+      invert_m4(object_mat);
+      mul_m4_m4m4(tracking_object_mat, normal_mat, object_mat);
+    }
+
+    ListBase *tracksbase = BKE_tracking_object_get_tracks(tracking, tracking_object);
+    for (MovieTrackingTrack *track = tracksbase->first; track; track = track->next) {
+      if ((track->flag & TRACK_HAS_BUNDLE) == 0) {
+        continue;
+      }
+      bool is_selected = TRACK_SELECTED(track);
+
+      float bundle_mat[4][4];
+      copy_m4_m4(bundle_mat, tracking_object_mat);
+      translate_m4(bundle_mat, track->bundle_pos[0], track->bundle_pos[1], track->bundle_pos[2]);
+
+      const float *bundle_color;
+      if (track->flag & TRACK_CUSTOMCOLOR) {
+        bundle_color = track->color;
+      }
+      else if (is_solid_bundle) {
+        bundle_color = bundle_color_solid;
+      }
+      else if (is_selected) {
+        bundle_color = color;
+      }
+      else {
+        bundle_color = bundle_color_unselected;
+      }
+
+      if (is_select) {
+        DRW_select_load_id(orig_camera_object->runtime.select_id | (track_index << 16));
+        track_index++;
+      }
+
+      if (is_solid_bundle) {
+        if (is_selected) {
+          DRW_shgroup_empty_ex(cb, bundle_mat, &v3d->bundle_size, v3d->bundle_drawtype, color);
+        }
+
+        const float bundle_color_v4[4] = {
+            bundle_color[0],
+            bundle_color[1],
+            bundle_color[2],
+            1.0f,
+        };
+
+        bundle_mat[3][3] = v3d->bundle_size; /* See shader. */
+        DRW_buffer_add_entry(cb->empty_sphere_solid, bundle_color_v4, bundle_mat);
+      }
+      else {
+        DRW_shgroup_empty_ex(
+            cb, bundle_mat, &v3d->bundle_size, v3d->bundle_drawtype, bundle_color);
+      }
+
+      if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {
+        struct DRWTextStore *dt = DRW_text_cache_ensure();
+
+        DRW_text_cache_add(dt,
+                           bundle_mat[3],
+                           track->name,
+                           strlen(track->name),
+                           10,
+                           0,
+                           DRW_TEXT_CACHE_GLOBALSPACE | DRW_TEXT_CACHE_STRING_PTR,
+                           is_selected ? text_color_selected : text_color_unselected);
+      }
+    }
+
+    if ((v3d->flag2 & V3D_SHOW_CAMERAPATH) && (tracking_object->flag & TRACKING_OBJECT_CAMERA) &&
+        !is_select) {
+      MovieTrackingReconstruction *reconstruction;
+      reconstruction = BKE_tracking_object_get_reconstruction(tracking, tracking_object);
+
+      if (reconstruction->camnr) {
+        MovieReconstructedCamera *camera = reconstruction->cameras;
+        float v0[3], v1[3];
+        int color_id = TH_CAMERA_PATH;
+        for (int a = 0; a < reconstruction->camnr; a++, camera++) {
+          copy_v3_v3(v0, v1);
+          copy_v3_v3(v1, camera->mat[3]);
+          mul_m4_v3(camera_mat, v1);
+          if (a > 0) {
+            DRW_buffer_add_entry(cb->camera_path, v0, &color_id);
+            DRW_buffer_add_entry(cb->camera_path, v1, &color_id);
+          }
+        }
+      }
+    }
+  }
+}
 
 static float camera_offaxis_shiftx_get(Scene *scene,
                                        Object *ob,
@@ -734,10 +857,10 @@ static void DRW_shgroup_camera(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLay
     }
   }
 
-#if 0
   /* Motion Tracking. */
-  camera_view3d_reconstruction(sgl, scene, v3d, camera_object, ob, color, is_select);
-#endif
+  if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
+    camera_view3d_reconstruction(cb, scene, v3d, camera_object, ob, color_p);
+  }
 }
 
 void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
@@ -806,10 +929,7 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata,
       // DRW_shgroup_lightprobe(sh_data, stl, psl, ob, view_layer, draw_ctx->sh_cfg);
       break;
     case OB_EMPTY:
-      if (!(((ob->base_flag & BASE_FROM_DUPLI) != 0) &&
-            ((ob->transflag & OB_DUPLICOLLECTION) != 0) && ob->instance_collection)) {
-        DRW_shgroup_empty(cb, ob, view_layer);
-      }
+      DRW_shgroup_empty(cb, ob, view_layer);
       break;
   }
 

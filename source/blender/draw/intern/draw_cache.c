@@ -494,10 +494,49 @@ GPUBatch *DRW_cache_grid_get(void)
 }
 
 /* Sphere */
+static void sphere_lat_lon_vert(GPUVertBuf *vbo, int *v_ofs, float lat, float lon)
+{
+  float x = sinf(lat) * cosf(lon);
+  float y = cosf(lat);
+  float z = sinf(lat) * sinf(lon);
+  GPU_vertbuf_vert_set(vbo, *v_ofs, &(Vert){{x, y, z}, VCLASS_EMPTY_SCALED});
+  (*v_ofs)++;
+}
+
 GPUBatch *DRW_cache_sphere_get(void)
 {
   if (!SHC.drw_sphere) {
-    SHC.drw_sphere = gpu_batch_sphere(32, 24);
+    const int lat_res = 32;
+    const int lon_res = 24;
+
+    GPUVertFormat format = extra_vert_format();
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    int v_len = (lat_res - 1) * lon_res * 6;
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float lon_inc = 2 * M_PI / lon_res;
+    const float lat_inc = M_PI / lat_res;
+    float lon, lat;
+
+    int v = 0;
+    lon = 0.0f;
+    for (int i = 0; i < lon_res; i++, lon += lon_inc) {
+      lat = 0.0f;
+      for (int j = 0; j < lat_res; j++, lat += lat_inc) {
+        if (j != lat_res - 1) { /* Pole */
+          sphere_lat_lon_vert(vbo, &v, lat + lat_inc, lon + lon_inc);
+          sphere_lat_lon_vert(vbo, &v, lat + lat_inc, lon);
+          sphere_lat_lon_vert(vbo, &v, lat, lon);
+        }
+        if (j != 0) { /* Pole */
+          sphere_lat_lon_vert(vbo, &v, lat, lon + lon_inc);
+          sphere_lat_lon_vert(vbo, &v, lat + lat_inc, lon + lon_inc);
+          sphere_lat_lon_vert(vbo, &v, lat, lon);
+        }
+      }
+    }
+
+    SHC.drw_sphere = GPU_batch_create_ex(GPU_PRIM_TRIS, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_sphere;
 }

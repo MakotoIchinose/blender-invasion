@@ -64,6 +64,7 @@ void DRW_globals_update(void)
   UI_GetThemeColor4fv(TH_LIGHT, gb->colorLight);
   UI_GetThemeColor4fv(TH_SPEAKER, gb->colorSpeaker);
   UI_GetThemeColor4fv(TH_CAMERA, gb->colorCamera);
+  UI_GetThemeColor4fv(TH_CAMERA_PATH, gb->colorCameraPath);
   UI_GetThemeColor4fv(TH_EMPTY, gb->colorEmpty);
   UI_GetThemeColor4fv(TH_VERTEX, gb->colorVertex);
   UI_GetThemeColor4fv(TH_VERTEX_SELECT, gb->colorVertexSelect);

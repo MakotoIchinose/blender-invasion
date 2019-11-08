@@ -53,6 +53,7 @@ typedef struct GlobalsUboStorage {
   float colorLight[4];
   float colorSpeaker[4];
   float colorCamera[4];
+  float colorCameraPath[4];
   float colorEmpty[4];
   float colorVertex[4];
   float colorVertexSelect[4];

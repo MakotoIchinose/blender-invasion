@@ -24,6 +24,8 @@
 
 #include "GPU_shader.h"
 
+#include "UI_resources.h"
+
 #include "overlay_private.h"
 
 extern char datatoc_depth_only_vert_glsl[];
@@ -39,6 +41,8 @@ extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
 extern char datatoc_extra_vert_glsl[];
 extern char datatoc_extra_groundline_vert_glsl[];
+extern char datatoc_extra_wire_frag_glsl[];
+extern char datatoc_extra_wire_vert_glsl[];
 extern char datatoc_facing_frag_glsl[];
 extern char datatoc_facing_vert_glsl[];
 extern char datatoc_grid_frag_glsl[];
@@ -84,6 +88,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_analysis;
   GPUShader *extra;
   GPUShader *extra_groundline;
+  GPUShader *extra_wire;
   GPUShader *outline_prepass;
   GPUShader *outline_prepass_wire;
   GPUShader *outline_prepass_lightprobe_grid;
@@ -380,6 +385,28 @@ GPUShader *OVERLAY_shader_extra_grounline(void)
   return sh_data->extra_groundline;
 }
 
+GPUShader *OVERLAY_shader_extra_wire(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->extra_wire) {
+    char colorids[1024];
+    /* Need to define all there ids we need here. */
+    BLI_snprintf(colorids, sizeof(colorids), "#define TH_CAMERA_PATH %d\n", TH_CAMERA_PATH);
+    sh_data->extra_wire = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_extra_wire_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_extra_wire_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, colorids, NULL},
+    });
+  }
+  return sh_data->extra_wire;
+}
+
 GPUShader *OVERLAY_shader_facing(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -588,6 +615,13 @@ OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void)
                                   {"color", DRW_ATTR_FLOAT, 4},
                                   {"inst_obmat", DRW_ATTR_FLOAT, 16},
                               });
+  DRW_shgroup_instance_format(g_formats.wire_dashed_extra,
+                              {{"pos", DRW_ATTR_FLOAT, 3},
+                               {"dash_pos", DRW_ATTR_FLOAT, 3},
+                               {"dash_with", DRW_ATTR_FLOAT, 1},
+                               {"color", DRW_ATTR_FLOAT, 4}});
+  DRW_shgroup_instance_format(g_formats.wire_extra,
+                              {{"pos", DRW_ATTR_FLOAT, 3}, {"colorid", DRW_ATTR_INT, 1}});
   return &g_formats;
 }
 

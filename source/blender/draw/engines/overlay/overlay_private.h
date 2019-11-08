@@ -112,6 +112,7 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *camera_distances;
   DRWCallBuffer *camera_volume;
   DRWCallBuffer *camera_volume_frame;
+  DRWCallBuffer *camera_path;
 } OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
@@ -216,6 +217,8 @@ typedef struct OVERLAY_InstanceFormats {
 
   struct GPUVertFormat *instance_pos;
   struct GPUVertFormat *instance_extra;
+  struct GPUVertFormat *wire_extra;
+  struct GPUVertFormat *wire_dashed_extra;
 } OVERLAY_InstanceFormats;
 
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
@@ -268,6 +271,7 @@ GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
 GPUShader *OVERLAY_shader_extra(void);
 GPUShader *OVERLAY_shader_extra_grounline(void);
+GPUShader *OVERLAY_shader_extra_wire(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
