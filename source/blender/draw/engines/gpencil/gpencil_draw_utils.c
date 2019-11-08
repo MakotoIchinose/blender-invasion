@@ -332,9 +332,6 @@ static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
 
   /* Calc center for rotation. */
   float center[2] = {0.5f, 0.5f};
-  //  sub_v2_v2v2(center, maxv, minv);
-  // mul_v2_fl(center, 0.5f);
-
   float d[2];
   d[0] = maxv[0] - minv[0];
   d[1] = maxv[1] - minv[1];
