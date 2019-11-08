@@ -137,7 +137,7 @@ typedef struct tGP_BrushVertexpaintData {
 
 } tGP_BrushVertexpaintData;
 
-/* Ensure the buffer to hold temp selwcted point size is enough to save all points selected. */
+/* Ensure the buffer to hold temp selected point size is enough to save all points selected. */
 static tGP_selected *gpencil_select_buffer_ensure(tGP_selected *buffer_array,
                                                   int *buffer_size,
                                                   int *buffer_used,
