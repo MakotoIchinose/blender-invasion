@@ -157,6 +157,11 @@ void main()
     vofs = chosen_axis * (1.0 + fract(axis)) * empty_scale;
     /* Scale uniformly by axis length */
     vpos *= length(chosen_axis) * empty_scale;
+
+    vec3 axis_color = vec3(0.0);
+    axis_color[int(axis)] = 1.0;
+    finalColor.rgb = mix(axis_color + fract(axis), color.rgb, color.a);
+    finalColor.a = 1.0;
   }
 
   /* Not exclusive with previous flags. */

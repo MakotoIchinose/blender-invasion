@@ -237,6 +237,11 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->field_cone_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_cone_limit_get());
       cb->field_sphere_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_sphere_limit_get());
 
+      grp_sub = DRW_shgroup_create_sub(grp);
+      DRW_shgroup_state_enable(grp_sub, DRW_STATE_DEPTH_ALWAYS);
+      DRW_shgroup_state_disable(grp_sub, DRW_STATE_DEPTH_LESS_EQUAL);
+      cb->origin_xform = BUF_INSTANCE(grp_sub, format, DRW_cache_bone_arrows_get());
+
       /* TODO Own move to transparent pass. */
       grp_sub = DRW_shgroup_create_sub(grp);
       DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK | DRW_STATE_BLEND_ALPHA);
@@ -1508,7 +1513,9 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ViewLayer *view_layer = draw_ctx->view_layer;
+  Scene *scene = draw_ctx->scene;
 
+  const bool is_select_mode = DRW_state_is_select();
   const bool is_paint_mode = (draw_ctx->object_mode &
                               (OB_MODE_ALL_PAINT | OB_MODE_ALL_PAINT_GPENCIL)) != 0;
   const bool from_dupli = (ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) != 0;
@@ -1516,13 +1523,16 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool has_texspace = has_bounds &&
                             !ELEM(ob->type, OB_EMPTY, OB_LATTICE, OB_ARMATURE, OB_GPENCIL);
 
-  const bool draw_relations = ((pd->v3d_flag & V3D_HIDE_HELPLINES) == 0) && !DRW_state_is_select();
+  const bool draw_relations = ((pd->v3d_flag & V3D_HIDE_HELPLINES) == 0) && !is_select_mode;
   const bool draw_obcenters = !is_paint_mode &&
                               (pd->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_ORIGINS) == 0;
   const bool draw_texspace = (ob->dtx & OB_TEXSPACE) && has_texspace;
   const bool draw_obname = (ob->dtx & OB_DRAWNAME) && DRW_state_show_text();
   const bool draw_bounds = has_bounds && ((ob->dt == OB_BOUNDBOX) ||
                                           ((ob->dtx & OB_DRAWBOUNDOX) && !from_dupli));
+  const bool draw_xform = draw_ctx->object_mode == OB_MODE_OBJECT &&
+                          (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) &&
+                          (ob->base_flag & BASE_SELECTED) && !is_select_mode;
 
   float *color;
   int theme_id = DRW_object_wire_theme_get(ob, view_layer, &color);
@@ -1535,17 +1545,10 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
     OVERLAY_bounds(cb, ob, theme_id, ob->boundtype, false);
   }
   /* Helpers for when we're transforming origins. */
-  // if (draw_ctx->object_mode == OB_MODE_OBJECT) {
-  //   if (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) {
-  //     if (ob->base_flag & BASE_SELECTED) {
-  //       if (!DRW_state_is_select()) {
-  // const float color[4] = {0.75, 0.75, 0.75, 0.5};
-  // float axes_size = 1.0f;
-  // DRW_buffer_add_entry(cb->origin_xform, color, &axes_size, ob->obmat);
-  //       }
-  //     }
-  //   }
-  // }
+  if (draw_xform) {
+    float color_xform[4] = {0.75f, 0.75f, 0.75f, 0.5f};
+    DRW_buffer_add_entry(cb->origin_xform, color_xform, ob->obmat);
+  }
   /* don't show object extras in set's */
   if (!from_dupli) {
     if (draw_obcenters) {
