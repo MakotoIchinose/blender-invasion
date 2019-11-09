@@ -241,28 +241,28 @@ static void brush_gpencil_curvemap_reset(CurveMap *cuma, int tot, int preset)
   }
 }
 
-static Brush *gpencil_brush_ensure(Main *bmain,
-                                   ToolSettings *ts,
-                                   char *brush_name,
-                                   eObjectMode mode)
+static Brush *gpencil_brush_ensure(
+    Main *bmain, ToolSettings *ts, char *brush_name, eObjectMode mode, bool *new)
 {
+  *new = false;
   Brush *brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
   if (brush == NULL) {
     brush = BKE_brush_add_gpencil(bmain, ts, brush_name, mode);
+    *new = true;
+
+    /* Set default at brush level. */
+    brush->rgb[0] = 0.498f;
+    brush->rgb[1] = 1.0f;
+    brush->rgb[2] = 0.498f;
+
+    brush->secondary_rgb[0] = 1.0f;
+    brush->secondary_rgb[1] = 1.0f;
+    brush->secondary_rgb[2] = 1.0f;
   }
 
   if (brush->gpencil_settings == NULL) {
     BKE_brush_init_gpencil_settings(brush);
   }
-
-  /* Set default at brush level. */
-  brush->rgb[0] = 0.498f;
-  brush->rgb[1] = 1.0f;
-  brush->rgb[2] = 0.498f;
-
-  brush->secondary_rgb[0] = 1.0f;
-  brush->secondary_rgb[1] = 1.0f;
-  brush->secondary_rgb[2] = 1.0f;
 
   /* Set vertex mix factor. */
   if (brush->gpencil_settings) {
@@ -285,9 +285,9 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   Brush *brush, *deft_draw, *deft_vertex;
   CurveMapping *custom_curve;
-
+  bool new_brush = false;
   /* Airbrush brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 300.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -321,7 +321,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->flag |= GP_BRUSH_MATERIAL_PINNED;
 
   /* Ink Pen brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -359,7 +359,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Ink Pen Rough brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 60.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -399,7 +399,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Marker Bold brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Marker Bold", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Bold", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 150.0f;
   brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
@@ -439,7 +439,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Marker Chisel brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 80.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -472,7 +472,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pen brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pen", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Pen", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -506,7 +506,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pencil Soft brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 80.0f;
   brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
@@ -540,7 +540,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Pencil brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Pencil", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Pencil", OB_MODE_PAINT_GPENCIL, &new_brush);
   deft_draw = brush; /* save default brush. */
 
   brush->size = 25.0f;
@@ -574,7 +574,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Fill brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Fill Area", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Fill Area", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 20.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
@@ -600,7 +600,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
   /* Soft Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Soft", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Soft", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 0.5f;
@@ -614,7 +614,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->era_thickness_f = 10.0f;
 
   /* Hard Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Hard", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Hard", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 1.0f;
@@ -627,7 +627,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Point Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Point", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Point", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
@@ -637,7 +637,7 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Stroke Eraser brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke", OB_MODE_PAINT_GPENCIL);
+  brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
@@ -647,108 +647,89 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_tool = GPAINT_TOOL_ERASE;
 
   /* Tint brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Tint", OB_MODE_PAINT_GPENCIL);
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Tint", OB_MODE_PAINT_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_TINT;
   brush->gpencil_tool = GPAINT_TOOL_TINT;
 
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->rgb[0] = 0.757f;
+    brush->rgb[1] = 0.659f;
+    brush->rgb[2] = 0.824f;
+
+    zero_v3(brush->secondary_rgb);
+  }
   /* Vertex Paint Brushes. */
   /* Vertex Draw brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Vertex Draw", OB_MODE_VERTEX_GPENCIL);
-  deft_vertex = brush; /* save default brush. */
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Draw", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_DRAW;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_DRAW;
+  deft_vertex = brush; /* save default brush. */
 
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->rgb[0] = 0.757f;
+    brush->rgb[1] = 0.659f;
+    brush->rgb[2] = 0.824f;
+
+    zero_v3(brush->secondary_rgb);
+  }
   /* Vertex Blur brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Vertex Blur", OB_MODE_VERTEX_GPENCIL);
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Blur", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_BLUR;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_BLUR;
 
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  }
   /* Vertex Average brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Vertex Average", OB_MODE_VERTEX_GPENCIL);
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Average", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_AVERAGE;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_AVERAGE;
 
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  }
   /* Vertex Smear brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Vertex Smear", OB_MODE_VERTEX_GPENCIL);
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Smear", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_SMEAR;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_SMEAR;
 
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  }
   /* Vertex Replace brush. */
-  brush = gpencil_brush_ensure(bmain, ts, "Vertex Replace", OB_MODE_VERTEX_GPENCIL);
-
-  brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
-
-  brush->gpencil_settings->draw_strength = 0.8f;
-  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-  brush->rgb[0] = 0.757f;
-  brush->rgb[1] = 0.659f;
-  brush->rgb[2] = 0.824f;
-
-  zero_v3(brush->secondary_rgb);
-
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Replace", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_REPLACE;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_REPLACE;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  }
 
   /* Set default Vertex brush. */
   BKE_paint_brush_set(vertexpaint, deft_vertex);
