@@ -76,6 +76,8 @@ typedef struct tGP_selected {
   int pt_index;
   /** Position */
   int pc[2];
+  /** Color */
+  float color[4];
 } tGP_selected;
 
 /* Context for brush operators */
@@ -318,6 +320,78 @@ static bool brush_replace_apply(tGP_BrushVertexpaintData *gso,
   return true;
 }
 
+/* Get surrounding color. */
+static bool get_surrounding_color(tGP_BrushVertexpaintData *gso,
+                                  bGPDstroke *gps,
+                                  int pt_index,
+                                  float r_color[3])
+{
+  tGP_selected *selected = NULL;
+  bGPDstroke *gps_selected = NULL;
+  bGPDspoint *pt = NULL;
+
+  int totcol = 0;
+  zero_v3(r_color);
+
+  /* Average the surrounding points except current one. */
+  for (int i = 0; i < gso->pbuffer_used; i++) {
+    selected = &gso->pbuffer[i];
+    gps_selected = selected->gps;
+    /* current point is not evaluated. */
+    if ((gps_selected == gps) && (selected->pt_index == pt_index)) {
+      continue;
+    }
+
+    pt = &gps->points[selected->pt_index];
+
+    /* Add stroke mix color (only if used). */
+    if (pt->mix_color[3] > 0.0f) {
+      add_v3_v3(r_color, selected->color);
+      totcol++;
+    }
+  }
+  if (totcol > 0) {
+    mul_v3_fl(r_color, (1.0f / (float)totcol));
+    return true;
+  }
+
+  return false;
+}
+
+/* Blur Brush */
+static bool brush_blur_apply(tGP_BrushVertexpaintData *gso,
+                             bGPDstroke *gps,
+                             int pt_index,
+                             const int radius,
+                             const int co[2])
+{
+  Brush *brush = gso->brush;
+
+  /* Attenuate factor to get a smoother tinting. */
+  float inf = (brush_influence_calc(gso, radius, co) * brush->gpencil_settings->draw_strength) /
+              100.0f;
+  float inf_fill = (gso->pressure * brush->gpencil_settings->draw_strength) / 1000.0f;
+
+  bGPDspoint *pt = &gps->points[pt_index];
+
+  /* Get surrounding color. */
+  float blur_color[3];
+  if (get_surrounding_color(gso, gps, pt_index, blur_color)) {
+    /* Apply color to Stroke point. */
+    if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
+      interp_v3_v3v3(pt->mix_color, pt->mix_color, blur_color, inf);
+    }
+
+    /* Apply color to Fill area (all with same color and factor). */
+    if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
+      interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, blur_color, inf_fill);
+    }
+    return true;
+  }
+
+  return false;
+}
+
 /* Average Brush */
 static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
                                 bGPDstroke *gps,
@@ -327,8 +401,6 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
                                 float average_color[3])
 {
   Brush *brush = gso->brush;
-  float final_color[3];
-  copy_v3_v3(final_color, average_color);
 
   /* Attenuate factor to get a smoother tinting. */
   float inf = (brush_influence_calc(gso, radius, co) * brush->gpencil_settings->draw_strength) /
@@ -352,14 +424,14 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     CLAMP(alpha, 0.0f, 1.0f);
-    interp_v3_v3v3(pt->mix_color, pt->mix_color, final_color, inf);
+    interp_v3_v3v3(pt->mix_color, pt->mix_color, average_color, inf);
     pt->mix_color[3] = alpha;
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
-    copy_v3_v3(gps->mix_color_fill, final_color);
+    copy_v3_v3(gps->mix_color_fill, average_color);
     gps->mix_color_fill[3] = alpha_fill;
   }
 
@@ -466,6 +538,8 @@ static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
                                    int pc[2])
 {
   tGP_selected *selected;
+  bGPDspoint *pt = &gps->points[index];
+
   /* Ensure the array to save the list of selected points is big enough. */
   gso->pbuffer = gpencil_select_buffer_ensure(
       gso->pbuffer, &gso->pbuffer_size, &gso->pbuffer_used, false);
@@ -474,6 +548,7 @@ static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
   selected->gps = gps;
   selected->pt_index = index;
   copy_v2_v2_int(selected->pc, pc);
+  copy_v4_v4(selected->color, pt->mix_color);
 
   gso->pbuffer_used++;
 }
@@ -683,14 +758,19 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
         changed |= true;
         break;
       }
-      case GPVERTEX_TOOL_REPLACE: {
-        brush_replace_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
+      case GPVERTEX_TOOL_BLUR: {
+        brush_blur_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
         changed |= true;
         break;
       }
       case GPVERTEX_TOOL_AVERAGE: {
         brush_average_apply(
             gso, selected->gps, selected->pt_index, radius, selected->pc, average_color);
+        changed |= true;
+        break;
+      }
+      case GPVERTEX_TOOL_REPLACE: {
+        brush_replace_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
         changed |= true;
         break;
       }
