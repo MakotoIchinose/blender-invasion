@@ -203,6 +203,7 @@ _km_hierarchy = [
         ('Grease Pencil Stroke Vertex (Blur)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex (Average)', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Stroke Vertex (Smear)', 'EMPTY', 'WINDOW', []),
+        ('Grease Pencil Stroke Vertex (Replace)', 'EMPTY', 'WINDOW', []),
     ]),
     ('Mask Editing', 'EMPTY', 'WINDOW', []),
     ('Frames', 'EMPTY', 'WINDOW', []),    # frame navigation (per region)

@@ -208,6 +208,12 @@ static bool gp_stroke_vertexmode_smear_poll(bContext *C)
   return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_SMEAR);
 }
 
+/* Poll callback for vertex painting (replace) */
+static bool gp_stroke_vertexmode_replace_poll(bContext *C)
+{
+  return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_REPLACE);
+}
+
 /* Stroke Editing Keymap - Only when editmode is enabled */
 static void ed_keymap_gpencil_editing(wmKeyConfig *keyconf)
 {
@@ -283,23 +289,29 @@ static void ed_keymap_gpencil_vertexpainting_draw(wmKeyConfig *keyconf)
   keymap->poll = gp_stroke_vertexmode_draw_poll;
 }
 
-/* keys for vertex with a draw brush */
+/* keys for vertex with a blur brush */
 static void ed_keymap_gpencil_vertexpainting_blur(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Blur)", 0, 0);
   keymap->poll = gp_stroke_vertexmode_blur_poll;
 }
-/* keys for vertex with a draw brush */
+/* keys for vertex with a average brush */
 static void ed_keymap_gpencil_vertexpainting_average(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Average)", 0, 0);
   keymap->poll = gp_stroke_vertexmode_average_poll;
 }
-/* keys for vertex with a draw brush */
+/* keys for vertex with a smear brush */
 static void ed_keymap_gpencil_vertexpainting_smear(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Smear)", 0, 0);
   keymap->poll = gp_stroke_vertexmode_smear_poll;
+}
+/* keys for vertex with a replace brush */
+static void ed_keymap_gpencil_vertexpainting_replace(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Replace)", 0, 0);
+  keymap->poll = gp_stroke_vertexmode_replace_poll;
 }
 
 /* ==================== */
@@ -320,6 +332,7 @@ void ED_keymap_gpencil(wmKeyConfig *keyconf)
   ed_keymap_gpencil_vertexpainting_blur(keyconf);
   ed_keymap_gpencil_vertexpainting_average(keyconf);
   ed_keymap_gpencil_vertexpainting_smear(keyconf);
+  ed_keymap_gpencil_vertexpainting_replace(keyconf);
 }
 
 /* ****************************************** */

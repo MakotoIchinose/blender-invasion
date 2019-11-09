@@ -733,6 +733,23 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_SMEAR;
   brush->gpencil_vertex_tool = GPVERTEX_TOOL_SMEAR;
 
+  /* Vertex Replace brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Vertex Replace", OB_MODE_VERTEX_GPENCIL);
+
+  brush->size = 25.0f;
+  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+  brush->gpencil_settings->draw_strength = 0.8f;
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+  brush->rgb[0] = 0.757f;
+  brush->rgb[1] = 0.659f;
+  brush->rgb[2] = 0.824f;
+
+  zero_v3(brush->secondary_rgb);
+
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_REPLACE;
+  brush->gpencil_vertex_tool = GPVERTEX_TOOL_REPLACE;
+
   /* Set default Vertex brush. */
   BKE_paint_brush_set(vertexpaint, deft_vertex);
 

@@ -1696,6 +1696,10 @@ static void ed_default_handlers(
     wmKeyMap *keymap_vertex_smear = WM_keymap_ensure(
         wm->defaultconf, "Grease Pencil Stroke Vertex (Smear)", 0, 0);
     WM_event_add_keymap_handler(handlers, keymap_vertex_smear);
+
+    wmKeyMap *keymap_vertex_replace = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Vertex (Replace)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_vertex_replace);
   }
 }
 

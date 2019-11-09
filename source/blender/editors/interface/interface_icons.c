@@ -2092,6 +2092,9 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
         case GP_BRUSH_ICON_VERTEX_SMEAR:
           br->id.icon_id = ICON_BRUSH_BLUR;
           break;
+        case GP_BRUSH_ICON_VERTEX_REPLACE:
+          br->id.icon_id = ICON_BRUSH_MIX;
+          break;
         default:
           br->id.icon_id = ICON_GPBRUSH_PEN;
           break;

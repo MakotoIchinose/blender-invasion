@@ -282,6 +282,37 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
   return true;
 }
 
+/* Replace Brush (Don't use pressure or invert). */
+static bool brush_replace_apply(tGP_BrushVertexpaintData *gso,
+                                bGPDstroke *gps,
+                                int pt_index,
+                                const int radius,
+                                const int co[2])
+{
+  Brush *brush = gso->brush;
+  bGPDspoint *pt = &gps->points[pt_index];
+
+  /* Apply color to Stroke point. */
+  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
+    copy_v3_v3(pt->mix_color, brush->rgb);
+    /* If not mix color, full replace. */
+    if (pt->mix_color[3] == 0.0f) {
+      pt->mix_color[3] = 1.0f;
+    }
+  }
+
+  /* Apply color to Fill area (all with same color and factor). */
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
+    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    /* If not mix color, full replace. */
+    if (gps->mix_color_fill[3] == 0.0f) {
+      gps->mix_color_fill[3] = 1.0f;
+    }
+  }
+
+  return true;
+}
+
 /* ************************************************ */
 /* Header Info */
 static void gp_vertexpaint_brush_header_set(bContext *C, tGP_BrushVertexpaintData *UNUSED(gso))
@@ -565,6 +596,11 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
       case GPAINT_TOOL_TINT:
       case GPVERTEX_TOOL_DRAW: {
         brush_tint_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
+        changed |= true;
+        break;
+      }
+      case GPVERTEX_TOOL_REPLACE: {
+        brush_replace_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
         changed |= true;
         break;
       }
