@@ -36,6 +36,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_gpencil_types.h"
+#include "DNA_lightprobe_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_rigidbody_types.h"
@@ -203,6 +204,12 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->light_area[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_square_lines_get());
       cb->light_spot = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_lines_get());
 
+      cb->probe_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
+      cb->probe_grid = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_grid_get());
+      cb->probe_planar = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
+
+      cb->speaker = BUF_INSTANCE(grp_sub, format, DRW_cache_speaker_get());
+
       cb->camera_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_frame_get());
       cb->camera_tria[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_wire_get());
       cb->camera_tria[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_get());
@@ -355,13 +362,13 @@ static OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *ved
 
 static void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                                 const float mat[4][4],
-                                const float *draw_size,
+                                const float draw_size,
                                 char draw_type,
                                 const float color[4])
 {
   float instdata[4][4];
   copy_m4_m4(instdata, mat);
-  instdata[3][3] = *draw_size;
+  instdata[3][3] = draw_size;
 
   switch (draw_type) {
     case OB_PLAINAXES:
@@ -413,7 +420,7 @@ void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     case OB_EMPTY_SPHERE:
     case OB_EMPTY_CONE:
     case OB_ARROWS:
-      OVERLAY_empty_shape(cb, ob->obmat, &ob->empty_drawsize, ob->empty_drawtype, color);
+      OVERLAY_empty_shape(cb, ob->obmat, ob->empty_drawsize, ob->empty_drawtype, color);
       break;
     case OB_EMPTY_IMAGE:
       // DRW_shgroup_empty_image(sh_data, sgl, ob, color, rv3d, sh_cfg);
@@ -661,6 +668,103 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Lightprobe
+ * \{ */
+
+void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob)
+{
+  OVERLAY_ExtraCallBuffers *cb = OVERLAY_extra_call_buffer_get(vedata, ob);
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  ViewLayer *view_layer = draw_ctx->view_layer;
+  float *color_p;
+  DRW_object_wire_theme_get(ob, view_layer, &color_p);
+  const LightProbe *prb = (LightProbe *)ob->data;
+  const bool show_clipping = (prb->flag & LIGHTPROBE_FLAG_SHOW_CLIP_DIST) != 0;
+  const bool show_parallax = (prb->flag & LIGHTPROBE_FLAG_SHOW_PARALLAX) != 0;
+  const bool show_influence = (prb->flag & LIGHTPROBE_FLAG_SHOW_INFLUENCE) != 0;
+
+  union {
+    float mat[4][4];
+    struct {
+      float _pad00[4];
+      float _pad01[4];
+      float _pad02[3], clip_sta;
+      float pos[3], clip_end;
+    };
+  } instdata;
+
+  copy_m4_m4(instdata.mat, ob->obmat);
+
+  switch (prb->type) {
+    case LIGHTPROBE_TYPE_CUBE:
+      instdata.clip_sta = show_clipping ? prb->clipsta : -1.0;
+      instdata.clip_end = show_clipping ? prb->clipend : -1.0;
+      DRW_buffer_add_entry(cb->probe_grid, color_p, &instdata);
+      DRW_buffer_add_entry(cb->groundline, instdata.pos);
+
+      if (show_influence) {
+        char shape = (prb->attenuation_type == LIGHTPROBE_SHAPE_BOX) ? OB_CUBE : OB_EMPTY_SPHERE;
+        float f = 1.0f - prb->falloff;
+        OVERLAY_empty_shape(cb, ob->obmat, prb->distinf, shape, color_p);
+        OVERLAY_empty_shape(cb, ob->obmat, prb->distinf * f, shape, color_p);
+      }
+
+      if (show_parallax) {
+        char shape = (prb->parallax_type == LIGHTPROBE_SHAPE_BOX) ? OB_CUBE : OB_EMPTY_SPHERE;
+        float dist = ((prb->flag & LIGHTPROBE_FLAG_CUSTOM_PARALLAX) != 0) ? prb->distpar :
+                                                                            prb->distinf;
+        OVERLAY_empty_shape(cb, ob->obmat, dist, shape, color_p);
+      }
+      break;
+    case LIGHTPROBE_TYPE_GRID:
+      instdata.clip_sta = show_clipping ? prb->clipsta : -1.0;
+      instdata.clip_end = show_clipping ? prb->clipend : -1.0;
+      DRW_buffer_add_entry(cb->probe_grid, color_p, &instdata);
+
+      if (show_influence) {
+        float f = 1.0f - prb->falloff;
+        OVERLAY_empty_shape(cb, ob->obmat, 1.0 + prb->distinf, OB_CUBE, color_p);
+        OVERLAY_empty_shape(cb, ob->obmat, 1.0 + prb->distinf * f, OB_CUBE, color_p);
+      }
+      break;
+    case LIGHTPROBE_TYPE_PLANAR:
+      DRW_buffer_add_entry(cb->probe_planar, color_p, &instdata);
+
+      if (show_influence) {
+        normalize_v3_length(instdata.mat[2], prb->distinf);
+        DRW_buffer_add_entry(cb->empty_cube, color_p, &instdata);
+        mul_v3_fl(instdata.mat[2], 1.0f - prb->falloff);
+        DRW_buffer_add_entry(cb->empty_cube, color_p, &instdata);
+      }
+      zero_v3(instdata.mat[2]);
+      DRW_buffer_add_entry(cb->empty_cube, color_p, &instdata);
+
+      normalize_m4_m4(instdata.mat, ob->obmat);
+      OVERLAY_empty_shape(cb, instdata.mat, ob->empty_drawsize, OB_SINGLE_ARROW, color_p);
+      break;
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Speaker
+ * \{ */
+
+void OVERLAY_speaker_cache_populate(OVERLAY_Data *vedata, Object *ob)
+{
+  OVERLAY_ExtraCallBuffers *cb = OVERLAY_extra_call_buffer_get(vedata, ob);
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  ViewLayer *view_layer = draw_ctx->view_layer;
+  float *color_p;
+  DRW_object_wire_theme_get(ob, view_layer, &color_p);
+
+  DRW_buffer_add_entry(cb->speaker, color_p, ob->obmat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Camera
  * \{ */
 
@@ -787,7 +891,7 @@ static void camera_view3d_reconstruction(OVERLAY_ExtraCallBuffers *cb,
 
       if (is_solid_bundle) {
         if (is_selected) {
-          OVERLAY_empty_shape(cb, bundle_mat, &v3d->bundle_size, v3d->bundle_drawtype, color);
+          OVERLAY_empty_shape(cb, bundle_mat, v3d->bundle_size, v3d->bundle_drawtype, color);
         }
 
         const float bundle_color_v4[4] = {
@@ -801,7 +905,7 @@ static void camera_view3d_reconstruction(OVERLAY_ExtraCallBuffers *cb,
         DRW_buffer_add_entry(cb->empty_sphere_solid, bundle_color_v4, bundle_mat);
       }
       else {
-        OVERLAY_empty_shape(cb, bundle_mat, &v3d->bundle_size, v3d->bundle_drawtype, bundle_color);
+        OVERLAY_empty_shape(cb, bundle_mat, v3d->bundle_size, v3d->bundle_drawtype, bundle_color);
       }
 
       if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {

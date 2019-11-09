@@ -1569,6 +1569,25 @@ static void circle_dashed_verts(
   }
 }
 
+static float light_distance_z_get(char axis, const bool start)
+{
+  switch (axis) {
+    case 'x': /* - X */
+      return start ? 0.4f : 0.3f;
+    case 'X': /* + X */
+      return start ? 0.6f : 0.7f;
+    case 'y': /* - Y */
+      return start ? 1.4f : 1.3f;
+    case 'Y': /* + Y */
+      return start ? 1.6f : 1.7f;
+    case 'z': /* - Z */
+      return start ? 2.4f : 2.3f;
+    case 'Z': /* + Z */
+      return start ? 2.6f : 2.7f;
+  }
+  return 0.0;
+}
+
 GPUBatch *DRW_cache_groundline_get(void)
 {
   if (!SHC.drw_ground_line) {
@@ -1682,10 +1701,12 @@ GPUBatch *DRW_cache_light_spot_lines_get(void)
       GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s, c, -1.0f}, flag});
     }
     /* Direction Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    float zsta = light_distance_z_get('z', true);
+    float zend = light_distance_z_get('z', false);
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
 
     SHC.drw_light_spot_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
@@ -1738,10 +1759,12 @@ GPUBatch *DRW_cache_light_area_disk_lines_get(void)
     /* Light area */
     circle_verts(vbo, &v, CIRCLE_NSEGMENTS, 0.5f, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
     /* Direction Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    float zsta = light_distance_z_get('z', true);
+    float zend = light_distance_z_get('z', false);
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
 
     SHC.drw_light_area_disk_lines = GPU_batch_create_ex(
         GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -1775,10 +1798,12 @@ GPUBatch *DRW_cache_light_area_square_lines_get(void)
       }
     }
     /* Direction Line */
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, VCLASS_LIGHT_DIST});
-    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 1.0}, VCLASS_LIGHT_DIST});
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 0.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
-    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, 1.0f, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    float zsta = light_distance_z_get('z', true);
+    float zend = light_distance_z_get('z', false);
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+    circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
 
     SHC.drw_light_area_square_lines = GPU_batch_create_ex(
         GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -2250,56 +2275,59 @@ GPUBatch *DRW_cache_lightprobe_cube_get(void)
 GPUBatch *DRW_cache_lightprobe_grid_get(void)
 {
   if (!SHC.drw_lightprobe_grid) {
-    int v_idx = 0;
+    GPUVertFormat format = extra_vert_format();
+
+    int v_len = (6 * 2 + 3 + (1 + 2 * DIAMOND_NSEGMENTS) * 6) * 2;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 14.0f;
+    int v = 0;
+    int flag = VCLASS_SCREENSPACE;
+    /* Icon */
     const float sin_pi_3 = 0.86602540378f;
     const float cos_pi_3 = 0.5f;
-    const float v[7][3] = {
-        {0.0f, 1.0f, 0.0f},
-        {sin_pi_3, cos_pi_3, 0.0f},
-        {sin_pi_3, -cos_pi_3, 0.0f},
-        {0.0f, -1.0f, 0.0f},
-        {-sin_pi_3, -cos_pi_3, 0.0f},
-        {-sin_pi_3, cos_pi_3, 0.0f},
-        {0.0f, 0.0f, 0.0f},
+    const float p[7][2] = {
+        {0.0f, 1.0f},
+        {sin_pi_3, cos_pi_3},
+        {sin_pi_3, -cos_pi_3},
+        {0.0f, -1.0f},
+        {-sin_pi_3, -cos_pi_3},
+        {-sin_pi_3, cos_pi_3},
+        {0.0f, 0.0f},
     };
-
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, (6 * 2 + 3) * 2);
-
     for (int i = 0; i < 6; i++) {
-      float tmp_v1[3], tmp_v2[3], tmp_tr[3];
-      copy_v3_v3(tmp_v1, v[i]);
-      copy_v3_v3(tmp_v2, v[(i + 1) % 6]);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, tmp_v1);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, tmp_v2);
-
+      float t1[2], t2[2], tr[2];
+      copy_v2_v2(t1, p[i]);
+      copy_v2_v2(t2, p[(i + 1) % 6]);
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{t1[0] * r, t1[1] * r, 0.0f}, flag});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{t2[0] * r, t2[1] * r, 0.0f}, flag});
       /* Internal wires. */
       for (int j = 1; j < 2; j++) {
-        mul_v3_v3fl(tmp_tr, v[(i / 2) * 2 + 1], -0.5f * j);
-        add_v3_v3v3(tmp_v1, v[i], tmp_tr);
-        add_v3_v3v3(tmp_v2, v[(i + 1) % 6], tmp_tr);
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, tmp_v1);
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, tmp_v2);
+        mul_v2_v2fl(tr, p[(i / 2) * 2 + 1], -0.5f * j);
+        add_v2_v2v2(t1, p[i], tr);
+        add_v2_v2v2(t2, p[(i + 1) % 6], tr);
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{t1[0] * r, t1[1] * r, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{t2[0] * r, t2[1] * r, 0.0f}, flag});
       }
     }
-
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[1]);
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[6]);
-
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[5]);
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[6]);
-
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[3]);
-    GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[6]);
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[1][0] * r, p[1][1] * r, 0.0f}, flag});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[5][0] * r, p[5][1] * r, 0.0f}, flag});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[3][0] * r, p[3][1] * r, 0.0f}, flag});
+    GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    /* Direction Lines */
+    flag = VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE;
+    for (int i = 0; i < 6; i++) {
+      char axes[] = "zZyYxX";
+      float zsta = light_distance_z_get(axes[i], true);
+      float zend = light_distance_z_get(axes[i], false);
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, zsta}, flag});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, zend}, flag});
+      circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zsta, flag);
+      circle_verts(vbo, &v, DIAMOND_NSEGMENTS, 1.2f, zend, flag);
+    }
 
     SHC.drw_lightprobe_grid = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
@@ -2309,30 +2337,28 @@ GPUBatch *DRW_cache_lightprobe_grid_get(void)
 GPUBatch *DRW_cache_lightprobe_planar_get(void)
 {
   if (!SHC.drw_lightprobe_planar) {
-    int v_idx = 0;
-    const float sin_pi_3 = 0.86602540378f;
-    const float v[4][3] = {
-        {0.0f, 0.5f, 0.0f},
-        {sin_pi_3, 0.0f, 0.0f},
-        {0.0f, -0.5f, 0.0f},
-        {-sin_pi_3, 0.0f, 0.0f},
-    };
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = 2 * 4;
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, 4 * 2);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    const float r = 20.0f;
+    int v = 0;
+    /* Icon */
+    const float sin_pi_3 = 0.86602540378f;
+    const float p[4][2] = {
+        {0.0f, 0.5f},
+        {sin_pi_3, 0.0f},
+        {0.0f, -0.5f},
+        {-sin_pi_3, 0.0f},
+    };
     for (int i = 0; i < 4; i++) {
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[i]);
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v[(i + 1) % 4]);
+      for (int a = 0; a < 2; a++) {
+        float x = p[(i + a) % 4][0] * r;
+        float y = p[(i + a) % 4][1] * r;
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 0.0}, VCLASS_SCREENSPACE});
+      }
     }
 
     SHC.drw_lightprobe_planar = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);

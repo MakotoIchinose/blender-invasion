@@ -195,6 +195,25 @@ GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp)
   return *sh;
 }
 
+GPUShader *OVERLAY_shader_armature_axes(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->armature_axes) {
+    sh_data->armature_axes = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_axes_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->armature_axes;
+}
+
 GPUShader *OVERLAY_shader_edit_mesh_face(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();

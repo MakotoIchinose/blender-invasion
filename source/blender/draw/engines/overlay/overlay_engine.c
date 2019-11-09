@@ -272,7 +272,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_camera_cache_populate(vedata, ob);
         break;
       case OB_SPEAKER:
+        OVERLAY_speaker_cache_populate(vedata, ob);
+        break;
       case OB_LIGHTPROBE:
+        OVERLAY_lightprobe_cache_populate(vedata, ob);
         break;
     }
   }

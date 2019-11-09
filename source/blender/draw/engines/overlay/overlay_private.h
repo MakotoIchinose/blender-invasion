@@ -97,7 +97,6 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *empty_cube;
   DRWCallBuffer *empty_cylinder;
   DRWCallBuffer *empty_plain_axes;
-  DRWCallBuffer *empty_single_arrow_line;
   DRWCallBuffer *empty_single_arrow;
   DRWCallBuffer *empty_sphere;
   DRWCallBuffer *empty_sphere_solid;
@@ -108,6 +107,12 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *light_spot_volume_outside;
   DRWCallBuffer *light_spot_volume_inside;
   DRWCallBuffer *light_area[2];
+
+  DRWCallBuffer *probe_planar;
+  DRWCallBuffer *probe_cube;
+  DRWCallBuffer *probe_grid;
+
+  DRWCallBuffer *speaker;
 
   DRWCallBuffer *camera_frame;
   DRWCallBuffer *camera_tria[2];
@@ -244,6 +249,8 @@ void OVERLAY_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_speaker_cache_populate(OVERLAY_Data *vedata, Object *ob);
 
 void OVERLAY_facing_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);

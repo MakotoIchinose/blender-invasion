@@ -82,9 +82,16 @@ void main()
     vpos = vec3(pos.xy * lamp_spot_sine, -lamp_spot_cosine);
   }
   else if ((vclass & VCLASS_LIGHT_DIST) != 0) {
-    vofs.xy = vec2(0.0);
-    vofs.z = -mix(lamp_clip_sta, lamp_clip_end, pos.z) / length(obmat[2].xyz);
+    /* Meh nasty mess. Select one of the 6 axes to display on. (see light_distance_z_get()) */
+    int dist_axis = int(pos.z);
+    float dist = pos.z - floor(pos.z) - 0.5;
+    float inv = sign(dist);
+    dist = (abs(dist) > 0.15) ? lamp_clip_end : lamp_clip_sta;
+    vofs[dist_axis] = inv * dist / length(obmat[dist_axis].xyz);
     vpos.z = 0.0;
+    if (lamp_clip_end < 0.0) {
+      vpos = vofs = vec3(0.0);
+    }
   }
   /* Camera */
   else if ((vclass & VCLASS_CAMERA_FRAME) != 0) {
