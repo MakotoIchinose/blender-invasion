@@ -598,7 +598,7 @@ static void gp_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
   }
 }
 
-/* Apply sculpt brushes to strokes in the given frame. */
+/* Apply vertex paint brushes to strokes in the given frame. */
 static bool gp_vertexpaint_brush_do_frame(bContext *C,
                                           tGP_BrushVertexpaintData *gso,
                                           bGPDlayer *gpl,
