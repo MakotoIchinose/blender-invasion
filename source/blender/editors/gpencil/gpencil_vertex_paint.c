@@ -313,6 +313,54 @@ static bool brush_replace_apply(tGP_BrushVertexpaintData *gso,
   return true;
 }
 
+/* Average Brush */
+static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
+                                bGPDstroke *gps,
+                                int pt_index,
+                                const int radius,
+                                const int co[2],
+                                float average_color[3])
+{
+  Brush *brush = gso->brush;
+  float final_color[3];
+  copy_v3_v3(final_color, average_color);
+
+  /* Attenuate factor to get a smoother tinting. */
+  float inf = (brush_influence_calc(gso, radius, co) * brush->gpencil_settings->draw_strength) /
+              100.0f;
+  float inf_fill = (gso->pressure * brush->gpencil_settings->draw_strength) / 1000.0f;
+
+  bGPDspoint *pt = &gps->points[pt_index];
+
+  float alpha = pt->mix_color[3];
+  float alpha_fill = gps->mix_color_fill[3];
+
+  if (brush_invert_check(gso)) {
+    alpha -= inf;
+    alpha_fill -= inf_fill;
+  }
+  else {
+    alpha += inf;
+    alpha_fill += inf_fill;
+  }
+
+  /* Apply color to Stroke point. */
+  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
+    CLAMP(alpha, 0.0f, 1.0f);
+    interp_v3_v3v3(pt->mix_color, pt->mix_color, final_color, inf);
+    pt->mix_color[3] = alpha;
+  }
+
+  /* Apply color to Fill area (all with same color and factor). */
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
+    CLAMP(alpha_fill, 0.0f, 1.0f);
+    copy_v3_v3(gps->mix_color_fill, final_color);
+    gps->mix_color_fill[3] = alpha_fill;
+  }
+
+  return true;
+}
+
 /* ************************************************ */
 /* Header Info */
 static void gp_vertexpaint_brush_header_set(bContext *C, tGP_BrushVertexpaintData *UNUSED(gso))
@@ -563,6 +611,8 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
   const int radius = (gso->brush->flag & GP_BRUSH_USE_PRESSURE) ?
                          gso->brush->size * gso->pressure :
                          gso->brush->size;
+  tGP_selected *selected = NULL;
+  int i;
 
   /*---------------------------------------------------------------------
    * First step: select the points affected. This step is required to have
@@ -583,12 +633,40 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
     gp_vertexpaint_select_stroke(gso, gps, diff_mat);
   }
 
+  /* For Average tool, need calculate the average resulting color from all colors
+   * under the brush. */
+  float average_color[3] = {0};
+  int totcol = 0;
+  if ((tool == GPVERTEX_TOOL_AVERAGE) && (gso->pbuffer_used > 0)) {
+    for (i = 0; i < gso->pbuffer_used; i++) {
+      selected = &gso->pbuffer[i];
+      bGPDstroke *gps = selected->gps;
+      bGPDspoint *pt = &gps->points[selected->pt_index];
+
+      /* Add stroke mix color (only if used). */
+      if (pt->mix_color[3] > 0.0f) {
+        add_v3_v3(average_color, pt->mix_color);
+        totcol++;
+      }
+
+      /* If Fill color mix, add to average. */
+      if (gps->mix_color_fill[3] > 0.0f) {
+        add_v3_v3(average_color, gps->mix_color_fill);
+        totcol++;
+      }
+    }
+
+    /* Get average. */
+    if (totcol > 0) {
+      mul_v3_fl(average_color, (1.0f / (float)totcol));
+    }
+  }
+
   /*---------------------------------------------------------------------
    * Second step: Apply effect.
    *--------------------------------------------------------------------- */
   bool changed = false;
-  tGP_selected *selected = NULL;
-  for (int i = 0; i < gso->pbuffer_used; i++) {
+  for (i = 0; i < gso->pbuffer_used; i++) {
     changed = true;
     selected = &gso->pbuffer[i];
 
@@ -601,6 +679,12 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
       }
       case GPVERTEX_TOOL_REPLACE: {
         brush_replace_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
+        changed |= true;
+        break;
+      }
+      case GPVERTEX_TOOL_AVERAGE: {
+        brush_average_apply(
+            gso, selected->gps, selected->pt_index, radius, selected->pc, average_color);
         changed |= true;
         break;
       }

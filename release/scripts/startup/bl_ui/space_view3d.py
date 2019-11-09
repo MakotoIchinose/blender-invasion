@@ -432,12 +432,14 @@ class _draw_tool_settings_context_mode:
         settings = tool_settings.gpencil_vertex_paint
         row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
-        row.separator(factor=0.4)
-        row.prop(brush, "color", text="")
-        row.popover(
-            panel="TOPBAR_PT_gpencil_vertexcolor",
-            text="Vertex Color",
-        )
+        if brush.gpencil_vertex_tool != 'AVERAGE':
+            row.separator(factor=0.4)
+            row.prop(brush, "color", text="")
+        
+            row.popover(
+                panel="TOPBAR_PT_gpencil_vertexcolor",
+                text="Vertex Color",
+            )
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_vertex_settings,
