@@ -1655,4 +1655,99 @@ void GPENCIL_OT_select(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+/* Select by Vertex Color. */
+static bool gpencil_select_color_poll(bContext *C)
+{
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return false;
+  }
+  bGPdata *gpd = (bGPdata *)ob->data;
+
+  if (GPENCIL_VERTEX_MODE(gpd)) {
+    if (!(GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex))) {
+      return false;
+    }
+
+    /* Any data to use. */
+    if (gpd->layers.first) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static int gpencil_select_color_exec(bContext *C, wmOperator *op)
+{
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  if (!GPENCIL_VERTEX_MODE(gpd)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  Paint *paint = &ts->gp_vertexpaint->paint;
+  Brush *brush = paint->brush;
+  bool done = false;
+
+  /* Select any visible stroke that uses this color */
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    bGPDspoint *pt;
+    int i;
+    bool gps_selected = false;
+    /* Check all stroke points. */
+    for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+      if (compare_v3v3(pt->mix_color, brush->rgb, threshold)) {
+        pt->flag |= GP_SPOINT_SELECT;
+        gps_selected = true;
+      }
+    }
+
+    if (gps_selected) {
+      gps->flag |= GP_STROKE_SELECT;
+      done = true;
+    }
+  }
+  CTX_DATA_END;
+
+  if (done) {
+    /* updates */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+
+    /* copy on write tag is needed, or else no refresh happens */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_COPY_ON_WRITE);
+
+    WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, NULL);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_select_color(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Select Color";
+  ot->idname = "GPENCIL_OT_select_color";
+  ot->description = "Select all strokes with same color";
+
+  /* callbacks */
+  ot->exec = gpencil_select_color_exec;
+  ot->poll = gpencil_select_color_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  prop = RNA_def_float(ot->srna, "threshold", 0.01f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  /* avoid re-using last var */
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
 /** \} */

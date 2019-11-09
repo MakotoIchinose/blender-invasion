@@ -501,14 +501,14 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compac
     gp_settings = brush.gpencil_settings
 
     # Brush details
+    row = layout.row(align=True)
+    row.prop(brush, "size", text="Radius")
+    row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+
     if brush.gpencil_vertex_tool == 'DRAW':
-        row = layout.row(align=True)
-        row.prop(brush, "size", text="Radius")
-        row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
         row = layout.row(align=True)
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
-
 
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
