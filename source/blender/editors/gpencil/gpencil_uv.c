@@ -60,7 +60,6 @@ typedef struct GpUvData {
   float initial_length;
   float pixel_size; /* use when mouse input is interpreted as spatial distance */
   bool is_modal;
-  bool is_shift;
 
   /* Arrays of original loc/rot/scale by stroke. */
   float (*array_loc)[2];
@@ -160,7 +159,6 @@ static bool gpencil_uv_transform_init(bContext *C, wmOperator *op, const bool is
   opdata->array_rot = NULL;
   opdata->array_scale = NULL;
   opdata->ob_scale = mat4_to_scale(opdata->ob->obmat);
-  opdata->is_shift = false;
 
   opdata->vinit_rotation[0] = 1.0f;
   opdata->vinit_rotation[1] = 0.0f;
@@ -267,9 +265,8 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
 
   float uv_rotation = (opdata->is_modal) ? angle_signed_v2v2(opdata->vinit_rotation, vr) :
                                            RNA_float_get(op->ptr, "rotation");
-  if (opdata->is_shift) {
-    uv_rotation *= SMOOTH_FACTOR;
-  }
+  uv_rotation *= SMOOTH_FACTOR;
+
   if (opdata->is_modal) {
     RNA_float_set(op->ptr, "rotation", uv_rotation);
   }
@@ -281,9 +278,9 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
     float mdiff[2];
     mdiff[0] = opdata->mcenter[0] - opdata->mouse[0];
     mdiff[1] = opdata->mcenter[1] - opdata->mouse[1];
-    if (opdata->is_shift) {
-      mul_v2_fl(mdiff, SMOOTH_FACTOR);
-    }
+
+    /* Apply a big amount of smooth always for translate to get smooth result. */
+    mul_v2_fl(mdiff, 0.006f);
 
     /* Apply angle in translation. */
     mdiff[0] *= cos(uv_rotation);
@@ -332,9 +329,8 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
                       ((len_v2(mdiff) - opdata->initial_length) * opdata->pixel_size) /
                           opdata->ob_scale :
                       RNA_float_get(op->ptr, "scale");
-    if (opdata->is_shift) {
-      scale *= SMOOTH_FACTOR;
-    }
+    scale *= SMOOTH_FACTOR;
+
     if (opdata->is_modal) {
       RNA_float_set(op->ptr, "scale", scale);
     }
@@ -411,7 +407,6 @@ static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEven
   /* initialize mouse values */
   opdata->mouse[0] = event->mval[0];
   opdata->mouse[1] = event->mval[1];
-  opdata->is_shift = event->shift;
 
   copy_v3_v3(center_3d, opdata->ob->loc);
   mlen[0] = opdata->mcenter[0] - event->mval[0];
@@ -447,7 +442,6 @@ static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent
     case MOUSEMOVE: {
       opdata->mouse[0] = event->mval[0];
       opdata->mouse[1] = event->mval[1];
-      opdata->is_shift = event->shift;
 
       if (gpencil_uv_transform_calc(C, op)) {
         gpencil_uv_transform_update_header(op, C);
