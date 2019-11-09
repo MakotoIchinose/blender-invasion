@@ -208,6 +208,11 @@ static float brush_influence_calc(tGP_BrushVertexpaintData *gso, const int radiu
 
   influence *= fac;
 
+  /* Apply Brush curve. */
+  if (brush->curve) {
+    float brush_fallof = BKE_curvemapping_evaluateF(brush->curve, 0, fac);
+    influence *= brush_fallof;
+  }
   /* apply multiframe falloff */
   influence *= gso->mf_falloff;
 
@@ -391,6 +396,7 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   op->customdata = gso;
 
   gso->brush = paint->brush;
+  BKE_curvemapping_initialize(gso->brush->curve);
 
   gso->is_painting = false;
   gso->first = true;
