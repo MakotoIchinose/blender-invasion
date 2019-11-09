@@ -23,6 +23,7 @@ in vec4 color;
 #define camera_dist_end inst_data.w
 #define camera_distance_color inst_data.x
 
+#define empty_size inst_data.xyz
 #define empty_scale inst_data.w
 
 #define VCLASS_LIGHT_AREA_SHAPE (1 << 0)
@@ -42,6 +43,7 @@ in vec4 color;
 #define VCLASS_EMPTY_AXES (1 << 11)
 #define VCLASS_EMPTY_AXES_NAME (1 << 12)
 #define VCLASS_EMPTY_AXES_SHADOW (1 << 13)
+#define VCLASS_EMPTY_SIZE (1 << 14)
 
 flat out vec4 finalColor;
 
@@ -144,6 +146,10 @@ void main()
   else if ((vclass & VCLASS_EMPTY_SCALED) != 0) {
     /* This is a bit silly but we avoid scalling the object matrix on CPU (saving a mat4 mul) */
     vpos *= empty_scale;
+  }
+  else if ((vclass & VCLASS_EMPTY_SIZE) != 0) {
+    /* This is a bit silly but we avoid scalling the object matrix on CPU (saving a mat4 mul) */
+    vpos *= empty_size;
   }
   else if ((vclass & VCLASS_EMPTY_AXES) != 0) {
     float axis = vpos.z;

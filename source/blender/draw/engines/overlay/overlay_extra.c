@@ -24,6 +24,7 @@
 
 #include "UI_resources.h"
 
+#include "BKE_anim.h"
 #include "BKE_camera.h"
 #include "BKE_constraint.h"
 #include "BKE_curve.h"
@@ -39,6 +40,7 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_object_force_types.h"
 #include "DNA_rigidbody_types.h"
 
 #include "DEG_depsgraph_query.h"
@@ -226,6 +228,14 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->empty_single_arrow = BUF_INSTANCE(grp_sub, format, DRW_cache_single_arrow_get());
       cb->empty_sphere = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_sphere_get());
       cb->empty_sphere_solid = BUF_INSTANCE(grp_sub, format, DRW_cache_sphere_get());
+
+      cb->field_wind = BUF_INSTANCE(grp_sub, format, DRW_cache_field_wind_get());
+      cb->field_force = BUF_INSTANCE(grp_sub, format, DRW_cache_field_force_get());
+      cb->field_vortex = BUF_INSTANCE(grp_sub, format, DRW_cache_field_vortex_get());
+      cb->field_curve = BUF_INSTANCE(grp_sub, format, DRW_cache_field_curve_get());
+      cb->field_tube_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_tube_limit_get());
+      cb->field_cone_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_cone_limit_get());
+      cb->field_sphere_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_sphere_limit_get());
 
       /* TODO Own move to transparent pass. */
       grp_sub = DRW_shgroup_create_sub(grp);
@@ -578,6 +588,102 @@ static void OVERLAY_texture_space(OVERLAY_ExtraCallBuffers *cb, Object *ob, int 
   UI_GetThemeColor4fv(theme_id, color);
 
   DRW_buffer_add_entry(cb->empty_cube, color, mat);
+}
+
+static void OVERLAY_forcefield(OVERLAY_ExtraCallBuffers *cb, Object *ob, ViewLayer *view_layer)
+{
+  int theme_id = DRW_object_wire_theme_get(ob, view_layer, NULL);
+  float *color = DRW_color_background_blend_get(theme_id);
+  PartDeflect *pd = ob->pd;
+  Curve *cu = (ob->type == OB_CURVE) ? ob->data : NULL;
+
+  union {
+    float mat[4][4];
+    struct {
+      float _pad00[3], size_x;
+      float _pad01[3], size_y;
+      float _pad02[3], size_z;
+      float pos[3], _pad03[1];
+    };
+  } instdata;
+
+  copy_m4_m4(instdata.mat, ob->obmat);
+  instdata.size_x = instdata.size_y = instdata.size_z = ob->empty_drawsize;
+
+  switch (pd->forcefield) {
+    case PFIELD_FORCE:
+      DRW_buffer_add_entry(cb->field_force, color, &instdata);
+      break;
+    case PFIELD_WIND:
+      instdata.size_z = pd->f_strength;
+      DRW_buffer_add_entry(cb->field_wind, color, &instdata);
+      break;
+    case PFIELD_VORTEX:
+      instdata.size_y = (pd->f_strength < 0.0f) ? -instdata.size_y : instdata.size_y;
+      DRW_buffer_add_entry(cb->field_vortex, color, &instdata);
+      break;
+    case PFIELD_GUIDE:
+      if (cu && (cu->flag & CU_PATH) && ob->runtime.curve_cache->path &&
+          ob->runtime.curve_cache->path->data) {
+        instdata.size_x = instdata.size_y = instdata.size_z = pd->f_strength;
+        float pos[3], tmp[3];
+        where_on_path(ob, 0.0f, pos, tmp, NULL, NULL, NULL);
+        copy_v3_v3(instdata.pos, ob->obmat[3]);
+        translate_m4(instdata.mat, pos[0], pos[1], pos[2]);
+        DRW_buffer_add_entry(cb->field_curve, color, &instdata);
+
+        where_on_path(ob, 1.0f, pos, tmp, NULL, NULL, NULL);
+        copy_v3_v3(instdata.pos, ob->obmat[3]);
+        translate_m4(instdata.mat, pos[0], pos[1], pos[2]);
+        DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
+        /* Restore */
+        copy_v3_v3(instdata.pos, ob->obmat[3]);
+      }
+      break;
+  }
+
+  if (pd->falloff == PFIELD_FALL_TUBE) {
+    if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
+      instdata.size_z = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
+      instdata.size_x = (pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f;
+      instdata.size_y = instdata.size_x;
+      DRW_buffer_add_entry(cb->field_tube_limit, color, &instdata);
+    }
+    if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
+      instdata.size_z = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
+      instdata.size_x = (pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f;
+      instdata.size_y = instdata.size_x;
+      DRW_buffer_add_entry(cb->field_tube_limit, color, &instdata);
+    }
+  }
+  else if (pd->falloff == PFIELD_FALL_CONE) {
+    if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
+      float radius = DEG2RADF((pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f);
+      float distance = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
+      instdata.size_x = distance * sinf(radius);
+      instdata.size_z = distance * cosf(radius);
+      instdata.size_y = instdata.size_x;
+      DRW_buffer_add_entry(cb->field_cone_limit, color, &instdata);
+    }
+    if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
+      float radius = DEG2RADF((pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f);
+      float distance = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
+      instdata.size_x = distance * sinf(radius);
+      instdata.size_z = distance * cosf(radius);
+      instdata.size_y = instdata.size_x;
+      DRW_buffer_add_entry(cb->field_cone_limit, color, &instdata);
+    }
+  }
+  else if (pd->falloff == PFIELD_FALL_SPHERE) {
+    if (pd->flag & PFIELD_USEMAX) {
+      instdata.size_x = instdata.size_y = instdata.size_z = pd->maxdist;
+      DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
+    }
+    if (pd->flag & PFIELD_USEMIN) {
+      instdata.size_x = instdata.size_y = instdata.size_z = pd->mindist;
+      DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
+    }
+  }
 }
 
 /** \} */
@@ -1371,20 +1477,12 @@ static void OVERLAY_object_center(OVERLAY_ExtraCallBuffers *cb,
     DRW_buffer_add_entry(cb->center_active, ob->obmat[3]);
   }
   else if (ob->base_flag & BASE_SELECTED) {
-    if (is_library) {
-      DRW_buffer_add_entry(cb->center_selected_lib, ob->obmat[3]);
-    }
-    else {
-      DRW_buffer_add_entry(cb->center_selected, ob->obmat[3]);
-    }
+    DRWCallBuffer *cbuf = (is_library) ? cb->center_selected_lib : cb->center_selected;
+    DRW_buffer_add_entry(cbuf, ob->obmat[3]);
   }
   else if (pd->v3d_flag & V3D_DRAW_CENTERS) {
-    if (is_library) {
-      DRW_buffer_add_entry(cb->center_deselected_lib, ob->obmat[3]);
-    }
-    else {
-      DRW_buffer_add_entry(cb->center_deselected, ob->obmat[3]);
-    }
+    DRWCallBuffer *cbuf = (is_library) ? cb->center_deselected_lib : cb->center_deselected;
+    DRW_buffer_add_entry(cbuf, ob->obmat[3]);
   }
 }
 
@@ -1429,9 +1527,9 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   float *color;
   int theme_id = DRW_object_wire_theme_get(ob, view_layer, &color);
 
-  // if (ob->pd && ob->pd->forcefield) {
-  //   DRW_shgroup_forcefield(cb, ob, view_layer);
-  // }
+  if (ob->pd && ob->pd->forcefield) {
+    OVERLAY_forcefield(cb, ob, view_layer);
+  }
 
   if (draw_bounds) {
     OVERLAY_bounds(cb, ob, theme_id, ob->boundtype, false);

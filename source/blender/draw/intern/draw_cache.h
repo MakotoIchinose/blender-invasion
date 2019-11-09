@@ -80,8 +80,10 @@ struct GPUBatch *DRW_cache_image_plane_wire_get(void);
 struct GPUBatch *DRW_cache_field_wind_get(void);
 struct GPUBatch *DRW_cache_field_force_get(void);
 struct GPUBatch *DRW_cache_field_vortex_get(void);
+struct GPUBatch *DRW_cache_field_curve_get(void);
 struct GPUBatch *DRW_cache_field_tube_limit_get(void);
 struct GPUBatch *DRW_cache_field_cone_limit_get(void);
+struct GPUBatch *DRW_cache_field_sphere_limit_get(void);
 
 /* Grease Pencil */
 struct GPUBatch *DRW_cache_gpencil_axes_get(void);

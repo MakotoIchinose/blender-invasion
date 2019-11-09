@@ -61,6 +61,7 @@
 #define VCLASS_EMPTY_AXES (1 << 11)
 #define VCLASS_EMPTY_AXES_NAME (1 << 12)
 #define VCLASS_EMPTY_AXES_SHADOW (1 << 13)
+#define VCLASS_EMPTY_SIZE (1 << 14)
 
 typedef struct Vert {
   float pos[3];
@@ -99,8 +100,10 @@ static struct DRWShapeCache {
   GPUBatch *drw_field_wind;
   GPUBatch *drw_field_force;
   GPUBatch *drw_field_vortex;
+  GPUBatch *drw_field_curve;
   GPUBatch *drw_field_tube_limit;
   GPUBatch *drw_field_cone_limit;
+  GPUBatch *drw_field_sphere_limit;
   GPUBatch *drw_ground_line;
   GPUBatch *drw_light_point_lines;
   GPUBatch *drw_light_sun_lines;
@@ -546,6 +549,36 @@ GPUBatch *DRW_cache_sphere_get(void)
 /* -------------------------------------------------------------------- */
 /** \name Common
  * \{ */
+
+static void circle_verts(
+    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
+{
+  for (int a = 0; a < segments; a++) {
+    for (int b = 0; b < 2; b++) {
+      float angle = (2.0f * M_PI * (a + b)) / segments;
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      int v = *vert_idx;
+      *vert_idx = v + 1;
+      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
+    }
+  }
+}
+
+static void circle_dashed_verts(
+    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
+{
+  for (int a = 0; a < segments * 2; a += 2) {
+    for (int b = 0; b < 2; b++) {
+      float angle = (2.0f * M_PI * (a + b)) / (segments * 2);
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      int v = *vert_idx;
+      *vert_idx = v + 1;
+      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
+    }
+  }
+}
 
 /* XXX TODO move that 1 unit cube to more common/generic place? */
 static const float bone_box_verts[8][3] = {
@@ -1313,33 +1346,17 @@ GPUBatch *DRW_cache_field_wind_get(void)
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_wind) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = 2 * (CIRCLE_RESOL * 4);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL * 2 * 4);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE;
     for (int i = 0; i < 4; i++) {
       float z = 0.05f * (float)i;
-      for (int a = 0; a < CIRCLE_RESOL; a++) {
-        v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, i * CIRCLE_RESOL * 2 + a * 2, v);
-
-        v[0] = sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, i * CIRCLE_RESOL * 2 + a * 2 + 1, v);
-      }
+      circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
 
     SHC.drw_field_wind = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -1352,33 +1369,17 @@ GPUBatch *DRW_cache_field_force_get(void)
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_force) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = 2 * (CIRCLE_RESOL * 3);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL * 2 * 3);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
     for (int i = 0; i < 3; i++) {
-      float radius = 1.0f + 0.5f * (float)i;
-      for (int a = 0; a < CIRCLE_RESOL; a++) {
-        v[0] = radius * sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[1] = radius * cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[2] = 0.0f;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, i * CIRCLE_RESOL * 2 + a * 2, v);
-
-        v[0] = radius * sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[1] = radius * cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[2] = 0.0f;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, i * CIRCLE_RESOL * 2 + a * 2 + 1, v);
-      }
+      float radius = 1.0f + 0.5f * i;
+      circle_verts(vbo, &v, CIRCLE_RESOL, radius, 0.0f, flag);
     }
 
     SHC.drw_field_force = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -1391,33 +1392,23 @@ GPUBatch *DRW_cache_field_vortex_get(void)
 {
 #define SPIRAL_RESOL 32
   if (!SHC.drw_field_vortex) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
-    uint v_idx = 0;
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = SPIRAL_RESOL * 2 + 1;
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, SPIRAL_RESOL * 2 + 1);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE;
     for (int a = SPIRAL_RESOL; a > -1; a--) {
-      v[0] = sinf((2.0f * M_PI * a) / ((float)SPIRAL_RESOL)) * (a / (float)SPIRAL_RESOL);
-      v[1] = cosf((2.0f * M_PI * a) / ((float)SPIRAL_RESOL)) * (a / (float)SPIRAL_RESOL);
-
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
+      float r = a / (float)SPIRAL_RESOL;
+      float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle) * r, cosf(angle) * r, 0.0f}, flag});
     }
-
     for (int a = 1; a <= SPIRAL_RESOL; a++) {
-      v[0] = -sinf((2.0f * M_PI * a) / ((float)SPIRAL_RESOL)) * (a / (float)SPIRAL_RESOL);
-      v[1] = -cosf((2.0f * M_PI * a) / ((float)SPIRAL_RESOL)) * (a / (float)SPIRAL_RESOL);
-
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
+      float r = a / (float)SPIRAL_RESOL;
+      float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle) * -r, cosf(angle) * -r, 0.0f}, flag});
     }
 
     SHC.drw_field_vortex = GPU_batch_create_ex(GPU_PRIM_LINE_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -1426,48 +1417,50 @@ GPUBatch *DRW_cache_field_vortex_get(void)
 #undef SPIRAL_RESOL
 }
 
+/* Screenaligned circle. */
+GPUBatch *DRW_cache_field_curve_get(void)
+{
+#define CIRCLE_RESOL 32
+  if (!SHC.drw_field_curve) {
+    GPUVertFormat format = extra_vert_format();
+
+    int v_len = 2 * (CIRCLE_RESOL);
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
+    circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, 0.0f, flag);
+
+    SHC.drw_field_curve = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_field_curve;
+#undef CIRCLE_RESOL
+}
+
 GPUBatch *DRW_cache_field_tube_limit_get(void)
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_tube_limit) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
-    uint v_idx = 0;
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = 2 * (CIRCLE_RESOL * 2 + 4);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL * 2 * 2 + 8);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE;
     /* Caps */
     for (int i = 0; i < 2; i++) {
       float z = (float)i * 2.0f - 1.0f;
-      for (int a = 0; a < CIRCLE_RESOL; a++) {
-        v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-
-        v[0] = sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-      }
+      circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
     /* Side Edges */
     for (int a = 0; a < 4; a++) {
       for (int i = 0; i < 2; i++) {
         float z = (float)i * 2.0f - 1.0f;
-        v[0] = sinf((2.0f * M_PI * a) / 4.0f);
-        v[1] = cosf((2.0f * M_PI * a) / 4.0f);
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
+        float angle = (2.0f * M_PI * a) / 4.0f;
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle), cosf(angle), z}, flag});
       }
     }
 
@@ -1481,50 +1474,53 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_cone_limit) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
-    uint v_idx = 0;
+    GPUVertFormat format = extra_vert_format();
 
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
+    int v_len = 2 * (CIRCLE_RESOL * 2 + 4);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL * 2 * 2 + 8);
+    GPU_vertbuf_data_alloc(vbo, v_len);
 
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE;
     /* Caps */
     for (int i = 0; i < 2; i++) {
       float z = (float)i * 2.0f - 1.0f;
-      for (int a = 0; a < CIRCLE_RESOL; a++) {
-        v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-
-        v[0] = sinf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[1] = cosf((2.0f * M_PI * (a + 1)) / ((float)CIRCLE_RESOL));
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
-      }
+      circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
     /* Side Edges */
     for (int a = 0; a < 4; a++) {
       for (int i = 0; i < 2; i++) {
         float z = (float)i * 2.0f - 1.0f;
-        v[0] = z * sinf((2.0f * M_PI * a) / 4.0f);
-        v[1] = z * cosf((2.0f * M_PI * a) / 4.0f);
-        v[2] = z;
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v_idx++, v);
+        float angle = (2.0f * M_PI * a) / 4.0f;
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{sinf(angle) * z, cosf(angle) * z, z}, flag});
       }
     }
 
     SHC.drw_field_cone_limit = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_field_cone_limit;
+#undef CIRCLE_RESOL
+}
+
+/* Screenaligned dashed circle */
+GPUBatch *DRW_cache_field_sphere_limit_get(void)
+{
+#define CIRCLE_RESOL 32
+  if (!SHC.drw_field_sphere_limit) {
+    GPUVertFormat format = extra_vert_format();
+
+    int v_len = 2 * CIRCLE_RESOL;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
+    circle_dashed_verts(vbo, &v, CIRCLE_RESOL, 1.0f, 0.0f, flag);
+
+    SHC.drw_field_sphere_limit = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_field_sphere_limit;
 #undef CIRCLE_RESOL
 }
 
@@ -1538,36 +1534,6 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
 #define INNER_NSEGMENTS 8
 #define OUTER_NSEGMENTS 10
 #define CIRCLE_NSEGMENTS 32
-
-static void circle_verts(
-    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
-{
-  for (int a = 0; a < segments; a++) {
-    for (int b = 0; b < 2; b++) {
-      float angle = (2.0f * M_PI * (a + b)) / segments;
-      float s = sinf(angle) * radius;
-      float c = cosf(angle) * radius;
-      int v = *vert_idx;
-      *vert_idx = v + 1;
-      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
-    }
-  }
-}
-
-static void circle_dashed_verts(
-    GPUVertBuf *vbo, int *vert_idx, int segments, float radius, float z, int flag)
-{
-  for (int a = 0; a < segments * 2; a += 2) {
-    for (int b = 0; b < 2; b++) {
-      float angle = (2.0f * M_PI * (a + b)) / (segments * 2);
-      float s = sinf(angle) * radius;
-      float c = cosf(angle) * radius;
-      int v = *vert_idx;
-      *vert_idx = v + 1;
-      GPU_vertbuf_vert_set(vbo, v, &(Vert){{s, c, z}, flag});
-    }
-  }
-}
 
 static float light_distance_z_get(char axis, const bool start)
 {

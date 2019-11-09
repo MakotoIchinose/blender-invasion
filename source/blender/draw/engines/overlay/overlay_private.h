@@ -87,7 +87,17 @@ typedef struct OVERLAY_ShadingData {
 } OVERLAY_ShadingData;
 
 typedef struct OVERLAY_ExtraCallBuffers {
-  DRWCallBuffer *groundline;
+  DRWCallBuffer *camera_frame;
+  DRWCallBuffer *camera_tria[2];
+  DRWCallBuffer *camera_distances;
+  DRWCallBuffer *camera_volume;
+  DRWCallBuffer *camera_volume_frame;
+
+  DRWCallBuffer *center_active;
+  DRWCallBuffer *center_selected;
+  DRWCallBuffer *center_deselected;
+  DRWCallBuffer *center_selected_lib;
+  DRWCallBuffer *center_deselected_lib;
 
   DRWCallBuffer *empty_axes;
   DRWCallBuffer *empty_capsule_body;
@@ -101,6 +111,19 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *empty_sphere;
   DRWCallBuffer *empty_sphere_solid;
 
+  DRWCallBuffer *extra_dashed_lines;
+  DRWCallBuffer *extra_lines;
+
+  DRWCallBuffer *field_curve;
+  DRWCallBuffer *field_force;
+  DRWCallBuffer *field_vortex;
+  DRWCallBuffer *field_wind;
+  DRWCallBuffer *field_cone_limit;
+  DRWCallBuffer *field_sphere_limit;
+  DRWCallBuffer *field_tube_limit;
+
+  DRWCallBuffer *groundline;
+
   DRWCallBuffer *light_point;
   DRWCallBuffer *light_sun;
   DRWCallBuffer *light_spot;
@@ -113,21 +136,6 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *probe_grid;
 
   DRWCallBuffer *speaker;
-
-  DRWCallBuffer *camera_frame;
-  DRWCallBuffer *camera_tria[2];
-  DRWCallBuffer *camera_distances;
-  DRWCallBuffer *camera_volume;
-  DRWCallBuffer *camera_volume_frame;
-
-  DRWCallBuffer *extra_dashed_lines;
-  DRWCallBuffer *extra_lines;
-
-  DRWCallBuffer *center_active;
-  DRWCallBuffer *center_selected;
-  DRWCallBuffer *center_deselected;
-  DRWCallBuffer *center_selected_lib;
-  DRWCallBuffer *center_deselected_lib;
 } OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
