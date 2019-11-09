@@ -172,6 +172,9 @@ typedef struct OVERLAY_PrivateData {
   DRWView *view_edit_edges;
   DRWView *view_edit_verts;
 
+  /** TODO get rid of this. */
+  ListBase smoke_domains;
+
   /** Two instances for in_front option and without. */
   OVERLAY_ExtraCallBuffers extra_call_buffers[2];
 
@@ -310,6 +313,7 @@ GPUShader *OVERLAY_shader_outline_resolve(void);
 GPUShader *OVERLAY_shader_outline_expand(bool high_dpi);
 GPUShader *OVERLAY_shader_outline_detect(bool use_wire);
 GPUShader *OVERLAY_shader_paint_weight(void);
+GPUShader *OVERLAY_shader_volume_velocity(bool use_needle);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);
 

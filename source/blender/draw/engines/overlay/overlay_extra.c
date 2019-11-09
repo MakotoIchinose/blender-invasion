@@ -31,6 +31,7 @@
 #include "BKE_mball.h"
 #include "BKE_mesh.h"
 #include "BKE_movieclip.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_tracking.h"
 
@@ -40,12 +41,16 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_rigidbody_types.h"
+#include "DNA_smoke_types.h"
 
 #include "DEG_depsgraph_query.h"
 
 #include "ED_view3d.h"
+
+#include "GPU_draw.h"
 
 #include "overlay_private.h"
 
@@ -1471,6 +1476,99 @@ void OVERLAY_gpencil_cache_populate(OVERLAY_Data *UNUSED(vedata), Object *ob)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Volumetric / Smoke sim
+ * \{ */
+
+static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
+                                 OVERLAY_Data *data,
+                                 Object *ob,
+                                 ModifierData *md,
+                                 Scene *scene,
+                                 float *color)
+{
+  SmokeModifierData *smd = (SmokeModifierData *)md;
+  SmokeDomainSettings *sds = smd->domain;
+
+  /* Don't show smoke before simulation starts, this could be made an option in the future. */
+  const bool draw_velocity = (sds->draw_velocity && sds->fluid &&
+                              CFRA >= sds->point_cache[0]->startframe);
+
+  /* Small cube showing voxel size. */
+  {
+    float min[3];
+    madd_v3fl_v3fl_v3fl_v3i(min, sds->p0, sds->cell_size, sds->res_min);
+    float voxel_cubemat[4][4] = {{0.0f}};
+    /* scale small cube to voxel size */
+    voxel_cubemat[0][0] = 1.0f / (float)sds->base_res[0];
+    voxel_cubemat[1][1] = 1.0f / (float)sds->base_res[1];
+    voxel_cubemat[2][2] = 1.0f / (float)sds->base_res[2];
+    voxel_cubemat[3][3] = 1.0f;
+    /* translate small cube to corner */
+    copy_v3_v3(voxel_cubemat[3], min);
+    /* move small cube into the domain (otherwise its centered on vertex of domain object) */
+    translate_m4(voxel_cubemat, 1.0f, 1.0f, 1.0f);
+    mul_m4_m4m4(voxel_cubemat, ob->obmat, voxel_cubemat);
+
+    DRW_buffer_add_entry(cb->empty_cube, color, voxel_cubemat);
+  }
+
+  if (draw_velocity) {
+    const bool use_needle = (sds->vector_draw_type == VECTOR_DRAW_NEEDLE);
+    int line_count = (use_needle) ? 6 : 1;
+    int slice_axis = -1;
+    line_count *= sds->res[0] * sds->res[1] * sds->res[2];
+
+    if (sds->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+        sds->axis_slice_method == AXIS_SLICE_SINGLE) {
+      float viewinv[4][4];
+      DRW_view_viewmat_get(NULL, viewinv, true);
+
+      const int axis = (sds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
+                                                              sds->slice_axis - 1;
+      slice_axis = axis;
+      line_count /= sds->res[axis];
+    }
+
+    GPU_create_smoke_velocity(smd);
+
+    GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle);
+    DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
+    DRW_shgroup_uniform_texture(grp, "velocityX", sds->tex_velocity_x);
+    DRW_shgroup_uniform_texture(grp, "velocityY", sds->tex_velocity_y);
+    DRW_shgroup_uniform_texture(grp, "velocityZ", sds->tex_velocity_z);
+    DRW_shgroup_uniform_float_copy(grp, "displaySize", sds->vector_scale);
+    DRW_shgroup_uniform_float_copy(grp, "slicePosition", sds->slice_depth);
+    DRW_shgroup_uniform_vec3_copy(grp, "cellSize", sds->cell_size);
+    DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", sds->p0);
+    DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", sds->res_min);
+    DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+    DRW_shgroup_call_procedural_lines(grp, ob, line_count);
+
+    BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(smd));
+  }
+}
+
+static void OVERLAY_volume_free_smoke_textures(OVERLAY_Data *data)
+{
+  /* Free Smoke Textures after rendering */
+  /* XXX This is a waste of processing and GPU bandwidth if nothing
+   * is updated. But the problem is since Textures are stored in the
+   * modifier we don't want them to take precious VRAM if the
+   * modifier is not used for display. We should share them for
+   * all viewport in a redraw at least. */
+  LinkData *link;
+  while ((link = BLI_pophead(&data->stl->pd->smoke_domains))) {
+    SmokeModifierData *smd = (SmokeModifierData *)link->data;
+    GPU_free_smoke_velocity(smd);
+    MEM_freeN(link);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+
 static void OVERLAY_object_center(OVERLAY_ExtraCallBuffers *cb,
                                   Object *ob,
                                   OVERLAY_PrivateData *pd,
@@ -1514,6 +1612,7 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ViewLayer *view_layer = draw_ctx->view_layer;
   Scene *scene = draw_ctx->scene;
+  ModifierData *md = NULL;
 
   const bool is_select_mode = DRW_state_is_select();
   const bool is_paint_mode = (draw_ctx->object_mode &
@@ -1533,6 +1632,9 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool draw_xform = draw_ctx->object_mode == OB_MODE_OBJECT &&
                           (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) &&
                           (ob->base_flag & BASE_SELECTED) && !is_select_mode;
+  const bool draw_volume = !from_dupli && (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
+                           (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
+                           (((SmokeModifierData *)md)->domain != NULL);
 
   float *color;
   int theme_id = DRW_object_wire_theme_get(ob, view_layer, &color);
@@ -1569,11 +1671,9 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
     if (ob->dtx & OB_AXIS) {
       DRW_buffer_add_entry(cb->empty_axes, color, ob->obmat);
     }
-    // if ((md = modifiers_findByType(ob, eModifierType_Smoke)) &&
-    //     (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-    //     (((SmokeModifierData *)md)->domain != NULL)) {
-    //   DRW_shgroup_volume_extra(cb, ob, view_layer, scene, md);
-    // }
+    if (draw_volume) {
+      OVERLAY_volume_extra(cb, vedata, ob, md, scene, color);
+    }
   }
 }
 
@@ -1585,4 +1685,6 @@ void OVERLAY_extra_draw(OVERLAY_Data *vedata)
   DRW_draw_pass(psl->extra_ps[0]);
   DRW_draw_pass(psl->extra_ps[1]);
   DRW_draw_pass(psl->extra_centers_ps);
+
+  OVERLAY_volume_free_smoke_textures(vedata);
 }

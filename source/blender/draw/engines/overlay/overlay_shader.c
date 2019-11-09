@@ -57,6 +57,7 @@ extern char datatoc_outline_lightprobe_grid_vert_glsl[];
 extern char datatoc_outline_resolve_frag_glsl[];
 extern char datatoc_paint_weight_frag_glsl[];
 extern char datatoc_paint_weight_vert_glsl[];
+extern char datatoc_volume_velocity_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_geom_glsl[];
 extern char datatoc_wireframe_frag_glsl[];
@@ -101,6 +102,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *outline_detect;
   GPUShader *outline_detect_wire;
   GPUShader *paint_weight;
+  GPUShader *volume_velocity_needle_sh;
+  GPUShader *volume_velocity_sh;
   GPUShader *wireframe_select;
   GPUShader *wireframe;
 } OVERLAY_Shaders;
@@ -603,6 +606,28 @@ GPUShader *OVERLAY_shader_paint_weight(void)
     });
   }
   return sh_data->paint_weight;
+}
+
+struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (use_needle && !sh_data->volume_velocity_needle_sh) {
+    sh_data->volume_velocity_needle_sh = DRW_shader_create_with_lib(
+        datatoc_volume_velocity_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_flat_color_frag_glsl,
+        datatoc_common_view_lib_glsl,
+        "#define USE_NEEDLE\n");
+  }
+  else if (!sh_data->volume_velocity_sh) {
+    sh_data->volume_velocity_sh = DRW_shader_create_with_lib(
+        datatoc_volume_velocity_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_flat_color_frag_glsl,
+        datatoc_common_view_lib_glsl,
+        NULL);
+  }
+  return (use_needle) ? sh_data->volume_velocity_needle_sh : sh_data->volume_velocity_sh;
 }
 
 GPUShader *OVERLAY_shader_wireframe_select(void)
