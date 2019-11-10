@@ -641,7 +641,10 @@ GPUShader *OVERLAY_shader_wireframe_select(void)
                                  datatoc_common_view_lib_glsl,
                                  datatoc_wireframe_vert_glsl,
                                  NULL},
-        .geom = (const char *[]){sh_cfg->lib, datatoc_wireframe_geom_glsl, NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_wireframe_geom_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_gpu_shader_depth_only_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def, "#define SELECT_EDGES\n", NULL},
     });

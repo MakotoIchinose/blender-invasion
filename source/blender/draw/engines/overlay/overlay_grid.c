@@ -183,7 +183,6 @@ void OVERLAY_grid_cache_init(OVERLAY_Data *vedata)
   DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->grid_ps);
   DRW_shgroup_uniform_int(grp, "gridFlag", &shd->zneg_flag, 1);
   DRW_shgroup_uniform_vec3(grp, "planeAxes", shd->zplane_axes, 1);
-  DRW_shgroup_uniform_vec3(grp, "screenVecs[0]", DRW_viewport_screenvecs_get(), 2);
   DRW_shgroup_uniform_float(grp, "gridDistance", &shd->grid_distance, 1);
   DRW_shgroup_uniform_float_copy(grp, "lineKernel", shd->grid_line_size);
   DRW_shgroup_uniform_float_copy(grp, "meshSize", shd->grid_mesh_size);

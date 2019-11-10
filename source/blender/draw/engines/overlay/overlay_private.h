@@ -127,8 +127,8 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *light_point;
   DRWCallBuffer *light_sun;
   DRWCallBuffer *light_spot;
-  DRWCallBuffer *light_spot_volume_outside;
-  DRWCallBuffer *light_spot_volume_inside;
+  DRWCallBuffer *light_spot_cone_back;
+  DRWCallBuffer *light_spot_cone_front;
   DRWCallBuffer *light_area[2];
 
   DRWCallBuffer *origin_xform;

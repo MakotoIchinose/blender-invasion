@@ -1,10 +1,6 @@
 
 /* This shader is only used for edge selection and OSX workaround for large wires. */
 
-uniform float wireSize;
-uniform vec2 viewportSize;
-uniform vec2 viewportSizeInv;
-
 layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
@@ -38,11 +34,11 @@ void main()
   ss_pos[1] = gl_in[1].gl_Position.xy / gl_in[1].gl_Position.w;
 
   vec2 line = ss_pos[0] - ss_pos[1];
-  line = abs(line) * viewportSize;
+  line = abs(line) * sizeViewport.xy;
 
-  float half_size = wireSize;
+  float half_size = sizePixel * 0.5;
 
-  vec3 edge_ofs = half_size * viewportSizeInv.xyy * vec3(1.0, 1.0, 0.0);
+  vec3 edge_ofs = half_size * sizeViewportInv.xyy * vec3(1.0, 1.0, 0.0);
 
   bool horizontal = line.x > line.y;
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;

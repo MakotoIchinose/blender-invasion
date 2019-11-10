@@ -1,3 +1,4 @@
+#define COMMON_GLOBALS_LIB
 
 /* keep in sync with GlobalsUboStorage */
 layout(std140) uniform globalsBlock
@@ -69,7 +70,11 @@ layout(std140) uniform globalsBlock
   vec4 colorGridAxisY;
   vec4 colorGridAxisZ;
 
-  float sizePixel;
+  vec4 screenVecs[2];
+  vec4 sizeViewport; /* Inverted size in zw. */
+
+  float sizePixel; /* This one is for dpi scalling */
+  float pixelFac;  /* To use with mul_project_m4_v3_zfac() */
   float sizeObjectCenter;
   float sizeLightCenter;
   float sizeLightCircle;
@@ -81,6 +86,8 @@ layout(std140) uniform globalsBlock
 
   float pad_globalsBlock;
 };
+
+#define sizeViewportInv (sizeViewport.zw)
 
 /* data[0] (1st byte flags) */
 #define FACE_ACTIVE (1 << 0)

@@ -159,6 +159,17 @@ void DRW_globals_update(void)
   gb->sizeEdge = U.pixelsize * (1.0f / 2.0f); /* TODO Theme */
   gb->sizeEdgeFix = U.pixelsize * (0.5f + 2.0f * (2.0f * (gb->sizeEdge * (float)M_SQRT1_2)));
 
+  const float(*screen_vecs)[3] = (float(*)[3])DRW_viewport_screenvecs_get();
+  for (int i = 0; i < 2; i++) {
+    copy_v3_v3(gb->screenVecs[i], screen_vecs[i]);
+  }
+
+  gb->pixelFac = *DRW_viewport_pixelsize_get();
+
+  copy_v2_v2(gb->sizeViewport, DRW_viewport_size_get());
+  copy_v2_v2(gb->sizeViewportInv, gb->sizeViewport);
+  invert_v2(gb->sizeViewportInv);
+
   /* Color management. */
   if (!DRW_state_do_color_management()) {
     float *color = gb->UBO_FIRST_COLOR;

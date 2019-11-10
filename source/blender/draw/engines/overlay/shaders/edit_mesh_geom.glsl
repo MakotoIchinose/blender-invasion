@@ -2,9 +2,6 @@
 layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-uniform vec2 viewportSize;
-uniform vec2 viewportSizeInv;
-
 in vec4 finalColor[2];
 in vec4 finalColorOuter[2];
 in int selectOveride[2];
@@ -55,7 +52,7 @@ void main()
   ss_pos[1] = pos1.xy / pos1.w;
 
   vec2 line = ss_pos[0] - ss_pos[1];
-  line = abs(line) * viewportSize;
+  line = abs(line) * sizeViewport.xy;
 
   finalColorOuter_f = finalColorOuter[0];
   float half_size = sizeEdge;
@@ -67,7 +64,7 @@ void main()
   half_size += 0.5;
 #endif
 
-  vec3 edge_ofs = half_size * viewportSizeInv.xyy * vec3(1.0, 1.0, 0.0);
+  vec3 edge_ofs = half_size * sizeViewportInv.xyy * vec3(1.0, 1.0, 0.0);
 
   bool horizontal = line.x > line.y;
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;

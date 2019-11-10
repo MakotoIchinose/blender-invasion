@@ -213,8 +213,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
     grp = pd->edit_mesh_edges_grp[i] = DRW_shgroup_create(edge_sh, psl->edit_mesh_edges_ps[i]);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
-    DRW_shgroup_uniform_vec2(grp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
     DRW_shgroup_uniform_ivec4(grp, "dataMask", mask, 1);
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
 
@@ -226,12 +224,10 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_edit_mesh_vert();
       grp = pd->edit_mesh_verts_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_vec3(grp, "screen_vecs[0]", DRW_viewport_screenvecs_get(), 2);
     }
     /* Facedots */
     if (select_face && show_face_dots) {

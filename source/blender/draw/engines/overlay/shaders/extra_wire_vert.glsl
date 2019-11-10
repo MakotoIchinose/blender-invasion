@@ -4,14 +4,12 @@ in vec3 dash_pos; /* Start point of the stippling pattern. */
 in vec4 color;
 in int colorid; /* if equal 0 (i.e: Not specified) use color attrib and stippling. */
 
-uniform vec2 viewport_size;
-
 noperspective out vec4 finalColor;
 
 vec2 screen_position(vec4 p)
 {
   vec2 s = p.xy / p.w;
-  return s * viewport_size * 0.5;
+  return s * sizeViewport.xy * 0.5;
 }
 
 void main()

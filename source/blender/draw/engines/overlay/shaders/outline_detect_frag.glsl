@@ -8,7 +8,6 @@ uniform sampler2D outlineDepth;
 uniform sampler2D sceneDepth;
 
 uniform float alphaOcclu;
-uniform vec2 viewportSize;
 
 void main()
 {

@@ -9,7 +9,6 @@ in vec3 local_pos;
 out vec4 FragColor;
 
 uniform vec3 planeAxes;
-uniform vec3 screenVecs[2];
 uniform float gridDistance;
 uniform float meshSize;
 uniform float lineKernel = 0.0;
@@ -120,7 +119,7 @@ void main()
   if ((gridFlag & GRID) != 0) {
     /* Using `max(dot(dFdxPos, screenVecs[0]), dot(dFdyPos, screenVecs[1]))`
      * would be more accurate, but not really necessary. */
-    float grid_res = dot(dFdxPos, screenVecs[0]);
+    float grid_res = dot(dFdxPos, screenVecs[0].xyz);
 
     /* The gride begins to appear when it comprises 4 pixels */
     grid_res *= 4;

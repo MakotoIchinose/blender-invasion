@@ -70,7 +70,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     struct GPUShader *sh;
     struct GPUVertFormat *format;
     DRWShadingGroup *grp, *grp_sub;
-    float pixelsize = *DRW_viewport_pixelsize_get() * U.pixelsize;
 
     OVERLAY_InstanceFormats *formats = OVERLAY_shader_instance_formats_get();
     OVERLAY_ExtraCallBuffers *cb = &pd->extra_call_buffers[i];
@@ -82,80 +81,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     DRWPass *extra_ps = *p_extra_ps;
 
 #if 0
-    /* Empties */
-    empties_callbuffers_create(cb->non_meshes, &cb->empties, draw_ctx->sh_cfg);
-
-    /* Force Field */
-    geom = DRW_cache_field_wind_get();
-    cb->field_wind = buffer_instance_scaled(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_field_force_get();
-    cb->field_force = buffer_instance_screen_aligned(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_field_vortex_get();
-    cb->field_vortex = buffer_instance_scaled(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_screenspace_circle_get();
-    cb->field_curve_sta = buffer_instance_screen_aligned(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* Grease Pencil */
-    geom = DRW_cache_gpencil_axes_get();
-    cb->gpencil_axes = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* Speaker */
-    geom = DRW_cache_speaker_get();
-    cb->speaker = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* Probe */
-    static float probeSize = 14.0f;
-    geom = DRW_cache_lightprobe_cube_get();
-    cb->probe_cube = buffer_instance_screenspace(
-        cb->non_meshes, geom, &probeSize, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_lightprobe_grid_get();
-    cb->probe_grid = buffer_instance_screenspace(
-        cb->non_meshes, geom, &probeSize, draw_ctx->sh_cfg);
-
-    static float probePlanarSize = 20.0f;
-    geom = DRW_cache_lightprobe_planar_get();
-    cb->probe_planar = buffer_instance_screenspace(
-        cb->non_meshes, geom, &probePlanarSize, draw_ctx->sh_cfg);
-
-    /* Camera */
-    geom = DRW_cache_camera_get();
-    cb->camera = buffer_camera_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_camera_frame_get();
-    cb->camera_frame = buffer_camera_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_camera_tria_get();
-    cb->camera_tria = buffer_camera_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_plain_axes_get();
-    cb->camera_focus = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_single_line_get();
-    cb->camera_clip = buffer_distance_lines_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-    cb->camera_mist = buffer_distance_lines_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_single_line_endpoints_get();
-    cb->camera_clip_points = buffer_distance_lines_instance(
-        cb->non_meshes, geom, draw_ctx->sh_cfg);
-    cb->camera_mist_points = buffer_distance_lines_instance(
-        cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_quad_wires_get();
-    cb->camera_stereo_plane_wires = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    geom = DRW_cache_empty_cube_get();
-    cb->camera_stereo_volume_wires = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    BLI_listbase_clear(&cb->camera_path);
-
-    /* Texture Space */
-    geom = DRW_cache_empty_cube_get();
-    cb->texspace = buffer_instance(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
     /* Wires (for loose edges) */
     sh = GPU_shader_get_builtin_shader_with_config(GPU_SHADER_3D_UNIFORM_COLOR, draw_ctx->sh_cfg);
     cb->wire = shgroup_wire(cb->non_meshes, gb->colorWire, sh, draw_ctx->sh_cfg);
@@ -200,28 +125,13 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_extra();
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_float_copy(grp, "pixel_size", pixelsize);
-      DRW_shgroup_uniform_vec3(grp, "screen_vecs[0]", DRW_viewport_screenvecs_get(), 2);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
-      cb->light_point = BUF_INSTANCE(grp_sub, format, DRW_cache_light_point_lines_get());
-      cb->light_sun = BUF_INSTANCE(grp_sub, format, DRW_cache_light_sun_lines_get());
-      cb->light_area[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_disk_lines_get());
-      cb->light_area[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_square_lines_get());
-      cb->light_spot = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_lines_get());
-
-      cb->probe_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
-      cb->probe_grid = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_grid_get());
-      cb->probe_planar = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
-
-      cb->speaker = BUF_INSTANCE(grp_sub, format, DRW_cache_speaker_get());
-
+      cb->camera_distances = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_distances_get());
       cb->camera_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_frame_get());
       cb->camera_tria[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_wire_get());
       cb->camera_tria[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_tria_get());
-      cb->camera_distances = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_distances_get());
-
       cb->empty_axes = BUF_INSTANCE(grp_sub, format, DRW_cache_bone_arrows_get());
       cb->empty_capsule_body = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_capsule_body_get());
       cb->empty_capsule_cap = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_capsule_cap_get());
@@ -233,46 +143,48 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->empty_single_arrow = BUF_INSTANCE(grp_sub, format, DRW_cache_single_arrow_get());
       cb->empty_sphere = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_sphere_get());
       cb->empty_sphere_solid = BUF_INSTANCE(grp_sub, format, DRW_cache_sphere_get());
-
-      cb->field_wind = BUF_INSTANCE(grp_sub, format, DRW_cache_field_wind_get());
-      cb->field_force = BUF_INSTANCE(grp_sub, format, DRW_cache_field_force_get());
-      cb->field_vortex = BUF_INSTANCE(grp_sub, format, DRW_cache_field_vortex_get());
-      cb->field_curve = BUF_INSTANCE(grp_sub, format, DRW_cache_field_curve_get());
-      cb->field_tube_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_tube_limit_get());
       cb->field_cone_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_cone_limit_get());
+      cb->field_curve = BUF_INSTANCE(grp_sub, format, DRW_cache_field_curve_get());
+      cb->field_force = BUF_INSTANCE(grp_sub, format, DRW_cache_field_force_get());
       cb->field_sphere_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_sphere_limit_get());
+      cb->field_tube_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_tube_limit_get());
+      cb->field_vortex = BUF_INSTANCE(grp_sub, format, DRW_cache_field_vortex_get());
+      cb->field_wind = BUF_INSTANCE(grp_sub, format, DRW_cache_field_wind_get());
+      cb->light_area[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_disk_lines_get());
+      cb->light_area[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_square_lines_get());
+      cb->light_point = BUF_INSTANCE(grp_sub, format, DRW_cache_light_point_lines_get());
+      cb->light_spot = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_lines_get());
+      cb->light_sun = BUF_INSTANCE(grp_sub, format, DRW_cache_light_sun_lines_get());
+      cb->probe_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
+      cb->probe_grid = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_grid_get());
+      cb->probe_planar = BUF_INSTANCE(grp_sub, format, DRW_cache_lightprobe_planar_get());
+      cb->speaker = BUF_INSTANCE(grp_sub, format, DRW_cache_speaker_get());
 
       grp_sub = DRW_shgroup_create_sub(grp);
       DRW_shgroup_state_enable(grp_sub, DRW_STATE_DEPTH_ALWAYS);
       DRW_shgroup_state_disable(grp_sub, DRW_STATE_DEPTH_LESS_EQUAL);
       cb->origin_xform = BUF_INSTANCE(grp_sub, format, DRW_cache_bone_arrows_get());
-
-      /* TODO Own move to transparent pass. */
-      grp_sub = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK | DRW_STATE_BLEND_ALPHA);
-      DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
-      cb->light_spot_volume_outside = BUF_INSTANCE(
-          grp_sub, format, DRW_cache_light_spot_volume_get());
+    }
+    {
+      format = formats->instance_extra;
+      grp = DRW_shgroup_create(sh, psl->extra_blend_ps); /* NOTE: not the same pass! */
+      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_FRONT | DRW_STATE_BLEND_ALPHA);
-      DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
-      cb->light_spot_volume_inside = BUF_INSTANCE(
-          grp_sub, format, DRW_cache_light_spot_volume_get());
-
-      grp_sub = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK | DRW_STATE_BLEND_ALPHA);
-      DRW_shgroup_state_disable(grp_sub, DRW_STATE_WRITE_DEPTH);
+      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_BACK);
       cb->camera_volume = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_volume_get());
       cb->camera_volume_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_volume_wire_get());
+      cb->light_spot_cone_back = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_volume_get());
+
+      grp_sub = DRW_shgroup_create_sub(grp);
+      DRW_shgroup_state_enable(grp_sub, DRW_STATE_CULL_FRONT);
+      cb->light_spot_cone_front = BUF_INSTANCE(grp_sub, format, DRW_cache_light_spot_volume_get());
     }
     {
       format = formats->instance_pos;
       sh = OVERLAY_shader_extra_groundline();
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_float_copy(grp, "pixel_size", pixelsize);
-      DRW_shgroup_uniform_vec3(grp, "screen_vecs[0]", DRW_viewport_screenvecs_get(), 2);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
 
@@ -283,7 +195,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 
       grp = DRW_shgroup_create(sh, extra_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_vec2(grp, "viewport_size", DRW_viewport_size_get(), 1);
 
       cb->extra_dashed_lines = BUF_LINE(grp, formats->wire_dashed_extra);
       cb->extra_lines = BUF_LINE(grp, formats->wire_extra);
@@ -292,7 +203,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       format = formats->pos;
       sh = OVERLAY_shader_extra_point();
 
-      grp = DRW_shgroup_create(sh, psl->extra_centers_ps);
+      grp = DRW_shgroup_create(sh, psl->extra_centers_ps); /* NOTE: not the same pass! */
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
@@ -315,39 +226,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_vec4_copy(grp_sub, "color", G_draw.block.colorLibrary);
       cb->center_deselected_lib = BUF_POINT(grp_sub, format);
     }
-
-#if 0
-    /* -------- STIPPLES ------- */
-    /* Relationship Lines */
-    cb->relationship_lines = buffer_dynlines_dashed_uniform_color(
-        cb->non_meshes, gb->colorWire, draw_ctx->sh_cfg);
-    cb->constraint_lines = buffer_dynlines_dashed_uniform_color(
-        cb->non_meshes, gb->colorGridAxisZ, draw_ctx->sh_cfg);
-
-    {
-      DRWShadingGroup *grp_axes;
-      cb->origin_xform = buffer_instance_color_axes(
-          cb->non_meshes, DRW_cache_bone_arrows_get(), &grp_axes, draw_ctx->sh_cfg);
-
-      DRW_shgroup_state_disable(grp_axes, DRW_STATE_DEPTH_LESS_EQUAL);
-      DRW_shgroup_state_enable(grp_axes, DRW_STATE_DEPTH_ALWAYS);
-      DRW_shgroup_state_enable(grp_axes, DRW_STATE_WIRE_SMOOTH);
-    }
-
-    /* Force Field Curve Guide End (here because of stipple) */
-    /* TODO port to shader stipple */
-    geom = DRW_cache_screenspace_circle_get();
-    cb->field_curve_end = buffer_instance_screen_aligned(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* Force Field Limits */
-    /* TODO port to shader stipple */
-    geom = DRW_cache_field_tube_limit_get();
-    cb->field_tube_limit = buffer_instance_scaled(cb->non_meshes, geom, draw_ctx->sh_cfg);
-
-    /* TODO port to shader stipple */
-    geom = DRW_cache_field_cone_limit_get();
-    cb->field_cone_limit = buffer_instance_scaled(cb->non_meshes, geom, draw_ctx->sh_cfg);
-#endif
   }
 }
 
@@ -768,8 +646,8 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
     if ((la->mode & LA_SHOW_CONE) && !DRW_state_is_select()) {
       float color_inside[4] = {0.0f, 0.0f, 0.0f, 0.5f};
       float color_outside[4] = {1.0f, 1.0f, 1.0f, 0.3f};
-      DRW_buffer_add_entry(cb->light_spot_volume_inside, color_inside, &instdata);
-      DRW_buffer_add_entry(cb->light_spot_volume_outside, color_outside, &instdata);
+      DRW_buffer_add_entry(cb->light_spot_cone_front, color_inside, &instdata);
+      DRW_buffer_add_entry(cb->light_spot_cone_back, color_outside, &instdata);
     }
   }
   else if (la->type == LA_AREA) {

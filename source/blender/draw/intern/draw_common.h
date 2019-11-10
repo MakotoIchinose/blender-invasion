@@ -110,13 +110,15 @@ typedef struct GlobalsUboStorage {
   float colorGridAxisZ[4];
 
   /* NOTE! Put all color before UBO_LAST_COLOR */
+  float screenVecs[2][4];                    /* padded as vec4  */
+  float sizeViewport[2], sizeViewportInv[2]; /* packed as vec4 in glsl */
 
   /* Pack individual float at the end of the buffer to avoid alignment errors */
-  float sizePixel;
+  float sizePixel, pixelFac;
   float sizeObjectCenter, sizeLightCenter, sizeLightCircle, sizeLightCircleShadow;
   float sizeVertex, sizeEdge, sizeEdgeFix, sizeFaceDot;
 
-  float pad_globalsBlock[3];
+  float pad_globalsBlock[2];
 } GlobalsUboStorage;
 /* Keep in sync with globalsBlock in shaders */
 BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)

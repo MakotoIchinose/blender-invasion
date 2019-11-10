@@ -43,13 +43,6 @@ void OVERLAY_wireframe_init(OVERLAY_Data *vedata)
   vedata->stl->pd->view_wires = DRW_view_create_with_zoffset(draw_ctx->rv3d, 0.5f);
 }
 
-static void geometry_shader_uniforms(DRWShadingGroup *shgrp)
-{
-  DRW_shgroup_uniform_float_copy(shgrp, "wireSize", U.pixelsize * 0.5f);
-  DRW_shgroup_uniform_vec2(shgrp, "viewportSize", DRW_viewport_size_get(), 1);
-  DRW_shgroup_uniform_vec2(shgrp, "viewportSizeInv", DRW_viewport_invert_size_get(), 1);
-}
-
 void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
@@ -73,10 +66,6 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   pd->wires_xray_grp = DRW_shgroup_create(wires_sh, psl->wireframe_xray_ps);
   pd->clear_stencil = (draw_ctx->v3d->shading.type > OB_SOLID);
   pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
-  if (use_select || USE_GEOM_SHADER_WORKAROUND) {
-    geometry_shader_uniforms(pd->wires_grp);
-    geometry_shader_uniforms(pd->wires_xray_grp);
-  }
 }
 
 static void wire_color_get(const View3D *v3d,

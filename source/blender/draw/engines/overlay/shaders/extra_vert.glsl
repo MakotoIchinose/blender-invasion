@@ -1,7 +1,4 @@
 
-uniform vec3 screen_vecs[2];
-uniform float pixel_size;
-
 in vec3 pos;
 in int vclass;
 
@@ -46,12 +43,6 @@ in vec4 color;
 #define VCLASS_EMPTY_SIZE (1 << 14)
 
 flat out vec4 finalColor;
-
-float mul_project_m4_v3_zfac(in vec3 co)
-{
-  return (ViewProjectionMatrix[0][3] * co.x) + (ViewProjectionMatrix[1][3] * co.y) +
-         (ViewProjectionMatrix[2][3] * co.z) + ViewProjectionMatrix[3][3];
-}
 
 void main()
 {
@@ -186,14 +177,14 @@ void main()
   vec3 world_pos;
   if ((vclass & VCLASS_SCREENSPACE) != 0) {
     /* Relative to DPI scalling. Have constant screen size. */
-    vec3 screen_pos = screen_vecs[0].xyz * vpos.x + screen_vecs[1].xyz * vpos.y;
+    vec3 screen_pos = screenVecs[0].xyz * vpos.x + screenVecs[1].xyz * vpos.y;
     vec3 p = (obmat * vec4(vofs, 1.0)).xyz;
-    float screen_size = mul_project_m4_v3_zfac(p) * pixel_size;
+    float screen_size = mul_project_m4_v3_zfac(p) * sizePixel;
     world_pos = p + screen_pos * screen_size;
   }
   else if ((vclass & VCLASS_SCREENALIGNED) != 0) {
     /* World sized, camera facing geometry. */
-    vec3 screen_pos = screen_vecs[0].xyz * vpos.x + screen_vecs[1].xyz * vpos.y;
+    vec3 screen_pos = screenVecs[0].xyz * vpos.x + screenVecs[1].xyz * vpos.y;
     world_pos = (obmat * vec4(vofs, 1.0)).xyz + screen_pos;
   }
   else {

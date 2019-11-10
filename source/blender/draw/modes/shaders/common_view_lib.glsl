@@ -24,6 +24,14 @@ layout(std140) uniform viewBlock
     _world_clip_planes_calc_clip_distance(p, clipPlanes)
 #endif
 
+#ifdef COMMON_GLOBALS_LIB
+float mul_project_m4_v3_zfac(in vec3 co)
+{
+  return pixelFac * ((ViewProjectionMatrix[0][3] * co.x) + (ViewProjectionMatrix[1][3] * co.y) +
+                     (ViewProjectionMatrix[2][3] * co.z) + ViewProjectionMatrix[3][3]);
+}
+#endif
+
 uniform int resourceChunk;
 
 #ifdef GPU_VERTEX_SHADER
