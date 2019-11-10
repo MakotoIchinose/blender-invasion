@@ -536,7 +536,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_ELASTIC_DEFORM, \
         SCULPT_TOOL_POSE, \
 \
-        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
+        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
          * but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
@@ -586,8 +586,9 @@ typedef enum eBrushGPVertexTool {
   GPVERTEX_TOOL_DRAW = 0,
   GPVERTEX_TOOL_BLUR = 1,
   GPVERTEX_TOOL_AVERAGE = 2,
-  GPVERTEX_TOOL_SMEAR = 3,
-  GPVERTEX_TOOL_REPLACE = 4,
+  GPVERTEX_TOOL_TINT = 3,
+  GPVERTEX_TOOL_SMEAR = 4,
+  GPVERTEX_TOOL_REPLACE = 5,
 } eBrushGPVertexTool;
 
 /* direction that the brush displaces along */

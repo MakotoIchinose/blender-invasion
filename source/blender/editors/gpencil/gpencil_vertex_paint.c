@@ -59,6 +59,7 @@
 /* ************************************************ */
 /* General Brush Editing Context */
 #define GP_SELECT_BUFFER_CHUNK 256
+#define GP_GRID_PIXEL_SIZE 10.0f
 
 /* Temp Flags while Painting. */
 typedef enum eGPDvertex_brush_Flag {
@@ -68,8 +69,25 @@ typedef enum eGPDvertex_brush_Flag {
   GP_VERTEX_FLAG_TMP_INVERT = (1 << 1),
 } eGPDvertex_brush_Flag;
 
+/* Grid of Colors for Smear. */
+typedef struct tGP_Grid {
+  /** Lower right corner of rectangle of grid cell. */
+  float bottom_a[2];
+  /** Lower left corner of rectangle of grid cell. */
+  float bottom_b[2];
+  /** Upper right corner of rectangle of grid cell. */
+  float top_a[2];
+  /** Upper left corner of rectangle of grid cell. */
+  float top_b[2];
+  /** Average Color */
+  float color[4];
+  /** Total points included. */
+  int totcol;
+
+} tGP_Grid;
+
 /* List of points affected by brush. */
-typedef struct tGP_selected {
+typedef struct tGP_Selected {
   /** Referenced stroke. */
   bGPDstroke *gps;
   /** Point index in points array. */
@@ -78,7 +96,7 @@ typedef struct tGP_selected {
   int pc[2];
   /** Color */
   float color[4];
-} tGP_selected;
+} tGP_Selected;
 
 /* Context for brush operators */
 typedef struct tGP_BrushVertexpaintData {
@@ -114,8 +132,10 @@ typedef struct tGP_BrushVertexpaintData {
   float mval[2], mval_prev[2];
   float pressure, pressure_prev;
 
-  /* - effect vector */
-  float dvec[3];
+  /* - Effect 2D vector */
+  float dvec[2];
+  /* Angle relative to Down 2D vector (0, -1} vector */
+  float angle;
 
   /* - multiframe falloff factor */
   float mf_falloff;
@@ -125,33 +145,42 @@ typedef struct tGP_BrushVertexpaintData {
 
   /* Temp data to save selected points */
   /** Stroke buffer. */
-  tGP_selected *pbuffer;
+  tGP_Selected *pbuffer;
   /** Number of elements currently used in cache. */
   int pbuffer_used;
   /** Number of total elements available in cache. */
   int pbuffer_size;
 
+  /** Grid of average colors */
+  tGP_Grid *grid;
+  /** Total number of rows. */
+  int grid_row;
+  /** Total number of cells in the grid. */
+  int grid_size;
+  /** Grid is ready to use */
+  bool grid_ready;
+
 } tGP_BrushVertexpaintData;
 
 /* Ensure the buffer to hold temp selected point size is enough to save all points selected. */
-static tGP_selected *gpencil_select_buffer_ensure(tGP_selected *buffer_array,
+static tGP_Selected *gpencil_select_buffer_ensure(tGP_Selected *buffer_array,
                                                   int *buffer_size,
                                                   int *buffer_used,
                                                   const bool clear)
 {
-  tGP_selected *p = NULL;
+  tGP_Selected *p = NULL;
 
   /* By default a buffer is created with one block with a predefined number of free slots,
    * if the size is not enough, the cache is reallocated adding a new block of free slots.
    * This is done in order to keep cache small and improve speed. */
   if (*buffer_used + 1 > *buffer_size) {
     if ((*buffer_size == 0) || (buffer_array == NULL)) {
-      p = MEM_callocN(sizeof(struct tGP_selected) * GP_SELECT_BUFFER_CHUNK, __func__);
+      p = MEM_callocN(sizeof(struct tGP_Selected) * GP_SELECT_BUFFER_CHUNK, __func__);
       *buffer_size = GP_SELECT_BUFFER_CHUNK;
     }
     else {
       *buffer_size += GP_SELECT_BUFFER_CHUNK;
-      p = MEM_recallocN(buffer_array, sizeof(struct tGP_selected) * *buffer_size);
+      p = MEM_recallocN(buffer_array, sizeof(struct tGP_Selected) * *buffer_size);
     }
 
     if (p == NULL) {
@@ -165,7 +194,7 @@ static tGP_selected *gpencil_select_buffer_ensure(tGP_selected *buffer_array,
   if (clear) {
     *buffer_used = 0;
     if (buffer_array != NULL) {
-      memset(buffer_array, 0, sizeof(tGP_selected) * *buffer_size);
+      memset(buffer_array, 0, sizeof(tGP_Selected) * *buffer_size);
     }
   }
 
@@ -223,20 +252,162 @@ static float brush_influence_calc(tGP_BrushVertexpaintData *gso, const int radiu
 }
 
 /* Compute effect vector for directional brushes. */
-static void brush_grab_calc_dvec(tGP_BrushVertexpaintData *gso)
+static void brush_calc_dvec_2d(tGP_BrushVertexpaintData *gso)
 {
-  /* Convert mouse-movements to movement vector */
-  RegionView3D *rv3d = gso->ar->regiondata;
-  float *rvec = gso->object->loc;
-  float zfac = ED_view3d_calc_zfac(rv3d, rvec, NULL);
+  const float vaxis[2] = {0.0f, -1.0f};
 
-  float mval_f[2];
+  gso->dvec[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
+  gso->dvec[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
 
-  /* convert from 2D screenspace to 3D... */
-  mval_f[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
-  mval_f[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
+  normalize_v2(gso->dvec);
+  gso->angle = angle_signed_v2v2(vaxis, gso->dvec);
+}
 
-  ED_view3d_win_to_delta(gso->ar, mval_f, gso->dvec, zfac);
+/* Init a grid of cells around mouse position.
+ *
+ * For each Cell.
+ *
+ *      Top A *--------* Top B
+ *            |        |
+ *            |        |
+ *   Bottom A *--------* Bottom B
+ *
+ * The cell is rotated using the relative angle of the movement of the mouse.
+ * The number of cells is calculated using the brush size and a predefined
+ * number of pixels (see: GP_GRID_PIXEL_SIZE)
+ */
+
+static void gp_grid_init(tGP_BrushVertexpaintData *gso)
+{
+  tGP_Grid *grid;
+  float bottom_a[2], bottom_b[2];
+  float top_a[2], top_b[2];
+  int grid_index = 0;
+
+  bottom_a[0] = gso->brush_rect.xmin;
+  bottom_a[1] = gso->brush_rect.ymax - GP_GRID_PIXEL_SIZE;
+
+  /* Calc all cell of the grid from top/left. */
+  for (int y = gso->grid_row - 1; y >= 0; y--) {
+    bottom_b[1] = bottom_a[1];
+    top_a[1] = bottom_a[1] + GP_GRID_PIXEL_SIZE;
+    top_b[1] = top_a[1];
+    for (int x = 0; x < gso->grid_row; x++) {
+      bottom_b[0] = bottom_a[0] + GP_GRID_PIXEL_SIZE;
+      top_a[0] = bottom_a[0];
+      top_b[0] = bottom_b[0];
+
+      grid = &gso->grid[grid_index];
+
+      copy_v2_v2(grid->bottom_a, bottom_a);
+      copy_v2_v2(grid->bottom_b, bottom_b);
+      copy_v2_v2(grid->top_a, top_a);
+      copy_v2_v2(grid->top_b, top_b);
+
+      bottom_a[0] += GP_GRID_PIXEL_SIZE;
+
+      grid_index++;
+    }
+
+    /* Reset for new row. */
+    bottom_a[0] = gso->brush_rect.xmin;
+    bottom_a[1] -= GP_GRID_PIXEL_SIZE;
+  }
+
+  /* Rotate the grid cells using the relative angle. */
+  grid_index = 0;
+  for (int y = gso->grid_row - 1; y >= 0; y--) {
+    for (int x = 0; x < gso->grid_row; x++) {
+      grid = &gso->grid[grid_index];
+
+      if (gso->angle != 0.0f) {
+        sub_v2_v2(grid->bottom_a, gso->mval);
+        sub_v2_v2(grid->bottom_b, gso->mval);
+        sub_v2_v2(grid->top_a, gso->mval);
+        sub_v2_v2(grid->top_b, gso->mval);
+
+        rotate_v2_v2fl(bottom_a, grid->bottom_a, gso->angle);
+        rotate_v2_v2fl(bottom_b, grid->bottom_b, gso->angle);
+        rotate_v2_v2fl(top_a, grid->top_a, gso->angle);
+        rotate_v2_v2fl(top_b, grid->top_b, gso->angle);
+
+        add_v2_v2v2(grid->bottom_a, bottom_a, gso->mval);
+        add_v2_v2v2(grid->bottom_b, bottom_b, gso->mval);
+        add_v2_v2v2(grid->top_a, top_a, gso->mval);
+        add_v2_v2v2(grid->top_b, top_b, gso->mval);
+      }
+
+      grid_index++;
+    }
+  }
+}
+
+static int gp_grid_cell_index_get(tGP_BrushVertexpaintData *gso, float pc[2])
+{
+  for (int i = 0; i < gso->grid_size; i++) {
+    tGP_Grid *grid = &gso->grid[i];
+
+    float w[3];
+    /* Test first triangle. */
+    if (barycentric_coords_v2(grid->bottom_a, grid->top_a, grid->top_b, pc, w)) {
+      if (barycentric_inside_triangle_v2(w)) {
+        return i;
+      }
+    }
+    /* Test second triangle. */
+    if (barycentric_coords_v2(grid->bottom_a, grid->bottom_b, grid->top_b, pc, w)) {
+      if (barycentric_inside_triangle_v2(w)) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/* Fill the grid with the color in each cell and assign point cell index. */
+static void gp_grid_colors_calc(tGP_BrushVertexpaintData *gso)
+{
+  tGP_Selected *selected = NULL;
+  bGPDstroke *gps_selected = NULL;
+  bGPDspoint *pt = NULL;
+  tGP_Grid *grid = NULL;
+
+  /* Don't calculate again. */
+  if (gso->grid_ready) {
+    return;
+  }
+
+  /* Extract colors by cell. */
+  for (int i = 0; i < gso->pbuffer_used; i++) {
+    selected = &gso->pbuffer[i];
+    gps_selected = selected->gps;
+    pt = &gps_selected->points[selected->pt_index];
+    float pcf[2];
+    copy_v2fl_v2i(pcf, selected->pc);
+    int grid_index = gp_grid_cell_index_get(gso, pcf);
+
+    if (grid_index > -1) {
+      grid = &gso->grid[grid_index];
+      /* Add stroke mix color (only if used). */
+      if (pt->mix_color[3] > 0.0f) {
+        add_v3_v3(grid->color, selected->color);
+        grid->color[3] = 1.0f;
+        grid->totcol++;
+      }
+    }
+  }
+
+  /* Average colors. */
+  for (int i = 0; i < gso->grid_size; i++) {
+    grid = &gso->grid[i];
+    if (grid->totcol > 0) {
+      mul_v3_fl(grid->color, (1.0f / (float)grid->totcol));
+    }
+  }
+
+  gso->grid_ready = true;
+
+  return;
 }
 
 /* ************************************************ */
@@ -326,7 +497,7 @@ static bool get_surrounding_color(tGP_BrushVertexpaintData *gso,
                                   int pt_index,
                                   float r_color[3])
 {
-  tGP_selected *selected = NULL;
+  tGP_Selected *selected = NULL;
   bGPDstroke *gps_selected = NULL;
   bGPDspoint *pt = NULL;
 
@@ -438,6 +609,64 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
   return true;
 }
 
+/* Smear Brush */
+static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
+                              bGPDstroke *gps,
+                              int pt_index,
+                              const int radius,
+                              tGP_Selected *selected)
+{
+  Brush *brush = gso->brush;
+  float pcf[2];
+
+  /* Need some movement, so first input is not done. */
+  if (gso->first) {
+    return false;
+  }
+
+  /* Need get average colors in the grid. */
+  if ((!gso->grid_ready) && (gso->pbuffer_used > 0)) {
+    gp_grid_colors_calc(gso);
+  }
+
+  /* Attenuate factor to get a smoother tinting. */
+  float inf = (brush_influence_calc(gso, radius, selected->pc) *
+               brush->gpencil_settings->draw_strength) /
+              100.0f;
+  float inf_fill = (gso->pressure * brush->gpencil_settings->draw_strength) / 1000.0f;
+
+  bGPDspoint *pt = &gps->points[pt_index];
+
+  /* Apply color to Stroke point. */
+  if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
+    copy_v2fl_v2i(pcf, selected->pc);
+    int grid_index = gp_grid_cell_index_get(gso, pcf);
+    if (grid_index >= gso->grid_row) {
+      /* Take the row above in the grid */
+      tGP_Grid *grid = &gso->grid[grid_index - gso->grid_row];
+      if (grid->color[3] > 0.0f) {
+        copy_v3_v3(pt->mix_color, grid->color);
+        // interp_v3_v3v3(pt->mix_color, pt->mix_color, grid->color, inf);
+      }
+    }
+  }
+
+  /* Apply color to Fill area (all with same color and factor). */
+  if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
+    copy_v2fl_v2i(pcf, selected->pc);
+    int grid_index = gp_grid_cell_index_get(gso, pcf);
+    if (grid_index >= gso->grid_row) {
+      /* Take the row above in the grid */
+      tGP_Grid *grid = &gso->grid[grid_index - gso->grid_row];
+      if (grid->color[3] > 0.0f) {
+        copy_v3_v3(gps->mix_color_fill, grid->color);
+      }
+    }
+  }
+
+  return true;
+}
+
 /* ************************************************ */
 /* Header Info */
 static void gp_vertexpaint_brush_header_set(bContext *C, tGP_BrushVertexpaintData *UNUSED(gso))
@@ -476,6 +705,13 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gso->pbuffer = NULL;
   gso->pbuffer_size = 0;
   gso->pbuffer_used = 0;
+
+  /* Alloc grid array */
+  gso->grid_row = (int)((gso->brush->size / GP_GRID_PIXEL_SIZE) + 1.0);
+  /* Square value. */
+  gso->grid_size = gso->grid_row * gso->grid_row;
+  gso->grid = MEM_callocN(sizeof(tGP_Grid) * gso->grid_size, "tGP_Grid");
+  gso->grid_ready = false;
 
   gso->gpd = ED_gpencil_data_get_active(C);
   gso->scene = scene;
@@ -520,6 +756,7 @@ static void gp_vertexpaint_brush_exit(bContext *C, wmOperator *op)
 
   /* Free operator data */
   MEM_SAFE_FREE(gso->pbuffer);
+  MEM_SAFE_FREE(gso->grid);
   MEM_SAFE_FREE(gso);
   op->customdata = NULL;
 }
@@ -537,7 +774,7 @@ static void gp_save_selected_point(tGP_BrushVertexpaintData *gso,
                                    int index,
                                    int pc[2])
 {
-  tGP_selected *selected;
+  tGP_Selected *selected;
   bGPDspoint *pt = &gps->points[index];
 
   /* Ensure the array to save the list of selected points is big enough. */
@@ -692,7 +929,7 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
   const int radius = (gso->brush->flag & GP_BRUSH_USE_PRESSURE) ?
                          gso->brush->size * gso->pressure :
                          gso->brush->size;
-  tGP_selected *selected = NULL;
+  tGP_Selected *selected = NULL;
   int i;
 
   /*---------------------------------------------------------------------
@@ -766,6 +1003,11 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
       case GPVERTEX_TOOL_AVERAGE: {
         brush_average_apply(
             gso, selected->gps, selected->pt_index, radius, selected->pc, average_color);
+        changed |= true;
+        break;
+      }
+      case GPVERTEX_TOOL_SMEAR: {
+        brush_smear_apply(gso, selected->gps, selected->pt_index, radius, selected);
         changed |= true;
         break;
       }
@@ -886,11 +1128,17 @@ static void gp_vertexpaint_brush_apply(bContext *C, wmOperator *op, PointerRNA *
     gso->pressure_prev = gso->pressure;
   }
 
-  /* Update brush_rect, so that it represents the bounding rectangle of brush */
+  /* Update brush_rect, so that it represents the bounding rectangle of brush. */
   gso->brush_rect.xmin = mouse[0] - radius;
   gso->brush_rect.ymin = mouse[1] - radius;
   gso->brush_rect.xmax = mouse[0] + radius;
   gso->brush_rect.ymax = mouse[1] + radius;
+
+  /* Calc 2D direction vector and relative angle. */
+  brush_calc_dvec_2d(gso);
+
+  /* Calc grid for smear tool. */
+  gp_grid_init(gso);
 
   changed = gp_vertexpaint_brush_apply_to_layers(C, gso);
 

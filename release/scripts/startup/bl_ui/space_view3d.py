@@ -432,7 +432,7 @@ class _draw_tool_settings_context_mode:
         settings = tool_settings.gpencil_vertex_paint
         row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
-        if brush.gpencil_vertex_tool not in ('BLUR', 'AVERAGE'):
+        if brush.gpencil_vertex_tool not in ('BLUR', 'AVERAGE', 'SMEAR'):
             row.separator(factor=0.4)
             row.prop(brush, "color", text="")
         

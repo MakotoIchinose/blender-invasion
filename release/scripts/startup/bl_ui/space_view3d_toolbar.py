@@ -2290,7 +2290,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex(View3DPanel, Panel):
         if ob is None or brush is None:
             return False
 
-        if context.region.type == 'TOOL_HEADER' or brush.gpencil_vertex_tool in ('BLUR', 'AVERAGE'):
+        if context.region.type == 'TOOL_HEADER' or brush.gpencil_vertex_tool in ('BLUR', 'AVERAGE', 'SMEAR'):
             return False
 
         return True
@@ -2370,7 +2370,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
         if ob is None or brush is None:
             return False
 
-        if brush.gpencil_vertex_tool in ('BLUR', 'AVERAGE'):
+        if brush.gpencil_vertex_tool in ('BLUR', 'AVERAGE', 'SMEAR'):
             return False
 
         return True
