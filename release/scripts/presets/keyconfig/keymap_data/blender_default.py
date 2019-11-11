@@ -3362,6 +3362,8 @@ def km_grease_pencil_stroke_vertex_mode(params):
         op_tool("builtin_brush.Blur", {"type": 'F', "value": 'PRESS'}),
         op_tool("builtin_brush.Average", {"type": 'E', "value": 'PRESS'}),
         op_tool("builtin.brush.Smear", {"type": 'K', "value": 'PRESS'}),
+        # Vertex Paint context menu
+        op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
     ])
 
     return keymap
