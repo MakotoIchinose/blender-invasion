@@ -516,7 +516,7 @@ static bool get_surrounding_color(tGP_BrushVertexpaintData *gso,
       continue;
     }
 
-    pt = &gps->points[selected->pt_index];
+    pt = &gps_selected->points[selected->pt_index];
 
     /* Add stroke mix color (only if used). */
     if (pt->mix_color[3] > 0.0f) {
