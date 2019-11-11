@@ -1694,6 +1694,9 @@ static int gpencil_select_color_exec(bContext *C, wmOperator *op)
   Brush *brush = paint->brush;
   bool done = false;
 
+  float hsv_brush[3], hsv_stroke[3];
+  rgb_to_hsv_compat_v(brush->rgb, hsv_brush);
+
   /* Select any visible stroke that uses this color */
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
     bGPDspoint *pt;
@@ -1701,7 +1704,13 @@ static int gpencil_select_color_exec(bContext *C, wmOperator *op)
     bool gps_selected = false;
     /* Check all stroke points. */
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-      if (compare_v3v3(pt->mix_color, brush->rgb, threshold)) {
+      if (pt->mix_color[3] < 0.03f) {
+        continue;
+      }
+
+      rgb_to_hsv_compat_v(pt->mix_color, hsv_stroke);
+      /* Only check Hue to get full value and saturation ranges. */
+      if (compare_ff(hsv_stroke[0], hsv_brush[0], threshold)) {
         pt->flag |= GP_SPOINT_SELECT;
         gps_selected = true;
       }
