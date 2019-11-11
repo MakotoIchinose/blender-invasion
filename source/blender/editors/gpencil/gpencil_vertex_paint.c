@@ -660,6 +660,7 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
     CLAMP(col, 0, gso->grid_size);
 
     int new_index = (row * gso->grid_size) + col;
+    CLAMP(new_index, 0, gso->grid_len - 1);
     grid = &gso->grid[new_index];
   }
 
