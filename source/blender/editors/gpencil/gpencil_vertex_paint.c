@@ -352,7 +352,7 @@ static void gp_grid_cell_average_color_idx_get(tGP_BrushVertexpaintData *gso, in
   }
 }
 
-static int gp_grid_cell_index_get(tGP_BrushVertexpaintData *gso, float pc[2])
+static int gp_grid_cell_index_get(tGP_BrushVertexpaintData *gso, int pc[2])
 {
   float bottom[2], top[2];
 
@@ -387,9 +387,7 @@ static void gp_grid_colors_calc(tGP_BrushVertexpaintData *gso)
     selected = &gso->pbuffer[i];
     gps_selected = selected->gps;
     pt = &gps_selected->points[selected->pt_index];
-    float pcf[2];
-    copy_v2fl_v2i(pcf, selected->pc);
-    int grid_index = gp_grid_cell_index_get(gso, pcf);
+    int grid_index = gp_grid_cell_index_get(gso, selected->pc);
 
     if (grid_index > -1) {
       grid = &gso->grid[grid_index];
@@ -623,7 +621,6 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
 {
   Brush *brush = gso->brush;
   tGP_Grid *grid = NULL;
-  float pcf[2];
   int average_idx[2];
   bool changed = false;
 
@@ -649,8 +646,7 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
   gp_grid_cell_average_color_idx_get(gso, average_idx);
 
   /* Retry average color cell. */
-  copy_v2fl_v2i(pcf, selected->pc);
-  int grid_index = gp_grid_cell_index_get(gso, pcf);
+  int grid_index = gp_grid_cell_index_get(gso, selected->pc);
   if (grid_index > -1) {
     int row = grid_index / gso->grid_size;
     int col = grid_index - (gso->grid_size * row);
