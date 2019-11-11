@@ -1150,13 +1150,21 @@ BLI_INLINE void task_parallel_calc_chunk_size(const TaskParallelSettings *settin
 BLI_INLINE void task_parallel_range_calc_chunk_size(TaskParallelRangePool *range_pool)
 {
   int num_iters = 0;
+  int min_num_iters = INT_MAX;
   for (TaskParallelRangeState *state = range_pool->parallel_range_tasks; state != NULL;
        state = state->next) {
-    num_iters += state->stop - state->start;
+    const int ni = state->stop - state->start;
+    num_iters += ni;
+    if (min_num_iters > ni) {
+      min_num_iters = ni;
+    }
   }
   range_pool->num_iters = num_iters;
+  /* Note: Paasing min_num_iter here instead of num_iters kind of partially breaks the 'static'
+   * scheduling, but pooled range iterator is inherently non-static anyway, so adding a small level
+   * of dynamic scheduling here should be fine. */
   task_parallel_calc_chunk_size(
-      range_pool->settings, num_iters, range_pool->num_tasks, &range_pool->chunk_size);
+      range_pool->settings, min_num_iters, range_pool->num_tasks, &range_pool->chunk_size);
 }
 
 BLI_INLINE bool parallel_range_next_iter_get(TaskParallelRangePool *__restrict range_pool,
