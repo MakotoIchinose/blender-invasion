@@ -447,8 +447,8 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_stroke_merge_by_distance);
   WM_operatortype_append(GPENCIL_OT_stroke_merge_material);
 
-  WM_operatortype_append(GPENCIL_OT_transform_uv);
-  WM_operatortype_append(GPENCIL_OT_reset_uv_transform);
+  WM_operatortype_append(GPENCIL_OT_transform_fill);
+  WM_operatortype_append(GPENCIL_OT_reset_transform_fill);
 
   WM_operatortype_append(GPENCIL_OT_brush_presets_create);
 

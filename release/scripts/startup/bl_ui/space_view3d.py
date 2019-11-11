@@ -4674,7 +4674,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.operator("gpencil.stroke_flip", text="Switch Direction")
 
         layout.separator()
-        layout.operator("gpencil.reset_uv_transform", text="Reset UV Transform")
+        layout.operator("gpencil.reset_transform_fill", text="Reset Fill Transform")
 
 
 class VIEW3D_MT_edit_gpencil_point(Menu):

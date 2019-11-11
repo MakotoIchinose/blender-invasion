@@ -1542,17 +1542,17 @@ class _defs_gpencil_edit:
         )
 
     @ToolDef.from_fn
-    def transform_uv():
+    def transform_fill():
         def draw_settings(context, layout, tool):
-                props = tool.operator_properties("gpencil.transform_uv")
+                props = tool.operator_properties("gpencil.transform_fill")
                 row = layout.row()
                 row.use_property_split = False
                 row.prop(props, "mode", expand=True)
 
         return dict(
-            idname="builtin.transform_uv",
-            label="Transform UV",
-            icon="ops.gpencil.transform_uv",
+            idname="builtin.transform_fill",
+            label="Transform Fill",
+            icon="ops.gpencil.transform_fill",
             cursor='DEFAULT',
             widget=None,
             keymap=(),
@@ -2132,7 +2132,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_gpencil_edit.tosphere,
             ),
             None,
-            _defs_gpencil_edit.transform_uv,
+            _defs_gpencil_edit.transform_fill,
         ],
         'SCULPT_GPENCIL': [
             _defs_gpencil_sculpt.generate_from_brushes,

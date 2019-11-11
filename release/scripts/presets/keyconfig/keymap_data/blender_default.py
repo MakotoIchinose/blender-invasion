@@ -6152,12 +6152,12 @@ def km_3d_view_tool_edit_gpencil_to_sphere(params):
     )
 
 
-def km_3d_view_tool_edit_gpencil_transform_uv(params):
+def km_3d_view_tool_edit_gpencil_transform_fill(params):
     return (
-        "3D View Tool: Edit Gpencil, Transform UV",
+        "3D View Tool: Edit Gpencil, Transform Fill",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.transform_uv", {"type": params.tool_tweak, "value": 'ANY'},
+            ("gpencil.transform_fill", {"type": params.tool_tweak, "value": 'ANY'},
              {"properties": [("release_confirm", True)]}),
         ]},
     )
@@ -6429,7 +6429,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_gpencil_bend(params),
         km_3d_view_tool_edit_gpencil_shear(params),
         km_3d_view_tool_edit_gpencil_to_sphere(params),
-        km_3d_view_tool_edit_gpencil_transform_uv(params),
+        km_3d_view_tool_edit_gpencil_transform_fill(params),
         km_3d_view_tool_sculpt_gpencil_paint(params),
         km_3d_view_tool_sculpt_gpencil_select(params),
         km_3d_view_tool_sculpt_gpencil_select_box(params),

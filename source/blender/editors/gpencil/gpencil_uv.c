@@ -238,7 +238,7 @@ static void gpencil_uv_transform_exit(bContext *C, wmOperator *op)
   MEM_SAFE_FREE(op->customdata);
 }
 
-static void gpencil_uv_transform_cancel(bContext *C, wmOperator *op)
+static void gpencil_transform_fill_cancel(bContext *C, wmOperator *op)
 {
   GpUvData *opdata;
 
@@ -358,7 +358,7 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
   return changed;
 }
 
-static int gpencil_uv_transform_exec(bContext *C, wmOperator *op)
+static int gpencil_transform_fill_exec(bContext *C, wmOperator *op)
 {
   if (!gpencil_uv_transform_init(C, op, false)) {
     return OPERATOR_CANCELLED;
@@ -373,7 +373,7 @@ static int gpencil_uv_transform_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool gpencil_uv_transform_poll(bContext *C)
+static bool gpencil_transform_fill_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
   if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
@@ -393,7 +393,7 @@ static bool gpencil_uv_transform_poll(bContext *C)
   return true;
 }
 
-static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int gpencil_transform_fill_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float mlen[2];
@@ -429,14 +429,14 @@ static int gpencil_uv_transform_invoke(bContext *C, wmOperator *op, const wmEven
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
+static int gpencil_transform_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   GpUvData *opdata = op->customdata;
 
   switch (event->type) {
     case ESCKEY:
     case RIGHTMOUSE: {
-      gpencil_uv_transform_cancel(C, op);
+      gpencil_transform_fill_cancel(C, op);
       return OPERATOR_CANCELLED;
     }
     case MOUSEMOVE: {
@@ -447,7 +447,7 @@ static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent
         gpencil_uv_transform_update_header(op, C);
       }
       else {
-        gpencil_uv_transform_cancel(C, op);
+        gpencil_transform_fill_cancel(C, op);
         return OPERATOR_CANCELLED;
       }
       break;
@@ -468,7 +468,7 @@ static int gpencil_uv_transform_modal(bContext *C, wmOperator *op, const wmEvent
   return OPERATOR_RUNNING_MODAL;
 }
 
-void GPENCIL_OT_transform_uv(wmOperatorType *ot)
+void GPENCIL_OT_transform_fill(wmOperatorType *ot)
 {
   static const EnumPropertyItem uv_mode[] = {
       {GP_UV_TRANSLATE, "TRANSLATE", 0, "Translate", ""},
@@ -480,16 +480,16 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Transform Stroke UV";
-  ot->idname = "GPENCIL_OT_transform_uv";
-  ot->description = "Transform Grease Pencil Stroke UVs";
+  ot->name = "Transform Stroke Fill";
+  ot->idname = "GPENCIL_OT_transform_fill";
+  ot->description = "Transform Grease Pencil Stroke Fill";
 
   /* api callbacks */
-  ot->invoke = gpencil_uv_transform_invoke;
-  ot->modal = gpencil_uv_transform_modal;
-  ot->exec = gpencil_uv_transform_exec;
-  ot->cancel = gpencil_uv_transform_cancel;
-  ot->poll = gpencil_uv_transform_poll;
+  ot->invoke = gpencil_transform_fill_invoke;
+  ot->modal = gpencil_transform_fill_modal;
+  ot->exec = gpencil_transform_fill_exec;
+  ot->cancel = gpencil_transform_fill_cancel;
+  ot->poll = gpencil_transform_fill_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
@@ -523,7 +523,7 @@ void GPENCIL_OT_transform_uv(wmOperatorType *ot)
 }
 
 /* Clear UV transformations. */
-static int gpencil_reset_uv_transform_exec(bContext *C, wmOperator *op)
+static int gpencil_reset_transform_fill_exec(bContext *C, wmOperator *op)
 {
   const int mode = RNA_enum_get(op->ptr, "mode");
   Object *ob = CTX_data_active_object(C);
@@ -557,7 +557,7 @@ static int gpencil_reset_uv_transform_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_reset_uv_transform(wmOperatorType *ot)
+void GPENCIL_OT_reset_transform_fill(wmOperatorType *ot)
 {
   static const EnumPropertyItem uv_clear_mode[] = {
       {GP_UV_ALL, "ALL", 0, "All", ""},
@@ -568,13 +568,13 @@ void GPENCIL_OT_reset_uv_transform(wmOperatorType *ot)
   };
 
   /* identifiers */
-  ot->name = "Reset UV Transformations";
-  ot->idname = "GPENCIL_OT_reset_uv_transform";
+  ot->name = "Reset Fill Transformations";
+  ot->idname = "GPENCIL_OT_reset_transform_fill";
   ot->description = "Reset any UV transformation and back to default values";
 
   /* callbacks */
-  ot->exec = gpencil_reset_uv_transform_exec;
-  ot->poll = gpencil_uv_transform_poll;
+  ot->exec = gpencil_reset_transform_fill_exec;
+  ot->poll = gpencil_transform_fill_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
