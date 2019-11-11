@@ -348,6 +348,10 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_draw);
   WM_operatortype_append(GPENCIL_OT_fill);
   WM_operatortype_append(GPENCIL_OT_vertex_paint);
+  WM_operatortype_append(GPENCIL_OT_vertex_color_brightness_contrast);
+  WM_operatortype_append(GPENCIL_OT_vertex_color_hsv);
+  WM_operatortype_append(GPENCIL_OT_vertex_color_invert);
+  WM_operatortype_append(GPENCIL_OT_vertex_color_levels);
 
   /* Guides ----------------------- */
 

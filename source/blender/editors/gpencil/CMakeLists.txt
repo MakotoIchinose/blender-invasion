@@ -59,6 +59,7 @@ set(SRC
   gpencil_utils.c
   gpencil_uv.c
   gpencil_vertex_paint.c
+  gpencil_vertex_ops.c
 
   gpencil_intern.h
 )

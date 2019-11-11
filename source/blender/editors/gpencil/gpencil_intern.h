@@ -365,7 +365,13 @@ void GPENCIL_OT_annotate(struct wmOperatorType *ot);
 
 void GPENCIL_OT_draw(struct wmOperatorType *ot);
 void GPENCIL_OT_fill(struct wmOperatorType *ot);
+
+/* Vertex Paint. */
 void GPENCIL_OT_vertex_paint(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_color_brightness_contrast(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_color_hsv(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_color_invert(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_color_levels(struct wmOperatorType *ot);
 
 /* Guides ----------------------- */
 
