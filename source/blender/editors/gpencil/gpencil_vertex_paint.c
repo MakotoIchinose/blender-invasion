@@ -151,6 +151,8 @@ typedef struct tGP_BrushVertexpaintData {
   int grid_size;
   /** Total number of cells elments in the grid array. */
   int grid_len;
+  /** Grid sample position (used to determine distance of falloff) */
+  int grid_sample[2];
   /** Grid is ready to use */
   bool grid_ready;
 
@@ -408,6 +410,9 @@ static void gp_grid_colors_calc(tGP_BrushVertexpaintData *gso)
     }
   }
 
+  /* Save sample position. */
+  round_v2i_v2fl(gso->grid_sample, gso->mval);
+
   gso->grid_ready = true;
 
   return;
@@ -641,6 +646,14 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
   if (brush->flag & GP_BRUSH_USE_PRESSURE) {
     inf *= gso->pressure;
   }
+
+  /* Calc distance from initial sample location and add a fallof effect. */
+  int mval_i[2];
+  round_v2i_v2fl(mval_i, gso->mval);
+  float distance = (float)len_v2v2_int(mval_i, gso->grid_sample);
+  float fac = 1.0f - (distance / (float)(brush->size * 2));
+  CLAMP(fac, 0.0f, 1.0f);
+  inf *= fac;
 
   /* Retry row and col for average color. */
   gp_grid_cell_average_color_idx_get(gso, average_idx);
@@ -1088,7 +1101,8 @@ static bool gp_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpai
         if ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)) {
           /* compute multiframe falloff factor */
           if (gso->use_multiframe_falloff) {
-            /* Faloff depends on distance to active frame (relative to the overall frame range) */
+            /* Faloff depends on distance to active frame (relative to the overall frame range)
+             */
             gso->mf_falloff = BKE_gpencil_multiframe_falloff_calc(
                 gpf, gpl->actframe->framenum, f_init, f_end, ts->gp_sculpt.cur_falloff);
           }
