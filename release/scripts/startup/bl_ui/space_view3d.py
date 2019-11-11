@@ -6680,10 +6680,6 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
             col = layout.column()
             col.prop(gp_settings, "vertex_mode", text="Mode")
             col.template_color_picker(brush, "color", value_slider=True)
-            sub_row = col.row(align=True)
-            sub_row.prop(brush, "color", text="")
-            sub_row.prop(brush, "secondary_color", text="")
-            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
             col.separator()
             
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
@@ -6728,13 +6724,8 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
 
         if brush.gpencil_vertex_tool in ('DRAW', 'REPLACE'):
             col.prop(gp_settings, "vertex_mode", text="Mode")
-
             col.template_color_picker(brush, "color", value_slider=True)
-
-            sub_row = col.row(align=True)
-            sub_row.prop(brush, "color", text="")
-            sub_row.prop(brush, "secondary_color", text="")
-            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+            col.separator()
         
         row = col.row(align=True)
         row.prop(brush, "size", text="Radius")
