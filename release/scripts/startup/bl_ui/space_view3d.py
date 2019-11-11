@@ -6669,11 +6669,23 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
     bl_label = "Draw Context Menu"
 
     def draw(self, context):
-        brush = context.tool_settings.gpencil_paint.brush
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
         gp_settings = brush.gpencil_settings
 
         layout = self.layout
 
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color:
+            col = layout.column()
+            col.prop(gp_settings, "vertex_mode", text="Mode")
+            col.template_color_picker(brush, "color", value_slider=True)
+            sub_row = col.row(align=True)
+            sub_row.prop(brush, "color", text="")
+            sub_row.prop(brush, "secondary_color", text="")
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+            col.separator()
+            
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
         if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
