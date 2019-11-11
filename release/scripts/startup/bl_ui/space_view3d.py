@@ -794,13 +794,15 @@ class VIEW3D_MT_editor_menus(Menu):
 
         # Select Menu
         if gp_edit:
-            if mode_string not in {'PAINT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+            if mode_string not in {'PAINT_GPENCIL', 'WEIGHT_GPENCIL'}:
                 if mode_string == 'SCULPT_GPENCIL' and \
                     (ts.use_gpencil_select_mask_point or
                      ts.use_gpencil_select_mask_stroke or
                      ts.use_gpencil_select_mask_segment):
                     layout.menu("VIEW3D_MT_select_gpencil")
                 elif mode_string == 'EDIT_GPENCIL':
+                    layout.menu("VIEW3D_MT_select_gpencil")
+                elif mode_string == 'VERTEX_GPENCIL':
                     layout.menu("VIEW3D_MT_select_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             mesh = obj.data
@@ -1826,6 +1828,12 @@ class VIEW3D_MT_select_gpencil(Menu):
 
         layout.operator("gpencil.select_more")
         layout.operator("gpencil.select_less")
+
+        if _context.mode == 'VERTEX_GPENCIL':
+            layout.separator()
+
+            layout.operator("gpencil.select_color")
+
 
 
 class VIEW3D_MT_select_paint_mask(Menu):
@@ -4720,12 +4728,10 @@ class VIEW3D_MT_weight_gpencil(Menu):
 
 
 class VIEW3D_MT_vertex_gpencil(Menu):
-    bl_label = "Vertex Paint"
+    bl_label = "Paint"
 
     def draw(self, _context):
         layout = self.layout
-
-        layout.operator("gpencil.select_color", text="Select Color")
 
 
 class VIEW3D_MT_gpencil_animation(Menu):
