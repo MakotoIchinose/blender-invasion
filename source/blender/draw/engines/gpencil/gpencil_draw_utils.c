@@ -1134,44 +1134,56 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   ToolSettings *ts = draw_ctx->scene->toolsettings;
-  const bool use_sculpt_mask = (GPENCIL_SCULPT_MODE(gpd) && (ts->gpencil_selectmode_sculpt &
-                                                             (GP_SCULPT_MASK_SELECTMODE_POINT |
-                                                              GP_SCULPT_MASK_SELECTMODE_STROKE |
-                                                              GP_SCULPT_MASK_SELECTMODE_SEGMENT)));
+  const bool is_overlay = ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
+  const bool use_sculpt_mask = (GPENCIL_SCULPT_MODE(gpd) &&
+                                GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt));
 
   const bool show_sculpt_points = (GPENCIL_SCULPT_MODE(gpd) &&
                                    (ts->gpencil_selectmode_sculpt &
                                     (GP_SCULPT_MASK_SELECTMODE_POINT |
                                      GP_SCULPT_MASK_SELECTMODE_SEGMENT)));
 
+  const bool use_vertex_mask = (GPENCIL_VERTEX_MODE(gpd) &&
+                                GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
+
+  const bool show_vertex_points = (GPENCIL_VERTEX_MODE(gpd) &&
+                                   (ts->gpencil_selectmode_vertex &
+                                    (GP_VERTEX_MASK_SELECTMODE_POINT |
+                                     GP_VERTEX_MASK_SELECTMODE_SEGMENT)));
+
   MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
 
   /* alpha factor for edit points/line to make them more subtle */
   float edit_alpha = v3d->vertex_opacity;
 
-  if (GPENCIL_ANY_EDIT_MODE(gpd)) {
+  if (GPENCIL_ANY_EDIT_MODE(gpd) || GPENCIL_VERTEX_MODE(gpd)) {
     Object *obact = DRW_context_state_get()->obact;
     if ((!obact) || (obact->type != OB_GPENCIL)) {
       return;
     }
     const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
 
-    /* If Sculpt mode and the mask is disabled, the select must be hidden. */
-    const bool hide_select = (GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask);
+    /* If Sculpt/Vertex mode and the mask is disabled, the select must be hidden. */
+    const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
+                              (GPENCIL_VERTEX_MODE(gpd) && !use_vertex_mask));
 
     /* Show Edit points if:
      *  Edit mode: Not in Stroke selection mode
      *  Sculpt mode: Not in Stroke mask mode and any other mask mode enabled
      *  Weight mode: Always
      */
-    const bool show_points = (show_sculpt_points) || (is_weight_paint) ||
+    const bool show_points = (show_sculpt_points) || (show_vertex_points) || (is_weight_paint) ||
                              (GPENCIL_EDIT_MODE(gpd) &&
                               ((ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE) ||
                                (gps->totpoints == 1)));
 
+    if (GPENCIL_VERTEX_MODE(gpd) && (!use_vertex_mask)) {
+      return;
+    }
+
     if (cache->is_dirty) {
-      if ((obact == ob) && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
-          (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) && (gps->totpoints > 1)) {
+      if ((obact == ob) && (is_overlay) && (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) &&
+          (gps->totpoints > 1)) {
 
         /* line of the original stroke */
         gpencil_get_edlin_geom(&cache->b_edlin, gps, edit_alpha, hide_select);
@@ -1194,7 +1206,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
       }
 
       /* edit points */
-      if ((gps->flag & GP_STROKE_SELECT) || (is_weight_paint)) {
+      if (((gps->flag & GP_STROKE_SELECT) && (is_overlay)) || (is_weight_paint)) {
         if ((gpl->flag & GP_LAYER_UNLOCK_COLOR) ||
             ((gp_style->flag & GP_STYLE_COLOR_LOCKED) == 0)) {
           if (obact == ob) {
