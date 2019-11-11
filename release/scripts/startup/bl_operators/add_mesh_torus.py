@@ -22,7 +22,6 @@ from bpy.types import Operator
 
 from bpy.props import (
     BoolProperty,
-    EnumProperty,
     FloatProperty,
     IntProperty,
 )
@@ -148,7 +147,7 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
         min=3, max=256,
         default=12,
     )
-    mode: EnumProperty(
+    mode: bpy.props.EnumProperty(
         name="Torus Dimensions",
         items=(
             ('MAJOR_MINOR', "Major/Minor",

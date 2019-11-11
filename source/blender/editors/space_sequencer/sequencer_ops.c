@@ -88,8 +88,6 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_change_effect_type);
   WM_operatortype_append(SEQUENCER_OT_change_path);
 
-  WM_operatortype_append(SEQUENCER_OT_set_range_to_strips);
-
   /* sequencer_select.c */
   WM_operatortype_append(SEQUENCER_OT_select_all);
   WM_operatortype_append(SEQUENCER_OT_select);
@@ -98,7 +96,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_select_linked_pick);
   WM_operatortype_append(SEQUENCER_OT_select_linked);
   WM_operatortype_append(SEQUENCER_OT_select_handles);
-  WM_operatortype_append(SEQUENCER_OT_select_side);
+  WM_operatortype_append(SEQUENCER_OT_select_active_side);
   WM_operatortype_append(SEQUENCER_OT_select_box);
   WM_operatortype_append(SEQUENCER_OT_select_grouped);
 

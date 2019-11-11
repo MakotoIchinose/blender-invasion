@@ -24,7 +24,6 @@ extern "C" {
 #endif
 
 struct OpenSubdiv_EvaluatorInternal;
-struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
 typedef struct OpenSubdiv_Evaluator {
@@ -108,19 +107,6 @@ typedef struct OpenSubdiv_Evaluator {
                               float face_u,
                               float face_v,
                               float face_varying[2]);
-
-  // Batched evaluation of multiple input coordinates.
-
-  // Evaluate limit surface.
-  // If derivatives are NULL, they will not be evaluated.
-  //
-  // NOTE: Output arrays must point to a memory of size float[3]*num_patch_coords.
-  void (*evaluatePatchesLimit)(struct OpenSubdiv_Evaluator *evaluator,
-                               const struct OpenSubdiv_PatchCoord *patch_coords,
-                               const int num_patch_coords,
-                               float *P,
-                               float *dPdu,
-                               float *dPdv);
 
   // Internal storage for the use in this module only.
   //

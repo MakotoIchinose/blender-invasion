@@ -84,7 +84,6 @@ class AddPresetBase:
 
     def execute(self, context):
         import os
-        from bpy.utils import is_path_builtin
 
         if hasattr(self, "pre_cb"):
             self.pre_cb(context)
@@ -189,11 +188,6 @@ class AddPresetBase:
                                                  ext=ext)
 
             if not filepath:
-                return {'CANCELLED'}
-
-            # Do not remove bundled presets
-            if is_path_builtin(filepath):
-                self.report({'WARNING'}, "You can't remove the default presets")
                 return {'CANCELLED'}
 
             try:

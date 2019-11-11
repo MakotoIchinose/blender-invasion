@@ -432,7 +432,7 @@ class FILEBROWSER_MT_view(Menu):
 class FILEBROWSER_MT_select(Menu):
     bl_label = "Select"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
         layout.operator("file.select_all", text="All").action = 'SELECT'

@@ -3650,13 +3650,8 @@ static void ui_litem_estimate_box(uiLayout *litem)
   uiStyle *style = litem->root->style;
 
   ui_litem_estimate_column(litem, true);
-
-  int boxspace = style->boxspace;
-  if (litem->root->type == UI_LAYOUT_HEADER) {
-    boxspace = 0;
-  }
-  litem->w += 2 * boxspace;
-  litem->h += 2 * boxspace;
+  litem->w += 2 * style->boxspace;
+  litem->h += 2 * style->boxspace;
 }
 
 static void ui_litem_layout_box(uiLayout *litem)
@@ -3666,34 +3661,29 @@ static void ui_litem_layout_box(uiLayout *litem)
   uiBut *but;
   int w, h;
 
-  int boxspace = style->boxspace;
-  if (litem->root->type == UI_LAYOUT_HEADER) {
-    boxspace = 0;
-  }
-
   w = litem->w;
   h = litem->h;
 
-  litem->x += boxspace;
-  litem->y -= boxspace;
+  litem->x += style->boxspace;
+  litem->y -= style->boxspace;
 
   if (w != 0) {
-    litem->w -= 2 * boxspace;
+    litem->w -= 2 * style->boxspace;
   }
   if (h != 0) {
-    litem->h -= 2 * boxspace;
+    litem->h -= 2 * style->boxspace;
   }
 
   ui_litem_layout_column(litem, true);
 
-  litem->x -= boxspace;
-  litem->y -= boxspace;
+  litem->x -= style->boxspace;
+  litem->y -= style->boxspace;
 
   if (w != 0) {
-    litem->w += 2 * boxspace;
+    litem->w += 2 * style->boxspace;
   }
   if (h != 0) {
-    litem->h += 2 * boxspace;
+    litem->h += 2 * style->boxspace;
   }
 
   /* roundbox around the sublayout */

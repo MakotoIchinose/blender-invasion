@@ -543,14 +543,11 @@ class ConstraintButtonsPanel:
         col.active = con.use_bulge_min or con.use_bulge_max
         col.prop(con, "bulge_smooth", text="Smooth")
 
-        split = layout.split(factor=0.3)
-        split.label(text="Volume:")
-        row = split.row()
+        row = layout.row()
+        row.label(text="Volume:")
         row.prop(con, "volume", expand=True)
 
-        split = layout.split(factor=0.3)
-        split.label(text="Rotation:")
-        row = split.row()
+        row.label(text="Plane:")
         row.prop(con, "keep_axis", expand=True)
 
     def FLOOR(self, _context, layout, con):

@@ -102,7 +102,6 @@ using Alembic::AbcGeom::kFacevaryingScope;
 using Alembic::AbcGeom::kVaryingScope;
 using Alembic::AbcGeom::kVertexScope;
 using Alembic::AbcGeom::kWrapExisting;
-using Alembic::AbcGeom::N3fArraySample;
 using Alembic::AbcGeom::N3fArraySamplePtr;
 using Alembic::AbcGeom::UInt32ArraySample;
 
@@ -125,13 +124,12 @@ static void get_vertices(struct Mesh *mesh, std::vector<Imath::V3f> &points)
 static void get_topology(struct Mesh *mesh,
                          std::vector<int32_t> &poly_verts,
                          std::vector<int32_t> &loop_counts,
-                         bool &r_has_flat_shaded_poly)
+                         bool &r_export_loop_normals)
 {
   const int num_poly = mesh->totpoly;
   const int num_loops = mesh->totloop;
   MLoop *mloop = mesh->mloop;
   MPoly *mpoly = mesh->mpoly;
-  r_has_flat_shaded_poly = false;
 
   poly_verts.clear();
   loop_counts.clear();
@@ -143,7 +141,7 @@ static void get_topology(struct Mesh *mesh,
     MPoly &poly = mpoly[i];
     loop_counts.push_back(poly.totloop);
 
-    r_has_flat_shaded_poly |= (poly.flag & ME_SMOOTH) == 0;
+    r_export_loop_normals |= (poly.flag & ME_SMOOTH) != 0;
 
     MLoop *loop = mloop + poly.loopstart + (poly.totloop - 1);
 
@@ -179,31 +177,66 @@ static void get_creases(struct Mesh *mesh,
   lengths.resize(sharpnesses.size(), 2);
 }
 
-static void get_loop_normals(struct Mesh *mesh,
-                             std::vector<Imath::V3f> &normals,
-                             bool has_flat_shaded_poly)
+static void get_vertex_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals)
 {
   normals.clear();
+  normals.resize(mesh->totvert);
 
-  /* If all polygons are smooth shaded, and there are no custom normals, we don't need to export
-   * normals at all. This is also done by other software, see T71246. */
-  if (!has_flat_shaded_poly && !CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL)) {
-    return;
+  MVert *verts = mesh->mvert;
+  float no[3];
+
+  for (int i = 0, e = mesh->totvert; i < e; i++) {
+    normal_short_to_float_v3(no, verts[i].no);
+    copy_yup_from_zup(normals[i].getValue(), no);
   }
+}
 
-  BKE_mesh_calc_normals_split(mesh);
+static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals)
+{
+  MPoly *mp = mesh->mpoly;
+
+  MLoop *mloop = mesh->mloop;
+  MLoop *ml = mloop;
+
+  MVert *verts = mesh->mvert;
+
   const float(*lnors)[3] = static_cast<float(*)[3]>(CustomData_get_layer(&mesh->ldata, CD_NORMAL));
-  BLI_assert(lnors != NULL || !"BKE_mesh_calc_normals_split() should have computed CD_NORMAL");
 
+  normals.clear();
   normals.resize(mesh->totloop);
 
   /* NOTE: data needs to be written in the reverse order. */
   int abc_index = 0;
-  MPoly *mp = mesh->mpoly;
-  for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
-    for (int j = mp->totloop - 1; j >= 0; j--, abc_index++) {
-      int blender_index = mp->loopstart + j;
-      copy_yup_from_zup(normals[abc_index].getValue(), lnors[blender_index]);
+
+  if (lnors) {
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
+      for (int j = mp->totloop - 1; j >= 0; j--, abc_index++) {
+        int blender_index = mp->loopstart + j;
+        copy_yup_from_zup(normals[abc_index].getValue(), lnors[blender_index]);
+      }
+    }
+  }
+  else {
+    float no[3];
+
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
+      ml = mloop + mp->loopstart + (mp->totloop - 1);
+
+      /* Flat shaded, use common normal for all verts. */
+      if ((mp->flag & ME_SMOOTH) == 0) {
+        BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1), verts, no);
+
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
+          copy_yup_from_zup(normals[abc_index].getValue(), no);
+        }
+      }
+      else {
+        /* Smooth shaded, use individual vert normals. */
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
+          normal_short_to_float_v3(no, verts[ml->v].no);
+          copy_yup_from_zup(normals[abc_index].getValue(), no);
+        }
+      }
     }
   }
 }
@@ -376,10 +409,11 @@ void AbcGenericMeshWriter::writeMesh(struct Mesh *mesh)
   std::vector<Imath::V3f> points, normals;
   std::vector<int32_t> poly_verts, loop_counts;
   std::vector<Imath::V3f> velocities;
-  bool has_flat_shaded_poly = false;
+
+  bool export_loop_normals = (mesh->flag & ME_AUTOSMOOTH) != 0;
 
   get_vertices(mesh, points);
-  get_topology(mesh, poly_verts, loop_counts, has_flat_shaded_poly);
+  get_topology(mesh, poly_verts, loop_counts, export_loop_normals);
 
   if (m_first_frame && m_settings.export_face_sets) {
     writeFaceSets(mesh, m_mesh_schema);
@@ -407,11 +441,16 @@ void AbcGenericMeshWriter::writeMesh(struct Mesh *mesh)
   }
 
   if (m_settings.export_normals) {
-    get_loop_normals(mesh, normals, has_flat_shaded_poly);
+    if (export_loop_normals) {
+      get_loop_normals(mesh, normals);
+    }
+    else {
+      get_vertex_normals(mesh, normals);
+    }
 
     ON3fGeomParam::Sample normals_sample;
     if (!normals.empty()) {
-      normals_sample.setScope(kFacevaryingScope);
+      normals_sample.setScope(export_loop_normals ? kFacevaryingScope : kVertexScope);
       normals_sample.setVals(V3fArraySample(normals));
     }
 
@@ -436,10 +475,11 @@ void AbcGenericMeshWriter::writeSubD(struct Mesh *mesh)
   std::vector<Imath::V3f> points;
   std::vector<int32_t> poly_verts, loop_counts;
   std::vector<int32_t> crease_indices, crease_lengths;
-  bool has_flat_poly = false;
+
+  bool export_loop_normals = false;
 
   get_vertices(mesh, points);
-  get_topology(mesh, poly_verts, loop_counts, has_flat_poly);
+  get_topology(mesh, poly_verts, loop_counts, export_loop_normals);
   get_creases(mesh, crease_indices, crease_lengths, crease_sharpness);
 
   if (m_first_frame && m_settings.export_face_sets) {
@@ -716,6 +756,10 @@ struct AbcMeshData {
   P3fArraySamplePtr positions;
   P3fArraySamplePtr ceil_positions;
 
+  N3fArraySamplePtr vertex_normals;
+  N3fArraySamplePtr loop_normals;
+  bool poly_flag_smooth;
+
   V2fArraySamplePtr uvs;
   UInt32ArraySamplePtr uvs_indices;
 };
@@ -742,6 +786,7 @@ static void read_mverts(CDStreamConfig &config, const AbcMeshData &mesh_data)
 {
   MVert *mverts = config.mvert;
   const P3fArraySamplePtr &positions = mesh_data.positions;
+  const N3fArraySamplePtr &normals = mesh_data.vertex_normals;
 
   if (config.weight != 0.0f && mesh_data.ceil_positions != NULL &&
       mesh_data.ceil_positions->size() == positions->size()) {
@@ -749,10 +794,12 @@ static void read_mverts(CDStreamConfig &config, const AbcMeshData &mesh_data)
     return;
   }
 
-  read_mverts(mverts, positions, nullptr);
+  read_mverts(mverts, positions, normals);
 }
 
-void read_mverts(MVert *mverts, const P3fArraySamplePtr positions, const N3fArraySamplePtr normals)
+void read_mverts(MVert *mverts,
+                 const P3fArraySamplePtr &positions,
+                 const N3fArraySamplePtr &normals)
 {
   for (int i = 0; i < positions->size(); i++) {
     MVert &mvert = mverts[i];
@@ -799,9 +846,12 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
     poly.loopstart = loop_index;
     poly.totloop = face_size;
 
-    /* Polygons are always assumed to be smooth-shaded. If the Alembic mesh should be flat-shaded,
-     * this is encoded in custom loop normals. See T71246. */
-    poly.flag |= ME_SMOOTH;
+    if (mesh_data.poly_flag_smooth) {
+      poly.flag |= ME_SMOOTH;
+    }
+    else {
+      poly.flag &= ~ME_SMOOTH;
+    }
 
     /* NOTE: Alembic data is stored in the reverse order. */
     rev_loop_index = loop_index + (face_size - 1);
@@ -829,27 +879,26 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
   BKE_mesh_calc_edges(config.mesh, false, false);
 }
 
-static void process_no_normals(CDStreamConfig &config)
+static void process_normals(CDStreamConfig &config, const AbcMeshData &mesh_data)
 {
-  /* Absense of normals in the Alembic mesh is interpreted as 'smooth'. */
-  BKE_mesh_calc_normals(config.mesh);
-}
+  Mesh *mesh = config.mesh;
 
-static void process_loop_normals(CDStreamConfig &config, const N3fArraySamplePtr loop_normals_ptr)
-{
-  size_t loop_count = loop_normals_ptr->size();
-
-  if (loop_count == 0) {
-    process_no_normals(config);
+  if (!mesh_data.loop_normals) {
+    BKE_mesh_calc_normals(config.mesh);
+    /* Don't touch the ME_AUTOSMOOTH flag in this case. It can be used by artists to toggle between
+     * flat/smooth shaded when the Alembic mesh doesn't contain loop normals. */
     return;
   }
+
+  config.mesh->flag |= ME_AUTOSMOOTH;
+
+  const Alembic::AbcGeom::N3fArraySample &loop_normals = *mesh_data.loop_normals;
+  long int loop_count = loop_normals.size();
 
   float(*lnors)[3] = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(loop_count, sizeof(float[3]), "ABC::FaceNormals"));
 
-  Mesh *mesh = config.mesh;
   MPoly *mpoly = mesh->mpoly;
-  const N3fArraySample &loop_normals = *loop_normals_ptr;
   int abc_index = 0;
   for (int i = 0, e = mesh->totpoly; i < e; i++, mpoly++) {
     /* As usual, ABC orders the loops in reverse. */
@@ -858,61 +907,9 @@ static void process_loop_normals(CDStreamConfig &config, const N3fArraySamplePtr
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
   }
-
-  mesh->flag |= ME_AUTOSMOOTH;
-  BKE_mesh_set_custom_normals(mesh, lnors);
+  BKE_mesh_set_custom_normals(config.mesh, lnors);
 
   MEM_freeN(lnors);
-}
-
-static void process_vertex_normals(CDStreamConfig &config,
-                                   const N3fArraySamplePtr vertex_normals_ptr)
-{
-  size_t normals_count = vertex_normals_ptr->size();
-  if (normals_count == 0) {
-    process_no_normals(config);
-    return;
-  }
-
-  float(*vnors)[3] = static_cast<float(*)[3]>(
-      MEM_malloc_arrayN(normals_count, sizeof(float[3]), "ABC::VertexNormals"));
-
-  const N3fArraySample &vertex_normals = *vertex_normals_ptr;
-  for (int index = 0; index < normals_count; index++) {
-    copy_zup_from_yup(vnors[index], vertex_normals[index].getValue());
-  }
-
-  config.mesh->flag |= ME_AUTOSMOOTH;
-  BKE_mesh_set_custom_normals_from_vertices(config.mesh, vnors);
-  MEM_freeN(vnors);
-}
-
-static void process_normals(CDStreamConfig &config,
-                            const IN3fGeomParam &normals,
-                            const ISampleSelector &selector)
-{
-  if (!normals.valid()) {
-    process_no_normals(config);
-    return;
-  }
-
-  IN3fGeomParam::Sample normsamp = normals.getExpandedValue(selector);
-  Alembic::AbcGeom::GeometryScope scope = normals.getScope();
-
-  switch (scope) {
-    case Alembic::AbcGeom::kFacevaryingScope:  // 'Vertex Normals' in Houdini.
-      process_loop_normals(config, normsamp.getVals());
-      break;
-    case Alembic::AbcGeom::kVertexScope:
-    case Alembic::AbcGeom::kVaryingScope:  // 'Point Normals' in Houdini.
-      process_vertex_normals(config, normsamp.getVals());
-      break;
-    case Alembic::AbcGeom::kConstantScope:
-    case Alembic::AbcGeom::kUniformScope:
-    case Alembic::AbcGeom::kUnknownScope:
-      process_no_normals(config);
-      break;
-  }
 }
 
 ABC_INLINE void read_uvs_params(CDStreamConfig &config,
@@ -942,6 +939,34 @@ ABC_INLINE void read_uvs_params(CDStreamConfig &config,
 
     void *cd_ptr = config.add_customdata_cb(config.mesh, name.c_str(), CD_MLOOPUV);
     config.mloopuv = static_cast<MLoopUV *>(cd_ptr);
+  }
+}
+
+ABC_INLINE void read_normals_params(AbcMeshData &abc_data,
+                                    const IN3fGeomParam &normals,
+                                    const ISampleSelector &selector)
+{
+  if (!normals.valid()) {
+    return;
+  }
+
+  IN3fGeomParam::Sample normsamp = normals.getExpandedValue(selector);
+
+  Alembic::AbcGeom::GeometryScope scope = normals.getScope();
+  switch (scope) {
+    case Alembic::AbcGeom::kFacevaryingScope:
+      abc_data.loop_normals = normsamp.getVals();
+      break;
+    case Alembic::AbcGeom::kVertexScope:
+    case Alembic::AbcGeom::kVaryingScope:
+      /* Vertex normals from ABC aren't handled for now. */
+      abc_data.poly_flag_smooth = true;
+      abc_data.vertex_normals = N3fArraySamplePtr();
+      break;
+    case Alembic::AbcGeom::kConstantScope:
+    case Alembic::AbcGeom::kUniformScope:
+    case Alembic::AbcGeom::kUnknownScope:
+      break;
   }
 }
 
@@ -995,6 +1020,12 @@ static void read_mesh_sample(const std::string &iobject_full_name,
   abc_mesh_data.face_indices = sample.getFaceIndices();
   abc_mesh_data.positions = sample.getPositions();
 
+  /* The auto-smoothing flag can be used by artists when the Alembic file does not contain custom
+   * loop normals. Auto-smoothing only works when polys are marked as smooth. */
+  abc_mesh_data.poly_flag_smooth = (config.mesh->flag & ME_AUTOSMOOTH);
+
+  read_normals_params(abc_mesh_data, schema.getNormalsParam(), selector);
+
   get_weight_and_index(config, schema.getTimeSampling(), schema.getNumSamples());
 
   if (config.weight != 0.0f) {
@@ -1013,7 +1044,7 @@ static void read_mesh_sample(const std::string &iobject_full_name,
 
   if ((settings->read_flag & MOD_MESHSEQ_READ_POLY) != 0) {
     read_mpolys(config, abc_mesh_data);
-    process_normals(config, schema.getNormalsParam(), selector);
+    process_normals(config, abc_mesh_data);
   }
 
   if ((settings->read_flag & (MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)) != 0) {
@@ -1285,6 +1316,8 @@ static void read_subd_sample(const std::string &iobject_full_name,
   AbcMeshData abc_mesh_data;
   abc_mesh_data.face_counts = sample.getFaceCounts();
   abc_mesh_data.face_indices = sample.getFaceIndices();
+  abc_mesh_data.vertex_normals = N3fArraySamplePtr();
+  abc_mesh_data.loop_normals = N3fArraySamplePtr();
   abc_mesh_data.positions = sample.getPositions();
 
   get_weight_and_index(config, schema.getTimeSampling(), schema.getNumSamples());
@@ -1306,9 +1339,12 @@ static void read_subd_sample(const std::string &iobject_full_name,
   if ((settings->read_flag & MOD_MESHSEQ_READ_POLY) != 0) {
     /* Alembic's 'SubD' scheme is used to store subdivision surfaces, i.e. the pre-subdivision
      * mesh. Currently we don't add a subdivision modifier when we load such data. This code is
-     * assuming that the subdivided surface should be smooth. */
+     * assuming that the subdivided surface should be smooth, and sets a flag that will eventually
+     * mark all polygons as such. */
+    abc_mesh_data.poly_flag_smooth = true;
+
     read_mpolys(config, abc_mesh_data);
-    process_no_normals(config);
+    process_normals(config, abc_mesh_data);
   }
 
   if ((settings->read_flag & (MOD_MESHSEQ_READ_UV | MOD_MESHSEQ_READ_COLOR)) != 0) {

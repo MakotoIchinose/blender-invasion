@@ -389,20 +389,11 @@ if(WITH_CYCLES_CUDA_BINARIES)
   set(cuda_cubins)
 
   macro(CYCLES_CUDA_KERNEL_ADD arch prev_arch name flags sources experimental)
-    if(${arch} MATCHES "compute_.*")
-      set(format "ptx")
-    else()
-      set(format "cubin")
-    endif()
-    set(cuda_file ${name}_${arch}.${format})
+    set(cuda_cubin ${name}_${arch}.cubin)
 
     set(kernel_sources ${sources})
     if(NOT ${prev_arch} STREQUAL "none")
-      if(${prev_arch} MATCHES "compute_.*")
-        set(kernel_sources ${kernel_sources} ${name}_${prev_arch}.ptx)
-      else()
-        set(kernel_sources ${kernel_sources} ${name}_${prev_arch}.cubin)
-      endif()
+      set(kernel_sources ${kernel_sources} ${name}_${prev_arch}.cubin)
     endif()
 
     set(cuda_kernel_src "/kernels/cuda/${name}.cu")
@@ -415,7 +406,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
       -I ${CMAKE_CURRENT_SOURCE_DIR}/..
       -I ${CMAKE_CURRENT_SOURCE_DIR}/kernels/cuda
       --use_fast_math
-      -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+      -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_cubin})
 
     if(${experimental})
       set(cuda_flags ${cuda_flags} -D __KERNEL_EXPERIMENTAL__)
@@ -449,21 +440,20 @@ if(WITH_CYCLES_CUDA_BINARIES)
             -v
             -cuda-toolkit-dir "${CUDA_TOOLKIT_ROOT_DIR}"
         DEPENDS ${kernel_sources} cycles_cubin_cc)
-      set(cuda_file ${cuda_cubin})
     else()
       add_custom_command(
-        OUTPUT ${cuda_file}
+        OUTPUT ${cuda_cubin}
         COMMAND ${CUDA_NVCC_EXECUTABLE}
             -arch=${arch}
             ${CUDA_NVCC_FLAGS}
-            --${format}
+            --cubin
             ${CMAKE_CURRENT_SOURCE_DIR}${cuda_kernel_src}
             --ptxas-options="-v"
             ${cuda_flags}
         DEPENDS ${kernel_sources})
     endif()
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${cuda_file}" ${CYCLES_INSTALL_PATH}/lib)
-    list(APPEND cuda_cubins ${cuda_file})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${cuda_cubin}" ${CYCLES_INSTALL_PATH}/lib)
+    list(APPEND cuda_cubins ${cuda_cubin})
 
     unset(cuda_debug_flags)
   endmacro()
