@@ -293,7 +293,7 @@ class BaseCodeSigner(metaclass=abc.ABCMeta):
         if not files:
             logger_builder.info('No files to be signed, ignoring.')
             return
-        logger_builder.info('Found %d files to sign.', {len(files)})
+        logger_builder.info('Found %d files to sign.', len(files))
 
         pack_files(files=files,
                    archive_filepath=self.unsigned_archive_info.archive_filepath)
