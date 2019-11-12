@@ -1402,6 +1402,21 @@ class _defs_gpencil_paint:
 
     @ToolDef.from_fn
     def eyedropper():
+        def draw_settings(context, layout, _tool):
+            props = _tool.operator_properties("ui.eyedropper_gpencil_color")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", expand=True)
+            if props.mode == 'PALETTE':
+                ts = context.scene.tool_settings
+                gpencil_paint = ts.gpencil_paint
+                row = layout.row(align=True)
+                row.template_ID(gpencil_paint, "palette", new="palette.new")
+                row = layout.row(align=True)
+                row.popover(
+                    panel="TOPBAR_PT_gpencil_eyedropper",
+                    text="Palette",
+                )
         return dict(
             idname="builtin.eyedropper",
             label="Eyedropper",
@@ -1409,6 +1424,7 @@ class _defs_gpencil_paint:
             cursor='EYEDROPPER',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
 

@@ -39,6 +39,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 
 #include "UI_interface.h"
@@ -65,6 +66,8 @@ typedef struct EyedropperGPencil {
   struct ColorManagedDisplay *display;
   /** color under cursor RGB */
   float color[3];
+  /** Mode */
+  int mode;
 } EyedropperGPencil;
 
 /* Helper: Draw status message while the user is running the operator */
@@ -89,6 +92,7 @@ static bool eyedropper_gpencil_init(bContext *C, wmOperator *op)
   display_device = scene->display_settings.display_device;
   eye->display = IMB_colormanagement_display_get_named(display_device);
 
+  eye->mode = RNA_enum_get(op->ptr, "mode");
   return true;
 }
 
@@ -101,30 +105,14 @@ static void eyedropper_gpencil_exit(bContext *C, wmOperator *op)
   MEM_SAFE_FREE(op->customdata);
 }
 
-/* Set the material. */
-static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, EyedropperGPencil *eye)
+static void eyedropper_add_material(
+    bContext *C, float col_conv[4], const bool only_stroke, const bool only_fill, const bool both)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
   Material *ma = NULL;
 
-  const bool only_stroke = ((!event->ctrl) && (!event->shift));
-  const bool only_fill = ((!event->ctrl) && (event->shift));
-  const bool both = ((event->ctrl) && (event->shift));
-
-  float col_conv[4];
   bool found = false;
-
-  /* Convert from linear rgb space to display space because grease pencil colors are in display
-   *  space, and this conversion is needed to undo the conversion to linear performed by
-   *  eyedropper_color_sample_fl. */
-  if (eye->display) {
-    copy_v3_v3(col_conv, eye->color);
-    IMB_colormanagement_scene_linear_to_display_v3(col_conv, eye->display);
-  }
-  else {
-    copy_v3_v3(col_conv, eye->color);
-  }
 
   /* Look for a similar material in grease pencil slots. */
   short *totcol = give_totcolp(ob);
@@ -201,6 +189,69 @@ static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, Eyed
   }
   /* Push undo for new created material. */
   ED_undo_push(C, "Add Grease Pencil Material");
+}
+
+/* Create a new palette color and palette if needed. */
+static void eyedropper_add_palette_color(bContext *C, float col_conv[4])
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+  GpPaint *gp_paint = ts->gp_paint;
+  GpVertexPaint *gp_vertexpaint = ts->gp_vertexpaint;
+  Paint *paint = &gp_paint->paint;
+  Paint *vertexpaint = &gp_vertexpaint->paint;
+
+  /* Check for Palette in Draw and Vertex Paint Mode. */
+  if (paint->palette == NULL) {
+    paint->palette = BKE_palette_add(bmain, "Grease Pencil");
+    if (vertexpaint->palette == NULL) {
+      vertexpaint->palette = paint->palette;
+    }
+  }
+  /* Check if the color exist already. */
+  Palette *palette = paint->palette;
+  for (PaletteColor *palcolor = palette->colors.first; palcolor; palcolor = palcolor->next) {
+    if (compare_v3v3(palcolor->rgb, col_conv, 0.01f)) {
+      return;
+    }
+  }
+
+  /* Create Colors. */
+  PaletteColor *palcol = BKE_palette_color_add(palette);
+  if (palcol) {
+    copy_v3_v3(palcol->rgb, col_conv);
+  }
+}
+
+/* Set the material or the palette color. */
+static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, EyedropperGPencil *eye)
+{
+
+  const bool only_stroke = ((!event->ctrl) && (!event->shift));
+  const bool only_fill = ((!event->ctrl) && (event->shift));
+  const bool both = ((event->ctrl) && (event->shift));
+
+  float col_conv[4];
+
+  /* Convert from linear rgb space to display space because grease pencil colors are in display
+   *  space, and this conversion is needed to undo the conversion to linear performed by
+   *  eyedropper_color_sample_fl. */
+  if (eye->display) {
+    copy_v3_v3(col_conv, eye->color);
+    IMB_colormanagement_scene_linear_to_display_v3(col_conv, eye->display);
+  }
+  else {
+    copy_v3_v3(col_conv, eye->color);
+  }
+
+  /* Add material or Palette color*/
+  if (eye->mode == 0) {
+    eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
+  }
+  else {
+    eyedropper_add_palette_color(C, col_conv);
+  }
 }
 
 /* Sample the color below cursor. */
@@ -307,6 +358,12 @@ static bool eyedropper_gpencil_poll(bContext *C)
 
 void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot)
 {
+  static const EnumPropertyItem items_mode[] = {
+      {0, "MATERIAL", 0, "Material", ""},
+      {1, "PALETTE", 0, "Palette", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   /* identifiers */
   ot->name = "Grease Pencil Eyedropper";
   ot->idname = "UI_OT_eyedropper_gpencil_color";
@@ -321,4 +378,7 @@ void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* properties */
+  ot->prop = RNA_def_enum(ot->srna, "mode", items_mode, 0, "Mode", "");
 }
