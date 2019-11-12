@@ -799,6 +799,7 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob->data;
   const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+  const bool is_vertex_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_VERTEXMODE);
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   int vgindex = ob->actdef - 1;
@@ -823,11 +824,19 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
 
   /* for now, we assume that the base color of the points is not too close to the real color */
   float selectColor[4];
-  UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, selectColor);
-  selectColor[3] = alpha;
-
   float unselectColor[4];
-  UI_GetThemeColor3fv(TH_GP_VERTEX, unselectColor);
+  if (!is_vertex_paint) {
+    UI_GetThemeColor3fv(TH_GP_VERTEX_SELECT, selectColor);
+    UI_GetThemeColor3fv(TH_GP_VERTEX, unselectColor);
+  }
+  else {
+    UI_GetThemeColor3fv(TH_ACTIVE_VERT, selectColor);
+    UI_GetThemeColor3fv(TH_VERTEX, unselectColor);
+    /* Make smaller */
+    vsize *= 0.8f;
+    bsize *= 0.8f;
+  }
+  selectColor[3] = alpha;
   unselectColor[3] = alpha;
 
   float linecolor[4];
@@ -865,6 +874,17 @@ void gpencil_get_edit_geom(struct GpencilBatchCacheElem *be,
       selectColor[3] = 1.0f;
       copy_v4_v4(fcolor, selectColor);
       fsize = vsize;
+    }
+    /* weight paint */
+    else if (is_vertex_paint) {
+      if (pt->flag & GP_SPOINT_SELECT) {
+        copy_v4_v4(fcolor, selectColor);
+        fsize = vsize;
+      }
+      else {
+        copy_v4_v4(fcolor, unselectColor);
+        fsize = bsize;
+      }
     }
     else {
       if (show_direction_hint && i == 0) {
