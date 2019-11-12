@@ -1294,7 +1294,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
   if (!MAIN_VERSION_ATLEAST(bmain, 282, 2)) {
     /* Init all Vertex Paint brushes. */
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-      BKE_brush_gpencil_presets(bmain, scene->toolsettings);
+      BKE_brush_gpencil_vertex_presets(bmain, scene->toolsettings);
 
       /* Ensure new Vertex Paint mode. */
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_GPENCIL_VERTEX);

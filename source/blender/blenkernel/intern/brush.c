@@ -273,7 +273,7 @@ static Brush *gpencil_brush_ensure(
   return brush;
 }
 
-/* create a set of grease pencil presets. */
+/* Create a set of grease pencil Drawing presets. */
 void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 {
 #define SMOOTH_STROKE_RADIUS 40
@@ -281,9 +281,8 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 #define ACTIVE_SMOOTH 0.35f
 
   Paint *paint = &ts->gp_paint->paint;
-  Paint *vertexpaint = &ts->gp_vertexpaint->paint;
 
-  Brush *brush, *deft_draw, *deft_vertex;
+  Brush *brush, *deft_draw;
   CurveMapping *custom_curve;
   bool new_brush = false;
   /* Airbrush brush. */
@@ -663,7 +662,21 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
     zero_v3(brush->secondary_rgb);
   }
-  /* Vertex Paint Brushes. */
+  /* Set default Draw brush. */
+  BKE_paint_brush_set(paint, deft_draw);
+}
+
+/* Create a set of grease pencil Vertex Paint presets. */
+void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
+{
+#define SMOOTH_STROKE_RADIUS 40
+#define SMOOTH_STROKE_FACTOR 0.9f
+#define ACTIVE_SMOOTH 0.35f
+
+  Paint *vertexpaint = &ts->gp_vertexpaint->paint;
+
+  Brush *brush, *deft_vertex;
+  bool new_brush = false;
   /* Vertex Draw brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Vertex Draw", OB_MODE_VERTEX_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_VERTEX_DRAW;
@@ -733,9 +746,6 @@ void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
 
   /* Set default Vertex brush. */
   BKE_paint_brush_set(vertexpaint, deft_vertex);
-
-  /* Set default Draw brush. */
-  BKE_paint_brush_set(paint, deft_draw);
 }
 
 struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mode)
