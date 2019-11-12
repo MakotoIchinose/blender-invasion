@@ -90,15 +90,18 @@ def cmake_build(builder):
     # CMake build
     os.chdir(builder.build_dir)
 
-    # NOTE: On platforms where CPack is used for producing the final bundle
-    # install target is NOT to be used. This is because install target will
-    # ask codesign server to sign executables in the installation folder.
-    # Since CPack runs install target for its own needs to its own location
-    # building install target here would mean double amount of work for
-    # signing. While this isn't really bad, it could spend quite a bit of
-    # time once notarization server is involved.
+    # NOTE: CPack will build an INSTALL target, which would mean that code
+    # signing will happen twice when using `make install` and CPack.
+    # The tricky bit here is that it is not possible to know whether INSTALL
+    # target is used by CPack or by a buildbot itaself. Extra level on top of
+    # this is that on Windows it is required to build INSTALL target in order
+    # to have unit test binaries to run.
+    # So on the one hand we do an extra unneeded code sign on Windows, but on
+    # a positive side we don't add complexity and don't make build process more
+    # fragile trying to avoid this. The signing process is way faster than just
+    # a clean build of buildbot, especially with regression tests enabled.
     if builder.platform == 'win':
-        command = ['cmake', '--build', '.', '--target', 'ALL_BUILD', '--config', 'Release']
+        command = ['cmake', '--build', '.', '--target', 'install', '--config', 'Release']
     else:
         command = ['make', '-s', '-j2', 'install']
 
