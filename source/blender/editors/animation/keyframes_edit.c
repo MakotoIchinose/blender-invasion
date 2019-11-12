@@ -501,10 +501,16 @@ void ANIM_editkeyframes_refresh(bAnimContext *ac)
       ok |= KEYFRAME_OK_KEY; \
 \
     if (ked && (ked->iterflags & KEYFRAME_ITER_INCL_HANDLES)) { \
-      if (check(0)) \
-        ok |= KEYFRAME_OK_H1; \
-      if (check(2)) \
-        ok |= KEYFRAME_OK_H2; \
+      /* Only act on visible items, so check handle visiblity state. */ \
+      const bool handles_visible = ((ked->iterflags & KEYFRAME_ITER_HANDLES_DEFAULT_HIDDEN) ? \
+                                        (BEZT_ISSEL_ANY(bezt)) : \
+                                        true); \
+      if (handles_visible) { \
+        if (check(0)) \
+          ok |= KEYFRAME_OK_H1; \
+        if (check(2)) \
+          ok |= KEYFRAME_OK_H2; \
+      } \
     } \
   } \
   (void)0
@@ -1447,8 +1453,13 @@ KeyframeEditFunc ANIM_editkeyframes_easing(short mode)
 
 static short select_bezier_add(KeyframeEditData *ked, BezTriple *bezt)
 {
+  /* Only act on visible items, so check handle visiblity state. */
+  const bool handles_visible = ked && ((ked->iterflags & KEYFRAME_ITER_HANDLES_DEFAULT_HIDDEN) ?
+                                           (BEZT_ISSEL_ANY(bezt)) :
+                                           true);
+
   /* if we've got info on what to select, use it, otherwise select all */
-  if ((ked) && (ked->iterflags & KEYFRAME_ITER_INCL_HANDLES)) {
+  if ((ked) && (ked->iterflags & KEYFRAME_ITER_INCL_HANDLES) && handles_visible) {
     if (ked->curflags & KEYFRAME_OK_KEY) {
       bezt->f2 |= SELECT;
     }
@@ -1468,8 +1479,13 @@ static short select_bezier_add(KeyframeEditData *ked, BezTriple *bezt)
 
 static short select_bezier_subtract(KeyframeEditData *ked, BezTriple *bezt)
 {
+  /* Only act on visible items, so check handle visiblity state. */
+  const bool handles_visible = ked && ((ked->iterflags & KEYFRAME_ITER_HANDLES_DEFAULT_HIDDEN) ?
+                                           (BEZT_ISSEL_ANY(bezt)) :
+                                           true);
+
   /* if we've got info on what to deselect, use it, otherwise deselect all */
-  if ((ked) && (ked->iterflags & KEYFRAME_ITER_INCL_HANDLES)) {
+  if ((ked) && (ked->iterflags & KEYFRAME_ITER_INCL_HANDLES) && handles_visible) {
     if (ked->curflags & KEYFRAME_OK_KEY) {
       bezt->f2 &= ~SELECT;
     }

@@ -141,6 +141,10 @@ typedef enum eKeyframeIterFlags {
 
   /* Perform NLA time remapping (global -> strip) for the "f2" parameter */
   KED_F2_NLA_UNMAP = (1 << 2),
+
+  /* By default, the handles iterated over will be hidden. Additional checks are needed to get the
+   * actual visibility state. */
+  KEYFRAME_ITER_HANDLES_DEFAULT_HIDDEN = (1 << 3),
 } eKeyframeIterFlags;
 
 /* --- Generic Properties for Keyframe Edit Tools ----- */

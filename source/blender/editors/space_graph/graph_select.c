@@ -552,6 +552,10 @@ static void box_select_graphkeys(bAnimContext *ac,
     ked.data = &scaled_rectf;
   }
 
+  if (sipo->flag & SIPO_SELVHANDLESONLY) {
+    ked.iterflags |= KEYFRAME_ITER_HANDLES_DEFAULT_HIDDEN;
+  }
+
   /* treat handles separately? */
   if (incl_handles) {
     ked.iterflags |= KEYFRAME_ITER_INCL_HANDLES;
