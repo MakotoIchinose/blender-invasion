@@ -113,7 +113,6 @@ class AbstractHierarchyIterator {
   virtual ~AbstractHierarchyIterator();
 
   void iterate();
-  const WriterMap &writer_map() const;
   void release_writers();
 
   virtual std::string get_id_name(const ID *id) const;
