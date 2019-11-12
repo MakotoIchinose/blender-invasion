@@ -11,10 +11,10 @@ struct Object;
 class USDHierarchyIterator;
 
 struct USDExporterContext {
-  Depsgraph *depsgraph;
-  pxr::UsdStageRefPtr stage;
-  pxr::SdfPath usd_path;
-  USDHierarchyIterator *hierarchy_iterator;
+  const Depsgraph *depsgraph;
+  const pxr::UsdStageRefPtr stage;
+  const pxr::SdfPath usd_path;
+  const USDHierarchyIterator *hierarchy_iterator;
   const USDExportParams &export_params;
 };
 
