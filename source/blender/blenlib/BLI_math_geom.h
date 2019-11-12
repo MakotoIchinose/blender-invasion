@@ -97,10 +97,10 @@ bool is_quad_convex_v3(const float v1[3], const float v2[3], const float v3[3], 
 bool is_quad_convex_v2(const float v1[2], const float v2[2], const float v3[2], const float v4[2]);
 bool is_poly_convex_v2(const float verts[][2], unsigned int nr);
 int is_quad_flip_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
-bool is_quad_flip_v3_first_third_fast(const float v0[3],
-                                      const float v1[3],
+bool is_quad_flip_v3_first_third_fast(const float v1[3],
                                       const float v2[3],
-                                      const float v3[3]);
+                                      const float v3[3],
+                                      const float v4[3]);
 
 /********************************* Distance **********************************/
 
@@ -311,7 +311,13 @@ bool isect_line_line_strict_v3(const float v1[3],
                                const float v4[3],
                                float vi[3],
                                float *r_lambda);
-
+bool isect_ray_ray_epsilon_v3(const float ray_origin_a[3],
+                              const float ray_direction_a[3],
+                              const float ray_origin_b[3],
+                              const float ray_direction_b[3],
+                              const float epsilon,
+                              float *r_lambda_a,
+                              float *r_lambda_b);
 bool isect_ray_ray_v3(const float ray_origin_a[3],
                       const float ray_direction_a[3],
                       const float ray_origin_b[3],

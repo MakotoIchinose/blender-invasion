@@ -429,7 +429,7 @@ static void bone_children_clear_transflag(int mode, short around, ListBase *lb)
       bone->flag |= BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
+      bone->flag &= ~BONE_TRANSFORM;
     }
 
     bone_children_clear_transflag(mode, around, &bone->childbase);
@@ -455,14 +455,14 @@ int count_set_pose_transflags(Object *ob,
         bone->flag |= BONE_TRANSFORM;
       }
       else {
-        bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
+        bone->flag &= ~BONE_TRANSFORM;
       }
 
       bone->flag &= ~BONE_HINGE_CHILD_TRANSFORM;
       bone->flag &= ~BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
+      bone->flag &= ~BONE_TRANSFORM;
     }
   }
 
@@ -1542,8 +1542,8 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
     }
 
     for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
-      if (pchan->bone->flag & (BONE_TRANSFORM | BONE_TRANSFORM_MIRROR)) {
-
+      if ((pchan->bone->flag & BONE_TRANSFORM) ||
+          ((pose->flag & POSE_MIRROR_EDIT) && (pchan->bone->flag & BONE_TRANSFORM_MIRROR))) {
         ListBase dsources = {NULL, NULL};
 
         /* clear any 'unkeyed' flag it may have */
@@ -2237,9 +2237,10 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
     /* Update motion paths once for all transformed bones in an object. */
     GSetIterator gs_iter;
     GSET_ITER (gs_iter, motionpath_updates) {
-      bool current_frame_only = canceled;
+      const ePosePathCalcRange range = canceled ? POSE_PATH_CALC_RANGE_CURRENT_FRAME :
+                                                  POSE_PATH_CALC_RANGE_CHANGED;
       ob = BLI_gsetIterator_getKey(&gs_iter);
-      ED_pose_recalculate_paths(C, t->scene, ob, current_frame_only);
+      ED_pose_recalculate_paths(C, t->scene, ob, range);
     }
     BLI_gset_free(motionpath_updates, NULL);
   }
@@ -2250,7 +2251,7 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
     /* pass */
   }
   else if ((t->view_layer->basact) && (ob = t->view_layer->basact->object) &&
-           (ob->mode & OB_MODE_PARTICLE_EDIT) && PE_get_current(t->scene, ob)) {
+           (ob->mode & OB_MODE_PARTICLE_EDIT) && PE_get_current(t->depsgraph, t->scene, ob)) {
     /* do nothing */
   }
   else if (t->flag & T_CURSOR) {
@@ -2320,8 +2321,9 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
     if (motionpath_update) {
       /* Update motion paths once for all transformed objects. */
-      bool current_frame_only = canceled;
-      ED_objects_recalculate_paths(C, t->scene, current_frame_only);
+      const eObjectPathCalcRange range = canceled ? OBJECT_PATH_CALC_RANGE_CURRENT_FRAME :
+                                                    OBJECT_PATH_CALC_RANGE_CHANGED;
+      ED_objects_recalculate_paths(C, t->scene, range);
     }
   }
 
@@ -2389,7 +2391,6 @@ void createTransData(bContext *C, TransInfo *t)
   /* if tests must match recalcData for correct updates */
   if (t->options & CTX_CURSOR) {
     t->flag |= T_CURSOR;
-    t->obedit_type = -1;
 
     if (t->spacetype == SPACE_IMAGE) {
       createTransCursor_image(t);
@@ -2399,13 +2400,12 @@ void createTransData(bContext *C, TransInfo *t)
     }
     countAndCleanTransDataContainer(t);
   }
-  else if (t->options & CTX_SCULPT) {
+  else if ((t->options & CTX_SCULPT) && !(t->options & CTX_PAINT_CURVE)) {
     createTransSculpt(t);
     countAndCleanTransDataContainer(t);
   }
   else if (t->options & CTX_TEXTURE) {
     t->flag |= T_TEXTURE;
-    t->obedit_type = -1;
 
     createTransTexspace(t);
     countAndCleanTransDataContainer(t);
@@ -2666,7 +2666,8 @@ void createTransData(bContext *C, TransInfo *t)
       }
     }
   }
-  else if (ob && (ob->mode & OB_MODE_PARTICLE_EDIT) && PE_start_edit(PE_get_current(scene, ob))) {
+  else if (ob && (ob->mode & OB_MODE_PARTICLE_EDIT) &&
+           PE_start_edit(PE_get_current(t->depsgraph, scene, ob))) {
     createTransParticleVerts(C, t);
     countAndCleanTransDataContainer(t);
     t->flag |= T_POINTS;
@@ -2723,6 +2724,9 @@ void createTransData(bContext *C, TransInfo *t)
         if (v3d->camera->id.tag & LIB_TAG_DOIT) {
           t->flag |= T_CAMERA;
         }
+      }
+      else if (v3d->ob_centre && v3d->ob_centre->id.tag & LIB_TAG_DOIT) {
+        t->flag |= T_CAMERA;
       }
     }
   }

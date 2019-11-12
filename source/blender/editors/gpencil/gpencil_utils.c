@@ -1391,7 +1391,7 @@ void ED_gpencil_add_defaults(bContext *C, Object *ob)
   /* if not exist, create a new one */
   if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
     /* create new brushes */
-    BKE_brush_gpencil_presets(C);
+    BKE_brush_gpencil_presets(bmain, ts);
   }
 
   /* ensure a color exists and is assigned to object */
@@ -1952,7 +1952,7 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
 /* helper to convert 2d to 3d for simple drawing buffer */
 static void gpencil_stroke_convertcoords(ARegion *ar,
                                          const tGPspoint *point2D,
-                                         float origin[3],
+                                         const float origin[3],
                                          float out[3])
 {
   float mval_f[2] = {(float)point2D->x, (float)point2D->y};
@@ -2084,8 +2084,8 @@ static bool gpencil_check_collision(bGPDstroke *gps,
                                     bGPDstroke **gps_array,
                                     GHash *all_2d,
                                     int totstrokes,
-                                    float p2d_a1[2],
-                                    float p2d_a2[2],
+                                    const float p2d_a1[2],
+                                    const float p2d_a2[2],
                                     float r_hit[2])
 {
   bool hit = false;
@@ -2164,7 +2164,7 @@ static void gp_copy_points(bGPDstroke *gps, bGPDspoint *pt, bGPDspoint *pt_final
 }
 
 static void gp_insert_point(
-    bGPDstroke *gps, bGPDspoint *a_pt, bGPDspoint *b_pt, float co_a[3], float co_b[3])
+    bGPDstroke *gps, bGPDspoint *a_pt, bGPDspoint *b_pt, const float co_a[3], float co_b[3])
 {
   bGPDspoint *temp_points;
   int totnewpoints, oldtotpoints;
@@ -2530,8 +2530,8 @@ void ED_gpencil_select_toggle_all(bContext *C, int action)
 
 /* Ensure the SBuffer (while drawing stroke) size is enough to save all points of the stroke */
 tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
-                                     short *buffer_size,
-                                     short *buffer_used,
+                                     int *buffer_size,
+                                     int *buffer_used,
                                      const bool clear)
 {
   tGPspoint *p = NULL;
@@ -2548,6 +2548,11 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
       *buffer_size += GP_STROKE_BUFFER_CHUNK;
       p = MEM_recallocN(buffer_array, sizeof(struct tGPspoint) * *buffer_size);
     }
+
+    if (p == NULL) {
+      *buffer_size = *buffer_used = 0;
+    }
+
     buffer_array = p;
   }
 

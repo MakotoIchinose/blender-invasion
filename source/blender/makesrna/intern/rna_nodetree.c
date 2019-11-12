@@ -1482,7 +1482,7 @@ static void rna_Node_draw_label(bNodeTree *ntree, bNode *node, char *label, int 
   node->typeinfo->ext.call(NULL, &ptr, func, &list);
 
   RNA_parameter_get_lookup(&list, "label", &ret);
-  rlabel = *(char **)ret;
+  rlabel = (char *)ret;
   BLI_strncpy(label, rlabel != NULL ? rlabel : "", maxlen);
 
   RNA_parameter_list_free(&list);
@@ -3986,7 +3986,7 @@ static void def_mix_rgb(StructRNA *srna)
   prop = RNA_def_property(srna, "blend_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_ramp_blend_items);
-  RNA_def_property_ui_text(prop, "Blend Type", "");
+  RNA_def_property_ui_text(prop, "Blending Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "use_alpha", PROP_BOOLEAN, PROP_NONE);
@@ -4431,7 +4431,7 @@ static void def_sh_tex_voronoi(StructRNA *srna)
        "DISTANCE_TO_EDGE",
        0,
        "Distance To Edge",
-       "Computes the distance to the edge of the vornoi cell"},
+       "Computes the distance to the edge of the voronoi cell"},
       {SHD_VORONOI_N_SPHERE_RADIUS,
        "N_SPHERE_RADIUS",
        0,
@@ -4862,6 +4862,19 @@ static void def_sh_uvmap(StructRNA *srna)
 
   prop = RNA_def_property(srna, "uv_map", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "UV Map", "UV coordinates to be used for mapping");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  RNA_def_struct_sdna_from(srna, "bNode", NULL);
+}
+
+static void def_sh_vertex_color(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeShaderVertexColor", "storage");
+
+  prop = RNA_def_property(srna, "layer_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Vertex Color", "Vertex Color");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   RNA_def_struct_sdna_from(srna, "bNode", NULL);
@@ -5706,7 +5719,7 @@ static void def_cmp_dilate_erode(StructRNA *srna)
   prop = RNA_def_property(srna, "distance", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "custom2");
   RNA_def_property_range(prop, -5000, 5000);
-  RNA_def_property_ui_range(prop, -100, 100, 0, -1);
+  RNA_def_property_ui_range(prop, -100, 100, 1, -1);
   RNA_def_property_ui_text(prop, "Distance", "Distance to grow/shrink (number of iterations)");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
@@ -6942,7 +6955,7 @@ static void def_cmp_boxmask(StructRNA *srna)
   prop = RNA_def_property(srna, "mask_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, node_masktype_items);
-  RNA_def_property_ui_text(prop, "Mask type", "");
+  RNA_def_property_ui_text(prop, "Mask Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   RNA_def_struct_sdna_from(srna, "NodeBoxMask", "storage");
@@ -6989,7 +7002,7 @@ static void def_cmp_ellipsemask(StructRNA *srna)
   prop = RNA_def_property(srna, "mask_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, node_masktype_items);
-  RNA_def_property_ui_text(prop, "Mask type", "");
+  RNA_def_property_ui_text(prop, "Mask Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   RNA_def_struct_sdna_from(srna, "NodeEllipseMask", "storage");
@@ -7104,7 +7117,7 @@ static void def_cmp_bokehimage(StructRNA *srna)
   RNA_def_property_float_sdna(prop, NULL, "lensshift");
   RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_range(prop, -1.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Lens shift", "Shift of the lens components");
+  RNA_def_property_ui_text(prop, "Lens Shift", "Shift of the lens components");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

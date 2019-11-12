@@ -221,7 +221,7 @@ static void square_roughness_node_insert(bNodeTree *ntree)
 static void mapping_node_order_flip(bNode *node)
 {
   /* Flip euler order of mapping shader node */
-  if (node->type == SH_NODE_MAPPING) {
+  if (node->type == SH_NODE_MAPPING && node->storage) {
     TexMapping *texmap = node->storage;
 
     float quat[4];
@@ -233,7 +233,7 @@ static void mapping_node_order_flip(bNode *node)
 static void vector_curve_node_remap(bNode *node)
 {
   /* Remap values of vector curve node from normalized to absolute values */
-  if (node->type == SH_NODE_CURVE_VEC) {
+  if (node->type == SH_NODE_CURVE_VEC && node->storage) {
     CurveMapping *mapping = node->storage;
     mapping->flag &= ~CUMA_DO_CLIP;
 
@@ -300,11 +300,11 @@ static void image_node_colorspace(bNode *node)
   }
 
   int color_space;
-  if (node->type == SH_NODE_TEX_IMAGE) {
+  if (node->type == SH_NODE_TEX_IMAGE && node->storage) {
     NodeTexImage *tex = node->storage;
     color_space = tex->color_space;
   }
-  else if (node->type == SH_NODE_TEX_ENVIRONMENT) {
+  else if (node->type == SH_NODE_TEX_ENVIRONMENT && node->storage) {
     NodeTexEnvironment *tex = node->storage;
     color_space = tex->color_space;
   }
@@ -766,7 +766,7 @@ static void update_vector_math_node_average_operator(bNodeTree *ntree)
 static void update_noise_node_dimensions(bNodeTree *ntree)
 {
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_NOISE) {
+    if (node->type == SH_NODE_TEX_NOISE && node->storage) {
       NodeTexNoise *tex = (NodeTexNoise *)node->storage;
       tex->dimensions = 3;
     }
@@ -813,10 +813,10 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       copy_v3_v3(cycles_node_socket_vector_value(sockScale), mapping->size);
 
       bNode *maximumNode = NULL;
-      if (mapping->flag & TEXMAP_CLIP_MAX) {
+      if (mapping->flag & TEXMAP_CLIP_MIN) {
         maximumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
         maximumNode->custom1 = NODE_VECTOR_MATH_MAXIMUM;
-        if (mapping->flag & TEXMAP_CLIP_MIN) {
+        if (mapping->flag & TEXMAP_CLIP_MAX) {
           maximumNode->locx = node->locx + (node->width + 20.0f) * 2.0f;
         }
         else {
@@ -824,7 +824,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
         }
         maximumNode->locy = node->locy;
         bNodeSocket *sockMaximumB = BLI_findlink(&maximumNode->inputs, 1);
-        copy_v3_v3(cycles_node_socket_vector_value(sockMaximumB), mapping->max);
+        copy_v3_v3(cycles_node_socket_vector_value(sockMaximumB), mapping->min);
         bNodeSocket *sockMappingResult = nodeFindSocket(node, SOCK_OUT, "Vector");
 
         LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
@@ -834,7 +834,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
             nodeRemLink(ntree, link);
           }
         }
-        if (!(mapping->flag & TEXMAP_CLIP_MIN)) {
+        if (!(mapping->flag & TEXMAP_CLIP_MAX)) {
           bNodeSocket *sockMaximumA = BLI_findlink(&maximumNode->inputs, 0);
           nodeAddLink(ntree, node, sockMappingResult, maximumNode, sockMaximumA);
         }
@@ -843,13 +843,13 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       }
 
       bNode *minimumNode = NULL;
-      if (mapping->flag & TEXMAP_CLIP_MIN) {
+      if (mapping->flag & TEXMAP_CLIP_MAX) {
         minimumNode = nodeAddStaticNode(NULL, ntree, SH_NODE_VECTOR_MATH);
         minimumNode->custom1 = NODE_VECTOR_MATH_MINIMUM;
         minimumNode->locx = node->locx + node->width + 20.0f;
         minimumNode->locy = node->locy;
         bNodeSocket *sockMinimumB = BLI_findlink(&minimumNode->inputs, 1);
-        copy_v3_v3(cycles_node_socket_vector_value(sockMinimumB), mapping->min);
+        copy_v3_v3(cycles_node_socket_vector_value(sockMinimumB), mapping->max);
 
         bNodeSocket *sockMinimumResult = nodeFindSocket(minimumNode, SOCK_OUT, "Vector");
         bNodeSocket *sockMappingResult = nodeFindSocket(node, SOCK_OUT, "Vector");
@@ -878,7 +878,6 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       AnimData *animData = BKE_animdata_from_id(&ntree->id);
       if (animData && animData->action) {
         char *nodePath = BLI_sprintfN("nodes[\"%s\"]", node->name);
-
         for (FCurve *fcu = animData->action->curves.first; fcu; fcu = fcu->next) {
           if (STRPREFIX(fcu->rna_path, nodePath) &&
               !BLI_str_endswith(fcu->rna_path, "default_value")) {
@@ -893,11 +892,11 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
             else if (BLI_str_endswith(old_fcu_rna_path, "scale")) {
               fcu->rna_path = BLI_sprintfN("%s.%s", nodePath, "inputs[3].default_value");
             }
-            else if (minimumNode && BLI_str_endswith(old_fcu_rna_path, "min")) {
+            else if (minimumNode && BLI_str_endswith(old_fcu_rna_path, "max")) {
               fcu->rna_path = BLI_sprintfN(
                   "nodes[\"%s\"].%s", minimumNode->name, "inputs[1].default_value");
             }
-            else if (maximumNode && BLI_str_endswith(old_fcu_rna_path, "max")) {
+            else if (maximumNode && BLI_str_endswith(old_fcu_rna_path, "min")) {
               fcu->rna_path = BLI_sprintfN(
                   "nodes[\"%s\"].%s", maximumNode->name, "inputs[1].default_value");
             }
@@ -924,7 +923,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
 static void update_musgrave_node_dimensions(bNodeTree *ntree)
 {
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_MUSGRAVE) {
+    if (node->type == SH_NODE_TEX_MUSGRAVE && node->storage) {
       NodeTexMusgrave *tex = (NodeTexMusgrave *)node->storage;
       tex->dimensions = 3;
     }
@@ -952,7 +951,7 @@ static void update_musgrave_node_color_output(bNodeTree *ntree)
 static void update_voronoi_node_dimensions(bNodeTree *ntree)
 {
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_VORONOI) {
+    if (node->type == SH_NODE_TEX_VORONOI && node->storage) {
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       tex->dimensions = 3;
     }
@@ -967,7 +966,7 @@ static void update_voronoi_node_dimensions(bNodeTree *ntree)
 static void update_voronoi_node_f3_and_f4(bNodeTree *ntree)
 {
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_VORONOI) {
+    if (node->type == SH_NODE_TEX_VORONOI && node->storage) {
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       if (ELEM(tex->feature, 2, 3)) {
         tex->feature = SHD_VORONOI_F2;
@@ -1015,7 +1014,7 @@ static void update_voronoi_node_crackle(bNodeTree *ntree)
   bool need_update = false;
 
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_VORONOI) {
+    if (node->type == SH_NODE_TEX_VORONOI && node->storage) {
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       bNodeSocket *sockDistance = nodeFindSocket(node, SOCK_OUT, "Distance");
       bNodeSocket *sockColor = nodeFindSocket(node, SOCK_OUT, "Color");
@@ -1093,12 +1092,13 @@ static void update_voronoi_node_crackle(bNodeTree *ntree)
   }
 }
 
-/* The coloring property of the Voronoi node was removed. Previously,
+/**
+ * The coloring property of the Voronoi node was removed. Previously,
  * if the coloring enum was set to Intensity (0), the voronoi distance
  * was returned in all outputs, otherwise, the Cell ID was returned.
  * Since we remapped the Fac output in update_voronoi_node_fac_output,
  * then to fix this, we relink the Color output to the Distance
- * output if coloring was set to 0, and the otherway around otherwise.
+ * output if coloring was set to 0, and the other way around otherwise.
  */
 static void update_voronoi_node_coloring(bNodeTree *ntree)
 {
@@ -1106,7 +1106,7 @@ static void update_voronoi_node_coloring(bNodeTree *ntree)
 
   LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
     bNode *node = link->fromnode;
-    if (node && node->type == SH_NODE_TEX_VORONOI) {
+    if (node && node->type == SH_NODE_TEX_VORONOI && node->storage) {
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       if (tex->coloring == 0) {
         bNodeSocket *sockColor = nodeFindSocket(node, SOCK_OUT, "Color");
@@ -1143,7 +1143,7 @@ static void update_voronoi_node_square_distance(bNodeTree *ntree)
   bool need_update = false;
 
   for (bNode *node = ntree->nodes.first; node; node = node->next) {
-    if (node->type == SH_NODE_TEX_VORONOI) {
+    if (node->type == SH_NODE_TEX_VORONOI && node->storage) {
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       bNodeSocket *sockDistance = nodeFindSocket(node, SOCK_OUT, "Distance");
       if (tex->distance == SHD_VORONOI_EUCLIDEAN &&

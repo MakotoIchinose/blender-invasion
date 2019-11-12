@@ -69,6 +69,7 @@ set(SRC
   intern/gpu_init_exit.c
   intern/gpu_material.c
   intern/gpu_matrix.c
+  intern/gpu_platform.c
   intern/gpu_primitive.c
   intern/gpu_select.c
   intern/gpu_select_pick.c
@@ -101,6 +102,7 @@ set(SRC
   GPU_legacy_stubs.h
   GPU_material.h
   GPU_matrix.h
+  GPU_platform.h
   GPU_primitive.h
   GPU_select.h
   GPU_shader.h
@@ -313,6 +315,7 @@ data_to_c_simple(shaders/material/gpu_shader_material_vector_curves.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_vector_displacement.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_vector_math.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_velvet.glsl SRC)
+data_to_c_simple(shaders/material/gpu_shader_material_vertex_color.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_volume_absorption.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_volume_info.glsl SRC)
 data_to_c_simple(shaders/material/gpu_shader_material_volume_principled.glsl SRC)
@@ -328,6 +331,8 @@ data_to_c_simple(shaders/gpu_shader_gpencil_fill_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_gpencil_fill_frag.glsl SRC)
 
 data_to_c_simple(shaders/gpu_shader_cfg_world_clip_lib.glsl SRC)
+
+data_to_c_simple(shaders/gpu_shader_common_obinfos_lib.glsl SRC)
 
 
 if(WITH_MOD_SMOKE)

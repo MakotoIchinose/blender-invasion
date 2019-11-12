@@ -101,6 +101,19 @@
 
 #define UI_MAX_PASSWORD_STR 128
 
+/**
+ * When #USER_CONTINUOUS_MOUSE is disabled or tablet input is used,
+ * Use this as a maximum soft range for mapping cursor motion to the value.
+ * Otherwise min/max of #FLT_MAX, #INT_MAX cause small adjustments to jump to large numbers.
+ *
+ * This is needed for values such as location & dimensions which don't have a meaningful min/max,
+ * Instead of mapping cursor motion to the min/max, map the motion to the click-step.
+ *
+ * This value is multiplied by the click step to calculate a range to clamp the soft-range by.
+ * See: T68130
+ */
+#define UI_DRAG_MAP_SOFT_RANGE_PIXEL_MAX 1000
+
 /* proto */
 static int ui_do_but_EXIT(bContext *C,
                           uiBut *but,
@@ -108,6 +121,7 @@ static int ui_do_but_EXIT(bContext *C,
                           const wmEvent *event);
 static bool ui_but_find_select_in_enum__cmp(const uiBut *but_a, const uiBut *but_b);
 static void ui_textedit_string_set(uiBut *but, struct uiHandleButtonData *data, const char *str);
+static void button_tooltip_timer_reset(bContext *C, uiBut *but);
 
 #ifdef USE_KEYNAV_LIMIT
 static void ui_mouse_motion_keynav_init(struct uiKeyNavLock *keynav, const wmEvent *event);
@@ -152,6 +166,13 @@ typedef enum uiHandleButtonState {
   BUTTON_STATE_WAIT_DRAG,
   BUTTON_STATE_EXIT,
 } uiHandleButtonState;
+
+typedef enum uiMenuScrollType {
+  MENU_SCROLL_UP,
+  MENU_SCROLL_DOWN,
+  MENU_SCROLL_TOP,
+  MENU_SCROLL_BOTTOM,
+} uiMenuScrollType;
 
 #ifdef USE_ALLSELECT
 
@@ -330,6 +351,10 @@ typedef struct uiHandleButtonData {
   int dragsel;
   float dragf, dragfstart;
   CBData *dragcbd;
+
+  /** Soft min/max with #UI_DRAG_MAP_SOFT_RANGE_PIXEL_MAX applied. */
+  float drag_map_soft_min;
+  float drag_map_soft_max;
 
 #ifdef USE_CONT_MOUSE_CORRECT
   /* when ungrabbing buttons which are #ui_but_is_cursor_warp(),
@@ -1061,6 +1086,9 @@ static void ui_multibut_add(uiHandleButtonData *data, uiBut *but)
   mbut_state = MEM_callocN(sizeof(*mbut_state), __func__);
   mbut_state->but = but;
   mbut_state->origvalue = ui_but_value_get(but);
+#  ifdef USE_ALLSELECT
+  mbut_state->select_others.is_copy = data->select_others.is_copy;
+#  endif
 
   BLI_linklist_prepend(&data->multi_data.mbuts, mbut_state);
 
@@ -2500,6 +2528,9 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
       break;
 
     case UI_BTYPE_BUT:
+      if (!but->optype) {
+        break;
+      }
       ui_but_copy_operator(C, but, buf, buf_max_len);
       is_buf_set = true;
       break;
@@ -3251,7 +3282,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   ui_but_update(but);
 
-  WM_cursor_modal_set(win, BC_TEXTEDITCURSOR);
+  WM_cursor_modal_set(win, WM_CURSOR_TEXT_EDIT);
 
 #ifdef WITH_INPUT_IME
   if (is_num_but == false && BLT_lang_is_ime_supported()) {
@@ -3738,8 +3769,59 @@ static void ui_numedit_begin(uiBut *but, uiHandleButtonData *data)
     softmax = but->softmax;
     softrange = softmax - softmin;
 
+    if ((but->type == UI_BTYPE_NUM) && (ui_but_is_cursor_warp(but) == false)) {
+      /* Use a minimum so we have a predictable range,
+       * otherwise some float buttons get a large range. */
+      const float value_step_float_min = 0.1f;
+      const bool is_float = ui_but_is_float(but);
+      const double value_step = is_float ? (double)(but->a1 * UI_PRECISION_FLOAT_SCALE) :
+                                           (int)but->a1;
+      const float drag_map_softrange_max = UI_DRAG_MAP_SOFT_RANGE_PIXEL_MAX * UI_DPI_FAC;
+      const float softrange_max = min_ff(
+          softrange,
+          2 * (is_float ? min_ff(value_step, value_step_float_min) *
+                              (drag_map_softrange_max / value_step_float_min) :
+                          drag_map_softrange_max));
+
+      if (softrange > softrange_max) {
+        /* Center around the value, keeping in the real soft min/max range. */
+        softmin = data->origvalue - (softrange_max / 2);
+        softmax = data->origvalue + (softrange_max / 2);
+        if (!isfinite(softmin)) {
+          softmin = (data->origvalue > 0.0f ? FLT_MAX : -FLT_MAX);
+        }
+        if (!isfinite(softmax)) {
+          softmax = (data->origvalue > 0.0f ? FLT_MAX : -FLT_MAX);
+        }
+
+        if (softmin < but->softmin) {
+          softmin = but->softmin;
+          softmax = softmin + softrange_max;
+        }
+        else if (softmax > but->softmax) {
+          softmax = but->softmax;
+          softmin = softmax - softrange_max;
+        }
+
+        /* Can happen at extreme values. */
+        if (UNLIKELY(softmin == softmax)) {
+          if (data->origvalue > 0.0) {
+            softmin = nextafterf(softmin, -FLT_MAX);
+          }
+          else {
+            softmax = nextafterf(softmax, FLT_MAX);
+          }
+        }
+
+        softrange = softmax - softmin;
+      }
+    }
+
     data->dragfstart = (softrange == 0.0f) ? 0.0f : ((float)data->value - softmin) / softrange;
     data->dragf = data->dragfstart;
+
+    data->drag_map_soft_min = softmin;
+    data->drag_map_soft_max = softmax;
   }
 
   data->dragchange = false;
@@ -3960,8 +4042,11 @@ static bool ui_do_but_extra_operator_icon(bContext *C,
   uiButExtraOpIcon *op_icon = ui_but_extra_operator_icon_mouse_over_get(but, data, event);
 
   if (op_icon) {
+    ED_region_tag_redraw(data->region);
+    button_tooltip_timer_reset(C, but);
+
     ui_but_extra_operator_icon_apply(C, but, op_icon);
-    button_activate_exit(C, but, data, false, false);
+    /* Note: 'but', 'data' may now be freed, don't access. */
     return true;
   }
 
@@ -4210,9 +4295,8 @@ static int ui_do_but_TEX(
       }
       else if (!ui_but_extra_operator_icon_mouse_over_get(but, data, event)) {
         button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
+        return WM_UI_HANDLER_BREAK;
       }
-
-      return WM_UI_HANDLER_BREAK;
     }
   }
   else if (data->state == BUTTON_STATE_TEXT_EDITING) {
@@ -4372,17 +4456,14 @@ static int ui_do_but_EXIT(bContext *C, uiBut *but, uiHandleButtonData *data, con
 }
 
 /* var names match ui_numedit_but_NUM */
-static float ui_numedit_apply_snapf(uiBut *but,
-                                    float tempf,
-                                    float softmin,
-                                    float softmax,
-                                    float softrange,
-                                    const enum eSnapType snap)
+static float ui_numedit_apply_snapf(
+    uiBut *but, float tempf, float softmin, float softmax, const enum eSnapType snap)
 {
   if (tempf == softmin || tempf == softmax || snap == SNAP_OFF) {
     /* pass */
   }
   else {
+    float softrange = softmax - softmin;
     float fac = 1.0f;
 
     if (ui_but_is_unit(but)) {
@@ -4483,7 +4564,7 @@ static bool ui_numedit_but_NUM(uiBut *but,
                                const enum eSnapType snap,
                                float fac)
 {
-  float deler, tempf, softmin, softmax, softrange;
+  float deler, tempf;
   int lvalue, temp;
   bool changed = false;
   const bool is_float = ui_but_is_float(but);
@@ -4493,17 +4574,17 @@ static bool ui_numedit_but_NUM(uiBut *but,
     return changed;
   }
 
-  softmin = but->softmin;
-  softmax = but->softmax;
-  softrange = softmax - softmin;
-
   if (ui_but_is_cursor_warp(but)) {
+    const float softmin = but->softmin;
+    const float softmax = but->softmax;
+    const float softrange = softmax - softmin;
+
     /* Mouse location isn't screen clamped to the screen so use a linear mapping
      * 2px == 1-int, or 1px == 1-ClickStep */
     if (is_float) {
       fac *= 0.01f * but->a1;
       tempf = (float)data->startvalue + ((float)(mx - data->dragstartx) * fac);
-      tempf = ui_numedit_apply_snapf(but, tempf, softmin, softmax, softrange, snap);
+      tempf = ui_numedit_apply_snapf(but, tempf, softmin, softmax, snap);
 
 #if 1 /* fake moving the click start, nicer for dragging back after passing the limit */
       if (tempf < softmin) {
@@ -4561,6 +4642,11 @@ static bool ui_numedit_but_NUM(uiBut *but,
     data->draglastx = mx;
   }
   else {
+    /* Use 'but->softmin', 'but->softmax' when clamping values. */
+    const float softmin = data->drag_map_soft_min;
+    const float softmax = data->drag_map_soft_max;
+    const float softrange = softmax - softmin;
+
     float non_linear_range_limit;
     float non_linear_pixel_map;
     float non_linear_scale;
@@ -4606,16 +4692,22 @@ static bool ui_numedit_but_NUM(uiBut *but,
 
     data->dragf += (((float)(mx - data->draglastx)) / deler) * non_linear_scale;
 
-    CLAMP(data->dragf, 0.0f, 1.0f);
+    if (but->softmin == softmin) {
+      CLAMP_MIN(data->dragf, 0.0f);
+    }
+    if (but->softmax == softmax) {
+      CLAMP_MAX(data->dragf, 1.0f);
+    }
+
     data->draglastx = mx;
     tempf = (softmin + data->dragf * softrange);
 
     if (!is_float) {
       temp = round_fl_to_int(tempf);
 
-      temp = ui_numedit_apply_snap(temp, softmin, softmax, snap);
+      temp = ui_numedit_apply_snap(temp, but->softmin, but->softmax, snap);
 
-      CLAMP(temp, softmin, softmax);
+      CLAMP(temp, but->softmin, but->softmax);
       lvalue = (int)data->value;
 
       if (temp != lvalue) {
@@ -4626,9 +4718,9 @@ static bool ui_numedit_but_NUM(uiBut *but,
     }
     else {
       temp = 0;
-      tempf = ui_numedit_apply_snapf(but, tempf, softmin, softmax, softrange, snap);
+      tempf = ui_numedit_apply_snapf(but, tempf, but->softmin, but->softmax, snap);
 
-      CLAMP(tempf, softmin, softmax);
+      CLAMP(tempf, but->softmin, but->softmax);
 
       if (tempf != (float)data->value) {
         data->dragchange = true;
@@ -4679,7 +4771,7 @@ static void ui_numedit_set_active(uiBut *but)
     }
     else {
       if (data->changed_cursor == false) {
-        WM_cursor_modal_set(data->window, CURSOR_X_MOVE);
+        WM_cursor_modal_set(data->window, WM_CURSOR_X_MOVE);
         data->changed_cursor = true;
       }
     }
@@ -7487,6 +7579,7 @@ static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonA
   data = MEM_callocN(sizeof(uiHandleButtonData), "uiHandleButtonData");
   data->wm = CTX_wm_manager(C);
   data->window = CTX_wm_window(C);
+  BLI_assert(ar != NULL);
   data->region = ar;
 
 #ifdef USE_CONT_MOUSE_CORRECT
@@ -7558,7 +7651,7 @@ static void button_activate_init(bContext *C, ARegion *ar, uiBut *but, uiButtonA
 
   if (but->type == UI_BTYPE_GRIP) {
     const bool horizontal = (BLI_rctf_size_x(&but->rect) < BLI_rctf_size_y(&but->rect));
-    WM_cursor_modal_set(data->window, horizontal ? CURSOR_X_MOVE : CURSOR_Y_MOVE);
+    WM_cursor_modal_set(data->window, horizontal ? WM_CURSOR_X_MOVE : WM_CURSOR_Y_MOVE);
   }
   else if (but->type == UI_BTYPE_NUM) {
     ui_numedit_set_active(but);
@@ -7999,6 +8092,7 @@ void ui_but_execute_begin(struct bContext *UNUSED(C),
   *active_back = but->active;
   data = MEM_callocN(sizeof(uiHandleButtonData), "uiHandleButtonData_Fake");
   but->active = data;
+  BLI_assert(ar != NULL);
   data->region = ar;
 }
 
@@ -9122,6 +9216,10 @@ static int ui_handle_menu_event(bContext *C,
         }
         case UPARROWKEY:
         case DOWNARROWKEY:
+        case PAGEUPKEY:
+        case PAGEDOWNKEY:
+        case HOMEKEY:
+        case ENDKEY:
         case MOUSEPAN:
           /* arrowkeys: only handle for block_loop blocks */
           if (IS_EVENT_MOD(event, shift, ctrl, alt, oskey)) {
@@ -9137,8 +9235,22 @@ static int ui_handle_menu_event(bContext *C,
             }
 
             if (val == KM_PRESS) {
-              const bool is_next = (ELEM(type, DOWNARROWKEY, WHEELDOWNMOUSE) ==
-                                    ((block->flag & UI_BLOCK_IS_FLIP) != 0));
+              /* Determine scroll operation. */
+              uiMenuScrollType scrolltype;
+              bool ui_block_flipped = (block->flag & UI_BLOCK_IS_FLIP) != 0;
+
+              if (ELEM(type, PAGEUPKEY, HOMEKEY)) {
+                scrolltype = ui_block_flipped ? MENU_SCROLL_TOP : MENU_SCROLL_BOTTOM;
+              }
+              else if (ELEM(type, PAGEDOWNKEY, ENDKEY)) {
+                scrolltype = ui_block_flipped ? MENU_SCROLL_BOTTOM : MENU_SCROLL_TOP;
+              }
+              else if (ELEM(type, UPARROWKEY, WHEELUPMOUSE)) {
+                scrolltype = ui_block_flipped ? MENU_SCROLL_UP : MENU_SCROLL_DOWN;
+              }
+              else {
+                scrolltype = ui_block_flipped ? MENU_SCROLL_DOWN : MENU_SCROLL_UP;
+              }
 
               if (ui_menu_pass_event_to_parent_if_nonactive(menu, but, level, retval)) {
                 break;
@@ -9150,16 +9262,24 @@ static int ui_handle_menu_event(bContext *C,
 
               but = ui_region_find_active_but(ar);
               if (but) {
-                /* next button */
-                but = is_next ? ui_but_next(but) : ui_but_prev(but);
-              }
-
-              if (!but) {
-                /* wrap button */
-                uiBut *but_wrap;
-                but_wrap = is_next ? ui_but_first(block) : ui_but_last(block);
-                if (but_wrap) {
-                  but = but_wrap;
+                /* Apply scroll operation. */
+                if (scrolltype == MENU_SCROLL_DOWN) {
+                  but = ui_but_next(but);
+                  if (but == NULL) {
+                    but = ui_but_first(block);
+                  }
+                }
+                else if (scrolltype == MENU_SCROLL_UP) {
+                  but = ui_but_prev(but);
+                  if (but == NULL) {
+                    but = ui_but_last(block);
+                  }
+                }
+                else if (scrolltype == MENU_SCROLL_TOP) {
+                  but = ui_but_first(block);
+                }
+                else if (scrolltype == MENU_SCROLL_BOTTOM) {
+                  but = ui_but_last(block);
                 }
               }
 
@@ -9784,9 +9904,7 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
 
           if (but && (U.pie_menu_confirm > 0) &&
               (dist >= U.dpi_fac * (U.pie_menu_threshold + U.pie_menu_confirm))) {
-            if (but) {
-              return ui_but_pie_menu_apply(C, menu, but, true);
-            }
+            return ui_but_pie_menu_apply(C, menu, but, true);
           }
 
           retval = ui_but_pie_menu_apply(C, menu, but, true);

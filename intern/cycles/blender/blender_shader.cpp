@@ -590,6 +590,12 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeVolumeInfo)) {
     node = new VolumeInfoNode();
   }
+  else if (b_node.is_a(&RNA_ShaderNodeVertexColor)) {
+    BL::ShaderNodeVertexColor b_vertex_color_node(b_node);
+    VertexColorNode *vertex_color_node = new VertexColorNode();
+    vertex_color_node->layer_name = b_vertex_color_node.layer_name();
+    node = vertex_color_node;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeBump)) {
     BL::ShaderNodeBump b_bump_node(b_node);
     BumpNode *bump = new BumpNode();
@@ -1334,6 +1340,14 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
       graph->connect(background->output("Background"), out->input("Surface"));
     }
     else if (!new_viewport_parameters.use_scene_world) {
+      float3 world_color;
+      if (b_world) {
+        world_color = get_float3(b_world.color());
+      }
+      else {
+        world_color = make_float3(0.0f, 0.0f, 0.0f);
+      }
+
       BackgroundNode *background = new BackgroundNode();
       graph->add(background);
 
@@ -1341,7 +1355,7 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
       graph->add(light_path);
 
       MixNode *mix_scene_with_background = new MixNode();
-      mix_scene_with_background->color2 = get_float3(b_world.color());
+      mix_scene_with_background->color2 = world_color;
       graph->add(mix_scene_with_background);
 
       EnvironmentTextureNode *texture_environment = new EnvironmentTextureNode();
@@ -1363,7 +1377,7 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
 
       MixNode *mix_background_with_environment = new MixNode();
       mix_background_with_environment->fac = new_viewport_parameters.studiolight_background_alpha;
-      mix_background_with_environment->color1 = get_float3(b_world.color());
+      mix_background_with_environment->color1 = world_color;
       graph->add(mix_background_with_environment);
 
       ShaderNode *out = graph->output();

@@ -99,6 +99,8 @@ bool BKE_object_is_mode_compat(const struct Object *ob, eObjectMode object_mode)
 
 bool BKE_object_data_is_in_editmode(const struct ID *id);
 
+char *BKE_object_data_editmode_flush_ptr_get(struct ID *id);
+
 void BKE_object_update_select_id(struct Main *bmain);
 
 typedef enum eObjectVisibilityResult {
@@ -321,8 +323,10 @@ void BKE_object_handle_update_ex(struct Depsgraph *depsgraph,
 
 void BKE_object_sculpt_data_create(struct Object *ob);
 
-int BKE_object_obdata_texspace_get(
-    struct Object *ob, short **r_texflag, float **r_loc, float **r_size, float **r_rot);
+int BKE_object_obdata_texspace_get(struct Object *ob,
+                                   short **r_texflag,
+                                   float **r_loc,
+                                   float **r_size);
 
 struct Mesh *BKE_object_get_evaluated_mesh(const struct Depsgraph *depsgraph, struct Object *ob);
 struct Mesh *BKE_object_get_final_mesh(struct Object *object);

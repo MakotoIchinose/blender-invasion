@@ -45,9 +45,9 @@
 
 #include "BIF_glutil.h"
 
-#include "GPU_draw.h"
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
+#include "GPU_platform.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
@@ -816,51 +816,8 @@ static void node_shader_buts_tex_environment(uiLayout *layout, bContext *C, Poin
 
 static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
-  PointerRNA imaptr = RNA_pointer_get(ptr, "image");
   PointerRNA iuserptr = RNA_pointer_get(ptr, "image_user");
-  Image *ima = imaptr.data;
-
-  uiLayoutSetContextPointer(layout, "image_user", &iuserptr);
-  uiTemplateID(layout,
-               C,
-               ptr,
-               "image",
-               "IMAGE_OT_new",
-               "IMAGE_OT_open",
-               NULL,
-               UI_TEMPLATE_ID_FILTER_ALL,
-               false);
-
-  if (!ima) {
-    return;
-  }
-
-  uiItemR(layout, &imaptr, "source", 0, IFACE_("Source"), ICON_NONE);
-
-  if (!(ELEM(ima->source, IMA_SRC_GENERATED, IMA_SRC_VIEWER))) {
-    uiLayout *row = uiLayoutRow(layout, true);
-    const bool is_packed = BKE_image_has_packedfile(ima);
-
-    if (is_packed) {
-      uiItemO(row, "", ICON_PACKAGE, "image.unpack");
-    }
-    else {
-      uiItemO(row, "", ICON_UGLYPACKAGE, "image.pack");
-    }
-
-    row = uiLayoutRow(row, true);
-    uiLayoutSetEnabled(row, !is_packed);
-    uiItemR(row, &imaptr, "filepath", 0, "", ICON_NONE);
-    uiItemO(row, "", ICON_FILE_REFRESH, "image.reload");
-  }
-
-  /* multilayer? */
-  if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
-    uiTemplateImageLayers(layout, C, ima, iuserptr.data);
-  }
-  else if (ima->source != IMA_SRC_GENERATED) {
-    uiTemplateImageInfo(layout, C, ima, iuserptr.data);
-  }
+  uiTemplateImage(layout, C, ptr, "image", &iuserptr, 0, 0);
 
   uiItemR(layout, ptr, "interpolation", 0, IFACE_("Interpolation"), ICON_NONE);
   uiItemR(layout, ptr, "projection", 0, IFACE_("Projection"), ICON_NONE);
@@ -995,6 +952,18 @@ static void node_shader_buts_uvmap(uiLayout *layout, bContext *C, PointerRNA *pt
       PointerRNA dataptr = RNA_pointer_get(&obptr, "data");
       uiItemPointerR(layout, ptr, "uv_map", &dataptr, "uv_layers", "", ICON_NONE);
     }
+  }
+}
+
+static void node_shader_buts_vertex_color(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  PointerRNA obptr = CTX_data_pointer_get(C, "active_object");
+  if (obptr.data && RNA_enum_get(&obptr, "type") == OB_MESH) {
+    PointerRNA dataptr = RNA_pointer_get(&obptr, "data");
+    uiItemPointerR(layout, ptr, "layer_name", &dataptr, "vertex_colors", "", ICON_GROUP_VCOL);
+  }
+  else {
+    uiItemL(layout, "No mesh in active object.", ICON_ERROR);
   }
 }
 
@@ -1298,6 +1267,9 @@ static void node_shader_set_butfunc(bNodeType *ntype)
       break;
     case SH_NODE_UVMAP:
       ntype->draw_buttons = node_shader_buts_uvmap;
+      break;
+    case SH_NODE_VERTEX_COLOR:
+      ntype->draw_buttons = node_shader_buts_vertex_color;
       break;
     case SH_NODE_UVALONGSTROKE:
       ntype->draw_buttons = node_shader_buts_uvalongstroke;

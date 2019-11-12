@@ -79,6 +79,22 @@ typedef struct SpaceLink {
   char _pad0[6];
 } SpaceLink;
 
+/* SpaceLink.link_flag */
+enum {
+  /**
+   * The space is not a regular one opened through the editor menu (for example) but spawned by an
+   * operator to fulfill some task and then disappear again. Can typically be cancelled using Esc,
+   * but that is handled on the editor level. */
+  SPACE_FLAG_TYPE_TEMPORARY = (1 << 0),
+  /**
+   * Used to mark a space as active but "overlapped" by temporary fullscreen spaces. Without this
+   * we wouldn't be able to restore the correct active space after closing temp fullscreens
+   * reliably if the same space type is opened twice in a fullscreen stack (see T19296). We don't
+   * actually open the same space twice, we have to pretend it is by managing area order carefully.
+   */
+  SPACE_FLAG_TYPE_WAS_ACTIVE = (1 << 1),
+};
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -676,11 +692,9 @@ typedef struct FileSelectParams {
   short sort;
   /** Display mode flag. */
   short display;
-  short display_previous;
   /** Details toggles (file size, creation date, etc.) */
   char details_flags;
-  /* The type of file action (opening or saving) */
-  char action_type; /* eFileSel_Action */
+  char _pad2[3];
   /** Filter when (flags & FILE_FILTER) is true. */
   int filter;
 
@@ -797,7 +811,8 @@ typedef enum eFileSel_Params_Flag {
   FILE_PARAMS_FLAG_UNUSED_9 = (1 << 9), /* cleared */
   FILE_GROUP_INSTANCE = (1 << 10),
   FILE_SORT_INVERT = (1 << 11),
-  FILE_HIDE_TOOL_PROPS = (1 << 12)
+  FILE_HIDE_TOOL_PROPS = (1 << 12),
+  FILE_CHECK_EXISTING = (1 << 13),
 } eFileSel_Params_Flag;
 
 /* sfile->params->rename_flag */

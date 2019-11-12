@@ -591,6 +591,11 @@ void nodeChainIter(const bNodeTree *ntree,
                    bool (*callback)(bNode *, bNode *, void *, const bool),
                    void *userdata,
                    const bool reversed);
+void nodeChainIterBackwards(const bNodeTree *ntree,
+                            const bNode *node_start,
+                            bool (*callback)(bNode *, bNode *, void *),
+                            void *userdata,
+                            int recursion_lvl);
 void nodeParentsIter(bNode *node, bool (*callback)(bNode *, void *), void *userdata);
 
 struct bNodeLink *nodeFindLink(struct bNodeTree *ntree,
@@ -978,6 +983,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_CLAMP 703
 #define SH_NODE_TEX_WHITE_NOISE 704
 #define SH_NODE_VOLUME_INFO 705
+#define SH_NODE_VERTEX_COLOR 706
 
 /* custom defines options for Material node */
 #define SH_NODE_MAT_DIFF 1

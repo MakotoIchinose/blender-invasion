@@ -72,6 +72,7 @@
 #include "UI_view2d.h"
 
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -333,7 +334,7 @@ static void drawseqwave(View2D *v2d,
         value2 = (1.0f - f) * value2 + f * waveform->data[p * 3 + 4];
       }
 
-      if (fcu) {
+      if (fcu && !BKE_fcurve_is_empty(fcu)) {
         float evaltime = x1_offset + (i * stepsize);
         volume = evaluate_fcurve(fcu, evaltime);
       }
@@ -1223,6 +1224,14 @@ void sequencer_draw_maskedit(const bContext *C, Scene *scene, ARegion *ar, Space
 }
 #endif
 
+/* Force redraw, when prefetching and using cache view. */
+static void seq_prefetch_wm_notify(const bContext *C, Scene *scene)
+{
+  if (BKE_sequencer_prefetch_need_redraw(CTX_data_main(C), scene)) {
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, NULL);
+  }
+}
+
 static void *sequencer_OCIO_transform_ibuf(
     const bContext *C, ImBuf *ibuf, bool *glsl_used, int *format, int *type)
 {
@@ -1612,6 +1621,7 @@ void sequencer_draw_preview(const bContext *C,
   }
 
   UI_view2d_view_restore(C);
+  seq_prefetch_wm_notify(C, scene);
 }
 
 #if 0
@@ -1757,8 +1767,8 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *ar)
 static void seq_draw_sfra_efra(Scene *scene, View2D *v2d)
 {
   const Editing *ed = BKE_sequencer_editing_get(scene, false);
-  const int frame_sta = PSFRA;
-  const int frame_end = PEFRA + 1;
+  const int frame_sta = scene->r.sfra;
+  const int frame_end = scene->r.efra + 1;
 
   GPU_blend(true);
 
@@ -2003,6 +2013,8 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
   View2DScrollers *scrollers;
   short cfra_flag = 0;
   float col[3];
+
+  seq_prefetch_wm_notify(C, scene);
 
   /* clear and setup matrix */
   UI_GetThemeColor3fv(TH_BACK, col);

@@ -892,7 +892,7 @@ class GreasePencilMaterialsPanel:
             if is_view3d and brush is not None:
                 gp_settings = brush.gpencil_settings
                 if gp_settings.use_material_pin is False:
-                    if ob.active_material_index > 0:
+                    if ob.active_material_index >= 0:
                         ma = ob.material_slots[ob.active_material_index].material
                 else:
                     ma = gp_settings.material
@@ -949,6 +949,34 @@ class GPENCIL_UL_layer(UIList):
                 text="",
                 icon_value=icon,
             )
+
+
+class GreasePencilSimplifyPanel:
+
+    def draw_header(self, context):
+        rd = context.scene.render
+        self.layout.prop(rd, "simplify_gpencil", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        rd = context.scene.render
+
+        layout.active = rd.simplify_gpencil
+
+        col = layout.column()
+        col.prop(rd, "simplify_gpencil_onplay", text="Playback Only")
+        col.prop(rd, "simplify_gpencil_view_modifier", text="Modifiers")
+        col.prop(rd, "simplify_gpencil_shader_fx", text="ShaderFX")
+        col.prop(rd, "simplify_gpencil_blend", text="Layers Blending")
+        col.prop(rd, "simplify_gpencil_tint", text="Layers Tinting")
+
+        col.prop(rd, "simplify_gpencil_view_fill")
+        sub = col.column()
+        sub.active = rd.simplify_gpencil_view_fill
+        sub.prop(rd, "simplify_gpencil_remove_lines", text="Lines")
 
 
 classes = (

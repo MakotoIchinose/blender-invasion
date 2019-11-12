@@ -16,6 +16,7 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
+#
 # ***** END GPL LICENSE BLOCK *****
 
 #-----------------------------------------------------------------------------
@@ -263,6 +264,8 @@ endif()
 option(WITH_HEADLESS      "Build without graphical support (renderfarm, server mode only)" OFF)
 mark_as_advanced(WITH_HEADLESS)
 
+option(WITH_QUADRIFLOW    "Build with quadriflow remesher support" ON)
+
 option(WITH_AUDASPACE    "Build with blenders audio library (only disable if you know what you're doing!)" ON)
 option(WITH_SYSTEM_AUDASPACE "Build with external audaspace library installed on the system (only enable if you know what you're doing!)" OFF)
 mark_as_advanced(WITH_AUDASPACE)
@@ -424,6 +427,7 @@ mark_as_advanced(WITH_CYCLES_DEBUG)
 mark_as_advanced(WITH_CYCLES_NATIVE_ONLY)
 
 option(WITH_CYCLES_DEVICE_CUDA              "Enable Cycles CUDA compute support" ON)
+option(WITH_CYCLES_DEVICE_OPTIX             "Enable Cycles OptiX support" OFF)
 option(WITH_CYCLES_DEVICE_OPENCL            "Enable Cycles OpenCL compute support" ON)
 option(WITH_CYCLES_NETWORK              "Enable Cycles compute over network support (EXPERIMENTAL and unfinished)" OFF)
 mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
@@ -457,13 +461,13 @@ mark_as_advanced(WITH_CXX_GUARDEDALLOC)
 option(WITH_ASSERT_ABORT "Call abort() when raising an assertion through BLI_assert()" ON)
 mark_as_advanced(WITH_ASSERT_ABORT)
 
-option(WITH_BOOST                   "Enable features depending on boost" ON)
+option(WITH_BOOST "Enable features depending on boost" ON)
+option(WITH_TBB   "Enable features depending on TBB (OpenVDB, OpenImageDenoise, sculpt multithreading)" ON)
 
 # Unit testsing
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
 option(WITH_OPENGL_RENDER_TESTS "Enable OpenGL render related unit testing (Experimental)" OFF)
 option(WITH_OPENGL_DRAW_TESTS "Enable OpenGL UI drawing related unit testing (Experimental)" OFF)
-
 
 # Documentation
 if(UNIX AND NOT APPLE)
@@ -581,6 +585,11 @@ if("${CMAKE_GENERATOR}" MATCHES "Ninja")
   mark_as_advanced(WITH_NINJA_POOL_JOBS)
 endif()
 
+if(UNIX AND NOT APPLE)
+  option(WITH_CXX11_ABI "Use native C++11 ABI of compiler" ON)
+  mark_as_advanced(WITH_CXX11_ABI)
+endif()
+
 # avoid using again
 option_defaults_clear()
 
@@ -673,6 +682,7 @@ if(NOT WITH_BOOST)
   set_and_warn(WITH_INTERNATIONAL  OFF)
   set_and_warn(WITH_OPENVDB        OFF)
   set_and_warn(WITH_OPENCOLORIO    OFF)
+  set_and_warn(WITH_QUADRIFLOW     OFF)
 elseif(WITH_CYCLES OR WITH_OPENIMAGEIO OR WITH_INTERNATIONAL OR
        WITH_OPENVDB OR WITH_OPENCOLORIO)
   # Keep enabled
@@ -837,7 +847,7 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 #-----------------------------------------------------------------------------
-#Platform specifics
+# Platform specifics
 
 if(WITH_X11)
   find_package(X11 REQUIRED)
@@ -1391,12 +1401,15 @@ if(CMAKE_COMPILER_IS_GNUCC)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_LOGICAL_OP -Wlogical-op)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_UNDEF -Wundef)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_INIT_SELF -Winit-self)  # needs -Wuninitialized
-  ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_NO_NULL -Wnonnull)  # C only
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_MISSING_INCLUDE_DIRS -Wmissing-include-dirs)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_NO_DIV_BY_ZERO -Wno-div-by-zero)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_TYPE_LIMITS -Wtype-limits)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_FORMAT_SIGN -Wformat-signedness)
   ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_RESTRICT -Wrestrict)
+
+  # C-only.
+  ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_NO_NULL -Wnonnull)
+  ADD_CHECK_C_COMPILER_FLAG(C_WARNINGS C_WARN_ABSOLUTE_VALUE -Wabsolute-value)
 
   # gcc 4.2 gives annoying warnings on every file with this
   if(NOT "${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "4.3")
@@ -1566,7 +1579,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
 
   if(MSVC_VERSION GREATER_EQUAL 1911)
     # see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
-    set(_WARNINGS "${_WARNINGS} /w35038") #order of initialisation in c++ constructors
+    set(_WARNINGS "${_WARNINGS} /w35038") # order of initialization in c++ constructors
   endif()
 
   string(REPLACE ";" " " _WARNINGS "${_WARNINGS}")
@@ -1606,15 +1619,19 @@ if(WITH_PYTHON)
   endif()
 endif()
 
-if(
+if(MSVC)
+  # MSVC needs to be tested first, since clang on windows will
+  # match the compiler test below but clang-cl does not accept -std=c++11
+  # since it is on by default and cannot be turned off.
+  #
+  # Nothing special is needed, C++11 features are available by default.
+elseif(
   CMAKE_COMPILER_IS_GNUCC OR
   CMAKE_C_COMPILER_ID MATCHES "Clang" OR
   CMAKE_C_COMPILER_ID MATCHES "Intel"
 )
   # TODO(sergey): Do we want c++11 or gnu-c++11 here?
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif(MSVC)
-  # Nothing special is needed, C++11 features are available by default.
 else()
   message(FATAL_ERROR "Unknown compiler ${CMAKE_C_COMPILER_ID}, can't enable C++11 build")
 endif()
@@ -1628,6 +1645,12 @@ if(
 )
   # Use C11 + GNU extensions, works with GCC, Clang, ICC
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11")
+endif()
+
+if(UNIX AND NOT APPLE)
+  if(NOT WITH_CXX11_ABI)
+    set(PLATFORM_CFLAGS "${PLATFORM_CFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+  endif()
 endif()
 
 # Include warnings first, so its possible to disable them with user defined flags
@@ -1765,6 +1788,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
+  info_cfg_option(WITH_QUADRIFLOW)
 
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)

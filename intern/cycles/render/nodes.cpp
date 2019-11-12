@@ -4342,6 +4342,64 @@ void VolumeInfoNode::compile(OSLCompiler &)
 {
 }
 
+NODE_DEFINE(VertexColorNode)
+{
+  NodeType *type = NodeType::add("vertex_color", create, NodeType::SHADER);
+
+  SOCKET_STRING(layer_name, "Layer Name", ustring());
+  SOCKET_OUT_COLOR(color, "Color");
+  SOCKET_OUT_FLOAT(alpha, "Alpha");
+
+  return type;
+}
+
+VertexColorNode::VertexColorNode() : ShaderNode(node_type)
+{
+}
+
+void VertexColorNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (!(output("Color")->links.empty() && output("Alpha")->links.empty())) {
+    attributes->add_standard(layer_name);
+  }
+  ShaderNode::attributes(shader, attributes);
+}
+
+void VertexColorNode::compile(SVMCompiler &compiler)
+{
+  ShaderOutput *color_out = output("Color");
+  ShaderOutput *alpha_out = output("Alpha");
+  int layer_id = compiler.attribute(layer_name);
+
+  ShaderNodeType node;
+
+  if (bump == SHADER_BUMP_DX)
+    node = NODE_VERTEX_COLOR_BUMP_DX;
+  else if (bump == SHADER_BUMP_DY)
+    node = NODE_VERTEX_COLOR_BUMP_DY;
+  else {
+    node = NODE_VERTEX_COLOR;
+  }
+
+  compiler.add_node(
+      node, layer_id, compiler.stack_assign(color_out), compiler.stack_assign(alpha_out));
+}
+
+void VertexColorNode::compile(OSLCompiler &compiler)
+{
+  if (bump == SHADER_BUMP_DX) {
+    compiler.parameter("bump_offset", "dx");
+  }
+  else if (bump == SHADER_BUMP_DY) {
+    compiler.parameter("bump_offset", "dy");
+  }
+  else {
+    compiler.parameter("bump_offset", "center");
+  }
+  compiler.parameter("layer_name", layer_name.c_str());
+  compiler.add(this, "node_vertex_color");
+}
+
 /* Value */
 
 NODE_DEFINE(ValueNode)
@@ -5509,11 +5567,21 @@ void MapRangeNode::expand(ShaderGraph *graph)
     ShaderOutput *result_out = output("Result");
     if (!result_out->links.empty()) {
       ClampNode *clamp_node = new ClampNode();
-      clamp_node->min = to_min;
-      clamp_node->max = to_max;
       graph->add(clamp_node);
       graph->relink(result_out, clamp_node->output("Result"));
       graph->connect(result_out, clamp_node->input("Value"));
+      if (input("To Min")->link) {
+        graph->connect(input("To Min")->link, clamp_node->input("Min"));
+      }
+      else {
+        clamp_node->min = to_min;
+      }
+      if (input("To Max")->link) {
+        graph->connect(input("To Max")->link, clamp_node->input("Max"));
+      }
+      else {
+        clamp_node->max = to_max;
+      }
     }
   }
 }
