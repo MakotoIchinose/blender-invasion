@@ -1162,6 +1162,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
       return;
     }
     const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+    const bool is_vertex_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_VERTEXMODE);
 
     /* If Sculpt/Vertex mode and the mask is disabled, the select must be hidden. */
     const bool hide_select = ((GPENCIL_SCULPT_MODE(gpd) && !use_sculpt_mask) ||
@@ -1173,6 +1174,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
      *  Weight mode: Always
      */
     const bool show_points = (show_sculpt_points) || (show_vertex_points) || (is_weight_paint) ||
+                             (is_vertex_paint) ||
                              (GPENCIL_EDIT_MODE(gpd) &&
                               ((ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE) ||
                                (gps->totpoints == 1)));
@@ -1201,12 +1203,13 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
       }
 
       /* If the points are hidden return. */
-      if ((!show_points) || (hide_select)) {
+      if ((!show_points) || (hide_select) || ((is_vertex_paint) && (!is_overlay))) {
         return;
       }
 
       /* edit points */
-      if (((gps->flag & GP_STROKE_SELECT) && (is_overlay)) || (is_weight_paint)) {
+      if (((gps->flag & GP_STROKE_SELECT) && (is_overlay)) || (is_weight_paint) ||
+          (is_vertex_paint)) {
         if ((gpl->flag & GP_LAYER_UNLOCK_COLOR) ||
             ((gp_style->flag & GP_STYLE_COLOR_LOCKED) == 0)) {
           if (obact == ob) {
