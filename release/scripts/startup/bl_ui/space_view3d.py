@@ -4732,6 +4732,8 @@ class VIEW3D_MT_vertex_gpencil(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        layout.operator("gpencil.vertex_color_set", text="Set Vertex Colors")
+        layout.separator()
         layout.operator("gpencil.vertex_color_invert", text="Invert")
         layout.operator("gpencil.vertex_color_levels", text="Levels")
         layout.operator("gpencil.vertex_color_hsv", text="Hue Saturation Value")

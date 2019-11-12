@@ -372,6 +372,7 @@ void GPENCIL_OT_vertex_color_brightness_contrast(struct wmOperatorType *ot);
 void GPENCIL_OT_vertex_color_hsv(struct wmOperatorType *ot);
 void GPENCIL_OT_vertex_color_invert(struct wmOperatorType *ot);
 void GPENCIL_OT_vertex_color_levels(struct wmOperatorType *ot);
+void GPENCIL_OT_vertex_color_set(struct wmOperatorType *ot);
 
 /* Guides ----------------------- */
 

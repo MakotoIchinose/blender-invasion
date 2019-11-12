@@ -424,3 +424,71 @@ void GPENCIL_OT_vertex_color_levels(wmOperatorType *ot)
   RNA_def_float(
       ot->srna, "gain", 1.0f, 0.0f, FLT_MAX, "Gain", "Value to multiply colors by", 0.0f, 10.0f);
 }
+
+static int gp_vertexpaint_set_exec(bContext *C, wmOperator *op)
+{
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  Paint *paint = &ts->gp_vertexpaint->paint;
+  Brush *brush = brush = paint->brush;
+
+  bool changed = false;
+  int i;
+  bGPDspoint *pt;
+
+  const int mode = RNA_enum_get(op->ptr, "mode");
+  float factor = RNA_float_get(op->ptr, "factor");
+
+  /* Loop all selected strokes. */
+  GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
+
+    /* Fill color. */
+    if (gps->flag & GP_STROKE_SELECT) {
+      changed = true;
+      if (mode != GP_PAINT_VERTEX_STROKE) {
+        copy_v3_v3(gps->mix_color_fill, brush->rgb);
+        gps->mix_color_fill[3] = factor;
+      }
+    }
+
+    /* Stroke points. */
+    if (mode != GP_PAINT_VERTEX_FILL) {
+      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+        if (pt->flag & GP_SPOINT_SELECT) {
+          copy_v3_v3(pt->mix_color, brush->rgb);
+          pt->mix_color[3] = factor;
+        }
+      }
+    }
+  }
+  GP_EDITABLE_STROKES_END(gpstroke_iter);
+
+  /* notifiers */
+  if (changed) {
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
+{
+
+  /* identifiers */
+  ot->name = "Vertex Paint Set Color";
+  ot->idname = "GPENCIL_OT_vertex_color_set";
+  ot->description = "Set active color to all selected vertex";
+
+  /* api callbacks */
+  ot->exec = gp_vertexpaint_set_exec;
+  ot->poll = gp_vertexpaint_mode_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* params */
+  ot->prop = RNA_def_enum(ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, 0, "Mode", "");
+  RNA_def_float(ot->srna, "factor", 1.0f, 0.001f, 1.0f, "Factor", "Mix Factor", 0.001f, 1.0f);
+}
