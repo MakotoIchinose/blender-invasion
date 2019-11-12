@@ -24,10 +24,11 @@ bool USDCameraWriter::is_supported(const Object *object) const
 void USDCameraWriter::do_write(HierarchyContext &context)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
-  pxr::UsdGeomCamera usd_camera = pxr::UsdGeomCamera::Define(stage, usd_path_);
+  pxr::UsdGeomCamera usd_camera = pxr::UsdGeomCamera::Define(usd_export_context_.stage,
+                                                             usd_export_context_.usd_path);
 
   Camera *camera = static_cast<Camera *>(context.object->data);
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  Scene *scene = DEG_get_evaluated_scene(usd_export_context_.depsgraph);
 
   usd_camera.CreateProjectionAttr().Set(pxr::UsdGeomTokens->perspective);
 

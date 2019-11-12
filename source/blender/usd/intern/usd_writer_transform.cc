@@ -22,7 +22,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   mul_m4_m4m4(parent_relative_matrix, context.parent_matrix_inv_world, context.matrix_world);
 
   // Write the transform relative to the parent.
-  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(stage, usd_path_);
+  pxr::UsdGeomXform xform = pxr::UsdGeomXform::Define(usd_export_context_.stage,
+                                                      usd_export_context_.usd_path);
   if (!xformOp_) {
     xformOp_ = xform.AddTransformOp();
   }

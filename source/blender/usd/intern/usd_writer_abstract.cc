@@ -11,13 +11,7 @@ extern "C" {
 }
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
-    : depsgraph(usd_export_context.depsgraph),
-      stage(usd_export_context.stage),
-      usd_path_(usd_export_context.usd_path),
-      hierarchy_iterator(usd_export_context.hierarchy_iterator),
-      export_params(usd_export_context.export_params),
-      frame_has_been_written_(false),
-      is_animated_(false)
+    : usd_export_context_(usd_export_context), frame_has_been_written_(false), is_animated_(false)
 {
 }
 
@@ -33,7 +27,7 @@ bool USDAbstractWriter::is_supported(const Object * /*object*/) const
 pxr::UsdTimeCode USDAbstractWriter::get_export_time_code() const
 {
   if (is_animated_) {
-    return hierarchy_iterator->get_export_time_code();
+    return usd_export_context_.hierarchy_iterator->get_export_time_code();
   }
   // By using the default timecode USD won't even write a single `timeSample` for non-animated
   // data. Instead, it writes it as non-timesampled.
@@ -44,10 +38,11 @@ pxr::UsdTimeCode USDAbstractWriter::get_export_time_code() const
 void USDAbstractWriter::write(HierarchyContext &context)
 {
   if (!frame_has_been_written_) {
-    is_animated_ = export_params.export_animation && check_is_animated(context);
+    is_animated_ = usd_export_context_.export_params.export_animation &&
+                   check_is_animated(context);
   }
   else if (!is_animated_) {
-    /* A frame has alrady been written, and without animation one frame is enough. */
+    /* A frame has already been written, and without animation one frame is enough. */
     return;
   }
 
@@ -87,15 +82,16 @@ bool USDAbstractWriter::check_is_animated(const HierarchyContext &context) const
 
 const pxr::SdfPath &USDAbstractWriter::usd_path() const
 {
-  return usd_path_;
+  return usd_export_context_.usd_path;
 }
 
 pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(Material *material)
 {
   static pxr::SdfPath material_library_path("/_materials");
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   // Construct the material.
-  pxr::TfToken material_name(hierarchy_iterator->get_id_name(&material->id));
+  pxr::TfToken material_name(usd_export_context_.hierarchy_iterator->get_id_name(&material->id));
   pxr::SdfPath usd_path = material_library_path.AppendChild(material_name);
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
   if (usd_material) {

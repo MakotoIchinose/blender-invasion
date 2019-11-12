@@ -33,8 +33,9 @@ bool USDGenericMeshWriter::is_supported(const Object *object) const
 {
   // Reject meshes that have a particle system that should have its emitter hidden.
   if (object->particlesystem.first != NULL) {
-    char check_flag = export_params.evaluation_mode == DAG_EVAL_RENDER ? OB_DUPLI_FLAG_RENDER :
-                                                                         OB_DUPLI_FLAG_VIEWPORT;
+    char check_flag = usd_export_context_.export_params.evaluation_mode == DAG_EVAL_RENDER ?
+                          OB_DUPLI_FLAG_RENDER :
+                          OB_DUPLI_FLAG_VIEWPORT;
     return object->duplicator_visibility_flag & check_flag;
   }
 
@@ -125,12 +126,14 @@ void USDGenericMeshWriter::write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_
 void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
+  const pxr::SdfPath &usd_path = usd_export_context_.usd_path;
 
-  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path_);
+  pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path);
   USDMeshData usd_mesh_data;
   get_geometry_data(mesh, usd_mesh_data);
 
-  if (export_params.use_instancing && context.is_instance()) {
+  if (usd_export_context_.export_params.use_instancing && context.is_instance()) {
     // This object data is instanced, just reference the original instead of writing a copy.
     if (context.export_path == context.original_export_path) {
       printf("USD ref error: export path is reference path: %s\n", context.export_path.c_str());
@@ -151,7 +154,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     subtree pointed to by ref_path. As a result, the referenced data is not allowed to point out
     of its own subtree. It does work when we override the material with exactly the same path,
     though.*/
-    if (export_params.export_materials) {
+    if (usd_export_context_.export_params.export_materials) {
       assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
     }
     return;
@@ -167,10 +170,10 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     usd_mesh.CreateCreaseSharpnessesAttr().Set(usd_mesh_data.crease_sharpnesses, timecode);
   }
 
-  if (export_params.export_uvmaps) {
+  if (usd_export_context_.export_params.export_uvmaps) {
     write_uv_maps(mesh, usd_mesh);
   }
-  if (export_params.export_normals) {
+  if (usd_export_context_.export_params.export_normals) {
     write_normals(mesh, usd_mesh);
   }
   write_surface_velocity(context.object, mesh, usd_mesh);
@@ -182,7 +185,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
 
   usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
 
-  if (export_params.export_materials) {
+  if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
   }
 }
@@ -372,9 +375,9 @@ void USDGenericMeshWriter::write_surface_velocity(Object *object,
   }
 
   /* Check that the fluid sim modifier is enabled and has useful data. */
-  const bool use_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
+  const bool use_render = (DEG_get_mode(usd_export_context_.depsgraph) == DAG_EVAL_RENDER);
   const ModifierMode required_mode = use_render ? eModifierMode_Render : eModifierMode_Realtime;
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  const Scene *scene = DEG_get_evaluated_scene(usd_export_context_.depsgraph);
   if (!modifier_isEnabled(scene, md, required_mode)) {
     return;
   }

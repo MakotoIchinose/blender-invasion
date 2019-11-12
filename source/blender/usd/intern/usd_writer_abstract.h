@@ -21,11 +21,8 @@ struct Object;
 
 class USDAbstractWriter : public AbstractHierarchyWriter {
  protected:
-  Depsgraph *depsgraph;
-  pxr::UsdStageRefPtr stage;
-  pxr::SdfPath usd_path_;
-  USDHierarchyIterator *const hierarchy_iterator;
-  const USDExportParams &export_params;
+  const USDExporterContext usd_export_context_;
+
   bool frame_has_been_written_;
   bool is_animated_;
 

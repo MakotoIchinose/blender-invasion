@@ -26,6 +26,8 @@ bool USDLightWriter::is_supported(const Object *object) const
 
 void USDLightWriter::do_write(HierarchyContext &context)
 {
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
+  const pxr::SdfPath &usd_path = usd_export_context_.usd_path;
   pxr::UsdTimeCode timecode = get_export_time_code();
 
   Light *light = static_cast<Light *>(context.object->data);
@@ -36,20 +38,20 @@ void USDLightWriter::do_write(HierarchyContext &context)
       switch (light->area_shape) {
         case LA_AREA_DISK:
         case LA_AREA_ELLIPSE: { /* An ellipse light will deteriorate into a disk light. */
-          pxr::UsdLuxDiskLight disk_light = pxr::UsdLuxDiskLight::Define(stage, usd_path_);
+          pxr::UsdLuxDiskLight disk_light = pxr::UsdLuxDiskLight::Define(stage, usd_path);
           disk_light.CreateRadiusAttr().Set(light->area_size, timecode);
           usd_light = disk_light;
           break;
         }
         case LA_AREA_RECT: {
-          pxr::UsdLuxRectLight rect_light = pxr::UsdLuxRectLight::Define(stage, usd_path_);
+          pxr::UsdLuxRectLight rect_light = pxr::UsdLuxRectLight::Define(stage, usd_path);
           rect_light.CreateWidthAttr().Set(light->area_size, timecode);
           rect_light.CreateHeightAttr().Set(light->area_sizey, timecode);
           usd_light = rect_light;
           break;
         }
         case LA_AREA_SQUARE: {
-          pxr::UsdLuxRectLight rect_light = pxr::UsdLuxRectLight::Define(stage, usd_path_);
+          pxr::UsdLuxRectLight rect_light = pxr::UsdLuxRectLight::Define(stage, usd_path);
           rect_light.CreateWidthAttr().Set(light->area_size, timecode);
           rect_light.CreateHeightAttr().Set(light->area_size, timecode);
           usd_light = rect_light;
@@ -58,13 +60,13 @@ void USDLightWriter::do_write(HierarchyContext &context)
       }
       break;
     case LA_LOCAL: {
-      pxr::UsdLuxSphereLight sphere_light = pxr::UsdLuxSphereLight::Define(stage, usd_path_);
+      pxr::UsdLuxSphereLight sphere_light = pxr::UsdLuxSphereLight::Define(stage, usd_path);
       sphere_light.CreateRadiusAttr().Set(light->area_size, timecode);
       usd_light = sphere_light;
       break;
     }
     case LA_SUN:
-      usd_light = pxr::UsdLuxDistantLight::Define(stage, usd_path_);
+      usd_light = pxr::UsdLuxDistantLight::Define(stage, usd_path);
       break;
     default:
       BLI_assert(!"is_supported() returned true for unsupported light type");
