@@ -726,7 +726,7 @@ void GRAPH_OT_select_box(wmOperatorType *ot)
   ot->prop = RNA_def_boolean(ot->srna, "axis_range", 0, "Axis Range", "");
   RNA_def_boolean(ot->srna,
                   "include_handles",
-                  0,
+                  true,
                   "Include Handles",
                   "Are handles tested individually against the selection criteria");
 
