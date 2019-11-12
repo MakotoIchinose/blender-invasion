@@ -1,30 +1,10 @@
-#include "testing/testing.h"
-
-// Keep first since utildefines defines AT which conflicts with STL
+#include "blendfile_loading_test.h"
 #include "intern/abstract_hierarchy_iterator.h"
 
 extern "C" {
-#include "BKE_blender.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_node.h"
-#include "BKE_scene.h"
-
-#include "BLI_utildefines.h"
 #include "BLI_math.h"
-
-#include "BLO_readfile.h"
-
-#include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph.h"
-
-#include "DNA_genfile.h"
-#include "DNA_scene_types.h"
-#include "DNA_windowmanager_types.h"
-
-#include "RNA_define.h"
-
-#include "MEM_guardedalloc.h"
+#include "DNA_object_types.h"
 }
 
 #include <map>
@@ -102,76 +82,20 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   }
 };
 
-class USDHierarchyIteratorTest : public testing::Test {
+class USDHierarchyIteratorTest : public BlendfileLoadingTest {
  protected:
-  BlendFileData *bfile;
-  Depsgraph *depsgraph;
   TestingHierarchyIterator *iterator;
 
   virtual void SetUp()
   {
-    bfile = nullptr;
-    depsgraph = nullptr;
+    BlendfileLoadingTest::SetUp();
     iterator = nullptr;
-
-    /* Minimal code to make the exporter not crash, copied from main() in creator.c. */
-    DNA_sdna_current_init();
-    DEG_register_node_types();
-    RNA_init();
-    init_nodesystem();
   }
 
   virtual void TearDown()
   {
     iterator_free();
-    depsgraph_free();
-    blendfile_free();
-  }
-
-  /* Load a blend file, return 'ok' (true=good, false=bad) and set bfile.
-   * Fails the test if the file cannot be loaded.
-   */
-  bool blendfile_load(const char *filepath)
-  {
-    bfile = BLO_read_from_file(filepath, BLO_READ_SKIP_NONE, NULL /* reports */);
-    if (bfile == nullptr) {
-      ADD_FAILURE();
-      return false;
-    }
-
-    /* Create a dummy window manager. Some code would SEGFAULT without it. */
-    bfile->main->wm.first = MEM_callocN(sizeof(wmWindowManager), "Dummy Window Manager");
-    return true;
-  }
-  /* Free bfile if it is not nullptr */
-  void blendfile_free()
-  {
-    if (bfile == nullptr) {
-      return;
-    }
-    BLO_blendfiledata_free(bfile);
-    bfile = nullptr;
-  }
-
-  /* Create a depsgraph. Assumes a blend file has been loaded. */
-  void depsgraph_create()
-  {
-    /* TODO(sergey): Pass scene layer somehow? */
-    depsgraph = DEG_graph_new(
-        bfile->main, bfile->curscene, bfile->cur_view_layer, DAG_EVAL_RENDER);
-
-    DEG_graph_build_from_view_layer(
-        depsgraph, bfile->main, bfile->curscene, bfile->cur_view_layer);
-    BKE_scene_graph_update_tagged(depsgraph, bfile->main);
-  }
-  /* Free the depsgraph if it's not nullptr. */
-  void depsgraph_free()
-  {
-    if (depsgraph == nullptr) {
-      return;
-    }
-    DEG_graph_free(depsgraph);
-    depsgraph = nullptr;
+    BlendfileLoadingTest::TearDown();
   }
 
   /* Create a test iterator. */
@@ -193,10 +117,10 @@ class USDHierarchyIteratorTest : public testing::Test {
 TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
 {
   /* Load the test blend file. */
-  if (!blendfile_load("../../lib/tests/usd/usd_hierarchy_export_test.blend")) {
+  if (!blendfile_load("usd/usd_hierarchy_export_test.blend")) {
     return;
   }
-  depsgraph_create();
+  depsgraph_create(DAG_EVAL_RENDER);
   iterator_create();
 
   iterator->iterate();

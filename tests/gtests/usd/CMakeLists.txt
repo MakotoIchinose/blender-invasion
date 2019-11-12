@@ -53,8 +53,12 @@ else()
   set(_buildinfo_src "")
 endif()
 
-# For motivation on doubling BLENDER_SORTED_LIBS, see ../bmesh/CMakeLists.txt
-BLENDER_SRC_GTEST(usd "usd_export_hierarchy_iterator_test.cc;${_buildinfo_src}" "${LIB}")
+BLENDER_SRC_GTEST_EX(usd "blendfile_loading_test.cc;abstract_hierarchy_iterator_test.cc;${_buildinfo_src}" "${LIB}" "FALSE")
+add_test(
+  NAME usd_test
+  COMMAND ${TESTS_OUTPUT_DIR}/usd_test --test-assets-dir ${CMAKE_SOURCE_DIR}/../lib/tests
+  WORKING_DIRECTORY ${TEST_INSTALL_DIR})
+
 
 unset(_buildinfo_src)
 
