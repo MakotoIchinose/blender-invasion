@@ -3992,5 +3992,24 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
       BKE_paint_toolslots_init_from_main(bmain);
     }
+
+    /* Init default Vertex paint mix factor for Viewport. */
+    {
+      if (!DNA_struct_elem_find(fd->filesdna,
+                                "gpencil_vertex_paint_opacity",
+                                "float",
+                                "gpencil_vertex_paint_opacity")) {
+        for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+          for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+            for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+              if (sl->spacetype == SPACE_VIEW3D) {
+                View3D *v3d = (View3D *)sl;
+                v3d->overlay.gpencil_vertex_paint_opacity = 1.0f;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

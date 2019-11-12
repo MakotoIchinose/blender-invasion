@@ -984,7 +984,10 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ToolSettings *ts = draw_ctx->scene->toolsettings;
+  View3D *v3d = draw_ctx->v3d;
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
+
+  const float vpaint_mix = v3d ? v3d->overlay.gpencil_vertex_paint_opacity : 1.0f;
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
@@ -1002,7 +1005,7 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
           /* Apply the mix color of the fill and layer tint. */
           float mixtint[3];
           interp_v3_v3v3(mixtint, gps->mix_color_fill, tintcolor, tintcolor[3]);
-          interp_v3_v3v3(tfill, tfill, mixtint, gps->mix_color_fill[3]);
+          interp_v3_v3v3(tfill, tfill, mixtint, gps->mix_color_fill[3] * vpaint_mix);
           /* If using vertex paint mask, attenuate not selected. */
           if ((attenuate) && ((gps->flag & GP_STROKE_SELECT) == 0)) {
             tfill[3] *= GP_VERTEX_MASK_ATTENUATE;

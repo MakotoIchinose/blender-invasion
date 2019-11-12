@@ -933,7 +933,7 @@ class GreasePencilVertexcolorPanel:
         ob = context.object
 
         if ob:
-            if tool in ('DRAW', 'FILL') and is_vertex is False:
+            if tool in {'DRAW', 'FILL'} and is_vertex is False:
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_mode", text="Mode")
                 row = layout.row(align=True)

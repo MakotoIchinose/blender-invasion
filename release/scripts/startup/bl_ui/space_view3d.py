@@ -353,7 +353,7 @@ class _draw_tool_settings_context_mode:
 
             row.prop(gp_settings, "use_material_pin", text="")
 
-            if brush.gpencil_tool in ('DRAW', 'FILL') and ma:
+            if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
                 gp_style = ma.grease_pencil
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
@@ -432,7 +432,7 @@ class _draw_tool_settings_context_mode:
         settings = tool_settings.gpencil_vertex_paint
         row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
-        if brush.gpencil_vertex_tool not in ('BLUR', 'AVERAGE', 'SMEAR'):
+        if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
             row.separator(factor=0.4)
             row.prop(brush, "color", text="")
         
@@ -6356,6 +6356,10 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
 
+        if context.object.mode in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
+            layout.label(text="Vertex Paint")
+            layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
+
 
 class VIEW3D_PT_quad_view(Panel):
     bl_space_type = 'VIEW_3D'
@@ -6727,7 +6731,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
         
         col = layout.column()
 
-        if brush.gpencil_vertex_tool in ('DRAW', 'REPLACE'):
+        if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
             col.template_color_picker(brush, "color", value_slider=True)
             col.separator()
             col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
@@ -6737,7 +6741,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
         row.prop(brush, "size", text="Radius")
         row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
 
-        if brush.gpencil_vertex_tool in ('DRAW', 'BLUR', 'SMEAR'):
+        if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
             row = layout.row(align=True)
             row.prop(gp_settings, "pen_strength", slider=True)
             row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')

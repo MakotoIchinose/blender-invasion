@@ -152,11 +152,14 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
                             const bool onion)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
   ToolSettings *ts = draw_ctx->scene->toolsettings;
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
   int totvertex = gps->totpoints;
   float mix_color[4];
+
+  const float vpaint_mix = v3d ? v3d->overlay.gpencil_vertex_paint_opacity : 1.0f;
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
@@ -190,7 +193,7 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
     if (!onion) {
       float mixtint[3];
       interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
-      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3]);
+      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix);
     }
     /* If using vertex paint mask, attenuate not selected. */
     if ((attenuate) && ((pt->flag & GP_SPOINT_SELECT) == 0)) {
@@ -261,10 +264,12 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
   float mix_color[4];
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  View3D *v3d = draw_ctx->v3d;
   ToolSettings *ts = draw_ctx->scene->toolsettings;
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
 
+  const float vpaint_mix = v3d ? v3d->overlay.gpencil_vertex_paint_opacity : 1.0f;
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
@@ -291,7 +296,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
     if (!onion) {
       float mixtint[3];
       interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
-      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3]);
+      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix);
     }
 
     /* first point for adjacency (not drawn) */

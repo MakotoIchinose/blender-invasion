@@ -215,6 +215,9 @@ typedef struct View3DOverlay {
   float gpencil_grid_opacity;
   float gpencil_fade_layer;
 
+  /** Factor for mixing vertex paint with original color */
+  float gpencil_vertex_paint_opacity;
+  char _pad4[4];
 } View3DOverlay;
 
 typedef struct View3D_Runtime {
