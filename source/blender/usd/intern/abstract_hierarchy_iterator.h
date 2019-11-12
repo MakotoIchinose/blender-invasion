@@ -50,23 +50,26 @@ struct ViewLayer;
 
 class AbstractHierarchyWriter;
 
+/* HierarchyContext structs are created by the AbstractHierarchyIterator. Each HierarchyContext
+ * struct contains everything necessary to export a single object to a file. */
 struct HierarchyContext {
-  /* Determined during hierarchy iteration: */
+  /*********** Determined during hierarchy iteration: ***************/
   Object *object;
   Object *export_parent;
   Object *duplicator;
   float matrix_world[4][4];
   std::string export_name;
 
-  /* When true, the object will be exported only as transform, and only if is an ancestor of a
-   * non-weak child: */
+  /* When weak_export is true, the object will be exported only as transform, and only if is an
+   * ancestor of a non-weak child. This happens with objects that are part of a holdout collection
+   * (which prevents them from being exported) but also parent of an exported object. */
   bool weak_export;
 
   /* When true, this object should check its parents for animation data when determining whether
-   * it's animated. */
+   * it's animated. This is necessary when a parent object in Blender is not part of the export. */
   bool animation_check_include_parent;
 
-  /* Determined during writer creation: */
+  /*********** Determined during writer creation: ***************/
   float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
   std::string export_path;          // Hierarchical path, such as "/grandparent/parent/objectname".
   ParticleSystem *particle_system;  // Only set for particle/hair writers.
@@ -87,6 +90,13 @@ struct HierarchyContext {
   void mark_as_not_instanced();
 };
 
+/* Abstract writer for objects. Create concrete subclasses to write to USD, Alembic, etc.
+ *
+ * Instantiated by the AbstractHierarchyIterator on the first frame an object exists. Generally
+ * that's the first frame to be exported, but can be later, for example when objects are
+ * instantiated by particles. The AbstractHierarchyWriter::write() function is called on every
+ * frame the object exists in the dependency graph and should be exported.
+ */
 class AbstractHierarchyWriter {
  public:
   virtual ~AbstractHierarchyWriter();
@@ -95,11 +105,20 @@ class AbstractHierarchyWriter {
   // previously created, but wasn't used this iteration.
 };
 
+/* AbstractHierarchyIterator iterates over objects in a dependency graph, and constructs export
+ * writers. These writers are then called to perform the actual writing to a USD or Alembic file.
+ *
+ * Dealing with file- and scene-level data (for example, creating a USD scene, setting the frame
+ * rate, etc.) is not part of the AbstractHierarchyIterator class structure, and should be done in
+ * separate code.
+ */
 class AbstractHierarchyIterator {
  public:
+  // Mapping from export path to writer.
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
   // Mapping from <object, duplicator> to the object's export-children.
   typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext *>> ExportGraph;
+  // Mapping from duplicator ID to export path.
   typedef std::map<ID *, std::string> ExportPathMap;
 
  protected:
@@ -112,11 +131,25 @@ class AbstractHierarchyIterator {
   explicit AbstractHierarchyIterator(Depsgraph *depsgraph);
   virtual ~AbstractHierarchyIterator();
 
+  /* Iterate over the depsgraph, create writers, and tell the writers to write.
+   * Main entry point for the AbstractHierarchyIterator, must be called for every to-be-exported
+   * frame. */
   void iterate();
+
+  /* Release all writers. Call after all frames have been exported. */
   void release_writers();
 
-  virtual std::string get_id_name(const ID *id) const;
+  /* Convert the given name to something that is valid for the exported file format.
+   * This base implementation is a no-op; override in a concrete subclass. */
   virtual std::string make_valid_name(const std::string &name) const;
+
+  /* Return the name of this ID datablock that is valid for the exported file format.
+   * Overriding is probably not necessary if the subclass implements make_valid_name(). */
+  virtual std::string get_id_name(const ID *id) const;
+
+  /* Given a HierarchyContext of some Object *, return an export path that is valid for its
+   * object->data. Overriding is probably not necessary if the subclass implements the proper
+   * path_concatenate(). */
   virtual std::string get_object_data_path(const HierarchyContext *context) const;
 
  private:
@@ -144,26 +177,36 @@ class AbstractHierarchyIterator {
   std::string get_object_name(const Object *object) const;
   std::string get_object_data_name(const Object *object) const;
 
-  AbstractHierarchyWriter *get_writer(const std::string &name);
+  AbstractHierarchyWriter *get_writer(const std::string &export_path);
 
   typedef AbstractHierarchyWriter *(AbstractHierarchyIterator::*create_writer_func)(
       const HierarchyContext *);
+  /* Ensure that a writer exists; if it doesn't, call create_func(context). The create_func
+   * function should be one of the create_XXXX_writer(context) functions declared below. */
   AbstractHierarchyWriter *ensure_writer(HierarchyContext *context,
                                          create_writer_func create_func);
 
  protected:
+  /* Construct a valid path for the export file format. This class concatenates by using '/' as a
+   * path separator, which is valid for both Alembic and USD. */
+  virtual std::string path_concatenate(const std::string &parent_path,
+                                       const std::string &child_path) const;
+
   virtual bool should_visit_duplilink(const DupliObject *link) const;
   virtual bool should_export_object(const Object *object) const;
 
+  /* These functions should create an AbstractHierarchyWriter subclass instance, or return nullptr
+   * if the object or its data should not be exported.
+   * Returning a nullptr for data/hair/particle will NOT prevent the transform to be written.
+   *
+   * 'Xform' is used for 'transform' to be consistent with the terminology of USD and Alembic. */
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) = 0;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) = 0;
   virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) = 0;
   virtual AbstractHierarchyWriter *create_particle_writer(const HierarchyContext *context) = 0;
 
+  /* Called by release_writers() to free what the create_XXX_writer() functions allocated. */
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) = 0;
-
-  virtual std::string path_concatenate(const std::string &parent_path,
-                                       const std::string &child_path) const;
 };
 
 #endif /* __USD__ABSTRACT_HIERARCHY_ITERATOR_H__ */
