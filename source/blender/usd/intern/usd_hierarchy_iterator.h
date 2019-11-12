@@ -16,7 +16,7 @@ struct Object;
 
 class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
-  pxr::UsdStageRefPtr stage;
+  const pxr::UsdStageRefPtr stage;
   pxr::UsdTimeCode export_time;
   const USDExportParams &params;
 
