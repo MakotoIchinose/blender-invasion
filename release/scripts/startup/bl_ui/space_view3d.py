@@ -6682,8 +6682,9 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color:
             col = layout.column()
-            col.prop(gp_settings, "vertex_mode", text="Mode")
             col.template_color_picker(brush, "color", value_slider=True)
+            col.separator()
+            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
             
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
@@ -6727,8 +6728,9 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
         col = layout.column()
 
         if brush.gpencil_vertex_tool in ('DRAW', 'REPLACE'):
-            col.prop(gp_settings, "vertex_mode", text="Mode")
             col.template_color_picker(brush, "color", value_slider=True)
+            col.separator()
+            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
         
         row = col.row(align=True)
