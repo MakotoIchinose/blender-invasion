@@ -144,10 +144,9 @@ void main()
   }
   else if ((vclass & VCLASS_EMPTY_AXES) != 0) {
     float axis = vpos.z;
-    vec3 chosen_axis = obmat[int(axis)].xyz;
-    vofs = chosen_axis * (1.0 + fract(axis)) * empty_scale;
+    vofs[int(axis)] = (1.0 + fract(axis)) * empty_scale;
     /* Scale uniformly by axis length */
-    vpos *= length(chosen_axis) * empty_scale;
+    vpos *= length(obmat[int(axis)].xyz) * empty_scale;
 
     vec3 axis_color = vec3(0.0);
     axis_color[int(axis)] = 1.0;

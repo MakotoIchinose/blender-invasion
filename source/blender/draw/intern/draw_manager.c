@@ -1376,7 +1376,8 @@ static void drw_engines_enable_from_mode(int mode)
       use_drw_engine(&draw_engine_edit_text_type);
       break;
     case CTX_MODE_EDIT_ARMATURE:
-      use_drw_engine(&draw_engine_edit_armature_type);
+      use_drw_engine(&draw_engine_overlay_type);
+      // use_drw_engine(&draw_engine_edit_armature_type);
       break;
     case CTX_MODE_EDIT_METABALL:
       use_drw_engine(&draw_engine_edit_metaball_type);

@@ -28,6 +28,21 @@
 
 #include "overlay_private.h"
 
+extern char datatoc_armature_dof_vert_glsl[];
+extern char datatoc_armature_envelope_distance_frag_glsl[];
+extern char datatoc_armature_envelope_outline_vert_glsl[];
+extern char datatoc_armature_envelope_solid_frag_glsl[];
+extern char datatoc_armature_envelope_solid_vert_glsl[];
+extern char datatoc_armature_shape_outline_geom_glsl[];
+extern char datatoc_armature_shape_outline_vert_glsl[];
+extern char datatoc_armature_shape_solid_frag_glsl[];
+extern char datatoc_armature_shape_solid_vert_glsl[];
+extern char datatoc_armature_sphere_outline_vert_glsl[];
+extern char datatoc_armature_sphere_solid_frag_glsl[];
+extern char datatoc_armature_sphere_solid_vert_glsl[];
+extern char datatoc_armature_stick_frag_glsl[];
+extern char datatoc_armature_stick_vert_glsl[];
+extern char datatoc_armature_wire_vert_glsl[];
 extern char datatoc_depth_only_vert_glsl[];
 extern char datatoc_edit_mesh_common_lib_glsl[];
 extern char datatoc_edit_mesh_frag_glsl[];
@@ -75,6 +90,15 @@ extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
+  GPUShader *armature_dof;
+  GPUShader *armature_envelope_outline;
+  GPUShader *armature_envelope_solid;
+  GPUShader *armature_shape_outline;
+  GPUShader *armature_shape_solid;
+  GPUShader *armature_sphere_outline;
+  GPUShader *armature_sphere_solid;
+  GPUShader *armature_stick;
+  GPUShader *armature_wire;
   GPUShader *depth_only;
   GPUShader *edit_mesh_vert;
   GPUShader *edit_mesh_edge;
@@ -198,23 +222,159 @@ GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp)
   return *sh;
 }
 
-GPUShader *OVERLAY_shader_armature_axes(void)
+GPUShader *OVERLAY_shader_armature_sphere(bool use_outline)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->armature_axes) {
-    sh_data->armature_axes = GPU_shader_create_from_arrays({
+  const char extensions[] = "#extension GL_ARB_conservative_depth : enable\n";
+  if (use_outline && !sh_data->armature_sphere_outline) {
+    sh_data->armature_sphere_outline = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
-                                 datatoc_armature_axes_vert_glsl,
+                                 datatoc_armature_sphere_outline_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){extensions,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_gpu_shader_flat_color_frag_glsl,
+                                 NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  else if (!sh_data->armature_sphere_solid) {
+    sh_data->armature_sphere_solid = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_sphere_solid_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){extensions,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_sphere_solid_frag_glsl,
+                                 NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return use_outline ? sh_data->armature_sphere_outline : sh_data->armature_sphere_solid;
+}
+
+GPUShader *OVERLAY_shader_armature_shape(bool use_outline)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (use_outline && !sh_data->armature_shape_outline) {
+    sh_data->armature_shape_outline = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_shape_outline_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_shape_outline_geom_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def, NULL},
     });
   }
-  return sh_data->armature_axes;
+  else if (!sh_data->armature_shape_solid) {
+    sh_data->armature_shape_solid = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_shape_solid_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_armature_shape_solid_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return use_outline ? sh_data->armature_shape_outline : sh_data->armature_shape_solid;
+}
+
+GPUShader *OVERLAY_shader_armature_envelope(bool use_outline)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (use_outline && !sh_data->armature_envelope_outline) {
+    sh_data->armature_envelope_outline = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_envelope_outline_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  else if (!sh_data->armature_envelope_solid) {
+    sh_data->armature_envelope_solid = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_envelope_solid_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_armature_envelope_solid_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return use_outline ? sh_data->armature_envelope_outline : sh_data->armature_envelope_solid;
+}
+
+GPUShader *OVERLAY_shader_armature_stick(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->armature_stick) {
+    sh_data->armature_stick = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_stick_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_armature_stick_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->armature_stick;
+}
+
+GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->armature_dof) {
+    sh_data->armature_dof = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_dof_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->armature_dof;
+}
+
+GPUShader *OVERLAY_shader_armature_wire(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->armature_wire) {
+    sh_data->armature_wire = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_armature_wire_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->armature_wire;
 }
 
 GPUShader *OVERLAY_shader_edit_mesh_face(void)
@@ -680,20 +840,70 @@ static OVERLAY_InstanceFormats g_formats = {NULL};
 
 OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void)
 {
-  DRW_shgroup_instance_format(g_formats.instance_pos, {{"inst_pos", DRW_ATTR_FLOAT, 3}});
+  DRW_shgroup_instance_format(g_formats.pos,
+                              {
+                                  {"pos", DRW_ATTR_FLOAT, 3},
+                              });
+  DRW_shgroup_instance_format(g_formats.pos_color,
+                              {
+                                  {"pos", DRW_ATTR_FLOAT, 3},
+                                  {"color", DRW_ATTR_FLOAT, 4},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_pos,
+                              {
+                                  {"inst_pos", DRW_ATTR_FLOAT, 3},
+                              });
   DRW_shgroup_instance_format(g_formats.instance_extra,
                               {
                                   {"color", DRW_ATTR_FLOAT, 4},
                                   {"inst_obmat", DRW_ATTR_FLOAT, 16},
                               });
   DRW_shgroup_instance_format(g_formats.wire_dashed_extra,
-                              {{"pos", DRW_ATTR_FLOAT, 3},
-                               {"dash_pos", DRW_ATTR_FLOAT, 3},
-                               {"dash_with", DRW_ATTR_FLOAT, 1},
-                               {"color", DRW_ATTR_FLOAT, 4}});
+                              {
+                                  {"pos", DRW_ATTR_FLOAT, 3},
+                                  {"dash_pos", DRW_ATTR_FLOAT, 3},
+                                  {"color", DRW_ATTR_FLOAT, 4},
+                              });
   DRW_shgroup_instance_format(g_formats.wire_extra,
-                              {{"pos", DRW_ATTR_FLOAT, 3}, {"colorid", DRW_ATTR_INT, 1}});
-  DRW_shgroup_instance_format(g_formats.pos, {{"pos", DRW_ATTR_FLOAT, 3}});
+                              {
+                                  {"pos", DRW_ATTR_FLOAT, 3},
+                                  {"colorid", DRW_ATTR_INT, 1},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_bone,
+                              {
+                                  {"inst_obmat", DRW_ATTR_FLOAT, 16},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_bone_stick,
+                              {
+                                  {"boneStart", DRW_ATTR_FLOAT, 3},
+                                  {"boneEnd", DRW_ATTR_FLOAT, 3},
+                                  {"wireColor", DRW_ATTR_FLOAT, 4}, /* TODO uchar color */
+                                  {"boneColor", DRW_ATTR_FLOAT, 4},
+                                  {"headColor", DRW_ATTR_FLOAT, 4},
+                                  {"tailColor", DRW_ATTR_FLOAT, 4},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_bone_envelope_outline,
+                              {
+                                  {"headSphere", DRW_ATTR_FLOAT, 4},
+                                  {"tailSphere", DRW_ATTR_FLOAT, 4},
+                                  {"outlineColorSize", DRW_ATTR_FLOAT, 4},
+                                  {"xAxis", DRW_ATTR_FLOAT, 3},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_bone_envelope_distance,
+                              {
+                                  {"headSphere", DRW_ATTR_FLOAT, 4},
+                                  {"tailSphere", DRW_ATTR_FLOAT, 4},
+                                  {"xAxis", DRW_ATTR_FLOAT, 3},
+                              });
+  DRW_shgroup_instance_format(g_formats.instance_bone_envelope,
+                              {
+                                  {"headSphere", DRW_ATTR_FLOAT, 4},
+                                  {"tailSphere", DRW_ATTR_FLOAT, 4},
+                                  {"boneColor", DRW_ATTR_FLOAT, 3},
+                                  {"stateColor", DRW_ATTR_FLOAT, 3},
+                                  {"xAxis", DRW_ATTR_FLOAT, 3},
+                              });
+
   return &g_formats;
 }
 

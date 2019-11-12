@@ -9,7 +9,6 @@ in vec3 local_pos;
 out vec4 FragColor;
 
 uniform vec3 planeAxes;
-uniform vec3 screenVecs[2];
 uniform float gridDistance;
 uniform float meshSize;
 uniform float lineKernel = 0.0;

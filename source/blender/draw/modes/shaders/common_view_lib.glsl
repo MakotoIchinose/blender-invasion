@@ -32,6 +32,19 @@ float mul_project_m4_v3_zfac(in vec3 co)
 }
 #endif
 
+/* Not the right place but need to be common to all overlay's.
+ * TODO Split to an overlay lib. */
+mat4 extract_matrix_packed_data(mat4 mat, out vec4 dataA, out vec4 dataB)
+{
+  const float div_a = 1.0;
+  const float div_b = 1.0 / 255.0;
+  dataA = vec4(fract(mat[0][3]), mat[0][3] * div_b, fract(mat[1][3]), mat[1][3] * div_b);
+  dataB = vec4(fract(mat[2][3]), mat[2][3] * div_b, fract(mat[3][3]), mat[3][3] * div_b);
+  mat[0][3] = mat[1][3] = mat[2][3] = 0.0;
+  mat[3][3] = 1.0;
+  return mat;
+}
+
 uniform int resourceChunk;
 
 #ifdef GPU_VERTEX_SHADER

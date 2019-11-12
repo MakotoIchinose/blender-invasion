@@ -46,6 +46,8 @@ typedef struct OVERLAY_TextureList {
 #define IN_FRONT 1
 
 typedef struct OVERLAY_PassList {
+  DRWPass *armature_transp_ps;
+  DRWPass *armature_ps[2];
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
   DRWPass *edit_mesh_edges_ps[2];
@@ -140,6 +142,31 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *speaker;
 } OVERLAY_ExtraCallBuffers;
 
+typedef struct OVERLAY_ArmatureCallBuffers {
+  DRWCallBuffer *box_outline;
+  DRWCallBuffer *box_solid;
+
+  DRWCallBuffer *dof_lines;
+  DRWCallBuffer *dof_sphere;
+
+  DRWCallBuffer *envelope_distance;
+  DRWCallBuffer *envelope_outline;
+  DRWCallBuffer *envelope_solid;
+
+  DRWCallBuffer *octa_outline;
+  DRWCallBuffer *octa_solid;
+
+  DRWCallBuffer *point_outline;
+  DRWCallBuffer *point_solid;
+
+  DRWCallBuffer *stick;
+
+  DRWCallBuffer *wire;
+
+  DRWShadingGroup *custom_solid;
+  DRWShadingGroup *custom_outline;
+} OVERLAY_ArmatureCallBuffers;
+
 typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
@@ -178,6 +205,8 @@ typedef struct OVERLAY_PrivateData {
   /** Two instances for in_front option and without. */
   OVERLAY_ExtraCallBuffers extra_call_buffers[2];
 
+  OVERLAY_ArmatureCallBuffers armature_call_buffers[2];
+
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
   bool clear_stencil;
@@ -198,6 +227,10 @@ typedef struct OVERLAY_PrivateData {
     bool select_edge;
     int flag; /** Copy of v3d->overlay.edit_flag.  */
   } edit_mesh;
+  struct {
+    bool transparent;
+    bool show_relations;
+  } armature;
 } OVERLAY_PrivateData; /* Transient data */
 
 typedef struct OVERLAY_StorageList {
@@ -223,31 +256,27 @@ typedef struct OVERLAY_DupliData {
 } OVERLAY_DupliData;
 
 typedef struct OVERLAY_InstanceFormats {
-  struct GPUVertFormat *instance_screenspace;
-  struct GPUVertFormat *instance_color;
-  struct GPUVertFormat *instance_screen_aligned;
-  struct GPUVertFormat *instance_scaled;
-  struct GPUVertFormat *instance_sized;
-  struct GPUVertFormat *instance_outline;
-  struct GPUVertFormat *instance_camera;
-  struct GPUVertFormat *instance_distance_lines;
-  struct GPUVertFormat *instance_spot;
+  // struct GPUVertFormat *instance_mball_handles;
+
+  struct GPUVertFormat *instance_pos;
+  struct GPUVertFormat *instance_extra;
   struct GPUVertFormat *instance_bone;
-  struct GPUVertFormat *instance_bone_dof;
-  struct GPUVertFormat *instance_bone_stick;
   struct GPUVertFormat *instance_bone_outline;
   struct GPUVertFormat *instance_bone_envelope;
   struct GPUVertFormat *instance_bone_envelope_distance;
   struct GPUVertFormat *instance_bone_envelope_outline;
-  struct GPUVertFormat *instance_mball_handles;
-  struct GPUVertFormat *pos_color;
+  struct GPUVertFormat *instance_bone_stick;
   struct GPUVertFormat *pos;
-
-  struct GPUVertFormat *instance_pos;
-  struct GPUVertFormat *instance_extra;
+  struct GPUVertFormat *pos_color;
   struct GPUVertFormat *wire_extra;
   struct GPUVertFormat *wire_dashed_extra;
 } OVERLAY_InstanceFormats;
+
+void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_armature_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
@@ -264,6 +293,20 @@ void OVERLAY_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_speaker_cache_populate(OVERLAY_Data *vedata, Object *ob);
+
+void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
+                               const float start[3],
+                               const float end[3],
+                               const float color[4]);
+void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
+                        const float start[3],
+                        const float end[3],
+                        const int color_id);
+void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
+                         const float mat[4][4],
+                         const float draw_size,
+                         const char draw_type,
+                         const float color[4]);
 
 void OVERLAY_facing_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);
@@ -290,6 +333,12 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
                                       bool init_dupli);
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 
+GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void);
+GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);
+GPUShader *OVERLAY_shader_armature_shape(bool use_outline);
+GPUShader *OVERLAY_shader_armature_sphere(bool use_outline);
+GPUShader *OVERLAY_shader_armature_stick(void);
+GPUShader *OVERLAY_shader_armature_wire(void);
 GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_mesh_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);

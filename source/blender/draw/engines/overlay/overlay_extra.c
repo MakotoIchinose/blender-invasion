@@ -229,19 +229,19 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
   }
 }
 
-static void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
-                                      const float start[3],
-                                      const float end[3],
-                                      const float color[4])
+void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
+                               const float start[3],
+                               const float end[3],
+                               const float color[4])
 {
   DRW_buffer_add_entry(cb->extra_dashed_lines, start, start, color);
   DRW_buffer_add_entry(cb->extra_dashed_lines, end, start, color);
 }
 
-static void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
-                               const float start[3],
-                               const float end[3],
-                               const int color_id)
+void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
+                        const float start[3],
+                        const float end[3],
+                        const int color_id)
 {
   DRW_buffer_add_entry(cb->extra_lines, start, &color_id);
   DRW_buffer_add_entry(cb->extra_lines, end, &color_id);
@@ -258,11 +258,11 @@ static OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *ved
 /** \name Empties
  * \{ */
 
-static void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
-                                const float mat[4][4],
-                                const float draw_size,
-                                char draw_type,
-                                const float color[4])
+void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
+                         const float mat[4][4],
+                         const float draw_size,
+                         const char draw_type,
+                         const float color[4])
 {
   float instdata[4][4];
   copy_m4_m4(instdata, mat);

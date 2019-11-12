@@ -1,8 +1,6 @@
 
 uniform mat4 ViewProjectionMatrix;
 
-uniform vec3 screenVecs[3];
-
 /* ---- Instantiated Attrs ---- */
 in float axis; /* position on the axis. [0.0-1.0] is X axis, [1.0-2.0] is Y, etc... */
 in vec2 screenPos;

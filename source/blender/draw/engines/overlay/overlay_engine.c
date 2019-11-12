@@ -149,9 +149,10 @@ static void OVERLAY_cache_init(void *vedata)
       BLI_assert(!"Draw mode invalid");
       break;
   }
+  OVERLAY_armature_cache_init(vedata);
   OVERLAY_extra_cache_init(vedata);
-  OVERLAY_grid_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
+  OVERLAY_grid_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
 }
@@ -183,7 +184,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  const bool is_select = DRW_state_is_select();
   const bool renderable = DRW_object_is_renderable(ob);
+  const bool in_pose_mode = ob->type == OB_ARMATURE && DRW_pose_mode_armature(ob, draw_ctx->obact);
   const bool in_edit_mode = BKE_object_is_in_editmode(ob);
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
@@ -194,7 +197,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
                              (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              ((ob->base_flag & BASE_SELECTED) ||
-                              (DRW_state_is_select() && ob->type == OB_LIGHTPROBE));
+                              (is_select && ob->type == OB_LIGHTPROBE));
   const bool draw_extras =
       ((pd->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) == 0) ||
       /* Show if this is the camera we're looking through since it's useful for selecting. */
@@ -217,6 +220,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_MESH:
         OVERLAY_edit_mesh_cache_populate(vedata, ob);
         break;
+      case OB_ARMATURE:
+        OVERLAY_edit_armature_cache_populate(vedata, ob);
+        break;
       case OB_CURVE:
         break;
       case OB_SURF:
@@ -228,6 +234,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_FONT:
         break;
     }
+  }
+
+  if (in_pose_mode) {
+    OVERLAY_pose_armature_cache_populate(vedata, ob);
   }
 
   // if (is_geom) {
@@ -246,9 +256,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   // }
 
   switch (ob->type) {
-    // case OB_ARMATURE:
-    //   OVERLAY_armature_cache_populate();
-    //   break;
+    case OB_ARMATURE:
+      if ((!in_edit_mode && !in_pose_mode) || is_select) {
+        OVERLAY_armature_cache_populate(vedata, ob);
+      }
+      break;
     // case OB_MBALL:
     //   OVERLAY_mball_cache_populate();
     //   break;
@@ -296,6 +308,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
   OVERLAY_extra_draw(vedata);
+  OVERLAY_armature_draw(vedata);
   OVERLAY_grid_draw(vedata);
   OVERLAY_outline_draw(vedata);
 
