@@ -234,6 +234,7 @@ static void lanpr_cache_init(void *vedata)
     lanpr_share.near_clip = v3d->clip_start;
     lanpr_share.far_clip = v3d->clip_end;
     lanpr_share.viewport_camera_override = 1;
+    lanpr_share.camera_is_persp = rv3d->is_persp;
   }
   else {
     lanpr_share.viewport_camera_override = 0;

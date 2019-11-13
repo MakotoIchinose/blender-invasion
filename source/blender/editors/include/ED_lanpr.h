@@ -295,6 +295,7 @@ typedef struct LANPR_RenderBuffer {
   int _pad;
 
   int viewport_override;
+  char viewport_is_persp;
   double camera_pos[3];
   double near_clip, far_clip;
 } LANPR_RenderBuffer;
@@ -350,6 +351,7 @@ typedef struct LANPR_SharedResource {
   /** When drawing in the viewport, use the following values. */
   /** Set to override to -1 before creating lanpr render buffer to use scene camera. */
   int viewport_camera_override;
+  char camera_is_persp;
   double camera_pos[3];
   double near_clip, far_clip;
   double viewinv[4][4];
