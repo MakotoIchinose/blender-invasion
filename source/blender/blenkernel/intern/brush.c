@@ -249,16 +249,15 @@ static Brush *gpencil_brush_ensure(
   if (brush == NULL) {
     brush = BKE_brush_add_gpencil(bmain, ts, brush_name, mode);
     *new = true;
-
-    /* Set default at brush level. */
-    brush->rgb[0] = 0.498f;
-    brush->rgb[1] = 1.0f;
-    brush->rgb[2] = 0.498f;
-
-    brush->secondary_rgb[0] = 1.0f;
-    brush->secondary_rgb[1] = 1.0f;
-    brush->secondary_rgb[2] = 1.0f;
   }
+  /* Set default at brush level. */
+  brush->rgb[0] = 0.498f;
+  brush->rgb[1] = 1.0f;
+  brush->rgb[2] = 0.498f;
+
+  brush->secondary_rgb[0] = 1.0f;
+  brush->secondary_rgb[1] = 1.0f;
+  brush->secondary_rgb[2] = 1.0f;
 
   if (brush->gpencil_settings == NULL) {
     BKE_brush_init_gpencil_settings(brush);
