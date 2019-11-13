@@ -156,17 +156,17 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     sh = OVERLAY_shader_edit_mesh_normal_face();
     pd->edit_mesh_fnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
     DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorNormal, 1);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorNormal);
 
     sh = OVERLAY_shader_edit_mesh_normal_vert();
     pd->edit_mesh_vnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
     DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorVNormal, 1);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorVNormal);
 
     sh = OVERLAY_shader_edit_mesh_normal_loop();
     pd->edit_mesh_lnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
     DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorLNormal, 1);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorLNormal);
   }
   {
     /* Mesh Analysis Pass */
