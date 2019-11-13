@@ -428,7 +428,7 @@ FFMPEG_FORCE_REBUILD=false
 FFMPEG_SKIP=false
 _ffmpeg_list_sep=";"
 
-OPENXR_VERSION="1.0.0"
+OPENXR_VERSION="1.0.3"
 OPENXR_FORCE_BUILD=false
 OPENXR_FORCE_REBUILD=false
 OPENXR_SKIP=false
@@ -921,9 +921,9 @@ OIDN_SOURCE=( "https://github.com/OpenImageDenoise/oidn/releases/download/v${OID
 FFMPEG_SOURCE=( "http://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.bz2" )
 
 OPENXR_USE_REPO=false
-OPENXR_SOURCE=("https://github.com/KhronosGroup/OpenXR-SDK-Source/archive/release-$OPENXR_VERSION.tar.gz")
+OPENXR_SOURCE=("https://github.com/KhronosGroup/OpenXR-SDK/archive/release-${OPENXR_VERSION}.tar.gz")
 #~ OPENXR_SOURCE_REPO=("https://github.com/KhronosGroup/OpenXR-SDK-Source.git")
-#~ OPENXR_REPO_UID="348912bf9bfaf445ac2974bda19fd0d50496460b"
+#~ OPENXR_REPO_UID="2bcc4fe291100728e7b78b91f0621961787a8c58"
 #~ OPENXR_REPO_BRANCH="master"
 
 # C++11 is required now
@@ -2911,11 +2911,8 @@ compile_OpenXR_SDK() {
 
     cmake_d="-D CMAKE_BUILD_TYPE=Release"
     cmake_d="$cmake_d -D CMAKE_INSTALL_PREFIX=$_inst"
-    cmake_d="$cmake_d -D BUILD_API_LAYERS=ON"
-    cmake_d="$cmake_d -D BUILD_FORCE_GENERATION=ON"
+    cmake_d="$cmake_d -D BUILD_FORCE_GENERATION=OFF"
     cmake_d="$cmake_d -D BUILD_LOADER=ON"
-    cmake_d="$cmake_d -D BUILD_SPECIFICATION=OFF"
-    cmake_d="$cmake_d -D BUILD_TESTS=OFF"
 
     cmake $cmake_d ..
 
