@@ -7136,49 +7136,49 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   prop = RNA_def_property(srna, "depth_width_curve", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.3f);
   RNA_def_property_ui_text(prop, "Width Curve", "Width curve");
-  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1, 1);
+  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1f, 1);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "depth_alpha_influence", PROP_FLOAT, PROP_PERCENTAGE);
   RNA_def_property_float_default(prop, 0.3f);
   RNA_def_property_ui_text(prop, "Alpha Influence", "Use camera distance to control line alpha.");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "depth_alpha_curve", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.3f);
   RNA_def_property_ui_text(prop, "Alpha Curve", "alpha curve");
-  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1, 1);
+  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1f, 1);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_left_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 20.0f);
   RNA_def_property_ui_text(prop, "Left Distance", "Left side taper distance");
-  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_right_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 20.0f);
   RNA_def_property_ui_text(prop, "Right Distance", "Right side taper distance");
-  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 100.0f, 0.1f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_left_strength", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Left Strength", "Left side taper strength");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "taper_right_strength", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Right Strength", "Right side taper strength");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -7192,21 +7192,21 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Line Color", "Drawing lines using this color");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1, 2);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "crease_fade_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Fade", "cosine value of face angle");
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
 
@@ -7233,7 +7233,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
                            "Geometry Threshold",
                            "Segments where their geometric distance between them lower than this "
                            "will be chained together");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 3);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 3);
   RNA_def_property_range(prop, 0.0f, 1.0f);
 
   prop = RNA_def_property(srna, "chaining_image_threshold", PROP_FLOAT, PROP_NONE);
@@ -7242,7 +7242,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       prop,
       "Image Threshold",
       "Segments where their image distance between them lower than this will be chained together");
-  RNA_def_property_ui_range(prop, 0.0f, 0.3f, 0.001, 4);
+  RNA_def_property_ui_range(prop, 0.0f, 0.3f, 0.001f, 4);
   RNA_def_property_range(prop, 0.0f, 0.3f);
 
   /* here's the collection stuff.... */
