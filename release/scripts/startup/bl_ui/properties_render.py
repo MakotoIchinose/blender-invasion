@@ -964,9 +964,6 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        
-        layout.prop(lanpr, "chaining_geometry_threshold")
-        layout.prop(lanpr, "chaining_image_threshold")
 
         if scene.render.engine=="BLENDER_LANPR":
             layout.prop(lanpr, "use_same_taper", text="Taper Tips")
@@ -980,7 +977,10 @@ class RENDER_PT_lanpr_software_chain_styles(RenderButtonsPanel, Panel):
             else:
                 col = layout.column(align = True)
                 col.prop(lanpr,"taper_left_distance", text="Distance")
-                col.prop(lanpr,"taper_left_strength", text="Strength") 
+                col.prop(lanpr,"taper_left_strength", text="Strength")
+        else:
+            layout.prop(lanpr, "chaining_geometry_threshold")
+            layout.prop(lanpr, "chaining_image_threshold")
 
 class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
     bl_label = "Settings"
