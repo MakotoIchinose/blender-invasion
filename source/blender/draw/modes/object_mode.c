@@ -510,12 +510,13 @@ static void OBJECT_engine_init(void *vedata)
                                                     NULL,
                                                     datatoc_gpu_shader_flat_color_frag_glsl,
                                                     datatoc_common_view_lib_glsl,
-                                                    NULL);
+                                                    "#define IN_PLACE_INSTANCES\n");
 
     sh_data->part_axis = DRW_shader_create_with_lib(datatoc_object_particle_prim_vert_glsl,
                                                     NULL,
                                                     datatoc_gpu_shader_flat_color_frag_glsl,
                                                     datatoc_common_view_lib_glsl,
+                                                    "#define IN_PLACE_INSTANCES\n"
                                                     "#define USE_AXIS\n");
 
     sh_data->part_dot = DRW_shader_create_with_lib(datatoc_object_particle_dot_vert_glsl,
@@ -2099,7 +2100,8 @@ static void camera_view3d_stereoscopy_display_extra(OBJECT_ShadingGroupList *sgl
     if (cam->stereo.convergence_mode == CAM_S3D_OFFAXIS) {
       const float shift_x = ((BKE_camera_multiview_shift_x(&scene->r, ob, viewnames[eye]) -
                               cam->shiftx) *
-                             (drawsize * scale[0] * fac));
+                             (drawsize * scale[0] * fac)) *
+                            (cam->stereo.pivot == CAM_S3D_PIVOT_CENTER ? 1.0f : 2.0f);
 
       for (int i = 0; i < 4; i++) {
         cam->runtime.drw_corners[eye][i][0] += shift_x;
