@@ -1699,14 +1699,10 @@ typedef struct SceneLANPR {
   float depth_alpha_curve;
 
   int gpu_cache_size; /* enum! */
-  int _pad;
-
-  int enable_chain_connection;
-
-  /* offline render */
+  
+  /* CPU mode */
   ListBase line_layers;
   struct LANPR_LineLayer *active_layer;
-
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 } SceneLANPR;

@@ -7220,12 +7220,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
 
-  prop = RNA_def_property(srna, "enable_chain_connection", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, 1);
-  RNA_def_property_ui_text(prop,
-                           "Enable Chain Connection",
-                           "Connect short chains in the image space into one longer chain");
-
   /* should be read-only */
   prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
