@@ -373,8 +373,6 @@ if(WITH_OPENXR)
     )
   endif()
 
-  include(xr_platform_defines)
-
   add_definitions(-DWITH_OPENXR)
 endif()
 
