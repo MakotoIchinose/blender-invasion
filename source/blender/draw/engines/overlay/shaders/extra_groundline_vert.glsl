@@ -18,4 +18,8 @@ void main()
   vec3 world_pos = p + screen_pos * screen_size;
 
   gl_Position = point_world_to_ndc(world_pos);
+
+#ifdef USE_WORLD_CLIP_PLANES
+  world_clip_planes_calc_clip_distance(world_pos);
+#endif
 }
