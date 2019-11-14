@@ -84,7 +84,7 @@ typedef struct FileData {
   /** Whether all data read from memfile so far was identical
    * (i.e. shared with some previous undo step).
    * Updated by `fd_read_from_memfile()`, user is responsible to reset it to true when needed.
-   * Used to detected unchanged IDs. */
+   * Used to detect unchanged IDs. */
   bool are_memchunks_identical;
 
   /** Variables needed for reading from file. */

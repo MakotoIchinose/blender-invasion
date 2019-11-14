@@ -26,7 +26,9 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_sys_types.h"
+#include "BLI_ghash.h"
 #include "BLI_listbase.h"
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -38,6 +40,7 @@
 #include "BKE_global.h"
 #include "BKE_library_override.h"
 #include "BKE_main.h"
+#include "BKE_scene.h"
 #include "BKE_undo_system.h"
 
 #include "MEM_guardedalloc.h"
@@ -670,6 +673,10 @@ bool BKE_undosys_step_undo_with_data_ex(UndoStack *ustack,
   if (us != NULL) {
     CLOG_INFO(&LOG, 1, "addr=%p, name='%s', type='%s'", us, us->name, us->type->name);
 
+    Main *bmain = CTX_data_main(C);
+    GHash *depsgraphs = BKE_scene_undo_depsgraphs_extract(bmain);
+    bmain = NULL;
+
     /* Handle accumulate steps. */
     if (ustack->step_active) {
       UndoStep *us_iter = ustack->step_active;
@@ -707,6 +714,9 @@ bool BKE_undosys_step_undo_with_data_ex(UndoStack *ustack,
         ustack->step_active = us_iter;
       } while ((us_active != us_iter) && (us_iter = us_iter->prev));
     }
+
+    bmain = CTX_data_main(C);
+    BKE_scene_undo_depsgraphs_restore(bmain, depsgraphs);
 
     return true;
   }

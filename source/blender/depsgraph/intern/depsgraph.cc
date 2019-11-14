@@ -322,6 +322,29 @@ Depsgraph *DEG_graph_new(Main *bmain, Scene *scene, ViewLayer *view_layer, eEval
   return reinterpret_cast<Depsgraph *>(deg_depsgraph);
 }
 
+void DEG_graph_update_bmain_pointers(struct Depsgraph *depsgraph,
+                                     Main *bmain,
+                                     Scene *scene,
+                                     ViewLayer *view_layer)
+{
+  DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(depsgraph);
+
+  const bool do_update_register = deg_graph->bmain != bmain;
+  if (do_update_register && deg_graph->bmain != NULL) {
+    DEG::unregister_graph(deg_graph);
+  }
+
+  deg_graph->bmain = bmain;
+  deg_graph->scene = scene;
+  deg_graph->view_layer = view_layer;
+
+  if (do_update_register) {
+    DEG::register_graph(deg_graph);
+  }
+
+  DEG_graph_tag_relations_update(depsgraph);
+}
+
 /* Free graph's contents and graph itself */
 void DEG_graph_free(Depsgraph *graph)
 {

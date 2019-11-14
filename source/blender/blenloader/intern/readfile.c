@@ -223,7 +223,7 @@
 #define USE_GHASH_RESTORE_POINTER
 
 /* Define this to have verbose debug prints. */
-//#define USE_DEBUG_PRINT
+#define USE_DEBUG_PRINT
 
 #ifdef USE_DEBUG_PRINT
 #  define DEBUG_PRINTF(...) printf(__VA_ARGS__)
@@ -1257,7 +1257,7 @@ static int fd_read_from_memfile(FileData *filedata,
         *r_is_memchunck_identical = chunk->is_identical;
       }
       if (chunk->is_identical) {
-        DEBUG_PRINTF("%s: found an identical memfile chunk...\n", __func__);
+        //        DEBUG_PRINTF("%s: found an identical memfile chunk...\n", __func__);
       }
     } while (totread < size);
 
@@ -9259,7 +9259,8 @@ static BHead *read_libblock(FileData *fd,
 
       /* read all data into fd->datamap */
       /* TODO: instead of building oldnewmap here we could just quickly check the bheads... could
-       * save some more ticks. */
+       * save some more ticks. Probably not worth it though, bottleneck is full depsgraph rebuild
+       * and eval, not actual file reading. */
       bhead = read_data_into_oldnewmap(fd, id_bhead, allocname);
 
       DEBUG_PRINTF("\tfor data of ID %s: are_memchunks_identical: %d\n",
