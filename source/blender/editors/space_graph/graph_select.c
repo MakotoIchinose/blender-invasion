@@ -1431,7 +1431,7 @@ static int mouse_graph_keys(bAnimContext *ac,
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
   tNearestVertInfo *nvi;
   BezTriple *bezt = NULL;
-  int ret_val = OPERATOR_FINISHED;
+  bool run_modal = false;
 
   /* find the beztriple that we're selecting, and the handle that was clicked on */
   nvi = find_nearest_fcurve_vert(ac, mval);
@@ -1449,7 +1449,7 @@ static int mouse_graph_keys(bAnimContext *ac,
                         ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
 
   if (wait_to_deselect_others && nvi && already_selected) {
-    ret_val = OPERATOR_RUNNING_MODAL;
+    run_modal = true;
   }
   /* For replacing selection, if we have something to select, we have to clear existing selection.
    * The same goes if we found nothing to select, and deselect_all is true
@@ -1471,7 +1471,7 @@ static int mouse_graph_keys(bAnimContext *ac,
   }
 
   if (nvi == NULL) {
-    return OPERATOR_CANCELLED;
+    return deselect_all ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
   }
 
   /* if points can be selected on this F-Curve */
@@ -1568,7 +1568,7 @@ static int mouse_graph_keys(bAnimContext *ac,
   /* free temp sample data for filtering */
   MEM_freeN(nvi);
 
-  return ret_val;
+  return run_modal ? OPERATOR_RUNNING_MODAL : OPERATOR_FINISHED;
 }
 
 /* Option 2) Selects all the keyframes on either side of the current frame
@@ -1584,7 +1584,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
   int filter;
-  int ret_val = OPERATOR_FINISHED;
+  bool run_modal = false;
 
   KeyframeEditFunc select_cb, ok_cb;
   KeyframeEditData ked;
@@ -1608,7 +1608,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   }
 
   if (wait_to_deselect_others && (nvi->bezt->f2 & SELECT)) {
-    ret_val = OPERATOR_RUNNING_MODAL;
+    run_modal = true;
   }
   /* if select mode is replace, deselect all keyframes first */
   else if (select_mode == SELECT_REPLACE) {
@@ -1654,7 +1654,7 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   BLI_freelistN(&ked.list);
   ANIM_animdata_freelist(&anim_data);
 
-  return ret_val;
+  return run_modal ? OPERATOR_RUNNING_MODAL : OPERATOR_FINISHED;
 }
 
 /* ------------------- */
