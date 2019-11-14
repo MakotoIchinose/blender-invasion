@@ -164,7 +164,7 @@ void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
   else {
     for (ll = lanpr->line_layers.first; ll; ll = ll->next) {
       if (ll->batch) {
-        GPU_batch_discard(ll->batch);
+        GPU_BATCH_DISCARD_SAFE(ll->batch);
       }
       lanpr_rebuild_render_draw_command(lanpr_share.render_buffer_shared, ll);
     }

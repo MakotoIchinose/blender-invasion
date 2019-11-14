@@ -208,8 +208,6 @@ static int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *U
 
   BLI_remlink(&scene->lanpr.line_layers, ll);
 
-  /*  if (ll->batch) GPU_batch_discard(ll->batch); */
-
   MEM_freeN(ll);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);

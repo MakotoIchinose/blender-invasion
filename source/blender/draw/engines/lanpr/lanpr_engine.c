@@ -161,6 +161,16 @@ static void lanpr_dpix_batch_free(void)
   }
 }
 
+static void lanpr_chain_batch_free(void)
+{
+  LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
+  if (rb) {
+    if (rb->chain_draw_batch) {
+      GPU_BATCH_DISCARD_SAFE(rb->DPIXIntersectionBatch);
+    }
+  }
+}
+
 static void lanpr_engine_free(void)
 {
   DRW_SHADER_FREE_SAFE(lanpr_share.multichannel_shader);
@@ -170,6 +180,7 @@ static void lanpr_engine_free(void)
   DRW_SHADER_FREE_SAFE(lanpr_share.software_shader);
 
   lanpr_dpix_batch_free();
+  lanpr_chain_batch_free();
 
   if (lanpr_share.render_buffer_shared) {
     LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
