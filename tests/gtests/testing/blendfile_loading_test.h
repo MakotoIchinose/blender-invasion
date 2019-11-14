@@ -13,8 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
+ * The Original Code is Copyright (C) 2019 by Blender Foundation.
  */
 #ifndef __BLENDFILE_LOADING_TEST_H__
 #define __BLENDFILE_LOADING_TEST_H__
