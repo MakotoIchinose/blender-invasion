@@ -228,9 +228,10 @@ static void lanpr_cache_init(void *vedata)
 
   BLI_spin_lock(&lanpr_share.lock_render_status);
   if (rv3d && lanpr_share.viewport_camera_override >= 0) {
-    copy_v3db_v3fl(lanpr_share.camera_pos, rv3d->viewinv[3]);
-    copy_m4d_m4(lanpr_share.viewinv, rv3d->viewinv);
-    copy_m4d_m4(lanpr_share.persp, rv3d->persmat);
+    copy_v3_v3(lanpr_share.camera_pos, rv3d->viewinv[3]);
+    copy_m4_m4(lanpr_share.viewinv, rv3d->viewinv);
+    copy_m4_m4(lanpr_share.persp, rv3d->persmat);
+    copy_v4_v4(lanpr_share.viewquat, rv3d->viewquat);
     lanpr_share.near_clip = v3d->clip_start;
     lanpr_share.far_clip = v3d->clip_end;
     lanpr_share.viewport_camera_override = 1;

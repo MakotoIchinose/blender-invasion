@@ -352,10 +352,11 @@ typedef struct LANPR_SharedResource {
   /** Set to override to -1 before creating lanpr render buffer to use scene camera. */
   int viewport_camera_override;
   char camera_is_persp;
-  double camera_pos[3];
-  double near_clip, far_clip;
-  double viewinv[4][4];
-  double persp[4][4];
+  float camera_pos[3];
+  float near_clip, far_clip;
+  float viewinv[4][4];
+  float persp[4][4];
+  float viewquat[4];
 } LANPR_SharedResource;
 
 #define DBL_TRIANGLE_LIM 1e-8

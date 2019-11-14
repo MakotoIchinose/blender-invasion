@@ -1826,11 +1826,8 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
   memset(rb->material_pointers, 0, sizeof(void *) * 2048);
 
   if (lanpr_share.viewport_camera_override) {
-    copy_m4_m4_db(proj, lanpr_share.persp);
+    copy_m4d_m4(proj, lanpr_share.persp);
     invert_m4_m4(inv, lanpr_share.viewinv);
-    unit_m4_db(lanpr_share.viewinv);
-    mul_m4_m4m4_db_uniq(result, proj, lanpr_share.viewinv);
-    copy_m4_m4_db(proj, result);
     copy_m4_m4_db(rb->view_projection, proj);
   }
   else {
@@ -2480,7 +2477,12 @@ static void lanpr_compute_view_vector(LANPR_RenderBuffer *rb)
 
   BLI_spin_lock(&lanpr_share.lock_render_status);
   if (lanpr_share.viewport_camera_override) {
-    invert_m4_m4(inv, lanpr_share.viewinv);
+    if (lanpr_share.camera_is_persp) {
+      invert_m4_m4(inv, lanpr_share.viewinv);
+    }
+    else {
+      quat_to_mat4(inv, lanpr_share.viewquat);
+    }
   }
   else {
     invert_m4_m4(inv, rb->scene->camera->obmat);
@@ -2639,7 +2641,7 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
     LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
     ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
     rb->viewport_override = lanpr_share.viewport_camera_override;
-    copy_v3_v3_db(rb->camera_pos, lanpr_share.camera_pos);
+    copy_v3db_v3fl(rb->camera_pos, lanpr_share.camera_pos);
     rb->viewport_is_persp = lanpr_share.camera_is_persp;
     rb->near_clip = lanpr_share.near_clip;
     rb->far_clip = lanpr_share.far_clip;
@@ -2650,7 +2652,7 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 
   lanpr_share.render_buffer_shared = rb;
   rb->viewport_override = lanpr_share.viewport_camera_override;
-  copy_v3_v3_db(rb->camera_pos, lanpr_share.camera_pos);
+  copy_v3db_v3fl(rb->camera_pos, lanpr_share.camera_pos);
   rb->viewport_is_persp = lanpr_share.camera_is_persp;
   rb->near_clip = lanpr_share.near_clip;
   rb->far_clip = lanpr_share.far_clip;
