@@ -29,7 +29,6 @@ ExternalProject_Add(external_openxr_sdk
   URL_HASH MD5=${OPENXR_SDK_HASH}
   PREFIX ${BUILD_DIR}/openxr_sdk
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openxr_sdk ${DEFAULT_CMAKE_FLAGS} ${OPENXR_SDK_EXTRA_ARGS}
-  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d ${BUILD_DIR}/openxr_sdk/src/external_openxr_sdk < ${PATCH_DIR}/openxr_sdk.diff
   INSTALL_DIR ${LIBDIR}/openxr_sdk
 )
 
