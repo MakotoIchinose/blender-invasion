@@ -35,6 +35,8 @@ struct Path;
 struct TextBox;
 struct rctf;
 
+typedef int eBezTriple_Flag__Alias;
+
 typedef struct CurveCache {
   ListBase disp;
   ListBase bev;
@@ -245,7 +247,7 @@ void BKE_nurb_handle_calc(struct BezTriple *bezt,
 void BKE_nurb_handle_calc_ex(struct BezTriple *bezt,
                              struct BezTriple *prev,
                              struct BezTriple *next,
-                             const int handle_sel_flag,
+                             const eBezTriple_Flag__Alias handle_sel_flag,
                              const bool is_fcurve,
                              const char smoothing);
 void BKE_nurb_handle_calc_simple(struct Nurb *nu, struct BezTriple *bezt);
@@ -255,7 +257,9 @@ void BKE_nurb_handle_smooth_fcurve(struct BezTriple *bezt, int total, bool cycli
 
 void BKE_nurb_handles_calc(struct Nurb *nu);
 void BKE_nurb_handles_autocalc(struct Nurb *nu, int flag);
-void BKE_nurb_bezt_handle_test(struct BezTriple *bezt, const int sel_flag, const bool use_handle);
+void BKE_nurb_bezt_handle_test(struct BezTriple *bezt,
+                               const eBezTriple_Flag__Alias sel_flag,
+                               const bool use_handle);
 void BKE_nurb_handles_test(struct Nurb *nu, const bool use_handles);
 
 /* **** Depsgraph evaluation **** */

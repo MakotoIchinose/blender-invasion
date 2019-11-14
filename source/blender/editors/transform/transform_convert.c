@@ -921,10 +921,17 @@ typedef struct tRetainedKeyframe {
   size_t del_count; /* number of keyframes of this sort that have been deleted so far */
 } tRetainedKeyframe;
 
-/* Called during special_aftertrans_update to make sure selected keyframes replace
+/**
+ * Called during special_aftertrans_update to make sure selected keyframes replace
  * any other keyframes which may reside on that frame (that is not selected).
+ *
+ * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
+ *                  but may want to use a different one at times (if caller does not operate on
+ *                  selection).
  */
-static void posttrans_fcurve_clean(FCurve *fcu, const bool use_handle)
+static void posttrans_fcurve_clean(FCurve *fcu,
+                                   const eBezTriple_Flag sel_flag,
+                                   const bool use_handle)
 {
   /* NOTE: We assume that all keys are sorted */
   ListBase retained_keys = {NULL, NULL};

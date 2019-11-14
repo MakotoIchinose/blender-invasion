@@ -157,8 +157,8 @@ static bool graph_edit_use_local_center(TransInfo *t)
 }
 
 /**
- * Get the effective selection of a triple for transform, i.e. return which vertices should be
- * affected by transform.
+ * Get the effective selection of a triple for transform, i.e. return if the left handle, right
+ * handle and/or the center point should be affected by transform.
  */
 static void graph_bezt_get_transform_selection(const TransInfo *t,
                                                const BezTriple *bezt,

@@ -3201,7 +3201,7 @@ void BKE_curve_bevelList_make(Object *ob, ListBase *nurbs, bool for_render)
 static void calchandleNurb_intern(BezTriple *bezt,
                                   const BezTriple *prev,
                                   const BezTriple *next,
-                                  int handle_sel_flag,
+                                  eBezTriple_Flag handle_sel_flag,
                                   bool is_fcurve,
                                   bool skip_align,
                                   char fcurve_smoothing)
@@ -3444,7 +3444,7 @@ static void calchandleNurb_intern(BezTriple *bezt,
 #undef p2_h2
 }
 
-static void calchandlesNurb_intern(Nurb *nu, int handle_sel_flag, bool skip_align)
+static void calchandlesNurb_intern(Nurb *nu, eBezTriple_Flag handle_sel_flag, bool skip_align)
 {
   BezTriple *bezt, *prev, *next;
   int a;
@@ -3602,8 +3602,7 @@ static bool tridiagonal_solve_with_limits(
 
         float target = h[i] > hmax[i] ? hmax[i] : hmin[i];
 
-        /* heuristically only lock handles that go in the right direction if there are such ones
-         */
+        /* heuristically only lock handles that go in the right direction if there are such ones */
         if (target != 0.0f || all) {
           /* mark item locked */
           is_locked[i] = 1;
@@ -4040,16 +4039,27 @@ void BKE_nurb_handle_smooth_fcurve(BezTriple *bezt, int total, bool cycle)
   }
 }
 
+/**
+ * Recalculate the handles of a nurb bezier-triple. Acts based on handle selection with `SELECT`
+ * flag. To use a different flag, use #BKE_nurb_handle_calc_ex().
+ */
 void BKE_nurb_handle_calc(
     BezTriple *bezt, BezTriple *prev, BezTriple *next, const bool is_fcurve, const char smoothing)
 {
   calchandleNurb_intern(bezt, prev, next, SELECT, is_fcurve, false, smoothing);
 }
 
+/**
+ * Variant of #BKE_nurb_handle_calc() that allows calculating based on a different select flag.
+ *
+ * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
+ *                  but may want to use a different one at times (if caller does not operate on
+ *                  selection).
+ */
 void BKE_nurb_handle_calc_ex(BezTriple *bezt,
                              BezTriple *prev,
                              BezTriple *next,
-                             const int handle_sel_flag,
+                             const eBezTriple_Flag__Alias handle_sel_flag,
                              const bool is_fcurve,
                              const char smoothing)
 {
@@ -4113,14 +4123,21 @@ void BKE_nurb_handle_calc_simple_auto(Nurb *nu, BezTriple *bezt)
 }
 
 /**
+ * Update selected handle types to ensure valid state, e.g. deduce "Auto" types to concrete ones.
+ * Thereby \a sel_flag defines what qualifies as selected.
  * Use when something has changed handle positions.
  *
  * The caller needs to recalculate handles.
  *
  * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
- *                  but may want to use a different one at times.
+ *                  but may want to use a different one at times (if caller does not operate on
+ *                  selection).
+ * \param use_handle: Check selection state of individual handles, otherwise always update both
+ *                    handles if the key is selected.
  */
-void BKE_nurb_bezt_handle_test(BezTriple *bezt, const int sel_flag, const bool use_handle)
+void BKE_nurb_bezt_handle_test(BezTriple *bezt,
+                               const eBezTriple_Flag__Alias sel_flag,
+                               const bool use_handle)
 {
   short flag = 0;
 

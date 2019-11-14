@@ -1423,7 +1423,7 @@ void GRAPH_OT_select_leftright(wmOperatorType *ot)
 /* option 1) select keyframe directly under mouse */
 static int mouse_graph_keys(bAnimContext *ac,
                             const int mval[2],
-                            short select_mode,
+                            eEditKeyframes_Select select_mode,
                             const bool deselect_all,
                             const bool curves_only,
                             bool wait_to_deselect_others)
@@ -1495,7 +1495,6 @@ static int mouse_graph_keys(bAnimContext *ac,
         }
       }
       else {
-        /* Select the handle that applied */
         if (nvi->hpoint == NEAREST_HANDLE_KEY) {
           bezt->f2 |= SELECT;
         }
@@ -1579,7 +1578,7 @@ static int mouse_graph_keys(bAnimContext *ac,
 /* Option 3) Selects all visible keyframes in the same frame as the mouse click */
 static int graphkeys_mselect_column(bAnimContext *ac,
                                     const int mval[2],
-                                    short select_mode,
+                                    eEditKeyframes_Select select_mode,
                                     bool wait_to_deselect_others)
 {
   ListBase anim_data = {NULL, NULL};
