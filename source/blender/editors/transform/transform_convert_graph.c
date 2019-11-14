@@ -241,7 +241,7 @@ void createTransGraphEditData(bContext *C, TransInfo *t)
   BezTriple *bezt;
   int count = 0, i;
   float mtx[3][3], smtx[3][3];
-  const bool use_handle = IS_USE_HANDLE(sipo);
+  const bool use_handle = !(sipo->flag & SIPO_NOHANDLES);
   const bool use_local_center = graph_edit_use_local_center(t);
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   short anim_map_flag = ANIM_UNITCONV_ONLYSEL | ANIM_UNITCONV_SELVERTS;
