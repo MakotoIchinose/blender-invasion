@@ -592,7 +592,9 @@ static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
-  const float threshold = RNA_float_get(op->ptr, "threshold");
+  const float hue_threshold = RNA_float_get(op->ptr, "hue_threshold");
+  const float sat_threshold = RNA_float_get(op->ptr, "sat_threshold");
+  const float val_threshold = RNA_float_get(op->ptr, "val_threshold");
 
   /* Review materials. */
   GHash *mat_table = BLI_ghash_int_new(__func__);
@@ -602,7 +604,8 @@ static int gp_stroke_merge_material_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bool changed = BKE_gpencil_merge_materials_table_get(ob, threshold, mat_table);
+  bool changed = BKE_gpencil_merge_materials_table_get(
+      ob, hue_threshold, sat_threshold, val_threshold, mat_table);
 
   int removed = BLI_ghash_len(mat_table);
 
@@ -648,7 +651,7 @@ void GPENCIL_OT_stroke_merge_material(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Merge Stroke Materials";
+  ot->name = "Merge Grease Pencil Materials";
   ot->idname = "GPENCIL_OT_stroke_merge_material";
   ot->description = "Replace materials in strokes merging similar";
 
@@ -660,7 +663,12 @@ void GPENCIL_OT_stroke_merge_material(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_float(ot->srna, "threshold", 0.01f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  prop = RNA_def_float(
+      ot->srna, "hue_threshold", 0.001f, 0.0f, 1.0f, "Hue Threshold", "", 0.0f, 1.0f);
+  prop = RNA_def_float(
+      ot->srna, "sat_threshold", 0.001f, 0.0f, 1.0f, "Saturation Threshold", "", 0.0f, 1.0f);
+  prop = RNA_def_float(
+      ot->srna, "val_threshold", 0.001f, 0.0f, 1.0f, "Value Threshold", "", 0.0f, 1.0f);
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

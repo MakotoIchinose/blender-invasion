@@ -125,7 +125,9 @@ void BKE_gpencil_material_remap(struct bGPdata *gpd,
                                 const unsigned int *remap,
                                 unsigned int remap_len);
 bool BKE_gpencil_merge_materials_table_get(struct Object *ob,
-                                           float threshold,
+                                           const float hue_threshold,
+                                           const float sat_threshold,
+                                           const float val_threshold,
                                            struct GHash *r_mat_table);
 
 /* statistics functions */

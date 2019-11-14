@@ -2120,7 +2120,11 @@ void BKE_gpencil_material_remap(struct bGPdata *gpd,
 }
 
 /* Load a table with material conversion index for merged materials. */
-bool BKE_gpencil_merge_materials_table_get(Object *ob, float threshold, GHash *r_mat_table)
+bool BKE_gpencil_merge_materials_table_get(Object *ob,
+                                           const float hue_threshold,
+                                           const float sat_threshold,
+                                           const float val_threshold,
+                                           GHash *r_mat_table)
 {
   bool changed = false;
 
@@ -2178,15 +2182,26 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob, float threshold, GHash *r
         continue;
       }
 
-      float stroke_a[4], stroke_b[4], fill_a[4], fill_b[4];
-      copy_v4_v4(stroke_a, gp_style_primary->stroke_rgba);
-      copy_v4_v4(stroke_b, gp_style_secondary->stroke_rgba);
-      copy_v4_v4(fill_a, gp_style_primary->fill_rgba);
-      copy_v4_v4(fill_b, gp_style_secondary->fill_rgba);
+      float s_hsv_a[3], s_hsv_b[3], f_hsv_a[3], f_hsv_b[3], col[3];
+      copy_v3_v3(col, gp_style_primary->stroke_rgba);
+      rgb_to_hsv_compat_v(col, s_hsv_a);
+      copy_v3_v3(col, gp_style_secondary->stroke_rgba);
+      rgb_to_hsv_compat_v(col, s_hsv_b);
 
-      /* Check stroke and fill color. */
-      if ((!compare_v4v4(stroke_a, stroke_b, threshold)) ||
-          (!compare_v4v4(fill_a, fill_b, threshold))) {
+      copy_v3_v3(col, gp_style_primary->fill_rgba);
+      rgb_to_hsv_compat_v(col, f_hsv_a);
+      copy_v3_v3(col, gp_style_secondary->fill_rgba);
+      rgb_to_hsv_compat_v(col, f_hsv_b);
+
+      /* Check stroke and fill color (only Hue and Saturation). */
+      if ((!compare_ff(s_hsv_a[0], s_hsv_b[0], hue_threshold)) ||
+          (!compare_ff(s_hsv_a[1], s_hsv_b[1], sat_threshold)) ||
+          (!compare_ff(f_hsv_a[0], f_hsv_b[0], hue_threshold)) ||
+          (!compare_ff(f_hsv_a[1], f_hsv_b[1], sat_threshold)) ||
+          (!compare_ff(s_hsv_a[2], s_hsv_b[2], val_threshold)) ||
+          (!compare_ff(s_hsv_a[2], s_hsv_b[2], val_threshold)) ||
+          (!compare_ff(s_hsv_a[2], s_hsv_b[2], val_threshold)) ||
+          (!compare_ff(s_hsv_a[2], s_hsv_b[2], val_threshold))) {
         continue;
       }
 
