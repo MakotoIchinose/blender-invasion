@@ -1325,20 +1325,6 @@ if(WITH_LIBMV)
 endif()
 
 #-----------------------------------------------------------------------------
-# Configure OpenXR
-# Adds some compiler defines as required by the OpenXR specification.
-
-if(WITH_OPENXR)
-  if(WIN32)
-    add_definitions(-DXR_USE_PLATFORM_WIN32 -DXR_USE_GRAPHICS_API_D3D11)
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_definitions(-DXR_OS_LINUX -DXR_USE_PLATFORM_XLIB )
-  endif()
-
-  add_definitions(-DXR_USE_GRAPHICS_API_OPENGL)
-endif()
-
-#-----------------------------------------------------------------------------
 # Extra limits to number of jobs running in parallel for some kind os tasks.
 # Only supported by Ninja build system currently.
 if("${CMAKE_GENERATOR}" MATCHES "Ninja" AND WITH_NINJA_POOL_JOBS)
