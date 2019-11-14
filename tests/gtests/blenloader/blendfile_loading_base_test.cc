@@ -15,7 +15,7 @@
  *
  * The Original Code is Copyright (C) 2019 by Blender Foundation.
  */
-#include "blendfile_loading_test.h"
+#include "blendfile_loading_base_test.h"
 
 extern "C" {
 #include "BKE_blender.h"
@@ -49,16 +49,16 @@ extern "C" {
 
 DEFINE_string(test_assets_dir, "", "lib/tests directory from SVN containing the test assets.");
 
-BlendfileLoadingAbstractTest::BlendfileLoadingAbstractTest()
+BlendfileLoadingBaseTest::BlendfileLoadingBaseTest()
     : testing::Test(), bfile(nullptr), depsgraph(nullptr)
 {
 }
 
-BlendfileLoadingAbstractTest::~BlendfileLoadingAbstractTest()
+BlendfileLoadingBaseTest::~BlendfileLoadingBaseTest()
 {
 }
 
-void BlendfileLoadingAbstractTest::SetUpTestCase()
+void BlendfileLoadingBaseTest::SetUpTestCase()
 {
   testing::Test::SetUpTestCase();
 
@@ -83,7 +83,7 @@ void BlendfileLoadingAbstractTest::SetUpTestCase()
   G.main->wm.first = MEM_callocN(sizeof(wmWindowManager), __func__);
 }
 
-void BlendfileLoadingAbstractTest::TearDown()
+void BlendfileLoadingBaseTest::TearDown()
 {
   depsgraph_free();
   blendfile_free();
@@ -91,28 +91,27 @@ void BlendfileLoadingAbstractTest::TearDown()
   testing::Test::TearDown();
 }
 
-bool BlendfileLoadingAbstractTest::blendfile_load(const char *filepath)
+bool BlendfileLoadingBaseTest::blendfile_load(const char *filepath)
 {
-  const char *test_assets_dir = FLAGS_test_assets_dir.c_str();
-  if (test_assets_dir == nullptr || test_assets_dir[0] == '\0') {
+  if (FLAGS_test_assets_dir.empty()) {
     ADD_FAILURE()
         << "Pass the flag --test-assets-dir and point to the lib/tests directory from SVN.";
     return false;
   }
 
   char abspath[FILENAME_MAX];
-  BLI_path_join(abspath, sizeof(abspath), test_assets_dir, filepath, NULL);
+  BLI_path_join(abspath, sizeof(abspath), FLAGS_test_assets_dir.c_str(), filepath, NULL);
 
   bfile = BLO_read_from_file(abspath, BLO_READ_SKIP_NONE, NULL /* reports */);
   if (bfile == nullptr) {
-    ADD_FAILURE();
+    ADD_FAILURE() << "Unable to load file '" << filepath << "' from test assets dir '"
+                  << FLAGS_test_assets_dir << "'";
     return false;
   }
-
   return true;
 }
 
-void BlendfileLoadingAbstractTest::blendfile_free()
+void BlendfileLoadingBaseTest::blendfile_free()
 {
   if (bfile == nullptr) {
     return;
@@ -121,7 +120,7 @@ void BlendfileLoadingAbstractTest::blendfile_free()
   bfile = nullptr;
 }
 
-void BlendfileLoadingAbstractTest::depsgraph_create(eEvaluationMode depsgraph_evaluation_mode)
+void BlendfileLoadingBaseTest::depsgraph_create(eEvaluationMode depsgraph_evaluation_mode)
 {
   depsgraph = DEG_graph_new(
       bfile->main, bfile->curscene, bfile->cur_view_layer, depsgraph_evaluation_mode);
@@ -129,7 +128,7 @@ void BlendfileLoadingAbstractTest::depsgraph_create(eEvaluationMode depsgraph_ev
   BKE_scene_graph_update_tagged(depsgraph, bfile->main);
 }
 
-void BlendfileLoadingAbstractTest::depsgraph_free()
+void BlendfileLoadingBaseTest::depsgraph_free()
 {
   if (depsgraph == nullptr) {
     return;

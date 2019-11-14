@@ -20,15 +20,6 @@
 set(INC
   .
   ..
-  ../../../source/blender/blenkernel
-  ../../../source/blender/blenlib
-  ../../../source/blender/blenloader
-  ../../../source/blender/depsgraph
-  ../../../source/blender/imbuf
-  ../../../source/blender/makesdna
-  ../../../source/blender/makesrna
-  ../../../source/blender/windowmanager
-  ../../../intern/guardedalloc
   ${GLOG_INCLUDE_DIRS}
   ${GFLAGS_INCLUDE_DIRS}
   ../../../extern/gtest/include
@@ -38,10 +29,8 @@ set(INC_SYS
 )
 
 set(SRC
-  blendfile_loading_test.cc
   testing_main.cc
 
-  blendfile_loading_test.h
   testing.h
 )
 

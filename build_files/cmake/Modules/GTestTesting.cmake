@@ -14,10 +14,9 @@
 
 macro(BLENDER_SRC_GTEST_EX)
   if(WITH_GTESTS)
-    # See https://cmake.org/cmake/help/v3.5/command/cmake_parse_arguments.html
     set(options SKIP_ADD_TEST)
     set(oneValueArgs NAME)
-    set(multiValueArgs SRC EXTRA_LIBS EXTRA_CLI)
+    set(multiValueArgs SRC EXTRA_LIBS COMMAND_ARGS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
 
     set(TARGET_NAME ${ARG_NAME}_test)
@@ -69,7 +68,7 @@ macro(BLENDER_SRC_GTEST_EX)
     if(NOT ARG_SKIP_ADD_TEST)
       add_test(
         NAME ${TARGET_NAME}
-        COMMAND ${TESTS_OUTPUT_DIR}/${TARGET_NAME} ${ARG_EXTRA_CLI}
+        COMMAND ${TESTS_OUTPUT_DIR}/${TARGET_NAME} ${ARG_COMMAND_ARGS}
         WORKING_DIRECTORY ${TEST_INSTALL_DIR})
 
       # Don't fail tests on leaks since these often happen in external libraries

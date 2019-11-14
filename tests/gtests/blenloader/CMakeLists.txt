@@ -20,6 +20,34 @@
 set(INC
     .
     ..
+    ../../../source/blender/blenkernel
+    ../../../source/blender/blenlib
+    ../../../source/blender/blenloader
+    ../../../source/blender/depsgraph
+    ../../../source/blender/imbuf
+    ../../../source/blender/makesdna
+    ../../../source/blender/makesrna
+    ../../../source/blender/windowmanager
+    ../../../intern/guardedalloc
+      ${GLOG_INCLUDE_DIRS}
+    ${GFLAGS_INCLUDE_DIRS}
+    ../../../extern/gtest/include
+)
+
+set(SRC
+  blendfile_loading_base_test.cc
+  blendfile_loading_base_test.h
+)
+
+set(LIB
+)
+
+blender_add_lib(bf_blenloader_test "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+
+set(INC
+    .
+    ..
     ../../../source/blender/blenlib
     ../../../source/blender/blenloader
     ../../../source/blender/blenkernel
@@ -30,6 +58,7 @@ set(INC
 )
 
 set(LIB
+    bf_blenloader_test
     bf_blenloader
     bf_intern_opencolorio # Should not be needed but gives windows linker errors if the ocio libs are linked before this
     bf_gpu # Should not be needed but gives windows linker errors if the ocio libs are linked before this
@@ -50,7 +79,7 @@ BLENDER_SRC_GTEST_EX(
   NAME blenloader
   SRC "blendfile_load_test.cc;${_buildinfo_src}"
   EXTRA_LIBS "${LIB}"
-  EXTRA_CLI --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests")
+  COMMAND_ARGS --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests")
 
 unset(_buildinfo_src)
 

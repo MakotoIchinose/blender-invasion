@@ -24,14 +24,14 @@
 struct BlendFileData;
 struct Depsgraph;
 
-class BlendfileLoadingAbstractTest : public testing::Test {
+class BlendfileLoadingBaseTest : public testing::Test {
  protected:
   struct BlendFileData *bfile;
   struct Depsgraph *depsgraph;
 
  public:
-  BlendfileLoadingAbstractTest();
-  virtual ~BlendfileLoadingAbstractTest();
+  BlendfileLoadingBaseTest();
+  virtual ~BlendfileLoadingBaseTest();
 
   /* Sets up Blender just enough to not crash on loading
    * a blendfile and constructing a depsgraph. */
@@ -52,7 +52,7 @@ class BlendfileLoadingAbstractTest : public testing::Test {
    * those will SEGFAULT.
    */
   bool blendfile_load(const char *filepath);
-  /* Free bfile if it is not nullptr */
+  /* Free bfile if it is not nullptr. */
   void blendfile_free();
 
   /* Create a depsgraph. Assumes a blend file has been loaded to this->bfile. */
