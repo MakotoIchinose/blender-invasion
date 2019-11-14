@@ -5211,7 +5211,7 @@ static void sculpt_topology_update(Sculpt *sd,
 
       if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
         BKE_pbvh_node_mark_topology_update(nodes[n]);
-        BKE_pbvh_bmesh_node_save_orig(nodes[n]);
+        BKE_pbvh_bmesh_node_save_orig(ss->bm, nodes[n]);
       }
     }
 
@@ -7662,7 +7662,7 @@ static int ed_object_sculptmode_flush_recalc_flag(Scene *scene,
 {
   int flush_recalc = 0;
   /* multires in sculpt mode could have different from object mode subdivision level */
-  flush_recalc |= mmd && mmd->sculptlvl != mmd->lvl;
+  flush_recalc |= mmd && BKE_multires_sculpt_level_get(mmd) != mmd->lvl;
   /* if object has got active modifiers, it's dm could be different in sculpt mode  */
   flush_recalc |= sculpt_has_active_modifiers(scene, ob);
   return flush_recalc;
