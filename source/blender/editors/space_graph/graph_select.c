@@ -1444,9 +1444,9 @@ static int mouse_graph_keys(bAnimContext *ac,
                           SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT);
 
   const bool already_selected =
-      nvi && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
-              ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
-              ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
+      (nvi != NULL) && (((nvi->hpoint == NEAREST_HANDLE_KEY) && (nvi->bezt->f2 & SELECT)) ||
+                        ((nvi->hpoint == NEAREST_HANDLE_LEFT) && (nvi->bezt->f1 & SELECT)) ||
+                        ((nvi->hpoint == NEAREST_HANDLE_RIGHT) && (nvi->bezt->f3 & SELECT)));
 
   if (wait_to_deselect_others && nvi && already_selected) {
     ret_val = OPERATOR_RUNNING_MODAL;

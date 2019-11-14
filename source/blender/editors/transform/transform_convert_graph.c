@@ -181,18 +181,14 @@ static void graph_bezt_get_transform_selection(const TransInfo *t,
     }
   }
 
+  /* Whenever we move the key, we also move both handles. */
+  if (key) {
+    left = right = true;
+  }
+
   *r_key = key;
-  /* Whenever we move the key, we also move both handles (with USE_HANDLES_AS_CHILD). */
-  *r_left_handle =
-#ifdef USE_HANDLES_AS_CHILD
-      key ||
-#endif
-      left;
-  *r_right_handle =
-#ifdef USE_HANDLES_AS_CHILD
-      key ||
-#endif
-      right;
+  *r_left_handle = left;
+  *r_right_handle = right;
 }
 
 static void graph_key_shortest_dist(
