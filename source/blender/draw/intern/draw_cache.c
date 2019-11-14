@@ -1295,48 +1295,43 @@ GPUBatch *DRW_cache_empty_capsule_cap_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_image_plane_get(void)
+GPUBatch *DRW_cache_empty_image_plane_get(void)
 {
   if (!SHC.drw_image_plane) {
-    const float quad[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos, texCoords;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-      attr_id.texCoords = GPU_vertformat_attr_add(
-          &format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    }
+    GPUVertFormat format = extra_vert_format();
+
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, 4);
-    for (uint j = 0; j < 4; j++) {
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, j, quad[j]);
-      GPU_vertbuf_attr_set(vbo, attr_id.texCoords, j, quad[j]);
+
+    int v = 0;
+    int flag = VCLASS_EMPTY_SCALED;
+    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    for (int a = 0; a < 4; a++) {
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[a][0], p[a][1], 0.0f}, flag});
     }
+
     SHC.drw_image_plane = GPU_batch_create_ex(GPU_PRIM_TRI_FAN, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_image_plane;
 }
 
-GPUBatch *DRW_cache_image_plane_wire_get(void)
+GPUBatch *DRW_cache_empty_image_frame_get(void)
 {
   if (!SHC.drw_image_plane_wire) {
-    const float quad[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    }
+    GPUVertFormat format = extra_vert_format();
+
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, 4);
-    for (uint j = 0; j < 4; j++) {
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, j, quad[j]);
+    GPU_vertbuf_data_alloc(vbo, 5);
+
+    int v = 0;
+    int flag = VCLASS_EMPTY_SCALED;
+    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    for (int a = 0; a < 5; a++) {
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[a % 4][0], p[a % 4][1], 0.0f}, flag});
     }
+
     SHC.drw_image_plane_wire = GPU_batch_create_ex(
-        GPU_PRIM_LINE_LOOP, vbo, NULL, GPU_BATCH_OWNS_VBO);
+        GPU_PRIM_LINE_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_image_plane_wire;
 }

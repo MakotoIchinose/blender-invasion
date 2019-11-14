@@ -73,8 +73,8 @@ struct GPUBatch *DRW_cache_empty_cylinder_get(void);
 struct GPUBatch *DRW_cache_empty_cone_get(void);
 struct GPUBatch *DRW_cache_empty_capsule_cap_get(void);
 struct GPUBatch *DRW_cache_empty_capsule_body_get(void);
-struct GPUBatch *DRW_cache_image_plane_get(void);
-struct GPUBatch *DRW_cache_image_plane_wire_get(void);
+struct GPUBatch *DRW_cache_empty_image_plane_get(void);
+struct GPUBatch *DRW_cache_empty_image_frame_get(void);
 
 /* Force Field */
 struct GPUBatch *DRW_cache_field_wind_get(void);

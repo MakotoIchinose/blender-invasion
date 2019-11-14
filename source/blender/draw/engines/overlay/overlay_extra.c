@@ -139,6 +139,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->empty_cone = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cone_get());
       cb->empty_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cube_get());
       cb->empty_cylinder = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cylinder_get());
+      cb->empty_image_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_image_frame_get());
       cb->empty_plain_axes = BUF_INSTANCE(grp_sub, format, DRW_cache_plain_axes_get());
       cb->empty_single_arrow = BUF_INSTANCE(grp_sub, format, DRW_cache_single_arrow_get());
       cb->empty_sphere = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_sphere_get());
@@ -247,7 +248,7 @@ void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
   DRW_buffer_add_entry(cb->extra_lines, end, &color_id);
 }
 
-static OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Object *ob)
+OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Object *ob)
 {
   bool do_in_front = (ob->dtx & OB_DRAWXRAY) != 0;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
@@ -291,7 +292,8 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
       DRW_buffer_add_entry(cb->empty_axes, color, instdata);
       break;
     case OB_EMPTY_IMAGE:
-      BLI_assert(!"Should never happen, use DRW_shgroup_empty instead.");
+      /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
+      DRW_buffer_add_entry(cb->empty_image_frame, color, instdata);
       break;
   }
 }
@@ -321,7 +323,7 @@ void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
       OVERLAY_empty_shape(cb, ob->obmat, ob->empty_drawsize, ob->empty_drawtype, color);
       break;
     case OB_EMPTY_IMAGE:
-      // DRW_shgroup_empty_image(sh_data, sgl, ob, color, rv3d, sh_cfg);
+      OVERLAY_image_empty_cache_populate(vedata, ob);
       break;
   }
 }

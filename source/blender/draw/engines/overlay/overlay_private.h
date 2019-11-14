@@ -62,6 +62,12 @@ typedef struct OVERLAY_PassList {
   DRWPass *extra_centers_ps;
   DRWPass *facing_ps;
   DRWPass *grid_ps;
+  DRWPass *image_background_ps;
+  DRWPass *image_empties_ps;
+  DRWPass *image_empties_back_ps;
+  DRWPass *image_empties_blend_ps;
+  DRWPass *image_empties_front_ps;
+  DRWPass *image_foreground_ps;
   DRWPass *outlines_prepass_ps;
   DRWPass *outlines_detect_ps;
   DRWPass *outlines_expand_ps;
@@ -108,6 +114,7 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *empty_cone;
   DRWCallBuffer *empty_cube;
   DRWCallBuffer *empty_cylinder;
+  DRWCallBuffer *empty_image_frame;
   DRWCallBuffer *empty_plain_axes;
   DRWCallBuffer *empty_single_arrow;
   DRWCallBuffer *empty_sphere;
@@ -294,6 +301,7 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_speaker_cache_populate(OVERLAY_Data *vedata, Object *ob);
 
+OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
                                const float start[3],
                                const float end[3],
@@ -316,6 +324,12 @@ void OVERLAY_facing_draw(OVERLAY_Data *vedata);
 void OVERLAY_grid_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_image_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
+void OVERLAY_image_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_outline_init(OVERLAY_Data *vedata);
 void OVERLAY_outline_cache_init(OVERLAY_Data *vedata);
@@ -356,6 +370,7 @@ GPUShader *OVERLAY_shader_extra_wire(void);
 GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);
+GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
 GPUShader *OVERLAY_shader_outline_prepass_grid(void);
 GPUShader *OVERLAY_shader_outline_resolve(void);

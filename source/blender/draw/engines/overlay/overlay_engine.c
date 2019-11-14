@@ -153,6 +153,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_extra_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
+  OVERLAY_image_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
 }
@@ -250,9 +251,6 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   //   if (scuplt_mode) {
   //     OVERLAY_sculpt_cache_populate();
   //   }
-  //   if (draw_wires) {
-  //     OVERLAY_wireframe_cache_populate();
-  //   }
   // }
 
   switch (ob->type) {
@@ -300,11 +298,17 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   }
 }
 
+static void OVERLAY_cache_finish(void *vedata)
+{
+  OVERLAY_image_cache_finish(vedata);
+}
+
 static void OVERLAY_draw_scene(void *vedata)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
 
+  OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
   OVERLAY_extra_draw(vedata);
@@ -343,7 +347,7 @@ DrawEngineType draw_engine_overlay_type = {
     &OVERLAY_engine_free,
     &OVERLAY_cache_init,
     &OVERLAY_cache_populate,
-    NULL,
+    &OVERLAY_cache_finish,
     NULL,
     &OVERLAY_draw_scene,
     NULL,

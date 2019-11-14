@@ -965,7 +965,7 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
       DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
-    DRW_shgroup_call_no_cull(grp, DRW_cache_image_plane_wire_get(), ob);
+    DRW_shgroup_call_no_cull(grp, DRW_cache_empty_image_frame_get(), ob);
   }
 
   if (!BKE_object_empty_image_data_is_visible_in_view3d(ob, rv3d)) {
@@ -987,7 +987,7 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     if (sh_cfg == GPU_SHADER_CFG_CLIPPED) {
       DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
-    DRW_shgroup_call_no_cull(grp, DRW_cache_image_plane_get(), ob);
+    DRW_shgroup_call_no_cull(grp, DRW_cache_empty_image_plane_get(), ob);
   }
 }
 
@@ -1083,7 +1083,7 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
   const bool look_through = (is_active && (rv3d->persp == RV3D_CAMOB));
 
   if (look_through && (cam->flag & CAM_SHOW_BG_IMAGE)) {
-    GPUBatch *batch = DRW_cache_image_plane_get();
+    GPUBatch *batch = DRW_cache_empty_image_plane_get();
 
     /* load camera engine data */
     CameraEngineData *camera_engine_data = (CameraEngineData *)DRW_drawdata_ensure(

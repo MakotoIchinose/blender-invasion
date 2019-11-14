@@ -140,6 +140,7 @@ set(SRC
   engines/overlay/overlay_extra.c
   engines/overlay/overlay_facing.c
   engines/overlay/overlay_grid.c
+  engines/overlay/overlay_image.c
   engines/overlay/overlay_outline.c
   engines/overlay/overlay_shader.c
   engines/overlay/overlay_wireframe.c
@@ -406,6 +407,8 @@ data_to_c_simple(engines/overlay/shaders/facing_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/facing_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/grid_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/grid_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/image_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/image_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_detect_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_expand_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_prepass_frag.glsl SRC)
