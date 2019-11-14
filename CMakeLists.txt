@@ -168,6 +168,7 @@ option_defaults_init(
   _init_SDL
   _init_FFTW3
   _init_OPENSUBDIV
+  _init_OPENXR
 )
 
 # TBB malloc is only supported on for windows currently
@@ -197,6 +198,8 @@ elseif(WIN32)
   set(_init_JACK                           OFF)
 elseif(APPLE)
   set(_init_JACK                           OFF)
+  # No OpenXR compatible XR runtime in sight on Apple, so why bother compiling XR support?
+  set(_init_OPENXR                         OFF)
 endif()
 
 
@@ -245,7 +248,7 @@ option(WITH_BULLET        "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "Use the systems bullet library (currently unsupported due to missing features in upstream!)" )
 mark_as_advanced(WITH_SYSTEM_BULLET)
 option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLORIO})
-option(WITH_OPENXR        "Enable VR features through the OpenXR specification" ON)
+option(WITH_OPENXR        "Enable VR features through the OpenXR specification" ${_init_OPENXR})
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
@@ -1322,20 +1325,6 @@ endif()
 if(WITH_LIBMV)
   # We always have C++11 which includes unordered_map.
   set(CERES_DEFINES -DCERES_STD_UNORDERED_MAP)
-endif()
-
-#-----------------------------------------------------------------------------
-# Configure OpenXR
-# Adds some compiler defines as required by the OpenXR specification.
-
-if(WITH_OPENXR)
-  if(WIN32)
-    add_definitions(-DXR_USE_PLATFORM_WIN32 -DXR_USE_GRAPHICS_API_D3D11)
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_definitions(-DXR_OS_LINUX -DXR_USE_PLATFORM_XLIB )
-  endif()
-
-  add_definitions(-DXR_USE_GRAPHICS_API_OPENGL)
 endif()
 
 #-----------------------------------------------------------------------------
