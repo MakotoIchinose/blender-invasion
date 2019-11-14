@@ -1163,7 +1163,7 @@ void testhandles_fcurve(FCurve *fcu, eBezTriple_Flag sel_flag, const bool use_ha
   }
 
   /* recalculate handles */
-  calchandles_fcurve(fcu);
+  calchandles_fcurve_ex(fcu, sel_flag);
 }
 
 /* This function sorts BezTriples so that they are arranged in chronological order,

@@ -1043,7 +1043,7 @@ static void posttrans_fcurve_clean(FCurve *fcu,
   }
 
   /* 3) Recalculate handles */
-  testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
+  testhandles_fcurve(fcu, sel_flag, use_handle);
 
   /* cleanup */
   BLI_freelistN(&retained_keys);
@@ -1071,11 +1071,11 @@ static void posttrans_action_clean(bAnimContext *ac, bAction *act)
 
     if (adt) {
       ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
-      posttrans_fcurve_clean(ale->key_data, false); /* only use handles in graph editor */
+      posttrans_fcurve_clean(ale->key_data, SELECT, false); /* only use handles in graph editor */
       ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
     }
     else {
-      posttrans_fcurve_clean(ale->key_data, false); /* only use handles in graph editor */
+      posttrans_fcurve_clean(ale->key_data, SELECT, false); /* only use handles in graph editor */
     }
   }
 
@@ -1965,11 +1965,11 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
         if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
           if (adt) {
             ANIM_nla_mapping_apply_fcurve(adt, fcu, 0, 0);
-            posttrans_fcurve_clean(fcu, false); /* only use handles in graph editor */
+            posttrans_fcurve_clean(fcu, SELECT, false); /* only use handles in graph editor */
             ANIM_nla_mapping_apply_fcurve(adt, fcu, 1, 0);
           }
           else {
-            posttrans_fcurve_clean(fcu, false); /* only use handles in graph editor */
+            posttrans_fcurve_clean(fcu, SELECT, false); /* only use handles in graph editor */
           }
         }
       }
@@ -2109,11 +2109,11 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
         if ((sipo->flag & SIPO_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
           if (adt) {
             ANIM_nla_mapping_apply_fcurve(adt, fcu, 0, 0);
-            posttrans_fcurve_clean(fcu, use_handle);
+            posttrans_fcurve_clean(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
             ANIM_nla_mapping_apply_fcurve(adt, fcu, 1, 0);
           }
           else {
-            posttrans_fcurve_clean(fcu, use_handle);
+            posttrans_fcurve_clean(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
           }
         }
       }
