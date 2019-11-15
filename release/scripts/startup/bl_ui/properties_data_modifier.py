@@ -645,7 +645,8 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
         col = split.column()
         col.prop(md, "levels", text="Preview")
-        col.prop(md, "sculpt_levels", text="Sculpt")
+        # TODO(sergey): Expose it again after T58473 is solved.
+        # col.prop(md, "sculpt_levels", text="Sculpt")
         col.prop(md, "render_levels", text="Render")
         col.prop(md, "quality")
 
@@ -954,11 +955,23 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Settings are inside the Physics tab")
 
     def SOLIDIFY(self, layout, ob, md):
+
+        layout.row().prop(md, "solidify_mode")
+
+        solidify_mode = md.solidify_mode
+
+        if solidify_mode == 'NON_MANIFOLD':
+            layout.prop(md, "nonmanifold_thickness_mode")
+            layout.prop(md, "nonmanifold_boundary_mode")
+
         split = layout.split()
 
         col = split.column()
         col.prop(md, "thickness")
         col.prop(md, "thickness_clamp")
+        row = col.row()
+        row.active = md.thickness_clamp > 0.0
+        row.prop(md, "use_thickness_angle_clamp")
 
         col.separator()
 
@@ -972,18 +985,22 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         sub.active = bool(md.vertex_group)
         sub.prop(md, "thickness_vertex_group", text="Factor")
 
-        col.label(text="Crease:")
-        col.prop(md, "edge_crease_inner", text="Inner")
-        col.prop(md, "edge_crease_outer", text="Outer")
-        col.prop(md, "edge_crease_rim", text="Rim")
+        if solidify_mode == 'EXTRUDE':
+            col.label(text="Crease:")
+            col.prop(md, "edge_crease_inner", text="Inner")
+            col.prop(md, "edge_crease_outer", text="Outer")
+            col.prop(md, "edge_crease_rim", text="Rim")
 
         col = split.column()
 
         col.prop(md, "offset")
+
         col.prop(md, "use_flip_normals")
 
-        col.prop(md, "use_even_offset")
-        col.prop(md, "use_quality_normals")
+        if solidify_mode == 'EXTRUDE':
+            col.prop(md, "use_even_offset")
+            col.prop(md, "use_quality_normals")
+
         col.prop(md, "use_rim")
         col_rim = col.column()
         col_rim.active = md.use_rim
@@ -2334,7 +2351,52 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         sub.active = bool(md.vertex_group)
         sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
+    def GP_MULTIPLY(self, layout, ob, md):
+        gpd = ob.data
+        col = layout.column()
 
+        col.prop(md, "duplications")
+        subcol = col.column()
+        subcol.enabled = md.duplications > 0
+        subcol.prop(md, "distance")
+        subcol.prop(md, "offset", slider=True)
+    
+        subcol.separator()
+
+        subcol.prop(md, "enable_fading")
+        if md.enable_fading:
+            subcol.prop(md, "fading_center")
+            subcol.prop(md, "fading_thickness", slider=True)
+            subcol.prop(md, "fading_opacity", slider=True)
+
+        subcol.separator()
+
+        col.prop(md, "enable_angle_splitting")
+        if md.enable_angle_splitting:
+            col.prop(md, "split_angle")
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Material:")
+        row = col.row(align=True)
+        row.prop_search(md, "material", gpd, "materials", text="", icon='SHADING_TEXTURE')
+        row.prop(md, "invert_materials", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "pass_index", text="Pass")
+        row.prop(md, "invert_material_pass", text="", icon='ARROW_LEFTRIGHT')
+
+        col = layout.column()
+        col.separator()
+
+        col.label(text="Layer:")
+        row = col.row(align=True)
+        row.prop_search(md, "layer", gpd, "layers", text="", icon='GREASEPENCIL')
+        row.prop(md, "invert_layers", text="", icon='ARROW_LEFTRIGHT')
+        row = layout.row(align=True)
+        row.prop(md, "layer_pass", text="Pass")
+        row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
+            
 classes = (
     DATA_PT_modifiers,
     DATA_PT_gpencil_modifiers,
