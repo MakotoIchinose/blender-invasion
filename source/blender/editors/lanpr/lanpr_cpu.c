@@ -1029,6 +1029,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     copy_v3_v3_db(cam_pos, rb->camera_pos);
     clip_start = rb->near_clip;
     clip_end = rb->far_clip;
+    mul_v3db_db(clip_advance, -clip_start);
   }
   else {
     Object *cam = ((Object *)rb->scene->camera);
@@ -1036,8 +1037,8 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     cam_pos[1] = cam->obmat[3][1];
     cam_pos[2] = cam->obmat[3][2];
     mul_v3db_db(clip_advance, -((Camera *)cam->data)->clip_start);
-    add_v3_v3_db(cam_pos, clip_advance);
   }
+  add_v3_v3_db(cam_pos, clip_advance);
 
   veln = lanpr_new_cull_point_space64(rb);
   teln = lanpr_new_cull_triangle_space64(rb);
@@ -1052,13 +1053,19 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     for (i = 0; i < reln->element_count; i++) {
       int In1 = 0, In2 = 0, In3 = 0;
       rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
-      if (rt->v[0]->fbcoord[3] < clip_start) {
+
+      printf("z%f w%f  z%f w%f  z%f w%f\n",
+        rt->v[0]->fbcoord[2], rt->v[0]->fbcoord[1],
+        rt->v[1]->fbcoord[2], rt->v[1]->fbcoord[1],
+        rt->v[2]->fbcoord[2], rt->v[2]->fbcoord[1]);
+
+      if (rt->v[0]->fbcoord[2] < 0) {
         In1 = 1;
       }
-      if (rt->v[1]->fbcoord[3] < clip_start) {
+      if (rt->v[1]->fbcoord[2] < 0) {
         In2 = 1;
       }
-      if (rt->v[2]->fbcoord[3] < clip_start) {
+      if (rt->v[2]->fbcoord[2] < 0) {
         In3 = 1;
       }
 
@@ -1737,12 +1744,6 @@ static void lanpr_make_render_geometry_buffers_object(
       mul_v3_mat3_m4v3_db(rt->gn, Normal, gn);
       normalize_v3_d(rt->gn);
       lanpr_assign_render_line_with_triangle(rt);
-      /*  m = tnsGetIndexedMaterial(rb->scene, f->material_id); */
-      /*  if(m) m->Previewv_count += (f->triangle_count*3); */
-
-      if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
-        rt->material_id = 1;
-      }
 
       rt = (LANPR_RenderTriangle *)(((unsigned char *)rt) + rb->triangle_size);
     }
@@ -2603,6 +2604,8 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
     return;
   }
 
+  rb->scene = NULL;
+
   rb->contour_count = 0;
   rb->contour_managed = 0;
   rb->intersection_count = 0;
@@ -3397,18 +3400,19 @@ static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
   (*rowEnd) = rb->tile_count_y - (int)((b[2] + 1.0) / sp_h) - 1;
   (*rowBegin) = rb->tile_count_y - (int)((b[3] + 1.0) / sp_h) - 1;
 
-  if ((*colEnd) >= rb->tile_count_x) {
-    (*colEnd) = rb->tile_count_x - 1;
-  }
-  if ((*rowEnd) >= rb->tile_count_y) {
+  /* It's possible that the line stretches too much out to the side, resulting negative value */
+  if ((*rowEnd) < (*rowBegin)){
     (*rowEnd) = rb->tile_count_y - 1;
   }
-  if ((*colBegin) < 0) {
-    (*colBegin) = 0;
+
+  if ((*colEnd) < (*colBegin)){
+    (*colEnd) = rb->tile_count_x - 1;
   }
-  if ((*rowBegin) < 0) {
-    (*rowBegin) = 0;
-  }
+
+  CLAMP((*colBegin), 0, rb->tile_count_x - 1);
+  CLAMP((*rowBegin), 0, rb->tile_count_y - 1);
+  CLAMP((*colEnd), 0, rb->tile_count_x - 1);
+  CLAMP((*rowEnd), 0, rb->tile_count_y - 1);
 
   return 1;
 }

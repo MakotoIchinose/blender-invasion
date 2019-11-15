@@ -265,9 +265,6 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
 
     DRWView *view = DRW_view_create(indentity_mat, win_mat, NULL, NULL, NULL);
     if (is_render) {
-      DRW_view_default_set(view);
-    }
-    else {
       DRW_view_set_active(view);
     }
 
