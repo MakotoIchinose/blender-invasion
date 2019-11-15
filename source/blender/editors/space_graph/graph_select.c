@@ -1437,6 +1437,8 @@ static int mouse_graph_keys(bAnimContext *ac,
   nvi = find_nearest_fcurve_vert(ac, mval);
 
   if (select_mode != SELECT_REPLACE) {
+    /* The modal execution to delay deselecting other items is only needed for normal click
+     * selection, i.e. for SELECT_REPLACE. */
     wait_to_deselect_others = false;
   }
 
@@ -1604,14 +1606,14 @@ static int graphkeys_mselect_column(bAnimContext *ac,
   selx = nvi->frame;
 
   if (select_mode != SELECT_REPLACE) {
-    wait_to_deselect_others = false;
+    /* Doesn't need to deselect anything -> Pass. */
   }
-
-  if (wait_to_deselect_others && (nvi->bezt->f2 & SELECT)) {
+  else if (wait_to_deselect_others && (nvi->bezt->f2 & SELECT)) {
     run_modal = true;
   }
-  /* if select mode is replace, deselect all keyframes first */
-  else if (select_mode == SELECT_REPLACE) {
+  /* If select mode is replace (and we don't do delayed deselection on mouse release), deselect all
+   * keyframes first. */
+  else {
     /* reset selection mode to add to selection */
     select_mode = SELECT_ADD;
 
@@ -1672,6 +1674,8 @@ static int graphkeys_clickselect_exec(bContext *C, wmOperator *op)
   /* select mode is either replace (deselect all, then add) or add/extend */
   const short selectmode = RNA_boolean_get(op->ptr, "extend") ? SELECT_INVERT : SELECT_REPLACE;
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
+  /* See #WM_operator_properties_generic_select() for a detailed description of the how and why of
+   * this. */
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   int mval[2];
   int ret_val;
