@@ -63,7 +63,11 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   DRW_PASS_CREATE(psl->wireframe_xray_ps, state_xray | pd->clipping_state);
 
   pd->wires_grp = DRW_shgroup_create(wires_sh, psl->wireframe_ps);
+  DRW_shgroup_uniform_block_persistent(pd->wires_grp, "globalsBlock", G_draw.block_ubo);
+
   pd->wires_xray_grp = DRW_shgroup_create(wires_sh, psl->wireframe_xray_ps);
+  DRW_shgroup_uniform_block_persistent(pd->wires_xray_grp, "globalsBlock", G_draw.block_ubo);
+
   pd->clear_stencil = (draw_ctx->v3d->shading.type > OB_SOLID);
   pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
 }

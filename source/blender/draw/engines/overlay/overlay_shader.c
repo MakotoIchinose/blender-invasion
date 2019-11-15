@@ -370,7 +370,6 @@ GPUShader *OVERLAY_shader_armature_wire(void)
   if (!sh_data->armature_wire) {
     sh_data->armature_wire = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
                                  datatoc_armature_wire_vert_glsl,
                                  NULL},
@@ -661,7 +660,6 @@ GPUShader *OVERLAY_shader_image(void)
   if (!sh_data->image) {
     sh_data->image = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
                                  datatoc_image_vert_glsl,
                                  NULL},
