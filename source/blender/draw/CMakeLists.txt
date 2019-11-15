@@ -171,6 +171,19 @@ set(LIB
   bf_windowmanager
 )
 
+if(WITH_LANPR)
+  list(APPEND INC
+	  engines/lanpr
+  )
+  list(APPEND SRC
+    engines/lanpr/lanpr_dpix.c
+    engines/lanpr/lanpr_engine.c
+    engines/lanpr/lanpr_cpu.c
+    engines/lanpr/lanpr_chain_draw.c
+  )
+  add_definitions(-DWITH_LANPR)
+endif()
+
 data_to_c_simple(engines/eevee/shaders/ambient_occlusion_lib.glsl SRC)
 data_to_c_simple(engines/eevee/shaders/default_frag.glsl SRC)
 data_to_c_simple(engines/eevee/shaders/default_world_frag.glsl SRC)
@@ -378,12 +391,26 @@ data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_wave_frag.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
+if(WITH_LANPR)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_preview_geom.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_preview_frag.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_project_clip_frag.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_dpix_project_passthrough_vert.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_software_line_chain_geom.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_software_passthrough_vert.glsl SRC)
+  data_to_c_simple(engines/lanpr/shaders/lanpr_software_chain_geom.glsl SRC)
+endif()
+
 
 list(APPEND INC
 )
 
 if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
+endif()
+
+if(WITH_LANPR)
+  add_definitions(-DWITH_LANPR)
 endif()
 
 blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

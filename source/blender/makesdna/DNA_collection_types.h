@@ -27,6 +27,7 @@
 #define __DNA_COLLECTION_TYPES_H__
 
 #include "DNA_defs.h"
+#include "DNA_lanpr_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 
@@ -42,6 +43,39 @@ typedef struct CollectionChild {
   struct CollectionChild *next, *prev;
   struct Collection *collection;
 } CollectionChild;
+
+enum CollectionFeatureLine_Usage {
+  COLLECTION_FEATURE_LINE_INCLUDE = 0,
+  COLLECTION_FEATURE_LINE_OCCLUSION_ONLY = (1 << 0),
+  COLLECTION_FEATURE_LINE_EXCLUDE = (1 << 1),
+};
+
+typedef struct CollectionLANPRLineType {
+  int use;
+  char _pad[4];
+  char target_layer[128];
+  char target_material[128];
+} CollectionLANPRLineType;
+
+typedef struct CollectionLANPR {
+  int usage;
+
+  /* Separate flags for LANPR shared flag values. */
+  int flags;
+
+  struct Object *target;
+  char target_layer[128];
+  char target_material[128];
+
+  struct CollectionLANPRLineType contour;
+  struct CollectionLANPRLineType crease;
+  struct CollectionLANPRLineType material;
+  struct CollectionLANPRLineType edge_mark;
+  struct CollectionLANPRLineType intersection;
+
+  int level_start;
+  int level_end;
+} CollectionLANPR;
 
 typedef struct Collection {
   ID id;
@@ -60,6 +94,9 @@ typedef struct Collection {
   /* Runtime-only, always cleared on file load. */
   short tag;
   char _pad[4];
+
+  /** LANPR engine specific */
+  CollectionLANPR lanpr;
 
   /* Runtime. Cache of objects in this collection and all its
    * children. This is created on demand when e.g. some physics

@@ -53,6 +53,7 @@ set(DEFSRC
   rna_light.c
   rna_lightprobe.c
   rna_linestyle.c
+  rna_lanpr.c
   rna_main.c
   rna_mask.c
   rna_material.c
@@ -403,6 +404,12 @@ set(LIB
   bf_editor_space_view3d
   bf_editor_transform
 )
+
+if(WITH_LANPR)
+  list(APPEND LIB
+    bf_editor_lanpr
+  )
+endif()
 
 add_definitions(${GL_DEFINITIONS})
 
