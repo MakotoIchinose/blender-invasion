@@ -49,11 +49,6 @@ extern "C" {
 
 DEFINE_string(test_assets_dir, "", "lib/tests directory from SVN containing the test assets.");
 
-BlendfileLoadingBaseTest::BlendfileLoadingBaseTest()
-    : testing::Test(), bfile(nullptr), depsgraph(nullptr)
-{
-}
-
 BlendfileLoadingBaseTest::~BlendfileLoadingBaseTest()
 {
 }

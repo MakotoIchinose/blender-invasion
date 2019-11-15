@@ -29,7 +29,7 @@ set(INC
     ../../../source/blender/makesrna
     ../../../source/blender/windowmanager
     ../../../intern/guardedalloc
-      ${GLOG_INCLUDE_DIRS}
+    ${GLOG_INCLUDE_DIRS}
     ${GFLAGS_INCLUDE_DIRS}
     ../../../extern/gtest/include
 )

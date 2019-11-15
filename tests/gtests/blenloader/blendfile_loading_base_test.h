@@ -26,11 +26,10 @@ struct Depsgraph;
 
 class BlendfileLoadingBaseTest : public testing::Test {
  protected:
-  struct BlendFileData *bfile;
-  struct Depsgraph *depsgraph;
+  struct BlendFileData *bfile = nullptr;
+  struct Depsgraph *depsgraph = nullptr;
 
  public:
-  BlendfileLoadingBaseTest();
   virtual ~BlendfileLoadingBaseTest();
 
   /* Sets up Blender just enough to not crash on loading
