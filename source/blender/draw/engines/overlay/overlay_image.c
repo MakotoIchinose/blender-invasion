@@ -126,7 +126,8 @@ static struct GPUTexture *image_camera_background_texture_get(CameraBGImage *bgp
   MovieClip *clip = NULL;
   GPUTexture *tex = NULL;
   Scene *scene = draw_ctx->scene;
-  float aspect_x, aspect_y, width, height;
+  float aspect_x, aspect_y;
+  int width, height;
   int ctime = (int)DEG_get_ctime(draw_ctx->depsgraph);
   *r_use_alpha_premult = false;
 
@@ -404,7 +405,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 }
 
-void OVERLAY_image_cache_finish(OVERLAY_Data *vedata)
+void OVERLAY_image_cache_finish(OVERLAY_Data *UNUSED(vedata))
 {
   /* Order by Z depth. */
 }
