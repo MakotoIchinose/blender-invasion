@@ -9271,8 +9271,10 @@ static BHead *read_libblock(FileData *fd,
         BLI_assert(fd->memfile);
         Main *old_main = fd->old_mainlist->first;
         ID *old_id = NULL;
-        if ((old_id = BKE_libblock_find_name(old_main, idcode, id->name + 2))) {
-          BLI_assert(old_id == id_bhead->old);
+        if ((old_id = BKE_libblock_find_name(old_main, idcode, id->name + 2)) != NULL) {
+          /* that would only match for basic undo step, redo and other history navigation cannot
+           * guarantee this at all. */
+          // BLI_assert(old_id == id_bhead->old);
           MEM_freeN(id);
           id = old_id;
 
