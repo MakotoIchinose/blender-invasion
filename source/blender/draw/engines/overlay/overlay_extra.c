@@ -1183,6 +1183,11 @@ void OVERLAY_camera_cache_populate(OVERLAY_Data *vedata, Object *ob)
   if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
     camera_view3d_reconstruction(cb, scene, v3d, camera_object, ob, color_p);
   }
+
+  /* Background images. */
+  if (look_through && (cam->flag & CAM_SHOW_BG_IMAGE) && !BLI_listbase_is_empty(&cam->bg_images)) {
+    OVERLAY_image_camera_cache_populate(vedata, ob);
+  }
 }
 
 /** \} */

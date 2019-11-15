@@ -208,6 +208,7 @@ typedef struct OVERLAY_PrivateData {
 
   /** TODO get rid of this. */
   ListBase smoke_domains;
+  ListBase bg_movie_clips;
 
   /** Two instances for in_front option and without. */
   OVERLAY_ExtraCallBuffers extra_call_buffers[2];
