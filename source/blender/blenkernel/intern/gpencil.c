@@ -3414,9 +3414,9 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
   GpPaint *gp_paint = ts->gp_paint;
   Paint *paint = &gp_paint->paint;
 
-  paint->palette = BLI_findstring(&bmain->palettes, "Grease Pencil", offsetof(ID, name) + 2);
+  paint->palette = BLI_findstring(&bmain->palettes, "Palette", offsetof(ID, name) + 2);
   if (paint->palette == NULL) {
-    paint->palette = BKE_palette_add(bmain, "Grease Pencil");
+    paint->palette = BKE_palette_add(bmain, "Palette");
     ts->gp_vertexpaint->paint.palette = paint->palette;
 
     /* Create Colors. */
