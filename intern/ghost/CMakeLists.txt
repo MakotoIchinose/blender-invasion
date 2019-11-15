@@ -367,15 +367,28 @@ if(WITH_OPENXR)
   list(APPEND INC_SYS
     ${OPENXR_SDK_INCLUDE_DIR}
   )
+
+  set(XR_PLATFORM_DEFINES -DXR_USE_GRAPHICS_API_OPENGL)
+
+  # Add compiler defines as required by the OpenXR specification.
   if(WIN32)
+    list(APPEND XR_PLATFORM_DEFINES
+      -DXR_USE_PLATFORM_WIN32
+      -DXR_USE_GRAPHICS_API_D3D11
+    )
     list(APPEND LIB
       shlwapi
     )
+  elseif(UNIX AND NOT APPLE)
+    list(APPEND XR_PLATFORM_DEFINES
+      -DXR_OS_LINUX
+      -DXR_USE_PLATFORM_XLIB
+    )
   endif()
 
-  include(xr_platform_defines)
+  add_definitions(-DWITH_OPENXR ${XR_PLATFORM_DEFINES})
 
-  add_definitions(-DWITH_OPENXR)
+  unset(XR_PLATFORM_DEFINES)
 endif()
 
 add_definitions(${GL_DEFINITIONS})

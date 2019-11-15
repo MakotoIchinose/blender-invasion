@@ -5,4 +5,4 @@ echo the path inside oculus.json.
 echo.
 pause
 set XR_RUNTIME_JSON=%~dp0oculus.json
-blender 
+blender
