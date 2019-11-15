@@ -706,6 +706,9 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         
         layout.prop(lanpr, "crease_threshold", slider=True)
 
+
+        col.prop(lanpr,'auto_update', text='Auto Update')
+
         if not scene.camera:
             has_camera=False
             col.label(text="No active camera.")
@@ -716,7 +719,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
         c.enabled = has_camera
 
         if scene.render.engine=="BLENDER_LANPR":
-            c.prop(lanpr,'auto_update', text='Auto Update')
             txt = "Update" if mode == "SOFTWARE" else "Intersection Cache"
             if not lanpr.auto_update:
                 c.operator("scene.lanpr_calculate", icon='FILE_REFRESH', text=txt)
