@@ -48,6 +48,8 @@ typedef struct OVERLAY_TextureList {
 typedef struct OVERLAY_PassList {
   DRWPass *armature_transp_ps;
   DRWPass *armature_ps[2];
+  DRWPass *edit_curve_wire_ps[2];
+  DRWPass *edit_curve_handle_ps;
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
   DRWPass *edit_mesh_edges_ps[2];
@@ -91,6 +93,8 @@ typedef struct OVERLAY_ShadingData {
   int zneg_flag;
   /** Wireframe */
   float wire_step_param;
+  /** Edit Curve */
+  float edit_curve_normal_length;
   /** Edit Mesh */
   int data_mask[4];
 } OVERLAY_ShadingData;
@@ -176,6 +180,10 @@ typedef struct OVERLAY_ArmatureCallBuffers {
 } OVERLAY_ArmatureCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
+  DRWShadingGroup *edit_curve_normal_grp[2];
+  DRWShadingGroup *edit_curve_wire_grp[2];
+  DRWShadingGroup *edit_curve_handle_grp;
+  DRWShadingGroup *edit_curve_points_grp;
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
   DRWShadingGroup *edit_mesh_faces_cage_grp[2];
@@ -227,6 +235,9 @@ typedef struct OVERLAY_PrivateData {
   DRWState clipping_state;
   OVERLAY_ShadingData shdata;
 
+  struct {
+    bool show_handles;
+  } edit_curve;
   struct {
     int ghost_ob;
     int edit_ob;
@@ -288,6 +299,12 @@ void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_armature_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_edit_curve_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_curve_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_curve_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
@@ -362,6 +379,9 @@ GPUShader *OVERLAY_shader_armature_sphere(bool use_outline);
 GPUShader *OVERLAY_shader_armature_stick(void);
 GPUShader *OVERLAY_shader_armature_wire(void);
 GPUShader *OVERLAY_shader_depth_only(void);
+GPUShader *OVERLAY_shader_edit_curve_handle(void);
+GPUShader *OVERLAY_shader_edit_curve_point(void);
+GPUShader *OVERLAY_shader_edit_curve_wire(void);
 GPUShader *OVERLAY_shader_edit_mesh_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);
 GPUShader *OVERLAY_shader_edit_mesh_face(void);

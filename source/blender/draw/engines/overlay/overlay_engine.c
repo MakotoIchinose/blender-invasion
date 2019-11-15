@@ -56,6 +56,7 @@ static void OVERLAY_engine_init(void *vedata)
       break;
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
+      /* Nothing to do. */
       break;
     case CTX_MODE_EDIT_TEXT:
       break;
@@ -122,6 +123,7 @@ static void OVERLAY_cache_init(void *vedata)
       break;
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
+      OVERLAY_edit_curve_cache_init(vedata);
       break;
     case CTX_MODE_EDIT_TEXT:
       break;
@@ -228,8 +230,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_armature_cache_populate(vedata, ob);
         break;
       case OB_CURVE:
+        OVERLAY_edit_curve_cache_populate(vedata, ob);
         break;
       case OB_SURF:
+        OVERLAY_edit_surf_cache_populate(vedata, ob);
         break;
       case OB_LATTICE:
         break;
@@ -327,6 +331,10 @@ static void OVERLAY_draw_scene(void *vedata)
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
       OVERLAY_edit_mesh_draw(vedata);
+      break;
+    case CTX_MODE_EDIT_SURFACE:
+    case CTX_MODE_EDIT_CURVE:
+      OVERLAY_edit_curve_draw(vedata);
       break;
     default:
       break;
