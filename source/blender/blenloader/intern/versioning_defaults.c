@@ -521,7 +521,8 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
   }
 
-  if (app_template && STREQ(app_template, "2D_Animation")) {
+  /* New grease pencil brushes and vertex paint setup. */
+  {
     /* Update Grease Pencil brushes. */
     Brush *brush;
 
