@@ -3935,6 +3935,10 @@ static bool write_file_handle(Main *mainvar,
         if (do_override) {
           BKE_override_library_operations_store_end(override_storage, id);
         }
+
+        if (wd->use_memfile) {
+          mywrite_flush(wd);
+        }
       }
 
       mywrite_flush(wd);
