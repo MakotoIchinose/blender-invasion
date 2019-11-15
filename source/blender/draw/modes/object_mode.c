@@ -2485,13 +2485,13 @@ static void DRW_shgroup_camera(OBJECT_ShadingGroupList *sgl, Object *ob, ViewLay
 
     if (world) {
       static float col[4] = {0.5f, 0.5f, 0.5f, 1.0f}, col_hi[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-      world->mistend = world->miststa + world->mistdist;
+      float mistend = world->miststa + world->mistdist;
       DRW_buffer_add_entry(
-          sgl->camera_mist, color, &world->miststa, &world->mistend, cam->runtime.drw_normalmat);
+          sgl->camera_mist, color, &world->miststa, &mistend, cam->runtime.drw_normalmat);
       DRW_buffer_add_entry(sgl->camera_mist_points,
                            (is_active ? col_hi : col),
                            &world->miststa,
-                           &world->mistend,
+                           &mistend,
                            cam->runtime.drw_normalmat);
     }
   }
