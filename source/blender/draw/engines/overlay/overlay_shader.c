@@ -142,6 +142,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *outline_detect;
   GPUShader *outline_detect_wire;
   GPUShader *paint_weight;
+  GPUShader *uniform_color;
   GPUShader *volume_velocity_needle_sh;
   GPUShader *volume_velocity_sh;
   GPUShader *wireframe_select;
@@ -906,6 +907,24 @@ GPUShader *OVERLAY_shader_paint_weight(void)
     });
   }
   return sh_data->paint_weight;
+}
+
+struct GPUShader *OVERLAY_shader_uniform_color(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->uniform_color) {
+    sh_data->uniform_color = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_depth_only_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->uniform_color;
 }
 
 struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)

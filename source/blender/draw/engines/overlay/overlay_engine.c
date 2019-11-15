@@ -59,6 +59,7 @@ static void OVERLAY_engine_init(void *vedata)
       /* Nothing to do. */
       break;
     case CTX_MODE_EDIT_TEXT:
+      /* Nothing to do. */
       break;
     case CTX_MODE_EDIT_ARMATURE:
       break;
@@ -126,6 +127,7 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_edit_curve_cache_init(vedata);
       break;
     case CTX_MODE_EDIT_TEXT:
+      OVERLAY_edit_text_cache_init(vedata);
       break;
     case CTX_MODE_EDIT_ARMATURE:
       break;
@@ -240,6 +242,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_MBALL:
         break;
       case OB_FONT:
+        OVERLAY_edit_text_cache_populate(vedata, ob);
         break;
     }
   }
@@ -335,6 +338,9 @@ static void OVERLAY_draw_scene(void *vedata)
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
       OVERLAY_edit_curve_draw(vedata);
+      break;
+    case CTX_MODE_EDIT_TEXT:
+      OVERLAY_edit_text_draw(vedata);
       break;
     default:
       break;

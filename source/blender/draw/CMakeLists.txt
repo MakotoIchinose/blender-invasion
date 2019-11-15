@@ -137,6 +137,7 @@ set(SRC
   engines/overlay/overlay_armature.c
   engines/overlay/overlay_engine.c
   engines/overlay/overlay_edit_curve.c
+  engines/overlay/overlay_edit_text.c
   engines/overlay/overlay_edit_mesh.c
   engines/overlay/overlay_extra.c
   engines/overlay/overlay_facing.c

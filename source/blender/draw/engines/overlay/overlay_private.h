@@ -50,6 +50,8 @@ typedef struct OVERLAY_PassList {
   DRWPass *armature_ps[2];
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
+  DRWPass *edit_text_overlay_ps;
+  DRWPass *edit_text_wire_ps[2];
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
   DRWPass *edit_mesh_edges_ps[2];
@@ -184,6 +186,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_curve_wire_grp[2];
   DRWShadingGroup *edit_curve_handle_grp;
   DRWShadingGroup *edit_curve_points_grp;
+  DRWShadingGroup *edit_text_overlay_grp;
+  DRWShadingGroup *edit_text_wire_grp[2];
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
   DRWShadingGroup *edit_mesh_faces_cage_grp[2];
@@ -306,6 +310,10 @@ void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_curve_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_text_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_text_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -401,6 +409,7 @@ GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_motion_path_line(void);
 GPUShader *OVERLAY_shader_motion_path_vert(void);
+GPUShader *OVERLAY_shader_uniform_color(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
 GPUShader *OVERLAY_shader_outline_prepass_grid(void);
 GPUShader *OVERLAY_shader_outline_resolve(void);

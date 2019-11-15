@@ -321,6 +321,21 @@ void drw_state_set(DRWState state)
     }
   }
 
+  /* Logic Ops */
+  {
+    int test;
+    if ((test = CHANGED_TO(DRW_STATE_LOGIC_INVERT))) {
+      if (test == 1) {
+        glLogicOp(GL_INVERT);
+        glEnable(GL_COLOR_LOGIC_OP);
+      }
+      else {
+        glLogicOp(GL_COPY);
+        glDisable(GL_COLOR_LOGIC_OP);
+      }
+    }
+  }
+
   /* Clip Planes */
   {
     int test;
