@@ -1294,10 +1294,17 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
   if (!MAIN_VERSION_ATLEAST(bmain, 282, 2)) {
     /* Init all Vertex Paint brushes. */
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-      BKE_brush_gpencil_vertex_presets(bmain, scene->toolsettings);
+      ToolSettings *ts = scene->toolsettings;
+
+      BKE_brush_gpencil_vertex_presets(bmain, ts);
 
       /* Ensure new Vertex Paint mode. */
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_GPENCIL_VERTEX);
+
+      /* Set default Draw brush. */
+      Brush *brush = BLI_findstring(&bmain->brushes, "Pencil", offsetof(ID, name) + 2);
+      Paint *paint = &ts->gp_paint->paint;
+      BKE_paint_brush_set(paint, brush);
 
       /* Ensure Palette by default. */
       BKE_gpencil_palette_ensure(bmain, scene);
