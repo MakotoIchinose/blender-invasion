@@ -18,6 +18,7 @@
 #include "blendfile_loading_base_test.h"
 
 extern "C" {
+#include "BKE_appdir.h"
 #include "BKE_blender.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -75,7 +76,41 @@ void BlendfileLoadingBaseTest::SetUpTestCase()
 
   /* Allocate a dummy window manager. The real window manager will try and load Python scripts from
    * the release directory, which it won't be able ot find. */
+  ASSERT_EQ(G.main->wm.first, nullptr);
   G.main->wm.first = MEM_callocN(sizeof(wmWindowManager), __func__);
+}
+
+void BlendfileLoadingBaseTest::TearDownTestCase()
+{
+  if (G.main->wm.first != nullptr) {
+    MEM_freeN(G.main->wm.first);
+    G.main->wm.first = nullptr;
+  }
+
+  /* Copied from WM_exit_ex() in wm_init_exit.c, and cherry-picked those lines that match the
+   * allocation/initialisation done in SetUpTestCase(). */
+  BKE_blender_free();
+  RNA_exit();
+
+  DEG_free_node_types();
+  DNA_sdna_current_free();
+  BLI_threadapi_exit();
+
+  BKE_blender_atexit();
+
+  /* TODO(Sybren): this reports 3 leaked blocks from WM, which have been allocated by loading a
+   * blend file. */
+  if (MEM_get_memory_blocks_in_use() != 0) {
+    size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
+    printf("Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
+           MEM_get_memory_blocks_in_use(),
+           (double)mem_in_use / 1024 / 1024);
+    MEM_printmemlist();
+  }
+
+  BKE_tempdir_session_purge();
+
+  testing::Test::TearDownTestCase();
 }
 
 void BlendfileLoadingBaseTest::TearDown()

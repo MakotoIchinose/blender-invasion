@@ -19,7 +19,7 @@
 #define __BLENDFILE_LOADING_BASE_TEST_H__
 
 #include "testing/testing.h"
-#include <DEG_depsgraph.h>
+#include "DEG_depsgraph.h"
 
 struct BlendFileData;
 struct Depsgraph;
@@ -35,6 +35,7 @@ class BlendfileLoadingBaseTest : public testing::Test {
   /* Sets up Blender just enough to not crash on loading
    * a blendfile and constructing a depsgraph. */
   static void SetUpTestCase();
+  static void TearDownTestCase();
 
  protected:
   /* Frees the depsgraph & blendfile. */
