@@ -68,6 +68,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *image_empties_blend_ps;
   DRWPass *image_empties_front_ps;
   DRWPass *image_foreground_ps;
+  DRWPass *motion_paths_ps;
   DRWPass *outlines_prepass_ps;
   DRWPass *outlines_detect_ps;
   DRWPass *outlines_expand_ps;
@@ -190,6 +191,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *facing_grp;
   DRWShadingGroup *wires_grp;
   DRWShadingGroup *wires_xray_grp;
+  DRWShadingGroup *motion_path_lines_grp;
+  DRWShadingGroup *motion_path_points_grp;
   DRWShadingGroup *outlines_active_grp;
   DRWShadingGroup *outlines_select_grp;
   DRWShadingGroup *outlines_select_dupli_grp;
@@ -332,6 +335,10 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_image_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_motion_path_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_motion_path_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_outline_init(OVERLAY_Data *vedata);
 void OVERLAY_outline_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
@@ -372,6 +379,8 @@ GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);
 GPUShader *OVERLAY_shader_image(void);
+GPUShader *OVERLAY_shader_motion_path_line(void);
+GPUShader *OVERLAY_shader_motion_path_vert(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);
 GPUShader *OVERLAY_shader_outline_prepass_grid(void);
 GPUShader *OVERLAY_shader_outline_resolve(void);

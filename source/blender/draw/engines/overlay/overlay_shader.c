@@ -65,6 +65,9 @@ extern char datatoc_grid_frag_glsl[];
 extern char datatoc_grid_vert_glsl[];
 extern char datatoc_image_frag_glsl[];
 extern char datatoc_image_vert_glsl[];
+extern char datatoc_motion_path_line_vert_glsl[];
+extern char datatoc_motion_path_line_geom_glsl[];
+extern char datatoc_motion_path_point_vert_glsl[];
 extern char datatoc_outline_detect_frag_glsl[];
 extern char datatoc_outline_expand_frag_glsl[];
 extern char datatoc_outline_prepass_frag_glsl[];
@@ -121,6 +124,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *facing;
   GPUShader *grid;
   GPUShader *image;
+  GPUShader *motion_path_line;
+  GPUShader *motion_path_vert;
   GPUShader *outline_prepass;
   GPUShader *outline_prepass_wire;
   GPUShader *outline_prepass_lightprobe_grid;
@@ -670,6 +675,49 @@ GPUShader *OVERLAY_shader_image(void)
     });
   }
   return sh_data->image;
+}
+
+GPUShader *OVERLAY_shader_motion_path_line(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->motion_path_line) {
+    sh_data->motion_path_line = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_motion_path_line_vert_glsl,
+                                 NULL},
+        .geom = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_motion_path_line_geom_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->motion_path_line;
+}
+
+GPUShader *OVERLAY_shader_motion_path_vert(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->motion_path_vert) {
+    sh_data->motion_path_vert = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_motion_path_point_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->motion_path_vert;
 }
 
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire)

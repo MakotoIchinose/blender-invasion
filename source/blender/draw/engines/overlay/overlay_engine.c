@@ -154,6 +154,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_image_cache_init(vedata);
+  OVERLAY_motion_path_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
 }
@@ -204,6 +205,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       /* Show if this is the camera we're looking through since it's useful for selecting. */
       ((draw_ctx->rv3d->persp == RV3D_CAMOB) && ((ID *)draw_ctx->v3d->camera == ob->id.orig_id));
 
+  const bool draw_motion_paths = (pd->overlay.flag & V3D_OVERLAY_HIDE_MOTION_PATHS) == 0;
+
   bool init;
   OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &init);
 
@@ -239,6 +242,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
   if (in_pose_mode) {
     OVERLAY_pose_armature_cache_populate(vedata, ob);
+  }
+
+  if (draw_motion_paths) {
+    OVERLAY_motion_path_cache_populate(vedata, ob);
   }
 
   // if (is_geom) {
@@ -314,6 +321,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_extra_draw(vedata);
   OVERLAY_armature_draw(vedata);
   OVERLAY_grid_draw(vedata);
+  OVERLAY_motion_path_draw(vedata);
   OVERLAY_outline_draw(vedata);
 
   switch (pd->ctx_mode) {
