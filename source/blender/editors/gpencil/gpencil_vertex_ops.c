@@ -497,7 +497,7 @@ void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
 }
 
 /* Helper to extract color for palette. */
-static bool gp_extract_palette(bContext *C)
+static bool gp_extract_palette(bContext *C, const bool selected)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
@@ -517,6 +517,10 @@ static bool gp_extract_palette(bContext *C)
         }
         MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
         if (gp_style == NULL) {
+          continue;
+        }
+
+        if ((selected) && ((gps->flag & GP_STROKE_SELECT) == 0)) {
           continue;
         }
 
@@ -683,6 +687,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool remove = RNA_boolean_get(op->ptr, "remove");
   const bool palette = RNA_boolean_get(op->ptr, "palette");
+  const bool selected = RNA_boolean_get(op->ptr, "selected");
 
   char name[32] = "";
   Material *ma = NULL;
@@ -709,6 +714,11 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
         if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
           continue;
         }
+
+        if ((selected) && ((gps->flag & GP_STROKE_SELECT) == 0)) {
+          continue;
+        }
+
         MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
         if (gp_style == NULL) {
           continue;
@@ -813,7 +823,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
   /* Generate a Palette. */
   if (palette) {
-    gp_extract_palette(C);
+    gp_extract_palette(C, selected);
   }
 
   /* Clean unused materials. */
@@ -846,6 +856,7 @@ void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot)
                              "Remove Unused Materiales",
                              "Remove any unused material after the conversion");
   RNA_def_boolean(ot->srna, "palette", true, "Create Palette", "Create a new palette with colors");
+  RNA_def_boolean(ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
 }
 
 /* Extract Palette from Vertex Color. */
@@ -862,7 +873,9 @@ static bool gp_extract_palette_poll(bContext *C)
 
 static int gp_extract_palette_exec(bContext *C, wmOperator *op)
 {
-  if (gp_extract_palette(C)) {
+  const bool selected = RNA_boolean_get(op->ptr, "selected");
+
+  if (gp_extract_palette(C, selected)) {
     BKE_reportf(op->reports, RPT_INFO, "Palette created");
   }
   else {
@@ -885,4 +898,8 @@ void GPENCIL_OT_extract_palette(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_boolean(
+      ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
 }
