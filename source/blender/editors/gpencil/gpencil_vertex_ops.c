@@ -889,7 +889,7 @@ void GPENCIL_OT_extract_palette(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Extract Palette from Vertex Color";
-  ot->idname = "GPENCIL_OTextract_palette";
+  ot->idname = "GPENCIL_OT_extract_palette";
   ot->description = "Extract all colors used in Vertex and create a Palette";
 
   /* api callbacks */
