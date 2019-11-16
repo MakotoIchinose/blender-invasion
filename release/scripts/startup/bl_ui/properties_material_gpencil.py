@@ -47,6 +47,10 @@ class GPENCIL_MT_color_context_menu(Menu):
         layout.separator()
 
         layout.operator("object.material_slot_remove_unused")
+        layout.operator("gpencil.stroke_merge_material", text="Merge Similar")
+
+        layout.separator()
+        layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Vertex Color")
 
 
 class GPENCIL_UL_matslots(UIList):
