@@ -620,7 +620,7 @@ static bool gp_extract_palette(bContext *C, const bool selected, const int thres
 
         /* Only solid strokes or stencil. */
         if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-                             ((gp_style->flag & GP_STYLE_FILL_PATTERN) == 0))) {
+                             ((gp_style->flag & GP_STYLE_STROKE_PATTERN) == 0))) {
           continue;
         }
 
@@ -807,7 +807,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
         /* Only solid strokes or stencil. */
         if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
-                             ((gp_style->flag & GP_STYLE_FILL_PATTERN) == 0))) {
+                             ((gp_style->flag & GP_STYLE_STROKE_PATTERN) == 0))) {
           continue;
         }
 
@@ -861,7 +861,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
           mat_elm->key = key;
           mat_elm->ma = ma;
-          mat_elm->sima = gp_style->ima;
+          mat_elm->sima = gp_style->sima;
           mat_elm->index = ob->totcol - 1;
         }
         else {
