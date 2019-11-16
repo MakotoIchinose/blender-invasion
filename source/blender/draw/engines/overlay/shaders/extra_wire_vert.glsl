@@ -14,8 +14,16 @@ vec2 screen_position(vec4 p)
 
 void main()
 {
+#ifdef OBJECT_WIRE
+  /* Extract data packed inside the unused mat4 members. */
+  mat4 obmat = ModelMatrix;
+  finalColor = vec4(obmat[0][3], obmat[1][3], obmat[2][3], obmat[3][3]);
+  obmat[0][3] = obmat[1][3] = obmat[2][3] = 0.0;
+  obmat[3][3] = 1.0;
+
+  vec3 world_pos = (ModelMatrix * vec4(pos, 1.0)).xyz;
+#else
   vec3 world_pos = point_object_to_world(pos);
-  gl_Position = point_world_to_ndc(world_pos);
 
   if (colorid == TH_CAMERA_PATH) {
     finalColor = colorCameraPath;
@@ -32,6 +40,9 @@ void main()
     /* Put Stipple distance in alpha. */
     finalColor.a = -distance(s0, s1);
   }
+#endif
+
+  gl_Position = point_world_to_ndc(world_pos);
 
 #ifdef USE_WORLD_CLIP_PLANES
   world_clip_planes_calc_clip_distance(world_pos);

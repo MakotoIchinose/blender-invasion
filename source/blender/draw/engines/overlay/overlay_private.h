@@ -50,8 +50,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *armature_ps[2];
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
-  DRWPass *edit_text_overlay_ps;
-  DRWPass *edit_text_wire_ps[2];
+  DRWPass *edit_lattice_ps;
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
   DRWPass *edit_mesh_edges_ps[2];
@@ -61,6 +60,8 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_mesh_mix_occlude_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_mesh_weight_ps;
+  DRWPass *edit_text_overlay_ps;
+  DRWPass *edit_text_wire_ps[2];
   DRWPass *extra_ps[2];
   DRWPass *extra_blend_ps;
   DRWPass *extra_centers_ps;
@@ -155,6 +156,8 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *probe_grid;
 
   DRWCallBuffer *speaker;
+
+  DRWShadingGroup *extra_wire;
 } OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_ArmatureCallBuffers {
@@ -187,8 +190,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_curve_wire_grp[2];
   DRWShadingGroup *edit_curve_handle_grp;
   DRWShadingGroup *edit_curve_points_grp;
-  DRWShadingGroup *edit_text_overlay_grp;
-  DRWShadingGroup *edit_text_wire_grp[2];
+  DRWShadingGroup *edit_lattice_points_grp;
+  DRWShadingGroup *edit_lattice_wires_grp;
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
   DRWShadingGroup *edit_mesh_faces_cage_grp[2];
@@ -201,6 +204,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_mesh_lnormals_grp;
   DRWShadingGroup *edit_mesh_analysis_grp;
   DRWShadingGroup *edit_mesh_weight_grp;
+  DRWShadingGroup *edit_text_overlay_grp;
+  DRWShadingGroup *edit_text_wire_grp[2];
   DRWShadingGroup *facing_grp;
   DRWShadingGroup *wires_grp;
   DRWShadingGroup *wires_xray_grp;
@@ -336,6 +341,11 @@ void OVERLAY_edit_curve_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_surf_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_curve_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_edit_lattice_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_lattice_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_lattice_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_lattice_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_text_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_text_draw(OVERLAY_Data *vedata);
@@ -370,6 +380,10 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          const float draw_size,
                          const char draw_type,
                          const float color[4]);
+void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
+                        struct GPUBatch *geom,
+                        const float mat[4][4],
+                        const float color[4]);
 
 void OVERLAY_facing_init(OVERLAY_Data *vedata);
 void OVERLAY_facing_cache_init(OVERLAY_Data *vedata);
@@ -421,6 +435,8 @@ GPUShader *OVERLAY_shader_depth_only(void);
 GPUShader *OVERLAY_shader_edit_curve_handle(void);
 GPUShader *OVERLAY_shader_edit_curve_point(void);
 GPUShader *OVERLAY_shader_edit_curve_wire(void);
+GPUShader *OVERLAY_shader_edit_lattice_point(void);
+GPUShader *OVERLAY_shader_edit_lattice_wire(void);
 GPUShader *OVERLAY_shader_edit_mesh_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);
 GPUShader *OVERLAY_shader_edit_mesh_face(void);
@@ -433,7 +449,7 @@ GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
 GPUShader *OVERLAY_shader_extra(void);
 GPUShader *OVERLAY_shader_extra_groundline(void);
-GPUShader *OVERLAY_shader_extra_wire(void);
+GPUShader *OVERLAY_shader_extra_wire(bool use_object);
 GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);

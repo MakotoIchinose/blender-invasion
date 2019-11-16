@@ -134,6 +134,7 @@ static void OVERLAY_cache_init(void *vedata)
     case CTX_MODE_EDIT_METABALL:
       break;
     case CTX_MODE_EDIT_LATTICE:
+      OVERLAY_edit_lattice_cache_init(vedata);
       break;
     case CTX_MODE_PARTICLE:
       break;
@@ -239,6 +240,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_surf_cache_populate(vedata, ob);
         break;
       case OB_LATTICE:
+        OVERLAY_edit_lattice_cache_populate(vedata, ob);
         break;
       case OB_MBALL:
         OVERLAY_edit_metaball_cache_populate(vedata, ob);
@@ -305,6 +307,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_LIGHTPROBE:
         OVERLAY_lightprobe_cache_populate(vedata, ob);
         break;
+      case OB_LATTICE:
+        OVERLAY_lattice_cache_populate(vedata, ob);
+        break;
     }
   }
 
@@ -346,6 +351,9 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_EDIT_TEXT:
       OVERLAY_edit_text_draw(vedata);
+      break;
+    case CTX_MODE_EDIT_LATTICE:
+      OVERLAY_edit_lattice_draw(vedata);
       break;
     default:
       break;

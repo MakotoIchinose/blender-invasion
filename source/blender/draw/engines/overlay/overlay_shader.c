@@ -48,6 +48,8 @@ extern char datatoc_edit_curve_handle_geom_glsl[];
 extern char datatoc_edit_curve_handle_vert_glsl[];
 extern char datatoc_edit_curve_point_vert_glsl[];
 extern char datatoc_edit_curve_wire_vert_glsl[];
+extern char datatoc_edit_lattice_point_vert_glsl[];
+extern char datatoc_edit_lattice_wire_vert_glsl[];
 extern char datatoc_edit_mesh_common_lib_glsl[];
 extern char datatoc_edit_mesh_frag_glsl[];
 extern char datatoc_edit_mesh_geom_glsl[];
@@ -113,6 +115,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_curve_handle;
   GPUShader *edit_curve_point;
   GPUShader *edit_curve_wire;
+  GPUShader *edit_lattice_point;
+  GPUShader *edit_lattice_wire;
   GPUShader *edit_mesh_vert;
   GPUShader *edit_mesh_edge;
   GPUShader *edit_mesh_edge_flat;
@@ -126,7 +130,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_analysis;
   GPUShader *extra;
   GPUShader *extra_groundline;
-  GPUShader *extra_wire;
+  GPUShader *extra_wire[2];
   GPUShader *extra_point;
   GPUShader *facing;
   GPUShader *grid;
@@ -455,6 +459,44 @@ GPUShader *OVERLAY_shader_edit_curve_wire(void)
   return sh_data->edit_curve_wire;
 }
 
+GPUShader *OVERLAY_shader_edit_lattice_point(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_lattice_point) {
+    sh_data->edit_lattice_point = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_lattice_point_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_lattice_point;
+}
+
+GPUShader *OVERLAY_shader_edit_lattice_wire(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_lattice_wire) {
+    sh_data->edit_lattice_wire = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_lattice_wire_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_lattice_wire;
+}
+
 GPUShader *OVERLAY_shader_edit_mesh_face(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -648,26 +690,40 @@ GPUShader *OVERLAY_shader_extra_groundline(void)
   return sh_data->extra_groundline;
 }
 
-GPUShader *OVERLAY_shader_extra_wire(void)
+GPUShader *OVERLAY_shader_extra_wire(bool use_object)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->extra_wire) {
+  if (!sh_data->extra_wire[use_object]) {
     char colorids[1024];
     /* Need to define all there ids we need here. */
-    BLI_snprintf(colorids, sizeof(colorids), "#define TH_CAMERA_PATH %d\n", TH_CAMERA_PATH);
-    sh_data->extra_wire = GPU_shader_create_from_arrays({
+    BLI_snprintf(colorids,
+                 sizeof(colorids),
+                 "#define TH_ACTIVE %d\n"
+                 "#define TH_SELECT %d\n"
+                 "#define TH_TRANSFORM %d\n"
+                 "#define TH_WIRE %d\n"
+                 "#define TH_CAMERA_PATH %d\n",
+                 TH_ACTIVE,
+                 TH_SELECT,
+                 TH_TRANSFORM,
+                 TH_WIRE,
+                 TH_CAMERA_PATH);
+    sh_data->extra_wire[use_object] = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
                                  datatoc_extra_wire_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_extra_wire_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, colorids, NULL},
+        .defs = (const char *[]){sh_cfg->def,
+                                 colorids,
+                                 (use_object) ? "#define OBJECT_WIRE \n" : NULL,
+                                 NULL},
     });
   }
-  return sh_data->extra_wire;
+  return sh_data->extra_wire[use_object];
 }
 
 GPUShader *OVERLAY_shader_extra_point(void)

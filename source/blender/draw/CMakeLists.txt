@@ -143,6 +143,7 @@ set(SRC
   engines/overlay/overlay_facing.c
   engines/overlay/overlay_grid.c
   engines/overlay/overlay_image.c
+  engines/overlay/overlay_lattice.c
   engines/overlay/overlay_metaball.c
   engines/overlay/overlay_motion_path.c
   engines/overlay/overlay_outline.c
@@ -394,6 +395,8 @@ data_to_c_simple(engines/overlay/shaders/edit_curve_handle_geom.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_curve_handle_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_curve_point_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_curve_wire_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/edit_lattice_point_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/edit_lattice_wire_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_common_lib.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_facefill_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_facefill_vert.glsl SRC)
