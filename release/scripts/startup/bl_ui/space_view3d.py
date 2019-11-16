@@ -4587,6 +4587,19 @@ class VIEW3D_MT_assign_material(Menu):
                                 icon='LAYER_ACTIVE' if mat == mat_active else 'BLANK1').material = mat.name
 
 
+class VIEW3D_MT_gpencil_materials(Menu):
+    bl_label = "Materials"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("gpencil.stroke_merge_material", text="Merge Similar")
+
+        layout.separator()
+
+        layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Vertex Color")
+        layout.operator("gpencil.extract_palette", text="Extract Palette from Vertex Color")
+
+
 class VIEW3D_MT_gpencil_copy_layer(Menu):
     bl_label = "Copy Layer to Object"
 
@@ -4667,9 +4680,14 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
 
         layout.menu("GPENCIL_MT_move_to_layer")
+        layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
-        layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
+
+        layout.menu("VIEW3D_MT_gpencil_materials")
 
         layout.separator()
 
@@ -7017,6 +7035,7 @@ classes = (
     VIEW3D_MT_edit_mesh_showhide,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_assign_material,
+    VIEW3D_MT_gpencil_materials,
     VIEW3D_MT_edit_gpencil,
     VIEW3D_MT_edit_gpencil_stroke,
     VIEW3D_MT_edit_gpencil_point,

@@ -646,10 +646,6 @@ class GPENCIL_MT_cleanup(Menu):
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes").mode = 'ACTIVE'
         layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes all Frames").mode = 'ALL'
 
-        layout.separator()
-
-        layout.operator("gpencil.stroke_merge_material", text="Merge Materials")
-
         if ob.mode != 'PAINT_GPENCIL':
             layout.separator()
 
