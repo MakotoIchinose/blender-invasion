@@ -158,6 +158,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_facing_cache_init(vedata);
   OVERLAY_grid_cache_init(vedata);
   OVERLAY_image_cache_init(vedata);
+  OVERLAY_metaball_cache_init(vedata);
   OVERLAY_motion_path_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
@@ -240,6 +241,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
       case OB_LATTICE:
         break;
       case OB_MBALL:
+        OVERLAY_edit_metaball_cache_populate(vedata, ob);
         break;
       case OB_FONT:
         OVERLAY_edit_text_cache_populate(vedata, ob);
@@ -273,9 +275,11 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_armature_cache_populate(vedata, ob);
       }
       break;
-    // case OB_MBALL:
-    //   OVERLAY_mball_cache_populate();
-    //   break;
+    case OB_MBALL:
+      if (!in_edit_mode) {
+        OVERLAY_metaball_cache_populate(vedata, ob);
+      }
+      break;
     // case OB_FONT:
     //   OVERLAY_font_cache_populate();
     //   break;
@@ -326,6 +330,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
   OVERLAY_extra_draw(vedata);
+  OVERLAY_metaball_draw(vedata);
   OVERLAY_armature_draw(vedata);
   OVERLAY_grid_draw(vedata);
   OVERLAY_motion_path_draw(vedata);

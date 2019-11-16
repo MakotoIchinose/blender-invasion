@@ -72,6 +72,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *image_empties_blend_ps;
   DRWPass *image_empties_front_ps;
   DRWPass *image_foreground_ps;
+  DRWPass *metaball_ps[2];
   DRWPass *motion_paths_ps;
   DRWPass *outlines_prepass_ps;
   DRWPass *outlines_detect_ps;
@@ -257,6 +258,9 @@ typedef struct OVERLAY_PrivateData {
     bool transparent;
     bool show_relations;
   } armature;
+  struct {
+    DRWCallBuffer *handle[2];
+  } mball;
 } OVERLAY_PrivateData; /* Transient data */
 
 typedef struct OVERLAY_StorageList {
@@ -281,6 +285,25 @@ typedef struct OVERLAY_DupliData {
   short base_flag;
 } OVERLAY_DupliData;
 
+typedef struct BoneInstanceData {
+  /* Keep sync with bone instance vertex format (OVERLAY_InstanceFormats) */
+  union {
+    float mat[4][4];
+    struct {
+      float _pad0[3], color_hint_a;
+      float _pad1[3], color_hint_b;
+      float _pad2[3], color_a;
+      float _pad3[3], color_b;
+    };
+    struct {
+      float _pad00[3], amin_a;
+      float _pad01[3], amin_b;
+      float _pad02[3], amax_a;
+      float _pad03[3], amax_b;
+    };
+  };
+} BoneInstanceData;
+
 typedef struct OVERLAY_InstanceFormats {
   // struct GPUVertFormat *instance_mball_handles;
 
@@ -303,6 +326,9 @@ void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_armature_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4]);
+void OVERLAY_bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4]);
 
 void OVERLAY_edit_curve_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_curve_cache_init(OVERLAY_Data *vedata);
@@ -359,6 +385,11 @@ void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_image_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_metaball_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_motion_path_cache_populate(OVERLAY_Data *vedata, Object *ob);

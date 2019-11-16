@@ -110,9 +110,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_state_disable(cb->points_dupli, DRW_STATE_BLEND_ALPHA);
     DRW_shgroup_state_disable(cb->points_dupli_select, DRW_STATE_BLEND_ALPHA);
 
-    /* Metaballs Handles */
-    cb->mball_handle = buffer_instance_mball_handles(cb->non_meshes, draw_ctx->sh_cfg);
-
 #endif
 
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance

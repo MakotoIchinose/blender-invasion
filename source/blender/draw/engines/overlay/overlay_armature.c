@@ -243,25 +243,6 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
 /** \name Shader Groups (DRW_shgroup)
  * \{ */
 
-typedef struct BoneInstanceData {
-  /* Keep sync with bone instance vertex format (OVERLAY_InstanceFormats) */
-  union {
-    float mat[4][4];
-    struct {
-      float _pad0[3], color_hint_a;
-      float _pad1[3], color_hint_b;
-      float _pad2[3], color_a;
-      float _pad3[3], color_b;
-    };
-    struct {
-      float _pad00[3], amin_a;
-      float _pad01[3], amin_b;
-      float _pad02[3], amax_a;
-      float _pad03[3], amax_b;
-    };
-  };
-} BoneInstanceData;
-
 static void bone_instance_data_set_angle_minmax(BoneInstanceData *data,
                                                 const float aminx,
                                                 const float aminz,
@@ -274,14 +255,14 @@ static void bone_instance_data_set_angle_minmax(BoneInstanceData *data,
   data->amax_b = amaxz;
 }
 
-static void bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4])
+void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4])
 {
   /* Encoded color into 2 floats to be able to use the obmat to color the custom bones. */
   data->color_hint_a = (hint_color[0] * 254.0f / 255.0f) + floorf(hint_color[1] * 255.0f);
   data->color_hint_b = (hint_color[2] * 254.0f / 255.0f) + floorf(hint_color[3] * 255.0f);
 }
 
-static void bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4])
+void OVERLAY_bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4])
 {
   /* Encoded color into 2 floats to be able to use the obmat to color the custom bones. */
   data->color_a = (bone_color[0] * 254.0f / 255.0f) + floorf(bone_color[1] * 255.0f);
@@ -298,12 +279,12 @@ static void drw_shgroup_bone_octahedral(ArmatureDrawContext *ctx,
   BoneInstanceData inst_data;
   mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
   if (ctx->solid) {
-    bone_instance_data_set_color(&inst_data, bone_color);
-    bone_instance_data_set_color_hint(&inst_data, hint_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
     DRW_buffer_add_entry_struct(ctx->solid, &inst_data);
   }
   if (outline_color[3] > 0.0f) {
-    bone_instance_data_set_color(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_buffer_add_entry_struct(ctx->outline, &inst_data);
   }
 }
@@ -318,12 +299,12 @@ static void drw_shgroup_bone_box(ArmatureDrawContext *ctx,
   BoneInstanceData inst_data;
   mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
   if (ctx->solid) {
-    bone_instance_data_set_color(&inst_data, bone_color);
-    bone_instance_data_set_color_hint(&inst_data, hint_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
     DRW_buffer_add_entry_struct(ctx->solid, &inst_data);
   }
   if (outline_color[3] > 0.0f) {
-    bone_instance_data_set_color(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_buffer_add_entry_struct(ctx->outline, &inst_data);
   }
 }
@@ -418,12 +399,12 @@ static void drw_shgroup_bone_envelope(ArmatureDrawContext *ctx,
     }
 
     if (ctx->point_solid) {
-      bone_instance_data_set_color(&inst_data, bone_col);
-      bone_instance_data_set_color_hint(&inst_data, hint_col);
+      OVERLAY_bone_instance_data_set_color(&inst_data, bone_col);
+      OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_col);
       DRW_buffer_add_entry_struct(ctx->point_solid, &inst_data);
     }
     if (outline_col[3] > 0.0f) {
-      bone_instance_data_set_color(&inst_data, outline_col);
+      OVERLAY_bone_instance_data_set_color(&inst_data, outline_col);
       DRW_buffer_add_entry_struct(ctx->point_outline, &inst_data);
     }
   }
@@ -454,12 +435,12 @@ static void drw_shgroup_bone_envelope(ArmatureDrawContext *ctx,
       scale_m4_fl(inst_data.mat, tmp_sph[3] / PT_DEFAULT_RAD);
       copy_v3_v3(inst_data.mat[3], tmp_sph);
       if (ctx->point_solid) {
-        bone_instance_data_set_color(&inst_data, bone_col);
-        bone_instance_data_set_color_hint(&inst_data, hint_col);
+        OVERLAY_bone_instance_data_set_color(&inst_data, bone_col);
+        OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_col);
         DRW_buffer_add_entry_struct(ctx->point_solid, &inst_data);
       }
       if (outline_col[3] > 0.0f) {
-        bone_instance_data_set_color(&inst_data, outline_col);
+        OVERLAY_bone_instance_data_set_color(&inst_data, outline_col);
         DRW_buffer_add_entry_struct(ctx->point_outline, &inst_data);
       }
     }
@@ -492,19 +473,19 @@ static void drw_shgroup_bone_custom_solid(ArmatureDrawContext *ctx,
   }
 
   if (surf && ctx->custom_solid) {
-    bone_instance_data_set_color_hint(&inst_data, hint_color);
-    bone_instance_data_set_color(&inst_data, bone_color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
     DRW_shgroup_call_obmat(ctx->custom_solid, surf, inst_data.mat);
   }
 
   if (edges && ctx->custom_outline) {
-    bone_instance_data_set_color(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_shgroup_call_obmat(ctx->custom_outline, edges, inst_data.mat);
   }
 
   if (ledges) {
-    bone_instance_data_set_color_hint(&inst_data, outline_color);
-    bone_instance_data_set_color(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_shgroup_call_obmat(ctx->custom_wire, ledges, inst_data.mat);
   }
 
@@ -526,8 +507,8 @@ static void drw_shgroup_bone_custom_wire(ArmatureDrawContext *ctx,
   if (geom) {
     BoneInstanceData inst_data;
     mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
-    bone_instance_data_set_color_hint(&inst_data, color);
-    bone_instance_data_set_color(&inst_data, color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, color);
     DRW_shgroup_call_obmat(ctx->custom_wire, geom, inst_data.mat);
   }
 
@@ -570,12 +551,12 @@ static void drw_shgroup_bone_point(ArmatureDrawContext *ctx,
   BoneInstanceData inst_data;
   mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
   if (ctx->point_solid) {
-    bone_instance_data_set_color(&inst_data, bone_color);
-    bone_instance_data_set_color_hint(&inst_data, hint_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
+    OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
     DRW_buffer_add_entry_struct(ctx->point_solid, &inst_data);
   }
   if (outline_color[3] > 0.0f) {
-    bone_instance_data_set_color(&inst_data, outline_color);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_buffer_add_entry_struct(ctx->point_outline, &inst_data);
   }
 }
