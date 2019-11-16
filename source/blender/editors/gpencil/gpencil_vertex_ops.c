@@ -25,6 +25,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_math.h"
 
 #include "BLT_translation.h"
@@ -38,6 +39,7 @@
 #include "BKE_gpencil_modifier.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_paint.h"
 #include "BKE_report.h"
 
 #include "WM_api.h"
@@ -494,6 +496,102 @@ void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
   RNA_def_float(ot->srna, "factor", 1.0f, 0.001f, 1.0f, "Factor", "Mix Factor", 0.001f, 1.0f);
 }
 
+/* Helper to extract color for palette. */
+static bool gp_extract_palette(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+  Object *ob = CTX_data_active_object(C);
+  bool done = false;
+
+  GHash *color_table = BLI_ghash_int_new(__func__);
+
+  /* Extract all colors. */
+  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        if (ED_gpencil_stroke_can_use(C, gps) == false) {
+          continue;
+        }
+        if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
+          continue;
+        }
+        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        if (gp_style == NULL) {
+          continue;
+        }
+
+        bool use_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW);
+        bool use_fill = (gp_style->flag & GP_STYLE_FILL_SHOW);
+
+        /* Material is disabled. */
+        if ((!use_fill) && (!use_stroke)) {
+          continue;
+        }
+
+        /* Only solid strokes or stencil. */
+        if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
+                             ((gp_style->flag & GP_STYLE_FILL_PATTERN) == 0))) {
+          continue;
+        }
+
+        /* Only solid fill. */
+        if ((use_fill) && (gp_style->fill_style != GP_STYLE_FILL_STYLE_SOLID)) {
+          continue;
+        }
+
+        /* Fill color. */
+        if (gps->mix_color_fill[3] > 0.0f) {
+          uint key = rgb_to_cpack(
+              gps->mix_color_fill[0], gps->mix_color_fill[1], gps->mix_color_fill[2]);
+
+          if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
+            BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+          }
+        }
+
+        /* Read all points to get all colors. */
+        bGPDspoint *pt;
+        int i;
+        for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+          uint key = rgb_to_cpack(pt->mix_color[0], pt->mix_color[1], pt->mix_color[2]);
+          if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
+            BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+          }
+        }
+      }
+    }
+  }
+  CTX_DATA_END;
+
+  /* Create the Palette. */
+  if (BLI_ghash_len(color_table) > 0) {
+    GHashIterator gh_iter;
+    Palette *palette = BKE_palette_add(bmain, "Palette");
+    if (palette) {
+      GHASH_ITER (gh_iter, color_table) {
+        const uint col = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter));
+        float r, g, b;
+        cpack_to_rgb(col, &r, &g, &b);
+        PaletteColor *palcol = BKE_palette_color_add(palette);
+        if (palcol) {
+          palcol->rgb[0] = r;
+          palcol->rgb[1] = g;
+          palcol->rgb[2] = b;
+        }
+      }
+      done = true;
+    }
+  }
+  else {
+    done = false;
+  }
+
+  /* Free memory. */
+  BLI_ghash_free(color_table, NULL, NULL);
+
+  return done;
+}
+
 /* Convert Materials to Vertex Color. */
 static bool gp_material_to_vertex_poll(bContext *C)
 {
@@ -584,6 +682,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool remove = RNA_boolean_get(op->ptr, "remove");
+  const bool palette = RNA_boolean_get(op->ptr, "palette");
 
   char name[32] = "";
   Material *ma = NULL;
@@ -688,15 +787,14 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
         /* Update stroke */
         changed = true;
-        MaterialGPencilStyle *old_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
         gps->mat_nr = mat_elm->index;
-        copy_v3_v3(gps->mix_color_fill, old_style->fill_rgba);
+        copy_v3_v3(gps->mix_color_fill, gp_style->fill_rgba);
         gps->mix_color_fill[3] = 1.0f;
 
         /* Update all points. */
         bGPDspoint *pt;
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          copy_v3_v3(pt->mix_color, old_style->stroke_rgba);
+          copy_v3_v3(pt->mix_color, gp_style->stroke_rgba);
           pt->mix_color[3] = 1.0f;
         }
       }
@@ -713,11 +811,17 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
   /* Free memory. */
   MEM_SAFE_FREE(mat_table);
 
+  /* Generate a Palette. */
+  if (palette) {
+    gp_extract_palette(C);
+  }
+
   /* Clean unused materials. */
   if (remove) {
     WM_operator_name_call(
         C, "OBJECT_OT_material_slot_remove_unused", WM_OP_INVOKE_REGION_WIN, NULL);
   }
+
   return OPERATOR_FINISHED;
 }
 
@@ -741,4 +845,44 @@ void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot)
                              true,
                              "Remove Unused Materiales",
                              "Remove any unused material after the conversion");
+  RNA_def_boolean(ot->srna, "palette", true, "Create Palette", "Create a new palette with colors");
+}
+
+/* Extract Palette from Vertex Color. */
+static bool gp_extract_palette_poll(bContext *C)
+{
+  /* only supported with grease pencil objects */
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return false;
+  }
+
+  return true;
+}
+
+static int gp_extract_palette_exec(bContext *C, wmOperator *op)
+{
+  if (gp_extract_palette(C)) {
+    BKE_reportf(op->reports, RPT_INFO, "Palette created");
+  }
+  else {
+    BKE_reportf(op->reports, RPT_ERROR, "Unable to find Vertex Information to create palette");
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_extract_palette(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Extract Palette from Vertex Color";
+  ot->idname = "GPENCIL_OTextract_palette";
+  ot->description = "Extract all colors used in Vertex and create a Palette";
+
+  /* api callbacks */
+  ot->exec = gp_extract_palette_exec;
+  ot->poll = gp_extract_palette_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
