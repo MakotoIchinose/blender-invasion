@@ -24,6 +24,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_math.h"
@@ -37,6 +39,7 @@
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_paint.h"
@@ -496,12 +499,95 @@ void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
   RNA_def_float(ot->srna, "factor", 1.0f, 0.001f, 1.0f, "Factor", "Mix Factor", 0.001f, 1.0f);
 }
 
+typedef struct GPHue {
+  float rgb[3];
+  float hue;
+  float sat;
+} GPHue;
+
+/* helper function to sort  using qsort */
+static int gpencil_compare_hue_sat(const void *a1, const void *a2)
+{
+  const GPHue *ps1 = a1, *ps2 = a2;
+  int a = ps1->hue * 1e6 + ps1->sat * 1e3;
+  int b = ps2->hue * 1e6 + ps2->sat * 1e3;
+
+  if (a < b) {
+    return -1;
+  }
+  else if (a > b) {
+    return 1;
+  }
+
+  return 0;
+}
+
+static bool gpencil_create_palette_from_hash(Main *bmain, GHash *color_table)
+{
+  GPHue *color_array = NULL;
+  GPHue *col_elm = NULL;
+  bool done = false;
+
+  int totpal = BLI_ghash_len(color_table);
+
+  if (totpal > 0) {
+    color_array = MEM_calloc_arrayN(totpal, sizeof(GPHue), __func__);
+    /* Put all colors in an array. */
+    GHashIterator gh_iter;
+    int t = 0;
+    GHASH_ITER (gh_iter, color_table) {
+      const uint col = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter));
+      float r, g, b;
+      float h, s, v;
+      cpack_to_rgb(col, &r, &g, &b);
+      rgb_to_hsv(r, g, b, &h, &s, &v);
+
+      col_elm = &color_array[t];
+      col_elm->rgb[0] = r;
+      col_elm->rgb[1] = g;
+      col_elm->rgb[2] = b;
+      col_elm->hue = h;
+      col_elm->sat = s;
+      t++;
+    }
+  }
+
+  /* Create the Palette. */
+  if (totpal > 0) {
+    /* Sort by Hue and saturation. */
+    qsort(color_array, totpal, sizeof(GPHue), gpencil_compare_hue_sat);
+
+    Palette *palette = BKE_palette_add(bmain, "Palette");
+    if (palette) {
+      for (int i = 0; i < totpal; i++) {
+        col_elm = &color_array[i];
+        PaletteColor *palcol = BKE_palette_color_add(palette);
+        if (palcol) {
+          copy_v3_v3(palcol->rgb, col_elm->rgb);
+        }
+      }
+      done = true;
+    }
+  }
+  else {
+    done = false;
+  }
+
+  if (totpal > 0) {
+    MEM_SAFE_FREE(color_array);
+  }
+
+  return done;
+}
+
 /* Helper to extract color for palette. */
-static bool gp_extract_palette(bContext *C, const bool selected)
+static bool gp_extract_palette(bContext *C, const bool selected, const int threshold)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
   bool done = false;
+  const float range = pow(10.0f, threshold);
+  float col[3];
 
   GHash *color_table = BLI_ghash_int_new(__func__);
 
@@ -545,8 +631,11 @@ static bool gp_extract_palette(bContext *C, const bool selected)
 
         /* Fill color. */
         if (gps->mix_color_fill[3] > 0.0f) {
-          uint key = rgb_to_cpack(
-              gps->mix_color_fill[0], gps->mix_color_fill[1], gps->mix_color_fill[2]);
+          col[0] = truncf(gps->mix_color_fill[0] * range) / range;
+          col[1] = truncf(gps->mix_color_fill[1] * range) / range;
+          col[2] = truncf(gps->mix_color_fill[2] * range) / range;
+
+          uint key = rgb_to_cpack(col[0], col[1], col[2]);
 
           if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
             BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
@@ -557,7 +646,11 @@ static bool gp_extract_palette(bContext *C, const bool selected)
         bGPDspoint *pt;
         int i;
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          uint key = rgb_to_cpack(pt->mix_color[0], pt->mix_color[1], pt->mix_color[2]);
+          col[0] = truncf(pt->mix_color[0] * range) / range;
+          col[1] = truncf(pt->mix_color[1] * range) / range;
+          col[2] = truncf(pt->mix_color[2] * range) / range;
+
+          uint key = rgb_to_cpack(col[0], col[1], col[2]);
           if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
             BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
           }
@@ -568,27 +661,7 @@ static bool gp_extract_palette(bContext *C, const bool selected)
   CTX_DATA_END;
 
   /* Create the Palette. */
-  if (BLI_ghash_len(color_table) > 0) {
-    GHashIterator gh_iter;
-    Palette *palette = BKE_palette_add(bmain, "Palette");
-    if (palette) {
-      GHASH_ITER (gh_iter, color_table) {
-        const uint col = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter));
-        float r, g, b;
-        cpack_to_rgb(col, &r, &g, &b);
-        PaletteColor *palcol = BKE_palette_color_add(palette);
-        if (palcol) {
-          palcol->rgb[0] = r;
-          palcol->rgb[1] = g;
-          palcol->rgb[2] = b;
-        }
-      }
-      done = true;
-    }
-  }
-  else {
-    done = false;
-  }
+  done = gpencil_create_palette_from_hash(bmain, color_table);
 
   /* Free memory. */
   BLI_ghash_free(color_table, NULL, NULL);
@@ -823,7 +896,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
   /* Generate a Palette. */
   if (palette) {
-    gp_extract_palette(C, selected);
+    gp_extract_palette(C, selected, 1);
   }
 
   /* Clean unused materials. */
@@ -857,6 +930,7 @@ void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot)
                              "Remove any unused material after the conversion");
   RNA_def_boolean(ot->srna, "palette", true, "Create Palette", "Create a new palette with colors");
   RNA_def_boolean(ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
+  RNA_def_int(ot->srna, "threshold", 3, 1, 4, "Threshold", "", 1, 4);
 }
 
 /* Extract Palette from Vertex Color. */
@@ -874,8 +948,9 @@ static bool gp_extract_palette_poll(bContext *C)
 static int gp_extract_palette_exec(bContext *C, wmOperator *op)
 {
   const bool selected = RNA_boolean_get(op->ptr, "selected");
+  const int threshold = RNA_int_get(op->ptr, "threshold");
 
-  if (gp_extract_palette(C, selected)) {
+  if (gp_extract_palette(C, selected, threshold)) {
     BKE_reportf(op->reports, RPT_INFO, "Palette created");
   }
   else {
@@ -902,4 +977,106 @@ void GPENCIL_OT_extract_palette(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_boolean(
       ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
+  RNA_def_int(ot->srna, "threshold", 1, 1, 4, "Threshold", "", 1, 4);
+}
+
+/* Extract Palette from Image. */
+static bool gp_extract_palette_img_poll(bContext *C)
+{
+  SpaceLink *sl = CTX_wm_space_data(C);
+  if (sl->spacetype == SPACE_IMAGE) {
+    return true;
+  }
+
+  return false;
+}
+
+/* return pixel data (rgba) at index */
+static void get_pixel(const ImBuf *ibuf, const int idx, float r_col[3])
+{
+  if (ibuf->rect_float) {
+    const float *frgba = &ibuf->rect_float[idx * 4];
+    copy_v3_v3(r_col, frgba);
+  }
+  else if (ibuf->rect) {
+    float r, g, b;
+    uint *cp = &ibuf->rect[idx];
+    uint a = *cp;
+    cpack_to_rgb(a, &r, &g, &b);
+    r_col[0] = r;
+    r_col[1] = g;
+    r_col[2] = b;
+  }
+  else {
+    BLI_assert(!"gpencil_fill.c - get_pixel() non-float case is used!");
+    zero_v4(r_col);
+  }
+}
+
+static int gp_extract_palette_img_exec(bContext *C, wmOperator *op)
+{
+  const int threshold = RNA_int_get(op->ptr, "threshold");
+
+  Main *bmain = CTX_data_main(C);
+  bool done = false;
+  int totpal = 0;
+
+  SpaceImage *sima = CTX_wm_space_image(C);
+  Image *image = sima->image;
+  ImageUser iuser = sima->iuser;
+  void *lock;
+  ImBuf *ibuf;
+  GHash *color_table = BLI_ghash_int_new(__func__);
+
+  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
+
+  if (ibuf->rect) {
+    const int maxpixel = (ibuf->x * ibuf->y) - 1;
+
+    /* Extract all colors. */
+    for (int v = maxpixel; v != 0; v--) {
+      float col[3];
+      get_pixel(ibuf, v, col);
+
+      const float range = pow(10.0f, threshold);
+      col[0] = truncf(col[0] * range) / range;
+      col[1] = truncf(col[1] * range) / range;
+      col[2] = truncf(col[2] * range) / range;
+
+      uint key = rgb_to_cpack(col[0], col[1], col[2]);
+      if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
+        BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+      }
+    }
+
+    done = gpencil_create_palette_from_hash(bmain, color_table);
+  }
+
+  /* Free memory. */
+  BLI_ghash_free(color_table, NULL, NULL);
+  BKE_image_release_ibuf(image, ibuf, lock);
+
+  if (done) {
+    BKE_reportf(op->reports, RPT_INFO, "Palette created with %d swatches", totpal);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_extract_palette_from_image(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Extract Palette from Image";
+  ot->idname = "GPENCIL_OT_extract_palette_from_image";
+  ot->description = "Extract all colors used in Image and create a Palette";
+
+  /* api callbacks */
+  ot->exec = gp_extract_palette_img_exec;
+  ot->poll = gp_extract_palette_img_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_int(ot->srna, "threshold", 1, 1, 4, "Threshold", "", 1, 4);
 }
