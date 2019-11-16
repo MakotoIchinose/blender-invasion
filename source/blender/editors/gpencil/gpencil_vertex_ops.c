@@ -621,17 +621,17 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
     switch (gp_style->mode) {
       case GP_STYLE_MODE_LINE: {
         r_i = 1;
-        strcpy(name, "Stroke Line & Fill");
+        strcpy(name, "Line Stroke-Fill");
         break;
       }
       case GP_STYLE_MODE_DOTS: {
         r_i = 2;
-        strcpy(name, "Stroke Dot & Fill");
+        strcpy(name, "Dots Stroke-Fill");
         break;
       }
       case GP_STYLE_MODE_BOX: {
         r_i = 3;
-        strcpy(name, "Stroke Box & Fill");
+        strcpy(name, "Boxes Stroke-Fill");
         break;
       }
       default:
@@ -642,17 +642,17 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
     switch (gp_style->mode) {
       case GP_STYLE_MODE_LINE: {
         r_i = 4;
-        strcpy(name, "Stroke Line");
+        strcpy(name, "Line Stroke");
         break;
       }
       case GP_STYLE_MODE_DOTS: {
         r_i = 5;
-        strcpy(name, "Stroke Dot");
+        strcpy(name, "Dots Stroke");
         break;
       }
       case GP_STYLE_MODE_BOX: {
         r_i = 6;
-        strcpy(name, "Stroke Box");
+        strcpy(name, "Boxes Stroke");
         break;
       }
       default:
@@ -661,7 +661,7 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
   }
   else {
     r_i = 7;
-    strcpy(name, "Fill");
+    strcpy(name, "Solid Fill");
   }
 
   /* Create key TSSSSFFFF (T: Type S: Stroke Alpha F: Fill Alpha) */
