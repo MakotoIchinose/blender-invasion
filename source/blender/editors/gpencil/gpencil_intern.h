@@ -505,6 +505,8 @@ void GPENCIL_OT_stroke_trim(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_merge_by_distance(struct wmOperatorType *ot);
 void GPENCIL_OT_stroke_merge_material(struct wmOperatorType *ot);
 
+void GPENCIL_OT_material_to_vertex_color(struct wmOperatorType *ot);
+
 void GPENCIL_OT_transform_fill(struct wmOperatorType *ot);
 void GPENCIL_OT_reset_transform_fill(struct wmOperatorType *ot);
 

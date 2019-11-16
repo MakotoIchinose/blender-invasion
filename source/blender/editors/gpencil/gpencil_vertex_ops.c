@@ -36,6 +36,7 @@
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_report.h"
 
@@ -491,4 +492,253 @@ void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
   /* params */
   ot->prop = RNA_def_enum(ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, 0, "Mode", "");
   RNA_def_float(ot->srna, "factor", 1.0f, 0.001f, 1.0f, "Factor", "Mix Factor", 0.001f, 1.0f);
+}
+
+/* Convert Materials to Vertex Color. */
+static bool gp_material_to_vertex_poll(bContext *C)
+{
+  /* only supported with grease pencil objects */
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return false;
+  }
+
+  return true;
+}
+
+typedef struct GPMatArray {
+  uint key;
+  Material *ma;
+  Image *sima;
+  int index;
+} GPMatArray;
+
+static uint get_material_type(MaterialGPencilStyle *gp_style,
+                              bool use_stroke,
+                              bool use_fill,
+                              char *name)
+{
+  uint r_i = -1;
+  if ((use_stroke) && (use_fill)) {
+    switch (gp_style->mode) {
+      case GP_STYLE_MODE_LINE: {
+        r_i = 1;
+        strcpy(name, "Stroke Line & Fill");
+        break;
+      }
+      case GP_STYLE_MODE_DOTS: {
+        r_i = 2;
+        strcpy(name, "Stroke Dot & Fill");
+        break;
+      }
+      case GP_STYLE_MODE_BOX: {
+        r_i = 3;
+        strcpy(name, "Stroke Box & Fill");
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  else if (use_stroke) {
+    switch (gp_style->mode) {
+      case GP_STYLE_MODE_LINE: {
+        r_i = 4;
+        strcpy(name, "Stroke Line");
+        break;
+      }
+      case GP_STYLE_MODE_DOTS: {
+        r_i = 5;
+        strcpy(name, "Stroke Dot");
+        break;
+      }
+      case GP_STYLE_MODE_BOX: {
+        r_i = 6;
+        strcpy(name, "Stroke Box");
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  else {
+    r_i = 7;
+    strcpy(name, "Fill");
+  }
+
+  /* Create key TSSSSFFFF (T: Type S: Stroke Alpha F: Fill Alpha) */
+  r_i *= 1e8;
+  if (use_stroke) {
+    r_i += gp_style->stroke_rgba[3] * 1e7;
+  }
+  if (use_fill) {
+    r_i += gp_style->fill_rgba[3] * 1e3;
+  }
+
+  return r_i;
+}
+
+static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Object *ob = CTX_data_active_object(C);
+  bGPdata *gpd = (bGPdata *)ob->data;
+  const bool remove = RNA_boolean_get(op->ptr, "remove");
+
+  char name[32] = "";
+  Material *ma = NULL;
+  GPMatArray *mat_elm = NULL;
+
+  bool changed = false;
+
+  short *totcol = give_totcolp(ob);
+  if (totcol == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* These arrays hold all materials and index in the material slots for all combinations. */
+  int totmat = *totcol;
+  GPMatArray *mat_table = MEM_calloc_arrayN(totmat, sizeof(GPMatArray), __func__);
+
+  /* Update stroke material index. */
+  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+    for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+      for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+        if (ED_gpencil_stroke_can_use(C, gps) == false) {
+          continue;
+        }
+        if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
+          continue;
+        }
+        MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        if (gp_style == NULL) {
+          continue;
+        }
+
+        bool use_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW);
+        bool use_fill = (gp_style->flag & GP_STYLE_FILL_SHOW);
+
+        /* Material is disabled. */
+        if ((!use_fill) && (!use_stroke)) {
+          continue;
+        }
+
+        /* Only solid strokes or stencil. */
+        if ((use_stroke) && ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
+                             ((gp_style->flag & GP_STYLE_FILL_PATTERN) == 0))) {
+          continue;
+        }
+
+        /* Only solid fill. */
+        if ((use_fill) && (gp_style->fill_style != GP_STYLE_FILL_STYLE_SOLID)) {
+          continue;
+        }
+
+        /* Create material type unique key by type and alpha. */
+        uint key = get_material_type(gp_style, use_stroke, use_fill, name);
+
+        /* Check if material exist. */
+        int i;
+        bool found = false;
+        for (i = 0; i < totmat; i++) {
+          mat_elm = &mat_table[i];
+          if (mat_elm->ma == NULL) {
+            break;
+          }
+          if (key == mat_elm->key) {
+            /* Check if using same stencil texture. */
+            if (gp_style->sima == mat_elm->sima) {
+              found = true;
+              break;
+            }
+          }
+        }
+
+        /* If not found create a new material. */
+        if (!found) {
+          ma = BKE_material_add_gpencil(bmain, name);
+          if (use_stroke) {
+            ma->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+          }
+          else {
+            ma->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+          }
+
+          if (use_fill) {
+            ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+          }
+          else {
+            ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+          }
+
+          ma->gp_style->stroke_rgba[3] = gp_style->stroke_rgba[3];
+          ma->gp_style->fill_rgba[3] = gp_style->fill_rgba[3];
+
+          BKE_object_material_slot_add(bmain, ob);
+          assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+
+          mat_elm->key = key;
+          mat_elm->ma = ma;
+          mat_elm->sima = gp_style->ima;
+          mat_elm->index = ob->totcol - 1;
+        }
+        else {
+          mat_elm = &mat_table[i];
+        }
+
+        /* Update stroke */
+        changed = true;
+        MaterialGPencilStyle *old_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+        gps->mat_nr = mat_elm->index;
+        copy_v3_v3(gps->mix_color_fill, old_style->fill_rgba);
+        gps->mix_color_fill[3] = 1.0f;
+
+        /* Update all points. */
+        bGPDspoint *pt;
+        for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+          copy_v3_v3(pt->mix_color, old_style->stroke_rgba);
+          pt->mix_color[3] = 1.0f;
+        }
+      }
+    }
+  }
+  CTX_DATA_END;
+
+  /* notifiers */
+  if (changed) {
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  }
+
+  /* Free memory. */
+  MEM_SAFE_FREE(mat_table);
+
+  /* Clean unused materials. */
+  if (remove) {
+    WM_operator_name_call(
+        C, "OBJECT_OT_material_slot_remove_unused", WM_OP_INVOKE_REGION_WIN, NULL);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Convert Stroke Materials to Vertex Color";
+  ot->idname = "GPENCIL_OT_material_to_vertex_color";
+  ot->description = "Replace materials in strokes with Vertex Color";
+
+  /* api callbacks */
+  ot->exec = gp_material_to_vertex_exec;
+  ot->poll = gp_material_to_vertex_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "remove",
+                             true,
+                             "Remove Unused Materiales",
+                             "Remove any unused material after the conversion");
 }
