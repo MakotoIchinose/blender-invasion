@@ -6410,7 +6410,7 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         sub.prop(overlay, "gpencil_paper_opacity", text="Fade Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
+        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
 
@@ -6418,7 +6418,6 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
 
         if context.object.mode in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
-            layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
             layout.label(text="Vertex Paint")
             layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
