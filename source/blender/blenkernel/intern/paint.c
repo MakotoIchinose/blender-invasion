@@ -647,6 +647,87 @@ bool BKE_palette_is_empty(const struct Palette *palette)
   return BLI_listbase_is_empty(&palette->colors);
 }
 
+/* helper function to sort using qsort */
+static int palettecolor_compare_hue_sat(const void *a1, const void *a2)
+{
+  const tPaletteColorHue *ps1 = a1, *ps2 = a2;
+  int a = ps1->hue * 1e6 + ps1->sat * 1e3;
+  int b = ps2->hue * 1e6 + ps2->sat * 1e3;
+
+  if (a < b) {
+    return -1;
+  }
+  else if (a > b) {
+    return 1;
+  }
+
+  return 0;
+}
+
+void BKE_palette_sort_hs(tPaletteColorHue *color_array, const int totcol)
+{
+  /* Sort by Hue and saturation. */
+  qsort(color_array, totcol, sizeof(tPaletteColorHue), palettecolor_compare_hue_sat);
+}
+
+bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
+{
+  tPaletteColorHue *color_array = NULL;
+  tPaletteColorHue *col_elm = NULL;
+  bool done = false;
+
+  const int totpal = BLI_ghash_len(color_table);
+
+  if (totpal > 0) {
+    color_array = MEM_calloc_arrayN(totpal, sizeof(tPaletteColorHue), __func__);
+    /* Put all colors in an array. */
+    GHashIterator gh_iter;
+    int t = 0;
+    GHASH_ITER (gh_iter, color_table) {
+      const uint col = POINTER_AS_INT(BLI_ghashIterator_getValue(&gh_iter));
+      float r, g, b;
+      float h, s, v;
+      cpack_to_rgb(col, &r, &g, &b);
+      rgb_to_hsv(r, g, b, &h, &s, &v);
+
+      col_elm = &color_array[t];
+      col_elm->rgb[0] = r;
+      col_elm->rgb[1] = g;
+      col_elm->rgb[2] = b;
+      col_elm->hue = h;
+      col_elm->sat = s;
+      t++;
+    }
+  }
+
+  /* Create the Palette. */
+  if (totpal > 0) {
+    /* Sort by Hue and saturation. */
+    BKE_palette_sort_hs(color_array, totpal);
+
+    Palette *palette = BKE_palette_add(bmain, "Palette");
+    if (palette) {
+      for (int i = 0; i < totpal; i++) {
+        col_elm = &color_array[i];
+        PaletteColor *palcol = BKE_palette_color_add(palette);
+        if (palcol) {
+          copy_v3_v3(palcol->rgb, col_elm->rgb);
+        }
+      }
+      done = true;
+    }
+  }
+  else {
+    done = false;
+  }
+
+  if (totpal > 0) {
+    MEM_SAFE_FREE(color_array);
+  }
+
+  return done;
+}
+
 /* are we in vertex paint or weight paint face select mode? */
 bool BKE_paint_select_face_test(Object *ob)
 {

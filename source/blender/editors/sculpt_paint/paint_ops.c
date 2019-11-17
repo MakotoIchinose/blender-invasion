@@ -26,6 +26,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -33,9 +35,11 @@
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
+#include "BKE_image.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_paint.h"
+#include "BKE_report.h"
 
 #include "ED_paint.h"
 #include "ED_screen.h"
@@ -292,6 +296,107 @@ static void PALETTE_OT_color_delete(wmOperatorType *ot)
   ot->poll = palette_poll;
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/* --- Extract Palette from Image. */
+
+/* Return pixel data (rgba) at index. */
+static void get_image_pixel(const ImBuf *ibuf, const int idx, float r_col[3])
+{
+  if (ibuf->rect_float) {
+    const float *frgba = &ibuf->rect_float[idx * 4];
+    copy_v3_v3(r_col, frgba);
+  }
+  else if (ibuf->rect) {
+    float r, g, b;
+    uint *cp = &ibuf->rect[idx];
+    uint a = *cp;
+    cpack_to_rgb(a, &r, &g, &b);
+    r_col[0] = r;
+    r_col[1] = g;
+    r_col[2] = b;
+  }
+  else {
+    zero_v4(r_col);
+  }
+}
+
+static bool palette_extract_img_poll(bContext *C)
+{
+  SpaceLink *sl = CTX_wm_space_data(C);
+  if (sl->spacetype == SPACE_IMAGE) {
+    return true;
+  }
+
+  return false;
+}
+
+static int palette_extract_img_exec(bContext *C, wmOperator *op)
+{
+  const int threshold = RNA_int_get(op->ptr, "threshold");
+
+  Main *bmain = CTX_data_main(C);
+  bool done = false;
+  int totpal = 0;
+
+  SpaceImage *sima = CTX_wm_space_image(C);
+  Image *image = sima->image;
+  ImageUser iuser = sima->iuser;
+  void *lock;
+  ImBuf *ibuf;
+  GHash *color_table = BLI_ghash_int_new(__func__);
+
+  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
+
+  if (ibuf->rect) {
+    const int maxpixel = (ibuf->x * ibuf->y) - 1;
+
+    /* Extract all colors. */
+    for (int v = maxpixel; v != 0; v--) {
+      float col[3];
+      get_image_pixel(ibuf, v, col);
+
+      const float range = pow(10.0f, threshold);
+      col[0] = truncf(col[0] * range) / range;
+      col[1] = truncf(col[1] * range) / range;
+      col[2] = truncf(col[2] * range) / range;
+
+      uint key = rgb_to_cpack(col[0], col[1], col[2]);
+      if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
+        BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+      }
+    }
+
+    done = BKE_palette_from_hash(bmain, color_table);
+  }
+
+  /* Free memory. */
+  BLI_ghash_free(color_table, NULL, NULL);
+  BKE_image_release_ibuf(image, ibuf, lock);
+
+  if (done) {
+    BKE_reportf(op->reports, RPT_INFO, "Palette created with %d swatches", totpal);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void PALETTE_OT_extract_from_image(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Extract Palette from Image";
+  ot->idname = "PALETTE_OT_extract_from_image";
+  ot->description = "Extract all colors used in Image and create a Palette";
+
+  /* api callbacks */
+  ot->exec = palette_extract_img_exec;
+  ot->poll = palette_extract_img_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_int(ot->srna, "threshold", 1, 1, 4, "Threshold", "", 1, 4);
 }
 
 static int brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
@@ -966,6 +1071,8 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(PALETTE_OT_new);
   WM_operatortype_append(PALETTE_OT_color_add);
   WM_operatortype_append(PALETTE_OT_color_delete);
+
+  WM_operatortype_append(PALETTE_OT_extract_from_image);
 
   /* paint curve */
   WM_operatortype_append(PAINTCURVE_OT_new);

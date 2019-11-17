@@ -368,6 +368,14 @@ typedef struct Brush {
   struct BrushGpencilSettings *gpencil_settings;
 
 } Brush;
+
+/* Struct to hold palette colors for sorting. */
+typedef struct tPaletteColorHue {
+  float rgb[3];
+  float hue;
+  float sat;
+} tPaletteColorHue;
+
 typedef struct PaletteColor {
   struct PaletteColor *next, *prev;
   /* two values, one to store rgb, other to store values for sculpt/weight */
@@ -537,7 +545,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_POSE, \
 \
         /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
-         * but user feedback indicates it's better not to */ \
+         * \ but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
 

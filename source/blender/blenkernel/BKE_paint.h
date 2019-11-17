@@ -30,6 +30,7 @@ struct Brush;
 struct CurveMapping;
 struct Depsgraph;
 struct EnumPropertyItem;
+struct GHash;
 struct GridPaintMask;
 struct ImagePool;
 struct MLoop;
@@ -51,6 +52,7 @@ struct SubdivCCG;
 struct SubdivCCG;
 struct Tex;
 struct ToolSettings;
+struct tPaletteColorHue;
 struct UnifiedPaintSettings;
 struct View3D;
 struct ViewLayer;
@@ -125,6 +127,9 @@ struct PaletteColor *BKE_palette_color_add(struct Palette *palette);
 bool BKE_palette_is_empty(const struct Palette *palette);
 void BKE_palette_color_remove(struct Palette *palette, struct PaletteColor *color);
 void BKE_palette_clear(struct Palette *palette);
+
+void BKE_palette_sort_hs(struct tPaletteColorHue *color_array, const int totcol);
+bool BKE_palette_from_hash(struct Main *bmain, struct GHash *color_table);
 
 /* paint curves */
 struct PaintCurve *BKE_paint_curve_add(struct Main *bmain, const char *name);
