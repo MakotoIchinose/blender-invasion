@@ -479,6 +479,79 @@ void PALETTE_OT_sort(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/* Join Palette swatches. */
+static bool palette_join_poll(bContext *C)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Palette *palette = paint->palette;
+  if (palette) {
+    return true;
+  }
+
+  return false;
+}
+
+static int palette_join_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Palette *palette = paint->palette;
+  Palette *palette_join = NULL;
+  bool done = false;
+
+  char name[MAX_ID_NAME - 2];
+  RNA_string_get(op->ptr, "palette", name);
+
+  if ((palette == NULL) || (name[0] == '\0')) {
+    return OPERATOR_CANCELLED;
+  }
+
+  palette_join = (Palette *)BKE_libblock_find_name(bmain, ID_PAL, name);
+  if (palette_join == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const int totcol = BLI_listbase_count(&palette_join->colors);
+
+  if (totcol > 0) {
+    for (PaletteColor *color = palette_join->colors.first; color; color = color->next) {
+      PaletteColor *palcol = BKE_palette_color_add(palette);
+      if (palcol) {
+        copy_v3_v3(palcol->rgb, color->rgb);
+        done = true;
+      }
+    }
+  }
+
+  if (done) {
+    /* Delete old palette. */
+    BKE_palette_free(palette_join);
+
+    /* Notifier. */
+    WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, NULL);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void PALETTE_OT_join(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Join Palette Swatches";
+  ot->idname = "PALETTE_OT_join";
+  ot->description = "Join Palette Swatches";
+
+  /* api callbacks */
+  ot->exec = palette_join_exec;
+  ot->poll = palette_join_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_string(ot->srna, "palette", NULL, MAX_ID_NAME - 2, "Palette", "Name of the Palette");
+}
+
 static int brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1154,6 +1227,7 @@ void ED_operatortypes_paint(void)
 
   WM_operatortype_append(PALETTE_OT_extract_from_image);
   WM_operatortype_append(PALETTE_OT_sort);
+  WM_operatortype_append(PALETTE_OT_join);
 
   /* paint curve */
   WM_operatortype_append(PAINTCURVE_OT_new);

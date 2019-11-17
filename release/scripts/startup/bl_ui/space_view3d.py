@@ -2770,6 +2770,42 @@ class VIEW3D_MT_paint_vertex(Menu):
         layout.operator("paint.vertex_color_brightness_contrast", text="Bright/Contrast")
 
 
+class VIEW3D_MT_join_palette(Menu):
+    bl_label = "Join Palette"
+
+    @classmethod
+    def poll(cls, context):
+        if bpy.data.palettes > 1:
+            return True
+        
+        return False
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        settings = None
+
+        if context.mode == 'PAINT_GPENCIL':
+            settings = tool_settings.gpencil_paint
+        elif context.mode == 'VERTEX_GPENCIL':
+            settings = tool_settings.gpencil_vertex_paint
+        elif context.sculpt_object:
+            settings = tool_settings.sculpt
+        elif context.vertex_paint_object:
+            settings = tool_settings.vertex_paint
+        elif context.weight_paint_object:
+            settings = tool_settings.weight_paint
+        elif context.image_paint_object:
+            if (tool_settings.image_paint and tool_settings.image_paint.detect_data()):
+                settings = tool_settings.image_paint
+
+        if settings:
+            pal_active = settings.palette
+            for pal in bpy.data.palettes:
+                if pal.name != pal_active.name and len(pal.colors) > 0:
+                    layout.operator("palette.join", text=pal.name).palette = pal.name
+
+
 class VIEW3D_MT_hook(Menu):
     bl_label = "Hooks"
 
@@ -4756,6 +4792,9 @@ class VIEW3D_MT_vertex_gpencil(Menu):
         layout.operator("gpencil.vertex_color_levels", text="Levels")
         layout.operator("gpencil.vertex_color_hsv", text="Hue Saturation Value")
         layout.operator("gpencil.vertex_color_brightness_contrast", text="Bright/Contrast")
+
+        layout.separator()
+        layout.menu("VIEW3D_MT_join_palette")
 
 
 class VIEW3D_MT_gpencil_animation(Menu):
@@ -6989,6 +7028,7 @@ classes = (
     VIEW3D_MT_make_links,
     VIEW3D_MT_brush_paint_modes,
     VIEW3D_MT_paint_vertex,
+    VIEW3D_MT_join_palette,
     VIEW3D_MT_hook,
     VIEW3D_MT_vertex_group,
     VIEW3D_MT_gpencil_vertex_group,
