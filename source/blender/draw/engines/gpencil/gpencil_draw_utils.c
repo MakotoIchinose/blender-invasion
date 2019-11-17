@@ -1853,6 +1853,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
   bGPDlayer *gpl_prev = NULL;
   int idx = 0;
   bool tag_first = false;
+  bool strokes = false;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const View3D *v3d = draw_ctx->v3d;
@@ -1922,6 +1923,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
     switch (elm->type) {
       case eGpencilBatchGroupType_Stroke: {
         const int len = elm->vertex_idx - start_stroke;
+        strokes = true;
 
         shgrp = gpencil_shgroup_stroke_create(e_data,
                                               vedata,
@@ -1961,6 +1963,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
       }
       case eGpencilBatchGroupType_Point: {
         const int len = elm->vertex_idx - start_point;
+        strokes = true;
 
         shgrp = gpencil_shgroup_point_create(e_data,
                                              vedata,
@@ -1989,6 +1992,7 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
       }
       case eGpencilBatchGroupType_Fill: {
         const int len = elm->vertex_idx - start_fill;
+        strokes = true;
 
         shgrp = gpencil_shgroup_fill_create(e_data,
                                             vedata,
@@ -2045,14 +2049,13 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
       }
     }
     /* save first group */
-    if ((shgrp != NULL) && (tag_first)) {
+    if ((shgrp != NULL) && (tag_first) && (strokes)) {
       array_elm = &cache_ob->shgrp_array[idx];
       array_elm->mode = idx == 0 ? eGplBlendMode_Regular : gpl->blend_mode;
       array_elm->mask_layer = gpl->flag & GP_LAYER_USE_MASK;
       array_elm->blend_opacity = gpl->opacity;
       array_elm->init_shgrp = shgrp;
       cache_ob->tot_layers++;
-
       tag_first = false;
     }
   }
