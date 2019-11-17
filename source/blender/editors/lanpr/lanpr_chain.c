@@ -188,7 +188,7 @@ static void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
     /*  if (dist <= dist_threshold) BLI_remlink(&rlc->chain, (void*)rlci); */
   }
 
-  if (!max_rlci) {
+  if (max_rlci == NULL) {
     if (from->next == to) {
       return;
     }
@@ -462,7 +462,7 @@ static LANPR_BoundingArea *lanpr_get_rlci_bounding_area_recursive(LANPR_RenderBu
                                                                   LANPR_BoundingArea *root,
                                                                   LANPR_RenderLineChainItem *rlci)
 {
-  if (!root->child) {
+  if (root->child == NULL) {
     return root;
   }
   else {
@@ -490,7 +490,7 @@ static LANPR_BoundingArea *lanpr_get_end_point_bounding_area(LANPR_RenderBuffer 
                                                              LANPR_RenderLineChainItem *rlci)
 {
   LANPR_BoundingArea *root = ED_lanpr_get_point_bounding_area(rb, rlci->pos[0], rlci->pos[1]);
-  if (!root) {
+  if (root == NULL) {
     return NULL;
   }
   return lanpr_get_rlci_bounding_area_recursive(rb, root, rlci);
@@ -506,7 +506,7 @@ static void lanpr_link_point_with_bounding_area_recursive(LANPR_RenderBuffer *rb
                                                           LANPR_RenderLineChain *rlc,
                                                           LANPR_RenderLineChainItem *rlci)
 {
-  if (!root->child) {
+  if (root->child == NULL) {
     LANPR_ChainRegisterEntry *cre = list_append_pointer_static_sized(
         &root->linked_chains, &rb->render_data_pool, rlc, sizeof(LANPR_ChainRegisterEntry));
 
@@ -675,7 +675,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
       dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
                                  rb->scene->lanpr.chaining_image_threshold;
       closest_cre = NULL;
-      if (!ba->linked_chains.first) {
+      if (ba->linked_chains.first == NULL) {
         break;
       }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
@@ -722,7 +722,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
       dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
                                  rb->scene->lanpr.chaining_image_threshold;
       closest_cre = NULL;
-      if (!ba->linked_chains.first) {
+      if (ba->linked_chains.first == NULL) {
         break;
       }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
@@ -808,7 +808,7 @@ int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc)
 void ED_lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
-  if (!rb) {
+  if (rb == NULL) {
     return;
   }
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {

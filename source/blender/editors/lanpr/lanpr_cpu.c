@@ -162,7 +162,7 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
 }
 LANPR_LineLayerComponent *ED_lanpr_new_line_component(SceneLANPR *lanpr)
 {
-  if (!lanpr->active_layer) {
+  if (lanpr->active_layer == NULL) {
     return 0;
   }
   LANPR_LineLayer *ll = lanpr->active_layer;
@@ -192,7 +192,7 @@ static int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *U
 
   LANPR_LineLayer *ll = lanpr->active_layer;
 
-  if (!ll) {
+  if (ll == NULL) {
     return OPERATOR_FINISHED;
   }
 
@@ -223,7 +223,7 @@ static int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   LANPR_LineLayer *ll = lanpr->active_layer;
 
-  if (!ll) {
+  if (ll == NULL) {
     return OPERATOR_FINISHED;
   }
 
@@ -261,7 +261,7 @@ static int lanpr_delete_line_component_exec(struct bContext *C, struct wmOperato
   LANPR_LineLayerComponent *llc;
   int i = 0;
 
-  if (!ll) {
+  if (ll == NULL) {
     return OPERATOR_FINISHED;
   }
 
@@ -476,7 +476,7 @@ static void lanpr_cut_render_line(LANPR_RenderBuffer *rb,
       ns = begin_segment;
       break;
     }
-    if (!rls->next) {
+    if (rls->next == NULL) {
       break;
     }
     irls = rls->next;
@@ -510,10 +510,10 @@ static void lanpr_cut_render_line(LANPR_RenderBuffer *rb,
     }
   }
 
-  if (!ns) {
+  if (ns == NULL) {
     ns = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
   }
-  if (!ns2) {
+  if (ns2 == NULL) {
     if (untouched) {
       ns2 = ns;
       end_segment = ns2;
@@ -967,24 +967,24 @@ static LANPR_RenderElementLinkNode *lanpr_new_cull_point_space64(LANPR_RenderBuf
 }
 static void lanpr_assign_render_line_with_triangle(LANPR_RenderTriangle *rt)
 {
-  if (!rt->rl[0]->tl) {
+  if (rt->rl[0]->tl == NULL) {
     rt->rl[0]->tl = rt;
   }
-  else if (!rt->rl[0]->tr) {
+  else if (rt->rl[0]->tr == NULL) {
     rt->rl[0]->tr = rt;
   }
 
-  if (!rt->rl[1]->tl) {
+  if (rt->rl[1]->tl == NULL) {
     rt->rl[1]->tl = rt;
   }
-  else if (!rt->rl[1]->tr) {
+  else if (rt->rl[1]->tr == NULL) {
     rt->rl[1]->tr = rt;
   }
 
-  if (!rt->rl[2]->tl) {
+  if (rt->rl[2]->tl == NULL) {
     rt->rl[2]->tl = rt;
   }
-  else if (!rt->rl[2]->tr) {
+  else if (rt->rl[2]->tr == NULL) {
     rt->rl[2]->tr = rt;
   }
 }
@@ -1778,7 +1778,7 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
     }
   }
 
-  if (!c->children.first) {
+  if (c->children.first == NULL) {
     if (BKE_collection_has_object(c, o)) {
       if (o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT) {
         if (c->lanpr.usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY) {
@@ -2315,10 +2315,10 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
 
     r = lanpr_triangle_line_intersection_test(rb, rl, rt, testing, 0);
 
-    if (!r) {
+    if (r == NULL) {
       rl = lanpr_another_edge(testing, Share);
       r = lanpr_triangle_line_intersection_test(rb, rl, testing, rt, 0);
-      if (!r) {
+      if (r == NULL) {
         return 0;
       }
       BLI_addtail(&testing->intersecting_verts, NewShare);
@@ -2600,7 +2600,7 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
 
 void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 {
-  if (!rb) {
+  if (rb == NULL) {
     return;
   }
 
@@ -2767,7 +2767,7 @@ int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll)
 {
   LANPR_LineLayerComponent *llc = ll->components.first;
   int AndResult = 1, OrResult = 0;
-  if (!llc) {
+  if (llc == NULL) {
     return 1;
   }
   for (; llc; llc = llc->next) {
@@ -3263,7 +3263,7 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
   if (!lanpr_triangle_covers_bounding_area(rb, rt, RootBoundingArea)) {
     return;
   }
-  if (!RootBoundingArea->child) {
+  if (RootBoundingArea->child == NULL) {
     list_append_pointer_static_pool(
         &rb->render_data_pool, &RootBoundingArea->linked_triangles, rt);
     RootBoundingArea->triangle_count++;
@@ -3303,7 +3303,7 @@ static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
                                                LANPR_BoundingArea *RootBoundingArea,
                                                LANPR_RenderLine *rl)
 {
-  if (!RootBoundingArea->child) {
+  if (RootBoundingArea->child == NULL) {
     list_append_pointer_static_pool(&rb->render_data_pool, &RootBoundingArea->linked_lines, rl);
   }
   else {
@@ -3447,7 +3447,7 @@ static LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_Boundin
                                                                    real x,
                                                                    real y)
 {
-  if (!ba->child) {
+  if (ba->child == NULL) {
     return ba;
   }
   else {
@@ -3934,7 +3934,7 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
     return OPERATOR_CANCELLED;
   }
 
-  if (!scene->camera) {
+  if (scene->camera == NULL) {
     BKE_report(op->reports, RPT_ERROR, "There is no active camera in this scene!");
     printf("LANPR Warning: There is no active camera in this scene!\n");
     return OPERATOR_FINISHED;
@@ -4092,7 +4092,7 @@ static void lanpr_clear_gp_lanpr_flags(Depsgraph *dg, int frame)
       bGPDlayer *gpl;
       for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
         bGPDframe *gpf = BKE_gpencil_layer_find_frame(gpl, frame);
-        if (!gpf) {
+        if (gpf == NULL) {
           continue;
         }
         gpf->flag &= ~GP_FRAME_LANPR_CLEARED;
@@ -4118,7 +4118,7 @@ static void lanpr_update_gp_strokes_single(Depsgraph *dg,
   ObjectLANPR *obl = &ob->lanpr;
   gpd = gpobj->data;
   gpl = BKE_gpencil_layer_get_by_name(gpd, target_layer, 1);
-  if (!gpl) {
+  if (gpl == NULL) {
     gpl = BKE_gpencil_layer_addnew(gpd, "lanpr_layer", true);
   }
   gpf = BKE_gpencil_layer_getframe(gpl, frame, GP_GETFRAME_ADD_NEW);

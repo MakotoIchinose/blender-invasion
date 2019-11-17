@@ -97,7 +97,7 @@ static void lanpr_engine_init(void *ved)
       &fbl->edge_intermediate,
       {GPU_ATTACHMENT_TEXTURE(txl->depth), GPU_ATTACHMENT_TEXTURE(txl->edge_intermediate)});
 
-  if (!lanpr_share.multichannel_shader) {
+  if (lanpr_share.multichannel_shader == NULL) {
     lanpr_share.multichannel_shader = DRW_shader_create(
         datatoc_gpu_shader_3D_smooth_color_vert_glsl,
         NULL,
@@ -109,14 +109,14 @@ static void lanpr_engine_init(void *ved)
   lanpr_init_atlas_inputs(ved);
 
   /* SOFTWARE */
-  if (!lanpr_share.software_shader) {
+  if (lanpr_share.software_shader == NULL) {
     lanpr_share.software_shader = DRW_shader_create(datatoc_lanpr_software_passthrough_vert_glsl,
                                                     datatoc_lanpr_software_line_chain_geom_glsl,
                                                     datatoc_lanpr_dpix_preview_frag_glsl,
                                                     NULL);
   }
 
-  if (!lanpr_share.software_chaining_shader) {
+  if (lanpr_share.software_chaining_shader == NULL) {
     lanpr_share.software_chaining_shader = DRW_shader_create(
         datatoc_lanpr_software_passthrough_vert_glsl,
         datatoc_lanpr_software_chain_geom_glsl,
@@ -220,12 +220,12 @@ static void lanpr_cache_init(void *vedata)
   /* Transfer reload state */
   lanpr_share.dpix_reloaded = lanpr_share.dpix_reloaded_deg;
 
-  if (!stl->g_data) {
+  if (stl->g_data == NULL) {
     /* Alloc transient pointers */
     stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
   }
 
-  if (!lanpr_share.mp_batch_list) {
+  if (lanpr_share.mp_batch_list == NULL) {
     lanpr_share.mp_batch_list = BLI_mempool_create(
         sizeof(LANPR_BatchItem), 0, 128, BLI_MEMPOOL_NOP);
   }

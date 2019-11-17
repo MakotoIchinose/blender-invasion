@@ -35,7 +35,7 @@
 void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *data)
 {
   LinkData *lip;
-  if (!h) {
+  if (h == NULL) {
     return 0;
   }
   lip = mem_static_aquire(smp, sizeof(LinkData));
@@ -46,7 +46,7 @@ void *list_append_pointer_static(ListBase *h, LANPR_StaticMemPool *smp, void *da
 void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, void *data, int size)
 {
   LinkData *lip;
-  if (!h) {
+  if (h == NULL) {
     return 0;
   }
   lip = mem_static_aquire(smp, size);
@@ -58,7 +58,7 @@ void *list_append_pointer_static_sized(ListBase *h, LANPR_StaticMemPool *smp, vo
 void *list_append_pointer_static_pool(LANPR_StaticMemPool *mph, ListBase *h, void *data)
 {
   LinkData *lip;
-  if (!h) {
+  if (h == NULL) {
     return 0;
   }
   lip = mem_static_aquire(mph, sizeof(LinkData));
@@ -70,7 +70,7 @@ void *list_pop_pointer_no_free(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
-  if (!h) {
+  if (h == NULL) {
     return 0;
   }
   lip = BLI_pophead(h);

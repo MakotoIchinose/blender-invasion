@@ -407,9 +407,6 @@ void main()
     }
   }
 
-  // If this segment is a profile edge, test to see if it should be turned on.
-  // if (v1_world_pos.w > 0.5)
-  //{
   int profile_on = testProfileEdge(texcoord, v0_clipped_near);
   if (profile_on == 0) {
     // Profile edge should be off.
@@ -418,7 +415,6 @@ void main()
     gl_FragData[2] = vec4(0.0, 1.0, 0.0, 0.0);
     return;
   }
-  //}
 
   // project
   vec4 v0_pre_div = projection * ViewMatrix * vec4(v0_clipped_near, 1.0);
@@ -458,13 +454,7 @@ void main()
   vec2 v0_screen = (v0_clip_pos.xy + vec2(1.0, 1.0)) * 0.5 * viewport.zw;
   vec2 v1_screen = (v1_clip_pos.xy + vec2(1.0, 1.0)) * 0.5 * viewport.zw;
 
-  // if(v1_screen == v0_screen){ gl_FragData[0] = vec4(1,0,0,1); return; }
-
   float segment_screen_length = length(v0_screen - v1_screen);
-
-  // scale the length by sample_step to get the number of samples
-  // float num_samples = segment_screen_length / sample_step;
-  // num_samples = ceil(num_samples);
 
   // Unproject and reproject the final clipped positions
   // so that interpolation is perspective correct later on.
@@ -473,23 +463,7 @@ void main()
   vec4 v0_clipped_pre_div = projection * v0_world;
   vec4 v1_clipped_pre_div = projection * v1_world;
 
-  // Add some padding to the number of samples so that filters
-  // that work along the segment length (such as overshoot)
-  // have some room to work with at the end of each segment.
-  // vec4 path_texel = texelFetch(path_start_end_ptrs, texcoord,0);
-  // vec2 padding = segmentPadding(num_samples,
-  //    coordinateToIndex(texcoord, buffer_width),
-  //    unpackPathStart(path_texel),
-  //    unpackPathEnd(path_texel));
-  // float total_padding = padding.x + padding.y;
-
-  // if(v0_clipped_pre_div == v1_clipped_pre_div)gl_FragData[0] =vec4(1);
-  // else gl_FragData[0] = vec4(v0_clipped_pre_div.xyz,1);
-
   gl_FragData[0] = vec4(v0_clipped_pre_div.xyz,
                         1);  // contour has priority, modification cause trouble
   gl_FragData[1] = vec4(v1_clipped_pre_div.xyz, is_crease > 0 ? crease_strength : 1);
-  // gl_FragData[2] = packOffsetTexel(num_samples, segment_screen_length,
-  // num_samples, segment_screen_length);
-  // num_samples + total_padding, segment_screen_length);
 }

@@ -136,24 +136,24 @@ void lanpr_init_atlas_inputs(void *ved)
                                  GPU_ATTACHMENT_LEAVE,
                                  GPU_ATTACHMENT_LEAVE});
 
-  if (!lanpr_share.dpix_transform_shader) {
+  if (lanpr_share.dpix_transform_shader == NULL) {
     lanpr_share.dpix_transform_shader = DRW_shader_create(
         datatoc_lanpr_dpix_project_passthrough_vert_glsl,
         NULL,
         datatoc_lanpr_dpix_project_clip_frag_glsl,
         NULL);
-    if (!lanpr_share.dpix_transform_shader) {
+    if (lanpr_share.dpix_transform_shader == NULL) {
       lanpr_share.dpix_shader_error = 1;
       printf("LANPR: DPIX transform shader compile error.");
     }
   }
-  if (!lanpr_share.dpix_preview_shader) {
+  if (lanpr_share.dpix_preview_shader == NULL) {
     lanpr_share.dpix_preview_shader = DRW_shader_create(
         datatoc_lanpr_dpix_project_passthrough_vert_glsl,
         datatoc_lanpr_dpix_preview_geom_glsl,
         datatoc_lanpr_dpix_preview_frag_glsl,
         NULL);
-    if (!lanpr_share.dpix_transform_shader) {
+    if (lanpr_share.dpix_transform_shader == NULL) {
       lanpr_share.dpix_shader_error = 1;
       printf("LANPR: DPIX transform shader compile error.");
     }
@@ -303,7 +303,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
 
   i = 0;
 
-  if (!rb) {
+  if (rb == NULL) {
     return 0;
   }
 
@@ -425,7 +425,7 @@ void lanpr_create_atlas_intersection_preview(void *UNUSED(vedata), int begin_ind
   float co[2];
   int i;
 
-  if (!rb) {
+  if (rb == NULL) {
     return;
   }
 
@@ -493,7 +493,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   ;
 
-  if (!lanpr->active_layer) {
+  if (lanpr->active_layer == NULL) {
     return; /* return early in case we don't have line layers. DPIX only use the first layer. */
   }
   int texw = GPU_texture_width(txl->edge_intermediate),
@@ -508,16 +508,15 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
     camera = (rv3d && rv3d->persp == RV3D_CAMOB) ? v3d->camera : NULL;
     is_persp = rv3d->is_persp;
   }
-  if (!camera) {
+  if (camera == NULL) {
     camera = scene->camera;
-    if (!v3d) {
+    if (v3d == NULL) {
       is_persp = ((Camera *)camera->data)->type == CAM_PERSP ? 1 : 0;
     }
   }
   if (is_render && !camera) {
     return;
   }
-  /*  XXX: should implement view angle functions for ortho camera. */
 
   int texture_size = lanpr_share.texture_size;
 
@@ -526,7 +525,7 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
   pd->dpix_is_perspective = is_persp;
   pd->dpix_sample_step = 1;
   pd->dpix_buffer_width = texture_size;
-  pd->dpix_depth_offset = 0.0001;
+  pd->dpix_depth_offset = 0.0001; /* This value works okay with default camera. */
   pd->dpix_znear = camera ? ((Camera *)camera->data)->clip_start : v3d->clip_start;
   pd->dpix_zfar = camera ? ((Camera *)camera->data)->clip_end : v3d->clip_end;
 
