@@ -4597,7 +4597,7 @@ class VIEW3D_MT_gpencil_materials(Menu):
         layout.separator()
 
         layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Vertex Color")
-        layout.operator("gpencil.extract_palette", text="Extract Palette from Vertex Color")
+        layout.operator("gpencil.extract_palette_vertex", text="Extract Palette from Vertex Color")
 
 
 class VIEW3D_MT_gpencil_copy_layer(Menu):
