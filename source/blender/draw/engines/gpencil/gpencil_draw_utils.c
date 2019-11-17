@@ -1193,7 +1193,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
 
     if (cache->is_dirty) {
       if ((obact == ob) && (is_overlay) && (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) &&
-          (gps->totpoints > 1) && (!hide_vertex_lines)) {
+          (!hide_vertex_lines)) {
         /* line of the original stroke */
         gpencil_get_edlin_geom(&cache->b_edlin, gps, edit_alpha, hide_select);
 

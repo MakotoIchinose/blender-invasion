@@ -938,6 +938,7 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob->data;
   const bool is_weight_paint = (gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE);
+  const int fake_point = (gps->totpoints == 1) ? 1 : 0;
 
   int vgindex = ob->actdef - 1;
   if (!BLI_findlink(&ob->defbase, vgindex)) {
@@ -959,7 +960,7 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
     GPU_vertbuf_data_alloc(be->vbo, be->tot_vertex);
     be->vbo_len = 0;
   }
-  gpencil_vbo_ensure_size(be, gps->totpoints);
+  gpencil_vbo_ensure_size(be, gps->totpoints + fake_point);
 
   /* Draw all the stroke lines (selected or not) */
   bGPDspoint *pt = gps->points;
@@ -992,6 +993,15 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
     if (gps->dvert != NULL) {
       dvert++;
     }
+  }
+  /* If only 1 point in the stroke, add a point moved slightly. */
+  if (fake_point > 0) {
+    float fpt[3];
+    pt = &gps->points[0];
+    mul_v3_v3fl(fpt, &pt->x, 1.001f);
+    GPU_vertbuf_attr_set(be->vbo, be->color_id, be->vbo_len, fcolor);
+    GPU_vertbuf_attr_set(be->vbo, be->pos_id, be->vbo_len, fpt);
+    be->vbo_len++;
   }
 }
 
