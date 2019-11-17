@@ -399,6 +399,86 @@ void PALETTE_OT_extract_from_image(wmOperatorType *ot)
   RNA_def_int(ot->srna, "threshold", 1, 1, 4, "Threshold", "", 1, 4);
 }
 
+/* Sort Palette color by Hue and Saturation. */
+static bool palette_sort_poll(bContext *C)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Palette *palette = paint->palette;
+  if (palette) {
+    return true;
+  }
+
+  return false;
+}
+
+static int palette_sort_exec(bContext *C, wmOperator *op)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Palette *palette = paint->palette;
+
+  if (palette == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  tPaletteColorHue *color_array = NULL;
+  tPaletteColorHue *col_elm = NULL;
+
+  const int totcol = BLI_listbase_count(&palette->colors);
+
+  if (totcol > 0) {
+    color_array = MEM_calloc_arrayN(totcol, sizeof(tPaletteColorHue), __func__);
+    /* Put all colors in an array. */
+    int t = 0;
+    for (PaletteColor *color = palette->colors.first; color; color = color->next) {
+      float h, s, v;
+      rgb_to_hsv(color->rgb[0], color->rgb[1], color->rgb[2], &h, &s, &v);
+      col_elm = &color_array[t];
+      copy_v3_v3(col_elm->rgb, color->rgb);
+      col_elm->hue = h;
+      col_elm->sat = s;
+      t++;
+    }
+    /* Sort */
+    BKE_palette_sort_hs(color_array, totcol);
+
+    /* Clear old color swatches. */
+    BLI_listbase_clear(&palette->colors);
+
+    /* Recreate swatches sorted. */
+    for (int i = 0; i < totcol; i++) {
+      col_elm = &color_array[i];
+      PaletteColor *palcol = BKE_palette_color_add(palette);
+      if (palcol) {
+        copy_v3_v3(palcol->rgb, col_elm->rgb);
+      }
+    }
+  }
+
+  /* Free memory. */
+  if (totcol > 0) {
+    MEM_SAFE_FREE(color_array);
+  }
+
+  WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void PALETTE_OT_sort(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Sort Palette by Hue and Saturation";
+  ot->idname = "PALETTE_OT_sort";
+  ot->description = "Sort Palette Colors by Hue and Saturation";
+
+  /* api callbacks */
+  ot->exec = palette_sort_exec;
+  ot->poll = palette_sort_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 static int brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1073,6 +1153,7 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(PALETTE_OT_color_delete);
 
   WM_operatortype_append(PALETTE_OT_extract_from_image);
+  WM_operatortype_append(PALETTE_OT_sort);
 
   /* paint curve */
   WM_operatortype_append(PAINTCURVE_OT_new);
