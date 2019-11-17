@@ -589,7 +589,6 @@ static bool gp_extract_palette_from_vertex(bContext *C, const bool selected, con
 typedef struct GPMatArray {
   uint key;
   Material *ma;
-  Image *sima;
   int index;
 } GPMatArray;
 
@@ -681,6 +680,7 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
   char name[32] = "";
   Material *ma = NULL;
   GPMatArray *mat_elm = NULL;
+  int i;
 
   bool changed = false;
 
@@ -715,7 +715,8 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
 
         bool use_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW);
         bool use_fill = (gp_style->flag & GP_STYLE_FILL_SHOW);
-
+        bool is_stencil = ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) &&
+                           (gp_style->flag & GP_STYLE_STROKE_PATTERN));
         /* Material is disabled. */
         if ((!use_fill) && (!use_stroke)) {
           continue;
@@ -732,61 +733,60 @@ static int gp_material_to_vertex_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        /* Create material type unique key by type and alpha. */
-        uint key = get_material_type(gp_style, use_stroke, use_fill, name);
+        /* Only for no Stencil materials. */
+        if (!is_stencil) {
+          /* Create material type unique key by type and alpha. */
+          uint key = get_material_type(gp_style, use_stroke, use_fill, name);
 
-        /* Check if material exist. */
-        int i;
-        bool found = false;
-        for (i = 0; i < totmat; i++) {
-          mat_elm = &mat_table[i];
-          if (mat_elm->ma == NULL) {
-            break;
-          }
-          if (key == mat_elm->key) {
-            /* Check if using same stencil texture. */
-            if (gp_style->sima == mat_elm->sima) {
+          /* Check if material exist. */
+          bool found = false;
+          for (i = 0; i < totmat; i++) {
+            mat_elm = &mat_table[i];
+            if (mat_elm->ma == NULL) {
+              break;
+            }
+            if (key == mat_elm->key) {
               found = true;
               break;
             }
           }
-        }
 
-        /* If not found create a new material. */
-        if (!found) {
-          ma = BKE_material_add_gpencil(bmain, name);
-          if (use_stroke) {
-            ma->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+          /* If not found create a new material. */
+          if (!found) {
+            ma = BKE_material_add_gpencil(bmain, name);
+            if (use_stroke) {
+              ma->gp_style->flag |= GP_STYLE_STROKE_SHOW;
+            }
+            else {
+              ma->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+            }
+
+            if (use_fill) {
+              ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
+            }
+            else {
+              ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
+            }
+
+            ma->gp_style->stroke_rgba[3] = gp_style->stroke_rgba[3];
+            ma->gp_style->fill_rgba[3] = gp_style->fill_rgba[3];
+
+            BKE_object_material_slot_add(bmain, ob);
+            assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+
+            mat_elm->key = key;
+            mat_elm->ma = ma;
+            mat_elm->index = ob->totcol - 1;
           }
           else {
-            ma->gp_style->flag &= ~GP_STYLE_STROKE_SHOW;
+            mat_elm = &mat_table[i];
           }
 
-          if (use_fill) {
-            ma->gp_style->flag |= GP_STYLE_FILL_SHOW;
-          }
-          else {
-            ma->gp_style->flag &= ~GP_STYLE_FILL_SHOW;
-          }
-
-          ma->gp_style->stroke_rgba[3] = gp_style->stroke_rgba[3];
-          ma->gp_style->fill_rgba[3] = gp_style->fill_rgba[3];
-
-          BKE_object_material_slot_add(bmain, ob);
-          assign_material(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-
-          mat_elm->key = key;
-          mat_elm->ma = ma;
-          mat_elm->sima = gp_style->sima;
-          mat_elm->index = ob->totcol - 1;
-        }
-        else {
-          mat_elm = &mat_table[i];
+          /* Update stroke */
+          gps->mat_nr = mat_elm->index;
         }
 
-        /* Update stroke */
         changed = true;
-        gps->mat_nr = mat_elm->index;
         copy_v3_v3(gps->mix_color_fill, gp_style->fill_rgba);
         gps->mix_color_fill[3] = 1.0f;
 
