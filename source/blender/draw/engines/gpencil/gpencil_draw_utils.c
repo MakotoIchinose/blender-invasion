@@ -1154,6 +1154,9 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
                                     (GP_VERTEX_MASK_SELECTMODE_POINT |
                                      GP_VERTEX_MASK_SELECTMODE_SEGMENT)));
 
+  const bool hide_vertex_lines = (GPENCIL_VERTEX_MODE(gpd) && (use_vertex_mask) &&
+                                  ((v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) == 0));
+
   MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
 
   /* alpha factor for edit points/line to make them more subtle */
@@ -1175,6 +1178,7 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
      *  Edit mode: Not in Stroke selection mode
      *  Sculpt mode: Not in Stroke mask mode and any other mask mode enabled
      *  Weight mode: Always
+     *  Vertex mode: Always
      */
     const bool show_points = (show_sculpt_points) || (show_vertex_points) || (is_weight_paint) ||
                              (is_vertex_paint) ||
@@ -1182,14 +1186,14 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
                               ((ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE) ||
                                (gps->totpoints == 1)));
 
-    if (GPENCIL_VERTEX_MODE(gpd) && (!use_vertex_mask)) {
+    if (GPENCIL_VERTEX_MODE(gpd) && (!use_vertex_mask) &&
+        ((v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES) == 0)) {
       return;
     }
 
     if (cache->is_dirty) {
       if ((obact == ob) && (is_overlay) && (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) &&
-          (gps->totpoints > 1) && (!is_vertex_paint)) {
-
+          (gps->totpoints > 1) && (!hide_vertex_lines)) {
         /* line of the original stroke */
         gpencil_get_edlin_geom(&cache->b_edlin, gps, edit_alpha, hide_select);
 
@@ -1258,8 +1262,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
   const bool playing = stl->storage->is_playing;
   const bool is_render = (bool)stl->storage->is_render;
   const bool is_mat_preview = (bool)stl->storage->is_mat_preview;
-  const bool overlay_multiedit = v3d != NULL ? ((!(v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES)) ||
-                                                (GPENCIL_VERTEX_MODE(gpd))) :
+  const bool overlay_multiedit = v3d != NULL ? (!(v3d->gp_flag & V3D_GP_SHOW_MULTIEDIT_LINES)) :
                                                true;
 
   /* Get evaluation context */
