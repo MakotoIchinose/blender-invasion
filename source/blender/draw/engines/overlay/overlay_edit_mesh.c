@@ -136,6 +136,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     sh = OVERLAY_shader_paint_weight();
     pd->edit_mesh_weight_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_weight_ps);
     DRW_shgroup_uniform_float_copy(grp, "opacity", 1.0);
+    DRW_shgroup_uniform_bool_copy(grp, "drawContours", false);
     DRW_shgroup_uniform_texture(grp, "colorramp", G_draw.weight_ramp);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
   }

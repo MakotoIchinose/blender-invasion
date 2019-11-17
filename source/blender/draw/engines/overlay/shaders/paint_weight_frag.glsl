@@ -6,6 +6,7 @@ out vec4 fragColor;
 uniform float opacity = 1.0;
 uniform sampler1D colorramp;
 
+uniform bool useAlphaBlend = false;
 uniform bool drawContours = false;
 
 float contours(float value, float steps, float width_px, float max_rel_width, float gradient)
@@ -95,11 +96,11 @@ void main()
     color = mix(weight_color, colorVertexUnreferenced, alert * alert);
   }
 
-#ifdef DRW_STATE_BLEND_ALPHA
-  /* alpha blending mix */
-  fragColor = vec4(color.rgb, opacity);
-#else
-  /* mix with 1.0 -> is like opacity when using multiply blend mode */
-  fragColor = vec4(mix(vec3(1.0), color.rgb, opacity), 1.0);
-#endif
+  if (useAlphaBlend) {
+    fragColor = vec4(color.rgb, opacity);
+  }
+  else {
+    /* mix with 1.0 -> is like opacity when using multiply blend mode */
+    fragColor = vec4(mix(vec3(1.0), color.rgb, opacity), 1.0);
+  }
 }

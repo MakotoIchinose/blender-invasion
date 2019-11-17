@@ -56,25 +56,19 @@ static void OVERLAY_engine_init(void *vedata)
       break;
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
-      /* Nothing to do. */
-      break;
     case CTX_MODE_EDIT_TEXT:
-      /* Nothing to do. */
-      break;
     case CTX_MODE_EDIT_ARMATURE:
-      break;
     case CTX_MODE_EDIT_METABALL:
-      break;
     case CTX_MODE_EDIT_LATTICE:
+    case CTX_MODE_PAINT_VERTEX:
+    case CTX_MODE_PAINT_TEXTURE:
+    case CTX_MODE_PAINT_WEIGHT:
+    case CTX_MODE_POSE:
+      /* Nothing to do. */
       break;
     case CTX_MODE_PARTICLE:
       break;
-    case CTX_MODE_POSE:
-    case CTX_MODE_PAINT_WEIGHT:
-      break;
     case CTX_MODE_SCULPT:
-    case CTX_MODE_PAINT_VERTEX:
-    case CTX_MODE_PAINT_TEXTURE:
     case CTX_MODE_OBJECT:
     case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_EDIT_GPENCIL:
@@ -140,10 +134,11 @@ static void OVERLAY_cache_init(void *vedata)
       break;
     case CTX_MODE_POSE:
     case CTX_MODE_PAINT_WEIGHT:
-      break;
-    case CTX_MODE_SCULPT:
     case CTX_MODE_PAINT_VERTEX:
     case CTX_MODE_PAINT_TEXTURE:
+      OVERLAY_paint_cache_init(vedata);
+      break;
+    case CTX_MODE_SCULPT:
     case CTX_MODE_OBJECT:
     case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_EDIT_GPENCIL:
@@ -259,16 +254,23 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     OVERLAY_motion_path_cache_populate(vedata, ob);
   }
 
-  // if (is_geom) {
-  //   if (paint_vertex_mode) {
-  //     OVERLAY_paint_vertex_cache_populate();
-  //   }
-  //   if (paint_texture_mode) {
-  //     OVERLAY_paint_texture_cache_populate();
-  //   }
-  //   if (scuplt_mode) {
-  //     OVERLAY_sculpt_cache_populate();
-  //   }
+  if (in_paint_mode) {
+    switch (draw_ctx->object_mode) {
+      case OB_MODE_VERTEX_PAINT:
+        OVERLAY_paint_vertex_cache_populate(vedata, ob);
+        break;
+      case OB_MODE_WEIGHT_PAINT:
+        OVERLAY_paint_weight_cache_populate(vedata, ob);
+        break;
+      case OB_MODE_TEXTURE_PAINT:
+        OVERLAY_paint_texture_cache_populate(vedata, ob);
+        break;
+      default:
+        break;
+    }
+  }
+  // if (scuplt_mode) {
+  //   OVERLAY_sculpt_cache_populate();
   // }
 
   switch (ob->type) {
@@ -354,6 +356,12 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_EDIT_LATTICE:
       OVERLAY_edit_lattice_draw(vedata);
+      break;
+    case CTX_MODE_POSE:
+    case CTX_MODE_PAINT_WEIGHT:
+    case CTX_MODE_PAINT_VERTEX:
+    case CTX_MODE_PAINT_TEXTURE:
+      OVERLAY_paint_draw(vedata);
       break;
     default:
       break;

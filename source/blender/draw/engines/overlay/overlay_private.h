@@ -80,6 +80,8 @@ typedef struct OVERLAY_PassList {
   DRWPass *outlines_expand_ps;
   DRWPass *outlines_bleed_ps;
   DRWPass *outlines_resolve_ps;
+  DRWPass *paint_color_ps;
+  DRWPass *paint_overlay_ps;
   DRWPass *wireframe_ps;
   DRWPass *wireframe_xray_ps;
 } OVERLAY_PassList;
@@ -220,6 +222,11 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *outlines_probe_select_dupli_grp;
   DRWShadingGroup *outlines_probe_active_grp;
   DRWShadingGroup *outlines_probe_grid_grp;
+  DRWShadingGroup *paint_surf_grp;
+  DRWShadingGroup *paint_wire_grp;
+  DRWShadingGroup *paint_wire_selected_grp;
+  DRWShadingGroup *paint_point_grp;
+  DRWShadingGroup *paint_face_grp;
 
   DRWView *view_wires;
   DRWView *view_edit_faces;
@@ -417,6 +424,12 @@ void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
                                     bool init_dupli);
 void OVERLAY_outline_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_paint_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_paint_texture_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_paint_vertex_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_paint_weight_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_paint_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_wireframe_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
@@ -462,7 +475,12 @@ GPUShader *OVERLAY_shader_outline_prepass_grid(void);
 GPUShader *OVERLAY_shader_outline_resolve(void);
 GPUShader *OVERLAY_shader_outline_expand(bool high_dpi);
 GPUShader *OVERLAY_shader_outline_detect(bool use_wire);
+GPUShader *OVERLAY_shader_paint_face(void);
+GPUShader *OVERLAY_shader_paint_point(void);
+GPUShader *OVERLAY_shader_paint_texture(void);
+GPUShader *OVERLAY_shader_paint_vertcol(void);
 GPUShader *OVERLAY_shader_paint_weight(void);
+GPUShader *OVERLAY_shader_paint_wire(void);
 GPUShader *OVERLAY_shader_volume_velocity(bool use_needle);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);

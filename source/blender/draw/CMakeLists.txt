@@ -147,6 +147,7 @@ set(SRC
   engines/overlay/overlay_metaball.c
   engines/overlay/overlay_motion_path.c
   engines/overlay/overlay_outline.c
+  engines/overlay/overlay_paint.c
   engines/overlay/overlay_shader.c
   engines/overlay/overlay_wireframe.c
 
@@ -325,16 +326,10 @@ data_to_c_simple(modes/shaders/object_particle_prim_vert.glsl SRC)
 data_to_c_simple(modes/shaders/object_particle_dot_vert.glsl SRC)
 data_to_c_simple(modes/shaders/object_particle_dot_frag.glsl SRC)
 data_to_c_simple(modes/shaders/object_loose_points_frag.glsl SRC)
-data_to_c_simple(modes/shaders/paint_texture_frag.glsl SRC)
-data_to_c_simple(modes/shaders/paint_texture_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_vertex_frag.glsl SRC)
 data_to_c_simple(modes/shaders/paint_vertex_vert.glsl SRC)
-data_to_c_simple(modes/shaders/paint_weight_frag.glsl SRC)
-data_to_c_simple(modes/shaders/paint_weight_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_face_selection_vert.glsl SRC)
-data_to_c_simple(modes/shaders/paint_face_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_wire_frag.glsl SRC)
-data_to_c_simple(modes/shaders/paint_wire_vert.glsl SRC)
 data_to_c_simple(modes/shaders/paint_vert_frag.glsl SRC)
 data_to_c_simple(modes/shaders/particle_strand_frag.glsl SRC)
 data_to_c_simple(modes/shaders/particle_strand_vert.glsl SRC)
@@ -430,8 +425,15 @@ data_to_c_simple(engines/overlay/shaders/outline_prepass_geom.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_prepass_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_lightprobe_grid_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/outline_resolve_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_face_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_point_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_texture_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_texture_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_vertcol_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_vertcol_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_weight_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_weight_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/paint_wire_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/volume_velocity_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)
