@@ -461,7 +461,12 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     CLAMP(alpha_fill, 0.0f, 1.0f);
-    copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    if (equals_v3v3(gps->mix_color_fill, brush->rgb)) {
+      copy_v3_v3(gps->mix_color_fill, brush->rgb);
+    }
+    else {
+      interp_v3_v3v3(gps->mix_color_fill, gps->mix_color_fill, brush->rgb, inf_fill);
+    }
     gps->mix_color_fill[3] = alpha_fill;
   }
 
