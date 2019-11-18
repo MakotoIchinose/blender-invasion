@@ -86,8 +86,6 @@ typedef struct LANPR_RenderLineSegment {
   struct LANPR_RenderLineSegment *next, *prev;
   /** at==0: left  at==1: right  (this is in 2D projected space) */
   real at;
-  /** This is used to reconstruct 3d stroke  (TODO: implement global space?) */
-  real at_global;
   /** Occlusion level after "at" point */
   unsigned char occlusion;
   /** For determining lines beind a glass window material. (TODO: implement this) */
@@ -348,6 +346,10 @@ typedef enum LANPR_CullState {
   LANPR_CULL_DISCARD = 2,
 } LANPR_CullState;
 
+
+/** Controls how many lines a worker thread is processing at one request.
+ * There's no significant performance impact on choosing different values.
+ * Don't make it too small so that the worker thread won't request too many times. */
 #define TNS_THREAD_LINE_COUNT 10000
 
 typedef struct LANPR_RenderTaskInfo {
