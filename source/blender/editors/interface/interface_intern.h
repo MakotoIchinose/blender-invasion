@@ -772,6 +772,7 @@ extern void ui_but_text_password_hide(char password_str[UI_MAX_DRAW_STR],
 extern uiBut *ui_but_find_select_in_enum(uiBut *but, int direction);
 bool ui_but_is_editing(const uiBut *but);
 float ui_block_calc_pie_segment(struct uiBlock *block, const float event_xy[2]);
+void ui_but_set_text(struct bContext *C, uiBut *but, char *text);
 
 void ui_but_add_shortcut(uiBut *but, const char *key_str, const bool do_strip);
 void ui_but_clipboard_free(void);

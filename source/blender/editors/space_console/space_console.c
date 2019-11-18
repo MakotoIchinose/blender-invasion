@@ -119,7 +119,6 @@ static SpaceLink *console_duplicate(SpaceLink *sl)
 static void console_main_region_init(wmWindowManager *wm, ARegion *ar)
 {
   wmKeyMap *keymap;
-  ListBase *lb;
 
   const float prev_y_min = ar->v2d.cur.ymin; /* so re-sizing keeps the cursor visible */
 
@@ -138,11 +137,6 @@ static void console_main_region_init(wmWindowManager *wm, ARegion *ar)
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Console", SPACE_CONSOLE, 0);
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
-
-  /* add drop boxes */
-  lb = WM_dropboxmap_find("Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
-
-  WM_event_add_dropbox_handler(&ar->handlers, lb);
 }
 
 /* same as 'text_cursor' */
@@ -157,50 +151,6 @@ static void console_cursor(wmWindow *win, ScrArea *sa, ARegion *ar)
   }
 
   WM_cursor_set(win, wmcursor);
-}
-
-/* ************* dropboxes ************* */
-
-static bool id_drop_poll(bContext *UNUSED(C),
-                         wmDrag *drag,
-                         const wmEvent *UNUSED(event),
-                         const char **UNUSED(tooltip))
-{
-  return WM_drag_ID(drag, 0) != NULL;
-}
-
-static void id_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  ID *id = WM_drag_ID(drag, 0);
-
-  /* copy drag path to properties */
-  char *text = RNA_path_full_ID_py(G_MAIN, id);
-  RNA_string_set(drop->ptr, "text", text);
-  MEM_freeN(text);
-}
-
-static bool path_drop_poll(bContext *UNUSED(C),
-                           wmDrag *drag,
-                           const wmEvent *UNUSED(event),
-                           const char **UNUSED(tooltip))
-{
-  return (drag->type == WM_DRAG_PATH);
-}
-
-static void path_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  char pathname[FILE_MAX + 2];
-  BLI_snprintf(pathname, sizeof(pathname), "\"%s\"", drag->path);
-  RNA_string_set(drop->ptr, "text", pathname);
-}
-
-/* this region dropbox definition */
-static void console_dropboxes(void)
-{
-  ListBase *lb = WM_dropboxmap_find("Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
-
-  WM_dropbox_add(lb, "CONSOLE_OT_insert", id_drop_poll, id_drop_copy);
-  WM_dropbox_add(lb, "CONSOLE_OT_insert", path_drop_poll, path_drop_copy);
 }
 
 /* ************* end drop *********** */
@@ -304,6 +254,36 @@ static void console_main_region_listener(
   }
 }
 
+static void drop_init__insert_id_path(wmDragData *drag_data, PointerRNA *ptr)
+{
+  ID *id = WM_drag_query_single_id(drag_data);
+  char *text = RNA_path_full_ID_py(G_MAIN, id); /* TODO G_MAIN */
+  RNA_string_set(ptr, "text", text);
+  MEM_freeN(text);
+}
+
+static void drop_init__insert_file_path(wmDragData *drag_data, PointerRNA *ptr)
+{
+  char pathname[FILE_MAX + 2];
+  BLI_snprintf(pathname, sizeof(pathname), "\"%s\"", WM_drag_query_single_path(drag_data));
+  RNA_string_set(ptr, "text", pathname);
+}
+
+static void console_drop_target_find(bContext *UNUSED(C),
+                                     wmDropTargetFinder *finder,
+                                     wmDragData *drag_data,
+                                     const wmEvent *UNUSED(event))
+{
+  if (WM_drag_query_single_id(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_AREA, "CONSOLE_OT_insert", "Insert", drop_init__insert_id_path);
+  }
+  if (WM_drag_query_single_path(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_AREA, "CONSOLE_OT_insert", "Insert", drop_init__insert_file_path);
+  }
+}
+
 /* only called once, from space/spacetypes.c */
 void ED_spacetype_console(void)
 {
@@ -319,7 +299,7 @@ void ED_spacetype_console(void)
   st->duplicate = console_duplicate;
   st->operatortypes = console_operatortypes;
   st->keymap = console_keymap;
-  st->dropboxes = console_dropboxes;
+  st->drop_target_find = console_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype console region");

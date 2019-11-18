@@ -374,14 +374,8 @@ void outliner_set_coordinates(struct ARegion *ar, struct SpaceOutliner *soops);
 void outliner_item_openclose(TreeElement *te, bool open, bool toggle_all);
 
 /* outliner_dragdrop.c */
-void outliner_dropboxes(void);
-
-void OUTLINER_OT_item_drag_drop(struct wmOperatorType *ot);
-void OUTLINER_OT_parent_drop(struct wmOperatorType *ot);
-void OUTLINER_OT_parent_clear(struct wmOperatorType *ot);
-void OUTLINER_OT_scene_drop(struct wmOperatorType *ot);
-void OUTLINER_OT_material_drop(struct wmOperatorType *ot);
-void OUTLINER_OT_collection_drop(struct wmOperatorType *ot);
+void OUTLINER_OT_drag_init(struct wmOperatorType *ot);
+void outliner_drop_target_find(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
 
 /* ...................................................... */
 

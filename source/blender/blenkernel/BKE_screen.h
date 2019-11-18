@@ -48,6 +48,10 @@ struct wmMsgBus;
 struct wmNotifier;
 struct wmWindow;
 struct wmWindowManager;
+struct wmDragData;
+struct wmDropTarget;
+struct wmDropTargetFinder;
+struct wmEvent;
 
 #include "BLI_compiler_attrs.h"
 
@@ -95,8 +99,6 @@ typedef struct SpaceType {
   void (*operatortypes)(void);
   /* add default items to WM keymap */
   void (*keymap)(struct wmKeyConfig *keyconf);
-  /* on startup, define dropboxes for spacetype+regions */
-  void (*dropboxes)(void);
 
   /* initialize gizmo-map-types and gizmo-group-types with the region */
   void (*gizmos)(void);
@@ -110,6 +112,9 @@ typedef struct SpaceType {
   int (*space_subtype_get)(struct ScrArea *sa);
   void (*space_subtype_set)(struct ScrArea *sa, int value);
   void (*space_subtype_item_extend)(struct bContext *C, EnumPropertyItem **item, int *totitem);
+
+  /* get drop target for data */
+  void (*drop_target_find)(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
 
   /* region type definitions */
   ListBase regiontypes;

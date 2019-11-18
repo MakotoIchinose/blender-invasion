@@ -1621,47 +1621,15 @@ static void UI_OT_button_string_clear(wmOperatorType *ot)
 /** \name Drop Color Operator
  * \{ */
 
-bool UI_drop_color_poll(struct bContext *C,
-                        wmDrag *drag,
-                        const wmEvent *UNUSED(event),
-                        const char **UNUSED(tooltip))
-{
-  /* should only return true for regions that include buttons, for now
-   * return true always */
-  if (drag->type == WM_DRAG_COLOR) {
-    SpaceImage *sima = CTX_wm_space_image(C);
-    ARegion *ar = CTX_wm_region(C);
-
-    if (UI_but_active_drop_color(C)) {
-      return 1;
-    }
-
-    if (sima && (sima->mode == SI_MODE_PAINT) && sima->image &&
-        (ar && ar->regiontype == RGN_TYPE_WINDOW)) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-void UI_drop_color_copy(wmDrag *drag, wmDropBox *drop)
-{
-  uiDragColorHandle *drag_info = drag->poin;
-
-  RNA_float_set_array(drop->ptr, "color", drag_info->color);
-  RNA_boolean_set(drop->ptr, "gamma", drag_info->gamma_corrected);
-}
-
 static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   ARegion *ar = CTX_wm_region(C);
   uiBut *but = NULL;
   float color[4];
-  bool gamma;
+  bool gamma_corrected;
 
   RNA_float_get_array(op->ptr, "color", color);
-  gamma = RNA_boolean_get(op->ptr, "gamma");
+  gamma_corrected = RNA_boolean_get(op->ptr, "gamma_corrected");
 
   /* find button under mouse, check if it has RNA color property and
    * if it does copy the data */
@@ -1677,14 +1645,14 @@ static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
     }
 
     if (RNA_property_subtype(but->rnaprop) == PROP_COLOR_GAMMA) {
-      if (!gamma) {
+      if (!gamma_corrected) {
         IMB_colormanagement_scene_linear_to_srgb_v3(color);
       }
       RNA_property_float_set_array(&but->rnapoin, but->rnaprop, color);
       RNA_property_update(C, &but->rnapoin, but->rnaprop);
     }
     else if (RNA_property_subtype(but->rnaprop) == PROP_COLOR) {
-      if (gamma) {
+      if (gamma_corrected) {
         IMB_colormanagement_srgb_to_scene_linear_v3(color);
       }
       RNA_property_float_set_array(&but->rnapoin, but->rnaprop, color);
@@ -1692,7 +1660,7 @@ static int drop_color_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
     }
   }
   else {
-    if (gamma) {
+    if (gamma_corrected) {
       srgb_to_linearrgb_v3_v3(color, color);
     }
 
@@ -1714,10 +1682,78 @@ static void UI_OT_drop_color(wmOperatorType *ot)
   ot->flag = OPTYPE_INTERNAL;
 
   RNA_def_float_color(ot->srna, "color", 3, NULL, 0.0, FLT_MAX, "Color", "Source color", 0.0, 1.0);
-  RNA_def_boolean(ot->srna, "gamma", 0, "Gamma Corrected", "The source color is gamma corrected ");
+  RNA_def_boolean(
+      ot->srna, "gamma_corrected", 0, "Gamma Corrected", "The source color is gamma corrected ");
 }
 
 /** \} */
+
+static int drop_text_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  ARegion *ar = CTX_wm_region(C);
+  uiBut *but = ui_region_find_active_but(ar);
+  if (!but)
+    return OPERATOR_CANCELLED;
+  if (!ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU))
+    return OPERATOR_CANCELLED;
+
+  char *text = RNA_string_get_alloc(op->ptr, "text", NULL, 0);
+  ui_but_set_text(C, but, text);
+  MEM_freeN(text);
+
+  ED_region_tag_redraw(ar);
+
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_drop_text(wmOperatorType *ot)
+{
+  ot->name = "Drop Text";
+  ot->idname = "UI_OT_drop_text";
+  ot->description = "Drop text to buttons";
+
+  ot->invoke = drop_text_invoke;
+  ot->flag = OPTYPE_INTERNAL;
+
+  RNA_def_string(ot->srna, "text", NULL, 0, "Text", "Text to drop");
+}
+
+static void drop_color_set_properties(wmDragData *drag_data, PointerRNA *ptr)
+{
+  float color[3];
+  bool gamma_corrected;
+  WM_drag_query_single_color(drag_data, color, &gamma_corrected);
+  RNA_float_set_array(ptr, "color", color);
+  RNA_boolean_set(ptr, "gamma_corrected", gamma_corrected);
+}
+
+static void drop_text_set_properies(wmDragData *drag_data, PointerRNA *ptr)
+{
+  ID *id = WM_drag_query_single_id(drag_data);
+  RNA_string_set(ptr, "text", id->name + 2);
+}
+
+void UI_drop_target_find(bContext *C,
+                         wmDropTargetFinder *finder,
+                         wmDragData *drag_data,
+                         const wmEvent *UNUSED(event))
+{
+  ARegion *ar = CTX_wm_region(C);
+  if (!ar)
+    return;
+  uiBut *but = ui_region_find_active_but(ar);
+  if (!but)
+    return;
+
+  if (but->type == UI_BTYPE_COLOR && WM_drag_query_single_color(drag_data, NULL, NULL)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_BUT, "UI_OT_drop_color", "Drop Color", drop_color_set_properties);
+  }
+  if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU) && WM_drag_query_single_id(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_BUT, "UI_OT_drop_text", "Drop Text", drop_text_set_properies);
+  }
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Operator & Keymap Registration
@@ -1736,6 +1772,7 @@ void ED_operatortypes_ui(void)
   WM_operatortype_append(UI_OT_copy_to_selected_button);
   WM_operatortype_append(UI_OT_jump_to_target_button);
   WM_operatortype_append(UI_OT_drop_color);
+  WM_operatortype_append(UI_OT_drop_text);
 #ifdef WITH_PYTHON
   WM_operatortype_append(UI_OT_editsource);
   WM_operatortype_append(UI_OT_edittranslation_init);

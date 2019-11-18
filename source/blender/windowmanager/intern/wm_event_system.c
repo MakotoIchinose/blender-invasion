@@ -160,20 +160,25 @@ wmEvent *WM_event_add_simulate(wmWindow *win, const wmEvent *event_to_add)
   return event;
 }
 
-void wm_event_free(wmEvent *event)
+static void wm_event_free_customdata_if_necessary(wmEvent *event)
 {
   if (event->customdata) {
     if (event->customdatafree) {
-      /* note: pointer to listbase struct elsewhere */
       if (event->custom == EVT_DATA_DRAGDROP) {
-        ListBase *lb = event->customdata;
-        WM_drag_free_list(lb);
+        WM_drag_data_free(event->customdata);
       }
       else {
         MEM_freeN(event->customdata);
       }
     }
   }
+  event->customdata = NULL;
+  event->customdatafree = false;
+}
+
+void wm_event_free(wmEvent *event)
+{
+  wm_event_free_customdata_if_necessary(event);
 
   if (event->tablet_data) {
     MEM_freeN((void *)event->tablet_data);
@@ -2555,6 +2560,51 @@ static int wm_action_not_handled(int action)
   return action == WM_HANDLER_CONTINUE || action == (WM_HANDLER_BREAK | WM_HANDLER_MODAL);
 }
 
+static int wm_event_inside_rect(wmEvent *event, rcti *rect)
+{
+  if (wm_event_always_pass(event))
+    return 1;
+  if (BLI_rcti_isect_pt_v(rect, &event->x))
+    return 1;
+  return 0;
+}
+
+static bool wm_event_inside_region(const wmEvent *event, const ARegion *ar)
+{
+  if (wm_event_always_pass(event)) {
+    return true;
+  }
+  return ED_region_contains_xy(ar, &event->x);
+}
+
+static ScrArea *area_event_inside(bContext *C, const int xy[2])
+{
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (screen) {
+    ED_screen_areas_iter(win, screen, sa)
+    {
+      if (BLI_rcti_isect_pt_v(&sa->totrct, xy))
+        return sa;
+    }
+  }
+  return NULL;
+}
+
+static ARegion *region_event_inside(bContext *C, const int xy[2])
+{
+  bScreen *screen = CTX_wm_screen(C);
+  ScrArea *area = CTX_wm_area(C);
+  ARegion *ar;
+
+  if (screen && area)
+    for (ar = area->regionbase.first; ar; ar = ar->next)
+      if (BLI_rcti_isect_pt_v(&ar->winrct, xy))
+        return ar;
+  return NULL;
+}
+
 #define PRINT \
   if (do_debug_handler) \
   printf
@@ -2748,50 +2798,44 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
         }
       }
       else if (handler_base->type == WM_HANDLER_TYPE_DROPBOX) {
-        wmEventHandler_Dropbox *handler = (wmEventHandler_Dropbox *)handler_base;
-        if (!wm->is_interface_locked && event->type == EVT_DROP) {
-          wmDropBox *drop = handler->dropboxes->first;
-          for (; drop; drop = drop->next) {
-            /* other drop custom types allowed */
-            if (event->custom == EVT_DATA_DRAGDROP) {
-              ListBase *lb = (ListBase *)event->customdata;
-              wmDrag *drag;
+        wmDragData *drag_data = WM_drag_data_from_event(event);
+        if (!wm->is_interface_locked && event->type == EVT_DROP && drag_data) {
+          ARegion *region_old = CTX_wm_region(C);
+          ARegion *region = region_event_inside(C, &event->x);
+          CTX_wm_region_set(C, region);
+          wm_region_mouse_co(C, event);
 
-              for (drag = lb->first; drag; drag = drag->next) {
-                const char *tooltip = NULL;
-                if (drop->poll(C, drag, event, &tooltip)) {
-                  /* Optionally copy drag information to operator properties. */
-                  if (drop->copy) {
-                    drop->copy(drag, drop);
-                  }
+          wmDropTarget *drop_target = WM_drag_find_current_target(C, drag_data, event);
 
-                  /* Pass single matched wmDrag onto the operator. */
-                  BLI_remlink(lb, drag);
-                  ListBase single_lb = {drag, drag};
-                  event->customdata = &single_lb;
+          if (drop_target) {
+            wmOperatorType *ot = WM_operatortype_find(drop_target->ot_idname, false);
+            struct PointerRNA *ptr = NULL;
+            struct IDProperty *properties = NULL;
+            WM_operator_properties_alloc(&ptr, &properties, drop_target->ot_idname);
 
-                  wm_operator_call_internal(
-                      C, drop->ot, drop->ptr, NULL, drop->opcontext, false, event);
-                  action |= WM_HANDLER_BREAK;
+            if (drop_target->set_properties) {
+              drop_target->set_properties(drag_data, ptr);
+            }
 
-                  /* free the drags */
-                  WM_drag_free_list(lb);
-                  WM_drag_free_list(&single_lb);
+            wm_operator_call_internal(C, ot, ptr, NULL, drop_target->context, false, event);
+            action |= WM_HANDLER_BREAK;
 
-                  event->customdata = NULL;
-                  event->custom = 0;
+            WM_operator_properties_free(ptr);
+            WM_drop_target_free(drop_target);
 
-                  /* XXX fileread case */
-                  if (CTX_wm_window(C) == NULL) {
-                    return action;
-                  }
-
-                  /* escape from drag loop, got freed */
-                  break;
-                }
-              }
+            if (CTX_wm_window(C) == NULL) {
+              return action;
             }
           }
+
+          CTX_wm_region_set(C, region_old);
+          wm_region_mouse_co(C, event);
+        }
+
+        if (drag_data) {
+          WM_drag_data_free(drag_data);
+          event->customdata = NULL;
+          event->custom = 0;
         }
       }
       else if (handler_base->type == WM_HANDLER_TYPE_GIZMO) {
@@ -3105,57 +3149,6 @@ static int wm_handlers_do(bContext *C, wmEvent *event, ListBase *handlers)
   return action;
 }
 
-static bool wm_event_inside_rect(const wmEvent *event, const rcti *rect)
-{
-  if (wm_event_always_pass(event)) {
-    return true;
-  }
-  if (BLI_rcti_isect_pt_v(rect, &event->x)) {
-    return true;
-  }
-  return false;
-}
-
-static bool wm_event_inside_region(const wmEvent *event, const ARegion *ar)
-{
-  if (wm_event_always_pass(event)) {
-    return true;
-  }
-  return ED_region_contains_xy(ar, &event->x);
-}
-
-static ScrArea *area_event_inside(bContext *C, const int xy[2])
-{
-  wmWindow *win = CTX_wm_window(C);
-  bScreen *screen = CTX_wm_screen(C);
-
-  if (screen) {
-    ED_screen_areas_iter(win, screen, sa)
-    {
-      if (BLI_rcti_isect_pt_v(&sa->totrct, xy)) {
-        return sa;
-      }
-    }
-  }
-  return NULL;
-}
-
-static ARegion *region_event_inside(bContext *C, const int xy[2])
-{
-  bScreen *screen = CTX_wm_screen(C);
-  ScrArea *area = CTX_wm_area(C);
-  ARegion *ar;
-
-  if (screen && area) {
-    for (ar = area->regionbase.first; ar; ar = ar->next) {
-      if (BLI_rcti_isect_pt_v(&ar->winrct, xy)) {
-        return ar;
-      }
-    }
-  }
-  return NULL;
-}
-
 static void wm_paintcursor_tag(bContext *C, wmPaintCursor *pc, ARegion *ar)
 {
   if (ar) {
@@ -3196,41 +3189,27 @@ static void wm_paintcursor_test(bContext *C, const wmEvent *event)
   }
 }
 
-static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
+static void wm_event_drag_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
 {
-  bScreen *screen = WM_window_get_active_screen(win);
-
-  if (BLI_listbase_is_empty(&wm->drags)) {
+  if (!wm->drag.data) {
     return;
   }
+
+  bScreen *screen = WM_window_get_active_screen(win);
 
   if (event->type == MOUSEMOVE || ISKEYMODIFIER(event->type)) {
     screen->do_draw_drag = true;
   }
   else if (event->type == ESCKEY) {
-    WM_drag_free_list(&wm->drags);
-
+    WM_drag_stop(wm);
     screen->do_draw_drag = true;
   }
   else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
+    wm_event_free_customdata_if_necessary(event);
     event->type = EVT_DROP;
+    WM_drag_transfer_ownership_to_event(wm, event);
 
-    /* create customdata, first free existing */
-    if (event->customdata) {
-      if (event->customdatafree) {
-        MEM_freeN(event->customdata);
-      }
-    }
-
-    event->custom = EVT_DATA_DRAGDROP;
-    event->customdata = &wm->drags;
-    event->customdatafree = 1;
-
-    /* clear drop icon */
     screen->do_draw_drag = true;
-
-    /* restore cursor (disabled, see wm_dragdrop.c) */
-    // WM_cursor_modal_restore(win);
   }
 }
 
@@ -3385,8 +3364,8 @@ void wm_event_do_handlers(bContext *C)
         }
       }
 
-      /* check dragging, creates new event or frees, adds draw tag */
-      wm_event_drag_and_drop_test(wm, win, event);
+      /* may change the event into a drop event, adds draw tag */
+      wm_event_drag_test(wm, win, event);
 
       /* builtin tweak, if action is break it removes tweak */
       wm_tweakevent_test(C, event, action);
@@ -3435,12 +3414,10 @@ void wm_event_do_handlers(bContext *C)
                   /* call even on non mouse events, since the */
                   wm_region_mouse_co(C, event);
 
-                  if (!BLI_listbase_is_empty(&wm->drags)) {
-                    /* does polls for drop regions and checks uibuts */
-                    /* need to be here to make sure region context is true */
-                    if (ELEM(event->type, MOUSEMOVE, EVT_DROP) || ISKEYMODIFIER(event->type)) {
-                      wm_drags_check_ops(C, event);
-                    }
+                  if (wm->drag.data) {
+                    if (wm->drag.target)
+                      WM_drop_target_free(wm->drag.target);
+                    wm->drag.target = WM_drag_find_current_target(C, wm->drag.data, event);
                   }
 
                   action |= wm_handlers_do(C, event, &ar->handlers);
@@ -3923,26 +3900,18 @@ void WM_event_free_ui_handler_all(bContext *C,
   }
 }
 
-wmEventHandler_Dropbox *WM_event_add_dropbox_handler(ListBase *handlers, ListBase *dropboxes)
+void WM_event_ensure_drop_handler(ListBase *handlers)
 {
   /* only allow same dropbox once */
   LISTBASE_FOREACH (wmEventHandler *, handler_base, handlers) {
     if (handler_base->type == WM_HANDLER_TYPE_DROPBOX) {
-      wmEventHandler_Dropbox *handler = (wmEventHandler_Dropbox *)handler_base;
-      if (handler->dropboxes == dropboxes) {
-        return handler;
-      }
+      return;
     }
   }
 
   wmEventHandler_Dropbox *handler = MEM_callocN(sizeof(*handler), __func__);
   handler->head.type = WM_HANDLER_TYPE_DROPBOX;
-
-  /* dropbox stored static, no free or copy */
-  handler->dropboxes = dropboxes;
   BLI_addhead(handlers, handler);
-
-  return handler;
 }
 
 /* XXX solution works, still better check the real cause (ton) */

@@ -54,8 +54,6 @@ struct ScrArea;
 struct ViewLayer;
 struct bContext;
 struct rcti;
-struct wmDrag;
-struct wmDropBox;
 struct wmEvent;
 struct wmEventHandler_Keymap;
 struct wmEventHandler_UI;
@@ -65,6 +63,9 @@ struct wmJob;
 struct wmOperator;
 struct wmOperatorType;
 struct wmPaintCursor;
+struct wmDragData;
+struct wmDropTarget;
+struct wmDropTargetFinder;
 
 #ifdef WITH_INPUT_NDOF
 struct wmNDOFMotionData;
@@ -287,8 +288,7 @@ enum {
   WM_HANDLER_DO_FREE = (1 << 7), /* handler tagged to be freed in wm_handlers_do() */
 };
 
-struct wmEventHandler_Dropbox *WM_event_add_dropbox_handler(ListBase *handlers,
-                                                            ListBase *dropboxes);
+void WM_event_ensure_drop_handler(ListBase *handlers);
 
 /* mouse */
 void WM_event_add_mousemove(const struct bContext *C);
@@ -635,23 +635,87 @@ bool WM_event_drag_test(const struct wmEvent *event, const int prev_xy[2]);
 bool WM_event_drag_test_with_delta(const struct wmEvent *event, const int delta[2]);
 
 /* drag and drop */
-struct wmDrag *WM_event_start_drag(
-    struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags);
-void WM_event_drag_image(struct wmDrag *, struct ImBuf *, float scale, int sx, int sy);
-void WM_drag_free(struct wmDrag *drag);
-void WM_drag_free_list(struct ListBase *lb);
+struct wmDragData *WM_drag_start_id(struct bContext *C, ID *id);
+struct wmDragData *WM_drag_start_filepath(struct bContext *C, const char *filepath);
+struct wmDragData *WM_drag_start_filepaths(struct bContext *C, const char **filepaths, int amount);
+struct wmDragData *WM_drag_start_color(struct bContext *C, float color[3], bool gamma_corrected);
+struct wmDragData *WM_drag_start_value(struct bContext *C, double value);
+struct wmDragData *WM_drag_start_rna(struct bContext *C, struct PointerRNA *rna);
+struct wmDragData *WM_drag_start_name(struct bContext *C, const char *name);
+struct wmDragData *WM_drag_start_collection_children(struct bContext *C,
+                                                     struct ListBase *collection_children);
 
-struct wmDropBox *WM_dropbox_add(
-    ListBase *lb,
-    const char *idname,
-    bool (*poll)(struct bContext *, struct wmDrag *, const struct wmEvent *event, const char **),
-    void (*copy)(struct wmDrag *, struct wmDropBox *));
-ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid);
+struct wmDragData *WM_drag_get_active(struct bContext *C);
+struct wmDragData *WM_drag_data_from_event(const struct wmEvent *event);
+void WM_drag_transfer_ownership_to_event(struct wmWindowManager *wm, struct wmEvent *event);
+struct wmDropTarget *WM_drag_find_current_target(struct bContext *C,
+                                                 struct wmDragData *drag_data,
+                                                 const struct wmEvent *event);
 
-/* ID drag and drop */
-void WM_drag_add_ID(struct wmDrag *drag, struct ID *id, struct ID *from_parent);
-struct ID *WM_drag_ID(const struct wmDrag *drag, short idcode);
-struct ID *WM_drag_ID_from_event(const struct wmEvent *event, short idcode);
+void WM_drag_display_set_color(struct wmDragData *drag_data, float color[3]);
+void WM_drag_display_set_color_derived(struct wmDragData *drag_data);
+void WM_drag_display_set_icon(struct wmDragData *drag_data, int icon_id);
+void WM_drag_display_set_image(
+    struct wmDragData *drag_data, struct ImBuf *imb, float scale, int width, int height);
+
+void WM_drag_data_free(struct wmDragData *drag);
+void WM_drop_target_free(struct wmDropTarget *drop_target);
+void WM_drag_stop(wmWindowManager *wm);
+
+struct ID *WM_drag_query_single_id(struct wmDragData *drag_data);
+struct ID *WM_drag_query_single_id_of_type(struct wmDragData *drag_data, int idtype);
+struct Collection *WM_drag_query_single_collection(struct wmDragData *drag_data);
+struct Material *WM_drag_query_single_material(struct wmDragData *drag_data);
+struct Object *WM_drag_query_single_object(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_of_types(struct wmDragData *drag_data, int types);
+const char *WM_drag_query_single_path_text(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_maybe_text(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_image(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_movie(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_sound(struct wmDragData *drag_data);
+const char *WM_drag_query_single_path_image_or_movie(struct wmDragData *drag_data);
+struct ListBase *WM_drag_query_collection_children(struct wmDragData *drag_data);
+bool WM_drag_query_single_color(struct wmDragData *drag_data,
+                                float *r_color,
+                                bool *r_gamma_corrected);
+
+typedef void (*wmDropTargetSetProps)(struct wmDragData *, struct PointerRNA *);
+
+enum DropTargetSize {
+  DROP_TARGET_SIZE_BUT,
+  DROP_TARGET_SIZE_OUTLINER_ROW,
+  DROP_TARGET_SIZE_VISIBLE_OBJECT,
+  DROP_TARGET_SIZE_REGION,
+  DROP_TARGET_SIZE_AREA,
+  DROP_TARGET_SIZE_WINDOW,
+  DROP_TARGET_SIZE_MAX,
+};
+
+void WM_drop_target_propose(struct wmDropTargetFinder *finder, struct wmDropTarget *target);
+void WM_drop_target_propose__template_1(struct wmDropTargetFinder *finder,
+                                        enum DropTargetSize size,
+                                        const char *ot_idname,
+                                        const char *tooltip,
+                                        wmDropTargetSetProps set_properties);
+void WM_drop_target_propose__template_2(struct wmDropTargetFinder *finder,
+                                        enum DropTargetSize size,
+                                        const char *ot_idname,
+                                        const char *tooltip,
+                                        wmDropTargetSetProps set_properties,
+                                        short context);
+
+struct wmDropTarget *WM_drop_target_new(enum DropTargetSize size,
+                                        char *ot_idname,
+                                        char *tooltip,
+                                        wmDropTargetSetProps set_properties,
+                                        short context,
+                                        bool free,
+                                        bool free_idname,
+                                        bool free_tooltip);
+
+void WM_drop_init_single_filepath(struct wmDragData *drag_data, struct PointerRNA *ptr);
+void WM_drop_init_single_id_name(struct wmDragData *drag_data, struct PointerRNA *ptr);
 
 /* Set OpenGL viewport and scissor */
 void wmViewport(const struct rcti *rect);

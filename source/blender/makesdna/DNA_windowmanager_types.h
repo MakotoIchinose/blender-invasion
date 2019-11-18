@@ -52,6 +52,7 @@ struct bContext;
 struct bScreen;
 struct uiLayout;
 struct wmTimer;
+struct wmDragData;
 
 #define OP_MAX_TYPENAME 64
 #define KMAP_MAX_NAME 64
@@ -121,6 +122,11 @@ typedef struct ReportTimerInfo {
 
 /* reports need to be before wmWindowManager */
 
+typedef struct wmDragOperation {
+  struct wmDragData *data;
+  struct wmDropTarget *target;
+} wmDragOperation;
+
 /* windowmanager is saved, tag WMAN */
 typedef struct wmWindowManager {
   ID id;
@@ -153,6 +159,9 @@ typedef struct wmWindowManager {
 
   /** Extra overlay cursors to draw, like circles. */
   ListBase paintcursors;
+
+  /** Active drag operation. */
+  struct wmDragOperation drag;
 
   /** Active dragged items. */
   ListBase drags;

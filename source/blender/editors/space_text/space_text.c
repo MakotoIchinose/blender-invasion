@@ -271,7 +271,6 @@ static int text_context(const bContext *C, const char *member, bContextDataResul
 static void text_main_region_init(wmWindowManager *wm, ARegion *ar)
 {
   wmKeyMap *keymap;
-  ListBase *lb;
 
   UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_STANDARD, ar->winx, ar->winy);
 
@@ -280,11 +279,6 @@ static void text_main_region_init(wmWindowManager *wm, ARegion *ar)
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
   keymap = WM_keymap_ensure(wm->defaultconf, "Text", SPACE_TEXT, 0);
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
-
-  /* add drop boxes */
-  lb = WM_dropboxmap_find("Text", SPACE_TEXT, RGN_TYPE_WINDOW);
-
-  WM_event_add_dropbox_handler(&ar->handlers, lb);
 }
 
 static void text_main_region_draw(const bContext *C, ARegion *ar)
@@ -320,58 +314,6 @@ static void text_cursor(wmWindow *win, ScrArea *sa, ARegion *ar)
 
   WM_cursor_set(win, wmcursor);
 }
-
-/* ************* dropboxes ************* */
-
-static bool text_drop_poll(bContext *UNUSED(C),
-                           wmDrag *drag,
-                           const wmEvent *UNUSED(event),
-                           const char **UNUSED(tooltip))
-{
-  if (drag->type == WM_DRAG_PATH) {
-    /* rule might not work? */
-    if (ELEM(drag->icon, ICON_FILE_SCRIPT, ICON_FILE_TEXT, ICON_FILE_BLANK)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void text_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", drag->path);
-}
-
-static bool text_drop_paste_poll(bContext *UNUSED(C),
-                                 wmDrag *drag,
-                                 const wmEvent *UNUSED(event),
-                                 const char **UNUSED(tooltip))
-{
-  return (drag->type == WM_DRAG_ID);
-}
-
-static void text_drop_paste(wmDrag *drag, wmDropBox *drop)
-{
-  char *text;
-  ID *id = WM_drag_ID(drag, 0);
-
-  /* copy drag path to properties */
-  text = RNA_path_full_ID_py(G_MAIN, id);
-  RNA_string_set(drop->ptr, "text", text);
-  MEM_freeN(text);
-}
-
-/* this region dropbox definition */
-static void text_dropboxes(void)
-{
-  ListBase *lb = WM_dropboxmap_find("Text", SPACE_TEXT, RGN_TYPE_WINDOW);
-
-  WM_dropbox_add(lb, "TEXT_OT_open", text_drop_poll, text_drop_copy);
-  WM_dropbox_add(lb, "TEXT_OT_insert", text_drop_paste_poll, text_drop_paste);
-}
-
-/* ************* end drop *********** */
 
 /****************** header region ******************/
 
@@ -432,6 +374,29 @@ static void text_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID 
   }
 }
 
+static void drop_init__insert_id_path(wmDragData *drag_data, PointerRNA *ptr)
+{
+  ID *id = WM_drag_query_single_id(drag_data);
+  char *text = RNA_path_full_ID_py(G_MAIN, id); /* TODO G_MAIN */
+  RNA_string_set(ptr, "text", text);
+  MEM_freeN(text);
+}
+
+static void text_drop_target_find(bContext *C,
+                                  wmDropTargetFinder *finder,
+                                  wmDragData *drag_data,
+                                  const wmEvent *UNUSED(event))
+{
+  if (WM_drag_query_single_path_maybe_text(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_AREA, "TEXT_OT_open", "Open File", WM_drop_init_single_filepath);
+  }
+  if (CTX_data_edit_text(C) && WM_drag_query_single_id(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_AREA, "TEXT_OT_insert", "Insert Path", drop_init__insert_id_path);
+  }
+}
+
 /********************* registration ********************/
 
 /* only called once, from space/spacetypes.c */
@@ -451,8 +416,8 @@ void ED_spacetype_text(void)
   st->keymap = text_keymap;
   st->listener = text_listener;
   st->context = text_context;
-  st->dropboxes = text_dropboxes;
   st->id_remap = text_id_remap;
+  st->drop_target_find = text_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype text region");

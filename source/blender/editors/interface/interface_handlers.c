@@ -1891,44 +1891,56 @@ static bool ui_but_drag_init(bContext *C,
     else
 #endif
         if (but->type == UI_BTYPE_COLOR) {
-      bool valid = false;
-      uiDragColorHandle *drag_info = MEM_callocN(sizeof(*drag_info), __func__);
-
-      /* TODO support more button pointer types */
       if (but->rnaprop && RNA_property_subtype(but->rnaprop) == PROP_COLOR_GAMMA) {
-        ui_but_v3_get(but, drag_info->color);
-        drag_info->gamma_corrected = true;
-        valid = true;
+        float color[3];
+        ui_but_v3_get(but, color);
+        WM_drag_start_color(C, color, true);
       }
       else if (but->rnaprop && RNA_property_subtype(but->rnaprop) == PROP_COLOR) {
-        ui_but_v3_get(but, drag_info->color);
-        drag_info->gamma_corrected = false;
-        valid = true;
+        float color[3];
+        ui_but_v3_get(but, color);
+        WM_drag_start_color(C, color, false);
       }
       else if (ELEM(but->pointype, UI_BUT_POIN_FLOAT, UI_BUT_POIN_CHAR)) {
-        ui_but_v3_get(but, drag_info->color);
-        copy_v3_v3(drag_info->color, (float *)but->poin);
-        valid = true;
-      }
-
-      if (valid) {
-        WM_event_start_drag(C, ICON_COLOR, WM_DRAG_COLOR, drag_info, 0.0, WM_DRAG_FREE_DATA);
+        float color[3];
+        copy_v3_v3(color, (float *)but->poin);
+        WM_drag_start_color(C, color, false);
       }
       else {
-        MEM_freeN(drag_info);
-        return false;
+        /* maybe more types are needed? */
+        BLI_assert(false);
       }
+      WM_drag_display_set_color_derived(WM_drag_get_active(C));
     }
     else {
-      wmDrag *drag = WM_event_start_drag(
-          C, but->icon, but->dragtype, but->dragpoin, ui_but_value_get(but), WM_DRAG_NOP);
+      switch (but->dragtype) {
+        case WM_DRAG_ID:
+          WM_drag_start_id(C, but->dragpoin);
+          break;
+        case WM_DRAG_PATH:
+          WM_drag_start_filepath(C, but->dragpoin);
+          break;
+        case WM_DRAG_VALUE:
+          WM_drag_start_value(C, ui_but_value_get(but));
+          break;
+        case WM_DRAG_RNA:
+          WM_drag_start_rna(C, but->dragpoin);
+          break;
+        case WM_DRAG_NAME:
+          WM_drag_start_name(C, but->dragpoin);
+          break;
+        default:
+          /* maybe more types are needed? */
+          BLI_assert(false);
+          break;
+      }
 
       if (but->imb) {
-        WM_event_drag_image(drag,
-                            but->imb,
-                            but->imb_scale,
-                            BLI_rctf_size_x(&but->rect),
-                            BLI_rctf_size_y(&but->rect));
+        WM_drag_display_set_image(WM_drag_get_active(C),
+                                  but->imb,
+                                  but->imb_scale,
+                                  BLI_rctf_size_x(&but->rect),
+                                  BLI_rctf_size_y(&but->rect));
       }
     }
     return true;
@@ -2152,39 +2164,6 @@ static void ui_apply_but(
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Button Drop Event
- * \{ */
-
-/* only call if event type is EVT_DROP */
-static void ui_but_drop(bContext *C, const wmEvent *event, uiBut *but, uiHandleButtonData *data)
-{
-  wmDrag *wmd;
-  ListBase *drags = event->customdata; /* drop event type has listbase customdata by default */
-
-  for (wmd = drags->first; wmd; wmd = wmd->next) {
-    if (wmd->type == WM_DRAG_ID) {
-      /* align these types with UI_but_active_drop_name */
-      if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
-        ID *id = WM_drag_ID(wmd, 0);
-
-        button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
-
-        ui_textedit_string_set(but, data, id->name + 2);
-
-        if (ELEM(but->type, UI_BTYPE_SEARCH_MENU)) {
-          but->changed = true;
-          ui_searchbox_update(C, data->searchbox, but, true);
-        }
-
-        button_activate_state(C, but, BUTTON_STATE_EXIT);
-      }
-    }
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Button Copy & Paste
  * \{ */
 
@@ -2390,17 +2369,22 @@ static void ui_but_copy_text(uiBut *but, char *output, int output_len_max)
   ui_but_string_get(but, output, output_len_max);
 }
 
-static void ui_but_paste_text(bContext *C, uiBut *but, uiHandleButtonData *data, char *buf_paste)
+void ui_but_set_text(bContext *C, uiBut *but, char *text)
 {
   button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
-  ui_textedit_string_set(but, but->active, buf_paste);
+  ui_textedit_string_set(but, but->active, text);
 
   if (but->type == UI_BTYPE_SEARCH_MENU) {
     but->changed = true;
-    ui_searchbox_update(C, data->searchbox, but, true);
+    ui_searchbox_update(C, but->active->searchbox, but, true);
   }
 
   button_activate_state(C, but, BUTTON_STATE_EXIT);
+}
+
+static void ui_but_paste_text(bContext *C, uiBut *but, char *buf_paste)
+{
+  ui_but_set_text(C, but, buf_paste);
 }
 
 static void ui_but_copy_colorband(uiBut *but)
@@ -2612,7 +2596,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
       if (!has_required_data) {
         break;
       }
-      ui_but_paste_text(C, but, data, buf_paste);
+      ui_but_paste_text(C, but, buf_paste);
       break;
 
     case UI_BTYPE_COLORBAND:
@@ -3992,8 +3976,8 @@ int ui_but_menu_direction(uiBut *but)
 }
 
 /**
- * Hack for #uiList #UI_BTYPE_LISTROW buttons to "give" events to overlaying #UI_BTYPE_TEXT buttons
- * (Ctrl-Click rename feature & co).
+ * Hack for #uiList #UI_BTYPE_LISTROW buttons to "give" events to overlaying #UI_BTYPE_TEXT
+ * buttons (Ctrl-Click rename feature & co).
  */
 static uiBut *ui_but_list_row_text_activate(bContext *C,
                                             uiBut *but,
@@ -5480,14 +5464,13 @@ static int ui_do_but_BLOCK(bContext *C, uiBut *but, uiHandleButtonData *data, co
         button_activate_state(C, but, BUTTON_STATE_EXIT);
         ui_apply_but(C, but->block, but, data, true);
 
-        /* Button's state need to be changed to EXIT so moving mouse away from this mouse wouldn't
-         * lead to cancel changes made to this button, but changing state to EXIT also makes no
-         * button active for a while which leads to triggering operator
-         * when doing fast scrolling mouse wheel.
-         * using post activate stuff from button allows to make button be active again after
-         * checking for all all that mouse leave and cancel stuff,
-         * so quick scroll wouldn't be an issue anymore.
-         * Same goes for scrolling wheel in another direction below (sergey).
+        /* Button's state need to be changed to EXIT so moving mouse away from this mouse
+         * wouldn't lead to cancel changes made to this button, but changing state to EXIT also
+         * makes no button active for a while which leads to triggering operator when doing fast
+         * scrolling mouse wheel. using post activate stuff from button allows to make button be
+         * active again after checking for all all that mouse leave and cancel stuff, so quick
+         * scroll wouldn't be an issue anymore. Same goes for scrolling wheel in another
+         * direction below (sergey).
          */
         data->postbut = but;
         data->posttype = BUTTON_ACTIVATE_OVER;
@@ -7096,11 +7079,6 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
       return WM_UI_HANDLER_BREAK;
     }
 
-    /* handle drop */
-    if (event->type == EVT_DROP) {
-      ui_but_drop(C, event, but, data);
-    }
-
     if ((data->state == BUTTON_STATE_HIGHLIGHT) &&
         ELEM(event->type, LEFTMOUSE, EVT_BUT_OPEN, PADENTER, RETKEY) &&
         (event->val == KM_RELEASE) &&
@@ -7383,7 +7361,7 @@ static void button_tooltip_timer_reset(bContext *C, uiBut *but)
 
   if ((U.flag & USER_TOOLTIPS) || (data->tooltip_force)) {
     if (!but->block->tooltipdisabled) {
-      if (!wm->drags.first) {
+      if (!wm->drag.data) {
         bool is_label = UI_but_has_tooltip_label(but);
         double delay = is_label ? UI_TOOLTIP_DELAY_LABEL : UI_TOOLTIP_DELAY;
         WM_tooltip_timer_init_ex(C, data->window, data->region, ui_but_tooltip_init, delay);
@@ -9152,7 +9130,8 @@ static int ui_handle_menu_event(bContext *C,
         /* Closing sub-levels of pull-downs.
          *
          * The actual event is handled by the button under the cursor.
-         * This is done so we can right click on menu items even when they have sub-menus open. */
+         * This is done so we can right click on menu items even when they have sub-menus open.
+         */
         case RIGHTMOUSE:
           if (inside == false) {
             if (event->val == KM_PRESS && (block->flag & UI_BLOCK_LOOP)) {
@@ -10567,37 +10546,6 @@ void UI_screen_free_active_but(const bContext *C, bScreen *screen)
       }
     }
   }
-}
-
-/* returns true if highlighted button allows drop of names */
-/* called in region context */
-bool UI_but_active_drop_name(bContext *C)
-{
-  ARegion *ar = CTX_wm_region(C);
-  uiBut *but = ui_region_find_active_but(ar);
-
-  if (but) {
-    if (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU)) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-bool UI_but_active_drop_color(bContext *C)
-{
-  ARegion *ar = CTX_wm_region(C);
-
-  if (ar) {
-    uiBut *but = ui_region_find_active_but(ar);
-
-    if (but && but->type == UI_BTYPE_COLOR) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /** \} */

@@ -56,7 +56,6 @@
 
 static void outliner_main_region_init(wmWindowManager *wm, ARegion *ar)
 {
-  ListBase *lb;
   wmKeyMap *keymap;
 
   /* make sure we keep the hide flags */
@@ -75,10 +74,6 @@ static void outliner_main_region_init(wmWindowManager *wm, ARegion *ar)
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Outliner", SPACE_OUTLINER, 0);
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
-
-  /* Add dropboxes */
-  lb = WM_dropboxmap_find("Outliner", SPACE_OUTLINER, RGN_TYPE_WINDOW);
-  WM_event_add_dropbox_handler(&ar->handlers, lb);
 }
 
 static void outliner_main_region_draw(const bContext *C, ARegion *ar)
@@ -416,9 +411,9 @@ void ED_spacetype_outliner(void)
   st->duplicate = outliner_duplicate;
   st->operatortypes = outliner_operatortypes;
   st->keymap = outliner_keymap;
-  st->dropboxes = outliner_dropboxes;
   st->id_remap = outliner_id_remap;
   st->deactivate = outliner_deactivate;
+  //  st->drop_target_find = outliner_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype outliner region");

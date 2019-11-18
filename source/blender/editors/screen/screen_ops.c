@@ -5504,29 +5504,9 @@ static void keymap_modal_set(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "SCREEN_OT_area_move");
 }
 
-static bool blend_file_drop_poll(bContext *UNUSED(C),
-                                 wmDrag *drag,
-                                 const wmEvent *UNUSED(event),
-                                 const char **UNUSED(tooltip))
-{
-  if (drag->type == WM_DRAG_PATH) {
-    if (drag->icon == ICON_FILE_BLEND) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-static void blend_file_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", drag->path);
-}
-
 /* called in spacetypes.c */
 void ED_keymap_screen(wmKeyConfig *keyconf)
 {
-  ListBase *lb;
 
   /* Screen Editing ------------------------------------------------ */
   WM_keymap_ensure(keyconf, "Screen Editing", 0, 0);
@@ -5540,11 +5520,6 @@ void ED_keymap_screen(wmKeyConfig *keyconf)
 
   /* Anim Playback ------------------------------------------------ */
   WM_keymap_ensure(keyconf, "Frames", 0, 0);
-
-  /* dropbox for entire window */
-  lb = WM_dropboxmap_find("Window", 0, 0);
-  WM_dropbox_add(lb, "WM_OT_drop_blend_file", blend_file_drop_poll, blend_file_drop_copy);
-  WM_dropbox_add(lb, "UI_OT_drop_color", UI_drop_color_poll, UI_drop_color_copy);
 
   keymap_modal_set(keyconf);
 }

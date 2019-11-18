@@ -182,15 +182,6 @@ static void image_free(SpaceLink *sl)
   BKE_scopes_free(&simage->scopes);
 }
 
-/* spacetype; init callback, add handlers */
-static void image_init(struct wmWindowManager *UNUSED(wm), ScrArea *sa)
-{
-  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
-
-  /* add drop boxes */
-  WM_event_add_dropbox_handler(&sa->handlers, lb);
-}
-
 static SpaceLink *image_duplicate(SpaceLink *sl)
 {
   SpaceImage *simagen = MEM_dupallocN(sl);
@@ -252,35 +243,6 @@ static void image_keymap(struct wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Image Generic", SPACE_IMAGE, 0);
   WM_keymap_ensure(keyconf, "Image", SPACE_IMAGE, 0);
-}
-
-/* dropboxes */
-static bool image_drop_poll(bContext *UNUSED(C),
-                            wmDrag *drag,
-                            const wmEvent *UNUSED(event),
-                            const char **UNUSED(tooltip))
-{
-  if (drag->type == WM_DRAG_PATH) {
-    /* rule might not work? */
-    if (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE, ICON_FILE_BLANK)) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
-static void image_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", drag->path);
-}
-
-/* area+region dropbox definition */
-static void image_dropboxes(void)
-{
-  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
-
-  WM_dropbox_add(lb, "IMAGE_OT_open", image_drop_poll, image_drop_copy);
 }
 
 /**
@@ -1017,6 +979,13 @@ static void image_space_subtype_item_extend(bContext *UNUSED(C),
   RNA_enum_items_add(item, totitem, rna_enum_space_image_mode_items);
 }
 
+static void image_drop_target_find(bContext *UNUSED(C), wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *UNUSED(event))
+{
+	if (WM_drag_query_single_path_image(drag_data)) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA, "IMAGE_OT_open", "Open Image", WM_drop_init_single_filepath);
+	}
+}
+
 /**************************** spacetype *****************************/
 
 /* only called once, from space/spacetypes.c */
@@ -1030,11 +999,10 @@ void ED_spacetype_image(void)
 
   st->new = image_new;
   st->free = image_free;
-  st->init = image_init;
+  st->init = NULL;
   st->duplicate = image_duplicate;
   st->operatortypes = image_operatortypes;
   st->keymap = image_keymap;
-  st->dropboxes = image_dropboxes;
   st->refresh = image_refresh;
   st->listener = image_listener;
   st->context = image_context;
@@ -1043,6 +1011,7 @@ void ED_spacetype_image(void)
   st->space_subtype_item_extend = image_space_subtype_item_extend;
   st->space_subtype_get = image_space_subtype_get;
   st->space_subtype_set = image_space_subtype_set;
+	st->drop_target_find = image_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype image region");

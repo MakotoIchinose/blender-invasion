@@ -340,99 +340,6 @@ static void sequencer_listener(wmWindow *UNUSED(win),
   }
 }
 
-/* ************* dropboxes ************* */
-
-static bool image_drop_poll(bContext *C,
-                            wmDrag *drag,
-                            const wmEvent *event,
-                            const char **UNUSED(tooltip))
-{
-  ARegion *ar = CTX_wm_region(C);
-  Scene *scene = CTX_data_scene(C);
-  int hand;
-
-  if (drag->type == WM_DRAG_PATH) {
-    if (ELEM(drag->icon, ICON_FILE_IMAGE, ICON_FILE_BLANK)) { /* rule might not work? */
-      if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
-        return 1;
-      }
-    }
-  }
-
-  return 0;
-}
-
-static bool movie_drop_poll(bContext *C,
-                            wmDrag *drag,
-                            const wmEvent *event,
-                            const char **UNUSED(tooltip))
-{
-  ARegion *ar = CTX_wm_region(C);
-  Scene *scene = CTX_data_scene(C);
-  int hand;
-
-  if (drag->type == WM_DRAG_PATH) {
-    if (ELEM(drag->icon, 0, ICON_FILE_MOVIE, ICON_FILE_BLANK)) { /* rule might not work? */
-      if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
-
-static bool sound_drop_poll(bContext *C,
-                            wmDrag *drag,
-                            const wmEvent *event,
-                            const char **UNUSED(tooltip))
-{
-  ARegion *ar = CTX_wm_region(C);
-  Scene *scene = CTX_data_scene(C);
-  int hand;
-
-  if (drag->type == WM_DRAG_PATH) {
-    if (ELEM(drag->icon, ICON_FILE_SOUND, ICON_FILE_BLANK)) { /* rule might not work? */
-      if (find_nearest_seq(scene, &ar->v2d, &hand, event->mval) == NULL) {
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
-
-static void sequencer_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  /* copy drag path to properties */
-  if (RNA_struct_find_property(drop->ptr, "filepath")) {
-    RNA_string_set(drop->ptr, "filepath", drag->path);
-  }
-
-  if (RNA_struct_find_property(drop->ptr, "directory")) {
-    PointerRNA itemptr;
-    char dir[FILE_MAX], file[FILE_MAX];
-
-    BLI_split_dirfile(drag->path, dir, file, sizeof(dir), sizeof(file));
-
-    RNA_string_set(drop->ptr, "directory", dir);
-
-    RNA_collection_clear(drop->ptr, "files");
-    RNA_collection_add(drop->ptr, "files", &itemptr);
-    RNA_string_set(&itemptr, "name", file);
-  }
-}
-
-/* this region dropbox definition */
-static void sequencer_dropboxes(void)
-{
-  ListBase *lb = WM_dropboxmap_find("Sequencer", SPACE_SEQ, RGN_TYPE_WINDOW);
-
-  WM_dropbox_add(lb, "SEQUENCER_OT_image_strip_add", image_drop_poll, sequencer_drop_copy);
-  WM_dropbox_add(lb, "SEQUENCER_OT_movie_strip_add", movie_drop_poll, sequencer_drop_copy);
-  WM_dropbox_add(lb, "SEQUENCER_OT_sound_strip_add", sound_drop_poll, sequencer_drop_copy);
-}
-
-/* ************* end drop *********** */
-
 /* DO NOT make this static, this hides the symbol and breaks API generation script. */
 extern const char *sequencer_context_dir[]; /* quiet warning. */
 const char *sequencer_context_dir[] = {"edit_mask", NULL};
@@ -475,7 +382,6 @@ static void sequencer_gizmos(void)
 static void sequencer_main_region_init(wmWindowManager *wm, ARegion *ar)
 {
   wmKeyMap *keymap;
-  ListBase *lb;
 
   UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_CUSTOM, ar->winx, ar->winy);
 
@@ -490,11 +396,6 @@ static void sequencer_main_region_init(wmWindowManager *wm, ARegion *ar)
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Sequencer", SPACE_SEQ, 0);
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
-
-  /* add drop boxes */
-  lb = WM_dropboxmap_find("Sequencer", SPACE_SEQ, RGN_TYPE_WINDOW);
-
-  WM_event_add_dropbox_handler(&ar->handlers, lb);
 }
 
 static void sequencer_main_region_draw(const bContext *C, ARegion *ar)
@@ -801,6 +702,49 @@ static void sequencer_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id
   }
 }
 
+static void sequencer_drop_copy(wmDragData *drag_data, PointerRNA *ptr)
+{
+	const char *path = WM_drag_query_single_path(drag_data);
+
+	if (RNA_struct_find_property(ptr, "filepath")) {
+		RNA_string_set(ptr, "filepath", path);
+	}
+
+	if (RNA_struct_find_property(ptr, "directory")) {
+		PointerRNA itemptr;
+		char dir[FILE_MAX], file[FILE_MAX];
+
+		BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+
+		RNA_string_set(ptr, "directory", dir);
+
+		RNA_collection_clear(ptr, "files");
+		RNA_collection_add(ptr, "files", &itemptr);
+		RNA_string_set(&itemptr, "name", file);
+	}
+}
+
+static void sequencer_drop_target_find(bContext *C, wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *event)
+{
+	ARegion *ar = CTX_wm_region(C);
+	Scene *scene = CTX_data_scene(C);
+	int hand;
+	Sequence *seq = find_nearest_seq(scene, &ar->v2d, &hand, event->mval);
+
+	if (WM_drag_query_single_path_image(drag_data) && seq == NULL) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "SEQUENCER_OT_image_strip_add", "Load image", sequencer_drop_copy);
+	}
+	if (WM_drag_query_single_path_movie(drag_data) && seq == NULL) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "SEQUENCER_OT_movie_strip_add", "Load Movie", sequencer_drop_copy);
+	}
+	if (WM_drag_query_single_path_sound(drag_data) && seq == NULL) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "SEQUENCER_OT_sound_strip_add", "Load Sound", sequencer_drop_copy);
+	}
+}
+
 /* ************************************* */
 
 /* only called once, from space/spacetypes.c */
@@ -820,10 +764,10 @@ void ED_spacetype_sequencer(void)
   st->keymap = sequencer_keymap;
   st->context = sequencer_context;
   st->gizmos = sequencer_gizmos;
-  st->dropboxes = sequencer_dropboxes;
   st->refresh = sequencer_refresh;
   st->listener = sequencer_listener;
   st->id_remap = sequencer_id_remap;
+  st->drop_target_find = sequencer_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype sequencer region");

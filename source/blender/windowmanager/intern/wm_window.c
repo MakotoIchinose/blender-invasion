@@ -712,11 +712,6 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
   keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", 0, 0);
   WM_event_add_keymap_handler(&win->modalhandlers, keymap);
 
-  /* add drop boxes */
-  {
-    ListBase *lb = WM_dropboxmap_find("Window", 0, 0);
-    WM_event_add_dropbox_handler(&win->handlers, lb);
-  }
   wm_window_title(wm, win);
 
   /* add topbar */
@@ -1472,35 +1467,23 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 
         win->active = 1;
 
-        wm_event_add(win, &event);
-
-        /* make blender drop event with custom data pointing to wm drags */
-        event.type = EVT_DROP;
-        event.val = KM_RELEASE;
-        event.custom = EVT_DATA_DRAGDROP;
-        event.customdata = &wm->drags;
-        event.customdatafree = 1;
-
-        wm_event_add(win, &event);
-
-        /* printf("Drop detected\n"); */
-
-        /* add drag data to wm for paths: */
-
+        /* first initialize the dragging */
         if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
           GHOST_TStringArray *stra = ddd->data;
-          int a, icon;
-
-          for (a = 0; a < stra->count; a++) {
-            printf("drop file %s\n", stra->strings[a]);
-            /* try to get icon type from extension */
-            icon = ED_file_extension_icon((char *)stra->strings[a]);
-
-            WM_event_start_drag(C, icon, WM_DRAG_PATH, stra->strings[a], 0.0, WM_DRAG_NOP);
-            /* void poin should point to string, it makes a copy */
-            break; /* only one drop element supported now */
+          if (stra->count > 0) {
+            WM_drag_start_filepaths(C, (const char **)stra->strings, stra->count);
           }
         }
+
+        /* then drop it immediatly */
+        event.type = EVT_DROP;
+        event.val = KM_RELEASE;
+        event.shift = query_qual(SHIFT) ? true : false;
+        event.ctrl = query_qual(CONTROL) ? true : false;
+        event.alt = query_qual(ALT) ? true : false;
+        event.oskey = query_qual(OS) ? true : false;
+        WM_drag_transfer_ownership_to_event(wm, &event);
+        wm_event_add(win, &event);
 
         break;
       }

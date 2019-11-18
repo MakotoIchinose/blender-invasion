@@ -67,6 +67,7 @@
 
 /* ******************** Drop Target Find *********************** */
 
+#if 0
 static TreeElement *outliner_dropzone_element(TreeElement *te,
                                               const float fmval[2],
                                               const bool children)
@@ -1008,3 +1009,5 @@ void outliner_dropboxes(void)
   WM_dropbox_add(lb, "OUTLINER_OT_material_drop", material_drop_poll, NULL);
   WM_dropbox_add(lb, "OUTLINER_OT_collection_drop", collection_drop_poll, NULL);
 }
+
+#endif

@@ -57,8 +57,6 @@ struct uiFontStyle;
 struct uiList;
 struct uiStyle;
 struct uiWidgetColors;
-struct wmDrag;
-struct wmDropBox;
 struct wmEvent;
 struct wmEvent;
 struct wmGizmo;
@@ -69,6 +67,9 @@ struct wmMsgBus;
 struct wmOperator;
 struct wmOperatorType;
 struct wmWindow;
+struct wmDragData;
+struct wmDropTarget;
+struct wmDropTargetFinder;
 
 typedef struct uiBlock uiBlock;
 typedef struct uiBut uiBut;
@@ -708,8 +709,6 @@ void UI_but_drag_set_value(uiBut *but);
 void UI_but_drag_set_image(
     uiBut *but, const char *path, int icon, struct ImBuf *ima, float scale, const bool use_free);
 
-bool UI_but_active_drop_name(struct bContext *C);
-bool UI_but_active_drop_color(struct bContext *C);
 
 void UI_but_flag_enable(uiBut *but, int flag);
 void UI_but_flag_disable(uiBut *but, int flag);
@@ -2326,11 +2325,7 @@ typedef struct uiDragColorHandle {
 void ED_operatortypes_ui(void);
 void ED_keymap_ui(struct wmKeyConfig *keyconf);
 
-void UI_drop_color_copy(struct wmDrag *drag, struct wmDropBox *drop);
-bool UI_drop_color_poll(struct bContext *C,
-                        struct wmDrag *drag,
-                        const struct wmEvent *event,
-                        const char **tooltip);
+void UI_drop_target_find(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
 
 bool UI_context_copy_to_selected_list(struct bContext *C,
                                       struct PointerRNA *ptr,

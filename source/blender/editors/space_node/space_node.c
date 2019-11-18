@@ -608,7 +608,6 @@ static void node_cursor(wmWindow *win, ScrArea *sa, ARegion *ar)
 static void node_main_region_init(wmWindowManager *wm, ARegion *ar)
 {
   wmKeyMap *keymap;
-  ListBase *lb;
 
   UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_CUSTOM, ar->winx, ar->winy);
 
@@ -618,70 +617,11 @@ static void node_main_region_init(wmWindowManager *wm, ARegion *ar)
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Node Editor", SPACE_NODE, 0);
   WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
-
-  /* add drop boxes */
-  lb = WM_dropboxmap_find("Node Editor", SPACE_NODE, RGN_TYPE_WINDOW);
-
-  WM_event_add_dropbox_handler(&ar->handlers, lb);
 }
 
 static void node_main_region_draw(const bContext *C, ARegion *ar)
 {
   drawnodespace(C, ar);
-}
-
-/* ************* dropboxes ************* */
-
-static bool node_ima_drop_poll(bContext *UNUSED(C),
-                               wmDrag *drag,
-                               const wmEvent *UNUSED(event),
-                               const char **UNUSED(tooltip))
-{
-  if (drag->type == WM_DRAG_PATH) {
-    /* rule might not work? */
-    return (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE));
-  }
-  else {
-    return WM_drag_ID(drag, ID_IM) != NULL;
-  }
-}
-
-static bool node_mask_drop_poll(bContext *UNUSED(C),
-                                wmDrag *drag,
-                                const wmEvent *UNUSED(event),
-                                const char **UNUSED(tooltip))
-{
-  return WM_drag_ID(drag, ID_MSK) != NULL;
-}
-
-static void node_id_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  ID *id = WM_drag_ID(drag, 0);
-
-  RNA_string_set(drop->ptr, "name", id->name + 2);
-}
-
-static void node_id_path_drop_copy(wmDrag *drag, wmDropBox *drop)
-{
-  ID *id = WM_drag_ID(drag, 0);
-
-  if (id) {
-    RNA_string_set(drop->ptr, "name", id->name + 2);
-    RNA_struct_property_unset(drop->ptr, "filepath");
-  }
-  else if (drag->path[0]) {
-    RNA_string_set(drop->ptr, "filepath", drag->path);
-    RNA_struct_property_unset(drop->ptr, "name");
-  }
-}
-
-/* this region dropbox definition */
-static void node_dropboxes(void)
-{
-  ListBase *lb = WM_dropboxmap_find("Node Editor", SPACE_NODE, RGN_TYPE_WINDOW);
-
-  WM_dropbox_add(lb, "NODE_OT_add_file", node_ima_drop_poll, node_id_path_drop_copy);
-  WM_dropbox_add(lb, "NODE_OT_add_mask", node_mask_drop_poll, node_id_drop_copy);
 }
 
 /* ************* end drop *********** */
@@ -946,6 +886,34 @@ static void node_space_subtype_item_extend(bContext *C, EnumPropertyItem **item,
   }
 }
 
+static void file_drop_init__file_path(wmDragData *drag_data, PointerRNA *ptr)
+{
+	RNA_string_set(ptr, "filepath", WM_drag_query_single_path_image_or_movie(drag_data));
+	RNA_struct_property_unset(ptr, "name");
+}
+
+static void file_drop_init__id_name(wmDragData *drag_data, PointerRNA *ptr)
+{
+	RNA_string_set(ptr, "name", WM_drag_query_single_id_of_type(drag_data, ID_IM)->name + 2);
+	RNA_struct_property_unset(ptr, "filepath");
+}
+
+static void node_drop_target_find(bContext *UNUSED(C), wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *UNUSED(event))
+{
+	if (WM_drag_query_single_path_image_or_movie(drag_data)) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "NODE_OT_add_file", "Load", file_drop_init__file_path);
+	}
+	if (WM_drag_query_single_id_of_type(drag_data, ID_IM)) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "NODE_OT_add_file", "Insert", file_drop_init__id_name);
+	}
+	if (WM_drag_query_single_id_of_type(drag_data, ID_MSK)) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
+		        "NODE_OT_add_mask", "Insert", WM_drop_init_single_id_name);
+	}
+}
+
 /* only called once, from space/spacetypes.c */
 void ED_spacetype_node(void)
 {
@@ -964,12 +932,12 @@ void ED_spacetype_node(void)
   st->listener = node_area_listener;
   st->refresh = node_area_refresh;
   st->context = node_context;
-  st->dropboxes = node_dropboxes;
   st->gizmos = node_widgets;
   st->id_remap = node_id_remap;
   st->space_subtype_item_extend = node_space_subtype_item_extend;
   st->space_subtype_get = node_space_subtype_get;
   st->space_subtype_set = node_space_subtype_set;
+  st->drop_target_find = node_drop_target_find;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype node region");

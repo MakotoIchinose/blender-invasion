@@ -376,7 +376,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 
   BLI_freelistN(&wm->paintcursors);
 
-  WM_drag_free_list(&wm->drags);
+  WM_drag_stop(wm);
 
   wm_reports_free(wm);
 

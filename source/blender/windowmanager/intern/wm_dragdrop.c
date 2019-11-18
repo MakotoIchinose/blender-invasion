@@ -27,18 +27,22 @@
 
 #include "DNA_windowmanager_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_collection_types.h"
+#include "DNA_space_types.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLT_translation.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_vector.h"
 
 #include "BIF_gl.h"
 #include "BIF_glutil.h"
 
 #include "BKE_context.h"
 #include "BKE_idcode.h"
+#include "BKE_screen.h"
 
 #include "GPU_shader.h"
 #include "GPU_state.h"
@@ -48,453 +52,497 @@
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
 
+#include "ED_outliner.h"
+#include "ED_fileselect.h"
+
 #include "RNA_access.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
 #include "wm_event_system.h"
 
-/* ****************************************************** */
+/* ********************* Free Data ********************* */
 
-static ListBase dropboxes = {NULL, NULL};
-
-/* drop box maps are stored global for now */
-/* these are part of blender's UI/space specs, and not like keymaps */
-/* when editors become configurable, they can add own dropbox definitions */
-
-typedef struct wmDropBoxMap {
-  struct wmDropBoxMap *next, *prev;
-
-  ListBase dropboxes;
-  short spaceid, regionid;
-  char idname[KMAP_MAX_NAME];
-
-} wmDropBoxMap;
-
-/* spaceid/regionid is zero for window drop maps */
-ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid)
+static void drag_data_free_filepaths(wmDragData *drag_data)
 {
-  wmDropBoxMap *dm;
-
-  for (dm = dropboxes.first; dm; dm = dm->next) {
-    if (dm->spaceid == spaceid && dm->regionid == regionid) {
-      if (STREQLEN(idname, dm->idname, KMAP_MAX_NAME)) {
-        return &dm->dropboxes;
-      }
-    }
-  }
-
-  dm = MEM_callocN(sizeof(struct wmDropBoxMap), "dropmap list");
-  BLI_strncpy(dm->idname, idname, KMAP_MAX_NAME);
-  dm->spaceid = spaceid;
-  dm->regionid = regionid;
-  BLI_addtail(&dropboxes, dm);
-
-  return &dm->dropboxes;
+	for (int i = 0; i < drag_data->data.filepaths.amount; i++) {
+		MEM_freeN(drag_data->data.filepaths.paths[i]);
+	}
+	MEM_freeN(drag_data->data.filepaths.paths);
 }
 
-wmDropBox *WM_dropbox_add(ListBase *lb,
-                          const char *idname,
-                          bool (*poll)(bContext *, wmDrag *, const wmEvent *, const char **),
-                          void (*copy)(wmDrag *, wmDropBox *))
+static void drag_data_free_collection_children(wmDragData *drag_data)
 {
-  wmDropBox *drop = MEM_callocN(sizeof(wmDropBox), "wmDropBox");
-
-  drop->poll = poll;
-  drop->copy = copy;
-  drop->ot = WM_operatortype_find(idname, 0);
-  drop->opcontext = WM_OP_INVOKE_DEFAULT;
-
-  if (drop->ot == NULL) {
-    MEM_freeN(drop);
-    printf("Error: dropbox with unknown operator: %s\n", idname);
-    return NULL;
-  }
-  WM_operator_properties_alloc(&(drop->ptr), &(drop->properties), idname);
-
-  BLI_addtail(lb, drop);
-
-  return drop;
+	ListBase *list = drag_data->data.collection_children;
+	LISTBASE_FOREACH (LinkData *, link, list) {
+		MEM_freeN(link->data);
+	}
+	BLI_freelistN(list);
+	MEM_freeN(list);
 }
 
-void wm_dropbox_free(void)
+void WM_drag_data_free(wmDragData *drag_data)
 {
-  wmDropBoxMap *dm;
+	switch (drag_data->type) {
+		case DRAG_DATA_FILEPATHS:
+			drag_data_free_filepaths(drag_data);
+			break;
+		case DRAG_DATA_COLLECTION_CHILDREN:
+			drag_data_free_collection_children(drag_data);
+			break;
+		default:
+			break;
+	}
 
-  for (dm = dropboxes.first; dm; dm = dm->next) {
-    wmDropBox *drop;
-
-    for (drop = dm->dropboxes.first; drop; drop = drop->next) {
-      if (drop->ptr) {
-        WM_operator_properties_free(drop->ptr);
-        MEM_freeN(drop->ptr);
-      }
-    }
-    BLI_freelistN(&dm->dropboxes);
-  }
-
-  BLI_freelistN(&dropboxes);
+	MEM_freeN(drag_data);
 }
 
-/* *********************************** */
-
-/* note that the pointer should be valid allocated and not on stack */
-wmDrag *WM_event_start_drag(
-    struct bContext *C, int icon, int type, void *poin, double value, unsigned int flags)
+void WM_drop_target_free(wmDropTarget *drop_target)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
-  wmDrag *drag = MEM_callocN(sizeof(struct wmDrag), "new drag");
-
-  /* keep track of future multitouch drag too, add a mousepointer id or so */
-  /* if multiple drags are added, they're drawn as list */
-
-  BLI_addtail(&wm->drags, drag);
-  drag->flags = flags;
-  drag->icon = icon;
-  drag->type = type;
-  if (type == WM_DRAG_PATH) {
-    BLI_strncpy(drag->path, poin, FILE_MAX);
-  }
-  else if (type == WM_DRAG_ID) {
-    if (poin) {
-      WM_drag_add_ID(drag, poin, NULL);
-    }
-  }
-  else {
-    drag->poin = poin;
-  }
-  drag->value = value;
-
-  return drag;
+	if (drop_target->free_idname) {
+		MEM_freeN(drop_target->ot_idname);
+	}
+	if (drop_target->free_tooltip) {
+		MEM_freeN(drop_target->tooltip);
+	}
+	if (drop_target->free) {
+		MEM_freeN(drop_target);
+	}
 }
 
-void WM_event_drag_image(wmDrag *drag, ImBuf *imb, float scale, int sx, int sy)
+void WM_drag_stop(wmWindowManager *wm)
 {
-  drag->imb = imb;
-  drag->scale = scale;
-  drag->sx = sx;
-  drag->sy = sy;
+	if (wm->drag.data) {
+		WM_drag_data_free(wm->drag.data);
+	}
+	if (wm->drag.target) {
+		WM_drop_target_free(wm->drag.target);
+	}
+	wm->drag.data = NULL;
+	wm->drag.target = NULL;
 }
 
-void WM_drag_free(wmDrag *drag)
-{
-  if ((drag->flags & WM_DRAG_FREE_DATA) && drag->poin) {
-    MEM_freeN(drag->poin);
-  }
+/* ********************* Start Dragging ********************* */
 
-  BLI_freelistN(&drag->ids);
-  MEM_freeN(drag);
+static void start_dragging_data(struct bContext *C, wmDragData *drag_data)
+{
+	wmWindowManager *wm = CTX_wm_manager(C);
+	WM_drag_stop(wm);
+	wm->drag.data = drag_data;
+	wm->drag.target = NULL;
 }
 
-void WM_drag_free_list(struct ListBase *lb)
-{
-  wmDrag *drag;
-  while ((drag = BLI_pophead(lb))) {
-    WM_drag_free(drag);
-  }
+static wmDragData *WM_drag_data_new(void) {
+	return MEM_callocN(sizeof(wmDragData), "drag data");
 }
 
-static const char *dropbox_active(bContext *C,
-                                  ListBase *handlers,
-                                  wmDrag *drag,
-                                  const wmEvent *event)
+wmDragData *WM_drag_start_id(struct bContext *C, ID *id)
 {
-  LISTBASE_FOREACH (wmEventHandler *, handler_base, handlers) {
-    if (handler_base->type == WM_HANDLER_TYPE_DROPBOX) {
-      wmEventHandler_Dropbox *handler = (wmEventHandler_Dropbox *)handler_base;
-      if (handler->dropboxes) {
-        for (wmDropBox *drop = handler->dropboxes->first; drop; drop = drop->next) {
-          const char *tooltip = NULL;
-          if (drop->poll(C, drag, event, &tooltip)) {
-            /* XXX Doing translation here might not be ideal, but later we have no more
-             *     access to ot (and hence op context)... */
-            return (tooltip) ? tooltip : WM_operatortype_name(drop->ot, drop->ptr);
-          }
-        }
-      }
-    }
-  }
-  return NULL;
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_IDS;
+	drag_data->data.ids = MEM_callocN(sizeof(ListBase), __func__);
+	BLI_addtail(drag_data->data.ids, BLI_genericNodeN(id));
+
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-/* return active operator name when mouse is in box */
-static const char *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *event)
+wmDragData *WM_drag_start_filepaths(struct bContext *C, const char **filepaths, int amount)
 {
-  wmWindow *win = CTX_wm_window(C);
-  ScrArea *sa = CTX_wm_area(C);
-  ARegion *ar = CTX_wm_region(C);
-  const char *name;
+	BLI_assert(amount > 0);
 
-  name = dropbox_active(C, &win->handlers, drag, event);
-  if (name) {
-    return name;
-  }
+	char **paths = MEM_malloc_arrayN(amount, sizeof(char *), __func__);
+	for (int i = 0; i < amount; i++) {
+		paths[i] = BLI_strdup(filepaths[i]);
+	}
 
-  name = dropbox_active(C, &sa->handlers, drag, event);
-  if (name) {
-    return name;
-  }
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_FILEPATHS;
+	drag_data->data.filepaths.amount = amount;
+	drag_data->data.filepaths.paths = paths;
 
-  name = dropbox_active(C, &ar->handlers, drag, event);
-  if (name) {
-    return name;
-  }
-
-  return NULL;
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-static void wm_drop_operator_options(bContext *C, wmDrag *drag, const wmEvent *event)
+wmDragData *WM_drag_start_filepath(struct bContext *C, const char *filepath)
 {
-  wmWindow *win = CTX_wm_window(C);
-  const int winsize_x = WM_window_pixels_x(win);
-  const int winsize_y = WM_window_pixels_y(win);
-
-  /* for multiwin drags, we only do this if mouse inside */
-  if (event->x < 0 || event->y < 0 || event->x > winsize_x || event->y > winsize_y) {
-    return;
-  }
-
-  drag->opname[0] = 0;
-
-  /* check buttons (XXX todo rna and value) */
-  if (UI_but_active_drop_name(C)) {
-    BLI_strncpy(drag->opname, IFACE_("Paste name"), sizeof(drag->opname));
-  }
-  else {
-    const char *opname = wm_dropbox_active(C, drag, event);
-
-    if (opname) {
-      BLI_strncpy(drag->opname, opname, sizeof(drag->opname));
-      // WM_cursor_modal_set(win, WM_CURSOR_COPY);
-    }
-    // else
-    //  WM_cursor_modal_restore(win);
-    /* unsure about cursor type, feels to be too much */
-  }
+	return WM_drag_start_filepaths(C, &filepath, 1);
 }
 
-/* called in inner handler loop, region context */
-void wm_drags_check_ops(bContext *C, const wmEvent *event)
+wmDragData *WM_drag_start_color(struct bContext *C, float color[3], bool gamma_corrected)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
-  wmDrag *drag;
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_COLOR;
+	copy_v3_v3(drag_data->data.color.color, color);
+	drag_data->data.color.gamma_corrected = gamma_corrected;
 
-  for (drag = wm->drags.first; drag; drag = drag->next) {
-    wm_drop_operator_options(C, drag, event);
-  }
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-/* ************** IDs ***************** */
-
-void WM_drag_add_ID(wmDrag *drag, ID *id, ID *from_parent)
+wmDragData *WM_drag_start_value(struct bContext *C, double value)
 {
-  /* Don't drag the same ID twice. */
-  for (wmDragID *drag_id = drag->ids.first; drag_id; drag_id = drag_id->next) {
-    if (drag_id->id == id) {
-      if (drag_id->from_parent == NULL) {
-        drag_id->from_parent = from_parent;
-      }
-      return;
-    }
-    else if (GS(drag_id->id->name) != GS(id->name)) {
-      BLI_assert(!"All dragged IDs must have the same type");
-      return;
-    }
-  }
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_VALUE;
+	drag_data->data.value = value;
 
-  /* Add to list. */
-  wmDragID *drag_id = MEM_callocN(sizeof(wmDragID), __func__);
-  drag_id->id = id;
-  drag_id->from_parent = from_parent;
-  BLI_addtail(&drag->ids, drag_id);
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-ID *WM_drag_ID(const wmDrag *drag, short idcode)
+wmDragData *WM_drag_start_rna(struct bContext *C, struct PointerRNA *rna)
 {
-  if (drag->type != WM_DRAG_ID) {
-    return NULL;
-  }
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_RNA;
+	drag_data->data.rna = rna;
 
-  wmDragID *drag_id = drag->ids.first;
-  if (!drag_id) {
-    return NULL;
-  }
-
-  ID *id = drag_id->id;
-  return (idcode == 0 || GS(id->name) == idcode) ? id : NULL;
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-ID *WM_drag_ID_from_event(const wmEvent *event, short idcode)
+wmDragData *WM_drag_start_name(struct bContext *C, const char *name)
 {
-  if (event->custom != EVT_DATA_DRAGDROP) {
-    return NULL;
-  }
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_NAME;
+	drag_data->data.name = BLI_strdup(name);
 
-  ListBase *lb = event->customdata;
-  return WM_drag_ID(lb->first, idcode);
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-/* ************** draw ***************** */
-
-static void wm_drop_operator_draw(const char *name, int x, int y)
+wmDragData *WM_drag_start_collection_children(struct bContext *C, ListBase *collection_children)
 {
-  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
-  const float col_fg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  const float col_bg[4] = {0.0f, 0.0f, 0.0f, 0.2f};
+	wmDragData *drag_data = WM_drag_data_new();
+	drag_data->type = DRAG_DATA_COLLECTION_CHILDREN;
+	drag_data->data.collection_children = collection_children;
 
-  UI_fontstyle_draw_simple_backdrop(fstyle, x, y, name, col_fg, col_bg);
+	start_dragging_data(C, drag_data);
+	return drag_data;
 }
 
-static const char *wm_drag_name(wmDrag *drag)
-{
-  switch (drag->type) {
-    case WM_DRAG_ID: {
-      ID *id = WM_drag_ID(drag, 0);
-      bool single = (BLI_listbase_count_at_most(&drag->ids, 2) == 1);
 
-      if (single) {
-        return id->name + 2;
-      }
-      else if (id) {
-        return BKE_idcode_to_name_plural(GS(id->name));
-      }
-      break;
-    }
-    case WM_DRAG_PATH:
-    case WM_DRAG_NAME:
-      return drag->path;
-  }
-  return "";
+/* ********************* Set Display Options ********************* */
+
+void WM_drag_display_set_image(
+        wmDragData *drag_data, ImBuf *imb,
+        float scale, int width, int height)
+{
+	drag_data->display_type = DRAG_DISPLAY_IMAGE;
+	drag_data->display.image.imb = imb;
+	drag_data->display.image.scale = scale;
+	drag_data->display.image.width = width;
+	drag_data->display.image.height = height;
 }
 
-static void drag_rect_minmax(rcti *rect, int x1, int y1, int x2, int y2)
+void WM_drag_display_set_icon(wmDragData *drag_data, int icon_id)
 {
-  if (rect->xmin > x1) {
-    rect->xmin = x1;
-  }
-  if (rect->xmax < x2) {
-    rect->xmax = x2;
-  }
-  if (rect->ymin > y1) {
-    rect->ymin = y1;
-  }
-  if (rect->ymax < y2) {
-    rect->ymax = y2;
-  }
+	drag_data->display_type = DRAG_DISPLAY_ICON;
+	drag_data->display.icon_id = icon_id;
 }
 
-/* called in wm_draw.c */
-/* if rect set, do not draw */
-void wm_drags_draw(bContext *C, wmWindow *win, rcti *rect)
+void WM_drag_display_set_color(wmDragData *drag_data, float color[3])
 {
-  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
-  wmWindowManager *wm = CTX_wm_manager(C);
-  wmDrag *drag;
-  const int winsize_y = WM_window_pixels_y(win);
-  int cursorx, cursory, x, y;
+	drag_data->display_type = DRAG_DISPLAY_COLOR;
+	copy_v3_v3(drag_data->display.color, color);
+}
 
-  cursorx = win->eventstate->x;
-  cursory = win->eventstate->y;
-  if (rect) {
-    rect->xmin = rect->xmax = cursorx;
-    rect->ymin = rect->ymax = cursory;
-  }
+void WM_drag_display_set_color_derived(wmDragData *drag_data)
+{
+	BLI_assert(drag_data->type == DRAG_DATA_COLOR);
+	WM_drag_display_set_color(drag_data, drag_data->data.color.color);
+}
 
-  /* XXX todo, multiline drag draws... but maybe not, more types mixed wont work well */
-  GPU_blend(true);
-  for (drag = wm->drags.first; drag; drag = drag->next) {
-    const uchar text_col[] = {255, 255, 255, 255};
-    int iconsize = UI_DPI_ICON_SIZE;
-    int padding = 4 * UI_DPI_FAC;
 
-    /* image or icon */
-    if (drag->imb) {
-      x = cursorx - drag->sx / 2;
-      y = cursory - drag->sy / 2;
+/* ********************* Drop Target Creation ********************* */
 
-      if (rect) {
-        drag_rect_minmax(rect, x, y, x + drag->sx, y + drag->sy);
-      }
-      else {
-        float col[4] = {1.0f, 1.0f, 1.0f, 0.65f}; /* this blends texture */
-        IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_COLOR);
-        immDrawPixelsTexScaled(&state,
-                               x,
-                               y,
-                               drag->imb->x,
-                               drag->imb->y,
-                               GL_RGBA,
-                               GL_UNSIGNED_BYTE,
-                               GL_NEAREST,
-                               drag->imb->rect,
-                               drag->scale,
-                               drag->scale,
-                               1.0f,
-                               1.0f,
-                               col);
-      }
-    }
-    else {
-      x = cursorx - 2 * padding;
-      y = cursory - 2 * UI_DPI_FAC;
+void WM_drop_target_propose(wmDropTargetFinder *finder, wmDropTarget *target)
+{
+	if (target == NULL) {
+		return;
+	}
+	else if (finder->current == NULL) {
+		finder->current = target;
+	}
+	else if (target->size < finder->current->size) {
+		WM_drop_target_free(finder->current);
+		finder->current = target;
+	}
+	else {
+		WM_drop_target_free(target);
+	}
+}
 
-      if (rect) {
-        drag_rect_minmax(rect, x, y, x + iconsize, y + iconsize);
-      }
-      else {
-        UI_icon_draw_ex(x, y, drag->icon, U.inv_dpi_fac, 0.8, 0.0f, text_col, false);
-      }
-    }
+static enum DropTargetSize drop_target_get_current_size(wmDropTargetFinder *finder)
+{
+	if (finder->current) return finder->current->size;
+	else return DROP_TARGET_SIZE_MAX;
+}
 
-    /* item name */
-    if (drag->imb) {
-      x = cursorx - drag->sx / 2;
-      y = cursory - drag->sy / 2 - iconsize;
-    }
-    else {
-      x = cursorx + 10 * UI_DPI_FAC;
-      y = cursory + 1 * UI_DPI_FAC;
-    }
+void WM_drop_target_propose__template_1(
+        wmDropTargetFinder *finder,
+        enum DropTargetSize size, const char *ot_idname,
+        const char *tooltip, wmDropTargetSetProps set_properties)
+{
+	WM_drop_target_propose__template_2(finder, size, ot_idname, tooltip, set_properties, WM_OP_INVOKE_DEFAULT);
+}
 
-    if (rect) {
-      int w = UI_fontstyle_string_width(fstyle, wm_drag_name(drag));
-      drag_rect_minmax(rect, x, y, x + w, y + iconsize);
-    }
-    else {
-      UI_fontstyle_draw_simple(fstyle, x, y, wm_drag_name(drag), text_col);
-    }
+void WM_drop_target_propose__template_2(
+        wmDropTargetFinder *finder,
+        enum DropTargetSize size, const char *ot_idname,
+        const char *tooltip, wmDropTargetSetProps set_properties,
+        short context)
+{
+	if (size >= drop_target_get_current_size(finder)) return;
+	WM_drop_target_propose(finder, WM_drop_target_new(
+	        size, (char *)ot_idname, (char *)tooltip, set_properties,
+	        context, true, false, false));
+}
 
-    /* operator name with roundbox */
-    if (drag->opname[0]) {
-      if (drag->imb) {
-        x = cursorx - drag->sx / 2;
+wmDropTarget *WM_drop_target_new(
+        enum DropTargetSize size, char *ot_idname, char *tooltip,
+        wmDropTargetSetProps set_properties,
+        short context, bool free, bool free_idname, bool free_tooltip)
+{
+	wmDropTarget *drop_target = MEM_callocN(sizeof(wmDropTarget), __func__);
+	drop_target->size = size;
+	drop_target->ot_idname = ot_idname;
+	drop_target->tooltip = tooltip;
+	drop_target->set_properties = set_properties;
+	drop_target->context = context;
+	drop_target->free = free;
+	drop_target->free_idname = free_idname;
+	drop_target->free_tooltip = free_tooltip;
+	return drop_target;
+}
 
-        if (cursory + drag->sy / 2 + padding + iconsize < winsize_y) {
-          y = cursory + drag->sy / 2 + padding;
-        }
-        else {
-          y = cursory - drag->sy / 2 - padding - iconsize - padding - iconsize;
-        }
-      }
-      else {
-        x = cursorx - 2 * padding;
 
-        if (cursory + iconsize + iconsize < winsize_y) {
-          y = (cursory + iconsize) + padding;
-        }
-        else {
-          y = (cursory - iconsize) - padding;
-        }
-      }
+/* ********************* Query Drag Data ********************* */
 
-      if (rect) {
-        int w = UI_fontstyle_string_width(fstyle, wm_drag_name(drag));
-        drag_rect_minmax(rect, x, y, x + w, y + iconsize);
-      }
-      else {
-        wm_drop_operator_draw(drag->opname, x, y);
-      }
-    }
-  }
-  GPU_blend(false);
+ID *WM_drag_query_single_id(wmDragData *drag_data)
+{
+	if (drag_data->type == DRAG_DATA_IDS) {
+		ListBase *list = drag_data->data.ids;
+		if (BLI_listbase_is_single(list)) {
+			return (ID *)list->first;
+		}
+	}
+	else if (drag_data->type == DRAG_DATA_COLLECTION_CHILDREN) {
+		ListBase *list = drag_data->data.collection_children;
+		if (BLI_listbase_is_single(list)) {
+			return (ID *)((wmDragCollectionChild *)((LinkData *)list->first)->data)->id;
+		}
+	}
+	return NULL;
+}
+
+ID *WM_drag_query_single_id_of_type(wmDragData *drag_data, int idtype)
+{
+	ID *id = WM_drag_query_single_id(drag_data);
+	if (id && GS(id->name) == idtype) return id;
+	return NULL;
+}
+
+Collection *WM_drag_query_single_collection(wmDragData *drag_data)
+{
+	return (Collection *)WM_drag_query_single_id_of_type(drag_data, ID_GR);
+}
+
+Material *WM_drag_query_single_material(wmDragData *drag_data)
+{
+	return (Material *)WM_drag_query_single_id_of_type(drag_data, ID_MA);
+}
+
+Object *WM_drag_query_single_object(wmDragData *drag_data)
+{
+	return (Object *)WM_drag_query_single_id_of_type(drag_data, ID_OB);
+}
+
+const char *WM_drag_query_single_path(wmDragData *drag_data)
+{
+	if (drag_data->type == DRAG_DATA_FILEPATHS) {
+		if (drag_data->data.filepaths.amount == 1) {
+			return drag_data->data.filepaths.paths[0];
+		}
+	}
+	return NULL;
+}
+
+const char *WM_drag_query_single_path_of_types(wmDragData *drag_data, int types)
+{
+	const char *path = WM_drag_query_single_path(drag_data);
+	if (!path) return NULL;
+
+	if (ED_path_extension_type(path) & types) {
+		return path;
+	}
+
+	return NULL;
+}
+
+
+const char *WM_drag_query_single_path_maybe_text(wmDragData *drag_data)
+{
+	const char *path = WM_drag_query_single_path(drag_data);
+	if (!path) return NULL;
+
+	int type = ED_path_extension_type(path);
+	if (type == 0 || ELEM(type, FILE_TYPE_PYSCRIPT, FILE_TYPE_TEXT)) {
+		return path;
+	}
+
+	return NULL;
+}
+
+const char *WM_drag_query_single_path_image(wmDragData *drag_data)
+{
+	return WM_drag_query_single_path_of_types(drag_data, FILE_TYPE_IMAGE);
+}
+
+const char *WM_drag_query_single_path_movie(wmDragData *drag_data)
+{
+	return WM_drag_query_single_path_of_types(drag_data, FILE_TYPE_MOVIE);
+}
+
+const char *WM_drag_query_single_path_sound(wmDragData *drag_data)
+{
+	return WM_drag_query_single_path_of_types(drag_data, FILE_TYPE_SOUND);
+}
+
+const char *WM_drag_query_single_path_image_or_movie(wmDragData *drag_data)
+{
+	return WM_drag_query_single_path_of_types(drag_data, FILE_TYPE_IMAGE | FILE_TYPE_MOVIE);
+}
+
+ListBase *WM_drag_query_collection_children(wmDragData *drag_data)
+{
+	if (drag_data->type == DRAG_DATA_COLLECTION_CHILDREN) {
+		return drag_data->data.collection_children;
+	}
+	return NULL;
+}
+
+bool WM_drag_query_single_color(wmDragData *drag_data, float *r_color, bool *r_gamma_corrected)
+{
+	if (drag_data->type == DRAG_DATA_COLOR) {
+		if (r_color) memcpy(r_color, drag_data->data.color.color, sizeof(float) * 3);
+		if (r_gamma_corrected) *r_gamma_corrected = drag_data->data.color.gamma_corrected;
+		return true;
+	}
+	return false;
+}
+
+/* ********************* Draw ********************* */
+
+void WM_drag_draw(bContext *UNUSED(C), wmWindow *win, wmDragOperation *drag_operation)
+{
+	wmDragData *drag_data = drag_operation->data;
+	wmDropTarget *drop_target = drag_operation->target;
+
+	int cursorx = win->eventstate->x;
+	int cursory = win->eventstate->y;
+
+	const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
+	const uchar text_col[] = {255, 255, 255, 255};
+
+	if (drop_target && drop_target->tooltip) {
+		UI_fontstyle_draw_simple(fstyle, cursorx, cursory, drop_target->tooltip, text_col);
+	}
+
+	glEnable(GL_BLEND);
+
+	if (drag_data->display_type == DRAG_DISPLAY_ICON) {
+		UI_icon_draw(cursorx, cursory, drag_data->display.icon_id);
+	}
+	else if (drag_data->display_type == DRAG_DISPLAY_COLOR) {
+		float color[4];
+		copy_v3_v3(color, drag_data->display.color);
+		color[3] = 1.0f;
+		UI_draw_roundbox_4fv(true, cursorx - 5, cursory - 5, cursorx + 5, cursory + 5, 2, color);
+	}
+
+	glDisable(GL_BLEND);
+}
+
+
+/* ****************** Find Current Target ****************** */
+
+static void drop_files_init(wmDragData *drag_data, PointerRNA *ptr)
+{
+	for (int i = 0; i < drag_data->data.filepaths.amount; i++) {
+		char *path = drag_data->data.filepaths.paths[i];
+		PointerRNA itemptr;
+		RNA_collection_add(ptr, "filepaths", &itemptr);
+		RNA_string_set(&itemptr, "name", path);
+	}
+}
+
+
+static void get_window_drop_target(bContext *C, wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *event)
+{
+	UI_drop_target_find(C, finder, drag_data, event);
+
+	if (drag_data->type == DRAG_DATA_FILEPATHS) {
+		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_WINDOW, "WM_OT_drop_files", "", drop_files_init);
+	}
+}
+
+wmDropTarget *WM_drag_find_current_target(bContext *C, wmDragData *drag_data, const wmEvent *event)
+{
+	ScrArea *sa = CTX_wm_area(C);
+	if (!sa) return NULL;
+
+	wmDropTargetFinder finder = { 0 };
+
+	SpaceType *st = sa->type;
+	wmDropTarget *drop_target = NULL;
+
+	if (!drop_target && st->drop_target_find) {
+		st->drop_target_find(C, &finder, drag_data, event);
+	}
+
+	if (!drop_target) {
+		get_window_drop_target(C, &finder, drag_data, event);
+	}
+
+	return finder.current;
+}
+
+
+/* ****************** Misc ****************** */
+
+void WM_drag_transfer_ownership_to_event(struct wmWindowManager *wm, struct wmEvent * event)
+{
+	if (wm->drag.target) {
+		WM_drop_target_free(wm->drag.target);
+	}
+
+	event->custom = EVT_DATA_DRAGDROP;
+	event->customdata = wm->drag.data;
+	event->customdatafree = true;
+
+	wm->drag.data = NULL;
+	wm->drag.target = NULL;
+}
+
+wmDragData *WM_drag_get_active(bContext *C)
+{
+	wmWindowManager *wm = CTX_wm_manager(C);
+	return wm->drag.data;
+}
+
+wmDragData *WM_drag_data_from_event(const wmEvent *event)
+{
+	if (event->custom != EVT_DATA_DRAGDROP) return NULL;
+	return (wmDragData *)event->customdata;
+}
+
+void WM_drop_init_single_filepath(wmDragData *drag_data, PointerRNA *ptr)
+{
+	RNA_string_set(ptr, "filepath", WM_drag_query_single_path(drag_data));
+}
+
+void WM_drop_init_single_id_name(wmDragData *drag_data, PointerRNA *ptr)
+{
+	RNA_string_set(ptr, "name", WM_drag_query_single_id(drag_data)->name + 2);
 }

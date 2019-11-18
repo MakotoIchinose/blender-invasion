@@ -152,9 +152,7 @@ float wm_pressure_curve(float raw_pressure);
 
 /* wm_keymap.c */
 
-/* wm_dropbox.c */
-void wm_dropbox_free(void);
-void wm_drags_check_ops(bContext *C, const wmEvent *event);
-void wm_drags_draw(bContext *C, wmWindow *win, rcti *rect);
+/* wm_dragdrop.c */
+void        WM_drag_draw(bContext *C, wmWindow *win, struct wmDragOperation *drag_operation);
 
 #endif /* __WM_EVENT_SYSTEM_H__ */

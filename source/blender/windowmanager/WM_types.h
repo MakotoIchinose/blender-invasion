@@ -822,70 +822,73 @@ typedef void (*wmPaintCursorDraw)(struct bContext *C, int, int, void *customdata
 #define WM_DRAG_VALUE 4
 #define WM_DRAG_COLOR 5
 
-typedef enum wmDragFlags {
-  WM_DRAG_NOP = 0,
-  WM_DRAG_FREE_DATA = 1,
-} wmDragFlags;
+/* wmDragData.type */
+enum DragDataType {
+	DRAG_DATA_IDS,
+	DRAG_DATA_FILEPATHS,
+	DRAG_DATA_COLOR,
+	DRAG_DATA_VALUE,
+	DRAG_DATA_RNA,
+	DRAG_DATA_NAME,
+	DRAG_DATA_COLLECTION_CHILDREN,
+};
+/* wmDragData.display_type */
+enum DragDisplayType {
+	DRAG_DISPLAY_NONE = 0,
+	DRAG_DISPLAY_ICON,
+	DRAG_DISPLAY_IMAGE,
+	DRAG_DISPLAY_COLOR,
+};
 
-/* note: structs need not exported? */
+typedef struct wmDragCollectionChild {
+	struct ID *id;
+	struct Collection *parent;
+} wmDragCollectionChild;
 
-typedef struct wmDragID {
-  struct wmDragID *next, *prev;
-  struct ID *id;
-  struct ID *from_parent;
-} wmDragID;
+typedef struct wmDragData {
+	enum DragDataType type;
+	enum DragDisplayType display_type;
+	union {
+		ListBase *ids;
+		struct {
+			char **paths;
+			int amount;
+		} filepaths;
+		struct {
+			float color[3];
+			bool gamma_corrected;
+		} color;
+		double value;
+		struct PointerRNA *rna;
+		char *name;
+		ListBase *collection_children;
+	} data;
+	union {
+		struct {
+			struct ImBuf *imb;
+			float scale;
+			int width;
+			int height;
+		} image;
+		int icon_id;
+		float color[3];
+	} display;
+} wmDragData;
 
-typedef struct wmDrag {
-  struct wmDrag *next, *prev;
+typedef struct wmDropTarget {
+	char *ot_idname;
+	char *tooltip;
+	short context;
+	int size;
+	bool free;
+	bool free_idname;
+	bool free_tooltip;
+	void (*set_properties)(struct wmDragData *, struct PointerRNA *);
+} wmDropTarget;
 
-  int icon;
-  /** See 'WM_DRAG_' defines above. */
-  int type;
-  void *poin;
-  char path[1024]; /* FILE_MAX */
-  double value;
-
-  /** If no icon but imbuf should be drawn around cursor. */
-  struct ImBuf *imb;
-  float scale;
-  int sx, sy;
-
-  /** If set, draws operator name. */
-  char opname[200];
-  unsigned int flags;
-
-  /** List of wmDragIDs, all are guaranteed to have the same ID type. */
-  ListBase ids;
-} wmDrag;
-
-/**
- * Dropboxes are like keymaps, part of the screen/area/region definition.
- * Allocation and free is on startup and exit.
- */
-typedef struct wmDropBox {
-  struct wmDropBox *next, *prev;
-
-  /** Test if the dropbox is active, then can print optype name. */
-  bool (*poll)(struct bContext *, struct wmDrag *, const wmEvent *, const char **);
-
-  /** Before exec, this copies drag info to #wmDrop properties. */
-  void (*copy)(struct wmDrag *, struct wmDropBox *);
-
-  /**
-   * If poll succeeds, operator is called.
-   * Not saved in file, so can be pointer.
-   */
-  wmOperatorType *ot;
-
-  /** Operator properties, assigned to ptr->data and can be written to a file. */
-  struct IDProperty *properties;
-  /** RNA pointer to access properties. */
-  struct PointerRNA *ptr;
-
-  /** Default invoke. */
-  short opcontext;
-
-} wmDropBox;
+typedef struct wmDropTargetFinder {
+	wmDropTarget *current;
+} wmDropTargetFinder;
 
 /**
  * Struct to store tool-tip timer and possible creation if the time is reached.
