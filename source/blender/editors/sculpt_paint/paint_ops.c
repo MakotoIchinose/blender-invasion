@@ -576,8 +576,12 @@ static int palette_join_exec(bContext *C, wmOperator *op)
   }
 
   if (done) {
-    /* Delete old palette. */
-    BKE_palette_free(palette_join);
+    /* Clear old color swatches. */
+    PaletteColor *color_next = NULL;
+    for (PaletteColor *color = palette_join->colors.first; color; color = color_next) {
+      color_next = color->next;
+      BKE_palette_color_remove(palette_join, color);
+    }
 
     /* Notifier. */
     WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, NULL);
