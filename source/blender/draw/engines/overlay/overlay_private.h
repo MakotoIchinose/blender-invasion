@@ -190,6 +190,7 @@ typedef struct OVERLAY_ArmatureCallBuffers {
 
   DRWShadingGroup *custom_solid;
   DRWShadingGroup *custom_outline;
+  GHash *custom_shapes_ghash;
 } OVERLAY_ArmatureCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
@@ -350,6 +351,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_armature_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_armature_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4]);

@@ -317,6 +317,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
 static void OVERLAY_cache_finish(void *vedata)
 {
+  OVERLAY_armature_cache_finish(vedata);
   OVERLAY_image_cache_finish(vedata);
 }
 

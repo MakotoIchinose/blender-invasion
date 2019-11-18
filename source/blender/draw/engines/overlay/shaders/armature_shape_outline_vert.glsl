@@ -1,6 +1,4 @@
 
-uniform bool customShape = false;
-
 /* ---- Instantiated Attrs ---- */
 in vec3 pos;
 in vec3 snor;
@@ -24,8 +22,7 @@ vec2 proj(vec4 pos)
 void main()
 {
   vec4 bone_color, state_color;
-  mat4 model_mat = customShape ? ModelMatrix : inst_obmat;
-  model_mat = extract_matrix_packed_data(model_mat, state_color, bone_color);
+  mat4 model_mat = extract_matrix_packed_data(inst_obmat, state_color, bone_color);
 
   vec4 worldPosition = model_mat * vec4(pos, 1.0);
   vec4 viewpos = ViewMatrix * worldPosition;

@@ -82,6 +82,7 @@ typedef struct ArmatureDrawContext {
   DRWShadingGroup *custom_solid;
   DRWShadingGroup *custom_outline;
   DRWShadingGroup *custom_wire;
+  GHash *custom_shapes_ghash;
 
   OVERLAY_ExtraCallBuffers *extras;
 
@@ -132,11 +133,13 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
   for (int i = 0; i < 2; i++) {
     struct GPUShader *sh;
     struct GPUVertFormat *format;
-    DRWShadingGroup *grp = NULL, *grp_sub = NULL;
+    DRWShadingGroup *grp = NULL;
 
     OVERLAY_InstanceFormats *formats = OVERLAY_shader_instance_formats_get();
     OVERLAY_ArmatureCallBuffers *cb = &pd->armature_call_buffers[i];
     DRWPass **p_armature_ps = &psl->armature_ps[i];
+
+    cb->custom_shapes_ghash = BLI_ghash_ptr_new(__func__);
 
     state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
             (pd->armature.transparent ? DRW_STATE_BLEND_ALPHA : DRW_STATE_WRITE_DEPTH);
@@ -162,26 +165,17 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       cb->point_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_point_wire_outline_get());
 
       sh = OVERLAY_shader_armature_shape(false);
-      grp = DRW_shgroup_create(sh, armature_ps);
+      cb->custom_solid = grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_bool_copy(grp, "customShape", false);
       cb->box_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_box_get());
       cb->octa_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_get());
 
-      cb->custom_solid = grp_sub = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_uniform_bool_copy(grp_sub, "customShape", true);
-
       sh = OVERLAY_shader_armature_shape(true);
-      grp = DRW_shgroup_create(sh, armature_ps);
+      cb->custom_outline = grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_state_disable(grp, DRW_STATE_CULL_BACK);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_bool_copy(grp, "customShape", false);
       cb->box_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_box_wire_get());
       cb->octa_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_wire_get());
-
-      cb->custom_outline = grp_sub = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_state_disable(grp_sub, DRW_STATE_CULL_BACK);
-      DRW_shgroup_uniform_bool_copy(grp_sub, "customShape", true);
     }
     {
       format = formats->instance_extra;
@@ -452,6 +446,19 @@ static void drw_shgroup_bone_envelope(ArmatureDrawContext *ctx,
 extern void drw_batch_cache_validate(Object *custom);
 extern void drw_batch_cache_generate_requested(Object *custom);
 
+BLI_INLINE DRWCallBuffer *custom_bone_instance_shgroup(ArmatureDrawContext *ctx,
+                                                       DRWShadingGroup *grp,
+                                                       struct GPUBatch *custom_geom)
+{
+  DRWCallBuffer *buf = BLI_ghash_lookup(ctx->custom_shapes_ghash, custom_geom);
+  if (buf == NULL) {
+    OVERLAY_InstanceFormats *formats = OVERLAY_shader_instance_formats_get();
+    buf = DRW_shgroup_call_buffer_instance(grp, formats->instance_bone, custom_geom);
+    BLI_ghash_insert(ctx->custom_shapes_ghash, custom_geom, buf);
+  }
+  return buf;
+}
+
 static void drw_shgroup_bone_custom_solid(ArmatureDrawContext *ctx,
                                           const float (*bone_mat)[4],
                                           const float bone_color[4],
@@ -467,26 +474,30 @@ static void drw_shgroup_bone_custom_solid(ArmatureDrawContext *ctx,
   struct GPUBatch *edges = DRW_cache_object_edge_detection_get(custom, NULL);
   struct GPUBatch *ledges = DRW_cache_object_loose_edges_get(custom);
   BoneInstanceData inst_data;
+  DRWCallBuffer *buf;
 
   if (surf || edges || ledges) {
     mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
   }
 
   if (surf && ctx->custom_solid) {
+    buf = custom_bone_instance_shgroup(ctx, ctx->custom_solid, surf);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
     OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
-    DRW_shgroup_call_obmat(ctx->custom_solid, surf, inst_data.mat);
+    DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
   if (edges && ctx->custom_outline) {
+    buf = custom_bone_instance_shgroup(ctx, ctx->custom_outline, edges);
     OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
-    DRW_shgroup_call_obmat(ctx->custom_outline, edges, inst_data.mat);
+    DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
   if (ledges) {
+    buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, ledges);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
     OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
-    DRW_shgroup_call_obmat(ctx->custom_wire, ledges, inst_data.mat);
+    DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
   /* TODO(fclem) needs to be moved elsewhere. */
@@ -505,11 +516,12 @@ static void drw_shgroup_bone_custom_wire(ArmatureDrawContext *ctx,
   struct GPUBatch *geom = DRW_cache_object_all_edges_get(custom);
 
   if (geom) {
+    DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, geom);
     BoneInstanceData inst_data;
     mul_m4_m4m4(inst_data.mat, ctx->ob->obmat, bone_mat);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
     OVERLAY_bone_instance_data_set_color(&inst_data, color);
-    DRW_shgroup_call_obmat(ctx->custom_wire, geom, inst_data.mat);
+    DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
   /* TODO(fclem) needs to be moved elsewhere. */
@@ -2129,6 +2141,7 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
   ctx->custom_solid = (is_filled) ? cb->custom_solid : NULL;
   ctx->custom_outline = cb->custom_outline;
   ctx->custom_wire = cb->custom_solid; /* Use same shader. */
+  ctx->custom_shapes_ghash = cb->custom_shapes_ghash;
   ctx->transparent = pd->armature.transparent;
   ctx->show_relations = pd->armature.show_relations;
   ctx->const_color = const_color;
@@ -2184,6 +2197,18 @@ void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
   DRW_object_wire_theme_get(ob, draw_ctx->view_layer, &color);
   armature_context_setup(&arm_ctx, pd, ob, false, color);
   draw_armature_pose(&arm_ctx);
+}
+
+void OVERLAY_armature_cache_finish(OVERLAY_Data *vedata)
+{
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+
+  for (int i = 0; i < 2; i++) {
+    if (pd->armature_call_buffers[i].custom_shapes_ghash) {
+      /* TODO(fclem): Do not free it for each frame but reuse it. Avoiding alloc cost. */
+      BLI_ghash_free(pd->armature_call_buffers[i].custom_shapes_ghash, NULL, NULL);
+    }
+  }
 }
 
 void OVERLAY_armature_draw(OVERLAY_Data *vedata)

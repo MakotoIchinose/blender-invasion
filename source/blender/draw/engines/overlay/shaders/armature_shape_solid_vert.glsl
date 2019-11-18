@@ -1,6 +1,4 @@
 
-uniform bool customShape = false;
-
 /* ---- Instantiated Attrs ---- */
 in vec3 pos;
 in vec3 nor;
@@ -13,8 +11,7 @@ out vec4 finalColor;
 void main()
 {
   vec4 bone_color, state_color;
-  mat4 model_mat = customShape ? ModelMatrix : inst_obmat;
-  model_mat = extract_matrix_packed_data(model_mat, state_color, bone_color);
+  mat4 model_mat = extract_matrix_packed_data(inst_obmat, state_color, bone_color);
 
   /* This is slow and run per vertex, but it's still faster than
    * doing it per instance on CPU and sending it on via instance attribute. */
