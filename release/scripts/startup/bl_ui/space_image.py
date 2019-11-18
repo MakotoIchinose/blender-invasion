@@ -251,6 +251,10 @@ class IMAGE_MT_image(Menu):
                 layout.separator()
                 layout.operator("image.pack", text="Pack")
 
+        if ima:
+            layout.separator()
+            layout.operator("palette.extract_from_image", text="Extract Palette")
+
 
 class IMAGE_MT_image_invert(Menu):
     bl_label = "Invert"
