@@ -4745,6 +4745,8 @@ void uiTemplatePalette(uiLayout *layout,
   PaletteColor *color;
   uiBlock *block;
   uiLayout *col;
+  uiBut *but = NULL;
+
   int row_cols = 0, col_id = 0;
   int cols_per_row = MAX2(uiLayoutGetWidth(layout) / UI_UNIT_X, 1);
 
@@ -4786,6 +4788,33 @@ void uiTemplatePalette(uiLayout *layout,
                 UI_UNIT_X,
                 UI_UNIT_Y,
                 NULL);
+  if (color) {
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "PALETTE_OT_color_move",
+                        WM_OP_INVOKE_DEFAULT,
+                        ICON_TRIA_UP,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        NULL);
+    UI_but_operator_ptr_get(but);
+    RNA_enum_set(but->opptr, "type", -1);
+
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "PALETTE_OT_color_move",
+                        WM_OP_INVOKE_DEFAULT,
+                        ICON_TRIA_DOWN,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        NULL);
+    UI_but_operator_ptr_get(but);
+    RNA_enum_set(but->opptr, "type", 1);
+  }
 
   col = uiLayoutColumn(layout, true);
   uiLayoutRow(col, true);

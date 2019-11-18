@@ -481,6 +481,51 @@ void PALETTE_OT_sort(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/* Move colors in palette. */
+static int palette_color_move_exec(bContext *C, wmOperator *op)
+{
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Palette *palette = paint->palette;
+  PaletteColor *palcolor = BLI_findlink(&palette->colors, palette->active_color);
+
+  if (palcolor == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const int direction = RNA_enum_get(op->ptr, "type");
+
+  BLI_assert(ELEM(direction, -1, 0, 1)); /* we use value below */
+  if (BLI_listbase_link_move(&palette->colors, palcolor, direction)) {
+    palette->active_color += direction;
+    WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, NULL);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void PALETTE_OT_color_move(wmOperatorType *ot)
+{
+  static const EnumPropertyItem slot_move[] = {
+      {-1, "UP", 0, "Up", ""},
+      {1, "DOWN", 0, "Down", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  /* identifiers */
+  ot->name = "Move Palette Color";
+  ot->idname = "PALETTE_OT_color_move";
+  ot->description = "Move the active Color up/down in the list";
+
+  /* api callbacks */
+  ot->exec = palette_color_move_exec;
+  ot->poll = palette_sort_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(ot->srna, "type", slot_move, 0, "Type", "");
+}
+
 /* Join Palette swatches. */
 static bool palette_join_poll(bContext *C)
 {
@@ -1230,6 +1275,7 @@ void ED_operatortypes_paint(void)
 
   WM_operatortype_append(PALETTE_OT_extract_from_image);
   WM_operatortype_append(PALETTE_OT_sort);
+  WM_operatortype_append(PALETTE_OT_color_move);
   WM_operatortype_append(PALETTE_OT_join);
 
   /* paint curve */
