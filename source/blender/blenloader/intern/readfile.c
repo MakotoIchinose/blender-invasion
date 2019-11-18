@@ -9267,7 +9267,7 @@ static BHead *read_libblock(FileData *fd,
                    id->name,
                    fd->are_memchunks_identical);
 
-      if (fd->are_memchunks_identical && !ELEM(idcode, ID_GR, ID_WM, ID_SCR, ID_WS)) {
+      if (fd->are_memchunks_identical && !ELEM(idcode, ID_WM, ID_SCR, ID_WS)) {
         BLI_assert(fd->memfile);
         Main *old_main = fd->old_mainlist->first;
         ID *old_id = NULL;
