@@ -703,13 +703,15 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
     nba = lanpr_get_next_bounding_area(nba, rl, x, y, k, PositiveX, PositiveY, &x, &y);
   }
 }
-static bool lanpr_calculation_is_canceled()
+
+static bool lanpr_calculation_is_canceled(void)
 {
   bool is_canceled;
   BLI_spin_lock(&lanpr_share.lock_render_status);
   switch (lanpr_share.flag_render_status) {
     case LANPR_RENDER_INCOMPELTE:
       is_canceled = true;
+      break;
     default:
       is_canceled = false;
   }
@@ -1013,7 +1015,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   LANPR_RenderVert *rv;
   LANPR_RenderElementLinkNode *reln, *veln, *teln;
   LANPR_RenderLineSegment *rls;
-  double **vp = rb->view_projection;
+  double (*vp)[4] = rb->view_projection;
   int i;
   real a;
   int v_count = 0, t_count = 0;
@@ -1024,11 +1026,10 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   copy_v3_v3_db(clip_advance, rb->view_vector);
 
   double cam_pos[3];
-  double clip_start, clip_end;
+  double clip_start;
   if (rb->viewport_override) {
     copy_v3_v3_db(cam_pos, rb->camera_pos);
     clip_start = rb->near_clip;
-    clip_end = rb->far_clip;
     mul_v3db_db(clip_advance, -clip_start);
   }
   else {
@@ -1817,7 +1818,6 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
 {
   double proj[4][4], view[4][4], result[4][4];
   float inv[4][4];
-  int cam_override;
 
   /* lock becore accessing shared status data */
   BLI_spin_lock(&lanpr_share.lock_render_status);
@@ -2253,13 +2253,6 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
 
   Result = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderVert));
 
-  if (DotL > 0 || DotR < 0) {
-    Result->positive = 1;
-  }
-  else {
-    Result->positive = 0;
-  }
-
   /*  Result->IntersectingOnFace = testing; */
   Result->edge_used = 1;
   /*  Result->IntersectL = l; */
@@ -2290,7 +2283,7 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
   if (rb->viewport_override) {
     ZMax = rb->far_clip;
     ZMin = rb->near_clip;
-    copy_v3db_v3fl(cl, rb->camera_pos);
+    copy_v3_v3_db(cl, rb->camera_pos);
   }
   else {
     ZMax = ((Camera *)rb->camera->data)->clip_end;
@@ -2306,7 +2299,6 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
 
     l = NewShare = mem_static_aquire(&rb->render_data_pool, (sizeof(LANPR_RenderVert)));
 
-    NewShare->positive = 1;
     NewShare->edge_used = 1;
     /*  NewShare->IntersectL = l; */
     NewShare->v = (void *)r; /*  Caution! */
@@ -3915,7 +3907,7 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_o
   lanpr_share.background_render_task = tp;
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 
-  BLI_task_pool_push(tp, lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
+  BLI_task_pool_push(tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
 }
 
 static bool lanpr_camera_exists(struct bContext *c)
@@ -3968,14 +3960,6 @@ void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
   ot->poll = lanpr_camera_exists;
   ot->cancel = lanpr_compute_feature_lines_cancel;
   ot->exec = lanpr_compute_feature_lines_exec;
-}
-
-static bool lanpr_render_buffer_found(struct bContext *UNUSED(C))
-{
-  if (lanpr_share.render_buffer_shared) {
-    return true;
-  }
-  return false;
 }
 
 /* Access */
@@ -4115,7 +4099,6 @@ static void lanpr_update_gp_strokes_single(Depsgraph *dg,
   bGPdata *gpd;
   bGPDlayer *gpl;
   bGPDframe *gpf;
-  ObjectLANPR *obl = &ob->lanpr;
   gpd = gpobj->data;
   gpl = BKE_gpencil_layer_get_by_name(gpd, target_layer, 1);
   if (gpl == NULL) {
@@ -4146,10 +4129,7 @@ static void lanpr_update_gp_strokes_recursive(
 {
   Object *ob;
   Object *gpobj;
-  ModifierData *md;
   bGPdata *gpd;
-  bGPDlayer *gpl;
-  bGPDframe *gpf;
   CollectionObject *co;
   CollectionChild *cc;
 
@@ -4159,6 +4139,7 @@ static void lanpr_update_gp_strokes_recursive(
     ObjectLANPR *obl = &ob->lanpr;
     if (obl->target && obl->target->type == OB_GPENCIL) {
       gpobj = obl->target;
+      gpd = gpobj->data;
 
       if (target_only && target_only != gpobj) {
         continue;
@@ -4267,9 +4248,7 @@ static void lanpr_update_gp_strokes_collection(
     Depsgraph *dg, struct Collection *col, int frame, int this_only, Object *target_only)
 {
   Object *gpobj;
-  bGPdata *gpd;
-  bGPDlayer *gpl;
-  bGPDframe *gpf;
+  bGPdata *gpd = NULL;
   CollectionChild *cc;
 
   /* depth first */
@@ -4369,7 +4348,9 @@ static void lanpr_update_gp_strokes_collection(
     }
   }
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  if(gpd){
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  }
 }
 static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 {

@@ -139,17 +139,6 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
 
 /* =======================================================================[str] */
 
-real tmat_length_3d(tnsVector3d l)
-{
-  return (sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]));
-}
-real tmat_vector_cross_3d(tnsVector3d result, tnsVector3d l, tnsVector3d r)
-{
-  result[0] = l[1] * r[2] - l[2] * r[1];
-  result[1] = l[2] * r[0] - l[0] * r[2];
-  result[2] = l[0] * r[1] - l[1] * r[0];
-  return tmat_length_3d(result);
-}
 void tmat_make_perspective_matrix_44d(
     double (*mProjection)[4], real fFov_rad, real fAspect, real zMin, real zMax)
 {

@@ -105,13 +105,7 @@ typedef struct LANPR_RenderVert {
   struct LANPR_RenderLine *intersecting_line2;
   struct LANPR_RenderTriangle *intersecting_with;
 
-  /** positive 1     Negative 0
-   *      <|              |>
-   * l---->|----->r	l---->|----->r
-   *      <|		          |>
-   * this means dot(r-l,face_normal)<0 then 1 otherwise 0
-   */
-  char positive;
+  /** This will used in future acceleration for intersection processing. */
   char edge_used;
 } LANPR_RenderVert;
 
@@ -565,9 +559,6 @@ void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, int interse
 
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
-
-void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
-bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
 
 bool ED_lanpr_dpix_shader_error(void);
 

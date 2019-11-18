@@ -213,8 +213,6 @@ static void lanpr_cache_init(void *vedata)
   LANPR_StorageList *stl = ((LANPR_Data *)vedata)->stl;
   LANPR_TextureList *txl = ((LANPR_Data *)vedata)->txl;
 
-  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-
   static float normal_object_direction[3] = {0, 0, 1};
 
   /* Transfer reload state */
@@ -446,7 +444,6 @@ static void lanpr_cache_init(void *vedata)
   }
 
   /* Intersection cache must be calculated before drawing. */
-  int updated = 0;
   if (draw_ctx->scene->lanpr.flags & LANPR_AUTO_UPDATE) {
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
       if (is_render) {
@@ -681,10 +678,6 @@ static void lanpr_render_to_image(void *vedata,
                                   const rcti *rect)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  /*  int update_mark = DEG_id_type_any_updated(draw_ctx->depsgraph); */
-  Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
-  SceneLANPR *lanpr = &scene->lanpr;
-
   lanpr_share.re_render = engine;
 
   RE_engine_update_stats(engine, NULL, "LANPR: Initializing");

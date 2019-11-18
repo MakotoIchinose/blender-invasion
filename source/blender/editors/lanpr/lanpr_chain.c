@@ -161,56 +161,6 @@ static LANPR_RenderLineChainItem *lanpr_push_render_line_chain_point(LANPR_Rende
   return rlci;
 }
 
-/*  refer to http://karthaus.nl/rdp/ for description */
-static void lanpr_reduce_render_line_chain_recursive(LANPR_RenderLineChain *rlc,
-                                                     LANPR_RenderLineChainItem *from,
-                                                     LANPR_RenderLineChainItem *to,
-                                                     float dist_threshold)
-{
-  LANPR_RenderLineChainItem *rlci, *next_rlci;
-  float max_dist = 0;
-  LANPR_RenderLineChainItem *max_rlci = 0;
-
-  /*  find the max distance item */
-  for (rlci = from->next; rlci != to; rlci = next_rlci) {
-    next_rlci = rlci->next;
-
-    if (next_rlci &&
-        (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type)) {
-      continue;
-    }
-
-    float dist = dist_to_line_segment_v2(rlci->pos, from->pos, to->pos);
-    if (dist > dist_threshold && dist > max_dist) {
-      max_dist = dist;
-      max_rlci = rlci;
-    }
-    /*  if (dist <= dist_threshold) BLI_remlink(&rlc->chain, (void*)rlci); */
-  }
-
-  if (max_rlci == NULL) {
-    if (from->next == to) {
-      return;
-    }
-    for (rlci = from->next; rlci != to; rlci = next_rlci) {
-      next_rlci = rlci->next;
-      if (next_rlci &&
-          (next_rlci->occlusion != rlci->occlusion || next_rlci->line_type != rlci->line_type)) {
-        continue;
-      }
-      BLI_remlink(&rlc->chain, (void *)rlci);
-    }
-  }
-  else {
-    if (from->next != max_rlci) {
-      lanpr_reduce_render_line_chain_recursive(rlc, from, max_rlci, dist_threshold);
-    }
-    if (to->prev != max_rlci) {
-      lanpr_reduce_render_line_chain_recursive(rlc, max_rlci, to, dist_threshold);
-    }
-  }
-}
-
 void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLineChain *rlc;
