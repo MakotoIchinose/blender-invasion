@@ -444,7 +444,11 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
     BKE_palette_sort_hsv(color_array, totcol);
 
     /* Clear old color swatches. */
-    BLI_listbase_clear(&palette->colors);
+    PaletteColor *color_next = NULL;
+    for (PaletteColor *color = palette->colors.first; color; color = color_next) {
+      color_next = color->next;
+      BKE_palette_color_remove(palette, color);
+    }
 
     /* Recreate swatches sorted. */
     for (int i = 0; i < totcol; i++) {
