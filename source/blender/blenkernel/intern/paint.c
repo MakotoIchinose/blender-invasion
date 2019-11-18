@@ -651,8 +651,8 @@ bool BKE_palette_is_empty(const struct Palette *palette)
 static int palettecolor_compare_hsv(const void *a1, const void *a2)
 {
   const tPaletteColorHSV *ps1 = a1, *ps2 = a2;
-  uint a = hsv_to_cpack(ps1->h, ps1->s, ps1->v);
-  uint b = hsv_to_cpack(ps2->h, ps2->s, ps2->v);
+  double a = (ps1->h * 1e11) + (ps1->s * 1e7) + (ps1->v * 1e3);
+  double b = (ps2->h * 1e11) + (ps2->s * 1e7) + (ps2->v * 1e3);
 
   if (a < b) {
     return -1;
