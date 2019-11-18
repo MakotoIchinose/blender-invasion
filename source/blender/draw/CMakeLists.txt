@@ -148,6 +148,7 @@ set(SRC
   engines/overlay/overlay_motion_path.c
   engines/overlay/overlay_outline.c
   engines/overlay/overlay_paint.c
+  engines/overlay/overlay_particle.c
   engines/overlay/overlay_shader.c
   engines/overlay/overlay_wireframe.c
 
@@ -404,6 +405,8 @@ data_to_c_simple(engines/overlay/shaders/edit_mesh_analysis_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_mix_occlude_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_skin_root_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/edit_mesh_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/edit_particle_strand_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/edit_particle_point_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/extra_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/extra_groundline_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/extra_point_vert.glsl SRC)
@@ -434,6 +437,8 @@ data_to_c_simple(engines/overlay/shaders/paint_vertcol_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_weight_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_weight_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_wire_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/particle_vert.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/particle_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/volume_velocity_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)

@@ -3820,46 +3820,18 @@ GPUBatch *DRW_cache_particles_get_prim(int type)
   switch (type) {
     case PART_DRAW_CROSS:
       if (!SHC.drw_particle_cross) {
-        static GPUVertFormat format = {0};
-        static uint pos_id, axis_id;
-
-        if (format.attr_len == 0) {
-          pos_id = GPU_vertformat_attr_add(&format, "inst_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-          axis_id = GPU_vertformat_attr_add(&format, "axis", GPU_COMP_I32, 1, GPU_FETCH_INT);
-        }
-
+        GPUVertFormat format = extra_vert_format();
         GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
         GPU_vertbuf_data_alloc(vbo, 6);
 
-        /* X axis */
-        float co[3] = {-1.0f, 0.0f, 0.0f};
-        int axis = -1;
-        GPU_vertbuf_attr_set(vbo, pos_id, 0, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 0, &axis);
-
-        co[0] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 1, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 1, &axis);
-
-        /* Y axis */
-        co[0] = 0.0f;
-        co[1] = -1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 2, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 2, &axis);
-
-        co[1] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 3, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 3, &axis);
-
-        /* Z axis */
-        co[1] = 0.0f;
-        co[2] = -1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 4, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 4, &axis);
-
-        co[2] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 5, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 5, &axis);
+        int v = 0;
+        int flag = 0;
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, -1.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 1.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{-1.0f, 0.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{1.0f, 0.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, -1.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 1.0f}, flag});
 
         SHC.drw_particle_cross = GPU_batch_create_ex(
             GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
@@ -3868,46 +3840,19 @@ GPUBatch *DRW_cache_particles_get_prim(int type)
       return SHC.drw_particle_cross;
     case PART_DRAW_AXIS:
       if (!SHC.drw_particle_axis) {
-        static GPUVertFormat format = {0};
-        static uint pos_id, axis_id;
-
-        if (format.attr_len == 0) {
-          pos_id = GPU_vertformat_attr_add(&format, "inst_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-          axis_id = GPU_vertformat_attr_add(&format, "axis", GPU_COMP_I32, 1, GPU_FETCH_INT);
-        }
-
+        GPUVertFormat format = extra_vert_format();
         GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
         GPU_vertbuf_data_alloc(vbo, 6);
 
-        /* X axis */
-        float co[3] = {0.0f, 0.0f, 0.0f};
-        int axis = 0;
-        GPU_vertbuf_attr_set(vbo, pos_id, 0, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 0, &axis);
-
-        co[0] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 1, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 1, &axis);
-
-        /* Y axis */
-        co[0] = 0.0f;
-        axis = 1;
-        GPU_vertbuf_attr_set(vbo, pos_id, 2, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 2, &axis);
-
-        co[1] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 3, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 3, &axis);
-
-        /* Z axis */
-        co[1] = 0.0f;
-        axis = 2;
-        GPU_vertbuf_attr_set(vbo, pos_id, 4, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 4, &axis);
-
-        co[2] = 1.0f;
-        GPU_vertbuf_attr_set(vbo, pos_id, 5, co);
-        GPU_vertbuf_attr_set(vbo, axis_id, 5, &axis);
+        int v = 0;
+        int flag = VCLASS_EMPTY_AXES;
+        /* Set minimum to 0.001f so we can easilly normalize to get the color. */
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0001f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 2.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0001f, 0.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{2.0f, 0.0f, 0.0f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 0.0001f}, flag});
+        GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0f, 0.0f, 2.0f}, flag});
 
         SHC.drw_particle_axis = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
       }
@@ -3916,30 +3861,21 @@ GPUBatch *DRW_cache_particles_get_prim(int type)
     case PART_DRAW_CIRC:
 #define CIRCLE_RESOL 32
       if (!SHC.drw_particle_circle) {
-        float v[3] = {0.0f, 0.0f, 0.0f};
-        int axis = -1;
-
-        static GPUVertFormat format = {0};
-        static uint pos_id, axis_id;
-
-        if (format.attr_len == 0) {
-          pos_id = GPU_vertformat_attr_add(&format, "inst_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-          axis_id = GPU_vertformat_attr_add(&format, "axis", GPU_COMP_I32, 1, GPU_FETCH_INT);
-        }
-
+        GPUVertFormat format = extra_vert_format();
         GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-        GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL);
+        GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL + 1);
 
-        for (int a = 0; a < CIRCLE_RESOL; a++) {
-          v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-          v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-          v[2] = 0.0f;
-          GPU_vertbuf_attr_set(vbo, pos_id, a, v);
-          GPU_vertbuf_attr_set(vbo, axis_id, a, &axis);
+        int v = 0;
+        int flag = VCLASS_SCREENALIGNED;
+        for (int a = 0; a <= CIRCLE_RESOL; a++) {
+          float angle = (2.0f * M_PI * a) / CIRCLE_RESOL;
+          float x = sinf(angle);
+          float y = cosf(angle);
+          GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x, y, 0.0f}, flag});
         }
 
         SHC.drw_particle_circle = GPU_batch_create_ex(
-            GPU_PRIM_LINE_LOOP, vbo, NULL, GPU_BATCH_OWNS_VBO);
+            GPU_PRIM_LINE_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
       }
 
       return SHC.drw_particle_circle;

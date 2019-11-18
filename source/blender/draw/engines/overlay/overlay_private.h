@@ -60,6 +60,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_mesh_mix_occlude_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_mesh_weight_ps;
+  DRWPass *edit_particle_ps;
   DRWPass *edit_text_overlay_ps;
   DRWPass *edit_text_wire_ps[2];
   DRWPass *extra_ps[2];
@@ -82,6 +83,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *outlines_resolve_ps;
   DRWPass *paint_color_ps;
   DRWPass *paint_overlay_ps;
+  DRWPass *particle_ps;
   DRWPass *wireframe_ps;
   DRWPass *wireframe_xray_ps;
 } OVERLAY_PassList;
@@ -206,6 +208,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_mesh_lnormals_grp;
   DRWShadingGroup *edit_mesh_analysis_grp;
   DRWShadingGroup *edit_mesh_weight_grp;
+  DRWShadingGroup *edit_particle_strand_grp;
+  DRWShadingGroup *edit_particle_point_grp;
   DRWShadingGroup *edit_text_overlay_grp;
   DRWShadingGroup *edit_text_wire_grp[2];
   DRWShadingGroup *facing_grp;
@@ -227,6 +231,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *paint_wire_selected_grp;
   DRWShadingGroup *paint_point_grp;
   DRWShadingGroup *paint_face_grp;
+  DRWShadingGroup *particle_dots_grp;
+  DRWShadingGroup *particle_shapes_grp;
 
   DRWView *view_wires;
   DRWView *view_edit_faces;
@@ -266,6 +272,10 @@ typedef struct OVERLAY_PrivateData {
     bool select_edge;
     int flag; /** Copy of v3d->overlay.edit_flag.  */
   } edit_mesh;
+  struct {
+    bool use_weight;
+    int select_mode;
+  } edit_particle;
   struct {
     bool transparent;
     bool show_relations;
@@ -362,6 +372,10 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_edit_particle_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_particle_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_edit_particle_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_extra_draw(OVERLAY_Data *vedata);
@@ -430,6 +444,10 @@ void OVERLAY_paint_vertex_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_paint_weight_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_paint_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_particle_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_particle_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_particle_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_wireframe_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
@@ -460,6 +478,8 @@ GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void);
 GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
+GPUShader *OVERLAY_shader_edit_particle_strand(void);
+GPUShader *OVERLAY_shader_edit_particle_point(void);
 GPUShader *OVERLAY_shader_extra(void);
 GPUShader *OVERLAY_shader_extra_groundline(void);
 GPUShader *OVERLAY_shader_extra_wire(bool use_object);
@@ -481,6 +501,8 @@ GPUShader *OVERLAY_shader_paint_texture(void);
 GPUShader *OVERLAY_shader_paint_vertcol(void);
 GPUShader *OVERLAY_shader_paint_weight(void);
 GPUShader *OVERLAY_shader_paint_wire(void);
+GPUShader *OVERLAY_shader_particle_dot(void);
+GPUShader *OVERLAY_shader_particle_shape(void);
 GPUShader *OVERLAY_shader_volume_velocity(bool use_needle);
 GPUShader *OVERLAY_shader_wireframe(void);
 GPUShader *OVERLAY_shader_wireframe_select(void);

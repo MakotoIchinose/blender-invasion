@@ -54,29 +54,8 @@ static void OVERLAY_engine_init(void *vedata)
     case CTX_MODE_EDIT_MESH:
       OVERLAY_edit_mesh_init(vedata);
       break;
-    case CTX_MODE_EDIT_SURFACE:
-    case CTX_MODE_EDIT_CURVE:
-    case CTX_MODE_EDIT_TEXT:
-    case CTX_MODE_EDIT_ARMATURE:
-    case CTX_MODE_EDIT_METABALL:
-    case CTX_MODE_EDIT_LATTICE:
-    case CTX_MODE_PAINT_VERTEX:
-    case CTX_MODE_PAINT_TEXTURE:
-    case CTX_MODE_PAINT_WEIGHT:
-    case CTX_MODE_POSE:
-      /* Nothing to do. */
-      break;
-    case CTX_MODE_PARTICLE:
-      break;
-    case CTX_MODE_SCULPT:
-    case CTX_MODE_OBJECT:
-    case CTX_MODE_PAINT_GPENCIL:
-    case CTX_MODE_EDIT_GPENCIL:
-    case CTX_MODE_SCULPT_GPENCIL:
-    case CTX_MODE_WEIGHT_GPENCIL:
-      break;
     default:
-      BLI_assert(!"Draw mode invalid");
+      /* Nothing to do. */
       break;
   }
   OVERLAY_grid_init(vedata);
@@ -131,6 +110,7 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_edit_lattice_cache_init(vedata);
       break;
     case CTX_MODE_PARTICLE:
+      OVERLAY_edit_particle_cache_init(vedata);
       break;
     case CTX_MODE_POSE:
     case CTX_MODE_PAINT_WEIGHT:
@@ -157,6 +137,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_metaball_cache_init(vedata);
   OVERLAY_motion_path_cache_init(vedata);
   OVERLAY_outline_cache_init(vedata);
+  OVERLAY_particle_cache_init(vedata);
   OVERLAY_wireframe_cache_init(vedata);
 }
 
@@ -191,6 +172,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool renderable = DRW_object_is_renderable(ob);
   const bool in_pose_mode = ob->type == OB_ARMATURE && DRW_pose_mode_armature(ob, draw_ctx->obact);
   const bool in_edit_mode = BKE_object_is_in_editmode(ob);
+  const bool in_part_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
@@ -220,6 +202,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   if (draw_outlines) {
     OVERLAY_outline_cache_populate(vedata, ob, dupli, init);
   }
+
   if (in_edit_mode) {
     switch (ob->type) {
       case OB_MESH:
@@ -245,16 +228,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
-
-  if (in_pose_mode) {
+  else if (in_pose_mode) {
     OVERLAY_pose_armature_cache_populate(vedata, ob);
   }
-
-  if (draw_motion_paths) {
-    OVERLAY_motion_path_cache_populate(vedata, ob);
-  }
-
-  if (in_paint_mode) {
+  else if (in_paint_mode) {
     switch (draw_ctx->object_mode) {
       case OB_MODE_VERTEX_PAINT:
         OVERLAY_paint_vertex_cache_populate(vedata, ob);
@@ -269,9 +246,17 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
+  else if (in_part_edit_mode) {
+    OVERLAY_edit_particle_cache_populate(vedata, ob);
+  }
+
   // if (scuplt_mode) {
   //   OVERLAY_sculpt_cache_populate();
   // }
+
+  if (draw_motion_paths) {
+    OVERLAY_motion_path_cache_populate(vedata, ob);
+  }
 
   switch (ob->type) {
     case OB_ARMATURE:
@@ -315,6 +300,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     }
   }
 
+  if (!BLI_listbase_is_empty(&ob->particlesystem)) {
+    OVERLAY_particle_cache_populate(vedata, ob);
+  }
+
   /* Relationship, object center, bounbox ... */
   OVERLAY_extra_cache_populate(vedata, ob);
 
@@ -337,6 +326,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
   OVERLAY_extra_draw(vedata);
+  OVERLAY_particle_draw(vedata);
   OVERLAY_metaball_draw(vedata);
   OVERLAY_armature_draw(vedata);
   OVERLAY_grid_draw(vedata);
@@ -362,6 +352,9 @@ static void OVERLAY_draw_scene(void *vedata)
     case CTX_MODE_PAINT_VERTEX:
     case CTX_MODE_PAINT_TEXTURE:
       OVERLAY_paint_draw(vedata);
+      break;
+    case CTX_MODE_PARTICLE:
+      OVERLAY_edit_particle_draw(vedata);
       break;
     default:
       break;

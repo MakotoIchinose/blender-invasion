@@ -60,6 +60,8 @@ extern char datatoc_edit_mesh_mix_occlude_frag_glsl[];
 extern char datatoc_edit_mesh_skin_root_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
+extern char datatoc_edit_particle_strand_vert_glsl[];
+extern char datatoc_edit_particle_point_vert_glsl[];
 extern char datatoc_extra_vert_glsl[];
 extern char datatoc_extra_groundline_vert_glsl[];
 extern char datatoc_extra_point_vert_glsl[];
@@ -90,6 +92,8 @@ extern char datatoc_paint_vertcol_vert_glsl[];
 extern char datatoc_paint_weight_frag_glsl[];
 extern char datatoc_paint_weight_vert_glsl[];
 extern char datatoc_paint_wire_vert_glsl[];
+extern char datatoc_particle_vert_glsl[];
+extern char datatoc_particle_frag_glsl[];
 extern char datatoc_volume_velocity_vert_glsl[];
 extern char datatoc_wireframe_vert_glsl[];
 extern char datatoc_wireframe_geom_glsl[];
@@ -135,6 +139,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_fnormals;
   GPUShader *edit_mesh_mix_occlude;
   GPUShader *edit_mesh_analysis;
+  GPUShader *edit_particle_strand;
+  GPUShader *edit_particle_point;
   GPUShader *extra;
   GPUShader *extra_groundline;
   GPUShader *extra_wire[2];
@@ -158,6 +164,8 @@ typedef struct OVERLAY_Shaders {
   GPUShader *paint_vertcol;
   GPUShader *paint_weight;
   GPUShader *paint_wire;
+  GPUShader *particle_dot;
+  GPUShader *particle_shape;
   GPUShader *uniform_color;
   GPUShader *volume_velocity_needle_sh;
   GPUShader *volume_velocity_sh;
@@ -664,6 +672,44 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void)
   return sh_data->edit_mesh_skin_root;
 }
 
+GPUShader *OVERLAY_shader_edit_particle_strand(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_particle_strand) {
+    sh_data->edit_particle_strand = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_particle_strand_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_3D_smooth_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_particle_strand;
+}
+
+GPUShader *OVERLAY_shader_edit_particle_point(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_particle_point) {
+    sh_data->edit_particle_point = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_edit_particle_point_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_point_varying_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->edit_particle_point;
+}
+
 GPUShader *OVERLAY_shader_extra(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -1072,6 +1118,44 @@ GPUShader *OVERLAY_shader_paint_wire(void)
     });
   }
   return sh_data->paint_wire;
+}
+
+GPUShader *OVERLAY_shader_particle_dot(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->particle_dot) {
+    sh_data->particle_dot = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_particle_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_particle_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define USE_DOTS\n", NULL},
+    });
+  }
+  return sh_data->particle_dot;
+}
+
+GPUShader *OVERLAY_shader_particle_shape(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->particle_shape) {
+    sh_data->particle_shape = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_particle_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define IN_PLACE_INSTANCES\n", NULL},
+    });
+  }
+  return sh_data->particle_shape;
 }
 
 struct GPUShader *OVERLAY_shader_uniform_color(void)
