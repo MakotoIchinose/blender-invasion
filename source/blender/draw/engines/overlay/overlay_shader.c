@@ -1310,12 +1310,6 @@ OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void)
                                   {"color", DRW_ATTR_FLOAT, 4},
                                   {"inst_obmat", DRW_ATTR_FLOAT, 16},
                               });
-  DRW_shgroup_instance_format(g_formats.wire_dashed_extra,
-                              {
-                                  {"pos", DRW_ATTR_FLOAT, 3},
-                                  {"dash_pos", DRW_ATTR_FLOAT, 3},
-                                  {"color", DRW_ATTR_FLOAT, 4},
-                              });
   DRW_shgroup_instance_format(g_formats.wire_extra,
                               {
                                   {"pos", DRW_ATTR_FLOAT, 3},

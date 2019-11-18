@@ -344,7 +344,6 @@ typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *pos;
   struct GPUVertFormat *pos_color;
   struct GPUVertFormat *wire_extra;
-  struct GPUVertFormat *wire_dashed_extra;
 } OVERLAY_InstanceFormats;
 
 void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);

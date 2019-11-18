@@ -194,7 +194,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       grp = DRW_shgroup_create(sh, extra_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
 
-      cb->extra_dashed_lines = BUF_LINE(grp, formats->wire_dashed_extra);
+      cb->extra_dashed_lines = BUF_LINE(grp, formats->pos_color);
       cb->extra_lines = BUF_LINE(grp, formats->wire_extra);
     }
     {
@@ -244,8 +244,8 @@ void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
                                const float end[3],
                                const float color[4])
 {
-  DRW_buffer_add_entry(cb->extra_dashed_lines, start, start, color);
-  DRW_buffer_add_entry(cb->extra_dashed_lines, end, start, color);
+  DRW_buffer_add_entry(cb->extra_dashed_lines, end, color);
+  DRW_buffer_add_entry(cb->extra_dashed_lines, start, color);
 }
 
 void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
