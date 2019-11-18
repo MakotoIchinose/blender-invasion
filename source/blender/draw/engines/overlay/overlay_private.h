@@ -68,7 +68,8 @@ typedef struct OVERLAY_PassList {
   DRWPass *extra_centers_ps;
   DRWPass *facing_ps;
   DRWPass *grid_ps;
-  DRWPass *image_background_ps;
+  DRWPass *image_background_under_ps;
+  DRWPass *image_background_over_ps;
   DRWPass *image_empties_ps;
   DRWPass *image_empties_back_ps;
   DRWPass *image_empties_blend_ps;

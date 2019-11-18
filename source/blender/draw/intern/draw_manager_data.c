@@ -1950,4 +1950,14 @@ void DRW_pass_sort_shgroup_z(DRWPass *pass)
   pass->shgroups.last = last;
 }
 
+/**
+ * Reverse Shading group submission order.
+ */
+void DRW_pass_sort_shgroup_reverse(DRWPass *pass)
+{
+  pass->shgroups.last = pass->shgroups.first;
+  /* WARNING: Assume that DRWShadingGroup->next is the first member. */
+  BLI_linklist_reverse((LinkNode **)&pass->shgroups.first);
+}
+
 /** \} */

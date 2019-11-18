@@ -42,9 +42,13 @@ void OVERLAY_image_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
+  DRWState state;
 
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_UNDER_PREMUL;
-  DRW_PASS_CREATE(psl->image_background_ps, state);
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ALPHA_UNDER_PREMUL;
+  DRW_PASS_CREATE(psl->image_background_under_ps, state);
+
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
+  DRW_PASS_CREATE(psl->image_background_over_ps, state);
 
   state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
   DRW_PASS_CREATE(psl->image_empties_ps, state | pd->clipping_state);
@@ -311,19 +315,28 @@ void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob)
       image_camera_background_matrix_get(cam, bgpic, draw_ctx, aspect, mat);
 
       mul_m4_m4m4(mat, norm_obmat, mat);
+      const bool is_foreground = (bgpic->flag & CAM_BGIMG_FLAG_FOREGROUND) != 0;
 
-      DRWPass *pass = (bgpic->flag & CAM_BGIMG_FLAG_FOREGROUND) ? psl->image_foreground_ps :
-                                                                  psl->image_background_ps;
-      GPUShader *sh = OVERLAY_shader_image();
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, pass);
-      float color[4] = {1.0f, 1.0f, 1.0f, bgpic->alpha};
-      DRW_shgroup_uniform_texture(grp, "imgTexture", tex);
-      DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", use_alpha_premult);
-      DRW_shgroup_uniform_bool_copy(grp, "imgAlphaBlend", true);
-      DRW_shgroup_uniform_bool_copy(grp, "imgLinear", !DRW_state_do_color_management());
-      DRW_shgroup_uniform_bool_copy(grp, "depthSet", true);
-      DRW_shgroup_uniform_vec4_copy(grp, "color", color);
-      DRW_shgroup_call_obmat(grp, DRW_cache_empty_image_plane_get(), mat);
+      /* When drawing background we do 2 passes.
+       * - One alpha over, which works where background is visible.
+       * - One alpha under, works under partially visible objects. (only in cycles)
+       * This approach is not ideal and should be revisited.
+       **/
+      for (int i = 0; i < (is_foreground ? 1 : 2); i++) {
+        DRWPass *pass = is_foreground ? psl->image_foreground_ps :
+                                        ((i == 0) ? psl->image_background_under_ps :
+                                                    psl->image_background_over_ps);
+        GPUShader *sh = OVERLAY_shader_image();
+        DRWShadingGroup *grp = DRW_shgroup_create(sh, pass);
+        float color[4] = {1.0f, 1.0f, 1.0f, bgpic->alpha};
+        DRW_shgroup_uniform_texture(grp, "imgTexture", tex);
+        DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", use_alpha_premult);
+        DRW_shgroup_uniform_bool_copy(grp, "imgAlphaBlend", true);
+        DRW_shgroup_uniform_bool_copy(grp, "imgLinear", !DRW_state_do_color_management());
+        DRW_shgroup_uniform_bool_copy(grp, "depthSet", true);
+        DRW_shgroup_uniform_vec4_copy(grp, "color", color);
+        DRW_shgroup_call_obmat(grp, DRW_cache_empty_image_plane_get(), mat);
+      }
     }
   }
 }
@@ -405,16 +418,22 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 }
 
-void OVERLAY_image_cache_finish(OVERLAY_Data *UNUSED(vedata))
+void OVERLAY_image_cache_finish(OVERLAY_Data *vedata)
 {
-  /* Order by Z depth. */
+  OVERLAY_PassList *psl = vedata->psl;
+
+  DRW_pass_sort_shgroup_reverse(psl->image_background_under_ps);
+  DRW_pass_sort_shgroup_z(psl->image_empties_blend_ps);
+  DRW_pass_sort_shgroup_z(psl->image_empties_front_ps);
+  DRW_pass_sort_shgroup_z(psl->image_empties_back_ps);
 }
 
 void OVERLAY_image_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   /* TODO better ordering with other passes. */
-  DRW_draw_pass(psl->image_background_ps);
+  DRW_draw_pass(psl->image_background_over_ps);
+  DRW_draw_pass(psl->image_background_under_ps);
   DRW_draw_pass(psl->image_empties_back_ps);
 
   DRW_draw_pass(psl->image_empties_ps);

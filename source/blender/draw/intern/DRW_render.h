@@ -550,6 +550,7 @@ void DRW_pass_foreach_shgroup(DRWPass *pass,
                               void (*callback)(void *userData, DRWShadingGroup *shgrp),
                               void *userData);
 void DRW_pass_sort_shgroup_z(DRWPass *pass);
+void DRW_pass_sort_shgroup_reverse(DRWPass *pass);
 
 bool DRW_pass_is_empty(DRWPass *pass);
 
