@@ -150,6 +150,7 @@ set(SRC
   engines/overlay/overlay_paint.c
   engines/overlay/overlay_particle.c
   engines/overlay/overlay_shader.c
+  engines/overlay/overlay_sculpt.c
   engines/overlay/overlay_wireframe.c
 
   DRW_engine.h
@@ -335,7 +336,6 @@ data_to_c_simple(modes/shaders/paint_vert_frag.glsl SRC)
 data_to_c_simple(modes/shaders/particle_strand_frag.glsl SRC)
 data_to_c_simple(modes/shaders/particle_strand_vert.glsl SRC)
 data_to_c_simple(modes/shaders/pose_selection_vert.glsl SRC)
-data_to_c_simple(modes/shaders/sculpt_mask_vert.glsl SRC)
 data_to_c_simple(modes/shaders/volume_velocity_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_vert.glsl SRC)
@@ -439,6 +439,7 @@ data_to_c_simple(engines/overlay/shaders/paint_weight_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/paint_wire_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/particle_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/particle_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/sculpt_mask_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/volume_velocity_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_geom.glsl SRC)

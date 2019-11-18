@@ -119,6 +119,8 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_paint_cache_init(vedata);
       break;
     case CTX_MODE_SCULPT:
+      OVERLAY_sculpt_cache_init(vedata);
+      break;
     case CTX_MODE_OBJECT:
     case CTX_MODE_PAINT_GPENCIL:
     case CTX_MODE_EDIT_GPENCIL:
@@ -175,6 +177,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool in_part_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
+  const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
   const bool draw_wires = draw_surface && ((pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) ||
@@ -250,9 +253,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     OVERLAY_edit_particle_cache_populate(vedata, ob);
   }
 
-  // if (scuplt_mode) {
-  //   OVERLAY_sculpt_cache_populate();
-  // }
+  if (in_sculpt_mode) {
+    OVERLAY_sculpt_cache_populate(vedata, ob);
+  }
 
   if (draw_motion_paths) {
     OVERLAY_motion_path_cache_populate(vedata, ob);
@@ -355,6 +358,9 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_PARTICLE:
       OVERLAY_edit_particle_draw(vedata);
+      break;
+    case CTX_MODE_SCULPT:
+      OVERLAY_sculpt_draw(vedata);
       break;
     default:
       break;
