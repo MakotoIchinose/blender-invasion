@@ -647,30 +647,45 @@ bool BKE_palette_is_empty(const struct Palette *palette)
   return BLI_listbase_is_empty(&palette->colors);
 }
 
-static double palettecolor_make_sortkey(float h, float s, float v)
-{
-  /* Round values. */
-  int hi = h * 1000;
-  int si = s * 1000;
-  int vi = v * 1000;
-
-  double key = (hi * 1e8) + (si * 1e4) + vi;
-
-  return key;
-}
-
 /* helper function to sort using qsort */
 static int palettecolor_compare_hsv(const void *a1, const void *a2)
 {
   const tPaletteColorHSV *ps1 = a1, *ps2 = a2;
-  double a = palettecolor_make_sortkey(ps1->h, ps1->s, 1.0f - ps1->v);
-  double b = palettecolor_make_sortkey(ps2->h, ps2->s, 1.0f - ps2->v);
 
-  if (a < b) {
+  /* Hue */
+  if (ps1->h > ps2->h) {
+    return 1;
+  }
+  else if (ps1->h < ps2->h) {
     return -1;
   }
-  else if (a > b) {
+
+#if 0
+  /* Luminance. */
+  float lum1 = sqrt(0.241f * ps1->h + 0.691f * ps1->s + 0.068f * ps1->v);
+  float lum2 = sqrt(0.241f * ps2->h + 0.691f * ps2->s + 0.068f * ps2->v);
+  if (lum1 > lum2) {
     return 1;
+  }
+  else if (lum1 < lum2) {
+    return -1;
+  }
+#endif
+
+  /* Saturation. */
+  if (ps1->s > ps2->s) {
+    return 1;
+  }
+  else if (ps1->s < ps2->s) {
+    return -1;
+  }
+
+  /* Value. */
+  if (1.0f - ps1->v > 1.0f - ps2->v) {
+    return 1;
+  }
+  else if (1.0f - ps1->v < 1.0f - ps2->v) {
+    return -1;
   }
 
   return 0;
