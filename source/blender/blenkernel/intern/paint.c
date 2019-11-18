@@ -647,12 +647,24 @@ bool BKE_palette_is_empty(const struct Palette *palette)
   return BLI_listbase_is_empty(&palette->colors);
 }
 
+static double palettecolor_make_sortkey(float h, float s, float v)
+{
+  /* Round values. */
+  int hi = h * 1000;
+  int si = s * 1000;
+  int vi = v * 1000;
+
+  double key = (hi * 1e8) + (si * 1e4) + vi;
+
+  return key;
+}
+
 /* helper function to sort using qsort */
 static int palettecolor_compare_hsv(const void *a1, const void *a2)
 {
   const tPaletteColorHSV *ps1 = a1, *ps2 = a2;
-  double a = (ps1->h * 1e11) + (ps1->s * 1e7) + ((1.0f - ps1->v) * 1e3);
-  double b = (ps2->h * 1e11) + (ps2->s * 1e7) + ((1.0f - ps2->v) * 1e3);
+  double a = palettecolor_make_sortkey(ps1->h, ps1->s, 1.0f - ps1->v);
+  double b = palettecolor_make_sortkey(ps2->h, ps2->s, 1.0f - ps2->v);
 
   if (a < b) {
     return -1;
