@@ -167,9 +167,14 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
   OVERLAY_PrivateData *pd = stl->pd;
-  const bool use_wire = (pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) != 0;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
+  const bool all_wires = (ob->dtx & OB_DRAW_ALL_EDGES);
+  const bool is_wire = (ob->dt < OB_SOLID);
+  const bool is_xray = (ob->dtx & OB_DRAWXRAY);
+  const bool is_mesh = ob->type == OB_MESH;
+  const bool use_wire = (pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) || (ob->dtx & OB_DRAWWIRE) ||
+                        (ob->dt == OB_WIRE);
 
   /* Fast path for duplis. */
   if (dupli && !init_dupli) {
@@ -187,7 +192,7 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 
   const bool is_edit_mode = BKE_object_is_in_editmode(ob);
   bool has_edit_mesh_cage = false;
-  if (ob->type == OB_MESH) {
+  if (is_mesh && is_edit_mode) {
     /* TODO: Should be its own function. */
     Mesh *me = (Mesh *)ob->data;
     BMEditMesh *embm = me->edit_mesh;
@@ -197,13 +202,9 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
   }
 
   /* Don't do that in edit Mesh mode, unless there is a modifier preview. */
-  if (!use_wire || (((ob != draw_ctx->object_edit) && !is_edit_mode) || has_edit_mesh_cage) ||
-      ob->type != OB_MESH) {
+  if (use_wire && (!is_mesh || (!is_edit_mode || has_edit_mesh_cage))) {
     const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->v3d) &&
                                  !DRW_state_is_image_render();
-    const bool all_wires = (ob->dtx & OB_DRAW_ALL_EDGES);
-    const bool is_wire = (ob->dt < OB_SOLID);
-    const bool is_xray = (ob->dtx & OB_DRAWXRAY);
     const bool use_coloring = (use_wire && !is_edit_mode && !use_sculpt_pbvh &&
                                !has_edit_mesh_cage);
     DRWShadingGroup *shgrp = NULL;
@@ -243,6 +244,26 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
     if (dupli) {
       dupli->wire_shgrp = shgrp;
       dupli->wire_geom = geom;
+    }
+  }
+  else if (is_mesh && (!is_edit_mode || has_edit_mesh_cage)) {
+    OVERLAY_ExtraCallBuffers *cb = OVERLAY_extra_call_buffer_get(vedata, ob);
+    Mesh *me = ob->data;
+    float *color;
+    DRW_object_wire_theme_get(ob, draw_ctx->view_layer, &color);
+
+    /* Draw loose geometry. */
+    if (me->totedge > 0 || has_edit_mesh_cage) {
+      struct GPUBatch *geom = DRW_cache_mesh_loose_edges_get(ob);
+      if (geom) {
+        OVERLAY_extra_wire(cb, geom, ob->obmat, color);
+      }
+    }
+    else if (me->totedge == 0) {
+      struct GPUBatch *geom = DRW_cache_mesh_all_verts_get(ob);
+      if (geom) {
+        OVERLAY_extra_loose_points(cb, geom, ob->obmat, color);
+      }
     }
   }
 }

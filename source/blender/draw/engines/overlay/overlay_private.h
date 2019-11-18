@@ -164,6 +164,7 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWCallBuffer *speaker;
 
   DRWShadingGroup *extra_wire;
+  DRWShadingGroup *extra_loose_points;
 } OVERLAY_ExtraCallBuffers;
 
 typedef struct OVERLAY_ArmatureCallBuffers {
@@ -404,6 +405,10 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          const float draw_size,
                          const char draw_type,
                          const float color[4]);
+void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
+                                struct GPUBatch *geom,
+                                const float mat[4][4],
+                                const float color[4]);
 void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
                         struct GPUBatch *geom,
                         const float mat[4][4],
@@ -490,6 +495,7 @@ GPUShader *OVERLAY_shader_edit_particle_point(void);
 GPUShader *OVERLAY_shader_extra(void);
 GPUShader *OVERLAY_shader_extra_groundline(void);
 GPUShader *OVERLAY_shader_extra_wire(bool use_object);
+GPUShader *OVERLAY_shader_extra_loose_point(void);
 GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_grid(void);

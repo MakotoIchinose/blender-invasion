@@ -178,10 +178,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
   const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL);
+  const bool has_surface = ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_MBALL, OB_FONT);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
-  const bool draw_wires = draw_surface && ((pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) ||
-                                           (ob->dtx & OB_DRAWWIRE) || (ob->dt == OB_WIRE));
+  const bool draw_wires = draw_surface && has_surface;
   const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
                              (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              ((ob->base_flag & BASE_SELECTED) ||

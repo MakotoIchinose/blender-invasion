@@ -204,6 +204,12 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
     }
     {
+      sh = OVERLAY_shader_extra_loose_point();
+
+      cb->extra_loose_points = grp = DRW_shgroup_create(sh, extra_ps);
+      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+    }
+    {
       format = formats->pos;
       sh = OVERLAY_shader_extra_point();
 
@@ -256,6 +262,20 @@ OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Ob
   bool do_in_front = (ob->dtx & OB_DRAWXRAY) != 0;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   return &pd->extra_call_buffers[do_in_front];
+}
+
+void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
+                                struct GPUBatch *geom,
+                                const float mat[4][4],
+                                const float color[4])
+{
+  float draw_mat[4][4];
+  copy_m4_m4(draw_mat, mat);
+  draw_mat[0][3] = color[0];
+  draw_mat[1][3] = color[1];
+  draw_mat[2][3] = color[2];
+  draw_mat[3][3] = color[3];
+  DRW_shgroup_call_obmat(cb->extra_loose_points, geom, draw_mat);
 }
 
 void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
