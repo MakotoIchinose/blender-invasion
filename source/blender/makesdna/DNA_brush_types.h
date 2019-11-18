@@ -370,11 +370,13 @@ typedef struct Brush {
 } Brush;
 
 /* Struct to hold palette colors for sorting. */
-typedef struct tPaletteColorHue {
+typedef struct tPaletteColorHSV {
   float rgb[3];
-  float hue;
-  float sat;
-} tPaletteColorHue;
+  float value;
+  float h;
+  float s;
+  float v;
+} tPaletteColorHSV;
 
 typedef struct PaletteColor {
   struct PaletteColor *next, *prev;
@@ -545,7 +547,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_POSE, \
 \
         /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
-         * \ but user feedback indicates it's better not to */ \
+         * \ \ \ but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
 

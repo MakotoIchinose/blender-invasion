@@ -420,13 +420,13 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  tPaletteColorHue *color_array = NULL;
-  tPaletteColorHue *col_elm = NULL;
+  tPaletteColorHSV *color_array = NULL;
+  tPaletteColorHSV *col_elm = NULL;
 
   const int totcol = BLI_listbase_count(&palette->colors);
 
   if (totcol > 0) {
-    color_array = MEM_calloc_arrayN(totcol, sizeof(tPaletteColorHue), __func__);
+    color_array = MEM_calloc_arrayN(totcol, sizeof(tPaletteColorHSV), __func__);
     /* Put all colors in an array. */
     int t = 0;
     for (PaletteColor *color = palette->colors.first; color; color = color->next) {
@@ -434,12 +434,14 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
       rgb_to_hsv(color->rgb[0], color->rgb[1], color->rgb[2], &h, &s, &v);
       col_elm = &color_array[t];
       copy_v3_v3(col_elm->rgb, color->rgb);
-      col_elm->hue = h;
-      col_elm->sat = s;
+      col_elm->value = color->value;
+      col_elm->h = h;
+      col_elm->s = s;
+      col_elm->v = v;
       t++;
     }
     /* Sort */
-    BKE_palette_sort_hs(color_array, totcol);
+    BKE_palette_sort_hsv(color_array, totcol);
 
     /* Clear old color swatches. */
     BLI_listbase_clear(&palette->colors);
@@ -467,9 +469,9 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
 void PALETTE_OT_sort(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Sort Palette by Hue and Saturation";
+  ot->name = "Sort Palette";
   ot->idname = "PALETTE_OT_sort";
-  ot->description = "Sort Palette Colors by Hue and Saturation";
+  ot->description = "Sort Palette Colors by Hue, Saturation and Value";
 
   /* api callbacks */
   ot->exec = palette_sort_exec;
@@ -518,6 +520,7 @@ static int palette_join_exec(bContext *C, wmOperator *op)
       PaletteColor *palcol = BKE_palette_color_add(palette);
       if (palcol) {
         copy_v3_v3(palcol->rgb, color->rgb);
+        palcol->value = color->value;
         done = true;
       }
     }

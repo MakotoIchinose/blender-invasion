@@ -648,11 +648,11 @@ bool BKE_palette_is_empty(const struct Palette *palette)
 }
 
 /* helper function to sort using qsort */
-static int palettecolor_compare_hue_sat(const void *a1, const void *a2)
+static int palettecolor_compare_hsv(const void *a1, const void *a2)
 {
-  const tPaletteColorHue *ps1 = a1, *ps2 = a2;
-  int a = ps1->hue * 1e6 + ps1->sat * 1e3;
-  int b = ps2->hue * 1e6 + ps2->sat * 1e3;
+  const tPaletteColorHSV *ps1 = a1, *ps2 = a2;
+  uint a = hsv_to_cpack(ps1->h, ps1->s, ps1->v);
+  uint b = hsv_to_cpack(ps2->h, ps2->s, ps2->v);
 
   if (a < b) {
     return -1;
@@ -664,22 +664,22 @@ static int palettecolor_compare_hue_sat(const void *a1, const void *a2)
   return 0;
 }
 
-void BKE_palette_sort_hs(tPaletteColorHue *color_array, const int totcol)
+void BKE_palette_sort_hsv(tPaletteColorHSV *color_array, const int totcol)
 {
-  /* Sort by Hue and saturation. */
-  qsort(color_array, totcol, sizeof(tPaletteColorHue), palettecolor_compare_hue_sat);
+  /* Sort by Hue , Saturation and Value. */
+  qsort(color_array, totcol, sizeof(tPaletteColorHSV), palettecolor_compare_hsv);
 }
 
 bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
 {
-  tPaletteColorHue *color_array = NULL;
-  tPaletteColorHue *col_elm = NULL;
+  tPaletteColorHSV *color_array = NULL;
+  tPaletteColorHSV *col_elm = NULL;
   bool done = false;
 
   const int totpal = BLI_ghash_len(color_table);
 
   if (totpal > 0) {
-    color_array = MEM_calloc_arrayN(totpal, sizeof(tPaletteColorHue), __func__);
+    color_array = MEM_calloc_arrayN(totpal, sizeof(tPaletteColorHSV), __func__);
     /* Put all colors in an array. */
     GHashIterator gh_iter;
     int t = 0;
@@ -694,8 +694,9 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
       col_elm->rgb[0] = r;
       col_elm->rgb[1] = g;
       col_elm->rgb[2] = b;
-      col_elm->hue = h;
-      col_elm->sat = s;
+      col_elm->h = h;
+      col_elm->s = s;
+      col_elm->v = v;
       t++;
     }
   }
@@ -703,7 +704,7 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
   /* Create the Palette. */
   if (totpal > 0) {
     /* Sort by Hue and saturation. */
-    BKE_palette_sort_hs(color_array, totpal);
+    BKE_palette_sort_hsv(color_array, totpal);
 
     Palette *palette = BKE_palette_add(bmain, "Palette");
     if (palette) {
