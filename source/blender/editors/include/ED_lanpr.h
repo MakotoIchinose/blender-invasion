@@ -55,25 +55,6 @@ typedef struct LANPR_StaticMemPool {
   SpinLock lock_mem;
 } LANPR_StaticMemPool;
 
-typedef struct LANPR_TextureSample {
-  struct LANPR_TextureSample *next, *prev;
-  int X, Y;
-  /** For future usage */
-  float Z;
-} LANPR_TextureSample;
-
-typedef struct LANPR_LineStripPoint {
-  struct LANPR_LineStripPoint *next, *prev;
-  float P[3];
-} LANPR_LineStripPoint;
-
-typedef struct LANPR_LineStrip {
-  struct LANPR_LineStrip *next, *prev;
-  ListBase points;
-  int point_count;
-  float total_length;
-} LANPR_LineStrip;
-
 typedef struct LANPR_RenderTriangle {
   struct LANPR_RenderTriangle *next, *prev;
   struct LANPR_RenderVert *v[3];
