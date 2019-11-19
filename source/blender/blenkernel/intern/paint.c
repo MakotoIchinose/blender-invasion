@@ -662,8 +662,8 @@ static int palettecolor_compare_hsv(const void *a1, const void *a2)
 
 #if 0
   /* Luminance. */
-  float lum1 = sqrt(0.241f * ps1->h + 0.691f * ps1->s + 0.068f * ps1->v);
-  float lum2 = sqrt(0.241f * ps2->h + 0.691f * ps2->s + 0.068f * ps2->v);
+  float lum1 = (0.2126f * ps1->rgb[0] + 0.7152f * ps1->rgb[1] + 0.0722f * ps1->rgb[2]);
+  float lum2 = (0.2126f * ps2->rgb[0] + 0.7152f * ps2->rgb[1] + 0.0722f * ps2->rgb[2]);
   if (lum1 > lum2) {
     return 1;
   }
