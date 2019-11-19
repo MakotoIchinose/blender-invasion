@@ -89,6 +89,7 @@ static struct DRWShapeCache {
   GPUBatch *drw_square;
   GPUBatch *drw_line;
   GPUBatch *drw_line_endpoints;
+  GPUBatch *drw_normal_arrow;
   GPUBatch *drw_empty_cube;
   GPUBatch *drw_empty_sphere;
   GPUBatch *drw_empty_cylinder;
@@ -764,6 +765,22 @@ GPUBatch *DRW_cache_square_get(void)
     SHC.drw_square = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_square;
+}
+
+GPUBatch *DRW_cache_normal_arrow_get(void)
+{
+  if (!SHC.drw_normal_arrow) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, 2);
+
+    /* TODO real arrow. For now, it's a line positioned in the vertex shader. */
+
+    SHC.drw_normal_arrow = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_normal_arrow;
 }
 
 GPUBatch *DRW_cache_single_line_get(void)

@@ -123,7 +123,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   }
 
   float backwire_opacity = (pd->edit_mesh.do_zbufclip) ? v3d->overlay.backwire_opacity : 1.0f;
-  float size_normal = v3d->overlay.normals_length;
   float face_alpha = (do_occlude_wire || !pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
   GPUTexture **depth_tex = (pd->edit_mesh.do_zbufclip) ? &dtxl->depth : &txl->dummy_depth_tx;
 
@@ -156,23 +155,16 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   }
   {
     /* Normals */
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL;
+    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+            (pd->edit_mesh.do_zbufclip ? DRW_STATE_BLEND_ALPHA : 0);
     DRW_PASS_CREATE(psl->edit_mesh_normals_ps, state | pd->clipping_state);
 
-    sh = OVERLAY_shader_edit_mesh_normal_face();
-    pd->edit_mesh_fnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
-    DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorNormal);
-
-    sh = OVERLAY_shader_edit_mesh_normal_vert();
-    pd->edit_mesh_vnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
-    DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorVNormal);
-
-    sh = OVERLAY_shader_edit_mesh_normal_loop();
-    pd->edit_mesh_lnormals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
-    DRW_shgroup_uniform_float_copy(grp, "normalSize", size_normal);
-    DRW_shgroup_uniform_vec4_copy(grp, "color", G_draw.block.colorLNormal);
+    sh = OVERLAY_shader_edit_mesh_normal();
+    pd->edit_mesh_normals_grp = grp = DRW_shgroup_create(sh, psl->edit_mesh_normals_ps);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_float_copy(grp, "normalSize", v3d->overlay.normals_length);
+    DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
+    DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
   }
   {
     /* Mesh Analysis Pass */
@@ -335,17 +327,20 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
   }
 
-  if (vnormals_do) {
-    geom = DRW_mesh_batch_cache_get_edit_vnors(ob->data);
-    DRW_shgroup_call_no_cull(pd->edit_mesh_vnormals_grp, geom, ob);
-  }
-  if (lnormals_do) {
-    geom = DRW_mesh_batch_cache_get_edit_lnors(ob->data);
-    DRW_shgroup_call_no_cull(pd->edit_mesh_lnormals_grp, geom, ob);
-  }
-  if (fnormals_do) {
-    geom = DRW_mesh_batch_cache_get_edit_facedots(ob->data);
-    DRW_shgroup_call_no_cull(pd->edit_mesh_fnormals_grp, geom, ob);
+  if (vnormals_do || lnormals_do || fnormals_do) {
+    struct GPUBatch *normal_geom = DRW_cache_normal_arrow_get();
+    if (vnormals_do) {
+      geom = DRW_mesh_batch_cache_get_edit_vnors(ob->data);
+      DRW_shgroup_call_instances_with_attribs(pd->edit_mesh_normals_grp, ob, normal_geom, geom);
+    }
+    if (lnormals_do) {
+      geom = DRW_mesh_batch_cache_get_edit_lnors(ob->data);
+      DRW_shgroup_call_instances_with_attribs(pd->edit_mesh_normals_grp, ob, normal_geom, geom);
+    }
+    if (fnormals_do) {
+      geom = DRW_mesh_batch_cache_get_edit_facedots(ob->data);
+      DRW_shgroup_call_instances_with_attribs(pd->edit_mesh_normals_grp, ob, normal_geom, geom);
+    }
   }
 
   if (pd->edit_mesh.do_zbufclip) {
@@ -407,7 +402,6 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 
     DRW_view_set_active(NULL);
 
-    /* Render wires on a separate framebuffer */
     GPU_framebuffer_bind(fbl->edit_mesh_occlude_wire_fb);
     GPU_framebuffer_clear_depth(fbl->edit_mesh_occlude_wire_fb, 1.0f);
     DRW_draw_pass(psl->edit_mesh_normals_ps);

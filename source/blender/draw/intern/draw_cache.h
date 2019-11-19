@@ -48,6 +48,7 @@ struct GPUBatch *DRW_cache_single_vert_get(void);
 struct GPUBatch *DRW_cache_single_line_get(void);
 struct GPUBatch *DRW_cache_single_line_endpoints_get(void);
 struct GPUBatch *DRW_cache_screenspace_circle_get(void);
+struct GPUBatch *DRW_cache_normal_arrow_get(void);
 
 /* Common Object */
 struct GPUBatch *DRW_cache_object_all_edges_get(struct Object *ob);

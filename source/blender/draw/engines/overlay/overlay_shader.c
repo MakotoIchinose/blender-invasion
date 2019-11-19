@@ -54,7 +54,6 @@ extern char datatoc_edit_mesh_common_lib_glsl[];
 extern char datatoc_edit_mesh_frag_glsl[];
 extern char datatoc_edit_mesh_geom_glsl[];
 extern char datatoc_edit_mesh_vert_glsl[];
-extern char datatoc_edit_mesh_normal_geom_glsl[];
 extern char datatoc_edit_mesh_normal_vert_glsl[];
 extern char datatoc_edit_mesh_skin_root_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_vert_glsl[];
@@ -137,7 +136,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_facedot;
   GPUShader *edit_mesh_skin_root;
   GPUShader *edit_mesh_vnormals;
-  GPUShader *edit_mesh_lnormals;
+  GPUShader *edit_mesh_normals;
   GPUShader *edit_mesh_fnormals;
   GPUShader *edit_mesh_analysis;
   GPUShader *edit_particle_strand;
@@ -560,71 +559,23 @@ GPUShader *OVERLAY_shader_edit_mesh_facedot(void)
   return sh_data->edit_mesh_facedot;
 }
 
-GPUShader *OVERLAY_shader_edit_mesh_normal_face(void)
+GPUShader *OVERLAY_shader_edit_mesh_normal(void)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-
-  if (!sh_data->edit_mesh_fnormals) {
-    sh_data->edit_mesh_fnormals = GPU_shader_create_from_arrays({
+  if (!sh_data->edit_mesh_normals) {
+    sh_data->edit_mesh_normals = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
+                                 datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
                                  datatoc_edit_mesh_normal_vert_glsl,
                                  NULL},
-        .geom = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_normal_geom_glsl,
-                                 NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define FACE_NORMALS\n", NULL},
+        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define IN_PLACE_INSTANCES\n", NULL},
     });
   }
-  return sh_data->edit_mesh_fnormals;
-}
-
-GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->edit_mesh_vnormals) {
-    sh_data->edit_mesh_vnormals = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_normal_vert_glsl,
-                                 NULL},
-        .geom = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_normal_geom_glsl,
-                                 NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define VERT_NORMALS\n", NULL},
-    });
-  }
-  return sh_data->edit_mesh_vnormals;
-}
-
-GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->edit_mesh_lnormals) {
-    sh_data->edit_mesh_lnormals = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_normal_vert_glsl,
-                                 NULL},
-        .geom = (const char *[]){sh_cfg->lib,
-                                 datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_normal_geom_glsl,
-                                 NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define LOOP_NORMALS\n", NULL},
-    });
-  }
-  return sh_data->edit_mesh_lnormals;
+  return sh_data->edit_mesh_normals;
 }
 
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void)
