@@ -2103,6 +2103,12 @@ void main_args_setup(bContext *C, bArgs *ba)
               CB_EX(arg_handle_debug_mode_generic_set, xr_time),
               (void *)G_DEBUG_XR_TIME);
 #  endif
+  BLI_argsAdd(ba,
+              1,
+              NULL,
+              "--debug-ghost",
+              CB_EX(arg_handle_debug_mode_generic_set, handlers),
+              (void *)G_DEBUG_GHOST);
   BLI_argsAdd(ba, 1, NULL, "--debug-all", CB(arg_handle_debug_mode_all), NULL);
 
   BLI_argsAdd(ba, 1, NULL, "--debug-io", CB(arg_handle_debug_mode_io), NULL);
