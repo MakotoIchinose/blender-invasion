@@ -666,11 +666,18 @@ static void file_ui_region_listener(wmWindow *UNUSED(win),
   }
 }
 
-static void file_drop_target_find(bContext *UNUSED(C), wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *UNUSED(event))
+static void file_drop_target_find(bContext *UNUSED(C),
+                                  wmDropTargetFinder *finder,
+                                  wmDragData *drag_data,
+                                  const wmEvent *UNUSED(event))
 {
-	if (WM_drag_query_single_path(drag_data)) {
-		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA, "FILE_OT_filepath_drop", "Open", WM_drop_init_single_filepath);
-	}
+  if (WM_drag_query_single_path(drag_data)) {
+    WM_drop_target_propose__template_1(finder,
+                                       DROP_TARGET_SIZE_AREA,
+                                       "FILE_OT_filepath_drop",
+                                       "Open",
+                                       WM_drop_init_single_filepath);
+  }
 }
 
 /* only called once, from space/spacetypes.c */

@@ -114,7 +114,10 @@ typedef struct SpaceType {
   void (*space_subtype_item_extend)(struct bContext *C, EnumPropertyItem **item, int *totitem);
 
   /* get drop target for data */
-  void (*drop_target_find)(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
+  void (*drop_target_find)(struct bContext *C,
+                           struct wmDropTargetFinder *finder,
+                           struct wmDragData *drag_data,
+                           const struct wmEvent *event);
 
   /* region type definitions */
   ListBase regiontypes;

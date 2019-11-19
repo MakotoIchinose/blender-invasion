@@ -1674,7 +1674,7 @@ static void ed_default_handlers(
     WM_event_add_keymap_handler(handlers, keymap_sculpt);
   }
 
-	WM_event_ensure_drop_handler(handlers);
+  WM_event_ensure_drop_handler(handlers);
 }
 
 void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *area)
@@ -2896,7 +2896,7 @@ void ED_region_info_draw(ARegion *ar,
                          float fill_color[4],
                          const bool full_redraw)
 {
-  ED_region_info_draw_multiline(ar, (const char *[2]){text, NULL}, fill_color, full_redraw);
+  ED_region_info_draw_multiline(ar, (const char * [2]){text, NULL}, fill_color, full_redraw);
 }
 
 #define MAX_METADATA_STR 1024

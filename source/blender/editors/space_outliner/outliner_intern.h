@@ -375,7 +375,10 @@ void outliner_item_openclose(TreeElement *te, bool open, bool toggle_all);
 
 /* outliner_dragdrop.c */
 void OUTLINER_OT_drag_init(struct wmOperatorType *ot);
-void outliner_drop_target_find(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
+void outliner_drop_target_find(struct bContext *C,
+                               struct wmDropTargetFinder *finder,
+                               struct wmDragData *drag_data,
+                               const struct wmEvent *event);
 
 /* ...................................................... */
 

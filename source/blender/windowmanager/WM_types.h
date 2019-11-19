@@ -824,70 +824,70 @@ typedef void (*wmPaintCursorDraw)(struct bContext *C, int, int, void *customdata
 
 /* wmDragData.type */
 enum DragDataType {
-	DRAG_DATA_IDS,
-	DRAG_DATA_FILEPATHS,
-	DRAG_DATA_COLOR,
-	DRAG_DATA_VALUE,
-	DRAG_DATA_RNA,
-	DRAG_DATA_NAME,
-	DRAG_DATA_COLLECTION_CHILDREN,
+  DRAG_DATA_IDS,
+  DRAG_DATA_FILEPATHS,
+  DRAG_DATA_COLOR,
+  DRAG_DATA_VALUE,
+  DRAG_DATA_RNA,
+  DRAG_DATA_NAME,
+  DRAG_DATA_COLLECTION_CHILDREN,
 };
 /* wmDragData.display_type */
 enum DragDisplayType {
-	DRAG_DISPLAY_NONE = 0,
-	DRAG_DISPLAY_ICON,
-	DRAG_DISPLAY_IMAGE,
-	DRAG_DISPLAY_COLOR,
+  DRAG_DISPLAY_NONE = 0,
+  DRAG_DISPLAY_ICON,
+  DRAG_DISPLAY_IMAGE,
+  DRAG_DISPLAY_COLOR,
 };
 
 typedef struct wmDragCollectionChild {
-	struct ID *id;
-	struct Collection *parent;
+  struct ID *id;
+  struct Collection *parent;
 } wmDragCollectionChild;
 
 typedef struct wmDragData {
-	enum DragDataType type;
-	enum DragDisplayType display_type;
-	union {
-		ListBase *ids;
-		struct {
-			char **paths;
-			int amount;
-		} filepaths;
-		struct {
-			float color[3];
-			bool gamma_corrected;
-		} color;
-		double value;
-		struct PointerRNA *rna;
-		char *name;
-		ListBase *collection_children;
-	} data;
-	union {
-		struct {
-			struct ImBuf *imb;
-			float scale;
-			int width;
-			int height;
-		} image;
-		int icon_id;
-		float color[3];
-	} display;
+  enum DragDataType type;
+  enum DragDisplayType display_type;
+  union {
+    ListBase *ids;
+    struct {
+      char **paths;
+      int amount;
+    } filepaths;
+    struct {
+      float color[3];
+      bool gamma_corrected;
+    } color;
+    double value;
+    struct PointerRNA *rna;
+    char *name;
+    ListBase *collection_children;
+  } data;
+  union {
+    struct {
+      struct ImBuf *imb;
+      float scale;
+      int width;
+      int height;
+    } image;
+    int icon_id;
+    float color[3];
+  } display;
 } wmDragData;
 
 typedef struct wmDropTarget {
-	char *ot_idname;
-	char *tooltip;
-	short context;
-	int size;
-	bool free;
-	bool free_idname;
-	bool free_tooltip;
-	void (*set_properties)(struct wmDragData *, struct PointerRNA *);
+  char *ot_idname;
+  char *tooltip;
+  short context;
+  int size;
+  bool free;
+  bool free_idname;
+  bool free_tooltip;
+  void (*set_properties)(struct wmDragData *, struct PointerRNA *);
 } wmDropTarget;
 
 typedef struct wmDropTargetFinder {
-	wmDropTarget *current;
+  wmDropTarget *current;
 } wmDropTargetFinder;
 
 /**

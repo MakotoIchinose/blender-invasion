@@ -709,7 +709,6 @@ void UI_but_drag_set_value(uiBut *but);
 void UI_but_drag_set_image(
     uiBut *but, const char *path, int icon, struct ImBuf *ima, float scale, const bool use_free);
 
-
 void UI_but_flag_enable(uiBut *but, int flag);
 void UI_but_flag_disable(uiBut *but, int flag);
 bool UI_but_flag_is_set(uiBut *but, int flag);
@@ -2325,7 +2324,10 @@ typedef struct uiDragColorHandle {
 void ED_operatortypes_ui(void);
 void ED_keymap_ui(struct wmKeyConfig *keyconf);
 
-void UI_drop_target_find(struct bContext *C, struct wmDropTargetFinder *finder, struct wmDragData *drag_data, const struct wmEvent *event);
+void UI_drop_target_find(struct bContext *C,
+                         struct wmDropTargetFinder *finder,
+                         struct wmDragData *drag_data,
+                         const struct wmEvent *event);
 
 bool UI_context_copy_to_selected_list(struct bContext *C,
                                       struct PointerRNA *ptr,

@@ -172,7 +172,6 @@ void ED_spacemacros_init(void)
   ED_operatormacros_sequencer();
   ED_operatormacros_paint();
   ED_operatormacros_gpencil();
-
 }
 
 /* called in wm.c */

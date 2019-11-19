@@ -1307,24 +1307,28 @@ static void clip_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id, ID 
 
 static void drop_init__open_file(wmDragData *drag_data, PointerRNA *ptr)
 {
-	const char *path = WM_drag_query_single_path_image_or_movie(drag_data);
-	char dir[FILE_MAX], file[FILE_MAX];
-	BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+  const char *path = WM_drag_query_single_path_image_or_movie(drag_data);
+  char dir[FILE_MAX], file[FILE_MAX];
+  BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
 
-	RNA_string_set(ptr, "directory", dir);
+  RNA_string_set(ptr, "directory", dir);
 
-	RNA_collection_clear(ptr, "files");
+  RNA_collection_clear(ptr, "files");
 
-	PointerRNA itemptr;
-	RNA_collection_add(ptr, "files", &itemptr);
-	RNA_string_set(&itemptr, "name", file);
+  PointerRNA itemptr;
+  RNA_collection_add(ptr, "files", &itemptr);
+  RNA_string_set(&itemptr, "name", file);
 }
 
-static void clip_drop_target_find(bContext *UNUSED(C), wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *UNUSED(event))
+static void clip_drop_target_find(bContext *UNUSED(C),
+                                  wmDropTargetFinder *finder,
+                                  wmDragData *drag_data,
+                                  const wmEvent *UNUSED(event))
 {
-	if (WM_drag_query_single_path_image_or_movie(drag_data)) {
-		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA, "CLIP_OT_open", "Open File", drop_init__open_file);
-	}
+  if (WM_drag_query_single_path_image_or_movie(drag_data)) {
+    WM_drop_target_propose__template_1(
+        finder, DROP_TARGET_SIZE_AREA, "CLIP_OT_open", "Open File", drop_init__open_file);
+  }
 }
 
 /* only called once, from space/spacetypes.c */

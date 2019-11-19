@@ -704,45 +704,57 @@ static void sequencer_id_remap(ScrArea *UNUSED(sa), SpaceLink *slink, ID *old_id
 
 static void sequencer_drop_copy(wmDragData *drag_data, PointerRNA *ptr)
 {
-	const char *path = WM_drag_query_single_path(drag_data);
+  const char *path = WM_drag_query_single_path(drag_data);
 
-	if (RNA_struct_find_property(ptr, "filepath")) {
-		RNA_string_set(ptr, "filepath", path);
-	}
+  if (RNA_struct_find_property(ptr, "filepath")) {
+    RNA_string_set(ptr, "filepath", path);
+  }
 
-	if (RNA_struct_find_property(ptr, "directory")) {
-		PointerRNA itemptr;
-		char dir[FILE_MAX], file[FILE_MAX];
+  if (RNA_struct_find_property(ptr, "directory")) {
+    PointerRNA itemptr;
+    char dir[FILE_MAX], file[FILE_MAX];
 
-		BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
 
-		RNA_string_set(ptr, "directory", dir);
+    RNA_string_set(ptr, "directory", dir);
 
-		RNA_collection_clear(ptr, "files");
-		RNA_collection_add(ptr, "files", &itemptr);
-		RNA_string_set(&itemptr, "name", file);
-	}
+    RNA_collection_clear(ptr, "files");
+    RNA_collection_add(ptr, "files", &itemptr);
+    RNA_string_set(&itemptr, "name", file);
+  }
 }
 
-static void sequencer_drop_target_find(bContext *C, wmDropTargetFinder *finder, wmDragData *drag_data, const wmEvent *event)
+static void sequencer_drop_target_find(bContext *C,
+                                       wmDropTargetFinder *finder,
+                                       wmDragData *drag_data,
+                                       const wmEvent *event)
 {
-	ARegion *ar = CTX_wm_region(C);
-	Scene *scene = CTX_data_scene(C);
-	int hand;
-	Sequence *seq = find_nearest_seq(scene, &ar->v2d, &hand, event->mval);
+  ARegion *ar = CTX_wm_region(C);
+  Scene *scene = CTX_data_scene(C);
+  int hand;
+  Sequence *seq = find_nearest_seq(scene, &ar->v2d, &hand, event->mval);
 
-	if (WM_drag_query_single_path_image(drag_data) && seq == NULL) {
-		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
-		        "SEQUENCER_OT_image_strip_add", "Load image", sequencer_drop_copy);
-	}
-	if (WM_drag_query_single_path_movie(drag_data) && seq == NULL) {
-		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
-		        "SEQUENCER_OT_movie_strip_add", "Load Movie", sequencer_drop_copy);
-	}
-	if (WM_drag_query_single_path_sound(drag_data) && seq == NULL) {
-		WM_drop_target_propose__template_1(finder, DROP_TARGET_SIZE_AREA,
-		        "SEQUENCER_OT_sound_strip_add", "Load Sound", sequencer_drop_copy);
-	}
+  if (WM_drag_query_single_path_image(drag_data) && seq == NULL) {
+    WM_drop_target_propose__template_1(finder,
+                                       DROP_TARGET_SIZE_AREA,
+                                       "SEQUENCER_OT_image_strip_add",
+                                       "Load image",
+                                       sequencer_drop_copy);
+  }
+  if (WM_drag_query_single_path_movie(drag_data) && seq == NULL) {
+    WM_drop_target_propose__template_1(finder,
+                                       DROP_TARGET_SIZE_AREA,
+                                       "SEQUENCER_OT_movie_strip_add",
+                                       "Load Movie",
+                                       sequencer_drop_copy);
+  }
+  if (WM_drag_query_single_path_sound(drag_data) && seq == NULL) {
+    WM_drop_target_propose__template_1(finder,
+                                       DROP_TARGET_SIZE_AREA,
+                                       "SEQUENCER_OT_sound_strip_add",
+                                       "Load Sound",
+                                       sequencer_drop_copy);
+  }
 }
 
 /* ************************************* */
