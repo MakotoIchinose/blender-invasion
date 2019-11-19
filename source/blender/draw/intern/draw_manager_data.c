@@ -803,7 +803,8 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
   GPUVertBuf *buf_inst = inst_attributes->verts[0];
-  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
+  GPUVertBuf *buf_inst2 = inst_attributes->verts[1];
+  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, buf_inst2, geom);
   drw_command_draw(shgroup, batch, handle);
 }
 
@@ -1027,7 +1028,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
   }
 
   DRWResourceHandle handle = drw_resource_handle(shgroup, NULL, NULL);
-  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, callbuf->buf, geom);
+  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, callbuf->buf, NULL, geom);
   drw_command_draw(shgroup, batch, handle);
 
   return callbuf;

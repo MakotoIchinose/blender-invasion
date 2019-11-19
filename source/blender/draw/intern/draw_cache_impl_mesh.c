@@ -1333,7 +1333,7 @@ void DRW_mesh_batch_cache_create_requested(
      * So we instead create the whole instancing batch here.
      * Note that we use GPU_PRIM_LINES instead of expected GPU_PRIM_LINE_STRIP
      * in order to mimic the old stipple pattern. */
-    cache->batch.edit_skin_roots->inst = cache->batch.edit_skin_roots->verts[0];
+    cache->batch.edit_skin_roots->inst[0] = cache->batch.edit_skin_roots->verts[0];
     cache->batch.edit_skin_roots->verts[0] = NULL;
     GPUBatch *circle = DRW_cache_screenspace_circle_get();
     GPU_batch_vertbuf_add(cache->batch.edit_skin_roots, circle->verts[0]);

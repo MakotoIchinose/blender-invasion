@@ -134,13 +134,14 @@ GPUVertBuf *DRW_temp_buffer_request(DRWInstanceDataList *idatalist,
 /* NOTE: Does not return a valid drawable batch until DRW_instance_buffer_finish has run. */
 GPUBatch *DRW_temp_batch_instance_request(DRWInstanceDataList *idatalist,
                                           GPUVertBuf *buf,
+                                          GPUVertBuf *buf2, /* hack */
                                           GPUBatch *geom)
 {
   /* Do not call this with a batch that is already an instancing batch. */
   BLI_assert(geom->inst == NULL);
 
   GPUBatch *batch = BLI_memblock_alloc(idatalist->pool_instancing);
-  bool is_compatible = (batch->gl_prim_type == geom->gl_prim_type) && (batch->inst == buf) &&
+  bool is_compatible = (batch->gl_prim_type == geom->gl_prim_type) && (batch->inst[0] == buf) &&
                        (buf->vbo_id != 0) && (batch->phase == GPU_BATCH_READY_TO_DRAW) &&
                        (batch->elem == geom->elem);
   for (int i = 0; i < GPU_BATCH_VBO_MAX_LEN && is_compatible; i++) {
@@ -152,7 +153,8 @@ GPUBatch *DRW_temp_batch_instance_request(DRWInstanceDataList *idatalist,
   if (!is_compatible) {
     GPU_batch_clear(batch);
     /* Save args and init later */
-    batch->inst = buf;
+    batch->inst[0] = buf;
+    batch->inst[1] = buf2;
     batch->phase = GPU_BATCH_READY_TO_BUILD;
     batch->verts[0] = (void *)geom; /* HACK to save the pointer without other alloc. */
 
@@ -205,10 +207,14 @@ void DRW_instance_buffer_finish(DRWInstanceDataList *idatalist)
   BLI_memblock_iternew(idatalist->pool_instancing, &iter);
   while ((batch = BLI_memblock_iterstep(&iter))) {
     if (batch->phase == GPU_BATCH_READY_TO_BUILD) {
-      GPUVertBuf *inst = batch->inst;
+      GPUVertBuf *inst0 = batch->inst[0];
+      GPUVertBuf *inst1 = batch->inst[1];
       GPUBatch *geom = (void *)batch->verts[0]; /* HACK see DRW_temp_batch_instance_request. */
       GPU_batch_copy(batch, geom);
-      GPU_batch_instbuf_set(batch, inst, false);
+      GPU_batch_instbuf_add_ex(batch, inst0, false);
+      if (inst1) {
+        GPU_batch_instbuf_add_ex(batch, inst1, false);
+      }
     }
   }
   /* Resize pools and free unused. */
