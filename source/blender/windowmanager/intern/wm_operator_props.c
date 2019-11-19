@@ -404,14 +404,14 @@ void WM_operator_properties_select_operation_simple(wmOperatorType *ot)
  *
  * For default click selection (with no modifier keys held), the select operators can do the
  * following:
- * * On a select-mouse press on an unselected item, change selection and finish immidiately after.
+ * - On a mouse press on an unselected item, change selection and finish immidiately after.
  *   This sends an undo push and allows transform to take over should a tweak event be caught now.
- * * On a select-mouse press on a selected item, don't change selection state, but start modal
- *   execution of the operator. Idea is that we wait with deselecting other items until we know
- *   that the intention wasn't to tweak-move (mouse click+drag) all selected items.
- * * If a tweak is recognized before the release event happens, cancel the operator, so that
+ * - On a mouse press on a selected item, don't change selection state, but start modal execution
+ *   of the operator. Idea is that we wait with deselecting other items until we know that the
+ *   intention wasn't to tweak (mouse press+drag) all selected items.
+ * - If a tweak is recognized before the release event happens, cancel the operator, so that
  *   transform can take over and no undo-push is sent.
- * * If the release event occurs rather than a tweak one, deselect all items but the one under the
+ * - If the release event occurs rather than a tweak one, deselect all items but the one under the
  *   cursor, and finish the modal operator.
  *
  * This utility, together with #WM_generic_select_invoke() and #WM_generic_select_modal() should
