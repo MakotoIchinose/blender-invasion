@@ -1,5 +1,6 @@
 
-uniform float faceAlphaMod;
+uniform sampler2D depthTex;
+uniform float alpha = 1.0;
 uniform ivec4 dataMask = ivec4(0xFF);
 
 in ivec4 data;
@@ -12,10 +13,18 @@ in vec4 norAndFlag;
 #endif
 
 out vec4 finalColor;
+#ifdef EDGE
 out vec4 finalColorOuter;
+#endif
 #ifdef USE_GEOM_SHADER
 out int selectOveride;
 #endif
+
+bool test_occlusion()
+{
+  vec3 ndc = (gl_Position.xyz / gl_Position.w) * 0.5 + 0.5;
+  return ndc.z > texture(depthTex, ndc.xy).r;
+}
 
 void main()
 {
@@ -37,6 +46,8 @@ void main()
     gl_Position.z -= 1e-7;
   }
 
+  bool occluded = test_occlusion();
+
 #elif defined(EDGE)
 #  ifdef FLAT
   finalColor = EDIT_MESH_edge_color_inner(m_data.y);
@@ -50,17 +61,24 @@ void main()
   float bweight = float(m_data.w) / 255.0;
   finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, crease, bweight);
 
+  bool occluded = false; /* Done in fragment shader */
+
 #elif defined(FACE)
   finalColor = EDIT_MESH_face_color(m_data.x);
-  finalColor.a *= faceAlphaMod;
+  bool occluded = true;
 
 #elif defined(FACEDOT)
   finalColor = EDIT_MESH_facedot_color(norAndFlag.w);
+
   /* Bias Facedot Z position in clipspace. */
   gl_Position.z -= 0.00035;
   gl_PointSize = sizeFaceDot;
 
+  bool occluded = test_occlusion();
+
 #endif
+
+  finalColor.a *= (occluded) ? alpha : 1.0;
 
 #if !defined(FACE)
   /* Facing based color blend */

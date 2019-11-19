@@ -37,6 +37,7 @@ typedef struct OVERLAY_FramebufferList {
 
 typedef struct OVERLAY_TextureList {
   struct GPUTexture *temp_depth_tx;
+  struct GPUTexture *dummy_depth_tx;
   struct GPUTexture *outlines_id_tx;
   struct GPUTexture *outlines_color_tx[2];
   struct GPUTexture *edit_mesh_occlude_wire_tx;
@@ -57,7 +58,6 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_mesh_faces_ps[2];
   DRWPass *edit_mesh_faces_cage_ps[2];
   DRWPass *edit_mesh_analysis_ps;
-  DRWPass *edit_mesh_mix_occlude_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_mesh_weight_ps;
   DRWPass *edit_particle_ps;
@@ -489,7 +489,6 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void);
 GPUShader *OVERLAY_shader_edit_mesh_normal_face(void);
 GPUShader *OVERLAY_shader_edit_mesh_normal_vert(void);
 GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void);
-GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
 GPUShader *OVERLAY_shader_edit_particle_strand(void);
 GPUShader *OVERLAY_shader_edit_particle_point(void);

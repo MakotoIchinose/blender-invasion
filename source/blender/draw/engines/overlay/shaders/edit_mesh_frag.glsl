@@ -12,11 +12,19 @@
 #define GRID_LINE_SMOOTH_START (0.5 - DISC_RADIUS)
 #define GRID_LINE_SMOOTH_END (0.5 + DISC_RADIUS)
 
+uniform sampler2D depthTex;
+uniform float alpha = 1.0;
+
 flat in vec4 finalColorOuter_f;
 in vec4 finalColor_f;
 noperspective in float edgeCoord_f;
 
 out vec4 FragColor;
+
+bool test_occlusion()
+{
+  return gl_FragCoord.z > texelFetch(depthTex, ivec2(gl_FragCoord.xy), 0).r;
+}
 
 void main()
 {
@@ -33,4 +41,6 @@ void main()
   FragColor = mix(finalColorOuter_f, finalColor_f, 1.0 - mix_w * finalColorOuter_f.a);
   /* Line edges shape. */
   FragColor.a *= 1.0 - (finalColorOuter_f.a > 0.0 ? mix_w_outer : mix_w);
+
+  FragColor.a *= test_occlusion() ? alpha : 1.0;
 }

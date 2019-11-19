@@ -56,7 +56,6 @@ extern char datatoc_edit_mesh_geom_glsl[];
 extern char datatoc_edit_mesh_vert_glsl[];
 extern char datatoc_edit_mesh_normal_geom_glsl[];
 extern char datatoc_edit_mesh_normal_vert_glsl[];
-extern char datatoc_edit_mesh_mix_occlude_frag_glsl[];
 extern char datatoc_edit_mesh_skin_root_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
@@ -140,7 +139,6 @@ typedef struct OVERLAY_Shaders {
   GPUShader *edit_mesh_vnormals;
   GPUShader *edit_mesh_lnormals;
   GPUShader *edit_mesh_fnormals;
-  GPUShader *edit_mesh_mix_occlude;
   GPUShader *edit_mesh_analysis;
   GPUShader *edit_particle_strand;
   GPUShader *edit_particle_point;
@@ -627,16 +625,6 @@ GPUShader *OVERLAY_shader_edit_mesh_normal_loop(void)
     });
   }
   return sh_data->edit_mesh_lnormals;
-}
-
-GPUShader *OVERLAY_shader_edit_mesh_mix_occlude(void)
-{
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
-  if (!sh_data->edit_mesh_mix_occlude) {
-    sh_data->edit_mesh_mix_occlude = DRW_shader_create_fullscreen(
-        datatoc_edit_mesh_mix_occlude_frag_glsl, NULL);
-  }
-  return sh_data->edit_mesh_mix_occlude;
 }
 
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void)

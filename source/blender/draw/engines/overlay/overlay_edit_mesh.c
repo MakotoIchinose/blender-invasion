@@ -43,14 +43,20 @@ void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata)
   OVERLAY_FramebufferList *fbl = vedata->fbl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
-  /* TODO only alloc if needed. */
-  DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH_COMPONENT24, 0);
-  DRW_texture_ensure_fullscreen_2d(&txl->edit_mesh_occlude_wire_tx, GPU_RGBA8, 0);
+  pd->edit_mesh.do_zbufclip = XRAY_FLAG_ENABLED(draw_ctx->v3d);
 
-  GPU_framebuffer_ensure_config(&fbl->edit_mesh_occlude_wire_fb,
-                                {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx),
-                                 GPU_ATTACHMENT_TEXTURE(txl->edit_mesh_occlude_wire_tx)});
+  if (pd->edit_mesh.do_zbufclip) {
+    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH_COMPONENT24, 0);
+    GPU_framebuffer_ensure_config(
+        &fbl->edit_mesh_occlude_wire_fb,
+        {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+  }
+  else {
+    /* Small texture which will have very small impact on rendertime. */
+    DRW_texture_ensure_2d(&txl->dummy_depth_tx, 1, 1, GPU_DEPTH_COMPONENT24, 0);
+  }
 
   /* Create view with depth offset */
   pd->view_edit_faces = (DRWView *)DRW_view_default_get();
@@ -77,8 +83,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool select_vert = pd->edit_mesh.select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX) != 0;
   bool select_face = pd->edit_mesh.select_face = (tsettings->selectmode & SCE_SELECT_FACE) != 0;
   bool select_edge = pd->edit_mesh.select_edge = (tsettings->selectmode & SCE_SELECT_EDGE) != 0;
-
-  pd->edit_mesh.do_zbufclip = XRAY_FLAG_ENABLED(v3d);
 
   bool do_occlude_wire = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_OCCLUDE_WIRE) != 0;
   bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
@@ -118,9 +122,10 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     }
   }
 
-  float backwire_opacity = v3d->overlay.backwire_opacity;
+  float backwire_opacity = (pd->edit_mesh.do_zbufclip) ? v3d->overlay.backwire_opacity : 1.0f;
   float size_normal = v3d->overlay.normals_length;
   float face_alpha = (do_occlude_wire || !pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
+  GPUTexture **depth_tex = (pd->edit_mesh.do_zbufclip) ? &dtxl->depth : &txl->dummy_depth_tx;
 
   if (select_face && !pd->edit_mesh.do_faces && pd->edit_mesh.do_edges) {
     /* Force display of face centers in this case because that's
@@ -197,14 +202,14 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
       grp = *shgrp = DRW_shgroup_create(face_sh, *edit_face_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_float_copy(grp, "faceAlphaMod", face_alpha);
       DRW_shgroup_uniform_ivec4(grp, "dataMask", mask, 1);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", face_alpha);
       DRW_shgroup_uniform_bool_copy(grp, "selectFaces", select_face);
     }
 
     if (do_zbufclip) {
       state_common |= DRW_STATE_WRITE_DEPTH;
-      state_common &= ~DRW_STATE_BLEND_ALPHA;
+      // state_common &= ~DRW_STATE_BLEND_ALPHA;
     }
 
     /* Edges */
@@ -215,16 +220,19 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     grp = pd->edit_mesh_edges_grp[i] = DRW_shgroup_create(edge_sh, psl->edit_mesh_edges_ps[i]);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_ivec4(grp, "dataMask", mask, 1);
+    DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
+    DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
 
     /* Verts */
-    state = state_common & ~DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_mesh_verts_ps[i], state | pd->clipping_state);
 
     if (select_vert) {
       sh = OVERLAY_shader_edit_mesh_vert();
       grp = pd->edit_mesh_verts_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
+      DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
@@ -235,24 +243,13 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_edit_mesh_facedot();
       grp = pd->edit_mesh_facedots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
+      DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_state_enable(grp, DRW_STATE_WRITE_DEPTH);
     }
     else {
       pd->edit_mesh_facedots_grp[i] = NULL;
     }
-  }
-
-  if (pd->edit_mesh.do_zbufclip) {
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
-    DRW_PASS_CREATE(psl->edit_mesh_mix_occlude_ps, state);
-
-    sh = OVERLAY_shader_edit_mesh_mix_occlude();
-    grp = DRW_shgroup_create(sh, psl->edit_mesh_mix_occlude_ps);
-    DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
-    DRW_shgroup_uniform_texture_ref(grp, "wireColor", &txl->edit_mesh_occlude_wire_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "wireDepth", &txl->temp_depth_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "sceneDepth", &dtxl->depth);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }
 
@@ -399,8 +396,6 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
   DRW_draw_pass(psl->edit_mesh_depth_ps[NOT_IN_FRONT]);
 
   if (pd->edit_mesh.do_zbufclip) {
-    float clearcol[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-
     DRW_draw_pass(psl->edit_mesh_depth_ps[IN_FRONT]);
 
     /* render facefill */
@@ -414,7 +409,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 
     /* Render wires on a separate framebuffer */
     GPU_framebuffer_bind(fbl->edit_mesh_occlude_wire_fb);
-    GPU_framebuffer_clear_color_depth(fbl->edit_mesh_occlude_wire_fb, clearcol, 1.0f);
+    GPU_framebuffer_clear_depth(fbl->edit_mesh_occlude_wire_fb, 1.0f);
     DRW_draw_pass(psl->edit_mesh_normals_ps);
 
     DRW_view_set_active(pd->view_edit_edges);
@@ -423,9 +418,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
     DRW_view_set_active(pd->view_edit_verts);
     DRW_draw_pass(psl->edit_mesh_verts_ps[NOT_IN_FRONT]);
 
-    /* Combine with scene buffer */
-    GPU_framebuffer_bind(dfbl->color_only_fb);
-    DRW_draw_pass(psl->edit_mesh_mix_occlude_ps);
+    GPU_framebuffer_bind(dfbl->default_fb);
   }
   else {
     const DRWContextState *draw_ctx = DRW_context_state_get();
