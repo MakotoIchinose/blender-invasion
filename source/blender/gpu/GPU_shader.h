@@ -105,7 +105,6 @@ char *GPU_shader_get_binary(GPUShader *shader, uint *r_binary_format, int *r_bin
 typedef enum eGPUBuiltinShader {
   /* specialized drawing */
   GPU_SHADER_TEXT,
-  GPU_SHADER_TEXT_SIMPLE,
   GPU_SHADER_KEYFRAME_DIAMOND,
   GPU_SHADER_SIMPLE_LIGHTING,
   GPU_SHADER_SIMPLE_LIGHTING_FLAT_COLOR,

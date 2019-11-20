@@ -131,10 +131,7 @@ extern char datatoc_gpu_shader_2D_line_dashed_frag_glsl[];
 extern char datatoc_gpu_shader_3D_line_dashed_uniform_color_vert_glsl[];
 
 extern char datatoc_gpu_shader_text_vert_glsl[];
-extern char datatoc_gpu_shader_text_geom_glsl[];
 extern char datatoc_gpu_shader_text_frag_glsl[];
-extern char datatoc_gpu_shader_text_simple_vert_glsl[];
-extern char datatoc_gpu_shader_text_simple_geom_glsl[];
 extern char datatoc_gpu_shader_keyframe_diamond_vert_glsl[];
 extern char datatoc_gpu_shader_keyframe_diamond_frag_glsl[];
 
@@ -871,13 +868,6 @@ static const GPUShaderStages builtin_shader_stages[GPU_SHADER_BUILTIN_LEN] = {
     [GPU_SHADER_TEXT] =
         {
             .vert = datatoc_gpu_shader_text_vert_glsl,
-            .geom = datatoc_gpu_shader_text_geom_glsl,
-            .frag = datatoc_gpu_shader_text_frag_glsl,
-        },
-    [GPU_SHADER_TEXT_SIMPLE] =
-        {
-            .vert = datatoc_gpu_shader_text_simple_vert_glsl,
-            .geom = datatoc_gpu_shader_text_simple_geom_glsl,
             .frag = datatoc_gpu_shader_text_frag_glsl,
         },
     [GPU_SHADER_KEYFRAME_DIAMOND] =
