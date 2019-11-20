@@ -36,6 +36,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_armature.h"
+#include "BKE_modifier.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -149,9 +150,27 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
   pd->armature.transparent = (draw_ctx->v3d->shading.type == OB_WIRE) ||
                              XRAY_FLAG_ENABLED(draw_ctx->v3d);
   pd->armature.show_relations = ((draw_ctx->v3d->flag & V3D_HIDE_HELPLINES) == 0);
+  pd->armature.do_pose_fade_geom = (pd->overlay.flag & V3D_OVERLAY_BONE_SELECT) &&
+                                   ((draw_ctx->object_mode & OB_MODE_WEIGHT_PAINT) == 0) &&
+                                   draw_ctx->object_pose != NULL;
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ADD;
   DRW_PASS_CREATE(psl->armature_transp_ps, state | pd->clipping_state);
+
+  if (pd->armature.do_pose_fade_geom) {
+    state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->armature_bone_select_ps, state | pd->clipping_state);
+
+    float alpha = pd->overlay.xray_alpha_bone;
+    struct GPUShader *sh = OVERLAY_shader_uniform_color();
+    DRWShadingGroup *grp;
+
+    pd->armature_bone_select_act_grp = grp = DRW_shgroup_create(sh, psl->armature_bone_select_ps);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", (float[4]){0.0f, 0.0f, 0.0f, alpha});
+
+    pd->armature_bone_select_grp = grp = DRW_shgroup_create(sh, psl->armature_bone_select_ps);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", (float[4]){0.0f, 0.0f, 0.0f, pow(alpha, 4)});
+  }
 
   for (int i = 0; i < 2; i++) {
     struct GPUShader *sh;
@@ -2127,9 +2146,11 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
                                    OVERLAY_PrivateData *pd,
                                    Object *ob,
                                    const bool do_envelope_dist,
+                                   const bool is_pose_mode,
                                    float *const_color)
 {
-  const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0;
+  const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0 ||
+                       (pd->armature.do_pose_fade_geom && is_pose_mode);
   const bool is_filled = !pd->armature.transparent || do_envelope_dist;
   bArmature *arm = ob->data;
   OVERLAY_ArmatureCallBuffers *cb = &pd->armature_call_buffers[is_xray];
@@ -2199,7 +2220,7 @@ void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   ArmatureDrawContext arm_ctx;
-  armature_context_setup(&arm_ctx, pd, ob, true, NULL);
+  armature_context_setup(&arm_ctx, pd, ob, true, false, NULL);
   draw_armature_edit(&arm_ctx);
 }
 
@@ -2207,7 +2228,7 @@ void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   ArmatureDrawContext arm_ctx;
-  armature_context_setup(&arm_ctx, pd, ob, true, NULL);
+  armature_context_setup(&arm_ctx, pd, ob, true, true, NULL);
   draw_armature_pose(&arm_ctx);
 }
 
@@ -2218,8 +2239,44 @@ void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob)
   ArmatureDrawContext arm_ctx;
   float *color;
   DRW_object_wire_theme_get(ob, draw_ctx->view_layer, &color);
-  armature_context_setup(&arm_ctx, pd, ob, false, color);
+  armature_context_setup(&arm_ctx, pd, ob, false, false, color);
   draw_armature_pose(&arm_ctx);
+}
+
+static bool POSE_is_driven_by_active_armature(Object *ob)
+{
+  Object *ob_arm = modifiers_isDeformedByArmature(ob);
+  if (ob_arm) {
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    bool is_active = OVERLAY_armature_is_pose_mode(ob_arm, draw_ctx);
+    if (!is_active && ob_arm->proxy_from) {
+      is_active = OVERLAY_armature_is_pose_mode(ob_arm->proxy_from, draw_ctx);
+    }
+    return is_active;
+  }
+  else {
+    Object *ob_mesh_deform = modifiers_isDeformedByMeshDeform(ob);
+    if (ob_mesh_deform) {
+      /* Recursive. */
+      return POSE_is_driven_by_active_armature(ob_mesh_deform);
+    }
+  }
+  return false;
+}
+
+void OVERLAY_pose_cache_populate(OVERLAY_Data *vedata, Object *ob)
+{
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+
+  struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+  if (geom) {
+    if (POSE_is_driven_by_active_armature(ob)) {
+      DRW_shgroup_call(pd->armature_bone_select_act_grp, geom, ob);
+    }
+    else {
+      DRW_shgroup_call(pd->armature_bone_select_grp, geom, ob);
+    }
+  }
 }
 
 void OVERLAY_armature_cache_finish(OVERLAY_Data *vedata)
@@ -2240,5 +2297,21 @@ void OVERLAY_armature_draw(OVERLAY_Data *vedata)
 
   DRW_draw_pass(psl->armature_transp_ps);
   DRW_draw_pass(psl->armature_ps[0]);
-  DRW_draw_pass(psl->armature_ps[1]);
+  if (psl->armature_bone_select_ps == NULL) {
+    DRW_draw_pass(psl->armature_ps[1]);
+  }
+}
+
+void OVERLAY_pose_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
+  if (psl->armature_bone_select_ps != NULL) {
+    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+
+    DRW_draw_pass(psl->armature_bone_select_ps);
+
+    GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
+    DRW_draw_pass(psl->armature_ps[1]);
+  }
 }

@@ -186,6 +186,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                              (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              ((ob->base_flag & BASE_SELECTED) ||
                               (is_select && ob->type == OB_LIGHTPROBE));
+  const bool draw_bone_selection = (ob->type == OB_MESH) && pd->armature.do_pose_fade_geom &&
+                                   !is_select;
   const bool draw_extras =
       ((pd->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) == 0) ||
       /* Show if this is the camera we're looking through since it's useful for selecting. */
@@ -204,6 +206,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   }
   if (draw_outlines) {
     OVERLAY_outline_cache_populate(vedata, ob, dupli, init);
+  }
+  if (draw_bone_selection) {
+    OVERLAY_pose_cache_populate(vedata, ob);
   }
 
   if (in_edit_mode) {
@@ -272,9 +277,6 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_metaball_cache_populate(vedata, ob);
       }
       break;
-    // case OB_FONT:
-    //   OVERLAY_font_cache_populate();
-    //   break;
     case OB_GPENCIL:
       OVERLAY_gpencil_cache_populate(vedata, ob);
       break;
@@ -352,6 +354,9 @@ static void OVERLAY_draw_scene(void *vedata)
       OVERLAY_edit_lattice_draw(vedata);
       break;
     case CTX_MODE_POSE:
+      OVERLAY_paint_draw(vedata);
+      OVERLAY_pose_draw(vedata);
+      break;
     case CTX_MODE_PAINT_WEIGHT:
     case CTX_MODE_PAINT_VERTEX:
     case CTX_MODE_PAINT_TEXTURE:

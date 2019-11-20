@@ -47,8 +47,9 @@ typedef struct OVERLAY_TextureList {
 #define IN_FRONT 1
 
 typedef struct OVERLAY_PassList {
-  DRWPass *armature_transp_ps;
   DRWPass *armature_ps[2];
+  DRWPass *armature_bone_select_ps;
+  DRWPass *armature_transp_ps;
   DRWPass *edit_curve_wire_ps[2];
   DRWPass *edit_curve_handle_ps;
   DRWPass *edit_lattice_ps;
@@ -194,6 +195,8 @@ typedef struct OVERLAY_ArmatureCallBuffers {
 } OVERLAY_ArmatureCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
+  DRWShadingGroup *armature_bone_select_act_grp;
+  DRWShadingGroup *armature_bone_select_grp;
   DRWShadingGroup *edit_curve_normal_grp[2];
   DRWShadingGroup *edit_curve_wire_grp[2];
   DRWShadingGroup *edit_curve_handle_grp;
@@ -282,6 +285,7 @@ typedef struct OVERLAY_PrivateData {
   struct {
     bool transparent;
     bool show_relations;
+    bool do_pose_fade_geom;
   } armature;
   struct {
     DRWCallBuffer *handle[2];
@@ -350,6 +354,8 @@ void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_armature_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_armature_draw(OVERLAY_Data *vedata);
+void OVERLAY_pose_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_pose_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4]);
 void OVERLAY_bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4]);
