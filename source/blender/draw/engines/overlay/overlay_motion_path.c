@@ -208,7 +208,7 @@ void OVERLAY_motion_path_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
   if (ob->type == OB_ARMATURE) {
-    if (DRW_pose_mode_armature(ob, draw_ctx->obact)) {
+    if (OVERLAY_armature_is_pose_mode(ob, draw_ctx)) {
       for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
         if (pchan->mpath) {
           motion_path_cache(vedata, ob, pchan, &ob->pose->avs, pchan->mpath);

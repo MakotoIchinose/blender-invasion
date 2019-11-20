@@ -330,8 +330,6 @@ typedef struct BoneInstanceData {
 } BoneInstanceData;
 
 typedef struct OVERLAY_InstanceFormats {
-  // struct GPUVertFormat *instance_mball_handles;
-
   struct GPUVertFormat *instance_pos;
   struct GPUVertFormat *instance_extra;
   struct GPUVertFormat *instance_bone;
@@ -345,6 +343,7 @@ typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *wire_extra;
 } OVERLAY_InstanceFormats;
 
+bool OVERLAY_armature_is_pose_mode(Object *ob, const struct DRWContextState *draw_ctx);
 void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);

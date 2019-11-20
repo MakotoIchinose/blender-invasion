@@ -172,7 +172,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool is_select = DRW_state_is_select();
   const bool renderable = DRW_object_is_renderable(ob);
-  const bool in_pose_mode = ob->type == OB_ARMATURE && DRW_pose_mode_armature(ob, draw_ctx->obact);
+  const bool in_pose_mode = ob->type == OB_ARMATURE && OVERLAY_armature_is_pose_mode(ob, draw_ctx);
   const bool in_edit_mode = BKE_object_is_in_editmode(ob);
   const bool in_part_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
   const bool in_paint_mode = (ob == draw_ctx->obact) &&

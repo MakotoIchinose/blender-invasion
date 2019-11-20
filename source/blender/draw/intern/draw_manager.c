@@ -84,7 +84,6 @@
 /* only for callbacks */
 #include "draw_cache_impl.h"
 
-#include "draw_mode_engines.h"
 #include "engines/eevee/eevee_engine.h"
 #include "engines/basic/basic_engine.h"
 #include "engines/workbench/workbench_engine.h"
