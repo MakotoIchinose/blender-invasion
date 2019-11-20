@@ -128,7 +128,6 @@ extern char datatoc_gpu_shader_2D_edituvs_stretch_vert_glsl[];
 
 extern char datatoc_gpu_shader_2D_line_dashed_uniform_color_vert_glsl[];
 extern char datatoc_gpu_shader_2D_line_dashed_frag_glsl[];
-extern char datatoc_gpu_shader_2D_line_dashed_geom_glsl[];
 extern char datatoc_gpu_shader_3D_line_dashed_uniform_color_vert_glsl[];
 
 extern char datatoc_gpu_shader_text_vert_glsl[];
@@ -1095,13 +1094,11 @@ static const GPUShaderStages builtin_shader_stages[GPU_SHADER_BUILTIN_LEN] = {
     [GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR] =
         {
             .vert = datatoc_gpu_shader_2D_line_dashed_uniform_color_vert_glsl,
-            .geom = datatoc_gpu_shader_2D_line_dashed_geom_glsl,
             .frag = datatoc_gpu_shader_2D_line_dashed_frag_glsl,
         },
     [GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR] =
         {
             .vert = datatoc_gpu_shader_3D_line_dashed_uniform_color_vert_glsl,
-            .geom = datatoc_gpu_shader_2D_line_dashed_geom_glsl,
             .frag = datatoc_gpu_shader_2D_line_dashed_frag_glsl,
         },
 
