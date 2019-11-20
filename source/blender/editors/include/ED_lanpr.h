@@ -372,6 +372,25 @@ typedef struct LANPR_RenderTaskInfo {
 
 } LANPR_RenderTaskInfo;
 
+/** Bounding area diagram: 
+ * 
+ * +----+ <----U (Upper edge Y value)
+ * |    |
+ * +----+ <----B (Bottom edge Y value)
+ * ^    ^
+ * L    R (Left/Right edge X value)
+ * 
+ * Example structure when subdividing 1 bounding areas:
+ * 1 area can be divided into 4 smaller children to
+ * accomodate image areas with denser triangle distribution.
+ * +--+--+-----+
+ * +--+--+     |
+ * +--+--+-----+
+ * |     |     |
+ * +-----+-----+
+ * lp/rp/up/bp is the list for
+ * storing pointers to adjacent bounding areas.
+*/
 typedef struct LANPR_BoundingArea {
   real l, r, u, b;
   real cx, cy;

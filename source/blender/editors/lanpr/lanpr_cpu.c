@@ -1828,18 +1828,10 @@ static void lanpr_make_render_geometry_buffers_object(
   }
 }
 
-static int lanpr_object_has_feature_line_modifier(Object *o)
-{
-  if (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE) {
-    return 1;
-  }
-  return 0;
-}
-
 int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
 {
   CollectionChild *cc;
-  int object_is_used = (lanpr_object_has_feature_line_modifier(o) &&
+  int object_is_used = (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE &&
                         o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
 
   if (object_is_used && (c->lanpr.flags & LANPR_LINE_LAYER_COLLECTION_FORCE) &&
@@ -2105,18 +2097,14 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
     interp_v3_v3v3_db(Trans, rl->l->fbcoord, rl->r->fbcoord, Cut);
   }
 
-  /*  prevent vertical problem ? */
-  if (rl->l->fbcoord[0] != rl->r->fbcoord[0]) {
+  /* To accomodate k=0 and k=inf (vertical) lines. */
+  if (abs(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > abs(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
     Cut = tMatGetLinearRatio(rl->l->fbcoord[0], rl->r->fbcoord[0], Trans[0]);
   }
   else {
     Cut = tMatGetLinearRatio(rl->l->fbcoord[1], rl->r->fbcoord[1], Trans[1]);
   }
 
-  /*
-  In = ED_lanpr_point_inside_triangled(
-      Trans, rt->v[0]->fbcoord, rt->v[1]->fbcoord, rt->v[2]->fbcoord);
-  */
   if (StL == 2) {
     if (StR == 2) {
       INTERSECT_JUST_SMALLER(is, order, DBL_TRIANGLE_LIM, LCross);
@@ -2328,11 +2316,13 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
 
   Result = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderVert));
 
-  /*  Result->IntersectingOnFace = testing; */
   Result->edge_used = 1;
-  /*  Result->IntersectL = l; */
-  Result->v = (void *)r; /*  Caution! */
-                         /*  Result->intersecting_with = rt; */
+
+  /** Caution! BMVert* Result->v is reused to save a intersecting render vert. 
+   * this saves memory when the scene is very large.
+  */
+  Result->v = (void *)r;
+
   copy_v3_v3_db(Result->gloc, gloc);
 
   BLI_addtail(&testing->intersecting_verts, Result);
@@ -2395,8 +2385,11 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
     }
   }
   else {
-    if (!rt->rl[0] || !rt->rl[1] || !rt->rl[2]) {
-      return 0; /*  shouldn't need this, there must be problems in culling. */
+    if (UNLIKELY(!rt->rl[0] || !rt->rl[1] || !rt->rl[2])) {
+      /** If we enter here, then there must be problems in culling,
+       * extremely rare condition where floating point precision can't handle.
+       */
+      return 0;
     }
     E0T = lanpr_triangle_line_intersection_test(rb, rt->rl[0], rt, testing, 0);
     if (E0T && (!(*Next))) {
@@ -2450,8 +2443,8 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
   }
   mul_v4_m4v3_db(l->fbcoord, rb->view_projection, l->gloc);
   mul_v4_m4v3_db(r->fbcoord, rb->view_projection, r->gloc);
-  mul_v3db_db(l->fbcoord, (1 / l->fbcoord[3]) /**HeightMultiply/2*/);
-  mul_v3db_db(r->fbcoord, (1 / r->fbcoord[3]) /**HeightMultiply/2*/);
+  mul_v3db_db(l->fbcoord, (1 / l->fbcoord[3]));
+  mul_v3db_db(r->fbcoord, (1 / r->fbcoord[3]));
 
   if (!rb->viewport_override) {
     l->fbcoord[0] -= cam->shiftx * 2;
@@ -2465,8 +2458,6 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
 
   l->intersecting_with = rt;
   r->intersecting_with = testing;
-
-  /* ((1 / rl->l->fbcoord[3])*rb->FrameBuffer->H / 2) */
 
   Result = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
   Result->l = l;
@@ -2582,9 +2573,6 @@ static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold
   }
 
   for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
-    /*  if(rl->testing) */
-    /*  if (!lanpr_line_crosses_frame(rl->l->fbcoord, rl->r->fbcoord)) */
-    /* 	continue; */
 
     Add = 0;
     Dot1 = 0;
@@ -3046,7 +3034,8 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
   LANPR_BoundingArea *ba = Root->child, *tba;
   LinkData *lip, *lip2, *next_lip;
   LANPR_StaticMemPool *mph = &rb->render_data_pool;
-
+  
+  /* Inter-connection with newly created 4 child bounding areas. */
   list_append_pointer_static_pool(mph, &ba[1].rp, &ba[0]);
   list_append_pointer_static_pool(mph, &ba[0].lp, &ba[1]);
   list_append_pointer_static_pool(mph, &ba[1].bp, &ba[2]);
@@ -3056,8 +3045,18 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
   list_append_pointer_static_pool(mph, &ba[3].up, &ba[0]);
   list_append_pointer_static_pool(mph, &ba[0].bp, &ba[3]);
 
+  /** Connect 4 child bounding areas to other areas that are
+   * adjacent to their original parents */
   for (lip = Root->lp.first; lip; lip = lip->next) {
+    
+    /** For example, we are dealing with parent's left side
+     * tba represents each adjacent neighbor of the parent.
+    */
     tba = lip->data;
+
+    /** if this neighbor is adjacent to
+     * the two new areas on the left side of the parent,
+     * then add them to the adjacent list as well. */
     if (ba[1].u > tba->b && ba[1].b < tba->u) {
       list_append_pointer_static_pool(mph, &ba[1].lp, tba);
       list_append_pointer_static_pool(mph, &tba->rp, &ba[1]);
@@ -3100,6 +3099,9 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       list_append_pointer_static_pool(mph, &tba->up, &ba[3]);
     }
   }
+
+  /** Then remove the parent bounding areas from
+   * their original adjacent areas. */
   for (lip = Root->lp.first; lip; lip = lip->next) {
     for (lip2 = ((LANPR_BoundingArea *)lip->data)->rp.first; lip2; lip2 = next_lip) {
       next_lip = lip2->next;
@@ -3160,6 +3162,8 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
       }
     }
   }
+
+  /* Finally clear parent's adjacent list. */
   while (list_pop_pointer_no_free(&Root->lp))
     ;
   while (list_pop_pointer_no_free(&Root->rp))
@@ -3568,19 +3572,14 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
                 rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1);
           }
         }
-      }
-      else {
-        ; /*  throw away. */
-      }
+      }/* else throw away. */
       rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
-      /*  if (tnsglobal_TriangleIntersectionCount >= 2000) { */
-      /*  tnsset_PlusRenderIntersectionCount(rb, tnsglobal_TriangleIntersectionCount); */
-      /*  tnsglobal_TriangleIntersectionCount = 0; */
-      /* } */
     }
   }
-  /*  tnsset_PlusRenderIntersectionCount(rb, tnsglobal_TriangleIntersectionCount); */
 }
+
+/** This march along one render line in image space and
+ * get the next bounding area the line is crossing. */
 static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This,
                                                         LANPR_RenderLine *rl,
                                                         real x,
@@ -3595,9 +3594,13 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
   real r1, r2;
   LANPR_BoundingArea *ba;
   LinkData *lip;
+  
+  /* If we are marching towards the right */
   if (PositiveX > 0) {
     rx = This->r;
     ry = y + k * (rx - x);
+
+    /* If we are marching towards the top */
     if (PositiveY > 0) {
       uy = This->u;
       ux = x + (uy - y) / k;
@@ -3606,6 +3609,8 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
+
+      /* we reached the right side before the top side */
       if (r1 <= r2) {
         for (lip = This->rp.first; lip; lip = lip->next) {
           ba = lip->data;
@@ -3616,6 +3621,7 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
           }
         }
       }
+      /* we reached the top side before the right side */
       else {
         for (lip = This->up.first; lip; lip = lip->next) {
           ba = lip->data;
@@ -3627,6 +3633,7 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
         }
       }
     }
+    /* If we are marching towards the bottom */
     else if (PositiveY < 0) {
       by = This->b;
       bx = x + (by - y) / k;
@@ -3656,7 +3663,8 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
         }
       }
     }
-    else { /*  Y diffence == 0 */
+    /* If the line is compeletely horizontal, in which Y diffence == 0 */
+    else {
       r1 = tMatGetLinearRatio(rl->l->fbcoord[0], rl->r->fbcoord[0], This->r);
       if (r1 > 1) {
         return 0;
@@ -3671,9 +3679,13 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
       }
     }
   }
-  else if (PositiveX < 0) { /*  X diffence < 0 */
+
+  /* If we are marching towards the left */
+  else if (PositiveX < 0) {
     lx = This->l;
     ly = y + k * (lx - x);
+
+    /* If we are marching towards the top */
     if (PositiveY > 0) {
       uy = This->u;
       ux = x + (uy - y) / k;
@@ -3703,6 +3715,8 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
         }
       }
     }
+
+    /* If we are marching towards the bottom */
     else if (PositiveY < 0) {
       by = This->b;
       bx = x + (by - y) / k;
@@ -3732,7 +3746,8 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
         }
       }
     }
-    else { /*  Y diffence == 0 */
+    /* Again, horizontal */
+    else {
       r1 = tMatGetLinearRatio(rl->l->fbcoord[0], rl->r->fbcoord[0], This->l);
       if (r1 > 1) {
         return 0;
@@ -3747,7 +3762,8 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
       }
     }
   }
-  else { /*  X difference == 0; */
+  /* If the line is completely vertical, hence X difference == 0 */
+  else {
     if (PositiveY > 0) {
       r1 = tMatGetLinearRatio(rl->l->fbcoord[1], rl->r->fbcoord[1], This->u);
       if (r1 > 1) {
