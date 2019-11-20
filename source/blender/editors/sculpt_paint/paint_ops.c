@@ -413,6 +413,8 @@ static bool palette_sort_poll(bContext *C)
 
 static int palette_sort_exec(bContext *C, wmOperator *op)
 {
+  const int type = RNA_enum_get(op->ptr, "type");
+
   Paint *paint = BKE_paint_get_active_from_context(C);
   Palette *palette = paint->palette;
 
@@ -441,7 +443,12 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
       t++;
     }
     /* Sort */
-    BKE_palette_sort_hsv(color_array, totcol);
+    if (type == -1) {
+      BKE_palette_sort_hsv(color_array, totcol);
+    }
+    else {
+      BKE_palette_sort_svh(color_array, totcol);
+    }
 
     /* Clear old color swatches. */
     PaletteColor *color_next = NULL;
@@ -472,6 +479,12 @@ static int palette_sort_exec(bContext *C, wmOperator *op)
 
 void PALETTE_OT_sort(wmOperatorType *ot)
 {
+  static const EnumPropertyItem sort_type[] = {
+      {-1, "HSV", 0, "Hue, Saturation, Value", ""},
+      {1, "SVH", 0, "Saturation, Value, Hue", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   /* identifiers */
   ot->name = "Sort Palette";
   ot->idname = "PALETTE_OT_sort";
@@ -483,6 +496,8 @@ void PALETTE_OT_sort(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(ot->srna, "type", sort_type, -1, "Type", "");
 }
 
 /* Move colors in palette. */

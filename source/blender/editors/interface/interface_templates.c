@@ -4815,16 +4815,31 @@ void uiTemplatePalette(uiLayout *layout,
     UI_but_operator_ptr_get(but);
     RNA_enum_set(but->opptr, "type", 1);
 
-    uiDefIconButO(block,
-                  UI_BTYPE_BUT,
-                  "PALETTE_OT_sort",
-                  WM_OP_INVOKE_DEFAULT,
-                  ICON_SORTSIZE,
-                  0,
-                  0,
-                  UI_UNIT_X,
-                  UI_UNIT_Y,
-                  NULL);
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "PALETTE_OT_sort",
+                        WM_OP_INVOKE_DEFAULT,
+                        ICON_SORTSIZE,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        NULL);
+    UI_but_operator_ptr_get(but);
+    RNA_enum_set(but->opptr, "type", -1);
+
+    but = uiDefIconButO(block,
+                        UI_BTYPE_BUT,
+                        "PALETTE_OT_sort",
+                        WM_OP_INVOKE_DEFAULT,
+                        ICON_SORT_DESC,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        NULL);
+    UI_but_operator_ptr_get(but);
+    RNA_enum_set(but->opptr, "type", 1);
   }
 
   col = uiLayoutColumn(layout, true);

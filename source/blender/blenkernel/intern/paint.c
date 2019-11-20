@@ -691,10 +691,48 @@ static int palettecolor_compare_hsv(const void *a1, const void *a2)
   return 0;
 }
 
+/* helper function to sort using qsort */
+static int palettecolor_compare_svh(const void *a1, const void *a2)
+{
+  const tPaletteColorHSV *ps1 = a1, *ps2 = a2;
+
+  /* Saturation. */
+  if (ps1->s > ps2->s) {
+    return 1;
+  }
+  else if (ps1->s < ps2->s) {
+    return -1;
+  }
+
+  /* Value. */
+  if (1.0f - ps1->v > 1.0f - ps2->v) {
+    return 1;
+  }
+  else if (1.0f - ps1->v < 1.0f - ps2->v) {
+    return -1;
+  }
+
+  /* Hue */
+  if (ps1->h > ps2->h) {
+    return 1;
+  }
+  else if (ps1->h < ps2->h) {
+    return -1;
+  }
+
+  return 0;
+}
+
 void BKE_palette_sort_hsv(tPaletteColorHSV *color_array, const int totcol)
 {
   /* Sort by Hue , Saturation and Value. */
   qsort(color_array, totcol, sizeof(tPaletteColorHSV), palettecolor_compare_hsv);
+}
+
+void BKE_palette_sort_svh(tPaletteColorHSV *color_array, const int totcol)
+{
+  /* Sort by Saturation, Value and Hue. */
+  qsort(color_array, totcol, sizeof(tPaletteColorHSV), palettecolor_compare_svh);
 }
 
 bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
