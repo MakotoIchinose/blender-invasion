@@ -70,7 +70,6 @@
 
 extern LANPR_SharedResource lanpr_share;
 extern const char *RE_engine_id_BLENDER_LANPR;
-struct Object;
 
 /* Own functions */
 
@@ -172,7 +171,7 @@ LANPR_LineLayerComponent *ED_lanpr_new_line_component(SceneLANPR *lanpr)
 
   return llc;
 }
-static int lanpr_add_line_layer_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_add_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -185,7 +184,7 @@ static int lanpr_add_line_layer_exec(struct bContext *C, struct wmOperator *UNUS
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_delete_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -216,7 +215,7 @@ static int lanpr_delete_line_layer_exec(struct bContext *C, struct wmOperator *U
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_move_line_layer_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -244,7 +243,7 @@ static int lanpr_move_line_layer_exec(struct bContext *C, struct wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_add_line_component_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_add_line_component_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -253,7 +252,7 @@ static int lanpr_add_line_component_exec(struct bContext *C, struct wmOperator *
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_delete_line_component_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_delete_line_component_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -282,7 +281,7 @@ static int lanpr_delete_line_component_exec(struct bContext *C, struct wmOperato
   return OPERATOR_FINISHED;
 }
 
-static int ED_lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int ED_lanpr_rebuild_all_commands_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -295,7 +294,7 @@ static int ED_lanpr_rebuild_all_commands_exec(struct bContext *C, struct wmOpera
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_enable_all_line_types_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_enable_all_line_types_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -325,7 +324,7 @@ static int lanpr_enable_all_line_types_exec(struct bContext *C, struct wmOperato
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_auto_create_line_layer_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -354,7 +353,7 @@ static int lanpr_auto_create_line_layer_exec(struct bContext *C, struct wmOperat
   return OPERATOR_FINISHED;
 }
 
-void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_add_line_layer(wmOperatorType *ot)
 {
 
   ot->name = "Add Line Layer";
@@ -363,7 +362,7 @@ void SCENE_OT_lanpr_add_line_layer(struct wmOperatorType *ot)
 
   ot->exec = lanpr_add_line_layer_exec;
 }
-void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_delete_line_layer(wmOperatorType *ot)
 {
 
   ot->name = "Delete Line Layer";
@@ -372,7 +371,7 @@ void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot)
 
   ot->exec = lanpr_delete_line_layer_exec;
 }
-void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_rebuild_all_commands(wmOperatorType *ot)
 {
 
   ot->name = "Refresh Drawing Commands";
@@ -381,7 +380,7 @@ void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot)
 
   ot->exec = ED_lanpr_rebuild_all_commands_exec;
 }
-void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_auto_create_line_layer(wmOperatorType *ot)
 {
 
   ot->name = "Auto Create Line Layer";
@@ -390,7 +389,7 @@ void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot)
 
   ot->exec = lanpr_auto_create_line_layer_exec;
 }
-void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_move_line_layer(wmOperatorType *ot)
 {
   static const EnumPropertyItem line_layer_move[] = {
       {1, "UP", 0, "Up", ""}, {-1, "DOWN", 0, "Down", ""}, {0, NULL, 0, NULL, NULL}};
@@ -410,7 +409,7 @@ void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot)
                "Direction",
                "Direction to move the active line layer towards");
 }
-void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_enable_all_line_types(wmOperatorType *ot)
 {
   ot->name = "Enable All Line Types";
   ot->description = "Enable All Line Types In This Line Layer";
@@ -418,7 +417,7 @@ void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot)
 
   ot->exec = lanpr_enable_all_line_types_exec;
 }
-void SCENE_OT_lanpr_add_line_component(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_add_line_component(wmOperatorType *ot)
 {
 
   ot->name = "Add Line Component";
@@ -427,7 +426,7 @@ void SCENE_OT_lanpr_add_line_component(struct wmOperatorType *ot)
 
   ot->exec = lanpr_add_line_component_exec;
 }
-void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_delete_line_component(wmOperatorType *ot)
 {
 
   ot->name = "Delete Line Component";
@@ -893,42 +892,31 @@ static int lanpr_point_inside_triangle3de(tnsVector3d v,
 
   sub_v3_v3v3_db(l, v1, v0);
   sub_v3_v3v3_db(r, v, v1);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N1, l, r);
 
   sub_v3_v3v3_db(l, v2, v1);
   sub_v3_v3v3_db(r, v, v2);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N2, l, r);
 
   if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
-  /*  if (d<DBL_EPSILON) return -1; */
 
   sub_v3_v3v3_db(l, v0, v2);
   sub_v3_v3v3_db(r, v, v0);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N1, l, r);
 
   if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
-  /*  if (d<DBL_EPSILON) return -1; */
 
   sub_v3_v3v3_db(l, v1, v0);
   sub_v3_v3v3_db(r, v, v1);
-  /*  tmat_normalize_self_3d(l); */
-  /*  tmat_normalize_self_3d(r); */
   cross_v3_v3v3_db(N2, l, r);
 
   if ((d = dot_v3v3_db(N1, N2)) < 0) {
     return 0;
   }
-  /*  if (d<DBL_EPSILON) return -1; */
 
   return 1;
 }
@@ -1008,6 +996,11 @@ static void lanpr_post_triangle(LANPR_RenderTriangle *rt, LANPR_RenderTriangle *
 
 #define RT_AT(head, rb, offset) ((unsigned char *)head + offset * rb->triangle_size)
 
+
+/** This function cuts triangles that are (partially or fully) behind near clipping plane. 
+ * for triangles that crossing the near plane, it will generate new 1 or 2 triangles with
+ * new topology that represents the trimmed triangle. (which then became a triangle or square)
+*/
 static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLine *rl;
@@ -1052,41 +1045,43 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     }
     o = reln->object_ref;
     for (i = 0; i < reln->element_count; i++) {
-      int In1 = 0, In2 = 0, In3 = 0;
+      
+      /* These three represents points that are in the clipping range or not*/
+      int in0 = 0, in1 = 0, in2 = 0;
+      
+      /* Select the triangle in the array. */
       rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
 
+#ifdef DEBUG
+      /* Debug purpose */
       printf("z%f w%f  z%f w%f  z%f w%f\n",
         rt->v[0]->fbcoord[2], rt->v[0]->fbcoord[1],
         rt->v[1]->fbcoord[2], rt->v[1]->fbcoord[1],
         rt->v[2]->fbcoord[2], rt->v[2]->fbcoord[1]);
+#endif
 
+      /* Point inside near plane */
       if (rt->v[0]->fbcoord[2] < 0) {
-        In1 = 1;
+        in0 = 1;
       }
       if (rt->v[1]->fbcoord[2] < 0) {
-        In2 = 1;
+        in1 = 1;
       }
       if (rt->v[2]->fbcoord[2] < 0) {
-        In3 = 1;
+        in2 = 1;
       }
 
+      /* Additional memory space for storing generated points and triangles */
       if (v_count > 60) {
         veln->element_count = v_count;
         veln = lanpr_new_cull_point_space64(rb);
         v_count = 0;
       }
-
       if (t_count > 60) {
         teln->element_count = t_count;
         teln = lanpr_new_cull_triangle_space64(rb);
         t_count = 0;
       }
-
-      /*  if ((!rt->rl[0]->next && !rt->rl[0]->prev) || */
-      /*     (!rt->rl[1]->next && !rt->rl[1]->prev) || */
-      /*     (!rt->rl[2]->next && !rt->rl[2]->prev)) { */
-      /* 	printf("'"); // means this triangle is lonely???? */
-      /* } */
 
       rv = &((LANPR_RenderVert *)veln->pointer)[v_count];
       rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
@@ -1094,10 +1089,13 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 
       real vv1[3], vv2[3], dot1, dot2;
 
-      switch (In1 + In2 + In3) {
-        case 0:
+      switch (in0 + in1 + in2) {
+        case 0: /* ignore this triangle. */
           continue;
         case 3:
+          /** triangle completely behind near plane, throw it away
+           * also remove render lines form being computed.
+           */
           rt->cull_status = LANPR_CULL_DISCARD;
           BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
           rt->rl[0]->next = rt->rl[0]->prev = 0;
@@ -1107,24 +1105,49 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           rt->rl[2]->next = rt->rl[2]->prev = 0;
           continue;
         case 2:
+          /** Two points behind near plane, cut those and
+           * generate 2 new points, 3 lines and 1 triangle */
           rt->cull_status = LANPR_CULL_USED;
-          if (!In1) {
+          
+          /** (!in0) means "when point 0 is visible".
+           * conditons for point 1, 2 are the same idea. 
+           * 1-----|-------0
+           * |     |   ---
+           * |     |---
+           * |  ---|
+           * 2--   |
+           *     (near)---------->(far)
+           * Will become:
+           *       |N******0
+           *       |*  ***
+           *       |N**
+           *       |
+           *       |
+           *     (near)---------->(far)
+          */
+          if (!in0) {
+
+            /* cut point for line 2---|-----0 */
             sub_v3_v3v3_db(vv1, rt->v[0]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
             dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
+            /* assign it to a new point */
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
+            /* cut point for line 1---|-----0 */
             sub_v3_v3v3_db(vv1, rt->v[0]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[1]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
             dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot1 / (dot1 + dot2);
+            /* assign it to another new point */
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
 
+            /* remove all original render lines */
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
@@ -1132,38 +1155,50 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[2]);
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
+            /* New line connecting two new points */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
+            /** note: inverting rl->l/r (left/right point) doesn't matter as long as 
+             * rt->rl and rt->v has the same sequence. and the winding direction
+             * can be either CW or CCW but needs to be consistent throughout the calculation.
+             */
             rl->l = &rv[1];
             rl->r = &rv[0];
+            /* only one adjacent triangle, because the other side is the near plane */
+            /* use tl or tr doesn't matter. */
             rl->tl = rt1;
             rt1->rl[1] = rl;
             rl->object_ref = o;
 
+            /* new line connecting original point 0 and a new point */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
             rl->r = rt->v[0];
+            /* restore adjacent triangle data. */
             rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
             rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[0] = rl;
             rl->object_ref = o;
 
+            /* new line connecting original point 0 and another new point */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
             rl->r = &rv[0];
+            /* restore adjacent triangle data. */
             rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
             rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
             rt1->rl[2] = rl;
             rl->object_ref = o;
 
+            /* re-assign triangle point array to two new points. */
             rt1->v[0] = rt->v[0];
             rt1->v[1] = &rv[1];
             rt1->v[2] = &rv[0];
@@ -1174,7 +1209,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             t_count += 1;
             continue;
           }
-          else if (!In3) {
+          else if (!in2) {
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
@@ -1230,9 +1265,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = o;
 
-            rt1->v[0] = &rv[1];
-            rt1->v[1] = rt->v[2];
-            rt1->v[2] = &rv[0];
+            rt1->v[0] = &rv[0];/*&rv[1];*/
+            rt1->v[1] = &rv[1];/*rt->v[2];*/
+            rt1->v[2] = rt->v[2];/*&rv[0];*/
 
             lanpr_post_triangle(rt1, rt);
 
@@ -1240,7 +1275,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             t_count += 1;
             continue;
           }
-          else if (!In2) {
+          else if (!in1) {
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
@@ -1280,8 +1315,8 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
             rl->r = rt->v[1];
-            rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
-            rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
+            rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
+            rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
             rt1->rl[0] = rl;
             rl->object_ref = o;
 
@@ -1291,14 +1326,14 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
             rl->r = &rv[1];
-            rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
-            rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
+            rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
+            rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[1] = rl;
             rl->object_ref = o;
 
-            rt1->v[0] = rt->v[1];
-            rt1->v[1] = &rv[1];
-            rt1->v[2] = &rv[0];
+            rt1->v[0] = &rv[0];/*rt->v[1];*/
+            rt1->v[1] = rt->v[1];/*&rv[1];*/
+            rt1->v[2] = &rv[1];/*&rv[0];*/
 
             lanpr_post_triangle(rt1, rt);
 
@@ -1308,29 +1343,58 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           }
           break;
         case 1:
+          /** Two points behind near plane, cut those and
+           * generate 2 new points, 4 lines and 2 triangles */
           rt->cull_status = LANPR_CULL_USED;
-          if (In1) {
+          
+          /** (in0) means "when point 0 is invisible".
+           * conditons for point 1, 2 are the same idea. 
+           * 0------|----------1
+           *   --   |          |
+           *     ---|          |
+           *        |--        |
+           *        |  ---     |
+           *        |     ---  |
+           *        |        --2
+           *      (near)---------->(far)
+           * Will become:
+           *        |N*********1
+           *        |*     *** |
+           *        |*  ***    |
+           *        |N**       |
+           *        |  ***     |
+           *        |     ***  |
+           *        |        **2
+           *      (near)---------->(far)
+          */
+          if (in0) {
+            /* Cut point for line 0---|------1 */
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
             dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot2 / (dot1 + dot2);
+            /* Assign to a new point */
             interp_v3_v3v3_db(rv[0].gloc, rt->v[0]->gloc, rt->v[1]->gloc, a);
             mul_v4_m4v3_db(rv[0].fbcoord, vp, rv[0].gloc);
 
+            /* Cut point for line 0---|------2 */
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
             dot1 = dot_v3v3_db(vv1, view_dir);
             dot2 = dot_v3v3_db(vv2, view_dir);
             a = dot2 / (dot1 + dot2);
+            /* Assign to aother new point */
             interp_v3_v3v3_db(rv[1].gloc, rt->v[0]->gloc, rt->v[2]->gloc, a);
             mul_v4_m4v3_db(rv[1].fbcoord, vp, rv[1].gloc);
 
+            /* Remove two cutted lines, the visible line is untouched. */
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
             rt->rl[0]->next = rt->rl[0]->prev = 0;
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[2]);
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
+            /* New line connects two new points */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1341,6 +1405,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt1->rl[1] = rl;
             rl->object_ref = o;
 
+            /** New line connects new point 0 and old point 1,
+             * this is a border line.
+             */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1352,6 +1419,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = o;
 
+            /** New line connects new point 1 and old point 1,
+             * this is a inner line separating newly generated triangles.
+            */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1364,10 +1434,14 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt2->rl[0] = rl;
             rl->object_ref = o;
 
+            /* We now have one triangle closed. */
             rt1->v[0] = rt->v[1];
             rt1->v[1] = &rv[1];
             rt1->v[2] = &rv[0];
 
+            /** New line connects new point 1 and old point 2,
+             * this is also a border line.
+            */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1380,6 +1454,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt2->rl[1] = rt->rl[1];
             rl->object_ref = o;
 
+            /* Close the second triangle. */
             rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[1];
             rt2->v[2] = rt->v[2];
@@ -1391,7 +1466,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             t_count += 2;
             continue;
           }
-          else if (In2) {
+          else if (in1) {
 
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[2]->gloc);
@@ -1474,7 +1549,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             t_count += 2;
             continue;
           }
-          else if (In3) {
+          else if (in2) {
 
             sub_v3_v3v3_db(vv1, rt->v[2]->gloc, cam_pos);
             sub_v3_v3v3_db(vv2, cam_pos, rt->v[0]->gloc);
@@ -1615,7 +1690,7 @@ static void lanpr_make_render_geometry_buffers_object(
   double new_mvp[4][4], new_mv[4][4], Normal[4][4];
   LANPR_RenderElementLinkNode *reln;
   Object *cam_object = rb->scene->camera;
-  Camera *c = cam_object->data;
+  Camera *c = cam_object?cam_object->data:NULL;
   LANPR_RenderVert *orv;
   LANPR_RenderLine *orl;
   LANPR_RenderTriangle *ort;
@@ -3910,12 +3985,12 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_o
   BLI_task_pool_push(tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
 }
 
-static bool lanpr_camera_exists(struct bContext *c)
+static bool lanpr_camera_exists(bContext *c)
 {
   Scene *s = CTX_data_scene(c);
   return s->camera ? true : false;
 }
-static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperator *op)
+static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SceneLANPR *lanpr = &scene->lanpr;
@@ -3943,13 +4018,13 @@ static int lanpr_compute_feature_lines_exec(struct bContext *C, struct wmOperato
 
   return result;
 }
-static void lanpr_compute_feature_lines_cancel(struct bContext *UNUSED(C),
-                                               struct wmOperator *UNUSED(op))
+static void lanpr_compute_feature_lines_cancel(bContext *UNUSED(C),
+                                               wmOperator *UNUSED(op))
 {
   return;
 }
 
-void SCENE_OT_lanpr_calculate_feature_lines(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_calculate_feature_lines(wmOperatorType *ot)
 {
 
   /* identifiers */
@@ -4368,7 +4443,7 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 
   lanpr_clear_gp_lanpr_flags(dg, frame);
 }
-static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_update_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4379,7 +4454,7 @@ static int lanpr_update_gp_strokes_exec(struct bContext *C, struct wmOperator *U
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_bake_gp_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4404,7 +4479,7 @@ static int lanpr_bake_gp_strokes_exec(struct bContext *C, struct wmOperator *UNU
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_update_gp_target_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4428,7 +4503,7 @@ static int lanpr_update_gp_target_exec(struct bContext *C, struct wmOperator *UN
 
   return OPERATOR_FINISHED;
 }
-static int lanpr_update_gp_source_exec(struct bContext *C, struct wmOperator *UNUSED(op))
+static int lanpr_update_gp_source_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4472,7 +4547,7 @@ static bool lanpr_active_is_source_object(bContext *C)
   return false;
 }
 
-void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_update_gp_strokes(wmOperatorType *ot)
 {
   ot->name = "Update LANPR Strokes";
   ot->description = "Update strokes for LANPR grease pencil targets";
@@ -4480,7 +4555,7 @@ void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot)
 
   ot->exec = lanpr_update_gp_strokes_exec;
 }
-void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot)
+void SCENE_OT_lanpr_bake_gp_strokes(wmOperatorType *ot)
 {
   ot->name = "Bake LANPR Strokes";
   ot->description = "Bake strokes for LANPR grease pencil targets in all frames";
@@ -4488,7 +4563,7 @@ void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot)
 
   ot->exec = lanpr_bake_gp_strokes_exec;
 }
-void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot)
+void OBJECT_OT_lanpr_update_gp_target(wmOperatorType *ot)
 {
   ot->name = "Update Strokes";
   ot->description = "Update LANPR strokes for selected GPencil object";
@@ -4498,7 +4573,7 @@ void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot)
   ot->exec = lanpr_update_gp_target_exec;
 }
 /* Not working due to lack of GP flags for the object */
-void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot)
+void OBJECT_OT_lanpr_update_gp_source(wmOperatorType *ot)
 {
   ot->name = "Update Strokes";
   ot->description = "Update LANPR strokes for selected Mesh object.";

@@ -461,7 +461,7 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
   double x;
   double y;
   double Ratio;
-  double xDiff = (a2[0] - a1[0]); /*  +DBL_EPSILON; */
+  double xDiff = (a2[0] - a1[0]);
   double xDiff2 = (b2[0] - b1[0]);
 
   if (xDiff == 0) {

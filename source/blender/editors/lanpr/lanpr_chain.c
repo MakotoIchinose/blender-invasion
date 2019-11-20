@@ -579,12 +579,6 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
     ((LANPR_RenderLineChainItem *)onto->chain.first)->prev = sub->chain.last;
     onto->chain.first = sub->chain.first;
   }
-  /* ((LANPR_RenderLineChainItem*)sub->chain.first)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.last)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
-  /* ((LANPR_RenderLineChainItem*)sub->chain.last)->occlusion = */
-  /* ((LANPR_RenderLineChainItem*)onto->chain.first)->occlusion; */
 }
 
 /*  this only does head-tail connection. */
@@ -748,11 +742,11 @@ void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc)
 {
   LANPR_RenderLineChainItem *rlci;
-  int Count = 0;
+  int count = 0;
   for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
-    Count++;
+    count++;
   }
-  return Count;
+  return count;
 }
 
 void ED_lanpr_chain_clear_picked_flag(LANPR_RenderBuffer *rb)
