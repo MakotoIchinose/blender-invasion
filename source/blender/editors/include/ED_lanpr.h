@@ -297,7 +297,7 @@ typedef struct LANPR_SharedResource {
   /* GPU */
   struct GPUShader *dpix_transform_shader;
   struct GPUShader *dpix_preview_shader;
-  int dpix_shader_error;
+  bool dpix_shader_error;
   int texture_size;
   ListBase dpix_batch_list;
   int dpix_reloaded;

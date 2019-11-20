@@ -7215,7 +7215,8 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   /* should be read-only */
   prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_default(prop, 0);
-  RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", "");
+  RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU");
 

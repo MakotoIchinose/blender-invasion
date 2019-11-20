@@ -143,7 +143,7 @@ void lanpr_init_atlas_inputs(void *ved)
         datatoc_lanpr_dpix_project_clip_frag_glsl,
         NULL);
     if (lanpr_share.dpix_transform_shader == NULL) {
-      lanpr_share.dpix_shader_error = 1;
+      lanpr_share.dpix_shader_error = true;
       printf("LANPR: DPIX transform shader compile error.");
     }
   }
@@ -154,7 +154,7 @@ void lanpr_init_atlas_inputs(void *ved)
         datatoc_lanpr_dpix_preview_frag_glsl,
         NULL);
     if (lanpr_share.dpix_transform_shader == NULL) {
-      lanpr_share.dpix_shader_error = 1;
+      lanpr_share.dpix_shader_error = true;
       printf("LANPR: DPIX transform shader compile error.");
     }
   }
