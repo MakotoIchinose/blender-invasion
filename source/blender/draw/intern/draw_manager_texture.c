@@ -160,7 +160,7 @@ void DRW_texture_ensure_fullscreen_2D_multisample(GPUTexture **tex,
   if (*(tex) == NULL) {
     const float *size = DRW_viewport_size_get();
     *(tex) = GPU_texture_create_2d_multisample(
-        (int)size[0], (int)size[1], format, samples, flags, NULL);
+        (int)size[0], (int)size[1], format, NULL, samples, NULL);
   }
 }
 
@@ -168,7 +168,7 @@ void DRW_texture_ensure_2D_multisample(
     GPUTexture **tex, int w, int h, eGPUTextureFormat format, int samples, DRWTextureFlag flags)
 {
   if (*(tex) == NULL) {
-    *(tex) = GPU_texture_create_2d_multisample(w, h, format, samples, flags, NULL);
+    *(tex) = GPU_texture_create_2d_multisample(w, h, format, NULL, samples, NULL);
   }
 }
 
