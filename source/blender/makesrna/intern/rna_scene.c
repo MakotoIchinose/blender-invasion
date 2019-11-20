@@ -7072,14 +7072,6 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
       {LANPR_MASTER_MODE_DPIX, "DPIX", 0, "GPU", "DPIX GPU edge extraction"},
       {0, NULL, 0, NULL, NULL}};
 
-  static const EnumPropertyItem rna_enum_lanpr_use_same_taper[] = {
-      {LANPR_USE_DIFFERENT_TAPER, "DISABLED", 0, "Different", "Use different taper value"},
-      {LANPR_USE_SAME_TAPER,
-       "ENABLED",
-       0,
-       "Same",
-       "Use same taper value for both sides of the line"},
-      {0, NULL, 0, NULL, NULL}};
   static const EnumPropertyItem rna_enum_lanpr_gpu_cache_size[] = {
       {LANPR_GPU_CACHE_SIZE_512, "S512", 0, "512", "512px texture as cache"},
       {LANPR_GPU_CACHE_SIZE_1K, "S1K", 0, "1K", "1K px texture as cache"},
@@ -7128,7 +7120,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "depth_width_influence", PROP_FLOAT, PROP_PERCENTAGE);
   RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Width Influence", "Use camera distance to control line width.");
+  RNA_def_property_ui_text(prop, "Width Influence", "Use camera distance to control line width");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
@@ -7142,7 +7134,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "depth_alpha_influence", PROP_FLOAT, PROP_PERCENTAGE);
   RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Alpha Influence", "Use camera distance to control line alpha.");
+  RNA_def_property_ui_text(prop, "Alpha Influence", "Use camera distance to control line alpha");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, NULL);
@@ -7225,7 +7217,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_boolean_funcs(prop, "rna_lanpr_shader_error_get", "");
   RNA_def_property_ui_text(
-      prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU.");
+      prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU");
 
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);

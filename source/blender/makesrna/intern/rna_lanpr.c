@@ -110,7 +110,7 @@ static void rna_def_lanpr_line_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_same_style", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_SAME_STYLE);
   RNA_def_property_boolean_default(prop, true);
-  RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types.");
+  RNA_def_property_ui_text(prop, "Same Style", "Use same styles for multiple line types");
 
   prop = RNA_def_property(srna, "use_multiple_levels", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS);

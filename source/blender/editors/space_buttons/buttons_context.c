@@ -166,8 +166,6 @@ static int buttons_context_path_world(ButsContextPath *path)
 
 static int buttons_context_path_collection(ButsContextPath *path, wmWindow *window)
 {
-  Scene *scene;
-  World *world;
   PointerRNA *ptr = &path->ptr[path->len - 1];
 
   /* if we already have a (pinned) collection, we're done */
