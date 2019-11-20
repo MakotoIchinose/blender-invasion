@@ -1337,80 +1337,6 @@ static void drw_engines_enable_from_engine(RenderEngineType *engine_type,
   }
 }
 
-static void drw_engines_enable_from_object_mode(void)
-{
-  use_drw_engine(&draw_engine_object_type);
-  /* TODO(fclem) remove this, it does not belong to it's own engine. */
-  use_drw_engine(&draw_engine_motion_path_type);
-}
-
-static void drw_engines_enable_from_paint_mode(int mode)
-{
-  switch (mode) {
-    case CTX_MODE_SCULPT:
-      use_drw_engine(&draw_engine_sculpt_type);
-      break;
-    case CTX_MODE_PAINT_WEIGHT:
-    case CTX_MODE_PAINT_VERTEX:
-      use_drw_engine(&draw_engine_paint_vertex_type);
-      break;
-    case CTX_MODE_PAINT_TEXTURE:
-      use_drw_engine(&draw_engine_paint_texture_type);
-      break;
-    default:
-      break;
-  }
-}
-
-static void drw_engines_enable_from_mode(int mode)
-{
-  switch (mode) {
-    case CTX_MODE_EDIT_MESH:
-      use_drw_engine(&draw_engine_edit_mesh_type);
-      break;
-    case CTX_MODE_EDIT_SURFACE:
-    case CTX_MODE_EDIT_CURVE:
-      use_drw_engine(&draw_engine_edit_curve_type);
-      break;
-    case CTX_MODE_EDIT_TEXT:
-      use_drw_engine(&draw_engine_edit_text_type);
-      break;
-    case CTX_MODE_EDIT_ARMATURE:
-      use_drw_engine(&draw_engine_overlay_type);
-      // use_drw_engine(&draw_engine_edit_armature_type);
-      break;
-    case CTX_MODE_EDIT_METABALL:
-      use_drw_engine(&draw_engine_edit_metaball_type);
-      break;
-    case CTX_MODE_EDIT_LATTICE:
-      use_drw_engine(&draw_engine_edit_lattice_type);
-      break;
-    case CTX_MODE_PARTICLE:
-      use_drw_engine(&draw_engine_particle_type);
-      break;
-    case CTX_MODE_POSE:
-    case CTX_MODE_PAINT_WEIGHT:
-      /* The pose engine clears the depth of the default framebuffer
-       * to draw an object with `OB_DRAWXRAY`.
-       * (different of workbench that has its own framebuffer).
-       * So make sure you call its `draw_scene` after all the other engines. */
-      use_drw_engine(&draw_engine_pose_type);
-      break;
-    case CTX_MODE_SCULPT:
-    case CTX_MODE_PAINT_VERTEX:
-    case CTX_MODE_PAINT_TEXTURE:
-    case CTX_MODE_OBJECT:
-    case CTX_MODE_PAINT_GPENCIL:
-    case CTX_MODE_EDIT_GPENCIL:
-    case CTX_MODE_SCULPT_GPENCIL:
-    case CTX_MODE_WEIGHT_GPENCIL:
-      break;
-    default:
-      BLI_assert(!"Draw mode invalid");
-      break;
-  }
-}
-
 static void drw_engines_enable_overlays(void)
 {
   use_drw_engine(&draw_engine_overlay_type);
@@ -2228,7 +2154,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 
   bool use_obedit = false;
   /* obedit_ctx_mode is used for selecting the right draw engines */
-  eContextObjectMode obedit_ctx_mode;
+  // eContextObjectMode obedit_ctx_mode;
   /* object_mode is used for filtering objects in the depsgraph */
   eObjectMode object_mode;
   int object_type = 0;
@@ -2237,11 +2163,11 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     object_mode = obedit->mode;
     if (obedit->type == OB_MBALL) {
       use_obedit = true;
-      obedit_ctx_mode = CTX_MODE_EDIT_METABALL;
+      // obedit_ctx_mode = CTX_MODE_EDIT_METABALL;
     }
     else if (obedit->type == OB_ARMATURE) {
       use_obedit = true;
-      obedit_ctx_mode = CTX_MODE_EDIT_ARMATURE;
+      // obedit_ctx_mode = CTX_MODE_EDIT_ARMATURE;
     }
   }
   if (v3d->overlay.flag & V3D_OVERLAY_BONE_SELECT) {
@@ -2263,7 +2189,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
         use_obedit = true;
         object_type = obpose->type;
         object_mode = obpose->mode;
-        obedit_ctx_mode = CTX_MODE_POSE;
+        // obedit_ctx_mode = CTX_MODE_POSE;
       }
     }
   }
@@ -2277,8 +2203,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
 
   /* Get list of enabled engines */
   if (use_obedit) {
-    drw_engines_enable_from_paint_mode(obedit_ctx_mode);
-    drw_engines_enable_from_mode(obedit_ctx_mode);
+    drw_engines_enable_overlays();
   }
   else if (!draw_surface) {
     /* grease pencil selection */
@@ -2287,6 +2212,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_enable_overlays();
   }
   else {
+    /* Draw surface for occlusion. */
     drw_engines_enable_basic();
     /* grease pencil selection */
     use_drw_engine(&draw_engine_gpencil_type);
@@ -2545,7 +2471,7 @@ void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
   {
     drw_engines_enable_basic();
     if (DRW_state_draw_support()) {
-      drw_engines_enable_from_object_mode();
+      drw_engines_enable_overlays();
     }
   }
 
@@ -2848,21 +2774,9 @@ void DRW_engines_register(void)
   DRW_engine_register(&draw_engine_workbench_solid);
   DRW_engine_register(&draw_engine_workbench_transparent);
 
-  DRW_engine_register(&draw_engine_object_type);
-  DRW_engine_register(&draw_engine_edit_armature_type);
-  DRW_engine_register(&draw_engine_edit_curve_type);
-  DRW_engine_register(&draw_engine_edit_lattice_type);
-  DRW_engine_register(&draw_engine_edit_mesh_type);
-  DRW_engine_register(&draw_engine_edit_metaball_type);
-  DRW_engine_register(&draw_engine_edit_text_type);
-  DRW_engine_register(&draw_engine_motion_path_type);
-  DRW_engine_register(&draw_engine_overlay_type);
-  DRW_engine_register(&draw_engine_paint_texture_type);
-  DRW_engine_register(&draw_engine_paint_vertex_type);
-  DRW_engine_register(&draw_engine_particle_type);
-  DRW_engine_register(&draw_engine_pose_type);
-  DRW_engine_register(&draw_engine_sculpt_type);
   DRW_engine_register(&draw_engine_gpencil_type);
+
+  DRW_engine_register(&draw_engine_overlay_type);
   DRW_engine_register(&draw_engine_select_type);
 
   /* setup callbacks */
