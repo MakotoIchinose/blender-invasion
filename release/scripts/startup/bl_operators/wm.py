@@ -1823,12 +1823,15 @@ class WM_OT_toolbar_prompt(Operator):
         event_type = event.type
         event_value = event.value
 
-        keymap = self._keymap
-
-        if event_type in {'LEFTMOUSE', 'RIGHTMOUSE', 'MIDDLEMOUSE', 'ESC'}:
+        if event_type in {
+                'LEFTMOUSE', 'RIGHTMOUSE', 'MIDDLEMOUSE',
+                'WHEELDOWNMOUSE', 'WHEELUPMOUSE', 'WHEELINMOUSE', 'WHEELOUTMOUSE',
+                'ESC',
+        }:
             context.workspace.status_text_set(None)
             return {'CANCELLED', 'PASS_THROUGH'}
 
+        keymap = self._keymap
         item = keymap.keymap_items.match_event(event)
         if item is not None:
             idname = item.idname
@@ -1839,6 +1842,13 @@ class WM_OT_toolbar_prompt(Operator):
 
             context.workspace.status_text_set(None)
             return {'FINISHED'}
+
+        # Pressing entry even again exists, as long as it's not mapped to a key (for convenience).
+        if event_type == self._init_event_type:
+            if event_value == 'RELEASE':
+                if not (event.ctrl or event.alt or event.shift or event.oskey):
+                    context.workspace.status_text_set(None)
+                    return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
 
