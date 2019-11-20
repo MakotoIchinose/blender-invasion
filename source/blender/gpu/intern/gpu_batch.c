@@ -218,7 +218,8 @@ int GPU_batch_instbuf_add_ex(GPUBatch *batch, GPUVertBuf *insts, bool own_vbo)
 #if TRUST_NO_ONE
       /* for now all VertexBuffers must have same vertex_len */
       if (batch->inst[0] != NULL) {
-        assert(insts->vertex_len == batch->inst[0]->vertex_len);
+        /* Allow for different size of vertex buf (will choose the smallest number of verts). */
+        // assert(insts->vertex_len == batch->inst[0]->vertex_len);
         assert(own_vbo == (batch->owns_flag & GPU_BATCH_OWNS_INSTANCES) != 0);
       }
 #endif
@@ -676,6 +677,10 @@ void GPU_batch_draw_advanced(GPUBatch *batch, int v_first, int v_count, int i_fi
   }
   if (i_count == 0) {
     i_count = (batch->inst[0]) ? batch->inst[0]->vertex_len : 1;
+    /* Meh. This is to be able to use different numbers of verts in instance vbos. */
+    if (batch->inst[1] && i_count > batch->inst[1]->vertex_len) {
+      i_count = batch->inst[1]->vertex_len;
+    }
   }
 
   if (v_count == 0 || i_count == 0) {

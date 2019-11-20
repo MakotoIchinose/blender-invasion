@@ -797,14 +797,12 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
                                              struct GPUBatch *inst_attributes)
 {
   BLI_assert(geom != NULL);
-  BLI_assert(inst_attributes->verts[0] != NULL);
+  BLI_assert(inst_attributes != NULL);
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, NULL, DST.select_id);
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
-  GPUVertBuf *buf_inst = inst_attributes->verts[0];
-  GPUVertBuf *buf_inst2 = inst_attributes->verts[1];
-  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, buf_inst2, geom);
+  GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, NULL, inst_attributes, geom);
   drw_command_draw(shgroup, batch, handle);
 }
 
