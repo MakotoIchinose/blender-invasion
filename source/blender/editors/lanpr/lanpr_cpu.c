@@ -1831,7 +1831,7 @@ static void lanpr_make_render_geometry_buffers_object(
 int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
 {
   CollectionChild *cc;
-  int object_is_used = (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE &&
+  int object_is_used = (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE ||
                         o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
 
   if (object_is_used && (c->lanpr.flags & LANPR_LINE_LAYER_COLLECTION_FORCE) &&
