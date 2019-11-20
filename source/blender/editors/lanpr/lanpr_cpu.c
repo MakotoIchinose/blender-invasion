@@ -4447,9 +4447,7 @@ static void lanpr_update_gp_strokes_actual(Scene *scene, Depsgraph *dg)
 {
   int frame = scene->r.cfra;
 
-  if (scene->lanpr.flags & LANPR_AUTO_UPDATE) {
-    ED_lanpr_compute_feature_lines_internal(dg, 0);
-  }
+  ED_lanpr_compute_feature_lines_internal(dg, 0);
 
   ED_lanpr_chain_clear_picked_flag(lanpr_share.render_buffer_shared);
 
