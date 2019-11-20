@@ -162,7 +162,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Miter Type:")
         layout.row().prop(md, "miter_outer", text="Outer")
         layout.row().prop(md, "miter_inner", text="Inner")
-        if md.miter_inner == 'MITER_PATCH' or md.miter_inner == 'MITER_ARC':
+        if md.miter_inner in {'MITER_PATCH', 'MITER_ARC'}
             layout.row().prop(md, "spread")
 
         layout.label(text="Limit Method:")

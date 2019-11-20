@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-#ifndef __BKE_PROFILEPATH_H__
-#define __BKE_PROFILEPATH_H__
+#ifndef __BKE_CURVEPROFILE_H__
+#define __BKE_CURVEPROFILE_H__
 
 /** \file
  * \ingroup bke
