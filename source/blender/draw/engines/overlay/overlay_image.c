@@ -335,7 +335,7 @@ void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob)
         DRW_shgroup_uniform_bool_copy(grp, "imgLinear", !DRW_state_do_color_management());
         DRW_shgroup_uniform_bool_copy(grp, "depthSet", true);
         DRW_shgroup_uniform_vec4_copy(grp, "color", color);
-        DRW_shgroup_call_obmat(grp, DRW_cache_empty_image_plane_get(), mat);
+        DRW_shgroup_call_obmat(grp, DRW_cache_quad_get(), mat);
       }
     }
   }
@@ -414,7 +414,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_uniform_bool_copy(grp, "imgLinear", false);
     DRW_shgroup_uniform_bool_copy(grp, "depthSet", depth_mode != OB_EMPTY_IMAGE_DEPTH_DEFAULT);
     DRW_shgroup_uniform_vec4_copy(grp, "color", ob->color);
-    DRW_shgroup_call_obmat(grp, DRW_cache_empty_image_plane_get(), mat);
+    DRW_shgroup_call_obmat(grp, DRW_cache_quad_get(), mat);
   }
 }
 

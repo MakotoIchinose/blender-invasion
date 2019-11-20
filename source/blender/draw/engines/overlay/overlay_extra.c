@@ -136,7 +136,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->empty_cone = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cone_get());
       cb->empty_cube = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cube_get());
       cb->empty_cylinder = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_cylinder_get());
-      cb->empty_image_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_image_frame_get());
+      cb->empty_image_frame = BUF_INSTANCE(grp_sub, format, DRW_cache_quad_wires_get());
       cb->empty_plain_axes = BUF_INSTANCE(grp_sub, format, DRW_cache_plain_axes_get());
       cb->empty_single_arrow = BUF_INSTANCE(grp_sub, format, DRW_cache_single_arrow_get());
       cb->empty_sphere = BUF_INSTANCE(grp_sub, format, DRW_cache_empty_sphere_get());
