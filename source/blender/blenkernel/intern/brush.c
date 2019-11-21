@@ -273,6 +273,8 @@ static Brush *gpencil_brush_ensure(
     brush->gpencil_settings->vertex_factor = 1.0f;
   }
 
+  brush->gpencil_settings->weight = 1.0f;
+
   return brush;
 }
 
