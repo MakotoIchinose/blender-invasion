@@ -73,7 +73,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_procedural_verts;
   GPUBatch *drw_procedural_lines;
   GPUBatch *drw_procedural_tris;
-  GPUBatch *drw_single_vertice;
   GPUBatch *drw_cursor;
   GPUBatch *drw_cursor_only_circle;
   GPUBatch *drw_fullscreen_quad;
@@ -81,14 +80,10 @@ static struct DRWShapeCache {
   GPUBatch *drw_quad_wires;
   GPUBatch *drw_grid;
   GPUBatch *drw_sphere;
-  GPUBatch *drw_screenspace_circle;
   GPUBatch *drw_plain_axes;
   GPUBatch *drw_single_arrow;
   GPUBatch *drw_cube;
   GPUBatch *drw_circle;
-  GPUBatch *drw_square;
-  GPUBatch *drw_line;
-  GPUBatch *drw_line_endpoints;
   GPUBatch *drw_normal_arrow;
   GPUBatch *drw_empty_cube;
   GPUBatch *drw_empty_sphere;
@@ -96,8 +91,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_empty_capsule_body;
   GPUBatch *drw_empty_capsule_cap;
   GPUBatch *drw_empty_cone;
-  GPUBatch *drw_image_plane;
-  GPUBatch *drw_image_plane_wire;
   GPUBatch *drw_field_wind;
   GPUBatch *drw_field_force;
   GPUBatch *drw_field_vortex;
@@ -109,17 +102,9 @@ static struct DRWShapeCache {
   GPUBatch *drw_light_point_lines;
   GPUBatch *drw_light_sun_lines;
   GPUBatch *drw_light_spot_lines;
+  GPUBatch *drw_light_spot_volume;
   GPUBatch *drw_light_area_disk_lines;
   GPUBatch *drw_light_area_square_lines;
-  GPUBatch *drw_light;                    /* TODO Remove */
-  GPUBatch *drw_light_shadows;            /* TODO Remove */
-  GPUBatch *drw_light_sunrays;            /* TODO Remove */
-  GPUBatch *drw_light_area_square;        /* TODO Remove */
-  GPUBatch *drw_light_area_disk;          /* TODO Remove */
-  GPUBatch *drw_light_spot;               /* TODO Remove */
-  GPUBatch *drw_light_spot_volume;        /* TODO Remove */
-  GPUBatch *drw_light_spot_square;        /* TODO Remove */
-  GPUBatch *drw_light_spot_square_volume; /* TODO Remove */
   GPUBatch *drw_speaker;
   GPUBatch *drw_lightprobe_cube;
   GPUBatch *drw_lightprobe_planar;
@@ -145,7 +130,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_particle_cross;
   GPUBatch *drw_particle_circle;
   GPUBatch *drw_particle_axis;
-  GPUBatch *drw_gpencil_axes;
 } SHC = {NULL};
 
 void DRW_shape_cache_free(void)
@@ -742,37 +726,6 @@ GPUBatch *DRW_cache_normal_arrow_get(void)
     SHC.drw_normal_arrow = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_normal_arrow;
-}
-
-GPUBatch *DRW_cache_screenspace_circle_get(void)
-{
-#define CIRCLE_RESOL 32
-  if (!SHC.drw_screenspace_circle) {
-    float v[3] = {0.0f, 0.0f, 0.0f};
-
-    /* Position Only 3D format */
-    static GPUVertFormat format = {0};
-    static struct {
-      uint pos;
-    } attr_id;
-    if (format.attr_len == 0) {
-      attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    }
-
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL + 1);
-
-    for (int a = 0; a <= CIRCLE_RESOL; a++) {
-      v[0] = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      v[1] = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      GPU_vertbuf_attr_set(vbo, attr_id.pos, a, v);
-    }
-
-    SHC.drw_screenspace_circle = GPU_batch_create_ex(
-        GPU_PRIM_LINE_STRIP, vbo, NULL, GPU_BATCH_OWNS_VBO);
-  }
-  return SHC.drw_screenspace_circle;
-#undef CIRCLE_RESOL
 }
 
 /* -------------------------------------------------------------------- */
