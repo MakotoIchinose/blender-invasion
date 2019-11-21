@@ -392,34 +392,47 @@ class _draw_tool_settings_context_mode:
     def SCULPT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
             return
-        tool_settings = context.tool_settings
-        settings = tool_settings.gpencil_sculpt
-        brush = settings.brush
+
+        paint = context.tool_settings.gpencil_sculpt_paint
+        brush = paint.brush
+        if brush is None:
+            return
+
+        row = layout.row(align=True)
+        tool_settings = context.scene.tool_settings
+        settings = tool_settings.gpencil_sculpt_paint
+        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_sculpt_settings,
         )
-        brush_basic_gpencil_sculpt_settings(layout, context, brush, compact=True)
+
+        brush_basic_gpencil_sculpt_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
 
     @staticmethod
     def WEIGHT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
             return
-        tool_settings = context.tool_settings
-        settings = tool_settings.gpencil_sculpt
-        brush = settings.brush
+
+        paint = context.tool_settings.gpencil_weight_paint
+        brush = paint.brush
+        if brush is None:
+            return
+
+        row = layout.row(align=True)
+        tool_settings = context.scene.tool_settings
+        settings = tool_settings.gpencil_weight_paint
+        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_weight_settings,
         )
-        brush_basic_gpencil_weight_settings(layout, context, brush, compact=True)
+
+        brush_basic_gpencil_weight_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
 
     @staticmethod
     def VERTEX_GPENCIL(context, layout, tool):
-        if tool is None:
-            return
-
-        if not tool.has_datablock:
+        if (tool is None) or (not tool.has_datablock):
             return
 
         paint = context.tool_settings.gpencil_vertex_paint

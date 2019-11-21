@@ -434,6 +434,7 @@ void GPENCIL_OT_reproject(struct wmOperatorType *ot);
 /* stroke sculpting -- */
 
 void GPENCIL_OT_sculpt_paint(struct wmOperatorType *ot);
+void GPENCIL_OT_weight_paint(struct wmOperatorType *ot);
 
 /* buttons editing --- */
 

@@ -277,7 +277,7 @@ static Brush *gpencil_brush_ensure(
 }
 
 /* Create a set of grease pencil Drawing presets. */
-void BKE_brush_gpencil_presets(Main *bmain, ToolSettings *ts)
+void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
 {
 #define SMOOTH_STROKE_RADIUS 40
 #define SMOOTH_STROKE_FACTOR 0.9f
@@ -749,6 +749,167 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   /* Set default Vertex brush. */
   BKE_paint_brush_set(vertexpaint, deft_vertex);
+}
+
+/* Create a set of grease pencil Sculpt Paint presets. */
+void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
+{
+  Paint *sculptpaint = &ts->gp_sculptpaint->paint;
+
+  Brush *brush, *deft_sculpt;
+  bool new_brush = false;
+
+  /* Smooth brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Smooth Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_SMOOTH;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_SMOOTH;
+  deft_sculpt = brush; /* save default brush. */
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.3f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF |
+                                           GP_SCULPT_FLAG_SMOOTH_PRESSURE;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Thickness brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Thickness Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_THICKNESS;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_THICKNESS;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.5f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Grab brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Grab Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_GRAB;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_GRAB;
+  brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
+
+    brush->gpencil_settings->draw_strength = 0.3f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Push brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Push Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_PUSH;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_PUSH;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.3f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Twist brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Twist Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_TWIST;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_TWIST;
+
+  if (new_brush) {
+    brush->size = 50.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.3f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Pinch brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Pinch Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_PINCH;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_PINCH;
+
+  if (new_brush) {
+    brush->size = 50.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.5f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Randomize brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Randomize Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_RANDOMIZE;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_RANDOMIZE;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.5f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Clone brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Clone Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_CLONE;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_CLONE;
+  brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
+
+    brush->gpencil_settings->draw_strength = 1.0f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Set default brush. */
+  BKE_paint_brush_set(sculptpaint, deft_sculpt);
+}
+
+/* Create a set of grease pencil Weight Paint presets. */
+void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts)
+{
+  Paint *weightpaint = &ts->gp_weightpaint->paint;
+
+  Brush *brush, *deft_weight;
+  bool new_brush = false;
+  /* Vertex Draw brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Draw Weight", OB_MODE_WEIGHT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_WEIGHT;
+  brush->gpencil_weight_tool = GPWEIGHT_TOOL_DRAW;
+  deft_weight = brush; /* save default brush. */
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.8f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
+  /* Set default brush. */
+  BKE_paint_brush_set(weightpaint, deft_weight);
 }
 
 struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mode)

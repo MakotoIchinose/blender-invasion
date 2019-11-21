@@ -1700,6 +1700,50 @@ static void ed_default_handlers(
     wmKeyMap *keymap_vertex_replace = WM_keymap_ensure(
         wm->defaultconf, "Grease Pencil Stroke Vertex (Replace)", 0, 0);
     WM_event_add_keymap_handler(handlers, keymap_vertex_replace);
+
+    wmKeyMap *keymap_sculpt_smooth = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Smooth)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_smooth);
+
+    wmKeyMap *keymap_sculpt_thickness = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Thickness)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_thickness);
+
+    wmKeyMap *keymap_sculpt_strength = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Strength)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_strength);
+
+    wmKeyMap *keymap_sculpt_grab = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Grab)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_grab);
+
+    wmKeyMap *keymap_sculpt_push = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Push)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_push);
+
+    wmKeyMap *keymap_sculpt_twist = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Twist)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_twist);
+
+    wmKeyMap *keymap_sculpt_pinch = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Pinch)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_pinch);
+
+    wmKeyMap *keymap_sculpt_randomize = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Randomize)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_randomize);
+
+    wmKeyMap *keymap_sculpt_clone = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Sculpt (Clone)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_sculpt_clone);
+
+    wmKeyMap *keymap_weight = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Weight Mode", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_weight);
+
+    wmKeyMap *keymap_weight_draw = WM_keymap_ensure(
+        wm->defaultconf, "Grease Pencil Stroke Weight (Draw)", 0, 0);
+    WM_event_add_keymap_handler(handlers, keymap_weight_draw);
   }
 }
 

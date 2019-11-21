@@ -2882,6 +2882,14 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "gp_vertexpaint");
   RNA_def_property_ui_text(prop, "Grease Pencil Vertex Paint", "");
 
+  prop = RNA_def_property(srna, "gpencil_sculpt_paint", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "gp_sculptpaint");
+  RNA_def_property_ui_text(prop, "Grease Pencil Sculpt Paint", "");
+
+  prop = RNA_def_property(srna, "gpencil_weight_paint", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "gp_weightpaint");
+  RNA_def_property_ui_text(prop, "Grease Pencil Weight Paint", "");
+
   prop = RNA_def_property(srna, "particle_edit", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "particle");
   RNA_def_property_ui_text(prop, "Particle Edit", "");

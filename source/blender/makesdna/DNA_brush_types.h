@@ -112,6 +112,14 @@ typedef struct BrushGpencilSettings {
   float vertex_factor;
   int vertex_mode;
 
+  /** eGP_Sculpt_Flag. */
+  int sculpt_flag;
+  /** Target weight. */
+  float weight;
+  /** eGP_Sculpt_Mode_Flag. */
+  int sculpt_mode_flag;
+  char _pad3[4];
+
   struct CurveMapping *curve_sensitivity;
   struct CurveMapping *curve_strength;
   struct CurveMapping *curve_jitter;
@@ -189,6 +197,16 @@ typedef enum eGP_BrushIcons {
   GP_BRUSH_ICON_VERTEX_AVERAGE = 16,
   GP_BRUSH_ICON_VERTEX_SMEAR = 17,
   GP_BRUSH_ICON_VERTEX_REPLACE = 18,
+  GP_BRUSH_ICON_GPBRUSH_SMOOTH = 19,
+  GP_BRUSH_ICON_GPBRUSH_THICKNESS = 20,
+  GP_BRUSH_ICON_GPBRUSH_STRENGTH = 21,
+  GP_BRUSH_ICON_GPBRUSH_RANDOMIZE = 22,
+  GP_BRUSH_ICON_GPBRUSH_GRAB = 23,
+  GP_BRUSH_ICON_GPBRUSH_PUSH = 24,
+  GP_BRUSH_ICON_GPBRUSH_TWIST = 25,
+  GP_BRUSH_ICON_GPBRUSH_PINCH = 26,
+  GP_BRUSH_ICON_GPBRUSH_CLONE = 27,
+  GP_BRUSH_ICON_GPBRUSH_WEIGHT = 28,
 } eGP_BrushIcons;
 
 typedef enum eBrushCurvePreset {
@@ -220,6 +238,30 @@ typedef enum eGp_Vertex_Mode {
   /* Affect to both. */
   GPPAINT_MODE_BOTH = 2,
 } eGp_Vertex_Mode;
+
+/* sculpt_flag */
+typedef enum eGP_Sculpt_Flag {
+  /* invert the effect of the brush */
+  GP_SCULPT_FLAG_INVERT = (1 << 0),
+  /* strength of brush falls off with distance from cursor */
+  GP_SCULPT_FLAG_USE_FALLOFF = (1 << 1),
+  /* smooth brush affects pressure values as well */
+  GP_SCULPT_FLAG_SMOOTH_PRESSURE = (1 << 2),
+  /* temporary invert action */
+  GP_SCULPT_FLAG_TMP_INVERT = (1 << 3),
+} eGP_Sculpt_Flag;
+
+/* sculpt_mode_flag */
+typedef enum eGP_Sculpt_Mode_Flag {
+  /* apply brush to position */
+  GP_SCULPT_FLAGMODE_APPLY_POSITION = (1 << 0),
+  /* apply brush to strength */
+  GP_SCULPT_FLAGMODE_APPLY_STRENGTH = (1 << 1),
+  /* apply brush to thickness */
+  GP_SCULPT_FLAGMODE_APPLY_THICKNESS = (1 << 2),
+  /* apply brush to uv data */
+  GP_SCULPT_FLAGMODE_APPLY_UV = (1 << 3),
+} eGP_Sculpt_Mode_Flag;
 
 typedef enum eAutomasking_flag {
   BRUSH_AUTOMASKING_TOPOLOGY = (1 << 0),
@@ -317,6 +359,11 @@ typedef struct Brush {
   char gpencil_tool;
   /** Active grease pencil vertex tool. */
   char gpencil_vertex_tool;
+  /** Active grease pencil sculpt tool. */
+  char gpencil_sculpt_tool;
+  /** Active grease pencil weight tool. */
+  char gpencil_weight_tool;
+  char _pad1_[6];
 
   float autosmooth_factor;
 
@@ -547,7 +594,7 @@ typedef enum eBrushUVSculptTool {
         SCULPT_TOOL_POSE, \
 \
         /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
-         * \ \ \ but user feedback indicates it's better not to */ \
+         * \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ but user feedback indicates it's better not to */ \
         SCULPT_TOOL_SMOOTH, \
         SCULPT_TOOL_MASK) == 0)
 
@@ -600,6 +647,24 @@ typedef enum eBrushGPVertexTool {
   GPVERTEX_TOOL_SMEAR = 4,
   GPVERTEX_TOOL_REPLACE = 5,
 } eBrushGPVertexTool;
+
+/* BrushGpencilSettings->brush type */
+typedef enum eBrushGPSculptTool {
+  GPSCULPT_TOOL_SMOOTH = 0,
+  GPSCULPT_TOOL_THICKNESS = 1,
+  GPSCULPT_TOOL_STRENGTH = 2,
+  GPSCULPT_TOOL_GRAB = 3,
+  GPSCULPT_TOOL_PUSH = 4,
+  GPSCULPT_TOOL_TWIST = 5,
+  GPSCULPT_TOOL_PINCH = 6,
+  GPSCULPT_TOOL_RANDOMIZE = 7,
+  GPSCULPT_TOOL_CLONE = 8,
+} eBrushGPSculptTool;
+
+/* BrushGpencilSettings->brush type */
+typedef enum eBrushGPWeightTool {
+  GPWEIGHT_TOOL_DRAW = 0,
+} eBrushGPWeightTool;
 
 /* direction that the brush displaces along */
 enum {

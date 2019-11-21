@@ -1340,7 +1340,7 @@ void ED_gpencil_add_defaults(bContext *C, Object *ob)
   /* if not exist, create a new one */
   if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
     /* create new brushes */
-    BKE_brush_gpencil_presets(bmain, ts);
+    BKE_brush_gpencil_paint_presets(bmain, ts);
   }
 
   /* ensure a color exists and is assigned to object */
@@ -1660,20 +1660,11 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
   Object *ob = CTX_data_active_object(C);
   ARegion *ar = CTX_wm_region(C);
 
-  GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  GP_Sculpt_Data *gp_brush = NULL;
   Brush *brush = NULL;
   Material *ma = NULL;
   MaterialGPencilStyle *gp_style = NULL;
   float *last_mouse_position = customdata;
-
-  if ((gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE)) {
-    gp_brush = &gset->brush[gset->weighttype];
-  }
-  else {
-    gp_brush = &gset->brush[gset->brushtype];
-  }
 
   /* default radius and color */
   float color[3] = {1.0f, 1.0f, 1.0f};
@@ -1741,20 +1732,35 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     }
   }
 
-  /* for sculpt use sculpt brush size */
-  if (GPENCIL_SCULPT_OR_WEIGHT_MODE(gpd)) {
-    if (gp_brush) {
-      if ((gp_brush->flag & GP_SCULPT_FLAG_ENABLE_CURSOR) == 0) {
-        return;
-      }
+  /* Sculpt use sculpt brush size */
+  if (GPENCIL_SCULPT_MODE(gpd)) {
+    brush = scene->toolsettings->gp_sculptpaint->paint.brush;
+    if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
+      return;
+    }
+    radius = brush->size;
+    if (brush->gpencil_settings->sculpt_flag &
+        (GP_SCULPT_FLAG_INVERT | GP_SCULPT_FLAG_TMP_INVERT)) {
+      copy_v3_v3(color, brush->sub_col);
+    }
+    else {
+      copy_v3_v3(color, brush->add_col);
+    }
+  }
 
-      radius = gp_brush->size;
-      if (gp_brush->flag & (GP_SCULPT_FLAG_INVERT | GP_SCULPT_FLAG_TMP_INVERT)) {
-        copy_v3_v3(color, gp_brush->curcolor_sub);
-      }
-      else {
-        copy_v3_v3(color, gp_brush->curcolor_add);
-      }
+  /* Weight Paint */
+  if (GPENCIL_WEIGHT_MODE(gpd)) {
+    brush = scene->toolsettings->gp_weightpaint->paint.brush;
+    if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
+      return;
+    }
+    radius = brush->size;
+    if (brush->gpencil_settings->sculpt_flag &
+        (GP_SCULPT_FLAG_INVERT | GP_SCULPT_FLAG_TMP_INVERT)) {
+      copy_v3_v3(color, brush->sub_col);
+    }
+    else {
+      copy_v3_v3(color, brush->add_col);
     }
   }
 
@@ -1846,30 +1852,6 @@ void ED_gpencil_toggle_brush_cursor(bContext *C, bool enable, void *customdata)
   }
 }
 
-/* verify if is using the right brush */
-static void gpencil_verify_brush_type(bContext *C, int newmode)
-{
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-
-  switch (newmode) {
-    case OB_MODE_SCULPT_GPENCIL:
-      gset->flag &= ~GP_SCULPT_SETT_FLAG_WEIGHT_MODE;
-      if ((gset->brushtype < 0) || (gset->brushtype >= GP_SCULPT_TYPE_WEIGHT)) {
-        gset->brushtype = GP_SCULPT_TYPE_PUSH;
-      }
-      break;
-    case OB_MODE_WEIGHT_GPENCIL:
-      gset->flag |= GP_SCULPT_SETT_FLAG_WEIGHT_MODE;
-      if ((gset->weighttype < GP_SCULPT_TYPE_WEIGHT) || (gset->weighttype >= GP_SCULPT_TYPE_MAX)) {
-        gset->weighttype = GP_SCULPT_TYPE_WEIGHT;
-      }
-      break;
-    default:
-      break;
-  }
-}
-
 /* set object modes */
 void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
 {
@@ -1900,7 +1882,6 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag |= GP_DATA_STROKE_SCULPTMODE;
       gpd->flag &= ~GP_DATA_STROKE_WEIGHTMODE;
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
-      gpencil_verify_brush_type(C, OB_MODE_SCULPT_GPENCIL);
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
     case OB_MODE_WEIGHT_GPENCIL:
@@ -1909,7 +1890,6 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode)
       gpd->flag &= ~GP_DATA_STROKE_SCULPTMODE;
       gpd->flag |= GP_DATA_STROKE_WEIGHTMODE;
       gpd->flag &= ~GP_DATA_STROKE_VERTEXMODE;
-      gpencil_verify_brush_type(C, OB_MODE_WEIGHT_GPENCIL);
       ED_gpencil_toggle_brush_cursor(C, true, NULL);
       break;
     case OB_MODE_VERTEX_GPENCIL:

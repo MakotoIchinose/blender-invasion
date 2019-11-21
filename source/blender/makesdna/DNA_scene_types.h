@@ -1001,6 +1001,20 @@ typedef struct GpVertexPaint {
   char _pad[4];
 } GpVertexPaint;
 
+/* Grease pencil sculpt paint. */
+typedef struct GpSculptPaint {
+  Paint paint;
+  int flag;
+  char _pad[4];
+} GpSculptPaint;
+
+/* Grease pencil weight paint. */
+typedef struct GpWeightPaint {
+  Paint paint;
+  int flag;
+  char _pad[4];
+} GpWeightPaint;
+
 /* ------------------------------------------- */
 /* Vertex Paint */
 
@@ -1022,27 +1036,6 @@ enum {
 /* ------------------------------------------- */
 /* GPencil Stroke Sculpting */
 
-/* GP_Sculpt_Settings.brushtype */
-typedef enum eGP_Sculpt_Types {
-  GP_SCULPT_TYPE_SMOOTH = 0,
-  GP_SCULPT_TYPE_THICKNESS = 1,
-  GP_SCULPT_TYPE_STRENGTH = 2,
-  GP_SCULPT_TYPE_GRAB = 3,
-  GP_SCULPT_TYPE_PUSH = 4,
-  GP_SCULPT_TYPE_TWIST = 5,
-  GP_SCULPT_TYPE_PINCH = 6,
-  GP_SCULPT_TYPE_RANDOMIZE = 7,
-  GP_SCULPT_TYPE_CLONE = 8,
-  GP_SCULPT_TYPE_SUBDIVIDE = 9,
-  GP_SCULPT_TYPE_SIMPLIFY = 10,
-  /* add any sculpt brush above this value */
-  GP_SCULPT_TYPE_WEIGHT = 11,
-  /* add any weight paint brush below this value. Do no mix brushes */
-
-  /* !!! Update GP_Sculpt_Data brush[###]; below !!! */
-  GP_SCULPT_TYPE_MAX,
-} eGP_Sculpt_Types;
-
 /* GP_Sculpt_Settings.lock_axis */
 typedef enum eGP_Lockaxis_Types {
   GP_LOCKAXIS_VIEW = 0,
@@ -1051,24 +1044,6 @@ typedef enum eGP_Lockaxis_Types {
   GP_LOCKAXIS_Z = 3,
   GP_LOCKAXIS_CURSOR = 4,
 } eGP_Lockaxis_Types;
-
-/* Settings for a GPencil Stroke Sculpting Brush */
-typedef struct GP_Sculpt_Data {
-  /** Radius of brush. */
-  short size;
-  /** eGP_Sculpt_Flag. */
-  short flag;
-  /** Strength of effect. */
-  float strength;
-  /** Cursor color for add. */
-  float curcolor_add[3];
-  /** Cursor color for sub. */
-  float curcolor_sub[3];
-  /** Target weight. */
-  float weight;
-  /** eGP_Sculpt_Mode_Flag. */
-  int mode_flag;
-} GP_Sculpt_Data;
 
 /* Settings for a GPencil Speed Guide */
 typedef struct GP_Sculpt_Guide {
@@ -1084,60 +1059,17 @@ typedef struct GP_Sculpt_Guide {
   struct Object *reference_object;
 } GP_Sculpt_Guide;
 
-/* GP_Sculpt_Data.flag */
-typedef enum eGP_Sculpt_Flag {
-  /* invert the effect of the brush */
-  GP_SCULPT_FLAG_INVERT = (1 << 0),
-  /* adjust strength using pen pressure */
-  GP_SCULPT_FLAG_USE_PRESSURE = (1 << 1),
-
-  /* strength of brush falls off with distance from cursor */
-  GP_SCULPT_FLAG_USE_FALLOFF = (1 << 2),
-
-  /* smooth brush affects pressure values as well */
-  GP_SCULPT_FLAG_SMOOTH_PRESSURE = (1 << 3),
-  /* enable screen cursor */
-  GP_SCULPT_FLAG_ENABLE_CURSOR = (1 << 4),
-  /* temporary invert action */
-  GP_SCULPT_FLAG_TMP_INVERT = (1 << 5),
-  /* adjust radius using pen pressure */
-  GP_SCULPT_FLAG_PRESSURE_RADIUS = (1 << 6),
-} eGP_Sculpt_Flag;
-
-/* GP_Sculpt_Data.mode_flag */
-typedef enum eGP_Sculpt_Mode_Flag {
-  /* apply brush to position */
-  GP_SCULPT_FLAGMODE_APPLY_POSITION = (1 << 0),
-  /* apply brush to strength */
-  GP_SCULPT_FLAGMODE_APPLY_STRENGTH = (1 << 1),
-  /* apply brush to thickness */
-  GP_SCULPT_FLAGMODE_APPLY_THICKNESS = (1 << 2),
-  /* apply brush to uv data */
-  GP_SCULPT_FLAGMODE_APPLY_UV = (1 << 3),
-} eGP_Sculpt_Mode_Flag;
-
 /* GPencil Stroke Sculpting Settings */
 typedef struct GP_Sculpt_Settings {
-  /** GP_SCULPT_TYPE_MAX. */
-  GP_Sculpt_Data brush[12];
   /** Runtime. */
   void *paintcursor;
-
-  /** #eGP_Sculpt_Types (sculpt). */
-  int brushtype;
   /** #eGP_Sculpt_SettingsFlag. */
   int flag;
   /** #eGP_Lockaxis_Types lock drawing to one axis. */
   int lock_axis;
   /** Threshold for intersections */
   float isect_threshold;
-
-  /* weight paint is a submode of sculpt but use its own index. All weight paint
-   * brushes must be defined at the end of the brush array.
-   */
-  /** #eGP_Sculpt_Types (weight paint). */
-  int weighttype;
-  char _pad[4];
+  char _pad_[4];
   /** Multiframe edit falloff effect by frame. */
   struct CurveMapping *cur_falloff;
   /** Curve used for primitive tools. */
@@ -1148,6 +1080,7 @@ typedef struct GP_Sculpt_Settings {
 
 /* GP_Sculpt_Settings.flag */
 typedef enum eGP_Sculpt_SettingsFlag {
+  /* GPXX */
   /* only affect selected points */
   GP_SCULPT_SETT_FLAG_DEPRECATED = (1 << 0),
   /* apply brush to thickness */
@@ -1412,6 +1345,10 @@ typedef struct ToolSettings {
   GpPaint *gp_paint;
   /** Gpencil vertex paint. */
   GpVertexPaint *gp_vertexpaint;
+  /** Gpencil sculpt paint. */
+  GpSculptPaint *gp_sculptpaint;
+  /** Gpencil weight paint. */
+  GpWeightPaint *gp_weightpaint;
 
   /* Vertex group weight - used only for editmode, not weight
    * paint */

@@ -1582,7 +1582,7 @@ static int gp_brush_presets_create_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  BKE_brush_gpencil_presets(bmain, ts);
+  BKE_brush_gpencil_paint_presets(bmain, ts);
 
   /* notifiers */
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);

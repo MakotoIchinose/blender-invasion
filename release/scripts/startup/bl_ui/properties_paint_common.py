@@ -448,53 +448,53 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
-def brush_basic_gpencil_sculpt_settings(layout, context, brush, *, compact=False):
-    tool_settings = context.tool_settings
-    settings = tool_settings.gpencil_sculpt
-    tool = settings.sculpt_tool
+def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compact=False, is_toolbar=False):
+    gp_settings = brush.gpencil_settings
+    tool = brush.gpencil_sculpt_tool
 
     row = layout.row(align=True)
     row.prop(brush, "size", slider=True)
     sub = row.row(align=True)
     sub.enabled = tool not in {'GRAB', 'CLONE'}
-    sub.prop(brush, "use_pressure_radius", text="")
+    sub.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
 
     row = layout.row(align=True)
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
 
-    layout.prop(brush, "use_falloff")
+    layout.prop(gp_settings, "use_falloff")
 
     if compact:
         if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             row.separator()
-            row.prop(brush, "direction", expand=True, text="")
+            row.prop(gp_settings, "direction", expand=True, text="")
     else:
         use_property_split_prev = layout.use_property_split
         layout.use_property_split = False
         if tool in {'THICKNESS', 'STRENGTH'}:
-            layout.row().prop(brush, "direction", expand=True)
+            layout.row().prop(gp_settings, "direction", expand=True)
         elif tool == 'PINCH':
             row = layout.row(align=True)
-            row.prop_enum(brush, "direction", value='ADD', text="Pinch")
-            row.prop_enum(brush, "direction", value='SUBTRACT', text="Inflate")
+            row.prop_enum(gp_settings, "direction", value='ADD', text="Pinch")
+            row.prop_enum(gp_settings, "direction", value='SUBTRACT', text="Inflate")
         elif tool == 'TWIST':
             row = layout.row(align=True)
-            row.prop_enum(brush, "direction", value='ADD', text="CCW")
-            row.prop_enum(brush, "direction", value='SUBTRACT', text="CW")
+            row.prop_enum(gp_settings, "direction", value='ADD', text="CCW")
+            row.prop_enum(gp_settings, "direction", value='SUBTRACT', text="CW")
         layout.use_property_split = use_property_split_prev
 
 
-def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=False):
+def brush_basic_gpencil_weight_settings(layout, _context, brush, tool, *, compact=False, is_toolbar=False):
+    gp_settings = brush.gpencil_settings
     layout.prop(brush, "size", slider=True)
 
     row = layout.row(align=True)
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
 
-    layout.prop(brush, "use_falloff")
+    layout.prop(gp_settings, "use_falloff")
 
-    layout.prop(brush, "weight", slider=True)
+    layout.prop(gp_settings, "weight", slider=True)
 
 
 def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compact=True, is_toolbar=False):

@@ -113,6 +113,42 @@ static bool gp_stroke_vertexmode_poll_with_tool(bContext *C, const char gpencil_
           (brush->gpencil_vertex_tool == gpencil_vertex_tool));
 }
 
+static bool gp_stroke_sculptmode_poll_with_tool(bContext *C, const char gpencil_sculpt_tool)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  if (!gpd) {
+    return false;
+  }
+
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  if (!ts || !ts->gp_sculptpaint) {
+    return false;
+  }
+
+  Brush *brush = BKE_paint_brush(&ts->gp_sculptpaint->paint);
+  return ((gpd->flag & GP_DATA_STROKE_SCULPTMODE) && (brush && brush->gpencil_settings) &&
+          WM_toolsystem_active_tool_is_brush(C) &&
+          (brush->gpencil_sculpt_tool == gpencil_sculpt_tool));
+}
+
+static bool gp_stroke_weightmode_poll_with_tool(bContext *C, const char gpencil_weight_tool)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  if (!gpd) {
+    return false;
+  }
+
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  if (!ts || !ts->gp_weightpaint) {
+    return false;
+  }
+
+  Brush *brush = BKE_paint_brush(&ts->gp_weightpaint->paint);
+  return ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) && (brush && brush->gpencil_settings) &&
+          WM_toolsystem_active_tool_is_brush(C) &&
+          (brush->gpencil_weight_tool == gpencil_weight_tool));
+}
+
 /* Poll callback for stroke painting (draw brush) */
 static bool gp_stroke_paintmode_draw_poll(bContext *C)
 {
@@ -149,9 +185,8 @@ static bool gp_stroke_sculptmode_poll(bContext *C)
     return ((gpd) && (gpd->flag & GP_DATA_STROKE_EDITMODE));
   }
   else {
-    /* weight paint is a submode of sculpt */
     if ((ob) && (ob->type == OB_GPENCIL)) {
-      return GPENCIL_SCULPT_OR_WEIGHT_MODE(gpd);
+      return GPENCIL_SCULPT_MODE(gpd);
     }
   }
 
@@ -165,7 +200,7 @@ static bool gp_stroke_weightmode_poll(bContext *C)
   Object *ob = CTX_data_active_object(C);
 
   if ((ob) && (ob->type == OB_GPENCIL)) {
-    return (gpd && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE));
+    return GPENCIL_WEIGHT_MODE(gpd);
   }
 
   return 0;
@@ -212,6 +247,64 @@ static bool gp_stroke_vertexmode_smear_poll(bContext *C)
 static bool gp_stroke_vertexmode_replace_poll(bContext *C)
 {
   return gp_stroke_vertexmode_poll_with_tool(C, GPVERTEX_TOOL_REPLACE);
+}
+
+/* Poll callback for sculpt (Smooth) */
+static bool gp_stroke_sculptmode_smooth_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_SMOOTH);
+}
+/* Poll callback for sculpt (Thickness) */
+static bool gp_stroke_sculptmode_thickness_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_THICKNESS);
+}
+
+/* Poll callback for sculpt (Strength) */
+static bool gp_stroke_sculptmode_strength_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_STRENGTH);
+}
+
+/* Poll callback for sculpt (Grab) */
+static bool gp_stroke_sculptmode_grab_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_GRAB);
+}
+
+/* Poll callback for sculpt (Push) */
+static bool gp_stroke_sculptmode_push_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_PUSH);
+}
+
+/* Poll callback for sculpt (Twist) */
+static bool gp_stroke_sculptmode_twist_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_TWIST);
+}
+
+/* Poll callback for sculpt (Pinch) */
+static bool gp_stroke_sculptmode_pinch_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_PINCH);
+}
+/* Poll callback for sculpt (Randomize) */
+static bool gp_stroke_sculptmode_randomize_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_RANDOMIZE);
+}
+
+/* Poll callback for sculpt (Clone) */
+static bool gp_stroke_sculptmode_clone_poll(bContext *C)
+{
+  return gp_stroke_sculptmode_poll_with_tool(C, GPSCULPT_TOOL_CLONE);
+}
+
+/* Poll callback for weight paint (Draw) */
+static bool gp_stroke_weightmode_draw_poll(bContext *C)
+{
+  return gp_stroke_weightmode_poll_with_tool(C, GPWEIGHT_TOOL_DRAW);
 }
 
 /* Stroke Editing Keymap - Only when editmode is enabled */
@@ -313,6 +406,66 @@ static void ed_keymap_gpencil_vertexpainting_replace(wmKeyConfig *keyconf)
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Vertex (Replace)", 0, 0);
   keymap->poll = gp_stroke_vertexmode_replace_poll;
 }
+/* keys for sculpt with a smooth brush */
+static void ed_keymap_gpencil_sculptpainting_smooth(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Smooth)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_smooth_poll;
+}
+/* keys for sculpt with a thickness brush */
+static void ed_keymap_gpencil_sculptpainting_thickness(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Thickness)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_thickness_poll;
+}
+/* keys for sculpt with a strength brush */
+static void ed_keymap_gpencil_sculptpainting_strength(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Strength)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_strength_poll;
+}
+/* keys for sculpt with a grab brush */
+static void ed_keymap_gpencil_sculptpainting_grab(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Grab)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_grab_poll;
+}
+/* keys for sculpt with a push brush */
+static void ed_keymap_gpencil_sculptpainting_push(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Push)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_push_poll;
+}
+/* keys for sculpt with a twist brush */
+static void ed_keymap_gpencil_sculptpainting_twist(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Twist)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_twist_poll;
+}
+/* keys for sculpt with a pinch brush */
+static void ed_keymap_gpencil_sculptpainting_pinch(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Pinch)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_pinch_poll;
+}
+/* keys for sculpt with a randomize brush */
+static void ed_keymap_gpencil_sculptpainting_randomize(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Randomize)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_randomize_poll;
+}
+/* keys for sculpt with a clone brush */
+static void ed_keymap_gpencil_sculptpainting_clone(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Sculpt (Clone)", 0, 0);
+  keymap->poll = gp_stroke_sculptmode_clone_poll;
+}
+/* keys for weight with a draw brush */
+static void ed_keymap_gpencil_weightpainting_draw(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Weight (Draw)", 0, 0);
+  keymap->poll = gp_stroke_weightmode_draw_poll;
+}
 
 /* ==================== */
 
@@ -326,7 +479,17 @@ void ED_keymap_gpencil(wmKeyConfig *keyconf)
   ed_keymap_gpencil_painting_fill(keyconf);
   ed_keymap_gpencil_painting_tint(keyconf);
   ed_keymap_gpencil_sculpting(keyconf);
+  ed_keymap_gpencil_sculptpainting_smooth(keyconf);
+  ed_keymap_gpencil_sculptpainting_thickness(keyconf);
+  ed_keymap_gpencil_sculptpainting_strength(keyconf);
+  ed_keymap_gpencil_sculptpainting_grab(keyconf);
+  ed_keymap_gpencil_sculptpainting_push(keyconf);
+  ed_keymap_gpencil_sculptpainting_twist(keyconf);
+  ed_keymap_gpencil_sculptpainting_pinch(keyconf);
+  ed_keymap_gpencil_sculptpainting_randomize(keyconf);
+  ed_keymap_gpencil_sculptpainting_clone(keyconf);
   ed_keymap_gpencil_weightpainting(keyconf);
+  ed_keymap_gpencil_weightpainting_draw(keyconf);
   ed_keymap_gpencil_vertexpainting(keyconf);
   ed_keymap_gpencil_vertexpainting_draw(keyconf);
   ed_keymap_gpencil_vertexpainting_blur(keyconf);
@@ -402,6 +565,7 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_reproject);
 
   WM_operatortype_append(GPENCIL_OT_sculpt_paint);
+  WM_operatortype_append(GPENCIL_OT_weight_paint);
 
   /* Editing (Buttons) ------------ */
 

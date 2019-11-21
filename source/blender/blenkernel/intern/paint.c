@@ -172,8 +172,14 @@ bool BKE_paint_ensure_from_paintmode(Scene *sce, ePaintMode mode)
     case PAINT_MODE_GPENCIL:
       paint_ptr = (Paint **)&ts->gp_paint;
       break;
-    case PAINT_MODE_GPENCIL_VERTEX:
+    case PAINT_MODE_VERTEX_GPENCIL:
       paint_ptr = (Paint **)&ts->gp_vertexpaint;
+      break;
+    case PAINT_MODE_SCULPT_GPENCIL:
+      paint_ptr = (Paint **)&ts->gp_sculptpaint;
+      break;
+    case PAINT_MODE_WEIGHT_GPENCIL:
+      paint_ptr = (Paint **)&ts->gp_weightpaint;
       break;
     case PAINT_MODE_INVALID:
       break;
@@ -204,8 +210,12 @@ Paint *BKE_paint_get_active_from_paintmode(Scene *sce, ePaintMode mode)
         return &ts->uvsculpt->paint;
       case PAINT_MODE_GPENCIL:
         return &ts->gp_paint->paint;
-      case PAINT_MODE_GPENCIL_VERTEX:
+      case PAINT_MODE_VERTEX_GPENCIL:
         return &ts->gp_vertexpaint->paint;
+      case PAINT_MODE_SCULPT_GPENCIL:
+        return &ts->gp_sculptpaint->paint;
+      case PAINT_MODE_WEIGHT_GPENCIL:
+        return &ts->gp_weightpaint->paint;
       case PAINT_MODE_INVALID:
         return NULL;
       default:
@@ -232,8 +242,12 @@ const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(ePaintMode mode)
       return rna_enum_brush_uv_sculpt_tool_items;
     case PAINT_MODE_GPENCIL:
       return rna_enum_brush_gpencil_types_items;
-    case PAINT_MODE_GPENCIL_VERTEX:
+    case PAINT_MODE_VERTEX_GPENCIL:
       return rna_enum_brush_gpencil_vertex_types_items;
+    case PAINT_MODE_SCULPT_GPENCIL:
+      return rna_enum_brush_gpencil_sculpt_types_items;
+    case PAINT_MODE_WEIGHT_GPENCIL:
+      return rna_enum_brush_gpencil_weight_types_items;
     case PAINT_MODE_INVALID:
       break;
   }
@@ -256,8 +270,12 @@ const char *BKE_paint_get_tool_prop_id_from_paintmode(ePaintMode mode)
       return "uv_sculpt_tool";
     case PAINT_MODE_GPENCIL:
       return "gpencil_tool";
-    case PAINT_MODE_GPENCIL_VERTEX:
+    case PAINT_MODE_VERTEX_GPENCIL:
       return "gpencil_vertex_tool";
+    case PAINT_MODE_SCULPT_GPENCIL:
+      return "gpencil_sculpt_tool";
+    case PAINT_MODE_WEIGHT_GPENCIL:
+      return "gpencil_weight_tool";
     default:
       /* invalid paint mode */
       return NULL;
@@ -283,6 +301,10 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
           return &ts->gp_paint->paint;
         case OB_MODE_VERTEX_GPENCIL:
           return &ts->gp_vertexpaint->paint;
+        case OB_MODE_SCULPT_GPENCIL:
+          return &ts->gp_sculptpaint->paint;
+        case OB_MODE_WEIGHT_GPENCIL:
+          return &ts->gp_weightpaint->paint;
         case OB_MODE_EDIT:
           return &ts->uvsculpt->paint;
         default:
@@ -398,7 +420,11 @@ ePaintMode BKE_paintmode_get_from_tool(const struct bToolRef *tref)
       case CTX_MODE_PAINT_TEXTURE:
         return PAINT_MODE_TEXTURE_3D;
       case CTX_MODE_VERTEX_GPENCIL:
-        return PAINT_MODE_GPENCIL_VERTEX;
+        return PAINT_MODE_VERTEX_GPENCIL;
+      case CTX_MODE_SCULPT_GPENCIL:
+        return PAINT_MODE_SCULPT_GPENCIL;
+      case CTX_MODE_WEIGHT_GPENCIL:
+        return PAINT_MODE_WEIGHT_GPENCIL;
     }
   }
   else if (tref->space_type == SPACE_IMAGE) {
@@ -459,6 +485,14 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
     paint->runtime.tool_offset = offsetof(Brush, gpencil_vertex_tool);
     paint->runtime.ob_mode = OB_MODE_VERTEX_GPENCIL;
   }
+  else if (paint == &ts->gp_sculptpaint->paint) {
+    paint->runtime.tool_offset = offsetof(Brush, gpencil_sculpt_tool);
+    paint->runtime.ob_mode = OB_MODE_SCULPT_GPENCIL;
+  }
+  else if (paint == &ts->gp_weightpaint->paint) {
+    paint->runtime.tool_offset = offsetof(Brush, gpencil_weight_tool);
+    paint->runtime.ob_mode = OB_MODE_WEIGHT_GPENCIL;
+  }
   else {
     BLI_assert(0);
   }
@@ -480,8 +514,12 @@ uint BKE_paint_get_brush_tool_offset_from_paintmode(const ePaintMode mode)
       return offsetof(Brush, uv_sculpt_tool);
     case PAINT_MODE_GPENCIL:
       return offsetof(Brush, gpencil_tool);
-    case PAINT_MODE_GPENCIL_VERTEX:
+    case PAINT_MODE_VERTEX_GPENCIL:
       return offsetof(Brush, gpencil_vertex_tool);
+    case PAINT_MODE_SCULPT_GPENCIL:
+      return offsetof(Brush, gpencil_sculpt_tool);
+    case PAINT_MODE_WEIGHT_GPENCIL:
+      return offsetof(Brush, gpencil_weight_tool);
     case PAINT_MODE_INVALID:
       break; /* We don't use these yet. */
   }
@@ -867,6 +905,8 @@ bool BKE_paint_ensure(const ToolSettings *ts, struct Paint **r_paint)
     BLI_assert(ELEM(*r_paint,
                     &ts->gp_paint->paint,
                     &ts->gp_vertexpaint->paint,
+                    &ts->gp_sculptpaint->paint,
+                    &ts->gp_weightpaint->paint,
                     &ts->sculpt->paint,
                     &ts->vpaint->paint,
                     &ts->wpaint->paint,
@@ -903,6 +943,14 @@ bool BKE_paint_ensure(const ToolSettings *ts, struct Paint **r_paint)
   }
   else if ((GpVertexPaint **)r_paint == &ts->gp_vertexpaint) {
     GpVertexPaint *data = MEM_callocN(sizeof(*data), __func__);
+    paint = &data->paint;
+  }
+  else if ((GpSculptPaint **)r_paint == &ts->gp_sculptpaint) {
+    GpSculptPaint *data = MEM_callocN(sizeof(*data), __func__);
+    paint = &data->paint;
+  }
+  else if ((GpWeightPaint **)r_paint == &ts->gp_weightpaint) {
+    GpWeightPaint *data = MEM_callocN(sizeof(*data), __func__);
     paint = &data->paint;
   }
   else if ((UvSculpt **)r_paint == &ts->uvsculpt) {

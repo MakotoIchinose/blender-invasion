@@ -2531,6 +2531,14 @@ static void write_scene(WriteData *wd, Scene *sce)
     writestruct(wd, DATA, GpVertexPaint, 1, tos->gp_vertexpaint);
     write_paint(wd, &tos->gp_vertexpaint->paint);
   }
+  if (tos->gp_sculptpaint) {
+    writestruct(wd, DATA, GpSculptPaint, 1, tos->gp_sculptpaint);
+    write_paint(wd, &tos->gp_sculptpaint->paint);
+  }
+  if (tos->gp_weightpaint) {
+    writestruct(wd, DATA, GpWeightPaint, 1, tos->gp_weightpaint);
+    write_paint(wd, &tos->gp_weightpaint->paint);
+  }
   /* write grease-pencil custom ipo curve to file */
   if (tos->gp_interpolate.custom_ipo) {
     write_curvemapping(wd, tos->gp_interpolate.custom_ipo);

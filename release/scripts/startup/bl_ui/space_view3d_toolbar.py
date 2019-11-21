@@ -20,7 +20,6 @@
 from bpy.types import Menu, Panel, UIList
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilStrokeEditPanel,
-    GreasePencilStrokeSculptPanel,
     GreasePencilSculptOptionsPanel,
     GreasePencilAppearancePanel,
     GreasePencilFlipTintColors,
@@ -2445,37 +2444,87 @@ class VIEW3D_PT_tools_grease_pencil_interpolate(Panel):
 
 
 # Grease Pencil stroke sculpting tools
-class VIEW3D_PT_tools_grease_pencil_sculpt(GreasePencilStrokeSculptPanel, View3DPanel, Panel):
+class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
     bl_context = ".greasepencil_sculpt"
-    bl_category = "Tools"
     bl_label = "Brush"
     bl_category = "Tool"
 
+    @classmethod
+    def poll(cls, context):
+        is_3d_view = context.space_data.type == 'VIEW_3D'
+        if is_3d_view:
+            if context.gpencil_data is None:
+                return False
 
-# Grease Pencil weight painting tools
-class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
-    bl_context = ".greasepencil_weight"
-    bl_category = "Tools"
-    bl_label = "Brush"
-    bl_category = "Tool"
+            gpd = context.gpencil_data
+            return bool(gpd.is_stroke_sculpt_mode)
+        else:
+            return True
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        settings = context.tool_settings.gpencil_sculpt
-        brush = settings.brush
+        tool_settings = context.scene.tool_settings
+        gpencil_sculpt_paint = tool_settings.gpencil_sculpt_paint
 
-        layout.template_icon_view(settings, "weight_tool", show_labels=True)
+        row = layout.row()
+        col = row.column()
+        col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add", rows=3, cols=8)
 
-        col = layout.column()
+        col = row.column()
+        brush = gpencil_sculpt_paint.brush
 
-        if not self.is_popover:
-            from bl_ui.properties_paint_common import (
-                brush_basic_gpencil_weight_settings,
-            )
-            brush_basic_gpencil_weight_settings(col, context, brush)
+        if brush is not None:
+            if not self.is_popover:
+                from bl_ui.properties_paint_common import (
+                    brush_basic_gpencil_sculpt_settings,
+                )
+                tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+                brush_basic_gpencil_sculpt_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
+
+
+# Grease Pencil weight painting tools
+class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
+    bl_context = ".greasepencil_weight"
+    bl_label = "Brush"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        is_3d_view = context.space_data.type == 'VIEW_3D'
+        if is_3d_view:
+            if context.gpencil_data is None:
+                return False
+
+            gpd = context.gpencil_data
+            return bool(gpd.is_stroke_weight_mode)
+        else:
+            return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        tool_settings = context.scene.tool_settings
+        gpencil_weight_paint = tool_settings.gpencil_weight_paint
+
+        row = layout.row()
+        col = row.column()
+        col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add", rows=3, cols=8)
+
+        col = row.column()
+        brush = gpencil_weight_paint.brush
+
+        if brush is not None:
+            if not self.is_popover:
+                from bl_ui.properties_paint_common import (
+                    brush_basic_gpencil_weight_settings,
+                )
+                tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
+                brush_basic_gpencil_weight_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
 
 
 # Grease Pencil Brush Appearance (one for each mode)

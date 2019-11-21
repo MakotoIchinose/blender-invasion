@@ -1292,15 +1292,19 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 282, 2)) {
-    /* Init all Vertex Paint brushes. */
+    /* Init all Vertex/Sculpt and Weight Paint brushes. */
     Brush *brush = BLI_findstring(&bmain->brushes, "Pencil", offsetof(ID, name) + 2);
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       ToolSettings *ts = scene->toolsettings;
 
       BKE_brush_gpencil_vertex_presets(bmain, ts);
+      BKE_brush_gpencil_sculpt_presets(bmain, ts);
+      BKE_brush_gpencil_weight_presets(bmain, ts);
 
-      /* Ensure new Vertex Paint mode. */
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_GPENCIL_VERTEX);
+      /* Ensure new Paint modes. */
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
 
       /* Set default Draw brush. */
       Paint *paint = &ts->gp_paint->paint;
@@ -1478,36 +1482,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 #endif
 
     {
-      /* Grease pencil sculpt and paint cursors */
-      if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "weighttype")) {
-        for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-          /* sculpt brushes */
-          GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
-          if (gset) {
-            gset->weighttype = GP_SCULPT_TYPE_WEIGHT;
-          }
-        }
-      }
-
-      {
-        float curcolor_add[3], curcolor_sub[3];
-        ARRAY_SET_ITEMS(curcolor_add, 1.0f, 0.6f, 0.6f);
-        ARRAY_SET_ITEMS(curcolor_sub, 0.6f, 0.6f, 1.0f);
-        GP_Sculpt_Data *gp_brush;
-
-        for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-          ToolSettings *ts = scene->toolsettings;
-          /* sculpt brushes */
-          GP_Sculpt_Settings *gset = &ts->gp_sculpt;
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
-            gp_brush = &gset->brush[i];
-            gp_brush->flag |= GP_SCULPT_FLAG_ENABLE_CURSOR;
-            copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
-            copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
-          }
-        }
-      }
-
       /* Init grease pencil edit line color */
       if (!DNA_struct_elem_find(fd->filesdna, "bGPdata", "float", "line_color[4]")) {
         for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
@@ -2633,27 +2607,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 33)) {
-    /* Grease pencil reset sculpt brushes after struct rename  */
-    if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "int", "weighttype")) {
-      float curcolor_add[3], curcolor_sub[3];
-      ARRAY_SET_ITEMS(curcolor_add, 1.0f, 0.6f, 0.6f);
-      ARRAY_SET_ITEMS(curcolor_sub, 0.6f, 0.6f, 1.0f);
-
-      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-        /* sculpt brushes */
-        GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
-        if (gset) {
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
-            GP_Sculpt_Data *gp_brush = &gset->brush[i];
-            gp_brush->size = 30;
-            gp_brush->strength = 0.5f;
-            gp_brush->flag = GP_SCULPT_FLAG_USE_FALLOFF | GP_SCULPT_FLAG_ENABLE_CURSOR;
-            copy_v3_v3(gp_brush->curcolor_add, curcolor_add);
-            copy_v3_v3(gp_brush->curcolor_sub, curcolor_sub);
-          }
-        }
-      }
-    }
 
     if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "overscan")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
@@ -3089,20 +3042,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         for (int i = 0; i < ARRAY_SIZE(scene->orientation_slots); i++) {
           scene->orientation_slots[i].index_custom = -1;
-        }
-      }
-    }
-
-    /* Grease pencil target weight  */
-    if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "float", "weight")) {
-      for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-        /* sculpt brushes */
-        GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
-        if (gset) {
-          for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
-            GP_Sculpt_Data *gp_brush = &gset->brush[i];
-            gp_brush->weight = 1.0f;
-          }
         }
       }
     }
@@ -3964,22 +3903,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-
-    {
-      /* Enable by default affect position for grease pencil sculpt brushes. */
-      if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Data", "int", "mode_flag")) {
-        for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-          /* Sculpt brushes. */
-          GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
-          if (gset) {
-            for (int i = 0; i < GP_SCULPT_TYPE_MAX; i++) {
-              GP_Sculpt_Data *brush = &gset->brush[i];
-              brush->mode_flag = GP_SCULPT_FLAGMODE_APPLY_POSITION;
-            }
-          }
-        }
-      }
-    }
   }
 
   {
@@ -3990,13 +3913,26 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Init new Grease Pencil Vertex Paint tools. */
+    /* Init new Grease Pencil Paint tools. */
     {
       for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
         if (brush->gpencil_settings != NULL) {
           brush->gpencil_vertex_tool = brush->gpencil_settings->brush_type;
         }
       }
+
+      for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+        if (brush->gpencil_settings != NULL) {
+          brush->gpencil_sculpt_tool = brush->gpencil_settings->brush_type;
+        }
+      }
+
+      for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+        if (brush->gpencil_settings != NULL) {
+          brush->gpencil_weight_tool = brush->gpencil_settings->brush_type;
+        }
+      }
+
       BKE_paint_toolslots_init_from_main(bmain);
     }
 

@@ -785,7 +785,9 @@ static const ePaintMode brush_select_paint_modes[] = {
     PAINT_MODE_WEIGHT,
     PAINT_MODE_TEXTURE_3D,
     PAINT_MODE_GPENCIL,
-    PAINT_MODE_GPENCIL_VERTEX,
+    PAINT_MODE_VERTEX_GPENCIL,
+    PAINT_MODE_SCULPT_GPENCIL,
+    PAINT_MODE_WEIGHT_GPENCIL,
 };
 
 static int brush_select_exec(bContext *C, wmOperator *op)

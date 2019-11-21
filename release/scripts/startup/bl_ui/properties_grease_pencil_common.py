@@ -224,36 +224,13 @@ class GreasePencilStrokeEditPanel:
             col.operator_menu_enum("gpencil.frame_clean_fill", text="Clean Boundary Strokes...", property="mode")
 
 
-class GreasePencilStrokeSculptPanel:
-    # subclass must set
-    # bl_space_type = 'IMAGE_EDITOR'
-    bl_label = "Sculpt Strokes"
-    bl_category = "Tools"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        settings = context.tool_settings.gpencil_sculpt
-        brush = settings.brush
-
-        layout.template_icon_view(settings, "sculpt_tool", show_labels=True)
-
-        if not self.is_popover:
-            from bl_ui.properties_paint_common import (
-                brush_basic_gpencil_sculpt_settings,
-            )
-            brush_basic_gpencil_sculpt_settings(layout, context, brush)
-
-
 class GreasePencilSculptOptionsPanel:
     bl_label = "Sculpt Strokes"
 
     @classmethod
     def poll(cls, context):
-        settings = context.tool_settings.gpencil_sculpt
-        tool = settings.sculpt_tool
+        brush = context.tool_settings.gpencil_sculpt_paint.brush
+        tool = brush.gpencil_sculpt_tool
 
         return bool(tool in {'SMOOTH', 'RANDOMIZE', 'SMOOTH'})
 
@@ -262,9 +239,8 @@ class GreasePencilSculptOptionsPanel:
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        settings = context.tool_settings.gpencil_sculpt
-        tool = settings.sculpt_tool
-        brush = settings.brush
+        brush = context.tool_settings.gpencil_sculpt_paint.brush
+        tool = brush.gpencil_sculpt_tool
 
         if tool in {'SMOOTH', 'RANDOMIZE'}:
             layout.prop(brush, "use_edit_position", text="Affect Position")
@@ -316,25 +292,20 @@ class GreasePencilAppearancePanel:
             if brush.gpencil_tool == 'FILL':
                 layout.prop(brush, "cursor_color_add", text="Color")
 
-        elif ob.mode in {'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
-            settings = tool_settings.gpencil_sculpt
-            brush = settings.brush
-            tool = settings.sculpt_tool
+        elif ob.mode == 'SCULPT_GPENCIL':
+            brush = tool_settings.gpencil_sculpt_paint.brush
+            gp_settings = brush.gpencil_settings
+            tool = brush.gpencil_sculpt_tool
 
             col = layout.column(align=True)
-            col.prop(brush, "use_cursor", text="Show Brush")
+            col.prop(gp_settings, "use_cursor", text="Show Brush")
 
-            if tool in {'THICKNESS', 'STRENGTH'}:
-                col.prop(brush, "cursor_color_add", text="Add")
-                col.prop(brush, "cursor_color_sub", text="Subtract")
-            elif tool == 'PINCH':
-                col.prop(brush, "cursor_color_add", text="Pinch")
-                col.prop(brush, "cursor_color_sub", text="Inflate")
-            elif tool == 'TWIST':
-                col.prop(brush, "cursor_color_add", text="CCW")
-                col.prop(brush, "cursor_color_sub", text="CW")
-            else:
-                col.prop(brush, "cursor_color_add", text="")
+        elif ob.mode == 'WEIGHT_GPENCIL':
+            brush = tool_settings.gpencil_weight_paint.brush
+            gp_settings = brush.gpencil_settings
+
+            col = layout.column(align=True)
+            col.prop(gp_settings, "use_cursor", text="Show Brush")
 
 
 class GPENCIL_MT_pie_tool_palette(Menu):

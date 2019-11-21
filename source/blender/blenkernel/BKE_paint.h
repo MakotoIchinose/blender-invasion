@@ -80,10 +80,12 @@ typedef enum ePaintMode {
   PAINT_MODE_SCULPT_UV = 5,
   PAINT_MODE_GPENCIL = 6,
   /* Grease Pencil Vertex Paint */
-  PAINT_MODE_GPENCIL_VERTEX = 7,
+  PAINT_MODE_VERTEX_GPENCIL = 7,
+  PAINT_MODE_SCULPT_GPENCIL = 8,
+  PAINT_MODE_WEIGHT_GPENCIL = 9,
 
   /** Keep last. */
-  PAINT_MODE_INVALID = 8,
+  PAINT_MODE_INVALID = 10,
 } ePaintMode;
 
 #define PAINT_MODE_HAS_BRUSH(mode) !ELEM(mode, PAINT_MODE_SCULPT_UV)
