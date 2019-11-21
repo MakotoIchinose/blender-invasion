@@ -208,6 +208,7 @@ typedef struct DRWCommandDrawInstance {
   GPUBatch *batch;
   DRWResourceHandle handle;
   uint inst_count;
+  uint use_attribs; /* bool */
 } DRWCommandDrawInstance;
 
 typedef struct DRWCommandDrawProcedural {

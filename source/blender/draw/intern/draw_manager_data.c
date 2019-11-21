@@ -643,12 +643,14 @@ static void drw_command_draw_range(DRWShadingGroup *shgroup,
 static void drw_command_draw_instance(DRWShadingGroup *shgroup,
                                       GPUBatch *batch,
                                       DRWResourceHandle handle,
-                                      uint count)
+                                      uint count,
+                                      bool use_attrib)
 {
   DRWCommandDrawInstance *cmd = drw_command_create(shgroup, DRW_CMD_DRAW_INSTANCE);
   cmd->batch = batch;
   cmd->handle = handle;
   cmd->inst_count = count;
+  cmd->use_attribs = use_attrib;
 }
 
 static void drw_command_draw_procedural(DRWShadingGroup *shgroup,
@@ -788,7 +790,7 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
     drw_command_set_select_id(shgroup, NULL, DST.select_id);
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
-  drw_command_draw_instance(shgroup, geom, handle, count);
+  drw_command_draw_instance(shgroup, geom, handle, count, false);
 }
 
 void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
@@ -803,7 +805,7 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
   GPUBatch *batch = DRW_temp_batch_instance_request(DST.idatalist, NULL, inst_attributes, geom);
-  drw_command_draw(shgroup, batch, handle);
+  drw_command_draw_instance(shgroup, batch, handle, 0, true);
 }
 
 #define SCULPT_DEBUG_BUFFERS (G.debug_value == 889)

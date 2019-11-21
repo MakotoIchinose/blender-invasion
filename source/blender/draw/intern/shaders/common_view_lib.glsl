@@ -54,7 +54,7 @@ uniform int resourceChunk;
 uniform int baseInstance;
 #  endif
 
-#  ifdef IN_PLACE_INSTANCES
+#  if defined(IN_PLACE_INSTANCES) || defined(INSTANCED_ATTRIB)
 /* When drawing instances of an object at the same position. */
 #    define instanceId 0
 #  elif defined(GPU_DEPRECATED_AMD_DRIVER)
@@ -92,7 +92,8 @@ flat in int resourceIDFrag;
 #  define resource_id resourceIDFrag
 #endif
 
-#if !defined(GPU_INTEL) && !defined(GPU_DEPRECATED_AMD_DRIVER) && !defined(OS_MAC)
+#if !defined(GPU_INTEL) && !defined(GPU_DEPRECATED_AMD_DRIVER) && !defined(OS_MAC) && \
+    !defined(INSTANCED_ATTRIB)
 struct ObjectMatrices {
   mat4 drw_modelMatrix;
   mat4 drw_modelMatrixInverse;

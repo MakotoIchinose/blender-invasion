@@ -430,11 +430,12 @@ void DRW_shgroup_call_range(DRWShadingGroup *shgroup,
 void DRW_shgroup_call_procedural_points(DRWShadingGroup *sh, Object *ob, uint point_ct);
 void DRW_shgroup_call_procedural_lines(DRWShadingGroup *sh, Object *ob, uint line_ct);
 void DRW_shgroup_call_procedural_triangles(DRWShadingGroup *sh, Object *ob, uint tri_ct);
-
+/* Warning: Only use with Shaders that have IN_PLACE_INSTANCES defined. */
 void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
                                 Object *ob,
                                 struct GPUBatch *geom,
                                 uint count);
+/* Warning: Only use with Shaders that have INSTANCED_ATTRIB defined. */
 void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
                                              Object *ob,
                                              struct GPUBatch *geom,
