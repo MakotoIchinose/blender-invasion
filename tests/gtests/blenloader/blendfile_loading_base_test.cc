@@ -46,6 +46,7 @@ extern "C" {
 #include "RNA_define.h"
 
 #include "WM_api.h"
+#include "wm.h"
 }
 
 DEFINE_string(test_assets_dir, "", "lib/tests directory from SVN containing the test assets.");
@@ -98,8 +99,6 @@ void BlendfileLoadingBaseTest::TearDownTestCase()
 
   BKE_blender_atexit();
 
-  /* TODO(Sybren): this reports 3 leaked blocks from WM, which have been allocated by loading a
-   * blend file. */
   if (MEM_get_memory_blocks_in_use() != 0) {
     size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
     printf("Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
@@ -145,6 +144,11 @@ void BlendfileLoadingBaseTest::blendfile_free()
 {
   if (bfile == nullptr) {
     return;
+  }
+
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bfile->main->wm.first);
+  if (wm != nullptr) {
+    wm_close_and_free(NULL, wm);
   }
   BLO_blendfiledata_free(bfile);
   bfile = nullptr;
