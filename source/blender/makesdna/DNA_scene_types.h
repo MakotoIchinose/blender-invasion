@@ -1082,15 +1082,10 @@ typedef struct GP_Sculpt_Settings {
 
 /* GP_Sculpt_Settings.flag */
 typedef enum eGP_Sculpt_SettingsFlag {
-  /* GPXX */
-  /* only affect selected points */
-  GP_SCULPT_SETT_FLAG_DEPRECATED = (1 << 0),
-  /* apply brush to thickness */
-  GP_SCULPT_SETT_FLAG_WEIGHT_MODE = (1 << 4),
   /* enable falloff for multiframe editing */
-  GP_SCULPT_SETT_FLAG_FRAME_FALLOFF = (1 << 5),
+  GP_SCULPT_SETT_FLAG_FRAME_FALLOFF = (1 << 0),
   /* apply primitive curve */
-  GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 7),
+  GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 1),
 } eGP_Sculpt_SettingsFlag;
 
 /* GP_Sculpt_Settings.gpencil_selectmode_sculpt */
