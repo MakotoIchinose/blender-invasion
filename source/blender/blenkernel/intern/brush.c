@@ -778,6 +778,22 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
+  /* Smooth brush. */
+  brush = gpencil_brush_ensure(bmain, ts, "Strength Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
+  brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_STRENGTH;
+  brush->gpencil_sculpt_tool = GPSCULPT_TOOL_STRENGTH;
+
+  if (new_brush) {
+    brush->size = 25.0f;
+    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+
+    brush->gpencil_settings->draw_strength = 0.3f;
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF |
+                                           GP_SCULPT_FLAG_SMOOTH_PRESSURE;
+    brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
+  }
+
   /* Thickness brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Thickness Stroke", OB_MODE_SCULPT_GPENCIL, &new_brush);
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_GPBRUSH_THICKNESS;
