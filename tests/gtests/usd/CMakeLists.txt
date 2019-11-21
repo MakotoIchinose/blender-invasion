@@ -31,11 +31,11 @@ set(INC
   ../../../intern/guardedalloc
   ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
-  ${HDF5_INCLUDE_DIRS}
   ${OPENEXR_INCLUDE_DIRS}
 )
 
 set(LIB
+  bf_blenloader_test
   bf_blenloader
   bf_intern_opencolorio # Should not be needed but gives windows linker errors if the ocio libs are linked before this
   bf_gpu # Should not be needed but gives windows linker errors if the ocio libs are linked before this
@@ -53,12 +53,11 @@ else()
   set(_buildinfo_src "")
 endif()
 
-BLENDER_SRC_GTEST_EX(usd "blendfile_loading_test.cc;abstract_hierarchy_iterator_test.cc;${_buildinfo_src}" "${LIB}" "FALSE")
-add_test(
-  NAME usd_test
-  COMMAND ${TESTS_OUTPUT_DIR}/usd_test --test-assets-dir ${CMAKE_SOURCE_DIR}/../lib/tests
-  WORKING_DIRECTORY ${TEST_INSTALL_DIR})
-
+BLENDER_SRC_GTEST_EX(
+  NAME usd
+  SRC "abstract_hierarchy_iterator_test.cc;${_buildinfo_src}"
+  EXTRA_LIBS "${LIB}"
+  COMMAND_ARGS --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests")
 
 unset(_buildinfo_src)
 

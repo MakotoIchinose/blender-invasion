@@ -1,4 +1,4 @@
-#include "blendfile_loading_test.h"
+#include "blenloader/blendfile_loading_base_test.h"
 #include "intern/abstract_hierarchy_iterator.h"
 
 extern "C" {
@@ -82,20 +82,20 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   }
 };
 
-class USDHierarchyIteratorTest : public BlendfileLoadingTest {
+class USDHierarchyIteratorTest : public BlendfileLoadingBaseTest {
  protected:
   TestingHierarchyIterator *iterator;
 
   virtual void SetUp()
   {
-    BlendfileLoadingTest::SetUp();
+    BlendfileLoadingBaseTest::SetUp();
     iterator = nullptr;
   }
 
   virtual void TearDown()
   {
     iterator_free();
-    BlendfileLoadingTest::TearDown();
+    BlendfileLoadingBaseTest::TearDown();
   }
 
   /* Create a test iterator. */
