@@ -29,6 +29,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
@@ -80,6 +81,7 @@
 #include "BKE_node.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_curveprofile.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -194,6 +196,8 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
   /* duplicate Grease Pencil multiframe fallof */
   ts->gp_sculpt.cur_falloff = BKE_curvemapping_copy(ts->gp_sculpt.cur_falloff);
   ts->gp_sculpt.cur_primitive = BKE_curvemapping_copy(ts->gp_sculpt.cur_primitive);
+
+  ts->custom_bevel_profile_preset = BKE_curveprofile_copy(ts->custom_bevel_profile_preset);
   return ts;
 }
 
@@ -246,6 +250,10 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
   }
   if (toolsettings->gp_sculpt.cur_primitive) {
     BKE_curvemapping_free(toolsettings->gp_sculpt.cur_primitive);
+  }
+
+  if (toolsettings->custom_bevel_profile_preset) {
+    BKE_curveprofile_free(toolsettings->custom_bevel_profile_preset);
   }
 
   MEM_freeN(toolsettings);
@@ -686,6 +694,9 @@ void BKE_scene_init(Scene *sce)
   BKE_color_managed_display_settings_init(&sce->r.bake.im_format.display_settings);
   BKE_color_managed_view_settings_init_render(
       &sce->r.bake.im_format.view_settings, &sce->r.bake.im_format.display_settings, "Filmic");
+
+  /* Curve Profile */
+  sce->toolsettings->custom_bevel_profile_preset = BKE_curveprofile_add(PROF_PRESET_LINE);
 
   for (int i = 0; i < ARRAY_SIZE(sce->orientation_slots); i++) {
     sce->orientation_slots[i].index_custom = -1;
