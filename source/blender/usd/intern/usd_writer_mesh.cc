@@ -160,14 +160,26 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     return;
   }
 
-  usd_mesh.CreatePointsAttr().Set(usd_mesh_data.points, timecode);
-  usd_mesh.CreateFaceVertexCountsAttr().Set(usd_mesh_data.face_vertex_counts, timecode);
-  usd_mesh.CreateFaceVertexIndicesAttr().Set(usd_mesh_data.face_indices, timecode);
+  /* Set the default value of the attributes to the first-time values. This will make the USD
+   * library deduplicate values that we write on every frame but don't actually change. */
+  pxr::UsdAttribute attr_points = usd_mesh.CreatePointsAttr(pxr::VtValue(usd_mesh_data.points),
+                                                            true);
+  pxr::UsdAttribute attr_face_vertex_counts = usd_mesh.CreateFaceVertexCountsAttr(
+      pxr::VtValue(usd_mesh_data.face_vertex_counts), true);
+  pxr::UsdAttribute attr_face_vertex_indices = usd_mesh.CreateFaceVertexIndicesAttr(
+      pxr::VtValue(usd_mesh_data.face_indices), true);
 
   if (!usd_mesh_data.crease_lengths.empty()) {
-    usd_mesh.CreateCreaseLengthsAttr().Set(usd_mesh_data.crease_lengths, timecode);
-    usd_mesh.CreateCreaseIndicesAttr().Set(usd_mesh_data.crease_vertex_indices, timecode);
-    usd_mesh.CreateCreaseSharpnessesAttr().Set(usd_mesh_data.crease_sharpnesses, timecode);
+    pxr::UsdAttribute attr_crease_lengths = usd_mesh.CreateCreaseLengthsAttr(
+        pxr::VtValue(usd_mesh_data.crease_lengths), true);
+    pxr::UsdAttribute attr_crease_indices = usd_mesh.CreateCreaseIndicesAttr(
+        pxr::VtValue(usd_mesh_data.crease_vertex_indices), true);
+    pxr::UsdAttribute attr_crease_sharpness = usd_mesh.CreateCreaseSharpnessesAttr(
+        pxr::VtValue(usd_mesh_data.crease_sharpnesses), true);
+
+    attr_crease_lengths.Set(usd_mesh_data.crease_lengths, timecode);
+    attr_crease_indices.Set(usd_mesh_data.crease_vertex_indices, timecode);
+    attr_crease_sharpness.Set(usd_mesh_data.crease_sharpnesses, timecode);
   }
 
   if (usd_export_context_.export_params.export_uvmaps) {
@@ -358,7 +370,8 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
     }
   }
 
-  usd_mesh.CreateNormalsAttr().Set(loop_normals, timecode);
+  pxr::UsdAttribute attr_normals = usd_mesh.CreateNormalsAttr(pxr::VtValue(loop_normals), true);
+  attr_normals.Set(loop_normals, timecode);
   usd_mesh.SetNormalsInterpolation(pxr::UsdGeomTokens->faceVarying);
 }
 
