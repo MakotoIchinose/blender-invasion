@@ -606,11 +606,10 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void)
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_common_view_lib_glsl,
-                                 datatoc_edit_mesh_common_lib_glsl,
                                  datatoc_edit_mesh_skin_root_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define INSTANCED_ATTRIB\n", NULL},
     });
   }
   return sh_data->edit_mesh_skin_root;

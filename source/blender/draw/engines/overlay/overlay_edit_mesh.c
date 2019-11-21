@@ -247,7 +247,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
 static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob, bool in_front)
 {
-  struct GPUBatch *geom_tris, *geom_verts, *geom_edges, *geom_fcenter, *skin_roots;
+  struct GPUBatch *geom_tris, *geom_verts, *geom_edges, *geom_fcenter, *skin_roots, *circle;
   DRWShadingGroup *vert_shgrp, *edge_shgrp, *fdot_shgrp, *face_shgrp, *skin_roots_shgrp;
 
   bool has_edit_mesh_cage = false;
@@ -277,18 +277,9 @@ static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob
     DRW_shgroup_call_no_cull(vert_shgrp, geom_verts, ob);
 
     if (has_skin_roots) {
-      DRWShadingGroup *grp = DRW_shgroup_create_sub(skin_roots_shgrp);
-      /* We need to upload the matrix. But the ob can be temporary allocated so we cannot
-       * use direct reference to ob->obmat. */
-      DRW_shgroup_uniform_vec4_copy(grp, "editModelMat[0]", ob->obmat[0]);
-      DRW_shgroup_uniform_vec4_copy(grp, "editModelMat[1]", ob->obmat[1]);
-      DRW_shgroup_uniform_vec4_copy(grp, "editModelMat[2]", ob->obmat[2]);
-      DRW_shgroup_uniform_vec4_copy(grp, "editModelMat[3]", ob->obmat[3]);
-
+      circle = DRW_cache_circle_get();
       skin_roots = DRW_mesh_batch_cache_get_edit_skin_roots(ob->data);
-      /* NOTE(fclem) We cannot use ob here since it would offset the instance attribs with
-       * base instance offset. */
-      DRW_shgroup_call(grp, skin_roots, NULL);
+      DRW_shgroup_call_instances_with_attribs(skin_roots_shgrp, ob, circle, skin_roots);
     }
   }
 
