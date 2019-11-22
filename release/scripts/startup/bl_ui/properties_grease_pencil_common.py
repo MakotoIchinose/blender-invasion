@@ -225,7 +225,7 @@ class GreasePencilStrokeEditPanel:
 
 
 class GreasePencilSculptOptionsPanel:
-    bl_label = "Sculpt Strokes"
+    bl_label = "Options"
 
     @classmethod
     def poll(cls, context):

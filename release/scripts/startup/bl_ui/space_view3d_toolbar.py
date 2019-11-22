@@ -2256,6 +2256,9 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
     def poll(cls, context):
         is_3d_view = context.space_data.type == 'VIEW_3D'
         if is_3d_view:
+            if context.region.type == 'TOOL_HEADER':
+                return False
+
             if context.gpencil_data is None:
                 return False
 
@@ -2477,6 +2480,12 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
     def poll(cls, context):
         is_3d_view = context.space_data.type == 'VIEW_3D'
         if is_3d_view:
+            if context.region.type == 'TOOL_HEADER':
+                brush = context.tool_settings.gpencil_sculpt_paint.brush
+                tool = brush.gpencil_sculpt_tool
+                if tool not in {'SMOOTH', 'RANDOMIZE'}:
+                    return False
+            
             if context.gpencil_data is None:
                 return False
 
@@ -2519,6 +2528,9 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
     def poll(cls, context):
         is_3d_view = context.space_data.type == 'VIEW_3D'
         if is_3d_view:
+            if context.region.type == 'TOOL_HEADER':
+                return False
+
             if context.gpencil_data is None:
                 return False
 
@@ -2566,7 +2578,7 @@ class VIEW3D_PT_tools_grease_pencil_sculpt_appearance(GreasePencilAppearancePane
 
 class VIEW3D_PT_tools_grease_pencil_sculpt_options(GreasePencilSculptOptionsPanel, View3DPanel, Panel):
     bl_context = ".greasepencil_sculpt"
-    bl_label = "Sculpt Strokes"
+    bl_label = "Options"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_sculpt'
     bl_category = "Tool"
 

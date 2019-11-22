@@ -465,7 +465,8 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compac
     if compact:
         if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             row.separator()
-            row.prop(gp_settings, "direction", expand=True, text="")
+            row.prop_enum(gp_settings, "direction", value='ADD', text="")
+            row.prop_enum(gp_settings, "direction", value='SUBTRACT', text="")
     else:
         use_property_split_prev = layout.use_property_split
         layout.use_property_split = False
