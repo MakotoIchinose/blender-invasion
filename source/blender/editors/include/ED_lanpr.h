@@ -241,7 +241,7 @@ typedef struct LANPR_RenderBuffer {
   ListBase chains;
   struct GPUBatch *chain_draw_batch;
 
-  struct DRWShadingGroup *ChainShgrp;
+  struct DRWShadingGroup *chain_shgrp;
 
   /** For managing calculation tasks for multiple threads. */
   SpinLock lock_task;
@@ -472,79 +472,64 @@ BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_Ren
   return 1;
 }
 
-BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL);
+BLI_INLINE double tmat_get_linear_ratio(real l, real r, real from_l);
 BLI_INLINE int lanpr_LineIntersectTest2d(
     const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
 {
   double k1, k2;
   double x;
   double y;
-  double Ratio;
-  double xDiff = (a2[0] - a1[0]);
-  double xDiff2 = (b2[0] - b1[0]);
+  double ratio;
+  double x_diff = (a2[0] - a1[0]);
+  double x_diff2 = (b2[0] - b1[0]);
 
-  if (xDiff == 0) {
-    if (xDiff2 == 0) {
+  if (x_diff == 0) {
+    if (x_diff2 == 0) {
       *aRatio = 0;
       return 0;
     }
-    double r2 = tMatGetLinearRatio(b1[0], b2[0], a1[0]);
+    double r2 = tmat_get_linear_ratio(b1[0], b2[0], a1[0]);
     x = interpd(b2[0], b1[0], r2);
     y = interpd(b2[1], b1[1], r2);
-    *aRatio = Ratio = tMatGetLinearRatio(a1[1], a2[1], y);
+    *aRatio = ratio = tmat_get_linear_ratio(a1[1], a2[1], y);
   }
   else {
-    if (xDiff2 == 0) {
-      Ratio = tMatGetLinearRatio(a1[0], a2[0], b1[0]);
-      x = interpd(a2[0], a1[0], Ratio);
-      *aRatio = Ratio;
+    if (x_diff2 == 0) {
+      ratio = tmat_get_linear_ratio(a1[0], a2[0], b1[0]);
+      x = interpd(a2[0], a1[0], ratio);
+      *aRatio = ratio;
     }
     else {
-      k1 = (a2[1] - a1[1]) / xDiff;
-      k2 = (b2[1] - b1[1]) / xDiff2;
+      k1 = (a2[1] - a1[1]) / x_diff;
+      k2 = (b2[1] - b1[1]) / x_diff2;
 
       if ((k1 == k2))
         return 0;
 
       x = (a1[1] - b1[1] - k1 * a1[0] + k2 * b1[0]) / (k2 - k1);
 
-      Ratio = (x - a1[0]) / xDiff;
+      ratio = (x - a1[0]) / x_diff;
 
-      *aRatio = Ratio;
+      *aRatio = ratio;
     }
   }
 
   if (b1[0] == b2[0]) {
-    y = interpd(a2[1], a1[1], Ratio);
+    y = interpd(a2[1], a1[1], ratio);
     if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1]))
       return 0;
   }
-  else if (Ratio <= 0 || Ratio > 1 || (b1[0] > b2[0] && x > b1[0]) ||
+  else if (ratio <= 0 || ratio > 1 || (b1[0] > b2[0] && x > b1[0]) ||
            (b1[0] < b2[0] && x < b1[0]) || (b2[0] > b1[0] && x > b2[0]) ||
            (b2[0] < b1[0] && x < b2[0]))
     return 0;
 
   return 1;
 }
-BLI_INLINE double lanpr_GetLineZ(tnsVector3d l, tnsVector3d r, real Ratio)
-{
-  double z = interpd(r[2], l[2], Ratio);
-  return z;
-}
-BLI_INLINE double lanpr_GetLineZPoint(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
-{
-  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
-  return interpd(r[2], l[2], ra);
-}
-BLI_INLINE double lanpr_GetLinearRatio(tnsVector3d l, tnsVector3d r, tnsVector3d FromL)
-{
-  double ra = (FromL[0] - l[0]) / (r[0] - l[0]);
-  return ra;
-}
 
-BLI_INLINE double tMatGetLinearRatio(real l, real r, real FromL)
+BLI_INLINE double tmat_get_linear_ratio(real l, real r, real from_l)
 {
-  double ra = (FromL - l) / (r - l);
+  double ra = (from_l - l) / (r - l);
   return ra;
 }
 
@@ -562,12 +547,12 @@ void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
 int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
-int ED_lanpr_count_leveled_edge_segment_count(ListBase *LineList, struct LANPR_LineLayer *ll);
+int ED_lanpr_count_leveled_edge_segment_count(ListBase *line_list, struct LANPR_LineLayer *ll);
 void *ED_lanpr_make_leveled_edge_vertex_array(struct LANPR_RenderBuffer *rb,
-                                              ListBase *LineList,
-                                              float *vertexArray,
-                                              float *NormalArray,
-                                              float **NextNormal,
+                                              ListBase *line_list,
+                                              float *vertex_array,
+                                              float *normal_array,
+                                              float **next_normal,
                                               LANPR_LineLayer *ll,
                                               float componet_id);
 
