@@ -17,7 +17,7 @@
  * All rights reserved.
  */
 
-#include "../usd.h"
+#include "usd.h"
 #include "usd_hierarchy_iterator.h"
 
 #include <pxr/usd/usd/stage.h>
