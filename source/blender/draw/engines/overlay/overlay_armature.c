@@ -2317,7 +2317,11 @@ void OVERLAY_pose_draw(OVERLAY_Data *vedata)
 
     DRW_draw_pass(psl->armature_bone_select_ps);
 
-    GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
+    if (DRW_state_is_fbo()) {
+      GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
+    }
+    /* Selection still works because we are drawing only the pose bones in this case. */
+
     DRW_draw_pass(psl->armature_ps[1]);
   }
 }

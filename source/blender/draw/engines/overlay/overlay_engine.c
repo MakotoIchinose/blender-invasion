@@ -91,6 +91,7 @@ static void OVERLAY_cache_init(void *vedata)
   pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
   pd->xray_enabled = XRAY_ACTIVE(v3d);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
+  pd->clear_in_front = (v3d->shading.type != OB_SOLID);
 
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
@@ -328,6 +329,7 @@ static void OVERLAY_draw_scene(void *vedata)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
@@ -340,17 +342,34 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_grid_draw(vedata);
   OVERLAY_outline_draw(vedata);
 
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(dfbl->in_front_fb);
+
+    /* If we are not in solid shading mode, we clear the depth. */
+    if (pd->clear_in_front) {
+      /* TODO(fclem) This clear should be done in a global place. */
+      GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
+    }
+  }
+  else if (DRW_state_is_select()) {
+    /* TODO fix in_front selectability */
+  }
+
   OVERLAY_wireframe_in_front_draw(vedata);
   OVERLAY_armature_in_front_draw(vedata);
   OVERLAY_extra_in_front_draw(vedata);
   OVERLAY_image_in_front_draw(vedata);
+
+  if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(dfbl->default_fb);
+  }
 
   OVERLAY_motion_path_draw(vedata);
   OVERLAY_extra_centers_draw(vedata);
 
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
-      OVERLAY_edit_mesh_draw(vedata); /* Clear depth for xray */
+      OVERLAY_edit_mesh_draw(vedata);
       break;
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
@@ -364,7 +383,7 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_POSE:
       OVERLAY_paint_draw(vedata);
-      OVERLAY_pose_draw(vedata); /* Clear depth for xray */
+      OVERLAY_pose_draw(vedata);
       break;
     case CTX_MODE_PAINT_WEIGHT:
     case CTX_MODE_PAINT_VERTEX:

@@ -32,7 +32,6 @@
 typedef struct OVERLAY_FramebufferList {
   struct GPUFrameBuffer *outlines_prepass_fb;
   struct GPUFrameBuffer *outlines_process_fb[2];
-  struct GPUFrameBuffer *edit_mesh_occlude_wire_fb;
 } OVERLAY_FramebufferList;
 
 typedef struct OVERLAY_TextureList {
@@ -259,7 +258,7 @@ typedef struct OVERLAY_PrivateData {
 
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
-  bool clear_stencil;
+  bool clear_in_front;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
   short v3d_flag;

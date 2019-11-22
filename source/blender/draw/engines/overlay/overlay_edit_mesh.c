@@ -40,20 +40,12 @@
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata)
 {
   OVERLAY_TextureList *txl = vedata->txl;
-  OVERLAY_FramebufferList *fbl = vedata->fbl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   pd->edit_mesh.do_zbufclip = XRAY_FLAG_ENABLED(draw_ctx->v3d);
 
-  if (pd->edit_mesh.do_zbufclip) {
-    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH_COMPONENT24, 0);
-    GPU_framebuffer_ensure_config(
-        &fbl->edit_mesh_occlude_wire_fb,
-        {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
-  }
-  else {
+  if (!pd->edit_mesh.do_zbufclip) {
     /* Small texture which will have very small impact on rendertime. */
     DRW_texture_ensure_2d(&txl->dummy_depth_tx, 1, 1, GPU_DEPTH_COMPONENT24, 0);
   }
@@ -373,7 +365,6 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  OVERLAY_FramebufferList *fbl = vedata->fbl;
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   DRW_draw_pass(psl->edit_mesh_weight_ps);
@@ -393,8 +384,8 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 
     DRW_view_set_active(NULL);
 
-    GPU_framebuffer_bind(fbl->edit_mesh_occlude_wire_fb);
-    GPU_framebuffer_clear_depth(fbl->edit_mesh_occlude_wire_fb, 1.0f);
+    GPU_framebuffer_bind(dfbl->in_front_fb);
+    GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
     DRW_draw_pass(psl->edit_mesh_normals_ps);
 
     DRW_view_set_active(pd->view_edit_edges);
@@ -420,7 +411,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
       GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
     }
 
-    DRW_draw_pass(psl->edit_mesh_depth_ps[1]);
+    DRW_draw_pass(psl->edit_mesh_depth_ps[IN_FRONT]);
     overlay_edit_mesh_draw_components(psl, pd, true);
   }
 }

@@ -147,6 +147,7 @@ GPUViewport *GPU_viewport_create_from_offscreen(struct GPUOffScreen *ofs)
     GPU_framebuffer_ensure_config(
         &viewport->fbl->depth_only_fb,
         {GPU_ATTACHMENT_TEXTURE(viewport->txl->depth), GPU_ATTACHMENT_NONE});
+    /* TODO infront buffer */
   }
 
   return viewport;
@@ -394,6 +395,7 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport, const bool hig
   dtxl->color = GPU_texture_create_2d(
       size[0], size[1], high_bitdepth ? GPU_RGBA16F : GPU_RGBA8, NULL, NULL);
   dtxl->depth = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
+  dtxl->depth_in_front = GPU_texture_create_2d(size[0], size[1], GPU_DEPTH24_STENCIL8, NULL, NULL);
 
   if (!(dtxl->depth && dtxl->color)) {
     ok = false;
@@ -404,6 +406,10 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport, const bool hig
       &dfbl->default_fb,
       {GPU_ATTACHMENT_TEXTURE(dtxl->depth), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
 
+  GPU_framebuffer_ensure_config(
+      &dfbl->in_front_fb,
+      {GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+
   GPU_framebuffer_ensure_config(&dfbl->depth_only_fb,
                                 {GPU_ATTACHMENT_TEXTURE(dtxl->depth), GPU_ATTACHMENT_NONE});
 
@@ -411,6 +417,7 @@ static void gpu_viewport_default_fb_create(GPUViewport *viewport, const bool hig
                                 {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(dtxl->color)});
 
   ok = ok && GPU_framebuffer_check_valid(dfbl->default_fb, NULL);
+  ok = ok && GPU_framebuffer_check_valid(dfbl->in_front_fb, NULL);
   ok = ok && GPU_framebuffer_check_valid(dfbl->color_only_fb, NULL);
   ok = ok && GPU_framebuffer_check_valid(dfbl->depth_only_fb, NULL);
 

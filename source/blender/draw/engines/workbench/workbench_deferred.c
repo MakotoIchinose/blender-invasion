@@ -74,7 +74,6 @@ static struct {
   /* TODO(fclem) move everything below to wpd and custom viewlayer data. */
   struct GPUTexture *oit_accum_tx;        /* ref only, not alloced */
   struct GPUTexture *oit_revealage_tx;    /* ref only, not alloced */
-  struct GPUTexture *ghost_depth_tx;      /* ref only, not alloced */
   struct GPUTexture *object_id_tx;        /* ref only, not alloced */
   struct GPUTexture *color_buffer_tx;     /* ref only, not alloced */
   struct GPUTexture *cavity_buffer_tx;    /* ref only, not alloced */
@@ -508,6 +507,13 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
                                       GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
                                       GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
                                   });
+    GPU_framebuffer_ensure_config(&fbl->ghost_prepass_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.color_buffer_tx),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
+                                  });
     GPU_framebuffer_ensure_config(&fbl->cavity_fb,
                                   {
                                       GPU_ATTACHMENT_NONE,
@@ -582,7 +588,7 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
     psl->ghost_resolve_pass = DRW_pass_create("Resolve Ghost Depth",
                                               DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
     grp = DRW_shgroup_create(e_data.ghost_resolve_sh, psl->ghost_resolve_pass);
-    DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &e_data.ghost_depth_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth_in_front);
     DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
 
@@ -619,23 +625,6 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
 
     DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
   }
-}
-
-static void workbench_setup_ghost_framebuffer(WORKBENCH_FramebufferList *fbl)
-{
-  const float *viewport_size = DRW_viewport_size_get();
-  const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
-
-  e_data.ghost_depth_tx = DRW_texture_pool_query_2d(
-      size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_workbench_solid);
-
-  GPU_framebuffer_ensure_config(&fbl->ghost_prepass_fb,
-                                {
-                                    GPU_ATTACHMENT_TEXTURE(e_data.ghost_depth_tx),
-                                    GPU_ATTACHMENT_TEXTURE(e_data.color_buffer_tx),
-                                    GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
-                                    GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
-                                });
 }
 
 void workbench_deferred_engine_free(void)
@@ -1262,12 +1251,11 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   DRW_draw_pass(psl->prepass_pass);
   DRW_draw_pass(psl->prepass_hair_pass);
 
-  if (GHOST_ENABLED(psl)) {
-    /* meh, late init to not request a depth buffer we won't use. */
-    workbench_setup_ghost_framebuffer(fbl);
+  /* TODO(fclem) This clear should be done in a global place. */
+  GPU_framebuffer_bind(fbl->ghost_prepass_fb);
+  GPU_framebuffer_clear_depth(fbl->ghost_prepass_fb, 1.0f);
 
-    GPU_framebuffer_bind(fbl->ghost_prepass_fb);
-    GPU_framebuffer_clear_depth(fbl->ghost_prepass_fb, 1.0f);
+  if (GHOST_ENABLED(psl)) {
     DRW_draw_pass(psl->ghost_prepass_pass);
     DRW_draw_pass(psl->ghost_prepass_hair_pass);
 
@@ -1318,6 +1306,7 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   /* In order to not draw on top of ghost objects, we clear the stencil
    * to 0xFF and the ghost object to 0x00 and only draw overlays on top if
    * stencil is not 0. */
+  /* TODO(fclem) Remove this hack. */
   GPU_framebuffer_bind(dfbl->depth_only_fb);
   GPU_framebuffer_clear_stencil(dfbl->depth_only_fb, 0xFF);
 

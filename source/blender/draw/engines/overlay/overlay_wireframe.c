@@ -52,7 +52,6 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
 
   View3DShading *shading = &draw_ctx->v3d->shading;
 
-  pd->clear_stencil = (shading->type > OB_SOLID);
   pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
 
   bool is_wire_shmode = (shading->type == OB_WIRE);

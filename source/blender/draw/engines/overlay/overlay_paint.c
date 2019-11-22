@@ -42,6 +42,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
   float opacity = 0.0f;
 
   switch (pd->ctx_mode) {
+    case CTX_MODE_POSE:
     case CTX_MODE_PAINT_WEIGHT: {
       opacity = pd->overlay.weight_paint_mode_opacity;
       if (opacity > 0.0f) {
