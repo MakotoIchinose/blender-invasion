@@ -773,8 +773,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF |
-                                           GP_SCULPT_FLAG_SMOOTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_SMOOTH_PRESSURE;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -789,8 +788,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF |
-                                           GP_SCULPT_FLAG_SMOOTH_PRESSURE;
+    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_SMOOTH_PRESSURE;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -805,7 +803,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -821,7 +818,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -836,7 +832,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -851,7 +846,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -866,7 +860,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 
@@ -881,7 +874,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
-    brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAG_USE_FALLOFF;
     brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
   }
 

@@ -243,8 +243,6 @@ typedef enum eGp_Vertex_Mode {
 typedef enum eGP_Sculpt_Flag {
   /* invert the effect of the brush */
   GP_SCULPT_FLAG_INVERT = (1 << 0),
-  /* strength of brush falls off with distance from cursor */
-  GP_SCULPT_FLAG_USE_FALLOFF = (1 << 1),
   /* smooth brush affects pressure values as well */
   GP_SCULPT_FLAG_SMOOTH_PRESSURE = (1 << 2),
   /* temporary invert action */

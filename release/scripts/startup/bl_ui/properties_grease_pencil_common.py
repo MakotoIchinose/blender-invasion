@@ -310,6 +310,48 @@ class GreasePencilAppearancePanel:
                     layout.prop(brush, "cursor_color_add", text="Color")
 
 
+class GreasePencilBrushFalloff:
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+        return (settings and settings.brush and settings.brush.curve)
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.tool_settings
+        settings = None
+        if context.mode == 'SCULPT_GPENCIL':
+            settings = ts.gpencil_sculpt_paint
+        elif context.mode == 'WEIGHT_GPENCIL':
+            settings = ts.gpencil_weight_paint
+        elif context.mode == 'VERTEX_GPENCIL':
+            settings = ts.gpencil_vertex_paint
+
+        if settings:
+            brush = settings.brush
+
+            col = layout.column(align=True)
+            row = col.row(align=True)
+            row.prop(brush, "curve_preset", text="")
+
+            if brush.curve_preset == 'CUSTOM':
+                layout.template_curve_mapping(brush, "curve", brush=True)
+
+                col = layout.column(align=True)
+                row = col.row(align=True)
+                row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+                row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+                row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+                row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+                row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+                row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+
+
 class GPENCIL_MT_snap(Menu):
     bl_label = "Snap"
 

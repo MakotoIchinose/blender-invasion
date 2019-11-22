@@ -266,16 +266,17 @@ static float gp_brush_influence_calc(tGP_BrushEditData *gso, const int radius, c
   }
 
   /* distance fading */
-  if (brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_USE_FALLOFF) {
-    int mval_i[2];
-    round_v2i_v2fl(mval_i, gso->mval);
-    float distance = (float)len_v2v2_int(mval_i, co);
-    float fac;
+  int mval_i[2];
+  round_v2i_v2fl(mval_i, gso->mval);
+  float distance = (float)len_v2v2_int(mval_i, co);
+  float fac;
 
-    CLAMP(distance, 0.0f, (float)radius);
-    fac = 1.0f - (distance / (float)radius);
-
-    influence *= fac;
+  CLAMP(distance, 0.0f, (float)radius);
+  fac = 1.0f - (distance / (float)radius);
+  /* Apply Brush curve. */
+  if (brush->curve) {
+    float brush_fallof = BKE_curvemapping_evaluateF(brush->curve, 0, 1.0f - fac);
+    influence *= brush_fallof;
   }
 
   /* apply multiframe falloff */
@@ -1173,26 +1174,20 @@ static void gp_brush_clone_adjust(tGP_BrushEditData *gso)
     int i;
 
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-      if (gso->brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_USE_FALLOFF) {
-        /* "Smudge" Effect when falloff is enabled */
-        float delta[3] = {0.0f};
-        int sco[2] = {0};
-        float influence;
+      /* "Smudge" Effect falloff */
+      float delta[3] = {0.0f};
+      int sco[2] = {0};
+      float influence;
 
-        /* compute influence on point */
-        gp_point_to_xy(&gso->gsc, gps, pt, &sco[0], &sco[1]);
-        influence = gp_brush_influence_calc(gso, gso->brush->size, sco);
+      /* compute influence on point */
+      gp_point_to_xy(&gso->gsc, gps, pt, &sco[0], &sco[1]);
+      influence = gp_brush_influence_calc(gso, gso->brush->size, sco);
 
-        /* adjust the amount of displacement to apply */
-        mul_v3_v3fl(delta, gso->dvec, influence);
+      /* adjust the amount of displacement to apply */
+      mul_v3_v3fl(delta, gso->dvec, influence);
 
-        /* apply */
-        add_v3_v3(&pt->x, delta);
-      }
-      else {
-        /* Just apply the offset - All points move perfectly in sync with the cursor */
-        add_v3_v3(&pt->x, gso->dvec);
-      }
+      /* apply */
+      add_v3_v3(&pt->x, delta);
     }
   }
 }

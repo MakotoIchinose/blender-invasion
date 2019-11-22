@@ -462,8 +462,6 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compac
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
 
-    layout.prop(gp_settings, "use_falloff")
-
     if compact:
         if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             row.separator()
@@ -491,8 +489,6 @@ def brush_basic_gpencil_weight_settings(layout, _context, brush, tool, *, compac
     row = layout.row(align=True)
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
-
-    layout.prop(gp_settings, "use_falloff")
 
     layout.prop(gp_settings, "weight", slider=True)
 

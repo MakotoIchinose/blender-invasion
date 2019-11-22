@@ -23,6 +23,7 @@ from bl_ui.properties_grease_pencil_common import (
     GreasePencilSculptOptionsPanel,
     GreasePencilAppearancePanel,
     GreasePencilFlipTintColors,
+    GreasePencilBrushFalloff,
 )
 from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
@@ -2336,7 +2337,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
         sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
 
-class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(Panel, View3DPaintPanel):
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Falloff"
     bl_options = {'DEFAULT_CLOSED'}
@@ -2348,27 +2349,31 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(Panel, View3DPaintPanel
         brush = settings.brush
         return (settings and settings.brush and settings.brush.curve)
 
-    def draw(self, context):
-        layout = self.layout
+
+class VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_sculpt"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
         ts = context.tool_settings
-        settings = ts.gpencil_vertex_paint
+        settings = ts.gpencil_sculpt_paint
         brush = settings.brush
+        return (settings and settings.brush and settings.brush.curve)
 
-        col = layout.column(align=True)
-        row = col.row(align=True)
-        row.prop(brush, "curve_preset", text="")
 
-        if brush.curve_preset == 'CUSTOM':
-            layout.template_curve_mapping(brush, "curve", brush=True)
+class VIEW3D_PT_tools_grease_pencil_brush_weight_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_weight"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
 
-            col = layout.column(align=True)
-            row = col.row(align=True)
-            row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
-            row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
-            row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
-            row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
-            row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
-            row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_weight_paint
+        brush = settings.brush
+        return (settings and settings.brush and settings.brush.curve)
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
@@ -2657,7 +2662,9 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_weight_paint,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
     VIEW3D_PT_tools_grease_pencil_sculpt_options,
+    VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff,
     VIEW3D_PT_tools_grease_pencil_sculpt_appearance,
+    VIEW3D_PT_tools_grease_pencil_brush_weight_falloff,
     VIEW3D_PT_tools_grease_pencil_weight_appearance,
     VIEW3D_PT_tools_grease_pencil_interpolate,
     VIEW3D_PT_tools_grease_pencil_vertex_brush,
