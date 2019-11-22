@@ -311,17 +311,6 @@ class GreasePencilAppearancePanel:
             if ob.mode == 'VERTEX_GPENCIL':
                 col.prop(brush, "cursor_color_add", text="Add")
 
-            sub = layout.column(align=True)
-            sub.enabled = not brush.use_custom_icon
-            if ob.mode == 'PAINT_GPENCIL':
-                sub.prop(gp_settings, "gpencil_paint_icon", text="Icon")
-            elif ob.mode == 'SCULPT_GPENCIL':
-                sub.prop(gp_settings, "gpencil_sculpt_icon", text="Icon")
-            elif ob.mode == 'WEIGHT_GPENCIL':
-                sub.prop(gp_settings, "gpencil_weight_icon", text="Icon")
-            elif ob.mode == 'VERTEX_GPENCIL':
-                sub.prop(gp_settings, "gpencil_vertex_icon", text="Icon")
-
             col = layout.column()
             col.prop(brush, "use_custom_icon")
 
