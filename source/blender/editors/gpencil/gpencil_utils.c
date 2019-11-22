@@ -1738,6 +1738,10 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
+    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+      return;
+    }
+
     radius = brush->size;
     if (brush->gpencil_settings->sculpt_flag &
         (GP_SCULPT_FLAG_INVERT | GP_SCULPT_FLAG_TMP_INVERT)) {
@@ -1754,6 +1758,10 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
+    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+      return;
+    }
+
     radius = brush->size;
     if (brush->gpencil_settings->sculpt_flag &
         (GP_SCULPT_FLAG_INVERT | GP_SCULPT_FLAG_TMP_INVERT)) {
@@ -1770,6 +1778,10 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
+    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+      return;
+    }
+
     radius = brush->size;
     copy_v3_v3(color, brush->rgb);
   }
