@@ -220,7 +220,7 @@ int GPU_batch_instbuf_add_ex(GPUBatch *batch, GPUVertBuf *insts, bool own_vbo)
       if (batch->inst[0] != NULL) {
         /* Allow for different size of vertex buf (will choose the smallest number of verts). */
         // assert(insts->vertex_len == batch->inst[0]->vertex_len);
-        assert(own_vbo == (batch->owns_flag & GPU_BATCH_OWNS_INSTANCES) != 0);
+        assert(own_vbo == ((batch->owns_flag & GPU_BATCH_OWNS_INSTANCES) != 0));
       }
 #endif
       batch->inst[v] = insts;
