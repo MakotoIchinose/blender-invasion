@@ -140,12 +140,12 @@ void *mem_static_destroy(LANPR_StaticMemPool *smp)
 /* =======================================================================[str] */
 
 void tmat_make_perspective_matrix_44d(
-    double (*mProjection)[4], real fFov_rad, real fAspect, real zMin, real zMax)
+    double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax)
 {
-  real yMax;
-  real yMin;
-  real xMin;
-  real xMax;
+  double yMax;
+  double yMin;
+  double xMin;
+  double xMax;
 
   if (fAspect < 1) {
     yMax = zMin * tan(fFov_rad * 0.5f);
@@ -172,7 +172,7 @@ void tmat_make_perspective_matrix_44d(
   mProjection[3][3] = 0.0f;
 }
 void tmat_make_ortho_matrix_44d(
-    double (*mProjection)[4], real xMin, real xMax, real yMin, real yMax, real zMin, real zMax)
+    double (*mProjection)[4], double xMin, double xMax, double yMin, double yMax, double zMin, double zMax)
 {
   unit_m4_db(mProjection);
 

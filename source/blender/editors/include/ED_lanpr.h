@@ -34,15 +34,6 @@
 #include <math.h>
 #include <string.h>
 
-typedef double real;
-
-typedef real tnsVector2d[2];
-typedef real tnsVector3d[3];
-typedef real tnsVector4d[4];
-typedef float tnsVector3f[3];
-typedef float tnsVector4f[4];
-typedef int tnsVector2i[2];
-
 typedef struct LANPR_StaticMemPoolNode {
   Link item;
   int used_byte;
@@ -59,8 +50,8 @@ typedef struct LANPR_RenderTriangle {
   struct LANPR_RenderTriangle *next, *prev;
   struct LANPR_RenderVert *v[3];
   struct LANPR_RenderLine *rl[3];
-  real gn[3];
-  real gc[3];
+  double gn[3];
+  double gc[3];
   /*  struct BMFace *F; */
   short material_id;
   ListBase intersecting_verts;
@@ -85,7 +76,7 @@ typedef struct LANPR_RenderElementLinkNode {
 typedef struct LANPR_RenderLineSegment {
   struct LANPR_RenderLineSegment *next, *prev;
   /** at==0: left  at==1: right  (this is in 2D projected space) */
-  real at;
+  double at;
   /** Occlusion level after "at" point */
   unsigned char occlusion;
   /** For determining lines beind a glass window material. (TODO: implement this) */
@@ -94,8 +85,8 @@ typedef struct LANPR_RenderLineSegment {
 
 typedef struct LANPR_RenderVert {
   struct LANPR_RenderVert *next, *prev;
-  real gloc[4];
-  real fbcoord[4];
+  double gloc[4];
+  double fbcoord[4];
   int fbcoordi[2];
   /**  Used as "r" when intersecting */
   struct BMVert *v;
@@ -184,7 +175,7 @@ typedef struct LANPR_RenderBuffer {
   int w, h;
   int tile_size_w, tile_size_h;
   int tile_count_x, tile_count_y;
-  real width_per_tile, height_per_tile;
+  double width_per_tile, height_per_tile;
   double view_projection[4][4];
 
   int output_mode;
@@ -209,7 +200,7 @@ typedef struct LANPR_RenderBuffer {
   struct Material *material_pointers[2048];
 
   /*  Render status */
-  real view_vector[3];
+  double view_vector[3];
 
   int triangle_size;
 
@@ -249,12 +240,12 @@ typedef struct LANPR_RenderBuffer {
   /*  settings */
 
   int max_occlusion_level;
-  real crease_angle;
-  real crease_cos;
+  double crease_angle;
+  double crease_cos;
   int thread_count;
 
   int draw_material_preview;
-  real material_transparency;
+  double material_transparency;
 
   int show_line;
   int show_fast;
@@ -392,8 +383,8 @@ typedef struct LANPR_RenderTaskInfo {
  * storing pointers to adjacent bounding areas.
 */
 typedef struct LANPR_BoundingArea {
-  real l, r, u, b;
-  real cx, cy;
+  double l, r, u, b;
+  double cx, cy;
 
   /** 1,2,3,4 quadrant */
   struct LANPR_BoundingArea *child;
@@ -472,7 +463,7 @@ BLI_INLINE int lanpr_TrangleLineBoundBoxTest(LANPR_RenderTriangle *rt, LANPR_Ren
   return 1;
 }
 
-BLI_INLINE double tmat_get_linear_ratio(real l, real r, real from_l);
+BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l);
 BLI_INLINE int lanpr_LineIntersectTest2d(
     const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
 {
@@ -527,13 +518,13 @@ BLI_INLINE int lanpr_LineIntersectTest2d(
   return 1;
 }
 
-BLI_INLINE double tmat_get_linear_ratio(real l, real r, real from_l)
+BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l)
 {
   double ra = (from_l - l) / (r - l);
   return ra;
 }
 
-int ED_lanpr_point_inside_triangled(tnsVector2d v, tnsVector2d v0, tnsVector2d v1, tnsVector2d v2);
+int ED_lanpr_point_inside_triangled(double v[2], double v0[2], double v1[2], double v2[2]);
 
 struct Depsgraph;
 struct SceneLANPR;
@@ -572,8 +563,8 @@ int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
 LANPR_LineLayerComponent *ED_lanpr_new_line_component(struct SceneLANPR *lanpr);
 
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, real x, real y);
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, real x, real y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, double x, double y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, double x, double y);
 
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
