@@ -232,25 +232,26 @@ class GreasePencilSculptOptionsPanel:
         brush = context.tool_settings.gpencil_sculpt_paint.brush
         tool = brush.gpencil_sculpt_tool
 
-        return bool(tool in {'SMOOTH', 'RANDOMIZE', 'SMOOTH'})
+        return bool(tool in {'SMOOTH', 'RANDOMIZE'})
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-
-        brush = context.tool_settings.gpencil_sculpt_paint.brush
+        ts = context.tool_settings
+        brush = ts.gpencil_sculpt_paint.brush
+        gp_settings = brush.gpencil_settings
         tool = brush.gpencil_sculpt_tool
 
         if tool in {'SMOOTH', 'RANDOMIZE'}:
-            layout.prop(brush, "use_edit_position", text="Affect Position")
-            layout.prop(brush, "use_edit_strength", text="Affect Strength")
-            layout.prop(brush, "use_edit_thickness", text="Affect Thickness")
+            layout.prop(gp_settings, "use_edit_position", text="Affect Position")
+            layout.prop(gp_settings, "use_edit_strength", text="Affect Strength")
+            layout.prop(gp_settings, "use_edit_thickness", text="Affect Thickness")
 
             if tool == 'SMOOTH':
-                layout.prop(brush, "use_edit_pressure")
+                layout.prop(gp_settings, "use_edit_pressure")
 
-            layout.prop(brush, "use_edit_uv", text="Affect UV")
+            layout.prop(gp_settings, "use_edit_uv", text="Affect UV")
 
 
 # GP Object Tool Settings
