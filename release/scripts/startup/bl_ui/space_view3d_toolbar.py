@@ -1865,19 +1865,21 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
         gpencil_paint = tool_settings.gpencil_paint
 
         row = layout.row()
-        col = row.column()
-        col.template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+        if not self.is_popover:
+            col = row.column()
+            col.template_ID_preview(gpencil_paint, "brush", new="brush.add", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_paint.brush
 
-        sub = col.column(align=True)
-        sub.operator("gpencil.brush_presets_create", icon='PRESET_NEW', text="")
+        if not self.is_popover:
+            sub = col.column(align=True)
+            sub.operator("gpencil.brush_presets_create", icon='PRESET_NEW', text="")
 
         if brush is not None:
             gp_settings = brush.gpencil_settings
 
-            if brush.gpencil_tool in {'DRAW', 'FILL'}:
+            if brush.gpencil_tool in {'DRAW', 'FILL'} and not self.is_popover:
                 row = layout.row(align=True)
                 row_mat = row.row()
                 if gp_settings.use_material_pin:
@@ -1899,6 +1901,7 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
 # Grease Pencil drawing brushes options
 class VIEW3D_PT_tools_grease_pencil_brush_option(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush'
     bl_label = "Options"
     bl_category = "Tool"
 
@@ -2276,14 +2279,12 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
         gpencil_vertex_paint = tool_settings.gpencil_vertex_paint
 
         row = layout.row()
-        col = row.column()
-        col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add", rows=3, cols=8)
+        if not self.is_popover:
+            col = row.column()
+            col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_vertex_paint.brush
-
-        # sub = col.column(align=True)
-        # sub.operator("gpencil.brush_presets_create", icon='PRESET_NEW', text="")
 
         if brush is not None:
             gp_settings = brush.gpencil_settings
@@ -2503,8 +2504,9 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
         gpencil_sculpt_paint = tool_settings.gpencil_sculpt_paint
 
         row = layout.row()
-        col = row.column()
-        col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add", rows=3, cols=8)
+        if not self.is_popover:
+            col = row.column()
+            col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_sculpt_paint.brush
@@ -2548,8 +2550,9 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
         gpencil_weight_paint = tool_settings.gpencil_weight_paint
 
         row = layout.row()
-        col = row.column()
-        col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add", rows=3, cols=8)
+        if not self.is_popover:
+            col = row.column()
+            col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_weight_paint.brush
