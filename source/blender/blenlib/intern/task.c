@@ -1203,7 +1203,7 @@ BLI_INLINE bool parallel_range_next_iter_get(TaskParallelRangePool *__restrict r
   return (state != NULL && previter < state->stop);
 }
 
-static void parallel_range_func(TaskPool *__restrict pool, void *userdata_chunk_idx, int thread_id)
+static void parallel_range_func(TaskPool *__restrict pool, void *tls_data_idx, int thread_id)
 {
   TaskParallelRangePool *__restrict range_pool = BLI_task_pool_userdata(pool);
   TaskParallelTLS tls = {
@@ -1214,7 +1214,7 @@ static void parallel_range_func(TaskPool *__restrict pool, void *userdata_chunk_
   int iter, count;
   while (parallel_range_next_iter_get(range_pool, &iter, &count, &state)) {
     tls.userdata_chunk = (char *)state->flatten_tls_storage +
-                         (((size_t)POINTER_AS_INT(userdata_chunk_idx)) * state->tls_data_size);
+                         (((size_t)POINTER_AS_INT(tls_data_idx)) * state->tls_data_size);
     for (int i = 0; i < count; i++) {
       state->func(state->userdata_shared, iter + i, &tls);
     }
@@ -1230,25 +1230,25 @@ static void parallel_range_single_thread(TaskParallelRangePool *range_pool)
     void *userdata = state->userdata_shared;
     TaskParallelRangeFunc func = state->func;
 
-    void *userdata_chunk = state->initial_tls_memory;
-    const size_t userdata_chunk_size = state->tls_data_size;
-    void *userdata_chunk_local = NULL;
-    const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-    if (use_userdata_chunk) {
-      userdata_chunk_local = MALLOCA(userdata_chunk_size);
-      memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
+    void *initial_tls_memory = state->initial_tls_memory;
+    const size_t tls_data_size = state->tls_data_size;
+    void *flatten_tls_storage = NULL;
+    const bool use_tls_data = (tls_data_size != 0) && (initial_tls_memory != NULL);
+    if (use_tls_data) {
+      flatten_tls_storage = MALLOCA(tls_data_size);
+      memcpy(flatten_tls_storage, initial_tls_memory, tls_data_size);
     }
     TaskParallelTLS tls = {
         .thread_id = 0,
-        .userdata_chunk = userdata_chunk_local,
+        .userdata_chunk = flatten_tls_storage,
     };
     for (int i = start; i < stop; i++) {
       func(userdata, i, &tls);
     }
     if (state->func_finalize != NULL) {
-      state->func_finalize(userdata, userdata_chunk_local);
+      state->func_finalize(userdata, flatten_tls_storage);
     }
-    MALLOCA_FREE(userdata_chunk_local, userdata_chunk_size);
+    MALLOCA_FREE(flatten_tls_storage, tls_data_size);
   }
 }
 
@@ -1277,18 +1277,21 @@ void BLI_task_parallel_range(const int start,
       .userdata_shared = userdata,
       .func = func,
       .iter_value = start,
+      .initial_tls_memory = settings->userdata_chunk,
+      .tls_data_size = settings->userdata_chunk_size,
+      .func_finalize = settings->func_finalize,
   };
   TaskParallelRangePool range_pool = {
       .pool = NULL, .parallel_range_states = &state, .current_state = NULL, .settings = settings};
   int i, num_threads, num_tasks;
 
-  void *userdata_chunk = settings->userdata_chunk;
-  const size_t userdata_chunk_size = settings->userdata_chunk_size;
-  if (userdata_chunk_size != 0) {
-    BLI_assert(userdata_chunk != NULL);
+  void *tls_data = settings->userdata_chunk;
+  const size_t tls_data_size = settings->userdata_chunk_size;
+  if (tls_data_size != 0) {
+    BLI_assert(tls_data != NULL);
   }
-  const bool use_userdata_chunk = (userdata_chunk_size != 0) && (userdata_chunk != NULL);
-  void *userdata_chunk_array = NULL;
+  const bool use_tls_data = (tls_data_size != 0) && (tls_data != NULL);
+  void *flatten_tls_storage = NULL;
 
   /* If it's not enough data to be crunched, don't bother with tasks at all,
    * do everything from the current thread.
@@ -1324,17 +1327,15 @@ void BLI_task_parallel_range(const int start,
   atomic_cas_ptr((void **)&range_pool.current_state, NULL, &state);
   BLI_assert(range_pool.current_state == &state);
 
-  if (use_userdata_chunk) {
-    state.flatten_tls_storage = userdata_chunk_array = MALLOCA(userdata_chunk_size *
-                                                               (size_t)num_tasks);
-    state.tls_data_size = userdata_chunk_size;
+  if (use_tls_data) {
+    state.flatten_tls_storage = flatten_tls_storage = MALLOCA(tls_data_size * (size_t)num_tasks);
+    state.tls_data_size = tls_data_size;
   }
 
   for (i = 0; i < num_tasks; i++) {
-    if (use_userdata_chunk) {
-      void *userdata_chunk_local = (char *)userdata_chunk_array +
-                                   (userdata_chunk_size * (size_t)i);
-      memcpy(userdata_chunk_local, userdata_chunk, userdata_chunk_size);
+    if (use_tls_data) {
+      void *userdata_chunk_local = (char *)flatten_tls_storage + (tls_data_size * (size_t)i);
+      memcpy(userdata_chunk_local, tls_data, tls_data_size);
     }
     /* Use this pool's pre-allocated tasks. */
     BLI_task_pool_push_from_thread(task_pool,
@@ -1348,15 +1349,14 @@ void BLI_task_parallel_range(const int start,
   BLI_task_pool_work_and_wait(task_pool);
   BLI_task_pool_free(task_pool);
 
-  if (use_userdata_chunk) {
+  if (use_tls_data) {
     if (settings->func_finalize != NULL) {
       for (i = 0; i < num_tasks; i++) {
-        void *userdata_chunk_local = (char *)userdata_chunk_array +
-                                     (userdata_chunk_size * (size_t)i);
+        void *userdata_chunk_local = (char *)flatten_tls_storage + (tls_data_size * (size_t)i);
         settings->func_finalize(userdata, userdata_chunk_local);
       }
     }
-    MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * (size_t)num_tasks);
+    MALLOCA_FREE(flatten_tls_storage, tls_data_size * (size_t)num_tasks);
   }
 }
 
