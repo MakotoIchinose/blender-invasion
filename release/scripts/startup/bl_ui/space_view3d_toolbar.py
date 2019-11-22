@@ -2553,7 +2553,7 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
                     brush_basic_gpencil_sculpt_settings,
                 )
                 tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
-                brush_basic_gpencil_sculpt_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
+                brush_basic_gpencil_sculpt_settings(layout, context, brush, tool, compact=False, is_toolbar=False)
 
 
 # Grease Pencil weight painting tools
