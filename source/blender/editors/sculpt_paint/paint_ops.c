@@ -367,7 +367,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
       }
     }
 
-    done = BKE_palette_from_hash(bmain, color_table);
+    done = BKE_palette_from_hash(bmain, color_table, image->id.name + 2);
   }
 
   /* Free memory. */

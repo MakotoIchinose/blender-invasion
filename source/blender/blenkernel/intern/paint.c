@@ -773,7 +773,7 @@ void BKE_palette_sort_svh(tPaletteColorHSV *color_array, const int totcol)
   qsort(color_array, totcol, sizeof(tPaletteColorHSV), palettecolor_compare_svh);
 }
 
-bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
+bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name)
 {
   tPaletteColorHSV *color_array = NULL;
   tPaletteColorHSV *col_elm = NULL;
@@ -809,7 +809,7 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table)
     /* Sort by Hue and saturation. */
     BKE_palette_sort_hsv(color_array, totpal);
 
-    Palette *palette = BKE_palette_add(bmain, "Palette");
+    Palette *palette = BKE_palette_add(bmain, name);
     if (palette) {
       for (int i = 0; i < totpal; i++) {
         col_elm = &color_array[i];
