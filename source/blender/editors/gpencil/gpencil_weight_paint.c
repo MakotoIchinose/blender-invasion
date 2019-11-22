@@ -32,6 +32,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_types.h"
 
+#include "BKE_brush.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -225,15 +226,10 @@ static float brush_influence_calc(tGP_BrushWeightpaintData *gso, const int radiu
   int mval_i[2];
   round_v2i_v2fl(mval_i, gso->mval);
   float distance = (float)len_v2v2_int(mval_i, co);
-  float fac;
 
-  CLAMP(distance, 0.0f, (float)radius);
-  fac = 1.0f - (distance / (float)radius);
   /* Apply Brush curve. */
-  if (brush->curve) {
-    float brush_fallof = BKE_curvemapping_evaluateF(brush->curve, 0, 1.0f - fac);
-    influence *= brush_fallof;
-  }
+  float brush_fallof = BKE_brush_curve_strength(brush, distance, (float)radius);
+  influence *= brush_fallof;
 
   /* apply multiframe falloff */
   influence *= gso->mf_falloff;
