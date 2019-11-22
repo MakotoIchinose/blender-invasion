@@ -111,8 +111,7 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
                                       bool init_dupli)
 {
   OVERLAY_Data *data = vedata;
-  OVERLAY_StorageList *stl = data->stl;
-  OVERLAY_PrivateData *pd = stl->pd;
+  OVERLAY_PrivateData *pd = data->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool all_wires = (ob->dtx & OB_DRAW_ALL_EDGES) != 0;
   const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0;
@@ -203,10 +202,20 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 void OVERLAY_wireframe_draw(OVERLAY_Data *data)
 {
   OVERLAY_PassList *psl = data->psl;
-  OVERLAY_StorageList *stl = data->stl;
+  OVERLAY_PrivateData *pd = data->stl->pd;
 
-  DRW_view_set_active(stl->pd->view_wires);
+  DRW_view_set_active(pd->view_wires);
   DRW_draw_pass(psl->wireframe_ps);
+
+  DRW_view_set_active(NULL);
+}
+
+void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *data)
+{
+  OVERLAY_PassList *psl = data->psl;
+  OVERLAY_PrivateData *pd = data->stl->pd;
+
+  DRW_view_set_active(pd->view_wires);
 
   /* First lower the depth where there is no xray object (and set the stencil to xray value). */
   DRW_draw_pass(psl->wireframe_xray_ps);

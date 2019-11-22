@@ -246,6 +246,7 @@ typedef struct OVERLAY_PrivateData {
   DRWView *view_edit_faces_cage;
   DRWView *view_edit_edges;
   DRWView *view_edit_verts;
+  DRWView *view_reference_images;
 
   /** TODO get rid of this. */
   ListBase smoke_domains;
@@ -355,6 +356,7 @@ void OVERLAY_edit_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_armature_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_armature_draw(OVERLAY_Data *vedata);
+void OVERLAY_armature_in_front_draw(OVERLAY_Data *vedata);
 void OVERLAY_pose_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_pose_draw(OVERLAY_Data *vedata);
 
@@ -388,6 +390,8 @@ void OVERLAY_edit_particle_draw(OVERLAY_Data *vedata);
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_extra_draw(OVERLAY_Data *vedata);
+void OVERLAY_extra_in_front_draw(OVERLAY_Data *vedata);
+void OVERLAY_extra_centers_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -428,11 +432,13 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_image_init(OVERLAY_Data *vedata);
 void OVERLAY_image_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_image_draw(OVERLAY_Data *vedata);
+void OVERLAY_image_in_front_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -472,6 +478,7 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
                                       OVERLAY_DupliData *dupli,
                                       bool init_dupli);
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
+void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *vedata);
 
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void);
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);

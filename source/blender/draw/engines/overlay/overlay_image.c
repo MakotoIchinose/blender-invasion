@@ -38,6 +38,14 @@
 
 #include "overlay_private.h"
 
+void OVERLAY_image_init(OVERLAY_Data *vedata)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+
+  pd->view_reference_images = DRW_view_create_with_zoffset(draw_ctx->rv3d, -1.0f);
+}
+
 void OVERLAY_image_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
@@ -431,7 +439,10 @@ void OVERLAY_image_cache_finish(OVERLAY_Data *vedata)
 void OVERLAY_image_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
-  /* TODO better ordering with other passes. */
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+
+  DRW_view_set_active(pd->view_reference_images);
+
   DRW_draw_pass(psl->image_background_over_ps);
   DRW_draw_pass(psl->image_background_under_ps);
   DRW_draw_pass(psl->image_empties_back_ps);
@@ -439,8 +450,20 @@ void OVERLAY_image_draw(OVERLAY_Data *vedata)
   DRW_draw_pass(psl->image_empties_ps);
   DRW_draw_pass(psl->image_empties_blend_ps);
 
+  DRW_view_set_active(NULL);
+}
+
+void OVERLAY_image_in_front_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+
+  DRW_view_set_active(pd->view_reference_images);
+
   DRW_draw_pass(psl->image_empties_front_ps);
   DRW_draw_pass(psl->image_foreground_ps);
+
+  DRW_view_set_active(NULL);
 
   OVERLAY_image_free_movieclips_textures(vedata);
 }

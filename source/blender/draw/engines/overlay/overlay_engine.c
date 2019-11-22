@@ -58,8 +58,9 @@ static void OVERLAY_engine_init(void *vedata)
       /* Nothing to do. */
       break;
   }
-  OVERLAY_grid_init(vedata);
   OVERLAY_facing_init(vedata);
+  OVERLAY_grid_init(vedata);
+  OVERLAY_image_init(vedata);
   OVERLAY_outline_init(vedata);
   OVERLAY_wireframe_init(vedata);
 }
@@ -331,17 +332,25 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
   OVERLAY_wireframe_draw(vedata);
-  OVERLAY_extra_draw(vedata);
+  OVERLAY_armature_draw(vedata);
   OVERLAY_particle_draw(vedata);
   OVERLAY_metaball_draw(vedata);
-  OVERLAY_armature_draw(vedata);
+  OVERLAY_extra_draw(vedata);
+
   OVERLAY_grid_draw(vedata);
-  OVERLAY_motion_path_draw(vedata);
   OVERLAY_outline_draw(vedata);
+
+  OVERLAY_wireframe_in_front_draw(vedata);
+  OVERLAY_armature_in_front_draw(vedata);
+  OVERLAY_extra_in_front_draw(vedata);
+  OVERLAY_image_in_front_draw(vedata);
+
+  OVERLAY_motion_path_draw(vedata);
+  OVERLAY_extra_centers_draw(vedata);
 
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
-      OVERLAY_edit_mesh_draw(vedata);
+      OVERLAY_edit_mesh_draw(vedata); /* Clear depth for xray */
       break;
     case CTX_MODE_EDIT_SURFACE:
     case CTX_MODE_EDIT_CURVE:
@@ -355,7 +364,7 @@ static void OVERLAY_draw_scene(void *vedata)
       break;
     case CTX_MODE_POSE:
       OVERLAY_paint_draw(vedata);
-      OVERLAY_pose_draw(vedata);
+      OVERLAY_pose_draw(vedata); /* Clear depth for xray */
       break;
     case CTX_MODE_PAINT_WEIGHT:
     case CTX_MODE_PAINT_VERTEX:

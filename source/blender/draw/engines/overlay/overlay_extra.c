@@ -1605,8 +1605,20 @@ void OVERLAY_extra_draw(OVERLAY_Data *vedata)
 
   DRW_draw_pass(psl->extra_blend_ps);
   DRW_draw_pass(psl->extra_ps[0]);
+}
+
+void OVERLAY_extra_in_front_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
   DRW_draw_pass(psl->extra_ps[1]);
-  DRW_draw_pass(psl->extra_centers_ps);
 
   OVERLAY_volume_free_smoke_textures(vedata);
+}
+
+void OVERLAY_extra_centers_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
+  DRW_draw_pass(psl->extra_centers_ps);
 }
