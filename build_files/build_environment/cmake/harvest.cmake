@@ -202,6 +202,7 @@ harvest(usd/lib usd/lib "*")
 harvest(usd/plugin usd/plugin "*")
 harvest(usd/pxrConfig.cmake usd/pxrConfig.cmake)
 harvest(usd/cmake/pxrTargets.cmake usd/cmake/pxrTargets.cmake)
+harvest(usd/cmake/pxrTargets-release.cmake usd/cmake/pxrTargets.cmake)
 
 if(UNIX AND NOT APPLE)
   harvest(libglu/lib mesa/lib "*.so*")
