@@ -2377,6 +2377,21 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
         sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_paint_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+        tool = brush.gpencil_tool
+
+        return (settings and settings.brush and settings.brush.curve and tool == 'TINT')
+
+
 class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Falloff"
@@ -2386,7 +2401,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFallof
     def poll(cls, context):
         ts = context.tool_settings
         settings = ts.gpencil_vertex_paint
-        brush = settings.brush
         return (settings and settings.brush and settings.brush.curve)
 
 
@@ -2399,7 +2413,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff(GreasePencilBrushFallof
     def poll(cls, context):
         ts = context.tool_settings
         settings = ts.gpencil_sculpt_paint
-        brush = settings.brush
         return (settings and settings.brush and settings.brush.curve)
 
 
@@ -2724,6 +2737,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff,
     VIEW3D_PT_tools_grease_pencil_vertex_appearance,
+    VIEW3D_PT_tools_grease_pencil_brush_paint_falloff,
 )
 
 if __name__ == "__main__":  # only for live edit.
