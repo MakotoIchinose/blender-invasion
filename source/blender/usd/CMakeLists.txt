@@ -18,7 +18,7 @@
 # All rights reserved.
 # ***** END GPL LICENSE BLOCK *****
 
-include(${USD_PATH}/pxrConfig.cmake)
+include(${USD_ROOT_DIR}/pxrConfig.cmake)
 
 # This suppresses the warning "This file includes at least one deprecated or antiquated header which
 # may be removed without further notice at a future date", which is caused by the USD library

@@ -267,7 +267,6 @@ option(WITH_ALEMBIC_HDF5        "Enable Legacy Alembic Support (not officially s
 
 # Universal Scene Description support
 option(WITH_USD                 "Enable Universal Scene Description (USD) Support" OFF)
-set(USD_PATH "/opt/usd" CACHE STRING "Universal Scene Description (USD) installation path")
 
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
