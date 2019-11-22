@@ -53,7 +53,7 @@
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
-#include "BKE_mirror.h"
+#include "BKE_mesh_mirror.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
 #include "BKE_node.h"
@@ -3214,11 +3214,10 @@ static void do_topology_relax_task_cb_ex(void *__restrict userdata,
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  float(*proxy)[3];
 
   sculpt_orig_vert_data_init(&orig_data, data->ob, data->nodes[n]);
 
-  proxy = BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n])->co;
+  BKE_pbvh_node_add_proxy(ss->pbvh, data->nodes[n]);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = sculpt_brush_test_init_with_falloff_shape(
@@ -4984,7 +4983,7 @@ static void do_clay_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
       .area_co = ss->cache->location,
   };
 
-  ClaySampleData csd = {{{0}}};
+  ClaySampleData csd = {{0}};
 
   PBVHParallelSettings sample_settings;
   BKE_pbvh_parallel_range_settings(&sample_settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
@@ -4993,14 +4992,6 @@ static void do_clay_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
   sample_settings.userdata_chunk_size = sizeof(ClaySampleData);
 
   BKE_pbvh_parallel_range(0, totnode, &sample_data, calc_clay_surface_task_cb, &sample_settings);
-
-  float d_bstrength;
-  if (flip) {
-    d_bstrength = -csd.plane_dist[1];
-  }
-  else {
-    d_bstrength = csd.plane_dist[0];
-  }
 
   float d_offset = (csd.plane_dist[0] + csd.plane_dist[1]);
   d_offset = min_ff(radius, d_offset);
@@ -8351,7 +8342,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *UNUSED(op))
           mmd.flag |= MOD_MIR_AXIS_Z | MOD_MIR_BISECT_AXIS_Z;
           break;
       }
-      mesh_mirror = BKE_mirror_apply_mirror_on_axis(&mmd, NULL, ob, mesh, axis);
+      mesh_mirror = BKE_mesh_mirror_apply_mirror_on_axis(&mmd, NULL, ob, mesh, axis);
       if (mesh_mirror) {
         BKE_mesh_nomain_to_mesh(mesh_mirror, mesh, ob, &CD_MASK_MESH, true);
       }
@@ -9152,11 +9143,6 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 
   bool needs_pmap = sculpt_mesh_filter_needs_pmap(filter_type);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_pmap, false);
-
-  int max_it = 1;
-  if (filter_type == MESH_FILTER_RELAX) {
-    max_it = (int)filter_strength * 2;
-  }
 
   SculptThreadedTaskData data = {
       .sd = sd,
