@@ -302,12 +302,23 @@ class GreasePencilAppearancePanel:
 
             layout.prop(gp_settings, "use_cursor", text="Show Brush")
 
-            if ob.mode == 'PAINT_GPENCIL': 
+            if ob.mode == 'PAINT_GPENCIL':
                 if brush.gpencil_tool == 'DRAW':
                     layout.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
                 if brush.gpencil_tool == 'FILL':
                     layout.prop(brush, "cursor_color_add", text="Color")
+
+            col = layout.column()
+            col.active = gp_settings.use_cursor
+
+            if ob.mode in {'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+                tool = brush.gpencil_tool
+                if tool in {'GRAB', 'CLONE'}:
+                    col.prop(brush, "cursor_color_add", text="Add")
+                else:
+                    col.prop(brush, "cursor_color_add", text="Add")
+                    col.prop(brush, "cursor_color_subtract", text="Subtract")
 
 
 class GreasePencilBrushFalloff:
