@@ -70,7 +70,11 @@ void RE_texture_rng_init(void)
 
 void RE_texture_rng_exit(void)
 {
+  if (random_tex_array == NULL) {
+    return;
+  }
   BLI_rng_threaded_free(random_tex_array);
+  random_tex_array = NULL;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -893,8 +897,6 @@ static int cubemap_glob(const float n[3], float x, float y, float z, float *adr1
   }
   return ret;
 }
-
-/* ------------------------------------------------------------------------- */
 
 /* ------------------------------------------------------------------------- */
 

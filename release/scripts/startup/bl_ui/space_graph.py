@@ -114,7 +114,6 @@ class GRAPH_MT_view(Menu):
         layout.separator()
 
         layout.prop(st, "use_realtime_update")
-        layout.prop(st, "show_frame_indicator")
         layout.prop(st, "show_cursor")
         layout.prop(st, "show_sliders")
         layout.prop(st, "show_group_colors")
@@ -169,10 +168,10 @@ class GRAPH_MT_select(Menu):
         props = layout.operator("graph.select_box")
         props.axis_range = False
         props.include_handles = False
-        props = layout.operator("graph.select_box", text="Border Axis Range")
+        props = layout.operator("graph.select_box", text="Box Select (Axis Range)")
         props.axis_range = True
         props.include_handles = False
-        props = layout.operator("graph.select_box", text="Border (Include Handles)")
+        props = layout.operator("graph.select_box", text="Box Select (Include Handles)")
         props.axis_range = False
         props.include_handles = True
 
@@ -286,6 +285,7 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.easing_type", "type", text="Easing Type")
 
         layout.separator()
+        layout.operator("graph.decimate")
         layout.operator("graph.clean").channels = False
         layout.operator("graph.clean", text="Clean Channels").channels = True
         layout.operator("graph.smooth")
@@ -336,7 +336,6 @@ class GRAPH_MT_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator_menu_enum("graph.keyframe_type", "type", text="Keyframe Type")
         layout.operator_menu_enum("graph.handle_type", "type", text="Handle Type")
         layout.operator_menu_enum("graph.interpolation_type", "type", text="Interpolation Mode")
         layout.operator_menu_enum("graph.easing_type", "type", text="Easing Type")

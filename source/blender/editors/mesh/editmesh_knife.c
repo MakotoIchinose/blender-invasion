@@ -1612,7 +1612,9 @@ static void knife_find_line_hits(KnifeTool_OpData *kcd)
   mul_m4_v3(kcd->ob->imat, v3);
   mul_m4_v3(kcd->ob->imat, v4);
 
-  /* numeric error, 'v1' -> 'v2', 'v2' -> 'v4' can end up being ~2000 units apart in otho mode
+  /* Numeric error, 'v1' -> 'v2', 'v2' -> 'v4'
+   * can end up being ~2000 units apart with an orthogonal perspective.
+   *
    * (from ED_view3d_win_to_segment_clipped() above)
    * this gives precision error; rather then solving properly
    * (which may involve using doubles everywhere!),
@@ -2658,7 +2660,7 @@ static void knifetool_init_bmbvh(KnifeTool_OpData *kcd)
   Object *obedit_eval = (Object *)DEG_get_evaluated_id(kcd->vc.depsgraph, &kcd->em->ob->id);
   BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);
 
-  kcd->cagecos = (const float(*)[3])BKE_editmesh_vertexCos_get(
+  kcd->cagecos = (const float(*)[3])BKE_editmesh_vert_coords_alloc(
       kcd->vc.depsgraph, em_eval, scene_eval, NULL);
 
   kcd->bmbvh = BKE_bmbvh_new_from_editmesh(
@@ -2777,7 +2779,7 @@ static int knifetool_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   op->flag |= OP_IS_MODAL_CURSOR_REGION;
 
   /* add a modal handler for this operator - handles loop selection */
-  WM_cursor_modal_set(CTX_wm_window(C), BC_KNIFECURSOR);
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_KNIFE);
   WM_event_add_modal_handler(C, op);
 
   knifetool_update_mval_i(kcd, event->mval);
@@ -2804,8 +2806,8 @@ wmKeyMap *knifetool_modal_keymap(wmKeyConfig *keyconf)
   static const EnumPropertyItem modal_items[] = {
       {KNF_MODAL_CANCEL, "CANCEL", 0, "Cancel", ""},
       {KNF_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", ""},
-      {KNF_MODAL_MIDPOINT_ON, "SNAP_MIDPOINTS_ON", 0, "Snap To Midpoints On", ""},
-      {KNF_MODAL_MIDPOINT_OFF, "SNAP_MIDPOINTS_OFF", 0, "Snap To Midpoints Off", ""},
+      {KNF_MODAL_MIDPOINT_ON, "SNAP_MIDPOINTS_ON", 0, "Snap to Midpoints On", ""},
+      {KNF_MODAL_MIDPOINT_OFF, "SNAP_MIDPOINTS_OFF", 0, "Snap to Midpoints Off", ""},
       {KNF_MODEL_IGNORE_SNAP_ON, "IGNORE_SNAP_ON", 0, "Ignore Snapping On", ""},
       {KNF_MODEL_IGNORE_SNAP_OFF, "IGNORE_SNAP_OFF", 0, "Ignore Snapping Off", ""},
       {KNF_MODAL_ANGLE_SNAP_TOGGLE, "ANGLE_SNAP_TOGGLE", 0, "Toggle Angle Snapping", ""},
@@ -2949,7 +2951,7 @@ static int knifetool_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case KNF_MODAL_ADD_CUT_CLOSED:
         if (kcd->mode == MODE_DRAGGING) {
 
-          /* shouldn't be possible with default key-layout, just incase... */
+          /* Shouldn't be possible with default key-layout, just in case. */
           if (kcd->is_drag_hold) {
             kcd->is_drag_hold = false;
             knifetool_update_mval(kcd, kcd->curr.mval);

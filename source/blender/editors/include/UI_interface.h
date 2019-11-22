@@ -31,8 +31,8 @@
 /* Struct Declarations */
 
 struct ARegion;
-struct ARegionType;
 struct AutoComplete;
+struct FileSelectParams;
 struct ID;
 struct IDProperty;
 struct ImBuf;
@@ -90,7 +90,7 @@ typedef struct uiPopupBlockHandle uiPopupBlockHandle;
  * For #ARegion.overlap regions, pass events though if they don't overlap
  * the regions contents (the usable part of the #View2D and buttons).
  *
- * The margin is needed so it's not possible to accidentally click inbetween buttons.
+ * The margin is needed so it's not possible to accidentally click in between buttons.
  */
 #define UI_REGION_OVERLAP_MARGIN (U.widget_unit / 3)
 
@@ -346,6 +346,8 @@ typedef enum {
   /** sphere widget (used to input a unit-vector, aka normal) */
   UI_BTYPE_UNITVEC = 31 << 9,
   UI_BTYPE_CURVE = 32 << 9,
+  /** Profile editing widget */
+  UI_BTYPE_CURVEPROFILE = 33 << 9,
   UI_BTYPE_LISTBOX = 36 << 9,
   UI_BTYPE_LISTROW = 37 << 9,
   UI_BTYPE_HSVCIRCLE = 38 << 9,
@@ -521,8 +523,10 @@ typedef bool (*uiMenuStepFunc)(struct bContext *C, int direction, void *arg1);
 /* interface_query.c */
 bool UI_but_has_tooltip_label(const uiBut *but);
 bool UI_but_is_tool(const uiBut *but);
+bool UI_but_is_utf8(const uiBut *but);
 #define UI_but_is_decorator(but) ((but)->func == ui_but_anim_decorate_cb)
 
+bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title);
 bool UI_block_is_empty(const uiBlock *block);
 bool UI_block_can_add_separator(const uiBlock *block);
 
@@ -562,7 +566,8 @@ int UI_popover_panel_invoke(struct bContext *C,
                             bool keep_open,
                             struct ReportList *reports);
 
-uiPopover *UI_popover_begin(struct bContext *C, int menu_width) ATTR_NONNULL(1);
+uiPopover *UI_popover_begin(struct bContext *C, int menu_width, bool from_active_button)
+    ATTR_NONNULL(1);
 void UI_popover_end(struct bContext *C, struct uiPopover *head, struct wmKeyMap *keymap);
 struct uiLayout *UI_popover_layout(uiPopover *head);
 void UI_popover_once_clear(uiPopover *pup);
@@ -1596,6 +1601,11 @@ void UI_but_func_hold_set(uiBut *but, uiButHandleHoldFunc func, void *argN);
 
 void UI_but_func_pushed_state_set(uiBut *but, uiButPushedStateFunc func, void *arg);
 
+PointerRNA *UI_but_extra_operator_icon_add(uiBut *but,
+                                           const char *opname,
+                                           short opcontext,
+                                           int icon);
+
 /* Autocomplete
  *
  * Tab complete helper functions, for use in uiButCompleteFunc callbacks.
@@ -1803,6 +1813,7 @@ void uiLayoutSetActivateInit(uiLayout *layout, bool active);
 void uiLayoutSetEnabled(uiLayout *layout, bool enabled);
 void uiLayoutSetRedAlert(uiLayout *layout, bool redalert);
 void uiLayoutSetAlignment(uiLayout *layout, char alignment);
+void uiLayoutSetFixedSize(uiLayout *layout, bool fixed_size);
 void uiLayoutSetKeepAspect(uiLayout *layout, bool keepaspect);
 void uiLayoutSetScaleX(uiLayout *layout, float scale);
 void uiLayoutSetScaleY(uiLayout *layout, float scale);
@@ -1820,6 +1831,7 @@ bool uiLayoutGetActivateInit(uiLayout *layout);
 bool uiLayoutGetEnabled(uiLayout *layout);
 bool uiLayoutGetRedAlert(uiLayout *layout);
 int uiLayoutGetAlignment(uiLayout *layout);
+bool uiLayoutGetFixedSize(uiLayout *layout);
 bool uiLayoutGetKeepAspect(uiLayout *layout);
 int uiLayoutGetWidth(uiLayout *layout);
 float uiLayoutGetScaleX(uiLayout *layout);
@@ -1963,6 +1975,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
                             bool brush,
                             bool neg_slope,
                             bool tone);
+void uiTemplateCurveProfile(uiLayout *layout, struct PointerRNA *ptr, const char *propname);
 void uiTemplateColorPicker(uiLayout *layout,
                            struct PointerRNA *ptr,
                            const char *propname,
@@ -2011,6 +2024,12 @@ void uiTemplateEditModeSelection(uiLayout *layout, struct bContext *C);
 void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
 void uiTemplateInputStatus(uiLayout *layout, struct bContext *C);
 void uiTemplateKeymapItemProperties(uiLayout *layout, struct PointerRNA *ptr);
+
+bool uiTemplateEventFromKeymapItem(struct uiLayout *layout,
+                                   const char *text,
+                                   const struct wmKeyMapItem *kmi,
+                                   bool text_fallback);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              struct PointerRNA *ptr,
                              const char *propname,
@@ -2081,6 +2100,9 @@ void uiTemplateColormanagedViewSettings(struct uiLayout *layout,
                                         const char *propname);
 
 int uiTemplateRecentFiles(struct uiLayout *layout, int rows);
+void uiTemplateFileSelectPath(uiLayout *layout,
+                              struct bContext *C,
+                              struct FileSelectParams *params);
 
 /* items */
 void uiItemO(uiLayout *layout, const char *name, int icon, const char *opname);
@@ -2440,6 +2462,8 @@ void UI_widgetbase_draw_cache_end(void);
 /* Use for resetting the theme. */
 void UI_theme_init_default(void);
 void UI_style_init_default(void);
+
+void UI_interface_tag_script_reload(void);
 
 /* Special drawing for toolbar, mainly workarounds for inflexible icon sizing. */
 #define USE_UI_TOOLBAR_HACK

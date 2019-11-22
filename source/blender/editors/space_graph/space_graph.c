@@ -303,8 +303,10 @@ static void graph_main_region_draw(const bContext *C, ARegion *ar)
   }
 
   /* preview range */
-  UI_view2d_view_ortho(v2d);
-  ANIM_draw_previewrange(C, v2d, 0);
+  if (sipo->mode != SIPO_MODE_DRIVERS) {
+    UI_view2d_view_ortho(v2d);
+    ANIM_draw_previewrange(C, v2d, 0);
+  }
 
   /* callback */
   UI_view2d_view_ortho(v2d);
@@ -527,7 +529,7 @@ static void graph_region_message_subscribe(const struct bContext *UNUSED(C),
    * so just whitelist the entire structs for updates
    */
   {
-    wmMsgParams_RNA msg_key_params = {{{0}}};
+    wmMsgParams_RNA msg_key_params = {{0}};
     StructRNA *type_array[] = {
         &RNA_DopeSheet, /* dopesheet filters */
 

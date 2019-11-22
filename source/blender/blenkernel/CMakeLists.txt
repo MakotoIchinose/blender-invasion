@@ -50,6 +50,9 @@ set(INC
   ../../../intern/opensubdiv
   ../../../extern/curve_fit_nd
   ../../../intern/smoke/extern
+
+  # dna_type_offsets.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
 )
 
 set(INC_SYS
@@ -58,6 +61,7 @@ set(INC_SYS
 )
 
 set(SRC
+  ${CMAKE_SOURCE_DIR}/release/datafiles/userdef/userdef_default.c
   intern/CCGSubSurf.c
   intern/CCGSubSurf_legacy.c
   intern/CCGSubSurf_opensubdiv.c
@@ -82,6 +86,7 @@ set(SRC
   intern/brush.c
   intern/bvhutils.c
   intern/cachefile.c
+  intern/callbacks.c
   intern/camera.c
   intern/cdderivedmesh.c
   intern/cloth.c
@@ -94,6 +99,7 @@ set(SRC
   intern/crazyspace.c
   intern/curve.c
   intern/curve_decimate.c
+  intern/curveprofile.c
   intern/customdata.c
   intern/customdata_file.c
   intern/data_transfer.c
@@ -149,7 +155,9 @@ set(SRC
   intern/mesh_iterators.c
   intern/mesh_mapping.c
   intern/mesh_merge.c
+  intern/mesh_mirror.c
   intern/mesh_remap.c
+  intern/mesh_remesh_voxel.c
   intern/mesh_runtime.c
   intern/mesh_tangent.c
   intern/mesh_validate.c
@@ -176,6 +184,7 @@ set(SRC
   intern/particle_system.c
   intern/pbvh.c
   intern/pbvh_bmesh.c
+  intern/pbvh_parallel.cc
   intern/pointcache.c
   intern/report.c
   intern/rigidbody.c
@@ -184,6 +193,7 @@ set(SRC
   intern/seqcache.c
   intern/seqeffects.c
   intern/seqmodifier.c
+  intern/seqprefetch.c
   intern/sequencer.c
   intern/shader_fx.c
   intern/shrinkwrap.c
@@ -198,15 +208,17 @@ set(SRC
   intern/subdiv_ccg_material.c
   intern/subdiv_converter.c
   intern/subdiv_converter_mesh.c
+  intern/subdiv_deform.c
   intern/subdiv_displacement.c
   intern/subdiv_displacement_multires.c
   intern/subdiv_eval.c
   intern/subdiv_foreach.c
   intern/subdiv_mesh.c
   intern/subdiv_stats.c
+  intern/subdiv_topology.c
   intern/subsurf_ccg.c
-  intern/suggestions.c
   intern/text.c
+  intern/text_suggestions.c
   intern/texture.c
   intern/tracking.c
   intern/tracking_auto.c
@@ -241,6 +253,7 @@ set(SRC
   BKE_brush.h
   BKE_bvhutils.h
   BKE_cachefile.h
+  BKE_callbacks.h
   BKE_camera.h
   BKE_ccg.h
   BKE_cdderivedmesh.h
@@ -253,6 +266,7 @@ set(SRC
   BKE_context.h
   BKE_crazyspace.h
   BKE_curve.h
+  BKE_curveprofile.h
   BKE_customdata.h
   BKE_customdata_file.h
   BKE_data_transfer.h
@@ -298,7 +312,9 @@ set(SRC
   BKE_mesh.h
   BKE_mesh_iterators.h
   BKE_mesh_mapping.h
+  BKE_mesh_mirror.h
   BKE_mesh_remap.h
+  BKE_mesh_remesh_voxel.h
   BKE_mesh_runtime.h
   BKE_mesh_tangent.h
   BKE_modifier.h
@@ -330,12 +346,14 @@ set(SRC
   BKE_studiolight.h
   BKE_subdiv.h
   BKE_subdiv_ccg.h
+  BKE_subdiv_deform.h
   BKE_subdiv_eval.h
   BKE_subdiv_foreach.h
   BKE_subdiv_mesh.h
+  BKE_subdiv_topology.h
   BKE_subsurf.h
-  BKE_suggestions.h
   BKE_text.h
+  BKE_text_suggestions.h
   BKE_texture.h
   BKE_tracking.h
   BKE_undo_system.h
@@ -424,13 +442,13 @@ if(WITH_BULLET)
   add_definitions(-DWITH_BULLET)
 endif()
 
-#if(WITH_MOD_CLOTH_ELTOPO)
+# if(WITH_MOD_CLOTH_ELTOPO)
 #   list(APPEND INC
-#       ../../../extern/eltopo
-#       ../../../extern/eltopo/eltopo3d
+#     ../../../extern/eltopo
+#     ../../../extern/eltopo/eltopo3d
 #   )
 #   add_definitions(-DWITH_ELTOPO)
-#endif()
+# endif()
 
 if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
@@ -612,9 +630,30 @@ if(WITH_OPENVDB)
   endif()
 endif()
 
-## Warnings as errors, this is too strict!
-#if(MSVC)
-#   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
-#endif()
+if(WITH_QUADRIFLOW)
+  list(APPEND INC
+     ../../../intern/quadriflow
+  )
+  list(APPEND LIB
+     bf_intern_quadriflow
+  )
+  add_definitions(-DWITH_QUADRIFLOW)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+endif()
+
+# # Warnings as errors, this is too strict!
+# if(MSVC)
+#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
+# endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# Needed so we can use dna_type_offsets.h for defaults initialization.
+add_dependencies(bf_blenkernel bf_dna)

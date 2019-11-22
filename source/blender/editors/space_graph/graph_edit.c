@@ -85,6 +85,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
                                 const bool include_handles)
 {
   Scene *scene = ac->scene;
+  SpaceGraph *sipo = (SpaceGraph *)ac->sl;
 
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
@@ -92,6 +93,10 @@ void get_graph_keyframe_extents(bAnimContext *ac,
 
   /* get data to filter, from Dopesheet */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_NODUPLIS);
+  if (sipo->flag & SIPO_SELCUVERTSONLY) {
+    filter |= ANIMFILTER_SEL;
+  }
+
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
   /* set large values initial values that will be easy to override */
@@ -333,7 +338,7 @@ void GRAPH_OT_view_all(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 
   /* props */
   ot->prop = RNA_def_boolean(ot->srna,
@@ -356,7 +361,7 @@ void GRAPH_OT_view_selected(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 
   /* props */
   ot->prop = RNA_def_boolean(ot->srna,
@@ -387,7 +392,7 @@ void GRAPH_OT_view_frame(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 }
 
 /* ******************** Create Ghost-Curves Operator *********************** */
@@ -579,7 +584,6 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
      0,
      "Only Selected Channels",
      "Insert a keyframe on selected F-Curves using each curve's current value"},
-    {0, "", 0, "", ""},
     {GRAPHKEYS_INSERTKEY_ACTIVE | GRAPHKEYS_INSERTKEY_CURSOR,
      "CURSOR_ACTIVE",
      0,
@@ -604,7 +608,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
 
   ReportList *reports = ac->reports;
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
-  struct Depsgraph *depsgraph = ac->depsgraph;
   Scene *scene = ac->scene;
   ToolSettings *ts = scene->toolsettings;
   short flag = 0;
@@ -696,7 +699,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
        */
       if (ale->id && !ale->owner && !fcu->driver) {
         insert_keyframe(ac->bmain,
-                        depsgraph,
                         reports,
                         ale->id,
                         NULL,
@@ -1301,6 +1303,78 @@ void GRAPH_OT_clean(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "channels", false, "Channels", "");
 }
 
+/* ******************** Decimate Keyframes Operator ************************* */
+
+static void decimate_graph_keys(bAnimContext *ac, float remove_ratio)
+{
+  ListBase anim_data = {NULL, NULL};
+  bAnimListElem *ale;
+  int filter;
+
+  /* filter data */
+  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FOREDIT |
+            ANIMFILTER_SEL | ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+
+  /* loop through filtered data and clean curves */
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    decimate_fcurve(ale, remove_ratio);
+
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+/* ------------------- */
+
+static int graphkeys_decimate_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+  float remove_ratio;
+
+  /* get editor data */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  remove_ratio = RNA_float_get(op->ptr, "remove_ratio");
+  decimate_graph_keys(&ac, remove_ratio);
+
+  /* set notifier that keyframes have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_decimate(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Decimate Keyframes";
+  ot->idname = "GRAPH_OT_decimate";
+  ot->description =
+      "Decimate F-Curves by removing keyframes that influence the curve shape the least";
+
+  /* api callbacks */
+  ot->exec = graphkeys_decimate_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_float_percentage(ot->srna,
+                                      "remove_ratio",
+                                      1.0f / 3.0f,
+                                      0.0f,
+                                      1.0f,
+                                      "Remove",
+                                      "The percentage of keyframes to remove",
+                                      0.0f,
+                                      1.0f);
+}
+
 /* ******************** Bake F-Curve Operator *********************** */
 /* This operator bakes the data of the selected F-Curves to F-Points */
 
@@ -1540,7 +1614,7 @@ void GRAPH_OT_sound_bake(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_SOUND | FILE_TYPE_MOVIE,
                                  FILE_SPECIAL,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_ALPHA);
   RNA_def_float(ot->srna,
@@ -2508,28 +2582,28 @@ static const EnumPropertyItem prop_graphkeys_mirror_types[] = {
     {GRAPHKEYS_MIRROR_CFRA,
      "CFRA",
      0,
-     "By Times over Current Frame",
+     "By Times Over Current Frame",
      "Flip times of selected keyframes using the current frame as the mirror line"},
     {GRAPHKEYS_MIRROR_VALUE,
      "VALUE",
      0,
-     "By Values over Cursor Value",
+     "By Values Over Cursor Value",
      "Flip values of selected keyframes using the cursor value (Y/Horizontal component) as the "
      "mirror line"},
     {GRAPHKEYS_MIRROR_YAXIS,
      "YAXIS",
      0,
-     "By Times over Time=0",
+     "By Times Over Time=0",
      "Flip times of selected keyframes, effectively reversing the order they appear in"},
     {GRAPHKEYS_MIRROR_XAXIS,
      "XAXIS",
      0,
-     "By Values over Value=0",
+     "By Values Over Value=0",
      "Flip values of selected keyframes (i.e. negative values become positive, and vice versa)"},
     {GRAPHKEYS_MIRROR_MARKER,
      "MARKER",
      0,
-     "By Times over First Selected Marker",
+     "By Times Over First Selected Marker",
      "Flip times of selected keyframes using the first selected marker as the reference point"},
     {0, NULL, 0, NULL, NULL},
 };
