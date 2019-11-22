@@ -263,6 +263,8 @@ static Brush *gpencil_brush_ensure(
   brush->secondary_rgb[1] = 1.0f;
   brush->secondary_rgb[2] = 1.0f;
 
+  brush->curve_preset = BRUSH_CURVE_SMOOTH;
+
   if (brush->gpencil_settings == NULL) {
     BKE_brush_init_gpencil_settings(brush);
   }
@@ -271,9 +273,9 @@ static Brush *gpencil_brush_ensure(
   if (brush->gpencil_settings) {
     brush->gpencil_settings->vertex_mode = GPPAINT_MODE_STROKE;
     brush->gpencil_settings->vertex_factor = 1.0f;
-  }
 
-  brush->gpencil_settings->weight = 1.0f;
+    brush->gpencil_settings->weight = 1.0f;
+  }
 
   return brush;
 }
