@@ -2293,7 +2293,7 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
                 brush_basic_gpencil_paint_settings(layout, context, brush, tool, compact=True, is_toolbar=False)
 
 
-class VIEW3D_PT_tools_grease_pencil_brush_vertex(View3DPanel, Panel):
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Vertex Color"
     bl_category = "Tool"
@@ -2375,7 +2375,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Color Palette"
     bl_category = "Tool"
-    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex'
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex_color'
 
 
     @classmethod
@@ -2661,7 +2661,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_weight_appearance,
     VIEW3D_PT_tools_grease_pencil_interpolate,
     VIEW3D_PT_tools_grease_pencil_vertex_brush,
-    VIEW3D_PT_tools_grease_pencil_brush_vertex,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex_color,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff,
     VIEW3D_PT_tools_grease_pencil_vertex_appearance,
