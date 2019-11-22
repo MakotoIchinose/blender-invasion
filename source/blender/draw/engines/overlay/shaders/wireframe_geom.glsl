@@ -4,11 +4,11 @@
 layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
-in float facing_g[];
+in vec3 finalColor_g[];
 in float edgeSharpness_g[];
 
 #ifndef SELECT_EDGES
-out float facing;
+out vec3 finalColor;
 flat out float edgeSharpness;
 #endif
 
@@ -16,7 +16,7 @@ void do_vertex(const int i, float coord, vec2 offset)
 {
 #ifndef SELECT_EDGES
   edgeSharpness = edgeSharpness_g[i];
-  facing = facing_g[i];
+  finalColor = finalColor_g[i];
 #endif
   gl_Position = gl_in[i].gl_Position;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */

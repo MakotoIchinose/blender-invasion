@@ -506,8 +506,14 @@ static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, Object *ob)
                      * put it in ob->runtime and make depsgraph ensure it is up to date. */
                     BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
   ob_infos->ob_random = random * (1.0f / (float)0xFFFFFFFF);
+  /* Object State. */
+  ob_infos->ob_flag = 1.0f; /* Required to have a correct sign */
+  ob_infos->ob_flag += (ob->base_flag & BASE_SELECTED) ? (1 << 1) : 0;
+  ob_infos->ob_flag += (ob->base_flag & BASE_FROM_DUPLI) ? (1 << 2) : 0;
+  ob_infos->ob_flag += (ob->base_flag & BASE_FROM_SET) ? (1 << 3) : 0;
+  ob_infos->ob_flag += (ob == DST.draw_ctx.obact) ? (1 << 4) : 0;
   /* Negative scalling. */
-  ob_infos->ob_neg_scale = (ob->transflag & OB_NEG_SCALE) ? -1.0f : 1.0f;
+  ob_infos->ob_flag *= (ob->transflag & OB_NEG_SCALE) ? -1.0f : 1.0f;
   /* Object Color. */
   copy_v4_v4(ob_infos->ob_color, ob->color);
 }

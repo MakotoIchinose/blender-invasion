@@ -218,8 +218,6 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_text_overlay_grp;
   DRWShadingGroup *edit_text_wire_grp[2];
   DRWShadingGroup *facing_grp;
-  DRWShadingGroup *wires_grp;
-  DRWShadingGroup *wires_xray_grp;
   DRWShadingGroup *motion_path_lines_grp;
   DRWShadingGroup *motion_path_points_grp;
   DRWShadingGroup *outlines_active_grp;
@@ -239,6 +237,9 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *particle_dots_grp;
   DRWShadingGroup *particle_shapes_grp;
   DRWShadingGroup *sculpt_mask_grp;
+  DRWShadingGroup *wires_grp[2][2];     /* With and without coloring. */
+  DRWShadingGroup *wires_all_grp[2][2]; /* With and without coloring. */
+  DRWShadingGroup *wires_sculpt_grp[2];
 
   DRWView *view_wires;
   DRWView *view_edit_faces;

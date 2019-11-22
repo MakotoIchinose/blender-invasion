@@ -106,6 +106,7 @@ extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 extern char datatoc_gpu_shader_flat_color_frag_glsl[];
 extern char datatoc_gpu_shader_point_varying_color_varying_outline_aa_frag_glsl[];
+extern char datatoc_gpu_shader_common_obinfos_lib_glsl[];
 
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_fullscreen_vert_glsl[];
@@ -1189,6 +1190,8 @@ GPUShader *OVERLAY_shader_wireframe_select(void)
     sh_data->wireframe_select = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg->lib,
                                  datatoc_common_view_lib_glsl,
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_gpu_shader_common_obinfos_lib_glsl,
                                  datatoc_wireframe_vert_glsl,
                                  NULL},
         .geom = (const char *[]){sh_cfg->lib,
@@ -1211,12 +1214,17 @@ GPUShader *OVERLAY_shader_wireframe(void)
     sh_data->wireframe = GPU_shader_create_from_arrays({
       .vert = (const char *[]){sh_cfg->lib,
                                datatoc_common_view_lib_glsl,
+                               datatoc_common_globals_lib_glsl,
+                               datatoc_gpu_shader_common_obinfos_lib_glsl,
                                datatoc_wireframe_vert_glsl,
                                NULL},
       .frag = (const char *[]){datatoc_wireframe_frag_glsl, NULL},
       /* Apple drivers does not support wide wires. Use geometry shader as a workaround. */
 #if USE_GEOM_SHADER_WORKAROUND
-      .geom = (const char *[]){sh_cfg->lib, datatoc_wireframe_geom_glsl, NULL},
+      .geom = (const char *[]){sh_cfg->lib,
+                               datatoc_common_globals_lib_glsl,
+                               datatoc_wireframe_geom_glsl,
+                               NULL},
       .defs = (const char *[]){sh_cfg->def, "#define USE_GEOM\n", NULL},
 #else
       .defs = (const char *[]){sh_cfg->def, NULL},

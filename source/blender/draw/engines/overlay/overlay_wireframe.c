@@ -48,115 +48,61 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  DRWShadingGroup *grp = NULL;
+
+  View3DShading *shading = &draw_ctx->v3d->shading;
+
+  pd->clear_stencil = (shading->type > OB_SOLID);
+  pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
+
+  bool is_wire_shmode = (shading->type == OB_WIRE);
+  bool is_object_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_OBJECT_COLOR);
+  bool is_random_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_RANDOM_COLOR);
 
   const bool use_select = (DRW_state_is_select() || DRW_state_is_depth());
   GPUShader *wires_sh = use_select ? OVERLAY_shader_wireframe_select() :
                                      OVERLAY_shader_wireframe();
 
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                   DRW_STATE_STENCIL_EQUAL | DRW_STATE_FIRST_VERTEX_CONVENTION;
-  DRW_PASS_CREATE(psl->wireframe_ps, state | pd->clipping_state);
+  for (int xray = 0; xray < 2; xray++) {
+    DRWState state = DRW_STATE_FIRST_VERTEX_CONVENTION;
+    DRWPass *pass;
+    uint stencil_mask;
 
-  DRWState state_xray = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_STENCIL |
-                        DRW_STATE_DEPTH_GREATER_EQUAL | DRW_STATE_STENCIL_NEQUAL |
-                        DRW_STATE_FIRST_VERTEX_CONVENTION;
-  DRW_PASS_CREATE(psl->wireframe_xray_ps, state_xray | pd->clipping_state);
-
-  pd->wires_grp = DRW_shgroup_create(wires_sh, psl->wireframe_ps);
-  DRW_shgroup_uniform_block_persistent(pd->wires_grp, "globalsBlock", G_draw.block_ubo);
-
-  pd->wires_xray_grp = DRW_shgroup_create(wires_sh, psl->wireframe_xray_ps);
-  DRW_shgroup_uniform_block_persistent(pd->wires_xray_grp, "globalsBlock", G_draw.block_ubo);
-
-  pd->clear_stencil = (draw_ctx->v3d->shading.type > OB_SOLID);
-  pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
-}
-
-static void wire_color_get(const View3D *v3d,
-                           const Object *ob,
-                           const bool use_coloring,
-                           float **rim_col,
-                           float **wire_col)
-{
-#ifndef NDEBUG
-  *rim_col = NULL;
-  *wire_col = NULL;
-#endif
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-
-  if (UNLIKELY(ob->base_flag & BASE_FROM_SET)) {
-    *rim_col = G_draw.block.colorDupli;
-    *wire_col = G_draw.block.colorDupli;
-  }
-  else if (UNLIKELY(ob->base_flag & BASE_FROM_DUPLI)) {
-    if (ob->base_flag & BASE_SELECTED) {
-      if (G.moving & G_TRANSFORM_OBJ) {
-        *rim_col = G_draw.block.colorTransform;
-      }
-      else {
-        *rim_col = G_draw.block.colorDupliSelect;
-      }
+    if (xray == 0) {
+      state |= DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+               DRW_STATE_STENCIL_EQUAL;
+      DRW_PASS_CREATE(psl->wireframe_ps, state | pd->clipping_state);
+      pass = psl->wireframe_ps;
+      stencil_mask = 0xFF;
     }
     else {
-      *rim_col = G_draw.block.colorDupli;
+      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER_EQUAL |
+               DRW_STATE_STENCIL_NEQUAL;
+      DRW_PASS_CREATE(psl->wireframe_xray_ps, state | pd->clipping_state);
+      pass = psl->wireframe_xray_ps;
+      stencil_mask = 0x00;
     }
-    *wire_col = G_draw.block.colorDupli;
-  }
-  else if ((ob->base_flag & BASE_SELECTED) && use_coloring) {
-    if (G.moving & G_TRANSFORM_OBJ) {
-      *rim_col = G_draw.block.colorTransform;
-    }
-    else if (ob == draw_ctx->obact) {
-      *rim_col = G_draw.block.colorActive;
-    }
-    else {
-      *rim_col = G_draw.block.colorSelect;
-    }
-    *wire_col = G_draw.block.colorWire;
-  }
-  else {
-    *rim_col = G_draw.block.colorWire;
-    *wire_col = G_draw.block.colorBackground;
-  }
 
-  if (v3d->shading.type == OB_WIRE) {
-    if (ELEM(v3d->shading.wire_color_type, V3D_SHADING_OBJECT_COLOR, V3D_SHADING_RANDOM_COLOR)) {
-      /* Theses stays valid until next call. So we need to copy them when using them as uniform. */
-      static float wire_col_val[3], rim_col_val[3];
-      *wire_col = wire_col_val;
-      *rim_col = rim_col_val;
+    for (int use_coloring = 0; use_coloring < 2; use_coloring++) {
+      pd->wires_grp[xray][use_coloring] = grp = DRW_shgroup_create(wires_sh, pass);
+      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "wireStepParam", pd->shdata.wire_step_param);
+      DRW_shgroup_uniform_bool_copy(grp, "useColoring", use_coloring);
+      DRW_shgroup_uniform_bool_copy(grp, "isTransform", (G.moving & G_TRANSFORM_OBJ) != 0);
+      DRW_shgroup_uniform_bool_copy(grp, "isObjectColor", is_object_color);
+      DRW_shgroup_uniform_bool_copy(grp, "isRandomColor", is_random_color);
+      DRW_shgroup_stencil_mask(grp, stencil_mask);
 
-      if (v3d->shading.wire_color_type == V3D_SHADING_OBJECT_COLOR) {
-        linearrgb_to_srgb_v3_v3(*wire_col, ob->color);
-        mul_v3_fl(*wire_col, 0.5f);
-        copy_v3_v3(*rim_col, *wire_col);
-      }
-      else {
-        uint hash = BLI_ghashutil_strhash_p_murmur(ob->id.name);
-        if (ob->id.lib) {
-          hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob->id.lib->name);
-        }
-
-        float hue = BLI_hash_int_01(hash);
-        float hsv[3] = {hue, 0.75f, 0.8f};
-        hsv_to_rgb_v(hsv, *wire_col);
-        copy_v3_v3(*rim_col, *wire_col);
-      }
-
-      if ((ob->base_flag & BASE_SELECTED) && use_coloring) {
-        /* "Normalize" color. */
-        add_v3_fl(*wire_col, 1e-4f);
-        float brightness = max_fff((*wire_col)[0], (*wire_col)[1], (*wire_col)[2]);
-        mul_v3_fl(*wire_col, (0.5f / brightness));
-        add_v3_fl(*rim_col, 0.75f);
-      }
-      else {
-        mul_v3_fl(*rim_col, 0.5f);
-        add_v3_fl(*wire_col, 0.5f);
-      }
+      pd->wires_all_grp[xray][use_coloring] = grp = DRW_shgroup_create(wires_sh, pass);
+      DRW_shgroup_uniform_float_copy(grp, "wireStepParam", 1.0f);
+      DRW_shgroup_stencil_mask(grp, stencil_mask);
     }
+
+    pd->wires_sculpt_grp[xray] = grp = DRW_shgroup_create(wires_sh, pass);
+    DRW_shgroup_uniform_float_copy(grp, "wireStepParam", 10.0f);
+    DRW_shgroup_uniform_bool_copy(grp, "useColoring", false);
+    DRW_shgroup_stencil_mask(grp, stencil_mask);
   }
-  BLI_assert(*rim_col && *wire_col);
 }
 
 void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
@@ -168,10 +114,8 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
   OVERLAY_StorageList *stl = data->stl;
   OVERLAY_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  View3D *v3d = draw_ctx->v3d;
-  const bool all_wires = (ob->dtx & OB_DRAW_ALL_EDGES);
-  const bool is_wire = (ob->dt < OB_SOLID);
-  const bool is_xray = (ob->dtx & OB_DRAWXRAY);
+  const bool all_wires = (ob->dtx & OB_DRAW_ALL_EDGES) != 0;
+  const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0;
   const bool is_mesh = ob->type == OB_MESH;
   const bool use_wire = (pd->overlay.flag & V3D_OVERLAY_WIREFRAMES) || (ob->dtx & OB_DRAWWIRE) ||
                         (ob->dt == OB_WIRE);
@@ -211,26 +155,14 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
     struct GPUBatch *geom = DRW_cache_object_face_wireframe_get(ob);
 
     if (geom || use_sculpt_pbvh) {
-      if (is_wire && is_xray) {
-        shgrp = DRW_shgroup_create_sub(pd->wires_xray_grp);
+      if (use_sculpt_pbvh) {
+        shgrp = pd->wires_sculpt_grp[is_xray];
+      }
+      else if (all_wires) {
+        shgrp = pd->wires_all_grp[is_xray][use_coloring];
       }
       else {
-        shgrp = DRW_shgroup_create_sub(pd->wires_grp);
-      }
-
-      float wire_step_param = 10.0f;
-      if (!use_sculpt_pbvh) {
-        wire_step_param = (all_wires) ? 1.0f : pd->shdata.wire_step_param;
-      }
-      DRW_shgroup_uniform_float_copy(shgrp, "wireStepParam", wire_step_param);
-
-      if (!(DRW_state_is_select() || DRW_state_is_depth())) {
-        float *rim_col, *wire_col;
-        wire_color_get(v3d, ob, use_coloring, &rim_col, &wire_col);
-        DRW_shgroup_uniform_vec3_copy(shgrp, "wireColor", wire_col);
-        DRW_shgroup_uniform_vec3_copy(shgrp, "rimColor", rim_col);
-        DRW_shgroup_stencil_mask(shgrp,
-                                 (is_xray && (is_wire || !pd->clear_stencil)) ? 0x00 : 0xFF);
+        shgrp = pd->wires_grp[is_xray][use_coloring];
       }
 
       if (use_sculpt_pbvh) {
@@ -274,7 +206,18 @@ void OVERLAY_wireframe_draw(OVERLAY_Data *data)
   OVERLAY_StorageList *stl = data->stl;
 
   DRW_view_set_active(stl->pd->view_wires);
-  DRW_draw_pass(psl->wireframe_xray_ps);
   DRW_draw_pass(psl->wireframe_ps);
+
+  /* First lower the depth where there is no xray object (and set the stencil to xray value). */
+  DRW_draw_pass(psl->wireframe_xray_ps);
+
+  /* Then draw the xray wire on top only where the stencil is set. */
+  DRWState state_remove = DRW_STATE_DEPTH_GREATER_EQUAL | DRW_STATE_STENCIL_NEQUAL;
+  DRWState state_add = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                       DRW_STATE_STENCIL_ALWAYS;
+  DRW_pass_state_remove(psl->wireframe_xray_ps, state_remove);
+  DRW_pass_state_add(psl->wireframe_xray_ps, state_add);
+  DRW_draw_pass(psl->wireframe_xray_ps);
+
   DRW_view_set_active(NULL);
 }

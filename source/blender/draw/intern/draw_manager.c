@@ -603,7 +603,7 @@ static void draw_unit_state_create(void)
 
   infos->ob_index = 0;
   infos->ob_random = 0.0f;
-  infos->ob_neg_scale = 1.0f;
+  infos->ob_flag = 1.0f;
   copy_v3_fl(infos->ob_color, 1.0f);
 
   /* TODO(fclem) get rid of this. */
