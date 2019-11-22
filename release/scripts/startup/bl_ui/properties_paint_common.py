@@ -392,26 +392,6 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact
         row.prop(brush, "size", text="Thickness")
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
-        # Fill options
-        if is_toolbar:
-            settings = _context.tool_settings.gpencil_sculpt
-            row = layout.row(align=True)
-            sub = row.row(align=True)
-            sub.popover(
-                panel="TOPBAR_PT_gpencil_fill",
-                text="Fill Options",
-            )
-        else:
-            row = layout.row(align=True)
-            row.prop(gp_settings, "fill_draw_mode", text="Boundary")
-            row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
-            row = layout.row(align=True)
-            row.prop(gp_settings, "fill_factor", text="Resolution")
-            if gp_settings.fill_draw_mode != 'STROKE':
-                row = layout.row(align=True)
-                row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-                row = layout.row(align=True)
-                row.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")

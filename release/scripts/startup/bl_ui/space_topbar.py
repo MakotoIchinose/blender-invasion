@@ -665,33 +665,6 @@ class TOPBAR_PT_gpencil_primitive(Panel):
         layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
-# Grease Pencil Fill
-class TOPBAR_PT_gpencil_fill(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Advanced"
-    bl_ui_units_x = 13
-
-    def draw(self, context):
-        paint = context.tool_settings.gpencil_paint
-        brush = paint.brush
-        gp_settings = brush.gpencil_settings
-
-        layout = self.layout
-        # Fill
-        row = layout.row(align=True)
-        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
-        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
-
-        row = layout.row(align=True)
-        row.prop(gp_settings, "fill_factor", text="Resolution")
-        if gp_settings.fill_draw_mode != 'STROKE':
-            row = layout.row(align=True)
-            row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-            row = layout.row(align=True)
-            row.prop(gp_settings, "fill_threshold", text="Threshold")
-
-
 # Only a popover
 class TOPBAR_PT_name(Panel):
     bl_space_type = 'TOPBAR'  # dummy
@@ -779,7 +752,6 @@ classes = (
     TOPBAR_MT_help,
     TOPBAR_PT_gpencil_layers,
     TOPBAR_PT_gpencil_primitive,
-    TOPBAR_PT_gpencil_fill,
     TOPBAR_PT_name,
 )
 

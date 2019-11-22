@@ -1850,6 +1850,9 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
         if is_3d_view:
             if context.gpencil_data is None:
                 return False
+            brush = context.tool_settings.gpencil_paint.brush
+            if brush is None or brush.gpencil_tool in {'ERASE', 'TINT'}:
+                return False
 
             gpd = context.gpencil_data
             return bool(gpd.is_stroke_paint_mode)
@@ -2248,6 +2251,39 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                       use_negative_slope=True)
 
+# Grease Pencil Fill
+class VIEW3D_PT_tools_grease_pencil_brush_fill(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush'
+    bl_label = "Options"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        brush = context.tool_settings.gpencil_paint.brush
+        return brush is not None and brush.gpencil_tool == 'FILL'
+
+    def draw(self, context):
+        paint = context.tool_settings.gpencil_paint
+        brush = paint.brush
+        gp_settings = brush.gpencil_settings
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        # Fill
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_factor", text="Resolution")
+        if gp_settings.fill_draw_mode != 'STROKE':
+            row = layout.row(align=True)
+            row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+            row = layout.row(align=True)
+            row.prop(gp_settings, "fill_threshold", text="Threshold")
 
 # Grease Pecil Vertex Paint tools
 class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
@@ -2673,6 +2709,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brushcurves_sensitivity,
     VIEW3D_PT_tools_grease_pencil_brushcurves_strength,
     VIEW3D_PT_tools_grease_pencil_brushcurves_jitter,
+    VIEW3D_PT_tools_grease_pencil_brush_fill,
     VIEW3D_PT_tools_grease_pencil_sculpt,
     VIEW3D_PT_tools_grease_pencil_weight_paint,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
