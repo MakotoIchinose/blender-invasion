@@ -16,7 +16,7 @@
  * The Original Code is Copyright (C) 2019 Blender Foundation.
  * All rights reserved.
  */
-#include "../usd.h"
+#include "usd.h"
 
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_abstract.h"

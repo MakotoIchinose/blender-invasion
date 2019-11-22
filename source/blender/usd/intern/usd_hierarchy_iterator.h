@@ -21,7 +21,7 @@
 
 #include "abstract_hierarchy_iterator.h"
 #include "usd_exporter_context.h"
-#include "../usd.h"
+#include "usd.h"
 
 #include <string>
 
