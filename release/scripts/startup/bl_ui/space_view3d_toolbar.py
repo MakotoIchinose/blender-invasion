@@ -2572,6 +2572,12 @@ class VIEW3D_PT_tools_grease_pencil_weight_appearance(GreasePencilAppearancePane
     bl_category = "Tool"
 
 
+class VIEW3D_PT_tools_grease_pencil_vertex_appearance(GreasePencilAppearancePanel, View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Display"
+    bl_category = "Tool"
+
+
 class VIEW3D_PT_gpencil_brush_presets(PresetPanel, Panel):
     """Brush settings"""
     bl_label = "Brush Presets"
@@ -2658,6 +2664,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_vertex,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff,
+    VIEW3D_PT_tools_grease_pencil_vertex_appearance,
 )
 
 if __name__ == "__main__":  # only for live edit.

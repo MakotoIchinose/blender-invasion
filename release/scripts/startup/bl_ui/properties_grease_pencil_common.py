@@ -271,14 +271,29 @@ class GreasePencilAppearancePanel:
 
         tool_settings = context.tool_settings
         ob = context.active_object
-
+        brush = None
         if ob.mode == 'PAINT_GPENCIL':
             brush = tool_settings.gpencil_paint.brush
+        elif ob.mode == 'SCULPT_GPENCIL':
+            brush = tool_settings.gpencil_sculpt_paint.brush
+        elif ob.mode == 'WEIGHT_GPENCIL':
+            brush = tool_settings.gpencil_weight_paint.brush
+        elif ob.mode == 'VERTEX_GPENCIL':
+            brush = tool_settings.gpencil_vertex_paint.brush
+
+        if brush:
             gp_settings = brush.gpencil_settings
 
             sub = layout.column(align=True)
             sub.enabled = not brush.use_custom_icon
-            sub.prop(gp_settings, "gp_icon", text="Icon")
+            if ob.mode == 'PAINT_GPENCIL':
+                sub.prop(gp_settings, "gpencil_paint_icon", text="Icon")
+            elif ob.mode == 'SCULPT_GPENCIL':
+                sub.prop(gp_settings, "gpencil_sculpt_icon", text="Icon")
+            elif ob.mode == 'WEIGHT_GPENCIL':
+                sub.prop(gp_settings, "gpencil_weight_icon", text="Icon")
+            elif ob.mode == 'VERTEX_GPENCIL':
+                sub.prop(gp_settings, "gpencil_vertex_icon", text="Icon")
 
             layout.prop(brush, "use_custom_icon")
             sub = layout.column()
@@ -287,26 +302,12 @@ class GreasePencilAppearancePanel:
 
             layout.prop(gp_settings, "use_cursor", text="Show Brush")
 
-            if brush.gpencil_tool == 'DRAW':
-                layout.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
+            if ob.mode == 'PAINT_GPENCIL': 
+                if brush.gpencil_tool == 'DRAW':
+                    layout.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
-            if brush.gpencil_tool == 'FILL':
-                layout.prop(brush, "cursor_color_add", text="Color")
-
-        elif ob.mode == 'SCULPT_GPENCIL':
-            brush = tool_settings.gpencil_sculpt_paint.brush
-            gp_settings = brush.gpencil_settings
-            tool = brush.gpencil_sculpt_tool
-
-            col = layout.column(align=True)
-            col.prop(gp_settings, "use_cursor", text="Show Brush")
-
-        elif ob.mode == 'WEIGHT_GPENCIL':
-            brush = tool_settings.gpencil_weight_paint.brush
-            gp_settings = brush.gpencil_settings
-
-            col = layout.column(align=True)
-            col.prop(gp_settings, "use_cursor", text="Show Brush")
+                if brush.gpencil_tool == 'FILL':
+                    layout.prop(brush, "cursor_color_add", text="Color")
 
 
 class GPENCIL_MT_snap(Menu):
