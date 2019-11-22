@@ -1,0 +1,22 @@
+diff -Naur usd.orig/cmake/defaults/Packages.cmake external_usd/cmake/defaults/Packages.cmake
+--- usd.orig/cmake/defaults/Packages.cmake	2019-06-17 16:56:45 -0600
++++ external_usd/cmake/defaults/Packages.cmake	2019-07-19 14:58:06 -0600
+@@ -64,7 +64,7 @@
+ endif()
+ 
+ # --TBB
+-find_package(TBB REQUIRED COMPONENTS tbb)
++find_package(TBB)
+ add_definitions(${TBB_DEFINITIONS})
+ 
+ # --math
+diff -Naur usd.orig/pxr/usd/CMakeLists.txt external_usd/pxr/usd/CMakeLists.txt
+--- usd.orig/pxr/usd/CMakeLists.txt	2019-06-17 16:56:45 -0600
++++ external_usd/pxr/usd/CMakeLists.txt	2019-07-19 15:08:15 -0600
+@@ -1,6 +1,5 @@
+ set(DIRS
+     lib
+-    bin
+     plugin
+ )
+ 
