@@ -1418,6 +1418,19 @@ void BLI_task_parallel_range_pool_push(TaskParallelRangePool *range_pool,
   range_pool->parallel_range_states = state;
 }
 
+static void parallel_range_func_finalize(TaskPool *__restrict pool,
+                                         void *v_state,
+                                         int UNUSED(thread_id))
+{
+  TaskParallelRangePool *__restrict range_pool = BLI_task_pool_userdata(pool);
+  TaskParallelRangeState *state = v_state;
+
+  for (int i = 0; i < range_pool->num_tasks; i++) {
+    void *tls_data = (char *)state->flatten_tls_storage + (state->tls_data_size * (size_t)i);
+    state->func_finalize(state->userdata_shared, tls_data);
+  }
+}
+
 /**
  * Run all tasks pushed to the range_pool.
  *
@@ -1493,17 +1506,12 @@ void BLI_task_parallel_range_pool_work_and_wait(TaskParallelRangePool *range_poo
   }
 
   BLI_task_pool_work_and_wait(task_pool);
-  BLI_task_pool_free(task_pool);
-  range_pool->pool = NULL;
 
   BLI_assert(range_pool->current_state == NULL);
 
-  /* Finalize and cleanup all tasks. */
-  TaskParallelRangeState *state_next;
+  /* Finalize all tasks. */
   for (TaskParallelRangeState *state = range_pool->parallel_range_states; state != NULL;
-       state = state_next) {
-    state_next = state->next;
-
+       state = state->next) {
     const size_t userdata_chunk_size = state->tls_data_size;
     void *userdata_chunk_array = state->flatten_tls_storage;
     if (userdata_chunk_size == 0) {
@@ -1513,13 +1521,32 @@ void BLI_task_parallel_range_pool_work_and_wait(TaskParallelRangePool *range_poo
     }
 
     if (state->func_finalize != NULL) {
-      for (int i = 0; i < num_tasks; i++) {
-        void *userdata_chunk_local = (char *)userdata_chunk_array +
-                                     (userdata_chunk_size * (size_t)i);
-        state->func_finalize(state->userdata_shared, userdata_chunk_local);
-      }
+      BLI_task_pool_push_from_thread(task_pool,
+                                     parallel_range_func_finalize,
+                                     state,
+                                     false,
+                                     TASK_PRIORITY_HIGH,
+                                     task_pool->thread_id);
     }
-    MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * (size_t)num_tasks);
+  }
+
+  BLI_task_pool_work_and_wait(task_pool);
+  BLI_task_pool_free(task_pool);
+  range_pool->pool = NULL;
+
+  /* Cleanup all tasks. */
+  TaskParallelRangeState *state_next;
+  for (TaskParallelRangeState *state = range_pool->parallel_range_states; state != NULL;
+       state = state_next) {
+    state_next = state->next;
+
+    const size_t userdata_chunk_size = state->tls_data_size;
+    void *userdata_chunk_array = state->flatten_tls_storage;
+    if (userdata_chunk_size != 0) {
+      BLI_assert(userdata_chunk_array != NULL);
+      MALLOCA_FREE(userdata_chunk_array, userdata_chunk_size * (size_t)num_tasks);
+    }
+
     MEM_freeN(state);
   }
   range_pool->parallel_range_states = NULL;
