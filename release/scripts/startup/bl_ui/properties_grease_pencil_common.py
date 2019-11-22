@@ -312,13 +312,20 @@ class GreasePencilAppearancePanel:
             col = layout.column()
             col.active = gp_settings.use_cursor
 
-            if ob.mode in {'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
-                tool = brush.gpencil_tool
-                if tool in {'GRAB', 'CLONE'}:
-                    col.prop(brush, "cursor_color_add", text="Add")
-                else:
+            if ob.mode == 'SCULPT_GPENCIL':
+                tool = brush.gpencil_sculpt_tool
+                if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
                     col.prop(brush, "cursor_color_add", text="Add")
                     col.prop(brush, "cursor_color_subtract", text="Subtract")
+                else:
+                    col.prop(brush, "cursor_color_add", text="Add")
+
+            if ob.mode == 'WEIGHT_GPENCIL':
+                col.prop(brush, "cursor_color_add", text="Add")
+                col.prop(brush, "cursor_color_subtract", text="Subtract")
+
+            if ob.mode == 'VERTEX_GPENCIL':
+                col.prop(brush, "cursor_color_add", text="Add")
 
 
 class GreasePencilBrushFalloff:
