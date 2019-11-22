@@ -96,9 +96,9 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                           double *override_camera_loc,
                                                           char override_cam_is_persp,
                                                           double vp[4][4],
-                                                          double *CameraDir,
-                                                          double *From,
-                                                          double *To);
+                                                          double *camera_dir,
+                                                          double *from,
+                                                          double *to);
 static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
                                          LANPR_RenderLine *rl,
                                          int *rowbegin,
@@ -1979,6 +1979,12 @@ static int lanpr_share_edge_direct(LANPR_RenderTriangle *rt, LANPR_RenderLine *r
   return 0;
 }
 
+/** This is the main function to calculate
+ * the occlusion status between 1(one) triangle and 1(one) line.
+ * if returned 1, then from/to will carry the occludded segments
+ * in ratio from rl->l to rl->r. the line is later cutted with
+ * these two values.
+*/
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
@@ -1986,9 +1992,9 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
                                                           double *override_cam_loc,
                                                           char override_cam_is_persp,
                                                           double vp[4][4],
-                                                          double *CameraDir,
-                                                          double *From,
-                                                          double *To)
+                                                          double *camera_dir,
+                                                          double *from,
+                                                          double *to)
 {
   double is[3] = {0};
   int order[3];
@@ -2008,6 +2014,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   double *LFBC = rl->l->fbcoord, *RFBC = rl->r->fbcoord, *FBC0 = rt->v[0]->fbcoord,
          *FBC1 = rt->v[1]->fbcoord, *FBC2 = rt->v[2]->fbcoord;
 
+  /* No potential overlapping, return early. */
   if ((MAX3(FBC0[0], FBC1[0], FBC2[0]) < MIN2(LFBC[0], RFBC[0])) ||
       (MIN3(FBC0[0], FBC1[0], FBC2[0]) > MAX2(LFBC[0], RFBC[0])) ||
       (MAX3(FBC0[1], FBC1[1], FBC2[1]) < MIN2(LFBC[1], RFBC[1])) ||
@@ -2015,22 +2022,22 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
     return 0;
   }
 
+  /* If the the line is one of the edge in the triangle, then it's not occludded. */
   if (lanpr_share_edge_direct(rt, rl)) {
     return 0;
   }
 
+  /* If the line visually crosses one of the edge in the triangle */
   a = lanpr_LineIntersectTest2d(LFBC, RFBC, FBC0, FBC1, &is[0]);
   b = lanpr_LineIntersectTest2d(LFBC, RFBC, FBC1, FBC2, &is[1]);
   c = lanpr_LineIntersectTest2d(LFBC, RFBC, FBC2, FBC0, &is[2]);
-
-  /*  printf("abc: %d %d %d\n", a,b,c); */
 
   INTERSECT_SORT_MIN_TO_MAX_3(is[0], is[1], is[2], order);
 
   sub_v3_v3v3_db(Lv, rl->l->gloc, rt->v[0]->gloc);
   sub_v3_v3v3_db(Rv, rl->r->gloc, rt->v[0]->gloc);
 
-  copy_v3_v3_db(Cv, CameraDir);
+  copy_v3_v3_db(Cv, camera_dir);
 
   if ((override_cam_loc && override_cam_is_persp)) {
     copy_v3_v3_db(vd4, override_cam_loc);
@@ -2170,27 +2177,27 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
 
   if (LF <= 0 && RF <= 0 && (dot_l || dot_r)) {
 
-    *From = MAX2(0, is[LCross]);
-    *To = MIN2(1, is[RCross]);
-    if (*From >= *To) {
+    *from = MAX2(0, is[LCross]);
+    *to = MIN2(1, is[RCross]);
+    if (*from >= *to) {
       return 0;
     }
     /*  printf("1 From %f to %f\n",*From, *To); */
     return 1;
   }
   else if (LF >= 0 && RF <= 0 && (dot_l || dot_r)) {
-    *From = MAX2(cut, is[LCross]);
-    *To = MIN2(1, is[RCross]);
-    if (*From >= *To) {
+    *from = MAX2(cut, is[LCross]);
+    *to = MIN2(1, is[RCross]);
+    if (*from >= *to) {
       return 0;
     }
     /*  printf("2 From %f to %f\n",*From, *To); */
     return 1;
   }
   else if (LF <= 0 && RF >= 0 && (dot_l || dot_r)) {
-    *From = MAX2(0, is[LCross]);
-    *To = MIN2(cut, is[RCross]);
-    if (*From >= *To) {
+    *from = MAX2(0, is[LCross]);
+    *to = MIN2(cut, is[RCross]);
+    if (*from >= *to) {
       return 0;
     }
     /*  printf("3 From %f to %f\n",*From, *To); */
@@ -2364,9 +2371,7 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
     l = new_share = mem_static_aquire(&rb->render_data_pool, (sizeof(LANPR_RenderVert)));
 
     new_share->edge_used = 1;
-    /*  new_share->IntersectL = l; */
-    new_share->v = (void *)r; /*  Caution! */
-    /*  result->intersecting_with = rt; */
+    new_share->v = (void *)r; /*  Caution!  BMVert* result->v is reused to save a intersecting render vert. */
     copy_v3_v3_db(new_share->gloc, share->gloc);
 
     r = lanpr_triangle_line_intersection_test(rb, rl, rt, testing, 0);
