@@ -47,7 +47,6 @@ add_dependencies(
   external_usd
   external_tbb
   external_boost
-  external_python
 )
 
 if(WIN32)
