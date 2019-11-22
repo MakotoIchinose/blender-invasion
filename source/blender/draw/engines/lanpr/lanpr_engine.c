@@ -131,7 +131,7 @@ static void lanpr_engine_init(void *ved)
   lanpr_share.init_complete = 1;
 }
 
-void DRW_scene_freecache(Scene *sce)
+void DRW_scene_lanpr_freecache(Scene *sce)
 {
   LANPR_LineLayer *ll;
 

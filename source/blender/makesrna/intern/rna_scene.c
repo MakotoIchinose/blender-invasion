@@ -47,6 +47,7 @@
 
 #include "ED_object.h"
 #include "ED_gpencil.h"
+#include "ED_lanpr.h"
 
 #include "DRW_engine.h"
 
@@ -2543,8 +2544,6 @@ void rna_lanpr_active_line_layer_set(PointerRNA *ptr, PointerRNA value)
   SceneLANPR *lanpr = (SceneLANPR *)ptr->data;
   lanpr->active_layer = value.data;
 }
-
-extern bool ED_lanpr_dpix_shader_error(void);
 
 static bool rna_lanpr_shader_error_get(PointerRNA *UNUSED(ptr))
 {

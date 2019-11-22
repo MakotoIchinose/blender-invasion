@@ -160,11 +160,20 @@ static void buttons_main_region_layout_properties(const bContext *C,
     case BCONTEXT_WORLD:
       contexts[0] = "world";
       break;
+
     case BCONTEXT_COLLECTION:
+#ifdef WITH_LANPR
       contexts[0] = "collection";
+#else
+      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
+#endif
       break;
     case BCONTEXT_LANPR:
+#ifdef WITH_LANPR
       contexts[0] = "lanpr";
+#else
+      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
+#endif
       break;
     case BCONTEXT_OBJECT:
       contexts[0] = "object";

@@ -61,6 +61,7 @@ set(SRC
   ../include/ED_keyframes_draw.h
   ../include/ED_keyframes_edit.h
   ../include/ED_keyframing.h
+  ../include/ED_lanpr.h
   ../include/ED_lattice.h
   ../include/ED_logic.h
   ../include/ED_markers.h
@@ -108,6 +109,10 @@ add_definitions(${GL_DEFINITIONS})
 
 if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
+endif()
+
+if(WITH_LANPR)
+  add_definitions(-DWITH_LANPR)
 endif()
 
 if(WITH_PYTHON)

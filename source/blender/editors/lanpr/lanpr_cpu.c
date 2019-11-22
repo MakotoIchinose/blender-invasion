@@ -2105,7 +2105,7 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   }
 
   /* To accomodate k=0 and k=inf (vertical) lines. */
-  if (abs(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > abs(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
+  if (ABS(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > ABS(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
     cut = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
   }
   else {

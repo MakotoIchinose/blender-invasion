@@ -66,5 +66,6 @@ endif()
 add_subdirectory(datafiles)
 
 if(WITH_LANPR)
+  add_definitions(-DWITH_LANPR)
   add_subdirectory(lanpr)
 endif()

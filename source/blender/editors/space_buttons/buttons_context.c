@@ -598,10 +598,15 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
     case BCONTEXT_WORLD:
       found = buttons_context_path_world(path);
       break;
-    case BCONTEXT_COLLECTION:
+    case BCONTEXT_COLLECTION: /* This is for LANPR collection flags */
+#ifdef WITH_LANPR
       found = buttons_context_path_collection(path, window);
+#else
+      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
+#endif
       break;
-    case BCONTEXT_LANPR:
+    case BCONTEXT_LANPR: /* This is for LANPR object flags */
+#ifdef WITH_LANPR
       if (scene &&
           ((scene->lanpr.flags & LANPR_ENABLED) || !strcmp(scene->r.engine, "BLENDER_LANPR"))) {
         found = buttons_context_path_object(path);
@@ -609,6 +614,9 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       else {
         found = 0;
       }
+#else
+      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_LANPR'"); 
+#endif
       break;
     case BCONTEXT_TOOL:
       found = true;

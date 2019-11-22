@@ -673,10 +673,6 @@ class RENDER_PT_lanpr(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
     bl_label = "LANPR"
     bl_options = {'DEFAULT_CLOSED'}
-    
-    @classmethod
-    def poll(cls, context):
-        return True
 
     def draw_header(self, context):
         if context.scene.render.engine != 'BLENDER_LANPR':
@@ -989,10 +985,6 @@ class RENDER_PT_lanpr_options(RenderButtonsPanel, Panel):
     bl_parent_id = "RENDER_PT_lanpr"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        return True
 
     def draw(self, context):
         scene = context.scene

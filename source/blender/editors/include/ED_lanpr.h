@@ -24,6 +24,10 @@
 #ifndef __ED_LANPR_H__
 #define __ED_LANPR_H__
 
+#ifndef WITH_LANPR
+#    error LANPR code included in non-LANPR-enabled build
+#endif
+
 #include "BLI_listbase.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
@@ -597,5 +601,8 @@ void OBJECT_OT_lanpr_update_gp_target(struct wmOperatorType *ot);
 void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
 
 void ED_operatortypes_lanpr(void);
+
+/* for rna */
+static bool rna_lanpr_shader_error_get(PointerRNA *UNUSED(ptr));
 
 #endif /* __ED_LANPR_H__ */

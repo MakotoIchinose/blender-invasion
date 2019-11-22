@@ -64,7 +64,9 @@
 #include "ED_gizmo_library.h"
 #include "ED_transform.h"
 
+#ifdef WITH_LANPR
 #include "ED_lanpr.h"
+#endif
 
 #include "io_ops.h"
 

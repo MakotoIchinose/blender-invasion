@@ -18,15 +18,12 @@
 
 # <pep8 compliant>
 from bpy.types import Panel
-from bpy import data
-from mathutils import Vector
-
 
 class CollectionButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "collection"
-    # COMPAT_ENGINES must be defined in each subclass, external engines can add themselves here
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
@@ -41,6 +38,7 @@ def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
 
 class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
     bl_label = "Collection Flags"
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     def draw(self, context):
         layout=self.layout
@@ -65,6 +63,7 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
 
 class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
     bl_label = "Collection LANPR"
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):

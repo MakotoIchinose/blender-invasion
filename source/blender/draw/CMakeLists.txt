@@ -176,6 +176,7 @@ if(WITH_LANPR)
 	  engines/lanpr
   )
   list(APPEND SRC
+    engines/lanpr/lanpr_all.h
     engines/lanpr/lanpr_dpix.c
     engines/lanpr/lanpr_engine.c
     engines/lanpr/lanpr_cpu.c
@@ -407,10 +408,6 @@ list(APPEND INC
 
 if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
-endif()
-
-if(WITH_LANPR)
-  add_definitions(-DWITH_LANPR)
 endif()
 
 blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -18,19 +18,12 @@
 
 # <pep8 compliant>
 from bpy.types import Panel
-from bpy import data
-from mathutils import Vector
-
 
 class LanprButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "lanpr"
-    # COMPAT_ENGINES must be defined in each subclass, external engines can add themselves here
-
-    @classmethod
-    def poll(cls, context):
-        return True
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
 def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
     col.prop(line_type, "use", text=text_disp)
@@ -40,6 +33,7 @@ def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
 
 class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
     bl_label = "LANPR settings"
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):
@@ -80,6 +74,7 @@ class OBJECT_PT_lanpr_settings(LanprButtonsPanel, Panel):
 
 class OBJECT_PT_lanpr(LanprButtonsPanel, Panel):
     bl_label = "Usage"
+    COMPAT_ENGINES = { 'BLENDER_LANPR' }
 
     @classmethod
     def poll(cls, context):

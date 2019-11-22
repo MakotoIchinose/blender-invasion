@@ -59,7 +59,9 @@
 #include "ED_render.h"
 #include "ED_view3d.h"
 
+#ifdef WITH_LANPR
 #include "ED_lanpr.h"
+#endif
 
 #include "DEG_depsgraph.h"
 
