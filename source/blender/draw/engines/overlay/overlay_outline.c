@@ -45,7 +45,7 @@ void OVERLAY_outline_init(OVERLAY_Data *vedata)
         {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(txl->outlines_id_tx)});
 
     for (int i = 0; i < 2; i++) {
-      DRW_texture_ensure_fullscreen_2d(&txl->outlines_color_tx[i], GPU_RGBA8, 0);
+      DRW_texture_ensure_fullscreen_2d(&txl->outlines_color_tx[i], GPU_RGBA8, DRW_TEX_FILTER);
       GPU_framebuffer_ensure_config(
           &fbl->outlines_process_fb[i],
           {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->outlines_color_tx[i])});
