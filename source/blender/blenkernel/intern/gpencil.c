@@ -386,6 +386,8 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd, const char *name, bool setacti
     gpl->opacity = 1.0f;
     /* default channel color */
     ARRAY_SET_ITEMS(gpl->color, 0.2f, 0.2f, 0.2f);
+    /* Default vertex mix. */
+    gpl->vertex_paint_opacity = 1.0f;
   }
 
   /* auto-name */
