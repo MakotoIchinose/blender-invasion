@@ -28,6 +28,7 @@
 
 #include "overlay_private.h"
 
+extern char datatoc_antialiasing_frag_glsl[];
 extern char datatoc_armature_dof_vert_glsl[];
 extern char datatoc_armature_envelope_distance_frag_glsl[];
 extern char datatoc_armature_envelope_outline_vert_glsl[];
@@ -115,6 +116,8 @@ extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
+  GPUShader *antialiasing;
+  GPUShader *antialiasing_merge;
   GPUShader *armature_dof;
   GPUShader *armature_envelope_outline;
   GPUShader *armature_envelope_solid;
@@ -179,6 +182,38 @@ typedef struct OVERLAY_Shaders {
 static struct {
   OVERLAY_Shaders sh_data[GPU_SHADER_CFG_LEN];
 } e_data = {{{NULL}}};
+
+GPUShader *OVERLAY_shader_antialiasing(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->antialiasing) {
+    sh_data->antialiasing = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
+        .frag =
+            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define USE_FXAA\n", NULL},
+    });
+  }
+  return sh_data->antialiasing;
+}
+
+GPUShader *OVERLAY_shader_antialiasing_merge(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->antialiasing_merge) {
+    sh_data->antialiasing_merge = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
+        .frag =
+            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, NULL},
+    });
+  }
+  return sh_data->antialiasing_merge;
+}
 
 GPUShader *OVERLAY_shader_depth_only(void)
 {

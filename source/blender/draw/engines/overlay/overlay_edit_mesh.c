@@ -365,7 +365,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  OVERLAY_FramebufferList *fbl = vedata->fbl;
 
   DRW_draw_pass(psl->edit_mesh_weight_ps);
   DRW_draw_pass(psl->edit_mesh_analysis_ps);
@@ -384,8 +384,8 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 
     DRW_view_set_active(NULL);
 
-    GPU_framebuffer_bind(dfbl->in_front_fb);
-    GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
+    GPU_framebuffer_bind(fbl->overlay_in_front_fb);
+    GPU_framebuffer_clear_depth(fbl->overlay_in_front_fb, 1.0f);
     DRW_draw_pass(psl->edit_mesh_normals_ps);
 
     DRW_view_set_active(pd->view_edit_edges);
@@ -394,7 +394,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
     DRW_view_set_active(pd->view_edit_verts);
     DRW_draw_pass(psl->edit_mesh_verts_ps[NOT_IN_FRONT]);
 
-    GPU_framebuffer_bind(dfbl->default_fb);
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
   }
   else {
     const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -408,7 +408,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
       /* In the case of single ghost object edit (common case for retopology):
        * we clear the depth buffer so that only the depth of the retopo mesh
        * is occluding the edit cage. */
-      GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
+      GPU_framebuffer_clear_depth(fbl->overlay_default_fb, 1.0f);
     }
 
     DRW_draw_pass(psl->edit_mesh_depth_ps[IN_FRONT]);

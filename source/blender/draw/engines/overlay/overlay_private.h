@@ -30,6 +30,12 @@
 #endif
 
 typedef struct OVERLAY_FramebufferList {
+  struct GPUFrameBuffer *overlay_default_fb;
+  struct GPUFrameBuffer *overlay_color_only_fb;
+  struct GPUFrameBuffer *overlay_in_front_fb;
+  struct GPUFrameBuffer *overlay_default_history_fb;
+  struct GPUFrameBuffer *overlay_color_only_history_fb;
+  struct GPUFrameBuffer *overlay_in_front_history_fb;
   struct GPUFrameBuffer *outlines_prepass_fb;
   struct GPUFrameBuffer *outlines_process_fb[2];
 } OVERLAY_FramebufferList;
@@ -39,6 +45,8 @@ typedef struct OVERLAY_TextureList {
   struct GPUTexture *dummy_depth_tx;
   struct GPUTexture *outlines_id_tx;
   struct GPUTexture *outlines_color_tx[2];
+  struct GPUTexture *overlay_color_tx;
+  struct GPUTexture *overlay_color_history_tx;
   struct GPUTexture *edit_mesh_occlude_wire_tx;
 } OVERLAY_TextureList;
 
@@ -46,6 +54,8 @@ typedef struct OVERLAY_TextureList {
 #define IN_FRONT 1
 
 typedef struct OVERLAY_PassList {
+  DRWPass *antialiasing_ps;
+  DRWPass *antialiasing_merge_ps;
   DRWPass *armature_ps[2];
   DRWPass *armature_bone_select_ps;
   DRWPass *armature_transp_ps;
@@ -259,6 +269,7 @@ typedef struct OVERLAY_PrivateData {
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
   bool clear_in_front;
+  bool use_antialiasing;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
   short v3d_flag;
@@ -347,6 +358,11 @@ typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *pos_color;
   struct GPUVertFormat *wire_extra;
 } OVERLAY_InstanceFormats;
+
+void OVERLAY_antialiasing_init(OVERLAY_Data *vedata);
+void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_antialiasing_start(OVERLAY_Data *vedata);
+void OVERLAY_antialiasing_end(OVERLAY_Data *vedata);
 
 bool OVERLAY_armature_is_pose_mode(Object *ob, const struct DRWContextState *draw_ctx);
 void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
@@ -479,6 +495,8 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *vedata);
 
+GPUShader *OVERLAY_shader_antialiasing(void);
+GPUShader *OVERLAY_shader_antialiasing_merge(void);
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void);
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);
 GPUShader *OVERLAY_shader_armature_shape(bool use_outline);

@@ -118,6 +118,7 @@ set(SRC
   engines/gpencil/gpencil_shader_fx.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
+  engines/overlay/overlay_antialiasing.c
   engines/overlay/overlay_armature.c
   engines/overlay/overlay_engine.c
   engines/overlay/overlay_edit_curve.c
@@ -302,6 +303,7 @@ data_to_c_simple(engines/gpencil/shaders/fx/gpencil_fx_wave_frag.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
+data_to_c_simple(engines/overlay/shaders/antialiasing_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_dof_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_envelope_outline_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_envelope_solid_frag.glsl SRC)

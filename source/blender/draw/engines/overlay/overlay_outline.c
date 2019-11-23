@@ -337,7 +337,6 @@ void OVERLAY_outline_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_FramebufferList *fbl = vedata->fbl;
   OVERLAY_PassList *psl = vedata->psl;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   float clearcol[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
   bool do_outlines = psl->outlines_prepass_ps != NULL &&
@@ -364,7 +363,7 @@ void OVERLAY_outline_draw(OVERLAY_Data *vedata)
     DRW_draw_pass(psl->outlines_bleed_ps);
 
     /* restore main framebuffer */
-    GPU_framebuffer_bind(dfbl->default_fb);
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
     DRW_draw_pass(psl->outlines_resolve_ps);
 
     DRW_stats_group_end();

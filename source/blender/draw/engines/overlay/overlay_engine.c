@@ -50,6 +50,8 @@ static void OVERLAY_engine_init(void *vedata)
   stl->pd->ctx_mode = CTX_data_mode_enum_ex(
       draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
 
+  OVERLAY_antialiasing_init(vedata);
+
   switch (stl->pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:
       OVERLAY_edit_mesh_init(vedata);
@@ -133,6 +135,7 @@ static void OVERLAY_cache_init(void *vedata)
       BLI_assert(!"Draw mode invalid");
       break;
   }
+  OVERLAY_antialiasing_cache_init(vedata);
   OVERLAY_armature_cache_init(vedata);
   OVERLAY_extra_cache_init(vedata);
   OVERLAY_facing_cache_init(vedata);
@@ -329,7 +332,9 @@ static void OVERLAY_draw_scene(void *vedata)
 {
   OVERLAY_Data *data = vedata;
   OVERLAY_PrivateData *pd = data->stl->pd;
-  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  OVERLAY_FramebufferList *fbl = data->fbl;
+
+  OVERLAY_antialiasing_start(vedata);
 
   OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
@@ -343,12 +348,12 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_outline_draw(vedata);
 
   if (DRW_state_is_fbo()) {
-    GPU_framebuffer_bind(dfbl->in_front_fb);
+    GPU_framebuffer_bind(fbl->overlay_in_front_fb);
 
     /* If we are not in solid shading mode, we clear the depth. */
     if (pd->clear_in_front) {
       /* TODO(fclem) This clear should be done in a global place. */
-      GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
+      GPU_framebuffer_clear_depth(fbl->overlay_in_front_fb, 1.0f);
     }
   }
   else if (DRW_state_is_select()) {
@@ -361,7 +366,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_image_in_front_draw(vedata);
 
   if (DRW_state_is_fbo()) {
-    GPU_framebuffer_bind(dfbl->default_fb);
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
   }
 
   OVERLAY_motion_path_draw(vedata);
@@ -399,6 +404,8 @@ static void OVERLAY_draw_scene(void *vedata)
     default:
       break;
   }
+
+  OVERLAY_antialiasing_end(vedata);
 }
 
 static void OVERLAY_engine_free(void)
