@@ -3997,5 +3997,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    /* Init default Vertex paint layer mix factor. */
+    {
+      if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
+        for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+          for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+            gpl->vertex_paint_opacity = 1.0f;
+          }
+        }
+      }
+    }
   }
 }

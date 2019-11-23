@@ -1005,7 +1005,10 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
           /* Apply the mix color of the fill and layer tint. */
           float mixtint[3];
           interp_v3_v3v3(mixtint, gps->mix_color_fill, tintcolor, tintcolor[3]);
-          interp_v3_v3v3(tfill, tfill, mixtint, gps->mix_color_fill[3] * vpaint_mix);
+          interp_v3_v3v3(tfill,
+                         tfill,
+                         mixtint,
+                         gps->mix_color_fill[3] * vpaint_mix * gpl->vertex_paint_opacity);
           /* If using vertex paint mask, attenuate not selected. */
           if ((attenuate) && ((gps->flag & GP_STROKE_SELECT) == 0)) {
             tfill[3] *= GP_VERTEX_MASK_ATTENUATE;
@@ -1089,7 +1092,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
     if ((gps->totpoints > 1) && (gp_style->mode == GP_STYLE_MODE_LINE)) {
       /* create vertex data */
       const int old_len = cache->b_stroke.vbo_len;
-      gpencil_get_stroke_geom(&cache->b_stroke, gps, sthickness, ink, tintcolor, onion);
+      gpencil_get_stroke_geom(&cache->b_stroke, gpl, gps, sthickness, ink, tintcolor, onion);
 
       /* add to list of groups */
       if (old_len < cache->b_stroke.vbo_len) {
@@ -1108,7 +1111,7 @@ static void gpencil_add_stroke_vertexdata(GpencilBatchCache *cache,
       /* create vertex data */
       const int old_len = cache->b_point.vbo_len;
       gpencil_get_point_geom(
-          &cache->b_point, gps, sthickness, ink, tintcolor, alignment_mode, onion);
+          &cache->b_point, gpl, gps, sthickness, ink, tintcolor, alignment_mode, onion);
 
       /* add to list of groups */
       if (old_len < cache->b_point.vbo_len) {

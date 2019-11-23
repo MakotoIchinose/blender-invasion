@@ -194,6 +194,10 @@ class DATA_PT_gpencil_layer_adjustments(LayerDataButtonsPanel, Panel):
         col.prop(gpl, "tint_color")
         col.prop(gpl, "tint_factor", text="Factor", slider=True)
 
+        # Vertex Paint Opacity
+        col = layout.row(align=True)
+        col.prop(gpl, "vertex_paint_opacity", text="Vertex Opacity")
+
         # Offsets - Thickness
         col = layout.row(align=True)
         col.prop(gpl, "line_change", text="Stroke Thickness")

@@ -367,7 +367,8 @@ typedef struct bGPDlayer {
 
   /** Blend modes. */
   int blend_mode;
-  char _pad[4];
+  /** Vertex Paint opacity by Layer. */
+  float vertex_paint_opacity;
 
   /* annotation onion skin */
   /**

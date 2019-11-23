@@ -1388,6 +1388,14 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Tint Factor", "Factor of tinting color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
+  /* Vertex Paint opacity factor */
+  prop = RNA_def_property(srna, "vertex_paint_opacity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "vertex_paint_opacity");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Vertex Paint Opacity", "Vertex Paint mix factor");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
   /* Line Thickness Change */
   prop = RNA_def_property(srna, "line_change", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "line_change");

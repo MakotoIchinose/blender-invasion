@@ -424,6 +424,7 @@ void gpencil_multisample_ensure(struct GPENCIL_Data *vedata, int rect_w, int rec
 
 /* create geometry functions */
 void gpencil_get_point_geom(struct GpencilBatchCacheElem *be,
+                            struct bGPDlayer *gpl,
                             struct bGPDstroke *gps,
                             short thickness,
                             const float ink[4],
@@ -431,6 +432,7 @@ void gpencil_get_point_geom(struct GpencilBatchCacheElem *be,
                             const int follow_mode,
                             const bool onion);
 void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
+                             struct bGPDlayer *gpl,
                              struct bGPDstroke *gps,
                              short thickness,
                              const float ink[4],

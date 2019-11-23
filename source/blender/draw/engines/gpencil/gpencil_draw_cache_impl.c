@@ -144,6 +144,7 @@ static void gpencil_elem_format_ensure(GpencilBatchCacheElem *be)
 
 /* create batch geometry data for points stroke shader */
 void gpencil_get_point_geom(GpencilBatchCacheElem *be,
+                            bGPDlayer *gpl,
                             bGPDstroke *gps,
                             short thickness,
                             const float ink[4],
@@ -193,7 +194,8 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
     if (!onion) {
       float mixtint[3];
       interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
-      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix);
+      interp_v3_v3v3(
+          mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix * gpl->vertex_paint_opacity);
     }
     /* If using vertex paint mask, attenuate not selected. */
     if ((attenuate) && ((pt->flag & GP_SPOINT_SELECT) == 0)) {
@@ -250,6 +252,7 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
 
 /* create batch geometry data for stroke shader */
 void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
+                             bGPDlayer *gpl,
                              bGPDstroke *gps,
                              short thickness,
                              const float ink[4],
@@ -296,7 +299,8 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
     if (!onion) {
       float mixtint[3];
       interp_v3_v3v3(mixtint, pt->mix_color, tintcolor, tintcolor[3]);
-      interp_v3_v3v3(mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix);
+      interp_v3_v3v3(
+          mix_color, ink, mixtint, pt->mix_color[3] * vpaint_mix * gpl->vertex_paint_opacity);
     }
 
     /* first point for adjacency (not drawn) */
