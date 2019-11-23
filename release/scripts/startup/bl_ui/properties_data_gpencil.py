@@ -196,7 +196,7 @@ class DATA_PT_gpencil_layer_adjustments(LayerDataButtonsPanel, Panel):
 
         # Vertex Paint Opacity
         col = layout.row(align=True)
-        col.prop(gpl, "vertex_paint_opacity", text="Vertex Opacity")
+        col.prop(gpl, "vertex_paint_opacity", text="Vertex Paint Opacity")
 
         # Offsets - Thickness
         col = layout.row(align=True)
