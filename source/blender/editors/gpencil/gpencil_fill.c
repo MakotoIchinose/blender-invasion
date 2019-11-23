@@ -1159,7 +1159,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 /* ----------------------- */
 /* Drawing                 */
 /* Helper: Draw status message while the user is running the operator */
-static void gpencil_fill_status_indicators(bContext *C, tGPDfill *UNUSED(tgpf))
+static void gpencil_fill_status_indicators(bContext *C)
 {
   const char *status_str = TIP_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back");
   ED_workspace_status_text(C, status_str);
@@ -1408,7 +1408,7 @@ static int gpencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
 
-  gpencil_fill_status_indicators(C, tgpf);
+  gpencil_fill_status_indicators(C);
 
   DEG_id_tag_update(&tgpf->gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);

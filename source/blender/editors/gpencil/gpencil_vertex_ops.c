@@ -138,8 +138,8 @@ static int gp_vertexpaint_brightness_contrast_exec(bContext *C, wmOperator *op)
         changed = true;
         if (mode != GP_PAINT_VERTEX_STROKE) {
           if (gps->mix_color_fill[3] > 0.0f) {
-            for (int i = 0; i < 3; i++) {
-              gps->mix_color_fill[i] = gain * gps->mix_color_fill[i] + offset;
+            for (int i2 = 0; i2 < 3; i2++) {
+              gps->mix_color_fill[i2] = gain * gps->mix_color_fill[i2] + offset;
             }
           }
         }
@@ -149,8 +149,8 @@ static int gp_vertexpaint_brightness_contrast_exec(bContext *C, wmOperator *op)
       if (mode != GP_PAINT_VERTEX_FILL) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
           if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
-            for (int i = 0; i < 3; i++) {
-              pt->mix_color[i] = gain * pt->mix_color[i] + offset;
+            for (int i2 = 0; i2 < 3; i2++) {
+              pt->mix_color[i2] = gain * pt->mix_color[i2] + offset;
             }
           }
         }
@@ -306,8 +306,8 @@ static int gp_vertexpaint_invert_exec(bContext *C, wmOperator *op)
         changed = true;
         if (mode != GP_PAINT_VERTEX_STROKE) {
           if (gps->mix_color_fill[3] > 0.0f) {
-            for (int i = 0; i < 3; i++) {
-              gps->mix_color_fill[i] = 1.0f - gps->mix_color_fill[i];
+            for (int i2 = 0; i2 < 3; i2++) {
+              gps->mix_color_fill[i2] = 1.0f - gps->mix_color_fill[i2];
             }
           }
         }
@@ -317,8 +317,8 @@ static int gp_vertexpaint_invert_exec(bContext *C, wmOperator *op)
       if (mode != GP_PAINT_VERTEX_FILL) {
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
           if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
-            for (int i = 0; i < 3; i++) {
-              pt->mix_color[i] = 1.0f - pt->mix_color[i];
+            for (int i2 = 0; i2 < 3; i2++) {
+              pt->mix_color[i2] = 1.0f - pt->mix_color[i2];
             }
           }
         }
@@ -375,8 +375,8 @@ static int gp_vertexpaint_levels_exec(bContext *C, wmOperator *op)
       changed = true;
       if (mode != GP_PAINT_VERTEX_STROKE) {
         if (gps->mix_color_fill[3] > 0.0f) {
-          for (int i = 0; i < 3; i++) {
-            gps->mix_color_fill[i] = gain * (gps->mix_color_fill[i] + offset);
+          for (int i2 = 0; i2 < 3; i2++) {
+            gps->mix_color_fill[i2] = gain * (gps->mix_color_fill[i2] + offset);
           }
         }
       }
@@ -386,8 +386,8 @@ static int gp_vertexpaint_levels_exec(bContext *C, wmOperator *op)
     if (mode != GP_PAINT_VERTEX_FILL) {
       for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
         if ((pt->flag & GP_SPOINT_SELECT) && (pt->mix_color[3] > 0.0f)) {
-          for (int i = 0; i < 3; i++) {
-            pt->mix_color[i] = gain * (pt->mix_color[i] + offset);
+          for (int i2 = 0; i < 3; i2++) {
+            pt->mix_color[i2] = gain * (pt->mix_color[i2] + offset);
           }
         }
       }
@@ -597,7 +597,7 @@ static uint get_material_type(MaterialGPencilStyle *gp_style,
                               bool use_fill,
                               char *name)
 {
-  uint r_i = -1;
+  uint r_i = 0;
   if ((use_stroke) && (use_fill)) {
     switch (gp_style->mode) {
       case GP_STYLE_MODE_LINE: {

@@ -37,9 +37,7 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
-#include "BKE_gpencil_modifier.h"
 #include "BKE_main.h"
-#include "BKE_material.h"
 #include "DNA_meshdata_types.h"
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
@@ -64,7 +62,6 @@
 /* ************************************************ */
 /* General Brush Editing Context */
 #define GP_SELECT_BUFFER_CHUNK 256
-#define GP_GRID_PIXEL_SIZE 10.0f
 
 /* Temp Flags while Painting. */
 typedef enum eGPDweight_brush_Flag {
@@ -309,7 +306,7 @@ static bool brush_draw_apply(tGP_BrushWeightpaintData *gso,
 
 /* ************************************************ */
 /* Header Info */
-static void gp_weightpaint_brush_header_set(bContext *C, tGP_BrushWeightpaintData *UNUSED(gso))
+static void gp_weightpaint_brush_header_set(bContext *C)
 {
   ED_workspace_status_text(C,
                            TIP_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"
@@ -376,7 +373,7 @@ static bool gp_weightpaint_brush_init(bContext *C, wmOperator *op)
   gp_point_conversion_init(C, &gso->gsc);
 
   /* Update header. */
-  gp_weightpaint_brush_header_set(C, gso);
+  gp_weightpaint_brush_header_set(C);
 
   /* Setup cursor drawing. */
   ED_gpencil_toggle_brush_cursor(C, true, NULL);

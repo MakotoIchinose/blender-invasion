@@ -1952,7 +1952,7 @@ static bool gp_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
           local_view_bits = v3d->local_view_uuid;
         }
         /* create new default object */
-        obact = ED_gpencil_add_object(C, p->scene, cur, local_view_bits);
+        obact = ED_gpencil_add_object(C, cur, local_view_bits);
       }
       /* assign object after all checks to be sure we have one active */
       p->ob = obact;

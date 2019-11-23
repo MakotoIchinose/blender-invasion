@@ -36,8 +36,6 @@
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
-#include "BKE_gpencil_modifier.h"
-#include "BKE_material.h"
 #include "BKE_report.h"
 
 #include "WM_api.h"
@@ -468,11 +466,7 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
 }
 
 /* Replace Brush (Don't use pressure or invert). */
-static bool brush_replace_apply(tGP_BrushVertexpaintData *gso,
-                                bGPDstroke *gps,
-                                int pt_index,
-                                const int radius,
-                                const int co[2])
+static bool brush_replace_apply(tGP_BrushVertexpaintData *gso, bGPDstroke *gps, int pt_index)
 {
   Brush *brush = gso->brush;
   bGPDspoint *pt = &gps->points[pt_index];
@@ -620,7 +614,6 @@ static bool brush_average_apply(tGP_BrushVertexpaintData *gso,
 static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
                               bGPDstroke *gps,
                               int pt_index,
-                              const int radius,
                               tGP_Selected *selected)
 {
   Brush *brush = gso->brush;
@@ -698,7 +691,7 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
 
 /* ************************************************ */
 /* Header Info */
-static void gp_vertexpaint_brush_header_set(bContext *C, tGP_BrushVertexpaintData *UNUSED(gso))
+static void gp_vertexpaint_brush_header_set(bContext *C)
 {
   ED_workspace_status_text(C,
                            TIP_("GPencil Vertex Paint: LMB to paint | RMB/Escape to Exit"
@@ -765,7 +758,7 @@ static bool gp_vertexpaint_brush_init(bContext *C, wmOperator *op)
   gp_point_conversion_init(C, &gso->gsc);
 
   /* Update header. */
-  gp_vertexpaint_brush_header_set(C, gso);
+  gp_vertexpaint_brush_header_set(C);
 
   /* Setup cursor drawing. */
   ED_gpencil_toggle_brush_cursor(C, true, NULL);
@@ -1036,12 +1029,12 @@ static bool gp_vertexpaint_brush_do_frame(bContext *C,
         break;
       }
       case GPVERTEX_TOOL_SMEAR: {
-        brush_smear_apply(gso, selected->gps, selected->pt_index, radius, selected);
+        brush_smear_apply(gso, selected->gps, selected->pt_index, selected);
         changed |= true;
         break;
       }
       case GPVERTEX_TOOL_REPLACE: {
-        brush_replace_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
+        brush_replace_apply(gso, selected->gps, selected->pt_index);
         changed |= true;
         break;
       }
