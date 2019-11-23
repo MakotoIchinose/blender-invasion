@@ -6782,7 +6782,7 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
             col.separator()
             col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
-            
+
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
         if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
@@ -6820,7 +6820,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
         settings = ts.gpencil_vertex_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
-        
+
         col = layout.column()
 
         if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
@@ -6832,7 +6832,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
             col.separator()
             col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
-        
+
         row = col.row(align=True)
         row.prop(brush, "size", text="Radius")
         row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')

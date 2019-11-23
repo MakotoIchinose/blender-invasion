@@ -2073,7 +2073,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         if context.region.type == 'TOOL_HEADER':
             return False
-            
+
         if brush.gpencil_tool == 'TINT':
             return True
 
@@ -2149,7 +2149,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
 
         if ob is None or brush is None:
             return False
-            
+
         if brush.gpencil_tool == 'TINT':
             return True
 
@@ -2362,7 +2362,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
         settings = ts.gpencil_vertex_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
-        
+
         col = layout.column()
 
         col.prop(gp_settings, "vertex_mode", text="Mode")
@@ -2535,7 +2535,7 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
                 tool = brush.gpencil_sculpt_tool
                 if tool not in {'SMOOTH', 'RANDOMIZE'}:
                     return False
-            
+
             if context.gpencil_data is None:
                 return False
 
