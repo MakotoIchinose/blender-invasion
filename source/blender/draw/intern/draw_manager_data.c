@@ -1623,13 +1623,17 @@ DRWView *DRW_view_create_sub(const DRWView *parent_view,
                              const float viewmat[4][4],
                              const float winmat[4][4])
 {
-  BLI_assert(parent_view && parent_view->parent == NULL);
+  /* Search original parent. */
+  const DRWView *ori_view = parent_view;
+  while (ori_view->parent != NULL) {
+    ori_view = ori_view->parent;
+  }
 
   DRWView *view = BLI_memblock_alloc(DST.vmempool->views);
 
   /* Perform copy. */
-  *view = *parent_view;
-  view->parent = (DRWView *)parent_view;
+  *view = *ori_view;
+  view->parent = (DRWView *)ori_view;
 
   DRW_view_update_sub(view, viewmat, winmat);
 

@@ -33,9 +33,7 @@ typedef struct OVERLAY_FramebufferList {
   struct GPUFrameBuffer *overlay_default_fb;
   struct GPUFrameBuffer *overlay_color_only_fb;
   struct GPUFrameBuffer *overlay_in_front_fb;
-  struct GPUFrameBuffer *overlay_default_history_fb;
-  struct GPUFrameBuffer *overlay_color_only_history_fb;
-  struct GPUFrameBuffer *overlay_in_front_history_fb;
+  struct GPUFrameBuffer *overlay_color_history_fb;
   struct GPUFrameBuffer *outlines_prepass_fb;
   struct GPUFrameBuffer *outlines_process_fb[2];
 } OVERLAY_FramebufferList;
@@ -250,6 +248,7 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *wires_all_grp[2][2]; /* With and without coloring. */
   DRWShadingGroup *wires_sculpt_grp[2];
 
+  DRWView *view_default;
   DRWView *view_wires;
   DRWView *view_edit_faces;
   DRWView *view_edit_faces_cage;
@@ -269,13 +268,18 @@ typedef struct OVERLAY_PrivateData {
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
   bool clear_in_front;
-  bool use_antialiasing;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
   short v3d_flag;
   DRWState clipping_state;
   OVERLAY_ShadingData shdata;
 
+  struct {
+    short sample;
+    short target_sample;
+    float prev_persmat[4][4];
+    bool enabled;
+  } antialiasing;
   struct {
     bool show_handles;
   } edit_curve;
@@ -496,6 +500,7 @@ void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *vedata);
 
 GPUShader *OVERLAY_shader_antialiasing(void);
+GPUShader *OVERLAY_shader_antialiasing_accum(void);
 GPUShader *OVERLAY_shader_antialiasing_merge(void);
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void);
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);

@@ -231,13 +231,14 @@ void DRW_globals_free(void)
 {
 }
 
-DRWView *DRW_view_create_with_zoffset(const RegionView3D *rv3d, float offset)
+DRWView *DRW_view_create_with_zoffset(const DRWView *parent_view,
+                                      const RegionView3D *rv3d,
+                                      float offset)
 {
   /* Create view with depth offset */
-  const DRWView *default_view = DRW_view_default_get();
   float viewmat[4][4], winmat[4][4];
-  DRW_view_viewmat_get(default_view, viewmat, false);
-  DRW_view_winmat_get(default_view, winmat, false);
+  DRW_view_viewmat_get(parent_view, viewmat, false);
+  DRW_view_winmat_get(parent_view, winmat, false);
 
   float viewdist = rv3d->dist;
 
@@ -248,7 +249,7 @@ DRWView *DRW_view_create_with_zoffset(const RegionView3D *rv3d, float offset)
 
   winmat[3][2] -= bglPolygonOffsetCalc((float *)winmat, viewdist, offset);
 
-  return DRW_view_create_sub(default_view, viewmat, winmat);
+  return DRW_view_create_sub(parent_view, viewmat, winmat);
 }
 
 /* ******************************************** COLOR UTILS ************************************ */

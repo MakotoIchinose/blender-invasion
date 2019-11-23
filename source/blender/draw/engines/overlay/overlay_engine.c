@@ -328,6 +328,8 @@ static void OVERLAY_cache_finish(void *vedata)
   OVERLAY_image_cache_finish(vedata);
 }
 
+#include "GPU_draw.h"
+
 static void OVERLAY_draw_scene(void *vedata)
 {
   OVERLAY_Data *data = vedata;
@@ -335,6 +337,8 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_FramebufferList *fbl = data->fbl;
 
   OVERLAY_antialiasing_start(vedata);
+
+  DRW_view_set_active(pd->view_default);
 
   OVERLAY_image_draw(vedata);
   OVERLAY_facing_draw(vedata);
@@ -344,8 +348,12 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_metaball_draw(vedata);
   OVERLAY_extra_draw(vedata);
 
+  DRW_view_set_active(NULL);
+
   OVERLAY_grid_draw(vedata);
   OVERLAY_outline_draw(vedata);
+
+  DRW_view_set_active(pd->view_default);
 
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_in_front_fb);
@@ -381,20 +389,26 @@ static void OVERLAY_draw_scene(void *vedata)
       OVERLAY_edit_curve_draw(vedata);
       break;
     case CTX_MODE_EDIT_TEXT:
+      /* Text overlay need final color for color inversion. */
+      OVERLAY_antialiasing_end(vedata);
       OVERLAY_edit_text_draw(vedata);
-      break;
+      return; /* WATCH! dont do AA twice. */
     case CTX_MODE_EDIT_LATTICE:
       OVERLAY_edit_lattice_draw(vedata);
       break;
     case CTX_MODE_POSE:
+      /* Pain overlay needs final color because of multiply blend mode. */
+      OVERLAY_antialiasing_end(vedata);
       OVERLAY_paint_draw(vedata);
       OVERLAY_pose_draw(vedata);
-      break;
+      return; /* WATCH! dont do AA twice. */
     case CTX_MODE_PAINT_WEIGHT:
     case CTX_MODE_PAINT_VERTEX:
     case CTX_MODE_PAINT_TEXTURE:
+      /* Pain overlay need final color because of multiply blend mode. */
+      OVERLAY_antialiasing_end(vedata);
       OVERLAY_paint_draw(vedata);
-      break;
+      return; /* WATCH! dont do AA twice. */
     case CTX_MODE_PARTICLE:
       OVERLAY_edit_particle_draw(vedata);
       break;
@@ -411,6 +425,22 @@ static void OVERLAY_draw_scene(void *vedata)
 static void OVERLAY_engine_free(void)
 {
   OVERLAY_shader_free();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Updates
+ * \{ */
+
+static void OVERLAY_view_update(void *vedata)
+{
+  OVERLAY_Data *data = vedata;
+  if (data->stl && data->stl->pd) {
+    OVERLAY_PrivateData *pd = data->stl->pd;
+    /* Reset TAA */
+    pd->antialiasing.sample = 0;
+  }
 }
 
 /** \} */
@@ -433,7 +463,7 @@ DrawEngineType draw_engine_overlay_type = {
     &OVERLAY_cache_finish,
     NULL,
     &OVERLAY_draw_scene,
-    NULL,
+    &OVERLAY_view_update,
     NULL,
     NULL,
 };

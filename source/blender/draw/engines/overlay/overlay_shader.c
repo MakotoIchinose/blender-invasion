@@ -117,6 +117,7 @@ extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
   GPUShader *antialiasing;
+  GPUShader *antialiasing_accum;
   GPUShader *antialiasing_merge;
   GPUShader *armature_dof;
   GPUShader *armature_envelope_outline;
@@ -197,6 +198,22 @@ GPUShader *OVERLAY_shader_antialiasing(void)
     });
   }
   return sh_data->antialiasing;
+}
+
+GPUShader *OVERLAY_shader_antialiasing_accum(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->antialiasing_accum) {
+    sh_data->antialiasing_accum = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
+        .frag =
+            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
+        .defs = (const char *[]){sh_cfg->def, "#define USE_ACCUM\n", NULL},
+    });
+  }
+  return sh_data->antialiasing_accum;
 }
 
 GPUShader *OVERLAY_shader_antialiasing_merge(void)

@@ -126,7 +126,9 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 void DRW_globals_update(void);
 void DRW_globals_free(void);
 
-struct DRWView *DRW_view_create_with_zoffset(const RegionView3D *rv3d, float offset);
+struct DRWView *DRW_view_create_with_zoffset(const struct DRWView *parent_view,
+                                             const RegionView3D *rv3d,
+                                             float offset);
 
 int DRW_object_wire_theme_get(struct Object *ob, struct ViewLayer *view_layer, float **r_color);
 float *DRW_color_background_blend_get(int theme_id);
