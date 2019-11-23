@@ -448,7 +448,7 @@ class _draw_tool_settings_context_mode:
         if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
             row.separator(factor=0.4)
             row.prop(brush, "color", text="")
-        
+
             row.popover(
                 panel="TOPBAR_PT_gpencil_vertexcolor",
                 text="Vertex Color",
@@ -799,7 +799,7 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 
+        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
                                         'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
         ts = context.scene.tool_settings
 
@@ -2792,7 +2792,7 @@ class VIEW3D_MT_join_palette(Menu):
     def poll(cls, context):
         if bpy.data.palettes > 1:
             return True
-        
+
         return False
 
     def draw(self, context):

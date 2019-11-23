@@ -1620,7 +1620,7 @@ class _defs_gpencil_weight:
 
 class _defs_gpencil_vertex:
 
-    
+
     @staticmethod
     def poll_select_mask(context):
         if context is None:
@@ -1630,7 +1630,7 @@ class _defs_gpencil_vertex:
         return ob and ob.type == 'GPENCIL' and (ts.use_gpencil_vertex_select_mask_point or
                                                 ts.use_gpencil_vertex_select_mask_stroke or
                                                 ts.use_gpencil_vertex_select_mask_segment)
-    
+
     @staticmethod
     def generate_from_brushes(context):
         return generate_from_enum_ex(
