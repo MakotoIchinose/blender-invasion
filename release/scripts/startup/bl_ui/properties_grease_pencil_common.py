@@ -273,18 +273,19 @@ class GreasePencilAppearancePanel:
         ob = context.active_object
         brush = None
         if ob.mode == 'PAINT_GPENCIL':
-            brush = tool_settings.gpencil_paint.brush
+            settings = tool_settings.gpencil_paint
         elif ob.mode == 'SCULPT_GPENCIL':
-            brush = tool_settings.gpencil_sculpt_paint.brush
+            settings = tool_settings.gpencil_sculpt_paint
         elif ob.mode == 'WEIGHT_GPENCIL':
-            brush = tool_settings.gpencil_weight_paint.brush
+            settings = tool_settings.gpencil_weight_paint
         elif ob.mode == 'VERTEX_GPENCIL':
-            brush = tool_settings.gpencil_vertex_paint.brush
+            settings = tool_settings.gpencil_vertex_paint
 
+        brush = settings.brush
         if brush:
             gp_settings = brush.gpencil_settings
 
-            layout.prop(gp_settings, "use_cursor", text="Show Brush")
+            layout.prop(settings, "show_brush", text="Show Brush")
 
             if ob.mode == 'PAINT_GPENCIL':
                 if brush.gpencil_tool == 'DRAW':
@@ -294,7 +295,7 @@ class GreasePencilAppearancePanel:
                     layout.prop(brush, "cursor_color_add", text="Color")
 
             col = layout.column()
-            col.active = gp_settings.use_cursor
+            col.active = settings.show_brush
 
             if ob.mode == 'SCULPT_GPENCIL':
                 tool = brush.gpencil_sculpt_tool

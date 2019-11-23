@@ -137,8 +137,6 @@ typedef enum eGPDbrush_Flag {
   GP_BRUSH_USE_STENGTH_PRESSURE = (1 << 1),
   /* brush use pressure for alpha factor */
   GP_BRUSH_USE_JITTER_PRESSURE = (1 << 2),
-  /* enable screen cursor */
-  GP_BRUSH_ENABLE_CURSOR = (1 << 5),
   /* fill hide transparent */
   GP_BRUSH_FILL_HIDE = (1 << 6),
   /* show fill help lines */
@@ -619,6 +617,7 @@ typedef enum eBrushUVSculptTool {
        /* These brushes could handle dynamic topology, \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
         * \ \
         * \ \ \
+        * \ \ \ \
         * \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ but user feedback indicates it's better not to */ \
        SCULPT_TOOL_SMOOTH, \
        SCULPT_TOOL_MASK) == 0)

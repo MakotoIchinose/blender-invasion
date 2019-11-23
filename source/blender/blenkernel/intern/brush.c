@@ -158,7 +158,6 @@ void BKE_brush_init_gpencil_settings(Brush *brush)
   brush->gpencil_settings->draw_jitter = 0.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_JITTER_PRESSURE;
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PEN;
-  brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
   /* curves */
   brush->gpencil_settings->curve_sensitivity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
@@ -296,7 +295,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 300.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 0.4f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -330,7 +329,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Ink Pen", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 60.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -368,7 +367,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Ink Pen Rough", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 60.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -448,7 +447,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Marker Chisel", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 80.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 1.0f;
 
@@ -481,7 +480,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Pen", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 1.0f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -515,7 +514,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Pencil Soft", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 80.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 0.4f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -550,7 +549,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   deft_draw = brush; /* save default brush. */
 
   brush->size = 25.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+  brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
   brush->gpencil_settings->draw_strength = 0.6f;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -583,7 +582,6 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Fill Area", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 20.0f;
-  brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
   brush->gpencil_settings->fill_leak = 3;
   brush->gpencil_settings->fill_threshold = 0.1f;
@@ -610,7 +608,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
 
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 0.5f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
+  brush->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
   brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_SOFT;
@@ -624,7 +622,6 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
 
   brush->size = 30.0f;
   brush->gpencil_settings->draw_strength = 1.0f;
-  brush->gpencil_settings->flag |= (GP_BRUSH_ENABLE_CURSOR | GP_BRUSH_DEFAULT_ERASER);
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_SOFT;
   brush->gpencil_settings->era_strength_f = 100.0f;
   brush->gpencil_settings->era_thickness_f = 50.0f;
@@ -636,7 +633,6 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Eraser Point", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
-  brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_HARD;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_HARD;
@@ -646,7 +642,6 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
   brush = gpencil_brush_ensure(bmain, ts, "Eraser Stroke", OB_MODE_PAINT_GPENCIL, &new_brush);
 
   brush->size = 30.0f;
-  brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
   brush->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_STROKE;
 
   brush->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_STROKE;
@@ -659,7 +654,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -692,7 +687,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -709,7 +704,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -721,7 +716,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -733,7 +728,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -745,7 +740,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -759,7 +754,6 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts)
 void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 {
   Paint *sculptpaint = &ts->gp_sculptpaint->paint;
-
   Brush *brush, *deft_sculpt;
   bool new_brush = false;
 
@@ -771,7 +765,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -786,7 +780,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -801,7 +795,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -816,7 +810,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -830,7 +823,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -844,7 +837,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 50.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.3f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -858,7 +851,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 50.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -872,7 +865,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.5f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -887,7 +880,6 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= GP_BRUSH_ENABLE_CURSOR;
 
     brush->gpencil_settings->draw_strength = 1.0f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;
@@ -913,7 +905,7 @@ void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts)
 
   if (new_brush) {
     brush->size = 25.0f;
-    brush->gpencil_settings->flag |= (GP_BRUSH_USE_PRESSURE | GP_BRUSH_ENABLE_CURSOR);
+    brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
     brush->gpencil_settings->draw_strength = 0.8f;
     brush->gpencil_settings->flag |= GP_BRUSH_USE_STENGTH_PRESSURE;

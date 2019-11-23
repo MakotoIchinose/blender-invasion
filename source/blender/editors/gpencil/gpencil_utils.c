@@ -1659,6 +1659,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   ARegion *ar = CTX_wm_region(C);
+  Paint *paint = BKE_paint_get_active_from_context(C);
 
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Brush *brush = NULL;
@@ -1691,7 +1692,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
       return;
     }
 
-    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
       return;
     }
 
@@ -1738,7 +1739,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
-    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
       return;
     }
 
@@ -1758,7 +1759,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
-    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
       return;
     }
 
@@ -1778,7 +1779,7 @@ static void gp_brush_cursor_draw(bContext *C, int x, int y, void *customdata)
     if ((brush == NULL) || (brush->gpencil_settings == NULL)) {
       return;
     }
-    if ((brush->gpencil_settings->flag & GP_BRUSH_ENABLE_CURSOR) == 0) {
+    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
       return;
     }
 
