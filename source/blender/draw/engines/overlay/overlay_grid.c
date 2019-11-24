@@ -61,7 +61,7 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
 
   shd->grid_flag = 0;
 
-  if (!(show_axis_y || show_axis_z || show_floor || show_ortho_grid)) {
+  if (pd->hide_overlays || !(show_axis_y || show_axis_z || show_floor || show_ortho_grid)) {
     return;
   }
 

@@ -77,19 +77,25 @@ static void OVERLAY_cache_init(void *vedata)
   const RegionView3D *rv3d = draw_ctx->rv3d;
   const View3D *v3d = draw_ctx->v3d;
 
-  if (v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
+  pd->hide_overlays = (v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
+
+  if (!pd->hide_overlays) {
     pd->overlay = v3d->overlay;
     pd->v3d_flag = v3d->flag;
   }
   else {
     memset(&pd->overlay, 0, sizeof(pd->overlay));
     pd->v3d_flag = 0;
+    pd->overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS |
+                       V3D_OVERLAY_HIDE_BONES | V3D_OVERLAY_HIDE_OBJECT_XTRAS |
+                       V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
   }
 
   if (v3d->shading.type == OB_WIRE) {
     pd->overlay.flag |= V3D_OVERLAY_WIREFRAMES;
   }
 
+  pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
   pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
   pd->xray_enabled = XRAY_ACTIVE(v3d);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
@@ -186,7 +192,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool has_surface = ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_MBALL, OB_FONT);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
-  const bool draw_wires = draw_surface && has_surface;
+  const bool draw_wires = draw_surface && has_surface &&
+                          (pd->wireframe_mode || !pd->hide_overlays);
   const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
                              (pd->v3d_flag & V3D_SELECT_OUTLINE) &&
                              ((ob->base_flag & BASE_SELECTED) ||
