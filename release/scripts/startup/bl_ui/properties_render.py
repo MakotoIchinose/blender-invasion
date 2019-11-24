@@ -801,46 +801,6 @@ class RENDER_PT_lanpr_layer_settings(RenderButtonsPanel, Panel):
         else:
             layout.label(text= "Intersection calculation disabled.")
 
-class RENDER_PT_lanpr_line_components(RenderButtonsPanel, Panel):
-    bl_label = "Including"
-    bl_parent_id = "RENDER_PT_lanpr"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_LANPR', 'BLENDER_OPENGL', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-        return scene.render.engine=="BLENDER_LANPR" and active_layer and not lanpr.enable_chaining
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        lanpr = scene.lanpr
-        active_layer = lanpr.layers.active_layer
-
-        layout.operator("scene.lanpr_add_line_component")#, icon = "ZOOMIN")
-        
-        i=0
-        for c in active_layer.components:
-            split = layout.split(factor=0.85)
-            col = split.column()
-            sp2 = col.split(factor=0.4)
-            cl = sp2.column()
-            cl.prop(c,"component_mode", text = "")
-            cl = sp2.column()
-            if c.component_mode == "OBJECT":
-                cl.prop(c,"object_select", text = "")
-            elif c.component_mode == "MATERIAL":
-                cl.prop(c,"material_select", text = "")
-            elif c.component_mode == "COLLECTION":
-                cl.prop(c,"collection_select", text = "")
-            col = split.column()
-            col.operator("scene.lanpr_delete_line_component", text="").index=i
-            i=i+1
-
-
 class RENDER_PT_lanpr_line_normal_effects(RenderButtonsPanel, Panel):
     bl_label = "Normal Based Line Weight"
     bl_parent_id = "RENDER_PT_lanpr"

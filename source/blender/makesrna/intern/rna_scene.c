@@ -7211,11 +7211,13 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_INTERSECTIONS);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "enable_chaining", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LANPR_USE_CHAINING);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Enable Chaining", "Chain Feature Lines After Occlusion Test");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   /* should be read-only */
   prop = RNA_def_property(srna, "shader_error", PROP_BOOLEAN, PROP_NONE);
@@ -7224,7 +7226,10 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "DPIX Shader Error", "Can't compile DPIX transform shader on your GPU");
-
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+  
+  /* Below these two are only for grease pencil, thus no viewport updates. */
+  
   prop = RNA_def_property(srna, "chaining_geometry_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);
   RNA_def_property_ui_text(prop,
@@ -7249,19 +7254,21 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, NULL, "line_layers", NULL);
   RNA_def_property_struct_type(prop, "LANPR_LineLayer");
   RNA_def_property_ui_text(prop, "Line Layers", "LANPR Line Layers");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   /* this part I refered to gpencil's and freestyle's and it seems that there's no difference */
   RNA_def_property_srna(prop, "LineLayers");
   srna = RNA_def_struct(brna, "LineLayers", NULL);
   RNA_def_struct_sdna(srna, "SceneLANPR");
   RNA_def_struct_ui_text(srna, "LANPR Line Layers", "");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "active_layer", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "LANPR_LineLayer");
   RNA_def_property_pointer_funcs(
       prop, "rna_lanpr_active_line_layer_get", "rna_lanpr_active_line_layer_set", NULL, NULL);
   RNA_def_property_ui_text(prop, "Active Line Layer", "Active line layer being displayed");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 
   prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_funcs(prop,
@@ -7269,7 +7276,7 @@ static void rna_def_scene_lanpr(BlenderRNA *brna)
                              "rna_lanpr_active_line_layer_index_set",
                              "rna_lanpr_active_line_layer_index_range");
   RNA_def_property_ui_text(prop, "Active Line Layer Index", "Index of active line layer slot");
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
+  RNA_def_property_update(prop, NC_SCENE, NULL);
 }
 
 void RNA_def_scene(BlenderRNA *brna)

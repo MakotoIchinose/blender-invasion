@@ -71,18 +71,6 @@ typedef enum LANPR_ComponentLogic {
 
 struct DRWShadingGroup;
 
-typedef struct LANPR_LineLayerComponent {
-  struct LANPR_LineLayerComponent *next, *prev;
-
-  struct Object *object_select;
-  struct Material *material_select;
-  struct Collection *collection_select;
-
-  int component_mode;
-  int what;
-
-} LANPR_LineLayerComponent;
-
 typedef struct LANPR_LineType {
   int use;
   float thickness;
@@ -129,8 +117,6 @@ typedef struct LANPR_LineLayer {
   /** For component evaluation */
   int logic_mode;
   int _pad3;
-
-  ListBase components;
 
   struct DRWShadingGroup *shgrp;
   struct GPUBatch *batch;

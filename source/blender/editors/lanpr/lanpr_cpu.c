@@ -159,18 +159,6 @@ LANPR_LineLayer *ED_lanpr_new_line_layer(SceneLANPR *lanpr)
 
   return ll;
 }
-LANPR_LineLayerComponent *ED_lanpr_new_line_component(SceneLANPR *lanpr)
-{
-  if (lanpr->active_layer == NULL) {
-    return 0;
-  }
-  LANPR_LineLayer *ll = lanpr->active_layer;
-
-  LANPR_LineLayerComponent *llc = MEM_callocN(sizeof(LANPR_LineLayerComponent), "Line Component");
-  BLI_addtail(&ll->components, llc);
-
-  return llc;
-}
 static int lanpr_add_line_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
@@ -240,43 +228,6 @@ static int lanpr_move_line_layer_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
-
-  return OPERATOR_FINISHED;
-}
-static int lanpr_add_line_component_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lanpr = &scene->lanpr;
-
-  ED_lanpr_new_line_component(lanpr);
-
-  return OPERATOR_FINISHED;
-}
-static int lanpr_delete_line_component_exec(bContext *C, wmOperator *op)
-{
-  Scene *scene = CTX_data_scene(C);
-  SceneLANPR *lanpr = &scene->lanpr;
-  LANPR_LineLayer *ll = lanpr->active_layer;
-  LANPR_LineLayerComponent *llc;
-  int i = 0;
-
-  if (ll == NULL) {
-    return OPERATOR_FINISHED;
-  }
-
-  int index = RNA_int_get(op->ptr, "index");
-
-  for (llc = ll->components.first; llc; llc = llc->next) {
-    if (index == i) {
-      break;
-    }
-    i++;
-  }
-
-  if (llc) {
-    BLI_remlink(&ll->components, llc);
-    MEM_freeN(llc);
-  }
 
   return OPERATOR_FINISHED;
 }
@@ -416,26 +367,6 @@ void SCENE_OT_lanpr_enable_all_line_types(wmOperatorType *ot)
   ot->idname = "SCENE_OT_lanpr_enable_all_line_types";
 
   ot->exec = lanpr_enable_all_line_types_exec;
-}
-void SCENE_OT_lanpr_add_line_component(wmOperatorType *ot)
-{
-
-  ot->name = "Add Line Component";
-  ot->description = "Add a new line Component";
-  ot->idname = "SCENE_OT_lanpr_add_line_component";
-
-  ot->exec = lanpr_add_line_component_exec;
-}
-void SCENE_OT_lanpr_delete_line_component(wmOperatorType *ot)
-{
-
-  ot->name = "Delete Line Component";
-  ot->description = "Delete selected line component";
-  ot->idname = "SCENE_OT_lanpr_delete_line_component";
-
-  ot->exec = lanpr_delete_line_component_exec;
-
-  RNA_def_int(ot->srna, "index", 0, 0, 10000, "index", "index of this line component", 0, 10000);
 }
 
 /* Geometry */
@@ -2822,55 +2753,6 @@ static int lanpr_get_render_triangle_size(LANPR_RenderBuffer *rb)
   return sizeof(LANPR_RenderTriangle) + (sizeof(LANPR_RenderLine *) * rb->thread_count);
 }
 
-/** Probably will remove due to selection is changed to object and collection flags,
- * Leave it temporally to see if there's any problem.
- */
-int lanpr_count_this_line(LANPR_RenderLine *rl, LANPR_LineLayer *ll)
-{
-  LANPR_LineLayerComponent *llc = ll->components.first;
-  int AndResult = 1, OrResult = 0;
-  if (llc == NULL) {
-    return 1;
-  }
-  for (; llc; llc = llc->next) {
-    if (llc->component_mode == LANPR_COMPONENT_MODE_ALL) {
-      OrResult = 1;
-    }
-    else if (llc->component_mode == LANPR_COMPONENT_MODE_OBJECT && llc->object_select) {
-      if (rl->object_ref && rl->object_ref->id.orig_id == &llc->object_select->id) {
-        OrResult = 1;
-      }
-      else {
-        AndResult = 0;
-      }
-    }
-    else if (llc->component_mode == LANPR_COMPONENT_MODE_MATERIAL && llc->material_select) {
-      if ((rl->tl && rl->tl->material_id == llc->material_select->index) ||
-          (rl->tr && rl->tr->material_id == llc->material_select->index) ||
-          (!(rl->flags & LANPR_EDGE_FLAG_INTERSECTION))) {
-        OrResult = 1;
-      }
-      else {
-        AndResult = 0;
-      }
-    }
-    else if (llc->component_mode == LANPR_COMPONENT_MODE_COLLECTION && llc->collection_select) {
-      if (BKE_collection_has_object(llc->collection_select,
-                                    (Object *)rl->object_ref->id.orig_id)) {
-        OrResult = 1;
-      }
-      else {
-        AndResult = 0;
-      }
-    }
-  }
-  if (ll->logic_mode == LANPR_COMPONENT_LOGIG_OR) {
-    return OrResult;
-  }
-  else {
-    return AndResult;
-  }
-}
 int ED_lanpr_count_leveled_edge_segment_count(ListBase *line_list, LANPR_LineLayer *ll)
 {
   LinkData *lip;
@@ -2879,9 +2761,6 @@ int ED_lanpr_count_leveled_edge_segment_count(ListBase *line_list, LANPR_LineLay
   int count = 0;
   for (lip = line_list->first; lip; lip = lip->next) {
     rl = lip->data;
-    if (!lanpr_count_this_line(rl, ll)) {
-      continue;
-    }
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
 
@@ -2923,9 +2802,6 @@ void *ED_lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
   float *N = normal_array;
   for (lip = line_list->first; lip; lip = lip->next) {
     rl = lip->data;
-    if (!lanpr_count_this_line(rl, ll)) {
-      continue;
-    }
 
     for (rls = rl->segments.first; rls; rls = rls->next) {
       int use = 0;

@@ -565,7 +565,6 @@ bool ED_lanpr_dpix_shader_error(void);
 
 int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
-LANPR_LineLayerComponent *ED_lanpr_new_line_component(struct SceneLANPR *lanpr);
 
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, double x, double y);
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, double x, double y);
@@ -591,8 +590,6 @@ void SCENE_OT_lanpr_delete_line_layer(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_rebuild_all_commands(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_auto_create_line_layer(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_move_line_layer(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_add_line_component(struct wmOperatorType *ot);
-void SCENE_OT_lanpr_delete_line_component(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_enable_all_line_types(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_update_gp_strokes(struct wmOperatorType *ot);
 void SCENE_OT_lanpr_bake_gp_strokes(struct wmOperatorType *ot);

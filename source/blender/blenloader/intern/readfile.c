@@ -6593,11 +6593,6 @@ static void lib_link_scene(FileData *fd, Main *main)
       }
 
       for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
-        for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
-          llc->object_select = newlibadr_us(fd, sce->id.lib, llc->object_select);
-          llc->material_select = newlibadr_us(fd, sce->id.lib, llc->material_select);
-          llc->collection_select = newlibadr_us(fd, sce->id.lib, llc->collection_select);
-        }
         ll->normal_control_object = newlibadr_us(fd, sce->id.lib, ll->normal_control_object);
       }
 
@@ -7049,7 +7044,6 @@ static void direct_link_scene(FileData *fd, Scene *sce)
   sce->lanpr.active_layer = newdataadr(fd, sce->lanpr.active_layer);
   link_list(fd, &(sce->lanpr.line_layers));
   for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
-    link_list(fd, &ll->components);
     ll->batch = NULL;
     ll->shgrp = NULL;
   }
@@ -10913,17 +10907,6 @@ static void expand_scene(FileData *fd, Main *mainvar, Scene *sce)
   }
 
   for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
-    for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
-      if (llc->object_select) {
-        expand_doit(fd, mainvar, llc->object_select);
-      }
-      if (llc->material_select) {
-        expand_doit(fd, mainvar, llc->material_select);
-      }
-      if (llc->collection_select) {
-        expand_doit(fd, mainvar, llc->collection_select);
-      }
-    }
     if (ll->normal_control_object) {
       expand_doit(fd, mainvar, ll->normal_control_object);
     }

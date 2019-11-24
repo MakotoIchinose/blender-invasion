@@ -2715,9 +2715,6 @@ static void write_scene(WriteData *wd, Scene *sce)
   /* LANPR Line Layers */
   for (LANPR_LineLayer *ll = sce->lanpr.line_layers.first; ll; ll = ll->next) {
     writestruct(wd, DATA, LANPR_LineLayer, 1, ll);
-    for (LANPR_LineLayerComponent *llc = ll->components.first; llc; llc = llc->next) {
-      writestruct(wd, DATA, LANPR_LineLayerComponent, 1, llc);
-    }
   }
 
   write_view3dshading(wd, &sce->display.shading);
