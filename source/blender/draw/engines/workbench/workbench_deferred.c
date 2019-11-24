@@ -507,13 +507,6 @@ void workbench_deferred_engine_init(WORKBENCH_Data *vedata)
                                       GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
                                       GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
                                   });
-    GPU_framebuffer_ensure_config(&fbl->ghost_prepass_fb,
-                                  {
-                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
-                                      GPU_ATTACHMENT_TEXTURE(e_data.color_buffer_tx),
-                                      GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
-                                      GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
-                                  });
     GPU_framebuffer_ensure_config(&fbl->cavity_fb,
                                   {
                                       GPU_ATTACHMENT_NONE,
@@ -1206,8 +1199,33 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
   }
 }
 
-void workbench_deferred_cache_finish(WORKBENCH_Data *UNUSED(vedata))
+void workbench_deferred_cache_finish(WORKBENCH_Data *vedata)
 {
+  WORKBENCH_PassList *psl = vedata->psl;
+  WORKBENCH_FramebufferList *fbl = vedata->fbl;
+
+  if (GHOST_ENABLED(psl)) {
+    /* HACK we allocate the infront depth here to avoid the overhead when if is not needed. */
+    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+
+    DRW_texture_ensure_fullscreen_2d(&dtxl->depth_in_front, GPU_DEPTH24_STENCIL8, 0);
+
+    GPU_framebuffer_ensure_config(
+        &dfbl->default_fb,
+        {GPU_ATTACHMENT_TEXTURE(dtxl->depth), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+    GPU_framebuffer_ensure_config(
+        &dfbl->in_front_fb,
+        {GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
+
+    GPU_framebuffer_ensure_config(&fbl->ghost_prepass_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.color_buffer_tx),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.object_id_tx),
+                                      GPU_ATTACHMENT_TEXTURE(e_data.normal_buffer_tx),
+                                  });
+  }
 }
 
 void workbench_deferred_draw_background(WORKBENCH_Data *vedata)
@@ -1241,6 +1259,7 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   WORKBENCH_FramebufferList *fbl = vedata->fbl;
   WORKBENCH_PrivateData *wpd = stl->g_data;
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   if (workbench_is_taa_enabled(wpd)) {
     workbench_taa_draw_scene_start(vedata);
@@ -1251,9 +1270,15 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   DRW_draw_pass(psl->prepass_pass);
   DRW_draw_pass(psl->prepass_hair_pass);
 
-  /* TODO(fclem) This clear should be done in a global place. */
-  GPU_framebuffer_bind(fbl->ghost_prepass_fb);
-  GPU_framebuffer_clear_depth(fbl->ghost_prepass_fb, 1.0f);
+  if (fbl->ghost_prepass_fb) {
+    GPU_framebuffer_bind(fbl->ghost_prepass_fb);
+    GPU_framebuffer_clear_depth(fbl->ghost_prepass_fb, 1.0f);
+  }
+  else if (dtxl->depth_in_front) {
+    /* TODO(fclem) This clear should be done in a global place. */
+    GPU_framebuffer_bind(dfbl->in_front_fb);
+    GPU_framebuffer_clear_depth(dfbl->in_front_fb, 1.0f);
+  }
 
   if (GHOST_ENABLED(psl)) {
     DRW_draw_pass(psl->ghost_prepass_pass);
@@ -1324,7 +1349,6 @@ void workbench_deferred_draw_scene(WORKBENCH_Data *vedata)
   DRW_draw_pass(psl->background_pass);
 
   if (OIT_ENABLED(wpd) && !DRW_pass_is_empty(psl->transparent_accum_pass)) {
-    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
     /* meh, late init to not request buffers we won't use. */
     workbench_init_oit_framebuffer(fbl, dtxl);
 
