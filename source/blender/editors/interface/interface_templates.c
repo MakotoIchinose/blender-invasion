@@ -93,6 +93,7 @@
 
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
+#include "UI_view2d.h"
 #include "interface_intern.h"
 
 #include "PIL_time.h"
@@ -6246,7 +6247,7 @@ void uiTemplateList(uiLayout *layout,
                   "",
                   0,
                   0,
-                  UI_UNIT_X * 0.75,
+                  V2D_SCROLL_WIDTH,
                   UI_UNIT_Y * dyn_data->visual_height,
                   &ui_list->list_scroll,
                   0,
@@ -6386,7 +6387,7 @@ void uiTemplateList(uiLayout *layout,
                   "",
                   0,
                   0,
-                  UI_UNIT_X * 0.75,
+                  V2D_SCROLL_WIDTH,
                   UI_UNIT_Y * dyn_data->visual_height,
                   &ui_list->list_scroll,
                   0,
