@@ -1547,8 +1547,6 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, "rna_IDPreview_get", NULL, NULL, NULL);
 
-  /* XXX Not sure we actually want those two in our RNA in the end.
-   *     But at least for now, they are important debug tools! */
   prop = RNA_def_pointer(
       srna,
       "asset_uuid",

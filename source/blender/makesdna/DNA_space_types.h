@@ -733,6 +733,7 @@ typedef struct SpaceFile {
   /* BKE_ST_MAXNAME */
   char asset_engine[64];
 
+  /** Config and input for file select. */
   struct FileSelectParams *params;
 
   /** Holds the list of files to show. */
