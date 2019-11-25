@@ -232,6 +232,58 @@ enum eOverrideLibrary_Flag {
   OVERRIDE_LIBRARY_AUTO = 1 << 0, /* Allow automatic generation of overriding rules. */
 };
 
+/**
+ * About Unique identifier.
+ *
+ * Stored in a CustomProps once imported.
+ * Each engine is free to use it as it likes - it will be the only thing passed to it by blender to
+ * identify repository/asset/variant/version/view.
+ * Assumed to be 128bits (16 bytes) each, handled as four integers due to lack of real
+ * bytes proptype in RNA :|.
+ */
+#define ASSET_UUID_LENGTH 16
+
+/* Used to communicate with asset engines outside of 'import' context. */
+typedef struct AssetUUID {
+  int uuid_repository[4];
+  int uuid_asset[4];
+  int uuid_variant[4];
+  int uuid_revision[4];
+  int uuid_view[4];
+  short flag; /* Saved. */
+  short tag;  /* Runtime. */
+
+  /* Preview. */
+  short width;
+  short height;
+  char *ibuff; /* RGBA 8bits. */
+
+  /* Used for load_post... */
+  struct ID *id;
+} AssetUUID;
+
+/**
+ * uuid->flag (persitent, saved in .blend files).
+ */
+enum {
+  UUID_FLAG_LAST_REVISION = 1 << 0, /* This asset should always use latest available revision. */
+};
+
+/**
+ * uuid->tag (runtime only).
+ */
+enum {
+  UUID_TAG_ENGINE_MISSING =
+      1 << 0, /* The asset engine used for this asset is not known by Blender. */
+  UUID_TAG_ASSET_MISSING =
+      1 << 1, /* The asset engine was found but does not know about this asset (anymore). */
+
+  UUID_TAG_ASSET_RELOAD =
+      1 << 8, /* Set by the asset engine to indicates that that asset has to be reloaded. */
+  UUID_TAG_ASSET_NOPREVIEW =
+      1 << 9, /* Set by the asset engine to indicates that that asset has no preview. */
+};
+
 /* watch it: Sequence has identical beginning. */
 /**
  * ID is the first thing included in all serializable types. It
@@ -266,6 +318,9 @@ typedef struct ID {
 
   /** Reference linked ID which this one overrides. */
   IDOverrideLibrary *override_library;
+
+  AssetUUID *uuid;
+  void *pad_v;
 
   /**
    * Only set for data-blocks which are coming from copy-on-write, points to
@@ -513,6 +568,8 @@ enum {
   /* RESET_NEVER Datablock is from a library,
    * and is only used (linked) indirectly through other libraries. */
   LIB_TAG_INDIRECT = 1 << 1,
+  /* RESET_NEVER Datablock is (or is used by) an asset. */
+  LIB_TAG_ASSET = 1 << 19,
 
   /* RESET_AFTER_USE Flag used internally in readfile.c,
    * to mark IDs needing to be expanded (only done once). */

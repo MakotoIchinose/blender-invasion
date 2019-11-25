@@ -85,8 +85,10 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
 
 #  include "DNA_anim_types.h"
 
+#  include "BLI_hash_mm2a.h"
 #  include "BLI_listbase.h"
 #  include "BLI_math_base.h"
+#  include "PIL_time.h"
 
 #  include "BKE_font.h"
 #  include "BKE_idprop.h"
@@ -605,6 +607,24 @@ static void rna_ID_animation_data_free(ID *id, Main *bmain)
 {
   BKE_animdata_free(id, true);
   DEG_relations_tag_update(bmain);
+}
+
+static void rna_ID_asset_uuid_free(ID *id)
+{
+  MEM_SAFE_FREE(id->uuid);
+  id->tag &= ~LIB_TAG_ASSET;
+}
+
+static void rna_ID_asset_uuid_create(ID *id)
+{
+  rna_ID_asset_uuid_free(id);
+  id->uuid = MEM_callocN(sizeof(*id->uuid), __func__);
+  /* Add some dummy init for the asset part of the uuid. */
+  for (int i = 0; i < 4; i++) {
+    id->uuid->uuid_asset[i] = (int)BLI_hash_mm2(
+        id->name + i, sizeof(id->name) - i, (uint)PIL_check_seconds_timer_i());
+  }
+  id->tag |= LIB_TAG_ASSET;
 }
 
 #  ifdef WITH_PYTHON
@@ -1504,6 +1524,15 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, "rna_IDPreview_get", NULL, NULL, NULL);
 
+  prop = RNA_def_pointer(
+      srna,
+      "asset_uuid",
+      "AssetUUID",
+      "Asset UUID",
+      "Unique identifier of the asset represented by that ID (NULL if not an asset)");
+  RNA_def_property_pointer_sdna(prop, NULL, "uuid");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
   /* functions */
   func = RNA_def_function(srna, "evaluated_get", "rna_ID_evaluated_get");
   RNA_def_function_ui_description(
@@ -1596,6 +1625,12 @@ static void rna_def_ID(BlenderRNA *brna)
                                   "Tag the ID to update its display data, "
                                   "e.g. when calling :class:`bpy.types.Scene.update`");
   RNA_def_enum_flag(func, "refresh", update_flag_items, 0, "", "Type of updates to perform");
+
+  func = RNA_def_function(srna, "asset_uuid_create", "rna_ID_asset_uuid_create");
+  RNA_def_function_ui_description(func, "Create asset uuid data to this ID");
+
+  func = RNA_def_function(srna, "asset_uuid_clear", "rna_ID_asset_uuid_free");
+  RNA_def_function_ui_description(func, "Clear asset uuid from this ID");
 
 #  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, NULL, NULL, "rna_ID_instance");

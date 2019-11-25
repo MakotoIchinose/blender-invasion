@@ -102,10 +102,13 @@
 #include "BLI_mempool.h"
 #include "BLI_ghash.h"
 
+#include "RNA_types.h"
+
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_asset_engine.h"
 #include "BKE_brush.h"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
@@ -2677,6 +2680,12 @@ static void direct_link_id(FileData *fd, ID *id)
   DrawDataList *drawdata = DRW_drawdatalist_from_id(id);
   if (drawdata) {
     BLI_listbase_clear((ListBase *)drawdata);
+  }
+
+  if (id->uuid) {
+    id->uuid = newdataadr(fd, id->uuid);
+    id->uuid->ibuff = NULL; /* Just in case... */
+    id->uuid->width = id->uuid->height = 0;
   }
 }
 
@@ -9303,6 +9312,19 @@ static BHead *read_libblock(FileData *fd,
       }
     }
 
+    if (id->uuid) {
+      /* read all data into fd->datamap */
+      bhead = read_data_into_oldnewmap(fd, bhead, __func__);
+
+      id->uuid = newdataadr(fd, id->uuid);
+      id->uuid->ibuff = NULL; /* Just in case... */
+      id->uuid->width = id->uuid->height = 0;
+
+      oldnewmap_free_unused(fd->datamap);
+      oldnewmap_clear(fd->datamap);
+      return bhead;
+    }
+
     return blo_bhead_next(fd, bhead);
   }
 
@@ -11866,6 +11888,11 @@ static void read_library_linked_ids(FileData *basefd,
         /* realid shall never be NULL - unless some source file/lib is broken
          * (known case: some directly linked shapekey from a missing lib...). */
         /* BLI_assert(*realid != NULL); */
+
+        if (*realid && id->uuid) {
+          /* we can give ownership of that pointer to new ID. */
+          (*realid)->uuid = id->uuid;
+        }
 
         /* Now that we have a real ID, replace all pointers to placeholders in
          * fd->libmap with pointers to the real data-blocks. We do this for all

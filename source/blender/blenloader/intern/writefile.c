@@ -709,6 +709,9 @@ static void write_iddata(void *wd, const ID *id)
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_WriteProperty(id->properties, wd);
   }
+  if (id->uuid) {
+    writestruct(wd, DATA, AssetUUID, 1, id->uuid);
+  }
 
   if (id->override_library) {
     writestruct(wd, DATA, IDOverrideLibrary, 1, id->override_library);

@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+struct AssetUUID;
 struct BHead;
 struct BlendThumbnail;
 struct FileData;
