@@ -68,6 +68,33 @@ class VIEW3D_MT_brush_context_menu(Menu):
             layout.operator("brush.reset")
 
 
+class VIEW3D_MT_brush_gpencil_context_menu(Menu):
+    bl_label = "Brush Specials"
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.tool_settings
+
+        settings = None
+        if context.mode == 'PAINT_GPENCIL':
+            settings = ts.gpencil_paint
+        if context.mode == 'SCULPT_GPENCIL':
+            settings = ts.gpencil_sculpt_paint
+        elif context.mode == 'WEIGHT_GPENCIL':
+            settings = ts.gpencil_weight_paint
+        elif context.mode == 'VERTEX_GPENCIL':
+            settings = ts.gpencil_vertex_paint
+
+        brush = getattr(settings, "brush", None)
+        # skip if no active brush
+        if not brush:
+            layout.label(text="No Brushes currently available", icon='INFO')
+            return
+
+        layout.operator("gpencil.brush_reset")
+        layout.operator("gpencil.brush_reset_all")
+
+
 class VIEW3D_MT_brush_context_menu_paint_modes(Menu):
     bl_label = "Enabled Modes"
 
@@ -1869,15 +1896,12 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
 
         row = layout.row()
         if not self.is_popover:
-            col = row.column()
-            col.template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row = layout.row()
+            row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
 
         col = row.column()
         brush = gpencil_paint.brush
-
-        if not self.is_popover:
-            sub = col.column(align=True)
-            sub.operator("gpencil.brush_presets_create", icon='PRESET_NEW', text="")
 
         if brush is not None:
             gp_settings = brush.gpencil_settings
@@ -2316,8 +2340,9 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
 
         row = layout.row()
         if not self.is_popover:
-            col = row.column()
-            col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row = layout.row()
+            row.column().template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
 
         col = row.column()
         brush = gpencil_vertex_paint.brush
@@ -2387,6 +2412,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_paint_falloff(GreasePencilBrushFalloff
         ts = context.tool_settings
         settings = ts.gpencil_paint
         brush = settings.brush
+        if brush is None:
+            return False
+
         tool = brush.gpencil_tool
 
         return (settings and settings.brush and settings.brush.curve and tool == 'TINT')
@@ -2554,10 +2582,10 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
 
         row = layout.row()
         if not self.is_popover:
-            col = row.column()
-            col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row = layout.row()
+            row.column().template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
 
-        col = row.column()
         brush = gpencil_sculpt_paint.brush
 
         if brush is not None:
@@ -2600,10 +2628,10 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
 
         row = layout.row()
         if not self.is_popover:
-            col = row.column()
-            col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row = layout.row()
+            row.column().template_ID_preview(gpencil_weight_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
+            row.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
 
-        col = row.column()
         brush = gpencil_weight_paint.brush
 
         if brush is not None:
@@ -2657,6 +2685,7 @@ class VIEW3D_PT_gpencil_brush_presets(PresetPanel, Panel):
 
 classes = (
     VIEW3D_MT_brush_context_menu,
+    VIEW3D_MT_brush_gpencil_context_menu,
     VIEW3D_MT_brush_context_menu_paint_modes,
     VIEW3D_PT_tools_object_options,
     VIEW3D_PT_tools_object_options_transform,

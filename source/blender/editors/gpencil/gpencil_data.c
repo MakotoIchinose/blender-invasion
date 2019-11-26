@@ -1577,12 +1577,42 @@ void GPENCIL_OT_stroke_lock_color(wmOperatorType *ot)
 /* ************************************************ */
 /* Drawing Brushes Operators */
 
-/* ******************* Brush create presets ************************** */
-static int gp_brush_presets_create_exec(bContext *C, wmOperator *UNUSED(op))
+/* ******************* Brush resets ************************** */
+static int gp_brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  BKE_brush_gpencil_paint_presets(bmain, ts);
+  const enum eContextObjectMode mode = CTX_data_mode_enum(C);
+  Brush *brush = NULL;
+
+  switch (mode) {
+    case CTX_MODE_PAINT_GPENCIL: {
+      Paint *paint = &ts->gp_paint->paint;
+      brush = paint->brush;
+      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      break;
+    }
+    case CTX_MODE_SCULPT_GPENCIL: {
+      Paint *paint = &ts->gp_sculptpaint->paint;
+      brush = paint->brush;
+      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      break;
+    }
+    case CTX_MODE_WEIGHT_GPENCIL: {
+      Paint *paint = &ts->gp_weightpaint->paint;
+      brush = paint->brush;
+      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      break;
+    }
+    case CTX_MODE_VERTEX_GPENCIL: {
+      Paint *paint = &ts->gp_vertexpaint->paint;
+      brush = paint->brush;
+      BKE_gpencil_brush_preset_set(bmain, brush, brush->gpencil_settings->preset_type);
+      break;
+    }
+    default:
+      break;
+  }
 
   /* notifiers */
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
@@ -1590,15 +1620,129 @@ static int gp_brush_presets_create_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_brush_presets_create(wmOperatorType *ot)
+void GPENCIL_OT_brush_reset(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Create Preset Brushes";
-  ot->idname = "GPENCIL_OT_brush_presets_create";
-  ot->description = "Create a set of predefined Grease Pencil drawing brushes";
+  ot->name = "Reset Brush";
+  ot->idname = "GPENCIL_OT_brush_reset";
+  ot->description = "Reset Brush to default parameters";
 
   /* api callbacks */
-  ot->exec = gp_brush_presets_create_exec;
+  ot->exec = gp_brush_reset_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMode mode)
+{
+  Brush *brush_next = NULL;
+  for (Brush *brush = bmain->brushes.first; brush; brush = brush_next) {
+    brush_next = brush->id.next;
+    if (brush->gpencil_settings == NULL) {
+      continue;
+    }
+    /* Verify to delete only the brushes of the current mode. */
+    if ((mode == CTX_MODE_PAINT_GPENCIL) && (!ELEM(brush->gpencil_tool,
+                                                   GPAINT_TOOL_DRAW,
+                                                   GPAINT_TOOL_FILL,
+                                                   GPAINT_TOOL_ERASE,
+                                                   GPAINT_TOOL_TINT))) {
+      continue;
+    }
+    if ((mode == CTX_MODE_SCULPT_GPENCIL) && (!ELEM(brush->gpencil_tool,
+                                                    GPSCULPT_TOOL_SMOOTH,
+                                                    GPSCULPT_TOOL_STRENGTH,
+                                                    GPSCULPT_TOOL_THICKNESS,
+                                                    GPSCULPT_TOOL_GRAB,
+                                                    GPSCULPT_TOOL_PUSH,
+                                                    GPSCULPT_TOOL_TWIST,
+                                                    GPSCULPT_TOOL_PINCH,
+                                                    GPSCULPT_TOOL_RANDOMIZE,
+                                                    GPSCULPT_TOOL_CLONE))) {
+      continue;
+    }
+    if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (!ELEM(brush->gpencil_tool, GPWEIGHT_TOOL_DRAW))) {
+      continue;
+    }
+    if ((mode == CTX_MODE_VERTEX_GPENCIL) && (!ELEM(brush->gpencil_tool,
+                                                    GPVERTEX_TOOL_DRAW,
+                                                    GPVERTEX_TOOL_BLUR,
+                                                    GPVERTEX_TOOL_AVERAGE,
+                                                    GPVERTEX_TOOL_SMEAR,
+                                                    GPVERTEX_TOOL_REPLACE))) {
+      continue;
+    }
+
+    /* Before delete, unpinn any material of the brush. */
+    if (brush->gpencil_settings->material != NULL) {
+      brush->gpencil_settings->material = NULL;
+      brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
+    }
+
+    if (brush->id.us > 1) {
+      continue;
+      // printf("%s %d\n", brush->id.name + 2, brush->id.us);
+      // id_us_plus(&brush->id);
+    }
+
+    BKE_brush_delete(bmain, brush);
+  }
+}
+
+static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  Main *bmain = CTX_data_main(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  const enum eContextObjectMode mode = CTX_data_mode_enum(C);
+  bool changed = false;
+
+  switch (mode) {
+    case CTX_MODE_PAINT_GPENCIL: {
+      gp_bruh_delete_mode_brushes(bmain, mode);
+      BKE_brush_gpencil_paint_presets(bmain, ts);
+      changed = true;
+      break;
+    }
+    case CTX_MODE_SCULPT_GPENCIL: {
+      gp_bruh_delete_mode_brushes(bmain, mode);
+      BKE_brush_gpencil_sculpt_presets(bmain, ts);
+      changed = true;
+      break;
+    }
+    case CTX_MODE_WEIGHT_GPENCIL: {
+      gp_bruh_delete_mode_brushes(bmain, mode);
+      BKE_brush_gpencil_weight_presets(bmain, ts);
+      changed = true;
+      break;
+    }
+    case CTX_MODE_VERTEX_GPENCIL: {
+      gp_bruh_delete_mode_brushes(bmain, mode);
+      BKE_brush_gpencil_vertex_presets(bmain, ts);
+      changed = true;
+      break;
+    }
+    default:
+      break;
+  }
+
+  /* notifiers */
+  if (changed) {
+    DEG_relations_tag_update(bmain);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_brush_reset_all(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Reset All Brushes";
+  ot->idname = "GPENCIL_OT_brush_reset_all";
+  ot->description = "Delete all mode brushes and recreate a default set";
+
+  /* api callbacks */
+  ot->exec = gp_brush_reset_all_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

@@ -512,7 +512,8 @@ void GPENCIL_OT_extract_palette_vertex(struct wmOperatorType *ot);
 void GPENCIL_OT_transform_fill(struct wmOperatorType *ot);
 void GPENCIL_OT_reset_transform_fill(struct wmOperatorType *ot);
 
-void GPENCIL_OT_brush_presets_create(struct wmOperatorType *ot);
+void GPENCIL_OT_brush_reset(struct wmOperatorType *ot);
+void GPENCIL_OT_brush_reset_all(struct wmOperatorType *ot);
 
 /* undo stack ---------- */
 
