@@ -159,7 +159,8 @@ class AbstractHierarchyIterator {
   virtual std::string make_valid_name(const std::string &name) const;
 
   /* Return the name of this ID datablock that is valid for the exported file format. Overriding is
-   * only necessary if make_valid_name(id->name+2) is not suitable for the exported file format. */
+   * only necessary if make_valid_name(id->name+2) is not suitable for the exported file format.
+   * NULL-safe: when `id == nullptr` this returns an empty string. */
   virtual std::string get_id_name(const ID *id) const;
 
   /* Given a HierarchyContext of some Object *, return an export path that is valid for its
@@ -189,6 +190,7 @@ class AbstractHierarchyIterator {
   void make_writer_object_data(const HierarchyContext *context);
   void make_writers_particle_systems(const HierarchyContext *context);
 
+  /* Convenience wrappers around get_id_name(). */
   std::string get_object_name(const Object *object) const;
   std::string get_object_data_name(const Object *object) const;
 
