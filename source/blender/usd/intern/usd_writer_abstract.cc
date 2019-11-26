@@ -81,6 +81,8 @@ bool USDAbstractWriter::check_is_animated(const HierarchyContext &context) const
   }
 
   /* Test modifiers. */
+  /* TODO(Sybren): replace this with a check on the depsgraph to properly check for dependency on
+   * time. */
   ModifierData *md = static_cast<ModifierData *>(object->modifiers.first);
   while (md) {
     if (md->type != eModifierType_Subsurf) {
