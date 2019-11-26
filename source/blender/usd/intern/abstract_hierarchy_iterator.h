@@ -216,7 +216,10 @@ class AbstractHierarchyIterator {
    * nullptr if the object or its data should not be exported. Returning a nullptr for
    * data/hair/particle will NOT prevent the transform to be written.
    *
-   * 'Xform' is used for 'transform' to be consistent with the terminology of USD and Alembic. */
+   * 'Xform' is used for 'transform' to be consistent with the terminology of USD and Alembic.
+   *
+   * The returned writer is owned by the AbstractHierarchyWriter, and should be freed in
+   * delete_object_writer(). */
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) = 0;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) = 0;
   virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) = 0;
