@@ -326,7 +326,7 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   export_graph_[graph_index].insert(context);
 }
 
-AbstractHierarchyIterator::ExportGraph::mapped_type &AbstractHierarchyIterator::graph_children(
+AbstractHierarchyIterator::ExportChildren &AbstractHierarchyIterator::graph_children(
     const HierarchyContext *context)
 {
   if (context == nullptr) {
@@ -363,7 +363,7 @@ void AbstractHierarchyIterator::determine_export_paths(const HierarchyContext *p
 void AbstractHierarchyIterator::determine_duplication_references(
     const HierarchyContext *parent_context, std::string indent)
 {
-  ExportGraph::mapped_type children = graph_children(parent_context);
+  ExportChildren children = graph_children(parent_context);
 
   for (HierarchyContext *context : children) {
     if (context->duplicator != nullptr) {

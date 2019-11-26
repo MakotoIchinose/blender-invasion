@@ -129,8 +129,10 @@ class AbstractHierarchyIterator {
   /* Pair of a duplicated object and its duplicator, typically a pair of HierarchyContext::object
    * and HierarchyContext::duplicator. */
   typedef std::pair<Object *, Object *> DupliAndDuplicator;
+  /* All the children of some object, as per the export hierarchy. */
+  typedef std::set<HierarchyContext *> ExportChildren;
   /* Mapping from an object and its duplicator to the object's export-children. */
-  typedef std::map<DupliAndDuplicator, std::set<HierarchyContext *>> ExportGraph;
+  typedef std::map<DupliAndDuplicator, ExportChildren> ExportGraph;
   /* Mapping from duplicator ID to export path. */
   typedef std::map<ID *, std::string> ExportPathMap;
 
@@ -177,7 +179,7 @@ class AbstractHierarchyIterator {
                           Object *duplicator,
                           const std::set<Object *> &dupli_set);
 
-  ExportGraph::mapped_type &graph_children(const HierarchyContext *parent_context);
+  ExportChildren &graph_children(const HierarchyContext *parent_context);
 
   void determine_export_paths(const HierarchyContext *parent_context);
   void determine_duplication_references(const HierarchyContext *parent_context,
