@@ -50,8 +50,13 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
   virtual void write(HierarchyContext &context) override;
 
-  /* Returns true iff the data to be written is actually supported. This would, for example, allow
-   * a hypothetical camera writer accept a perspective camera but reject an orthogonal one. */
+  /* Returns true if the data to be written is actually supported. This would, for example, allow a
+   * hypothetical camera writer accept a perspective camera but reject an orthogonal one.
+   *
+   * Returning false from a transform writer will prevent the object and all its decendants from
+   * being exported. Returning false from a data writer (object data, hair, or particles) will
+   * only prevent that data from being written (and thus cause the object to be exported as an
+   * Empty). */
   virtual bool is_supported(const Object *object) const;
 
   const pxr::SdfPath &usd_path() const;
