@@ -49,6 +49,12 @@
 #endif
 
 /* Various helpers */
+void BKE_asset_uuid_runtime_reset(AssetUUID *uuid) {
+  uuid->ibuff = NULL;
+  uuid->width = uuid->height = 0;
+  uuid->tag = 0;
+}
+
 unsigned int BKE_asset_uuid_hash(const void *key)
 {
   BLI_HashMurmur2A mm2a;
@@ -66,13 +72,17 @@ bool BKE_asset_uuid_cmp(const void *a, const void *b)
 {
   const AssetUUID *uuid1 = a;
   const AssetUUID *uuid2 = b;
-  return !ASSETUUID_EQUAL(uuid1, uuid2); /* Expects false when compared equal... */
+  return !ASSETUUID_EQUAL(uuid1, uuid2); /* Expects false when compared equal. */
 }
 
 void BKE_asset_uuid_print(const AssetUUID *uuid)
 {
-  /* TODO print nicer (as 128bit hexadecimal...). */
-  printf("[%d,%d,%d,%d][%d,%d,%d,%d][%d,%d,%d,%d][%d,%d,%d,%d][%d,%d,%d,%d]\n",
+  /* TODO print nicer (as 128bit hexadecimal?). */
+  printf("[%.10d,%.10d,%.10d,%.10d]"
+         "[%.10d,%.10d,%.10d,%.10d]"
+         "[%.10d,%.10d,%.10d,%.10d]"
+         "[%.10d,%.10d,%.10d,%.10d]"
+         "[%.10d,%.10d,%.10d,%.10d]\n",
          uuid->uuid_repository[0],
          uuid->uuid_repository[1],
          uuid->uuid_repository[2],

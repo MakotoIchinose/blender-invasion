@@ -2684,8 +2684,8 @@ static void direct_link_id(FileData *fd, ID *id)
 
   if (id->uuid) {
     id->uuid = newdataadr(fd, id->uuid);
-    id->uuid->ibuff = NULL; /* Just in case... */
-    id->uuid->width = id->uuid->height = 0;
+    /* Make sure runtime fields are always zeroed out. */
+    BKE_asset_uuid_runtime_reset(id->uuid);
   }
 }
 
@@ -9313,12 +9313,12 @@ static BHead *read_libblock(FileData *fd,
     }
 
     if (id->uuid) {
-      /* read all data into fd->datamap */
+      /* Read all data into fd->datamap. */
       bhead = read_data_into_oldnewmap(fd, bhead, __func__);
 
       id->uuid = newdataadr(fd, id->uuid);
-      id->uuid->ibuff = NULL; /* Just in case... */
-      id->uuid->width = id->uuid->height = 0;
+      /* Make sure runtime fields are always zeroed out. */
+      BKE_asset_uuid_runtime_reset(id->uuid);
 
       oldnewmap_free_unused(fd->datamap);
       oldnewmap_clear(fd->datamap);
@@ -11890,8 +11890,18 @@ static void read_library_linked_ids(FileData *basefd,
         /* BLI_assert(*realid != NULL); */
 
         if (*realid && id->uuid) {
-          /* we can give ownership of that pointer to new ID. */
+          /* it is important to keep the UUID we stored in that .blend file, not the (potentially
+           * different) one we get from the library, updating UUID should be handled by asset
+           * engine later - even though changing UUID is not recommended in any case. */
+          if ((*realid)->uuid != NULL) {
+            MEM_SAFE_FREE((*realid)->uuid);
+          }
+          /* We can give ownership of that pointer to new ID. */
           (*realid)->uuid = id->uuid;
+          id->uuid = NULL;
+        }
+        else {
+          MEM_SAFE_FREE(id->uuid);
         }
 
         /* Now that we have a real ID, replace all pointers to placeholders in
@@ -11908,6 +11918,8 @@ static void read_library_linked_ids(FileData *basefd,
 
     /* Clear GHash and free link placeholder IDs of the current type. */
     BLI_ghash_clear(loaded_ids, NULL, NULL);
+    /* Note: this is currently just freeing ID struct itself, assuming there is no remaining
+     * allocated sub-data owned by this ID. */
     BLI_freelistN(&pending_free_ids);
   }
 

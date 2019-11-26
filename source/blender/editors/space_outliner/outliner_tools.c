@@ -697,7 +697,8 @@ static void id_local_cb(bContext *C,
     Main *bmain = CTX_data_main(C);
     /* if the ID type has no special local function,
      * just clear the lib. */
-    /* XXX This is very, very, **very** suspicious - should not be handled that way at all!!! */
+    /* XXX This is very, very, **very** suspicious - should not be handled that way at all.
+     *     Probably best thing to do here is to simply not do anything. */
     if (id_make_local(bmain, tselem->id, false, false) == false) {
       id_clear_lib_data(bmain, tselem->id);
     }
