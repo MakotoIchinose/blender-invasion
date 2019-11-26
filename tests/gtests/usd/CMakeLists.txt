@@ -46,6 +46,7 @@ get_property(BLENDER_SORTED_LIBS GLOBAL PROPERTY BLENDER_SORTED_LIBS_PROP)
 
 set(SRC
   abstract_hierarchy_iterator_test.cc
+  hierarchy_context_order_test.cc
 )
 
 if(WITH_BUILDINFO)
