@@ -239,7 +239,7 @@ enum eOverrideLibrary_Flag {
  * Each engine is free to use it as it likes - it will be the only thing passed to it by blender to
  * identify repository/asset/variant/version/view.
  * Assumed to be 128bits (16 bytes) each, handled as four integers due to lack of real
- * bytes proptype in RNA :|.
+ * bytes proptype in RNA.
  */
 #define ASSET_UUID_LENGTH 16
 
@@ -250,15 +250,18 @@ typedef struct AssetUUID {
   int uuid_variant[4];
   int uuid_revision[4];
   int uuid_view[4];
-  short flag; /* Saved. */
-  short tag;  /* Runtime. */
+  short flag;
+
+  /* Everything below this comment is runtime data. */
+  short tag;
 
   /* Preview. */
   short width;
   short height;
   char *ibuff; /* RGBA 8bits. */
 
-  /* Used for load_post... */
+  /* Used for load_post and other temporary storage of the ID itself in its AssetUUID.
+   * Usage and scope are similar to the `ID.newid` pointer. */
   struct ID *id;
 } AssetUUID;
 
@@ -279,9 +282,9 @@ enum {
       1 << 1, /* The asset engine was found but does not know about this asset (anymore). */
 
   UUID_TAG_ASSET_RELOAD =
-      1 << 8, /* Set by the asset engine to indicates that that asset has to be reloaded. */
+      1 << 8, /* Set by the asset engine to indicate that this asset has to be reloaded. */
   UUID_TAG_ASSET_NOPREVIEW =
-      1 << 9, /* Set by the asset engine to indicates that that asset has no preview. */
+      1 << 9, /* Set by the asset engine to indicate that this asset has no preview. */
 };
 
 /* Not stored in files, but defined here to ease RNA code... */

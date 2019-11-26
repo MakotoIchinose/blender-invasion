@@ -398,7 +398,7 @@ PyDoc_STRVAR(
     "   :rtype: ID\n");
 static PyObject *bpy_asset_uuid_search(PyObject *UNUSED(self), PyObject *args, PyObject *kwds)
 {
-#if 0 /* If someone knows how to get a proper 'self' in that case... */
+#if 0 /* TODO: Find a proper way of getting bmain from `self ` in this case. */
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;
   Main *bmain = pyrna->ptr.data;
 #else

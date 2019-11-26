@@ -3766,6 +3766,10 @@ static void write_libraries(WriteData *wd, Main *main)
                 BLI_assert(0);
               }
               writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
+            /* It is mandatory to write id's asset uuid reference for placeholders too, otherwise
+             * the whole asset info would be completely lost when reloading the linked data-block,
+             * especially in case it is not immediately found and needs to go through the whole
+             * 'asset engine update' process after main .blend read process is finished. */
               write_iddata(wd, id);
             }
           }
