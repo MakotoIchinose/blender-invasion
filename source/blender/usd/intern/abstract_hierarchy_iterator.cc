@@ -144,7 +144,7 @@ void AbstractHierarchyIterator::debug_print_export_graph() const
       if (child_ctx->duplicator == nullptr) {
         printf("       - %s%s%s\n",
                child_ctx->object->id.name + 2,
-               child_ctx->weak_export ? " \033[97m(weak)\033[0m" : "",
+               child_ctx->weak_export ? " (weak)" : "",
                child_ctx->original_export_path.size() ?
                    (std::string("ref ") + child_ctx->original_export_path).c_str() :
                    "");
@@ -153,7 +153,7 @@ void AbstractHierarchyIterator::debug_print_export_graph() const
         printf("       - %s (dup by %s%s) %s\n",
                child_ctx->object->id.name + 2,
                child_ctx->duplicator->id.name + 2,
-               child_ctx->weak_export ? ", \033[97mweak\033[0m" : "",
+               child_ctx->weak_export ? ", weak" : "",
                child_ctx->original_export_path.size() ?
                    (std::string("ref ") + child_ctx->original_export_path).c_str() :
                    "");
