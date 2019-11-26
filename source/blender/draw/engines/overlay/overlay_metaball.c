@@ -132,5 +132,11 @@ void OVERLAY_metaball_draw(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
 
   DRW_draw_pass(psl->metaball_ps[0]);
+}
+
+void OVERLAY_metaball_in_front_draw(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
   DRW_draw_pass(psl->metaball_ps[1]);
 }

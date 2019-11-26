@@ -26,6 +26,12 @@
 
 #include "overlay_private.h"
 
+void OVERLAY_antialiasing_reset(OVERLAY_Data *vedata)
+{
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+  pd->antialiasing.sample = 0;
+}
+
 void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
 {
   OVERLAY_FramebufferList *fbl = vedata->fbl;
@@ -102,7 +108,7 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
     }
     else {
       /* FXAA */
-      pd->antialiasing.sample = 0;
+      OVERLAY_antialiasing_reset(vedata);
       /* Use default view */
       pd->view_default = (DRWView *)DRW_view_default_get();
     }

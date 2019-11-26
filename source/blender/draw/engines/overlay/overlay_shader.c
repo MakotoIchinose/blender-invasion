@@ -751,7 +751,7 @@ GPUShader *OVERLAY_shader_extra_wire(bool use_object)
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   if (!sh_data->extra_wire[use_object]) {
     char colorids[1024];
-    /* Need to define all there ids we need here. */
+    /* NOTE: define all ids we need here. */
     BLI_snprintf(colorids,
                  sizeof(colorids),
                  "#define TH_ACTIVE %d\n"

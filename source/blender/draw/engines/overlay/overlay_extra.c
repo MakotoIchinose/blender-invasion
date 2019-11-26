@@ -80,38 +80,6 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 
     DRWPass *extra_ps = *p_extra_ps;
 
-#if 0
-    /* Wires (for loose edges) */
-    sh = GPU_shader_get_builtin_shader_with_config(GPU_SHADER_3D_UNIFORM_COLOR, draw_ctx->sh_cfg);
-    cb->wire = shgroup_wire(cb->non_meshes, gb->colorWire, sh, draw_ctx->sh_cfg);
-    cb->wire_select = shgroup_wire(cb->non_meshes, gb->colorSelect, sh, draw_ctx->sh_cfg);
-    cb->wire_transform = shgroup_wire(cb->non_meshes, gb->colorTransform, sh, draw_ctx->sh_cfg);
-    cb->wire_active = shgroup_wire(cb->non_meshes, gb->colorActive, sh, draw_ctx->sh_cfg);
-    /* Wire (duplicator) */
-    cb->wire_dupli = shgroup_wire(cb->non_meshes, gb->colorDupli, sh, draw_ctx->sh_cfg);
-    cb->wire_dupli_select = shgroup_wire(
-        cb->non_meshes, gb->colorDupliSelect, sh, draw_ctx->sh_cfg);
-
-    /* Points (loose points) */
-    sh = sh_data->loose_points;
-    cb->points = shgroup_points(cb->non_meshes, gb->colorWire, sh, draw_ctx->sh_cfg);
-    cb->points_select = shgroup_points(cb->non_meshes, gb->colorSelect, sh, draw_ctx->sh_cfg);
-    cb->points_transform = shgroup_points(
-        cb->non_meshes, gb->colorTransform, sh, draw_ctx->sh_cfg);
-    cb->points_active = shgroup_points(cb->non_meshes, gb->colorActive, sh, draw_ctx->sh_cfg);
-    /* Points (duplicator) */
-    cb->points_dupli = shgroup_points(cb->non_meshes, gb->colorDupli, sh, draw_ctx->sh_cfg);
-    cb->points_dupli_select = shgroup_points(
-        cb->non_meshes, gb->colorDupliSelect, sh, draw_ctx->sh_cfg);
-    DRW_shgroup_state_disable(cb->points, DRW_STATE_BLEND_ALPHA);
-    DRW_shgroup_state_disable(cb->points_select, DRW_STATE_BLEND_ALPHA);
-    DRW_shgroup_state_disable(cb->points_transform, DRW_STATE_BLEND_ALPHA);
-    DRW_shgroup_state_disable(cb->points_active, DRW_STATE_BLEND_ALPHA);
-    DRW_shgroup_state_disable(cb->points_dupli, DRW_STATE_BLEND_ALPHA);
-    DRW_shgroup_state_disable(cb->points_dupli_select, DRW_STATE_BLEND_ALPHA);
-
-#endif
-
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 #define BUF_POINT(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_POINTS)
 #define BUF_LINE(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_LINES)
@@ -270,11 +238,7 @@ void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
                                 const float color[4])
 {
   float draw_mat[4][4];
-  copy_m4_m4(draw_mat, mat);
-  draw_mat[0][3] = color[0];
-  draw_mat[1][3] = color[1];
-  draw_mat[2][3] = color[2];
-  draw_mat[3][3] = color[3];
+  pack_v4_in_mat4(draw_mat, mat, color);
   DRW_shgroup_call_obmat(cb->extra_loose_points, geom, draw_mat);
 }
 
@@ -284,11 +248,7 @@ void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
                         const float color[4])
 {
   float draw_mat[4][4];
-  copy_m4_m4(draw_mat, mat);
-  draw_mat[0][3] = color[0];
-  draw_mat[1][3] = color[1];
-  draw_mat[2][3] = color[2];
-  draw_mat[3][3] = color[3];
+  pack_v4_in_mat4(draw_mat, mat, color);
   DRW_shgroup_call_obmat(cb->extra_wire, geom, draw_mat);
 }
 
@@ -303,8 +263,7 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          const float color[4])
 {
   float instdata[4][4];
-  copy_m4_m4(instdata, mat);
-  instdata[3][3] = draw_size;
+  pack_fl_in_mat4(instdata, mat, draw_size);
 
   switch (draw_type) {
     case OB_PLAINAXES:
@@ -345,9 +304,7 @@ void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
   OVERLAY_ExtraCallBuffers *cb = OVERLAY_extra_call_buffer_get(vedata, ob);
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ViewLayer *view_layer = draw_ctx->view_layer;
-
   float *color;
-  DRW_object_wire_theme_get(ob, view_layer, &color);
 
   switch (ob->empty_drawtype) {
     case OB_PLAINAXES:
@@ -357,6 +314,7 @@ void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     case OB_EMPTY_SPHERE:
     case OB_EMPTY_CONE:
     case OB_ARROWS:
+      DRW_object_wire_theme_get(ob, view_layer, &color);
       OVERLAY_empty_shape(cb, ob->obmat, ob->empty_drawsize, ob->empty_drawtype, color);
       break;
     case OB_EMPTY_IMAGE:
@@ -377,15 +335,7 @@ static void OVERLAY_bounds(
 
   BoundBox *bb = BKE_object_boundbox_get(ob);
 
-  if (!ELEM(ob->type,
-            OB_MESH,
-            OB_CURVE,
-            OB_SURF,
-            OB_FONT,
-            OB_MBALL,
-            OB_ARMATURE,
-            OB_LATTICE,
-            OB_GPENCIL)) {
+  if (bb == NULL) {
     const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
     bb = &bb_local;
     BKE_boundbox_init_from_minmax(bb, min, max);

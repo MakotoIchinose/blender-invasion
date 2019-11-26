@@ -7,9 +7,11 @@ in float color;
 
 out vec4 finalColor;
 
+#define no_active_weight 666.0
+
 vec3 weight_to_rgb(float t)
 {
-  if (t == 666.0) {
+  if (t == no_active_weight) {
     /* No weight. */
     return colorWire.rgb;
   }

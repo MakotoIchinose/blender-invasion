@@ -53,66 +53,6 @@ void OVERLAY_outline_init(OVERLAY_Data *vedata)
   }
 }
 
-static DRWShadingGroup *shgroup_theme_id_to_outline_or_null(OVERLAY_PrivateData *pd,
-                                                            int theme_id,
-                                                            const int base_flag)
-{
-  if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
-    switch (theme_id) {
-      case TH_ACTIVE:
-      case TH_SELECT:
-        return pd->outlines_select_dupli_grp;
-      case TH_TRANSFORM:
-        return pd->outlines_transform_grp;
-      default:
-        return NULL;
-    }
-  }
-
-  switch (theme_id) {
-    case TH_ACTIVE:
-      return pd->outlines_active_grp;
-    case TH_SELECT:
-      return pd->outlines_select_grp;
-    case TH_TRANSFORM:
-      return pd->outlines_transform_grp;
-    default:
-      return NULL;
-  }
-}
-
-static DRWShadingGroup *shgroup_theme_id_to_probe_outline_or_null(OVERLAY_PrivateData *pd,
-                                                                  int theme_id,
-                                                                  const int base_flag)
-{
-  if (UNLIKELY(DRW_state_is_select())) {
-    return pd->outlines_probe_select_grp;
-  }
-
-  if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
-    switch (theme_id) {
-      case TH_ACTIVE:
-      case TH_SELECT:
-        return pd->outlines_probe_select_dupli_grp;
-      case TH_TRANSFORM:
-        return pd->outlines_probe_transform_grp;
-      default:
-        return NULL;
-    }
-  }
-
-  switch (theme_id) {
-    case TH_ACTIVE:
-      return pd->outlines_probe_active_grp;
-    case TH_SELECT:
-      return pd->outlines_probe_select_grp;
-    case TH_TRANSFORM:
-      return pd->outlines_probe_transform_grp;
-    default:
-      return NULL;
-  }
-}
-
 static int shgroup_theme_id_to_outline_id(int theme_id, const int base_flag)
 {
   if (UNLIKELY(base_flag & BASE_FROM_DUPLI)) {
@@ -136,6 +76,44 @@ static int shgroup_theme_id_to_outline_id(int theme_id, const int base_flag)
       return 0;
     default:
       return -1;
+  }
+}
+
+static DRWShadingGroup *shgroup_theme_id_to_outline_or_null(OVERLAY_PrivateData *pd,
+                                                            int theme_id,
+                                                            const int base_flag)
+{
+  int outline_id = shgroup_theme_id_to_outline_id(theme_id, base_flag);
+  switch (outline_id) {
+    case 3: /* TH_ACTIVE */
+      return pd->outlines_active_grp;
+    case 2: /* Duplis */
+      return pd->outlines_select_dupli_grp;
+    case 1: /* TH_SELECT */
+      return pd->outlines_select_grp;
+    case 0: /* TH_TRANSFORM */
+      return pd->outlines_transform_grp;
+    default:
+      return NULL;
+  }
+}
+
+static DRWShadingGroup *shgroup_theme_id_to_probe_outline_or_null(OVERLAY_PrivateData *pd,
+                                                                  int theme_id,
+                                                                  const int base_flag)
+{
+  int outline_id = shgroup_theme_id_to_outline_id(theme_id, base_flag);
+  switch (outline_id) {
+    case 3: /* TH_ACTIVE */
+      return pd->outlines_probe_active_grp;
+    case 2: /* Duplis */
+      return pd->outlines_probe_select_dupli_grp;
+    case 1: /* TH_SELECT */
+      return pd->outlines_probe_select_grp;
+    case 0: /* TH_TRANSFORM */
+      return pd->outlines_probe_transform_grp;
+    default:
+      return NULL;
   }
 }
 

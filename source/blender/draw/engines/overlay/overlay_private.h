@@ -365,6 +365,29 @@ typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *wire_extra;
 } OVERLAY_InstanceFormats;
 
+/* Pack data into the last row of the 4x4 matrix. It will be decoded by the vertex shader. */
+BLI_INLINE void pack_data_in_mat4(
+    float rmat[4][4], const float mat[4][4], float a, float b, float c, float d)
+{
+  copy_m4_m4(rmat, mat);
+  rmat[0][3] = a;
+  rmat[1][3] = b;
+  rmat[2][3] = c;
+  rmat[3][3] = d;
+}
+
+BLI_INLINE void pack_v4_in_mat4(float rmat[4][4], const float mat[4][4], const float v[4])
+{
+  pack_data_in_mat4(rmat, mat, v[0], v[1], v[2], v[3]);
+}
+
+BLI_INLINE void pack_fl_in_mat4(float rmat[4][4], const float mat[4][4], float a)
+{
+  copy_m4_m4(rmat, mat);
+  rmat[3][3] = a;
+}
+
+void OVERLAY_antialiasing_reset(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_init(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_start(OVERLAY_Data *vedata);
@@ -465,6 +488,7 @@ void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_metaball_draw(OVERLAY_Data *vedata);
+void OVERLAY_metaball_in_front_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_motion_path_cache_populate(OVERLAY_Data *vedata, Object *ob);

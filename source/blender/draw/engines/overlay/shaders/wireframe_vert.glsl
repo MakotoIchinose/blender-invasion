@@ -30,11 +30,11 @@ uniform bool isRandomColor;
 
 void wire_color_get(out vec3 rim_col, out vec3 wire_col)
 {
-  /* See drw_call_obinfos_init */
-  bool is_selected = (int(abs(ObjectInfo.w)) & (1 << 1)) != 0;
-  bool is_from_dupli = (int(abs(ObjectInfo.w)) & (1 << 2)) != 0;
-  bool is_from_set = (int(abs(ObjectInfo.w)) & (1 << 3)) != 0;
-  bool is_active = (int(abs(ObjectInfo.w)) & (1 << 4)) != 0;
+  int flag = int(abs(ObjectInfo.w));
+  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
+  bool is_from_dupli = (flag & DRW_BASE_FROM_DUPLI) != 0;
+  bool is_from_set = (flag & DRW_BASE_FROM_SET) != 0;
+  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
 
   if (is_from_set) {
     rim_col = colorDupli.rgb;
@@ -81,8 +81,8 @@ vec3 hsv_to_rgb(vec3 hsv)
 
 void wire_object_color_get(out vec3 rim_col, out vec3 wire_col)
 {
-  /* See drw_call_obinfos_init */
-  bool is_selected = (int(abs(ObjectInfo.w)) & (1 << 1)) != 0;
+  int flag = int(abs(ObjectInfo.w));
+  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
 
   if (isObjectColor) {
     rim_col = wire_col = ObjectColor.rgb * 0.5;

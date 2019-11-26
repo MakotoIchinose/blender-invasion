@@ -157,3 +157,8 @@ uniform mat4 ModelMatrixInverse;
 #else
 #  define GPU_INTEL_VERTEX_SHADER_WORKAROUND
 #endif
+
+#define DRW_BASE_SELECTED (1 << 1)
+#define DRW_BASE_FROM_DUPLI (1 << 2)
+#define DRW_BASE_FROM_SET (1 << 3)
+#define DRW_BASE_ACTIVE (1 << 4)

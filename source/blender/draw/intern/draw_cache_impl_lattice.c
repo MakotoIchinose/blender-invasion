@@ -365,7 +365,9 @@ static GPUVertBuf *lattice_batch_cache_get_pos(LatticeRenderData *rdata,
       GPU_vertbuf_attr_set(cache->pos, attr_id.pos, i, bp->vec);
 
       if (use_weight) {
-        float weight = (actdef > -1) ? defvert_find_weight(rdata->dvert + i, actdef) : 666.0f;
+        const float no_active_weight = 666.0f;
+        float weight = (actdef > -1) ? defvert_find_weight(rdata->dvert + i, actdef) :
+                                       no_active_weight;
         GPU_vertbuf_attr_set(cache->pos, attr_id.col, i, &weight);
       }
     }

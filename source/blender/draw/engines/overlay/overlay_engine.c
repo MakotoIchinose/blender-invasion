@@ -154,10 +154,10 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_wireframe_cache_init(vedata);
 }
 
-BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *init)
+BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *do_init)
 {
   OVERLAY_DupliData **dupli_data = (OVERLAY_DupliData **)DRW_duplidata_get(vedata);
-  *init = false;
+  *do_init = false;
   if (!ELEM(ob->type, OB_MESH, OB_SURF, OB_LATTICE, OB_CURVE, OB_FONT)) {
     return NULL;
   }
@@ -165,11 +165,11 @@ BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bo
   if (dupli_data) {
     if (*dupli_data == NULL) {
       *dupli_data = MEM_callocN(sizeof(OVERLAY_DupliData), __func__);
-      *init = true;
+      *do_init = true;
     }
     else if ((*dupli_data)->base_flag != ob->base_flag) {
       /* Select state might have change, reinit. */
-      *init = true;
+      *do_init = true;
     }
     return *dupli_data;
   }
@@ -185,7 +185,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool renderable = DRW_object_is_renderable(ob);
   const bool in_pose_mode = ob->type == OB_ARMATURE && OVERLAY_armature_is_pose_mode(ob, draw_ctx);
   const bool in_edit_mode = BKE_object_is_in_editmode(ob);
-  const bool in_part_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
+  const bool in_particle_edit_mode = ob->mode == OB_MODE_PARTICLE_EDIT;
   const bool in_paint_mode = (ob == draw_ctx->obact) &&
                              (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
   const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != NULL);
@@ -207,17 +207,17 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
   const bool draw_motion_paths = (pd->overlay.flag & V3D_OVERLAY_HIDE_MOTION_PATHS) == 0;
 
-  bool init;
-  OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &init);
+  bool do_init;
+  OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &do_init);
 
   if (draw_facing) {
     OVERLAY_facing_cache_populate(vedata, ob);
   }
   if (draw_wires) {
-    OVERLAY_wireframe_cache_populate(vedata, ob, dupli, init);
+    OVERLAY_wireframe_cache_populate(vedata, ob, dupli, do_init);
   }
   if (draw_outlines) {
-    OVERLAY_outline_cache_populate(vedata, ob, dupli, init);
+    OVERLAY_outline_cache_populate(vedata, ob, dupli, do_init);
   }
   if (draw_bone_selection) {
     OVERLAY_pose_cache_populate(vedata, ob);
@@ -266,7 +266,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
-  else if (in_part_edit_mode) {
+  else if (in_particle_edit_mode) {
     OVERLAY_edit_particle_cache_populate(vedata, ob);
   }
 
@@ -351,8 +351,6 @@ static void OVERLAY_cache_finish(void *vedata)
   OVERLAY_image_cache_finish(vedata);
 }
 
-#include "GPU_draw.h"
-
 static void OVERLAY_draw_scene(void *vedata)
 {
   OVERLAY_Data *data = vedata;
@@ -394,6 +392,7 @@ static void OVERLAY_draw_scene(void *vedata)
   OVERLAY_wireframe_in_front_draw(vedata);
   OVERLAY_armature_in_front_draw(vedata);
   OVERLAY_extra_in_front_draw(vedata);
+  OVERLAY_metaball_in_front_draw(vedata);
   OVERLAY_image_in_front_draw(vedata);
 
   if (DRW_state_is_fbo()) {
@@ -460,9 +459,7 @@ static void OVERLAY_view_update(void *vedata)
 {
   OVERLAY_Data *data = vedata;
   if (data->stl && data->stl->pd) {
-    OVERLAY_PrivateData *pd = data->stl->pd;
-    /* Reset TAA */
-    pd->antialiasing.sample = 0;
+    OVERLAY_antialiasing_reset(data);
   }
 }
 
