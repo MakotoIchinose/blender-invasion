@@ -1179,28 +1179,40 @@ BLI_INLINE bool parallel_range_next_iter_get(TaskParallelRangePool *__restrict r
                                              int *__restrict r_count,
                                              TaskParallelRangeState **__restrict r_state)
 {
-  TaskParallelRangeState *state;
+  /* We need an atomic op here as well to fetch the initial state, since some other thread might
+   * have already updated it. */
+  TaskParallelRangeState *current_state = atomic_cas_ptr(
+      (void **)&range_pool->current_state, NULL, NULL);
+
   int previter = INT32_MAX;
 
-  do {
-    if ((state = range_pool->current_state) == NULL) {
-      break;
-    }
-
-    previter = atomic_fetch_and_add_int32(&state->iter_value, range_pool->chunk_size);
+  while (current_state != NULL && previter >= current_state->stop) {
+    previter = atomic_fetch_and_add_int32(&current_state->iter_value, range_pool->chunk_size);
     *r_iter = previter;
-    *r_count = max_ii(0, min_ii(range_pool->chunk_size, state->stop - previter));
+    *r_count = max_ii(0, min_ii(range_pool->chunk_size, current_state->stop - previter));
 
-    if (previter >= state->stop) {
+    if (previter >= current_state->stop) {
       /* At this point the state we got is done, we need to go to the next one. In case some other
        * thread already did it, then this does nothing, and we'll just get current valid state
        * at start of the next loop. */
-      atomic_cas_ptr((void **)&range_pool->current_state, state, state->next);
-    }
-  } while (state != NULL && previter >= state->stop);
+      TaskParallelRangeState *current_state_from_atomic_cas = atomic_cas_ptr(
+          (void **)&range_pool->current_state, current_state, current_state->next);
 
-  *r_state = state;
-  return (state != NULL && previter < state->stop);
+      if (current_state == current_state_from_atomic_cas) {
+        /* The atomic CAS operation was successful, we did update range_pool->current_state, so we
+         * can safely switch to next state. */
+        current_state = current_state->next;
+      }
+      else {
+        /* The atomic CAS operation failed, but we still got range_pool->current_state value out of
+         * it, just use it as our new current state. */
+        current_state = current_state_from_atomic_cas;
+      }
+    }
+  }
+
+  *r_state = current_state;
+  return (current_state != NULL && previter < current_state->stop);
 }
 
 static void parallel_range_func(TaskPool *__restrict pool, void *tls_data_idx, int thread_id)
@@ -1322,10 +1334,7 @@ void BLI_task_parallel_range(const int start,
   TaskPool *task_pool = range_pool.pool = BLI_task_pool_create_suspended(task_scheduler,
                                                                          &range_pool);
 
-  /* NOTE: This way we are adding a memory barrier and ensure all worker
-   * threads can read and modify the value, without any locks. */
-  atomic_cas_ptr((void **)&range_pool.current_state, NULL, &state);
-  BLI_assert(range_pool.current_state == &state);
+  range_pool.current_state = &state;
 
   if (use_tls_data) {
     state.flatten_tls_storage = flatten_tls_storage = MALLOCA(tls_data_size * (size_t)num_tasks);
@@ -1491,10 +1500,7 @@ void BLI_task_parallel_range_pool_work_and_wait(TaskParallelRangePool *range_poo
   TaskPool *task_pool = range_pool->pool = BLI_task_pool_create_suspended(task_scheduler,
                                                                           range_pool);
 
-  /* NOTE: This way we are adding a memory barrier and ensure all worker
-   * threads can read and modify the value, without any locks. */
-  atomic_cas_ptr((void **)&range_pool->current_state, NULL, range_pool->parallel_range_states);
-  BLI_assert(range_pool->current_state == range_pool->parallel_range_states);
+  range_pool->current_state = range_pool->parallel_range_states;
 
   for (int i = 0; i < num_tasks; i++) {
     BLI_task_pool_push_from_thread(task_pool,
@@ -1507,7 +1513,7 @@ void BLI_task_parallel_range_pool_work_and_wait(TaskParallelRangePool *range_poo
 
   BLI_task_pool_work_and_wait(task_pool);
 
-  BLI_assert(range_pool->current_state == NULL);
+  BLI_assert(atomic_cas_ptr((void **)&range_pool->current_state, NULL, NULL) == NULL);
 
   /* Finalize all tasks. */
   for (TaskParallelRangeState *state = range_pool->parallel_range_states; state != NULL;
@@ -1517,7 +1523,6 @@ void BLI_task_parallel_range_pool_work_and_wait(TaskParallelRangePool *range_poo
     UNUSED_VARS_NDEBUG(userdata_chunk_array);
     if (userdata_chunk_size == 0) {
       BLI_assert(userdata_chunk_array == NULL);
-      MEM_freeN(state);
       continue;
     }
 
