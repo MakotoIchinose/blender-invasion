@@ -110,8 +110,9 @@ class AbstractHierarchyWriter {
  public:
   virtual ~AbstractHierarchyWriter();
   virtual void write(HierarchyContext &context) = 0;
-  // TODO(Sybren): add function like unused_during_iteration() that's called when a writer was
-  // previously created, but wasn't used this iteration.
+  // TODO(Sybren): add function like absent() that's called when a writer was previously created,
+  // but wasn't used while exporting the current frame (for example, a particle-instanced mesh of
+  // which the particle is no longer alive).
 };
 
 /* AbstractHierarchyIterator iterates over objects in a dependency graph, and constructs export
