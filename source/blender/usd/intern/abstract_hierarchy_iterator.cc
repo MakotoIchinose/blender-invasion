@@ -188,24 +188,26 @@ void AbstractHierarchyIterator::export_graph_construct()
     // Export the duplicated objects instanced by this object.
     ListBase *lb = object_duplilist(depsgraph_, scene, object);
     if (lb) {
-      DupliObject *link = nullptr;
-
       // Construct the set of duplicated objects, so that later we can determine whether a parent
       // is also duplicated itself.
       std::set<Object *> dupli_set;
-      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_dupli_object(link)) {
+      for (DupliObject *dupli_object = static_cast<DupliObject *>(lb->first);
+           dupli_object != nullptr;
+           dupli_object = dupli_object->next) {
+        if (!should_visit_dupli_object(dupli_object)) {
           continue;
         }
-        dupli_set.insert(link->ob);
+        dupli_set.insert(dupli_object->ob);
       }
 
-      for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_dupli_object(link)) {
+      for (DupliObject *dupli_object = static_cast<DupliObject *>(lb->first);
+           dupli_object != nullptr;
+           dupli_object = dupli_object->next) {
+        if (!should_visit_dupli_object(dupli_object)) {
           continue;
         }
 
-        visit_dupli_object(link, object, dupli_set);
+        visit_dupli_object(dupli_object, object, dupli_set);
       }
     }
 
