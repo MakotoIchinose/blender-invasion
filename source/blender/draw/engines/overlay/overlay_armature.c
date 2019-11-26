@@ -183,9 +183,10 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
 
     cb->custom_shapes_ghash = BLI_ghash_ptr_new(__func__);
 
+    DRWState infront_state = (DRW_state_is_select() && (i == 1)) ? DRW_STATE_IN_FRONT_SELECT : 0;
     state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
             (pd->armature.transparent ? DRW_STATE_BLEND_ALPHA : DRW_STATE_WRITE_DEPTH);
-    DRW_PASS_CREATE(*p_armature_ps, state | pd->clipping_state);
+    DRW_PASS_CREATE(*p_armature_ps, state | pd->clipping_state | infront_state);
 
     DRWPass *armature_ps = *p_armature_ps;
 

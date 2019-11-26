@@ -42,8 +42,9 @@ void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata)
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 
   for (int i = 0; i < 2; i++) {
+    DRWState infront_state = (DRW_state_is_select() && (i == 1)) ? DRW_STATE_IN_FRONT_SELECT : 0;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    DRW_PASS_CREATE(psl->metaball_ps[i], state | pd->clipping_state);
+    DRW_PASS_CREATE(psl->metaball_ps[i], state | pd->clipping_state | infront_state);
 
     /* Reuse armature shader as it's perfect to outline ellipsoids. */
     struct GPUVertFormat *format = formats->instance_bone;

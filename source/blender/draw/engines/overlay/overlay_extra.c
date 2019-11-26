@@ -75,8 +75,9 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     OVERLAY_ExtraCallBuffers *cb = &pd->extra_call_buffers[i];
     DRWPass **p_extra_ps = &psl->extra_ps[i];
 
+    DRWState infront_state = (DRW_state_is_select() && (i == 1)) ? DRW_STATE_IN_FRONT_SELECT : 0;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
-    DRW_PASS_CREATE(*p_extra_ps, state | pd->clipping_state);
+    DRW_PASS_CREATE(*p_extra_ps, state | pd->clipping_state | infront_state);
 
     DRWPass *extra_ps = *p_extra_ps;
 

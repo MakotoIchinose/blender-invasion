@@ -385,9 +385,6 @@ static void OVERLAY_draw_scene(void *vedata)
       GPU_framebuffer_clear_depth(fbl->overlay_in_front_fb, 1.0f);
     }
   }
-  else if (DRW_state_is_select()) {
-    /* TODO fix in_front selectability */
-  }
 
   OVERLAY_wireframe_in_front_draw(vedata);
   OVERLAY_armature_in_front_draw(vedata);
