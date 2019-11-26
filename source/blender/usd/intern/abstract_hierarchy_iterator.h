@@ -161,8 +161,8 @@ class AbstractHierarchyIterator {
   virtual std::string get_id_name(const ID *id) const;
 
   /* Given a HierarchyContext of some Object *, return an export path that is valid for its
-   * object->data. Overriding is probably not necessary if the subclass implements the proper
-   * path_concatenate(). */
+   * object->data. Overriding is necessary when the exported format does NOT expect the object's
+   * data to be a child of the object. */
   virtual std::string get_object_data_path(const HierarchyContext *context) const;
 
  private:
