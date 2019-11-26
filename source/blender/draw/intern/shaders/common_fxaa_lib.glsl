@@ -879,6 +879,6 @@ vec4 FxaaPixelShader(
   if (horzSpan) {
     posM.y += pixelOffsetSubpix * lengthSign;
   }
-  return vec4(FxaaTexTop(tex, posM).xyz, lumaM);
+  return FxaaTexTop(tex, posM);
 }
 /*==========================================================================*/
