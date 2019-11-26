@@ -88,7 +88,6 @@ struct HierarchyContext {
    * exported objects, in which case this string is empty even though 'duplicator' is set. */
   std::string original_export_path;
 
-  // For making the struct insertable into a std::set<>.
   bool operator<(const HierarchyContext &other) const;
 
   /* Return a HierarchyContext representing the root of the export hierarchy. */
