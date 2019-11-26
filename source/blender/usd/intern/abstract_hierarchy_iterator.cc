@@ -126,7 +126,7 @@ void AbstractHierarchyIterator::debug_print_export_graph() const
 {
   size_t total_graph_size = 0;
   for (const ExportGraph::value_type &map_iter : export_graph) {
-    const std::pair<Object *, Object *> &parent_info = map_iter.first;
+    const DupliAndDuplicator &parent_info = map_iter.first;
     Object *const export_parent = parent_info.first;
     Object *const duplicator = parent_info.second;
 

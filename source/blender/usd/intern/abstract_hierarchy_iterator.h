@@ -126,8 +126,11 @@ class AbstractHierarchyIterator {
  public:
   // Mapping from export path to writer.
   typedef std::map<std::string, AbstractHierarchyWriter *> WriterMap;
-  // Mapping from <object, duplicator> to the object's export-children.
-  typedef std::map<std::pair<Object *, Object *>, std::set<HierarchyContext *>> ExportGraph;
+  // Pair of a duplicated object and its duplicator, typically a pair of HierarchyContext::object
+  // and HierarchyContext::duplicator.
+  typedef std::pair<Object *, Object *> DupliAndDuplicator;
+  // Mapping from an object and its duplicator to the object's export-children.
+  typedef std::map<DupliAndDuplicator, std::set<HierarchyContext *>> ExportGraph;
   // Mapping from duplicator ID to export path.
   typedef std::map<ID *, std::string> ExportPathMap;
 
