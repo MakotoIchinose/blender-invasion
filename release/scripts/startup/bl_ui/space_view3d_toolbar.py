@@ -1870,7 +1870,7 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
         row = layout.row()
         if not self.is_popover:
             col = row.column()
-            col.template_ID_preview(gpencil_paint, "brush", new="brush.add", rows=3, cols=8)
+            col.template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_paint.brush
@@ -2317,7 +2317,7 @@ class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
         row = layout.row()
         if not self.is_popover:
             col = row.column()
-            col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add", rows=3, cols=8)
+            col.template_ID_preview(gpencil_vertex_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_vertex_paint.brush
@@ -2555,7 +2555,7 @@ class VIEW3D_PT_tools_grease_pencil_sculpt(View3DPanel, Panel):
         row = layout.row()
         if not self.is_popover:
             col = row.column()
-            col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add", rows=3, cols=8)
+            col.template_ID_preview(gpencil_sculpt_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_sculpt_paint.brush
@@ -2601,7 +2601,7 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
         row = layout.row()
         if not self.is_popover:
             col = row.column()
-            col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add", rows=3, cols=8)
+            col.template_ID_preview(gpencil_weight_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
 
         col = row.column()
         brush = gpencil_weight_paint.brush
