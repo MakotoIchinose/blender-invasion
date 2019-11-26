@@ -44,18 +44,18 @@ include_directories(${INC})
 setup_libdirs()
 get_property(BLENDER_SORTED_LIBS GLOBAL PROPERTY BLENDER_SORTED_LIBS_PROP)
 
+set(SRC
+  abstract_hierarchy_iterator_test.cc
+)
+
 if(WITH_BUILDINFO)
-  set(_buildinfo_src "$<TARGET_OBJECTS:buildinfoobj>")
-else()
-  set(_buildinfo_src "")
+  list(APPEND SRC "$<TARGET_OBJECTS:buildinfoobj>")
 endif()
 
 BLENDER_SRC_GTEST_EX(
   NAME usd
-  SRC "abstract_hierarchy_iterator_test.cc;${_buildinfo_src}"
+  SRC "${SRC}"
   EXTRA_LIBS "${LIB}"
   COMMAND_ARGS --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests")
-
-unset(_buildinfo_src)
 
 setup_liblinks(usd_test)
