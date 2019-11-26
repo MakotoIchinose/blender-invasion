@@ -1668,12 +1668,6 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
       brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
     }
 
-    if (brush->id.us > 1) {
-      continue;
-      // printf("%s %d\n", brush->id.name + 2, brush->id.us);
-      // id_us_plus(&brush->id);
-    }
-
     BKE_brush_delete(bmain, brush);
   }
 }
