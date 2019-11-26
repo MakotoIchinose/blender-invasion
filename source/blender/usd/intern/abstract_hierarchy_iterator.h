@@ -133,12 +133,12 @@ class AbstractHierarchyIterator {
   typedef std::set<HierarchyContext *> ExportChildren;
   /* Mapping from an object and its duplicator to the object's export-children. */
   typedef std::map<DupliAndDuplicator, ExportChildren> ExportGraph;
-  /* Mapping from duplicator ID to export path. */
+  /* Mapping from (potential) duplicator ID to export path. */
   typedef std::map<ID *, std::string> ExportPathMap;
 
  protected:
   ExportGraph export_graph_;
-  ExportPathMap originals_export_paths_;
+  ExportPathMap duplisource_export_path_;
   Depsgraph *depsgraph_;
   WriterMap writers_;
 

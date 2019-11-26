@@ -347,15 +347,15 @@ void AbstractHierarchyIterator::determine_export_paths(const HierarchyContext *p
     context->export_path = path_concatenate(parent_export_path, context->export_name);
 
     if (context->duplicator == nullptr) {
-      /* This is an original object, so we should keep track of where it was exported to, just in
-       * case it gets duplicated somewhere. */
-      ID *orig_ob = &context->object->id;
-      originals_export_paths_[orig_ob] = context->export_path;
+      /* This is an original (i.e. non-instanced) object, so we should keep track of where it was
+       * exported to, just in case it gets instanced somewhere. */
+      ID *source_ob = &context->object->id;
+      duplisource_export_path_[source_ob] = context->export_path;
 
       if (context->object->data != nullptr) {
         ID *object_data = static_cast<ID *>(context->object->data);
-        ID *orig_data = object_data;
-        originals_export_paths_[orig_data] = get_object_data_path(context);
+        ID *source_data = object_data;
+        duplisource_export_path_[source_data] = get_object_data_path(context);
       }
     }
 
@@ -370,28 +370,28 @@ void AbstractHierarchyIterator::determine_duplication_references(
 
   for (HierarchyContext *context : children) {
     if (context->duplicator != nullptr) {
-      ID *orig_id = &context->object->id;
-      const ExportPathMap::const_iterator &it = originals_export_paths_.find(orig_id);
+      ID *source_id = &context->object->id;
+      const ExportPathMap::const_iterator &it = duplisource_export_path_.find(source_id);
 
-      if (it == originals_export_paths_.end()) {
+      if (it == duplisource_export_path_.end()) {
         // The original was not found, so mark this instance as "the original".
         context->mark_as_not_instanced();
-        originals_export_paths_[orig_id] = context->export_path;
+        duplisource_export_path_[source_id] = context->export_path;
       }
       else {
         context->mark_as_instance_of(it->second);
       }
 
       if (context->object->data) {
-        ID *orig_data_id = (ID *)context->object->data;
-        const ExportPathMap::const_iterator &it = originals_export_paths_.find(orig_data_id);
+        ID *source_data_id = (ID *)context->object->data;
+        const ExportPathMap::const_iterator &it = duplisource_export_path_.find(source_data_id);
 
-        if (it == originals_export_paths_.end()) {
+        if (it == duplisource_export_path_.end()) {
           // The original was not found, so mark this instance as "original".
           std::string data_path = get_object_data_path(context);
           context->mark_as_not_instanced();
-          originals_export_paths_[orig_id] = context->export_path;
-          originals_export_paths_[orig_data_id] = data_path;
+          duplisource_export_path_[source_id] = context->export_path;
+          duplisource_export_path_[source_data_id] = data_path;
         }
       }
     }
@@ -456,7 +456,7 @@ void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *
    * but needs to point to the object data. */
   if (data_context.is_instance()) {
     ID *object_data = static_cast<ID *>(context->object->data);
-    data_context.original_export_path = originals_export_paths_[object_data];
+    data_context.original_export_path = duplisource_export_path_[object_data];
 
     /* If the object is marked as an instance, so should the object data. */
     BLI_assert(data_context.is_instance());
