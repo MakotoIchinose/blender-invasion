@@ -53,6 +53,7 @@ void BKE_asset_uuid_runtime_reset(AssetUUID *uuid) {
   uuid->ibuff = NULL;
   uuid->width = uuid->height = 0;
   uuid->tag = 0;
+  uuid->id = NULL;
 }
 
 unsigned int BKE_asset_uuid_hash(const void *key)

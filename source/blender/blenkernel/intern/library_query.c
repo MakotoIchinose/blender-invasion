@@ -428,6 +428,10 @@ static void library_foreach_ID_link(Main *bmain,
       continue;
     }
 
+    /* Generic ID handling. */
+    /* Note: strictly runtime, short-life utility pointers like ID.newid or ID.uuid.id are
+     * purposedly completely ignored here. */
+
     if (id->override_library != NULL) {
       CALLBACK_INVOKE_ID(id->override_library->reference,
                          IDWALK_CB_USER | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
@@ -442,6 +446,7 @@ static void library_foreach_ID_link(Main *bmain,
       library_foreach_animationData(&data, adt);
     }
 
+    /* ID handling specific to each data type. */
     switch ((ID_Type)GS(id->name)) {
       case ID_LI: {
         Library *lib = (Library *)id;
