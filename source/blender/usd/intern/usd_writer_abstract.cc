@@ -73,14 +73,8 @@ bool USDAbstractWriter::check_is_animated(const HierarchyContext &context) const
 {
   const Object *object = context.object;
 
-  if (object->data != nullptr) {
-    AnimData *adt = BKE_animdata_from_id(static_cast<ID *>(object->data));
-    /* TODO(Sybren): make this check more strict, as the AnimationData may
-     * actually be empty (no fcurves, drivers, etc.) and thus effectively
-     * have no animation at all. */
-    if (adt != nullptr) {
-      return true;
-    }
+  if (BKE_animdata_id_is_animated(static_cast<ID *>(object->data))) {
+    return true;
   }
   if (BKE_key_from_object(object) != nullptr) {
     return true;
