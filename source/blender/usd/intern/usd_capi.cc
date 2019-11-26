@@ -108,7 +108,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
 
     for (float frame = scene->r.sfra; frame <= scene->r.efra; frame++) {
-      if (G.is_break) {
+      if (G.is_break || (stop != nullptr && *stop)) {
         break;
       }
 
