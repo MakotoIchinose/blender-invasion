@@ -38,11 +38,14 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   virtual void free_export_mesh(Mesh *mesh);
 
  private:
+  /* Mapping from material slot number to array of face indices with that material. */
+  typedef std::map<short, pxr::VtIntArray> MaterialFaceGroups;
+
   void write_mesh(HierarchyContext &context, Mesh *mesh);
   void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,
-                        const std::map<short, pxr::VtIntArray> &usd_face_groups);
+                        const MaterialFaceGroups &usd_face_groups);
   void write_uv_maps(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_surface_velocity(Object *object, const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
