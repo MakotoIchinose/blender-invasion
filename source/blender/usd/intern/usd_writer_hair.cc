@@ -58,7 +58,6 @@ void USDHairWriter::do_write(HierarchyContext &context)
 
     int point_count = strand->segments + 1;
     curve_point_counts.push_back(point_count);
-    // colors.push_back(pxr::GfVec3f(strand->col));
 
     for (int point_index = 0; point_index < point_count; ++point_index, ++strand) {
       points.push_back(pxr::GfVec3f(strand->co));
