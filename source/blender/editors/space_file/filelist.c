@@ -1294,7 +1294,7 @@ static void filelist_cache_previews_clear(FileListEntryCache *cache, AssetEngine
       cache->ae_preview_job = AE_JOB_ID_UNSET;
     }
     for (int i = cache->ae_preview_uuids.nbr_uuids; i--;) {
-      MEM_SAFE_FREE(cache->ae_preview_uuids.uuids[i].ibuff);
+      MEM_SAFE_FREE(cache->ae_preview_uuids.uuids[i].preview_image_buffer);
     }
     MEM_SAFE_FREE(cache->ae_preview_uuids.uuids);
     cache->ae_preview_uuids.nbr_uuids = 0;
@@ -2295,7 +2295,7 @@ bool filelist_cache_previews_update(FileList *filelist)
       /* Abusing those temp uuids' flag to tag those done and to be removed from list. */
       uuid->flag = 0;
 
-      if (!uuid->ibuff && !(uuid->tag & UUID_TAG_ASSET_NOPREVIEW)) {
+      if (!uuid->preview_image_buffer && !(uuid->tag & UUID_TAG_ASSET_NOPREVIEW)) {
         continue; /* AssetEngine did not complete preview task for this one yet. */
       }
 
@@ -2305,10 +2305,14 @@ bool filelist_cache_previews_update(FileList *filelist)
         /* Due to asynchronous process, a preview for a given image may be generated several times,
          * i.e. entry->image may already be set at this point. */
         if (!(uuid->tag & UUID_TAG_ASSET_NOPREVIEW) && !entry->image) {
-          BLI_assert(uuid->ibuff != NULL && !ELEM(0, uuid->width, uuid->height));
+          BLI_assert(uuid->preview_image_buffer != NULL &&
+                     !ELEM(0, uuid->preview_width, uuid->preview_height));
 
-          entry->image = IMB_allocFromBuffer(
-              (unsigned int *)uuid->ibuff, NULL, uuid->width, uuid->height, 4);
+          entry->image = IMB_allocFromBuffer((unsigned int *)uuid->preview_image_buffer,
+                                             NULL,
+                                             uuid->preview_width,
+                                             uuid->preview_height,
+                                             4);
           changed = true;
         }
         else {
@@ -2319,8 +2323,8 @@ bool filelist_cache_previews_update(FileList *filelist)
         }
       }
 
-      MEM_SAFE_FREE(uuid->ibuff);
-      uuid->width = uuid->height = 0;
+      MEM_SAFE_FREE(uuid->preview_image_buffer);
+      uuid->preview_width = uuid->preview_height = 0;
       uuid->flag = 1;
       uuids_done++;
     }
@@ -2333,7 +2337,7 @@ bool filelist_cache_previews_update(FileList *filelist)
       for (int i = cache->ae_preview_uuids.nbr_uuids, j = nbr_uuids_new; i-- && j--;) {
         AssetUUID *uuid = &cache->ae_preview_uuids.uuids[i];
         if (uuid->flag == 0) {
-          BLI_assert(uuid->ibuff == NULL);
+          BLI_assert(uuid->preview_image_buffer == NULL);
           uuids_new[j] = *uuid;
         }
       }
