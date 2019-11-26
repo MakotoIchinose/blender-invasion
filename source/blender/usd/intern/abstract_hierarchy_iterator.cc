@@ -177,7 +177,7 @@ void AbstractHierarchyIterator::export_graph_construct()
     }
 
     // Non-instanced objects always have their object-parent as export-parent.
-    bool weak_export = !should_export_object(object);
+    const bool weak_export = !should_export_object(object);
     visit_object(object, object->parent, weak_export);
 
     if (weak_export) {
