@@ -83,7 +83,7 @@ const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
 
 USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext *context)
 {
-  return USDExporterContext{depsgraph, stage, pxr::SdfPath(context->export_path), this, params};
+  return USDExporterContext{depsgraph_, stage, pxr::SdfPath(context->export_path), this, params};
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_xform_writer(const HierarchyContext *context)
