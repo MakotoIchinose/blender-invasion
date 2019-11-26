@@ -36,6 +36,7 @@ extern "C" {
 #include "BKE_scene.h"
 
 #include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 
 #include "MEM_guardedalloc.h"
@@ -50,7 +51,7 @@ struct ExportJobData {
   Depsgraph *depsgraph;
   wmWindowManager *wm;
 
-  char filename[1024];
+  char filename[FILE_MAX];
   USDExportParams params;
 
   short *stop;
@@ -179,7 +180,7 @@ bool USD_export(bContext *C,
   job->bmain = CTX_data_main(C);
   job->wm = CTX_wm_manager(C);
   job->export_ok = false;
-  BLI_strncpy(job->filename, filepath, 1024);
+  BLI_strncpy(job->filename, filepath, sizeof(job->filename));
 
   job->depsgraph = DEG_graph_new(job->bmain, scene, view_layer, params->evaluation_mode);
   job->params = *params;
