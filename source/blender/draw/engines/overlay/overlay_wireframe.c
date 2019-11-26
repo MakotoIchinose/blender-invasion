@@ -76,8 +76,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
       stencil_mask = 0xFF;
     }
     else {
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_STENCIL | DRW_STATE_DEPTH_GREATER_EQUAL |
-               DRW_STATE_STENCIL_NEQUAL;
+      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
       DRW_PASS_CREATE(psl->wireframe_xray_ps, state | pd->clipping_state);
       pass = psl->wireframe_xray_ps;
       stencil_mask = 0x00;
@@ -216,16 +215,6 @@ void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *data)
   OVERLAY_PrivateData *pd = data->stl->pd;
 
   DRW_view_set_active(pd->view_wires);
-
-  /* First lower the depth where there is no xray object (and set the stencil to xray value). */
-  DRW_draw_pass(psl->wireframe_xray_ps);
-
-  /* Then draw the xray wire on top only where the stencil is set. */
-  DRWState state_remove = DRW_STATE_DEPTH_GREATER_EQUAL | DRW_STATE_STENCIL_NEQUAL;
-  DRWState state_add = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                       DRW_STATE_STENCIL_ALWAYS;
-  DRW_pass_state_remove(psl->wireframe_xray_ps, state_remove);
-  DRW_pass_state_add(psl->wireframe_xray_ps, state_add);
   DRW_draw_pass(psl->wireframe_xray_ps);
 
   DRW_view_set_active(pd->view_default);
