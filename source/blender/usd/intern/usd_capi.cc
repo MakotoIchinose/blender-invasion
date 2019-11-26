@@ -119,7 +119,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
       BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
 
       iter.set_export_frame(frame);
-      iter.iterate();
+      iter.iterate_and_write();
 
       *progress += progress_per_frame;
       *do_update = true;
@@ -127,7 +127,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   }
   else {
     // If we're not animating, a single iteration over all objects is enough.
-    iter.iterate();
+    iter.iterate_and_write();
   }
 
   iter.release_writers();

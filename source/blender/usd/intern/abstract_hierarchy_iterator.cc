@@ -82,7 +82,7 @@ AbstractHierarchyIterator::~AbstractHierarchyIterator()
 {
 }
 
-void AbstractHierarchyIterator::iterate()
+void AbstractHierarchyIterator::iterate_and_write()
 {
   export_graph_construct();
   export_graph_prune();
