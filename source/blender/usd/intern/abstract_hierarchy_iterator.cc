@@ -216,25 +216,26 @@ void AbstractHierarchyIterator::export_graph_construct()
   DEG_OBJECT_ITER_END;
 }
 
-static bool prune_the_weak(const HierarchyContext *context,
-                           AbstractHierarchyIterator::ExportGraph &modify,
-                           const AbstractHierarchyIterator::ExportGraph &iterate)
+static bool remove_weak_subtrees(const HierarchyContext *context,
+                                 AbstractHierarchyIterator::ExportGraph &clean_graph,
+                                 const AbstractHierarchyIterator::ExportGraph &input_graph)
 {
   bool all_is_weak = context != nullptr && context->weak_export;
   Object *object = context != nullptr ? context->object : nullptr;
   Object *duplicator = context != nullptr ? context->duplicator : nullptr;
 
-  const auto map_index = std::make_pair(object, duplicator);
-  AbstractHierarchyIterator::ExportGraph::const_iterator child_iterator = iterate.find(map_index);
+  const AbstractHierarchyIterator::DupliAndDuplicator map_key = std::make_pair(object, duplicator);
+  AbstractHierarchyIterator::ExportGraph::const_iterator child_iterator;
 
-  if (child_iterator != iterate.end()) {
+  child_iterator = input_graph.find(map_key);
+  if (child_iterator != input_graph.end()) {
     for (HierarchyContext *child_context : child_iterator->second) {
-      bool child_tree_is_weak = prune_the_weak(child_context, modify, iterate);
+      bool child_tree_is_weak = remove_weak_subtrees(child_context, clean_graph, input_graph);
       all_is_weak &= child_tree_is_weak;
 
       if (child_tree_is_weak) {
         // This subtree is all weak, so we can remove it from the current object's children.
-        modify[map_index].erase(child_context);
+        clean_graph[map_key].erase(child_context);
         delete child_context;
       }
     }
@@ -242,7 +243,7 @@ static bool prune_the_weak(const HierarchyContext *context,
 
   if (all_is_weak) {
     // This node and all its children are weak, so it can be removed from the export graph.
-    modify.erase(map_index);
+    clean_graph.erase(map_key);
   }
 
   return all_is_weak;
@@ -252,7 +253,7 @@ void AbstractHierarchyIterator::export_graph_prune()
 {
   // Take a copy of the map so that we can modify while recursing.
   ExportGraph unpruned_export_graph = export_graph_;
-  prune_the_weak(HierarchyContext::root(), export_graph_, unpruned_export_graph);
+  remove_weak_subtrees(HierarchyContext::root(), export_graph_, unpruned_export_graph);
 }
 
 void AbstractHierarchyIterator::export_graph_clear()
