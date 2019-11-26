@@ -62,7 +62,7 @@ const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
 
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
-#  define AS_BACKGROUND_JOB 1
+enum { AS_BACKGROUND_JOB = 1 };
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
