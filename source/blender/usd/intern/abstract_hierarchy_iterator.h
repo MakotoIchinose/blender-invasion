@@ -135,10 +135,10 @@ class AbstractHierarchyIterator {
   typedef std::map<ID *, std::string> ExportPathMap;
 
  protected:
-  ExportGraph export_graph;
-  ExportPathMap originals_export_paths;
-  Depsgraph *depsgraph;
-  WriterMap writers;
+  ExportGraph export_graph_;
+  ExportPathMap originals_export_paths_;
+  Depsgraph *depsgraph_;
+  WriterMap writers_;
 
  public:
   explicit AbstractHierarchyIterator(Depsgraph *depsgraph);
