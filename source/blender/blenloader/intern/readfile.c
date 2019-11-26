@@ -11587,8 +11587,7 @@ static ID *link_named_part_ex(Main *mainl,
 
     id->uuid = MEM_mallocN(sizeof(*id->uuid), __func__);
     *id->uuid = *uuid;
-    id->uuid->ibuff = NULL;
-    id->uuid->width = id->uuid->height = 0;
+    BKE_asset_uuid_runtime_reset(id->uuid);
     id->flag |= LIB_ASSET;
 
     if (!mainl->curlib->asset_repository) {

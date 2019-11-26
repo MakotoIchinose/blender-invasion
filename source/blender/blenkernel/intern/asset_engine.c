@@ -459,8 +459,8 @@ void BKE_filedir_entryarr_clear(FileDirEntryArr *array)
 
 /* Various helpers */
 void BKE_asset_uuid_runtime_reset(AssetUUID *uuid) {
-  uuid->ibuff = NULL;
-  uuid->width = uuid->height = 0;
+  uuid->preview_image_buffer = NULL;
+  uuid->preview_width = uuid->preview_height = 0;
   uuid->tag = 0;
   uuid->id = NULL;
 }
