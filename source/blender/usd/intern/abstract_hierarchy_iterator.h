@@ -79,7 +79,7 @@ struct HierarchyContext {
   bool animation_check_include_parent;
 
   /*********** Determined during writer creation: ***************/
-  float parent_matrix_inv_world[4][4]; /* Inverse of the parent's world matrix. */
+  float parent_matrix_inv_world[4][4];  // Inverse of the parent's world matrix.
   std::string export_path;          // Hierarchical path, such as "/grandparent/parent/objectname".
   ParticleSystem *particle_system;  // Only set for particle/hair writers.
 
