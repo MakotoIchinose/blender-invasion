@@ -1307,6 +1307,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
       BKE_brush_gpencil_weight_presets(bmain, ts);
 
       /* Ensure new Paint modes. */
+      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_GPENCIL);
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
       BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
@@ -1551,8 +1552,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 3)) {
     /* init grease pencil grids and paper */
-    if (!DNA_struct_elem_find(
-            fd->filesdna, "View3DOverlay", "float", "gpencil_paper_color[3]")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "gpencil_paper_color[3]")) {
       for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
         for (ScrArea *area = screen->areabase.first; area; area = area->next) {
           for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
@@ -3980,10 +3980,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     /* Init default Vertex paint mix factor for Viewport. */
     {
-      if (!DNA_struct_elem_find(fd->filesdna,
-                                "View3DOverlay",
-                                "float",
-                                "gpencil_vertex_paint_opacity")) {
+      if (!DNA_struct_elem_find(
+              fd->filesdna, "View3DOverlay", "float", "gpencil_vertex_paint_opacity")) {
         for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
           for (ScrArea *area = screen->areabase.first; area; area = area->next) {
             for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
