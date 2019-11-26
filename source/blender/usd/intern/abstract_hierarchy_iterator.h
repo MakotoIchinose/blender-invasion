@@ -93,6 +93,7 @@ struct HierarchyContext {
   /* Return a HierarchyContext representing the root of the export hierarchy. */
   static const HierarchyContext *root();
 
+  /* For handling instanced collections, instances created by particles, etc. */
   bool is_instance() const;
   void mark_as_instance_of(const std::string &reference_export_path);
   void mark_as_not_instanced();
