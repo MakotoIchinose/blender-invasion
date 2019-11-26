@@ -460,6 +460,21 @@ static void OVERLAY_view_update(void *vedata)
   }
 }
 
+static void OVERLAY_id_update(void *vedata, ID *id)
+{
+  OVERLAY_Data *data = vedata;
+  if (data->stl && data->stl->pd) {
+    if (GS(id->name) == ID_OB) {
+      DrawData *dd = DRW_drawdata_ensure(
+          id, &draw_engine_overlay_type, sizeof(DrawData), NULL, NULL);
+      if (dd->recalc != 0) {
+        OVERLAY_antialiasing_reset(data);
+        dd->recalc = 0;
+      }
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -481,7 +496,7 @@ DrawEngineType draw_engine_overlay_type = {
     NULL,
     &OVERLAY_draw_scene,
     &OVERLAY_view_update,
-    NULL,
+    &OVERLAY_id_update,
     NULL,
 };
 
