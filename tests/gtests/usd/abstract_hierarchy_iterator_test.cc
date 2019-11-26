@@ -141,7 +141,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
   depsgraph_create(DAG_EVAL_RENDER);
   iterator_create();
 
-  iterator->iterate();
+  iterator->iterate_and_write();
 
   // Mapping from object name to set of export paths.
   created_writers expected_xforms = {
