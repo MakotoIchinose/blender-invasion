@@ -33,6 +33,7 @@ extern "C" {
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
 
@@ -49,15 +50,9 @@ USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDA
 
 bool USDGenericMeshWriter::is_supported(const Object *object) const
 {
-  // Reject meshes that have a particle system that should have its emitter hidden.
-  if (object->particlesystem.first != NULL) {
-    char check_flag = usd_export_context_.export_params.evaluation_mode == DAG_EVAL_RENDER ?
-                          OB_DUPLI_FLAG_RENDER :
-                          OB_DUPLI_FLAG_VIEWPORT;
-    return object->duplicator_visibility_flag & check_flag;
-  }
-
-  return true;
+  int visibility = BKE_object_visibility(object,
+                                         usd_export_context_.export_params.evaluation_mode);
+  return (visibility & OB_VISIBLE_SELF) != 0;
 }
 
 void USDGenericMeshWriter::do_write(HierarchyContext &context)
