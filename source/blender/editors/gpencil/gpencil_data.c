@@ -1642,35 +1642,23 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
     if (brush->gpencil_settings == NULL) {
       continue;
     }
+
+    short preset = brush->gpencil_settings->preset_type;
+
     /* Verify to delete only the brushes of the current mode. */
-    if ((mode == CTX_MODE_PAINT_GPENCIL) && (!ELEM(brush->gpencil_tool,
-                                                   GPAINT_TOOL_DRAW,
-                                                   GPAINT_TOOL_FILL,
-                                                   GPAINT_TOOL_ERASE,
-                                                   GPAINT_TOOL_TINT))) {
+    if ((mode == CTX_MODE_PAINT_GPENCIL) &&
+        ((preset < GP_BRUSH_PRESET_AIRBRUSH) || (preset > GP_BRUSH_PRESET_TINT))) {
       continue;
     }
-    if ((mode == CTX_MODE_SCULPT_GPENCIL) && (!ELEM(brush->gpencil_tool,
-                                                    GPSCULPT_TOOL_SMOOTH,
-                                                    GPSCULPT_TOOL_STRENGTH,
-                                                    GPSCULPT_TOOL_THICKNESS,
-                                                    GPSCULPT_TOOL_GRAB,
-                                                    GPSCULPT_TOOL_PUSH,
-                                                    GPSCULPT_TOOL_TWIST,
-                                                    GPSCULPT_TOOL_PINCH,
-                                                    GPSCULPT_TOOL_RANDOMIZE,
-                                                    GPSCULPT_TOOL_CLONE))) {
+    if ((mode == CTX_MODE_SCULPT_GPENCIL) &&
+        ((preset < GP_BRUSH_PRESET_SMOOTH_STROKE) || (preset > GP_BRUSH_PRESET_CLONE_STROKE))) {
       continue;
     }
-    if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (!ELEM(brush->gpencil_tool, GPWEIGHT_TOOL_DRAW))) {
+    if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (preset != GP_BRUSH_PRESET_DRAW_WEIGHT)) {
       continue;
     }
-    if ((mode == CTX_MODE_VERTEX_GPENCIL) && (!ELEM(brush->gpencil_tool,
-                                                    GPVERTEX_TOOL_DRAW,
-                                                    GPVERTEX_TOOL_BLUR,
-                                                    GPVERTEX_TOOL_AVERAGE,
-                                                    GPVERTEX_TOOL_SMEAR,
-                                                    GPVERTEX_TOOL_REPLACE))) {
+    if ((mode == CTX_MODE_VERTEX_GPENCIL) &&
+        ((preset < GP_BRUSH_PRESET_VERTEX_DRAW) || (preset > GP_BRUSH_PRESET_VERTEX_REPLACE))) {
       continue;
     }
 
@@ -2559,7 +2547,8 @@ static bool gpencil_active_color_poll(bContext *C)
   return false;
 }
 
-/* **************** Lock and hide any color non used in current layer ************************** */
+/* **************** Lock and hide any color non used in current layer **************************
+ */
 static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);

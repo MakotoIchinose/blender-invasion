@@ -2105,6 +2105,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
             return False
 
         gp_settings = brush.gpencil_settings
+        ma = None
         if gp_settings.use_material_pin is False:
             if ob.active_material_index >= 0:
                 ma = ob.material_slots[ob.active_material_index].material
