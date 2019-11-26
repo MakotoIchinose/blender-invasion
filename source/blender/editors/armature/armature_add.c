@@ -51,6 +51,8 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
+#include "DEG_depsgraph.h"
+
 #include "armature_intern.h"
 
 /* *************** Adding stuff in editmode *************** */
@@ -213,6 +215,7 @@ static int armature_click_extrude_exec(bContext *C, wmOperator *UNUSED(op))
   ED_armature_edit_sync_selection(arm->edbo);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
+  DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
 
   return OPERATOR_FINISHED;
 }
@@ -608,6 +611,7 @@ static int armature_duplicate_selected_exec(bContext *C, wmOperator *op)
     ED_armature_edit_validate_active(arm);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
   }
   MEM_freeN(objects);
 
@@ -837,6 +841,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
     ED_armature_edit_validate_active(arm);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
+    DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
   }
   MEM_freeN(objects);
 
@@ -1052,6 +1057,7 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
     ED_armature_edit_sync_selection(arm->edbo);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
   }
   MEM_freeN(objects);
 
@@ -1125,6 +1131,7 @@ static int armature_bone_primitive_add_exec(bContext *C, wmOperator *op)
 
   /* note, notifier might evolve */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
+  DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
 
   return OPERATOR_FINISHED;
 }
@@ -1214,6 +1221,7 @@ static int armature_subdivide_exec(bContext *C, wmOperator *op)
 
   /* note, notifier might evolve */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
+  DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);
 
   return OPERATOR_FINISHED;
 }
