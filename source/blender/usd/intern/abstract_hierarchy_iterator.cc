@@ -194,14 +194,14 @@ void AbstractHierarchyIterator::export_graph_construct()
       // is also duplicated itself.
       std::set<Object *> dupli_set;
       for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_duplilink(link)) {
+        if (!should_visit_dupli_object(link)) {
           continue;
         }
         dupli_set.insert(link->ob);
       }
 
       for (link = static_cast<DupliObject *>(lb->first); link; link = link->next) {
-        if (!should_visit_duplilink(link)) {
+        if (!should_visit_dupli_object(link)) {
           continue;
         }
 
@@ -544,10 +544,10 @@ std::string AbstractHierarchyIterator::path_concatenate(const std::string &paren
   return parent_path + "/" + child_path;
 }
 
-bool AbstractHierarchyIterator::should_visit_duplilink(const DupliObject *link) const
+bool AbstractHierarchyIterator::should_visit_dupli_object(const DupliObject *dupli_object) const
 {
-  // Removing link->no_draw hides things like custom bone shapes.
-  return !link->no_draw;
+  // Removing dupli_object->no_draw hides things like custom bone shapes.
+  return !dupli_object->no_draw;
 }
 bool AbstractHierarchyIterator::should_export_object(const Object * /*object*/) const
 {
