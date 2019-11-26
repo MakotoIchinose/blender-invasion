@@ -156,8 +156,8 @@ class AbstractHierarchyIterator {
    * This base implementation is a no-op; override in a concrete subclass. */
   virtual std::string make_valid_name(const std::string &name) const;
 
-  /* Return the name of this ID datablock that is valid for the exported file format.
-   * Overriding is probably not necessary if the subclass implements make_valid_name(). */
+  /* Return the name of this ID datablock that is valid for the exported file format. Overriding is
+   * only necessary if make_valid_name(id->name+2) is not suitable for the exported file format. */
   virtual std::string get_id_name(const ID *id) const;
 
   /* Given a HierarchyContext of some Object *, return an export path that is valid for its
