@@ -281,10 +281,9 @@ void USDGenericMeshWriter::get_geometry_data(const Mesh *mesh, USDMeshData &usd_
   get_creases(mesh, usd_mesh_data);
 }
 
-void USDGenericMeshWriter::assign_materials(
-    const HierarchyContext &context,
-    pxr::UsdGeomMesh usd_mesh,
-    const std::map<short, pxr::VtIntArray> &usd_face_groups)
+void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
+                                            pxr::UsdGeomMesh usd_mesh,
+                                            const MaterialFaceGroups &usd_face_groups)
 {
   if (context.object->totcol == 0) {
     return;
@@ -325,9 +324,9 @@ void USDGenericMeshWriter::assign_materials(
   }
 
   // Define a geometry subset per material.
-  for (auto face_group_iter : usd_face_groups) {
-    short material_number = face_group_iter.first;
-    const pxr::VtIntArray &face_indices = face_group_iter.second;
+  for (const MaterialFaceGroups::value_type &face_group : usd_face_groups) {
+    short material_number = face_group.first;
+    const pxr::VtIntArray &face_indices = face_group.second;
 
     Material *material = give_current_material(context.object, material_number + 1);
     if (material == nullptr) {
