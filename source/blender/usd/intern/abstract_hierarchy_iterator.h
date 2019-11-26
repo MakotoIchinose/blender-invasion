@@ -60,9 +60,18 @@ struct HierarchyContext {
   float matrix_world[4][4];
   std::string export_name;
 
-  /* When weak_export is true, the object will be exported only as transform, and only if is an
-   * ancestor of a non-weak child. This happens with objects that are part of a holdout collection
-   * (which prevents them from being exported) but also parent of an exported object. */
+  /* When weak_export=true, the object will be exported only as transform, and only if is an
+   * ancestor of an object with weak_export=false.
+   *
+   * In other words: when weak_export=true but this object has no children, or all decendants also
+   * have weak_export=true, this object (and by recursive reasoning all its decendants) will be
+   * excluded from the export.
+   *
+   * The export hierarchy is kept as close to the the hierarchy in Blender as possible. As such, an
+   * object that serves as a parent for another object, but which should NOT be exported itself, is
+   * exported only as transform (i.e. as empty). This happens with objects that are part of a
+   * holdout collection (which prevents them from being exported) but also parent of an exported
+   * object. */
   bool weak_export;
 
   /* When true, this object should check its parents for animation data when determining whether
