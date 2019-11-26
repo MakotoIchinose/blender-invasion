@@ -117,8 +117,8 @@ class AbstractHierarchyWriter {
  * writers. These writers are then called to perform the actual writing to a USD or Alembic file.
  *
  * Dealing with file- and scene-level data (for example, creating a USD scene, setting the frame
- * rate, etc.) is not part of the AbstractHierarchyIterator class structure, and should be done in
- * separate code.
+ * rate, etc.) is not part of the AbstractHierarchyIterator class structure, and should be done
+ * in separate code.
  */
 class AbstractHierarchyIterator {
  public:
@@ -203,9 +203,9 @@ class AbstractHierarchyIterator {
   virtual bool should_visit_duplilink(const DupliObject *link) const;
   virtual bool should_export_object(const Object *object) const;
 
-  /* These functions should create an AbstractHierarchyWriter subclass instance, or return nullptr
-   * if the object or its data should not be exported.
-   * Returning a nullptr for data/hair/particle will NOT prevent the transform to be written.
+  /* These functions should create an AbstractHierarchyWriter subclass instance, or return
+   * nullptr if the object or its data should not be exported. Returning a nullptr for
+   * data/hair/particle will NOT prevent the transform to be written.
    *
    * 'Xform' is used for 'transform' to be consistent with the terminology of USD and Alembic. */
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) = 0;
