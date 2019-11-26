@@ -256,9 +256,9 @@ typedef struct AssetUUID {
   short tag;
 
   /* Preview. */
-  short width;
-  short height;
-  char *ibuff; /* RGBA 8bits. */
+  short preview_width;
+  short preview_height;
+  char *preview_image_buffer; /* RGBA 8bits. */
 
   /* Used for load_post and other temporary storage of the ID itself in its AssetUUID.
    * Usage and scope are similar to the `ID.newid` pointer. */

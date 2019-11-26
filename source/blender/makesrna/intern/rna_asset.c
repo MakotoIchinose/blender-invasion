@@ -46,18 +46,18 @@ static void rna_AssetUUID_preview_size_get(PointerRNA *ptr, int *values)
 {
   AssetUUID *uuid = ptr->data;
 
-  values[0] = uuid->width;
-  values[1] = uuid->height;
+  values[0] = uuid->preview_width;
+  values[1] = uuid->preview_height;
 }
 
 static void rna_AssetUUID_preview_size_set(PointerRNA *ptr, const int *values)
 {
   AssetUUID *uuid = ptr->data;
 
-  uuid->width = values[0];
-  uuid->height = values[1];
+  uuid->preview_width = values[0];
+  uuid->preview_height = values[1];
 
-  MEM_SAFE_FREE(uuid->ibuff);
+  MEM_SAFE_FREE(uuid->preview_image_buffer);
 }
 
 static int rna_AssetUUID_preview_pixels_get_length(PointerRNA *ptr,
@@ -65,7 +65,7 @@ static int rna_AssetUUID_preview_pixels_get_length(PointerRNA *ptr,
 {
   AssetUUID *uuid = ptr->data;
 
-  length[0] = (uuid->ibuff == NULL) ? 0 : uuid->width * uuid->height;
+  length[0] = (uuid->preview_image_buffer == NULL) ? 0 : uuid->preview_width * uuid->preview_height;
 
   return length[0];
 }
@@ -74,18 +74,18 @@ static void rna_AssetUUID_preview_pixels_get(PointerRNA *ptr, int *values)
 {
   AssetUUID *uuid = ptr->data;
 
-  memcpy(values, uuid->ibuff, uuid->width * uuid->height * sizeof(unsigned int));
+  memcpy(values, uuid->preview_image_buffer, uuid->preview_width * uuid->preview_height * sizeof(unsigned int));
 }
 
 static void rna_AssetUUID_preview_pixels_set(PointerRNA *ptr, const int *values)
 {
   AssetUUID *uuid = ptr->data;
 
-  if (!uuid->ibuff) {
-    uuid->ibuff = MEM_mallocN(sizeof(*uuid->ibuff) * 4 * uuid->width * uuid->height, __func__);
+  if (!uuid->preview_image_buffer) {
+    uuid->preview_image_buffer = MEM_mallocN(sizeof(*uuid->preview_image_buffer) * 4 * uuid->preview_width * uuid->preview_height, __func__);
   }
 
-  memcpy(uuid->ibuff, values, uuid->width * uuid->height * sizeof(unsigned int));
+  memcpy(uuid->preview_image_buffer, values, uuid->preview_width * uuid->preview_height * sizeof(unsigned int));
 }
 
 #else /* RNA_RUNTIME */
