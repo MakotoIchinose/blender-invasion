@@ -56,6 +56,9 @@
 
 #include "BLO_readfile.h"
 
+/* Make preferences read-only, use versioning_userdef.c. */
+#define U (*((const UserDef *)&U))
+
 /**
  * Rename if the ID doesn't exist.
  */
@@ -507,6 +510,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
       id_us_min(&brush->id);
       brush->sculpt_tool = SCULPT_TOOL_POSE;
+    }
+
+    brush_name = "Multiplane Scrape";
+    brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
+    if (!brush) {
+      brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
+      id_us_min(&brush->id);
+      brush->sculpt_tool = SCULPT_TOOL_MULTIPLANE_SCRAPE;
     }
 
     brush_name = "Simplify";

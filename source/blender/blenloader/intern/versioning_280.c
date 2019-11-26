@@ -96,6 +96,9 @@
 
 #include "MEM_guardedalloc.h"
 
+/* Make preferences read-only, use versioning_userdef.c. */
+#define U (*((const UserDef *)&U))
+
 static bScreen *screen_parent_find(const bScreen *screen)
 {
   /* Can avoid lookup if screen state isn't maximized/full
@@ -3712,10 +3715,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 281, 3)) {
-    if (U.view_rotate_sensitivity_turntable == 0) {
-      U.view_rotate_sensitivity_turntable = DEG2RADF(0.4f);
-      U.view_rotate_sensitivity_trackball = 1.0f;
-    }
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
@@ -3934,7 +3933,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
   {
     /* Versioning code until next subversion bump goes here. */
-
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
         sa->flag &= ~AREA_FLAG_UNUSED_6;
@@ -3962,6 +3960,21 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
           }
         }
+      }
+    }
+
+    /* Dash Ratio and Dash Samples */
+    if (!DNA_struct_elem_find(fd->filesdna, "Brush", "float", "dash_ratio")) {
+      for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+        br->dash_ratio = 1.0f;
+        br->dash_samples = 20;
+      }
+    }
+
+    /* Pose brush smooth iterations */
+    if (!DNA_struct_elem_find(fd->filesdna, "Brush", "float", "pose_smooth_itereations")) {
+      for (Brush *br = bmain->brushes.first; br; br = br->id.next) {
+        br->pose_smooth_iterations = 4;
       }
     }
   }
