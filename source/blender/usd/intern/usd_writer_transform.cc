@@ -23,7 +23,7 @@
 #include <pxr/usd/usdGeom/xform.h>
 
 extern "C" {
-#include "BKE_animsys.h"
+#include "BKE_object.h"
 
 #include "BLI_math_matrix.h"
 
@@ -48,27 +48,6 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   xformOp_.Set(pxr::GfMatrix4d(parent_relative_matrix), get_export_time_code());
 }
 
-static bool check_is_transform_animated(Object *object, bool recurse_parent)
-{
-  AnimData *adt = BKE_animdata_from_id(&object->id);
-  /* TODO(Sybren): make this check more strict, as the AnimationData may
-   * actually be empty (no fcurves, drivers, etc.) and thus effectively
-   * have no animation at all. */
-  if (adt != nullptr) {
-    return true;
-  };
-
-  if (object->constraints.first != nullptr) {
-    return true;
-  }
-
-  if (recurse_parent && object->parent != nullptr) {
-    return check_is_transform_animated(object->parent, recurse_parent);
-  }
-
-  return false;
-}
-
 bool USDTransformWriter::check_is_animated(const HierarchyContext &context) const
 {
   if (context.duplicator != NULL) {
@@ -77,5 +56,5 @@ bool USDTransformWriter::check_is_animated(const HierarchyContext &context) cons
      * depsgraph whether this object instance has a time source. */
     return true;
   }
-  return check_is_transform_animated(context.object, context.animation_check_include_parent);
+  return BKE_object_moves_in_time(context.object, context.animation_check_include_parent);
 }
