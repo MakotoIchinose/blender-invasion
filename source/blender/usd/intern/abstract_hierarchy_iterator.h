@@ -209,7 +209,7 @@ class AbstractHierarchyIterator {
   virtual std::string path_concatenate(const std::string &parent_path,
                                        const std::string &child_path) const;
 
-  virtual bool should_visit_duplilink(const DupliObject *link) const;
+  virtual bool should_visit_dupli_object(const DupliObject *dupli_object) const;
   virtual bool should_export_object(const Object *object) const;
 
   /* These functions should create an AbstractHierarchyWriter subclass instance, or return
