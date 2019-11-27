@@ -2323,13 +2323,13 @@ void OVERLAY_armature_in_front_draw(OVERLAY_Data *vedata)
 void OVERLAY_pose_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
-  OVERLAY_FramebufferList *fbl = vedata->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   if (psl->armature_bone_select_ps != NULL) {
     DRW_draw_pass(psl->armature_bone_select_ps);
 
     if (DRW_state_is_fbo()) {
-      GPU_framebuffer_clear_depth(fbl->overlay_default_fb, 1.0f);
+      GPU_framebuffer_clear_depth(dfbl->default_fb, 1.0f);
     }
     /* Selection still works because we are drawing only the pose bones in this case. */
 
