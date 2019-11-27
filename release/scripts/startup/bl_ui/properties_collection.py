@@ -38,7 +38,7 @@ def lanpr_make_line_type_entry(col, line_type, text_disp, expand, search_from):
 
 class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
     bl_label = "Collection Flags"
-    COMPAT_ENGINES = { 'BLENDER_LANPR' }
+    COMPAT_ENGINES = { 'BLENDER_LANPR', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES' }
 
     def draw(self, context):
         layout=self.layout
