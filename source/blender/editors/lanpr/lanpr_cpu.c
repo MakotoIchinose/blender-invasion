@@ -4202,7 +4202,7 @@ static void lanpr_update_gp_strokes_recursive(
 }
 static int lanpr_collection_types(Collection *c)
 {
-  CollectionLANPR *cl = &c->lanpr;
+  CollectionLANPR *cl = c->lanpr;
   int result = 0;
   if (cl->contour.use) {
     result |= LANPR_EDGE_FLAG_CONTOUR;
@@ -4243,7 +4243,7 @@ static void lanpr_update_gp_strokes_collection(
     if (target_only && target_only != gpobj) {
       return;
     }
-    CollectionLANPR *cl = &col->lanpr;
+    CollectionLANPR *cl = col->lanpr;
     int level_start = cl->level_start;
     int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end :
                                                                          cl->level_start;
