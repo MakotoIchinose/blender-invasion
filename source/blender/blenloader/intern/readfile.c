@@ -6260,6 +6260,8 @@ static void direct_link_collection(FileData *fd, Collection *collection)
     direct_link_view_layer(fd, collection->view_layer);
   }
 #endif
+
+  collection->lanpr = newdataadr(fd, collection->lanpr);
 }
 
 static void lib_link_collection_data(FileData *fd, Library *lib, Collection *collection)
@@ -6277,7 +6279,6 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
     child->collection = newlibadr_us(fd, lib, child->collection);
   }
 
-  collection->lanpr = newdataadr(fd,collection->lanpr);
   if(collection->lanpr){
     collection->lanpr->target = newlibadr_us(fd, lib, collection->lanpr->target);
   }
