@@ -1645,21 +1645,23 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
 
     short preset = brush->gpencil_settings->preset_type;
 
-    /* Verify to delete only the brushes of the current mode. */
-    if ((mode == CTX_MODE_PAINT_GPENCIL) &&
-        ((preset < GP_BRUSH_PRESET_AIRBRUSH) || (preset > GP_BRUSH_PRESET_TINT))) {
-      continue;
-    }
-    if ((mode == CTX_MODE_SCULPT_GPENCIL) &&
-        ((preset < GP_BRUSH_PRESET_SMOOTH_STROKE) || (preset > GP_BRUSH_PRESET_CLONE_STROKE))) {
-      continue;
-    }
-    if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (preset != GP_BRUSH_PRESET_DRAW_WEIGHT)) {
-      continue;
-    }
-    if ((mode == CTX_MODE_VERTEX_GPENCIL) &&
-        ((preset < GP_BRUSH_PRESET_VERTEX_DRAW) || (preset > GP_BRUSH_PRESET_VERTEX_REPLACE))) {
-      continue;
+    if (preset != GP_BRUSH_PRESET_UNKNOWN) {
+      /* Verify to delete only the brushes of the current mode. */
+      if ((mode == CTX_MODE_PAINT_GPENCIL) &&
+          ((preset < GP_BRUSH_PRESET_AIRBRUSH) || (preset > GP_BRUSH_PRESET_TINT))) {
+        continue;
+      }
+      if ((mode == CTX_MODE_SCULPT_GPENCIL) &&
+          ((preset < GP_BRUSH_PRESET_SMOOTH_STROKE) || (preset > GP_BRUSH_PRESET_CLONE_STROKE))) {
+        continue;
+      }
+      if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (preset != GP_BRUSH_PRESET_DRAW_WEIGHT)) {
+        continue;
+      }
+      if ((mode == CTX_MODE_VERTEX_GPENCIL) &&
+          ((preset < GP_BRUSH_PRESET_VERTEX_DRAW) || (preset > GP_BRUSH_PRESET_VERTEX_REPLACE))) {
+        continue;
+      }
     }
 
     /* Before delete, unpinn any material of the brush. */
