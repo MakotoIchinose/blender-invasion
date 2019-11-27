@@ -5057,6 +5057,9 @@ void ANIM_channel_draw_widgets(const bContext *C,
         }
         /* Special for Grease Pencil Layer */
         else if (ale->type == ANIMTYPE_GPLAYER) {
+          /* Add some offset to make it more pleasing to the eye. */
+          offset += SLIDER_WIDTH / 2.1f;
+
           char *gp_rna_path = NULL;
           bGPDlayer *gpl = (bGPDlayer *)ale->data;
           const short width = SLIDER_WIDTH / 4;
