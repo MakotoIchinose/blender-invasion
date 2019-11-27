@@ -1639,11 +1639,13 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
   Brush *brush_next = NULL;
   for (Brush *brush = bmain->brushes.first; brush; brush = brush_next) {
     brush_next = brush->id.next;
-    if (brush->gpencil_settings == NULL) {
+
+    if ((brush->gpencil_settings == NULL) && (brush->ob_mode != OB_MODE_PAINT_GPENCIL)) {
       continue;
     }
 
-    short preset = brush->gpencil_settings->preset_type;
+    short preset = (brush->gpencil_settings) ? brush->gpencil_settings->preset_type :
+                                               GP_BRUSH_PRESET_UNKNOWN;
 
     if (preset != GP_BRUSH_PRESET_UNKNOWN) {
       /* Verify to delete only the brushes of the current mode. */
@@ -1665,7 +1667,7 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
     }
 
     /* Before delete, unpinn any material of the brush. */
-    if (brush->gpencil_settings->material != NULL) {
+    if ((brush->gpencil_settings) && (brush->gpencil_settings->material != NULL)) {
       brush->gpencil_settings->material = NULL;
       brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
     }
