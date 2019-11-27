@@ -1634,8 +1634,9 @@ void GPENCIL_OT_brush_reset(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static void gp_bruh_tag_mode_brushes(Main *bmain, const enum eContextObjectMode mode)
+static void gp_bruh_tag_mode_brushes(Main *bmain, Paint *paint, const enum eContextObjectMode mode)
 {
+  Brush *brush_active = paint->brush;
   Brush *brush_next = NULL;
   for (Brush *brush = bmain->brushes.first; brush; brush = brush_next) {
     brush_next = brush->id.next;
@@ -1653,18 +1654,36 @@ static void gp_bruh_tag_mode_brushes(Main *bmain, const enum eContextObjectMode 
         if ((preset < GP_BRUSH_PRESET_AIRBRUSH) || (preset > GP_BRUSH_PRESET_TINT)) {
           continue;
         }
+        if ((brush_active) && (brush_active->gpencil_tool != brush->gpencil_tool)) {
+          continue;
+        }
       }
 
-      if ((mode == CTX_MODE_SCULPT_GPENCIL) &&
-          ((preset < GP_BRUSH_PRESET_SMOOTH_STROKE) || (preset > GP_BRUSH_PRESET_CLONE_STROKE))) {
-        continue;
+      if (mode == CTX_MODE_SCULPT_GPENCIL) {
+        if ((preset < GP_BRUSH_PRESET_SMOOTH_STROKE) || (preset > GP_BRUSH_PRESET_CLONE_STROKE)) {
+          continue;
+        }
+        if ((brush_active) && (brush_active->gpencil_sculpt_tool != brush->gpencil_sculpt_tool)) {
+          continue;
+        }
       }
-      if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (preset != GP_BRUSH_PRESET_DRAW_WEIGHT)) {
-        continue;
+
+      if (mode == CTX_MODE_WEIGHT_GPENCIL) {
+        if (preset != GP_BRUSH_PRESET_DRAW_WEIGHT) {
+          continue;
+        }
+        if ((brush_active) && (brush_active->gpencil_weight_tool != brush->gpencil_weight_tool)) {
+          continue;
+        }
       }
-      if ((mode == CTX_MODE_VERTEX_GPENCIL) &&
-          ((preset < GP_BRUSH_PRESET_VERTEX_DRAW) || (preset > GP_BRUSH_PRESET_VERTEX_REPLACE))) {
-        continue;
+
+      if (mode == CTX_MODE_VERTEX_GPENCIL) {
+        if ((preset < GP_BRUSH_PRESET_VERTEX_DRAW) || (preset > GP_BRUSH_PRESET_VERTEX_REPLACE)) {
+          continue;
+        }
+        if ((brush_active) && (brush_active->gpencil_vertex_tool != brush->gpencil_vertex_tool)) {
+          continue;
+        }
       }
     }
 
@@ -1701,7 +1720,7 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
 
   switch (mode) {
     case CTX_MODE_PAINT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, mode);
+      gp_bruh_tag_mode_brushes(bmain, &ts->gp_paint->paint, mode);
       BKE_brush_gpencil_paint_presets(bmain, ts);
       gp_bruh_delete_tagged_brushes(bmain, mode);
       BKE_paint_toolslots_brush_validate(bmain, &ts->gp_paint->paint);
@@ -1709,7 +1728,7 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
       break;
     }
     case CTX_MODE_SCULPT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, mode);
+      gp_bruh_tag_mode_brushes(bmain, &ts->gp_sculptpaint->paint, mode);
       BKE_brush_gpencil_sculpt_presets(bmain, ts);
       gp_bruh_delete_tagged_brushes(bmain, mode);
       BKE_paint_toolslots_brush_validate(bmain, &ts->gp_sculptpaint->paint);
@@ -1717,7 +1736,7 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
       break;
     }
     case CTX_MODE_WEIGHT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, mode);
+      gp_bruh_tag_mode_brushes(bmain, &ts->gp_weightpaint->paint, mode);
       BKE_brush_gpencil_weight_presets(bmain, ts);
       gp_bruh_delete_tagged_brushes(bmain, mode);
       BKE_paint_toolslots_brush_validate(bmain, &ts->gp_weightpaint->paint);
@@ -1725,7 +1744,7 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
       break;
     }
     case CTX_MODE_VERTEX_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, mode);
+      gp_bruh_tag_mode_brushes(bmain, &ts->gp_vertexpaint->paint, mode);
       BKE_brush_gpencil_vertex_presets(bmain, ts);
       gp_bruh_delete_tagged_brushes(bmain, mode);
       BKE_paint_toolslots_brush_validate(bmain, &ts->gp_vertexpaint->paint);
