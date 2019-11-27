@@ -131,10 +131,12 @@ typedef struct BrushGpencilSettings {
   struct Material *material;
 } BrushGpencilSettings;
 
-/* BrushGpencilSettings->preset_type. */
+/* BrushGpencilSettings->preset_type.
+ * Use a range for each group and not continuous values.*/
 typedef enum eGPBrush_Presets {
   GP_BRUSH_PRESET_UNKNOWN = 0,
 
+  /* Draw 1-99. */
   GP_BRUSH_PRESET_AIRBRUSH = 1,
   GP_BRUSH_PRESET_INK_PEN = 2,
   GP_BRUSH_PRESET_INK_PEN_ROUGH = 3,
@@ -150,23 +152,26 @@ typedef enum eGPBrush_Presets {
   GP_BRUSH_PRESET_ERASER_STROKE = 13,
   GP_BRUSH_PRESET_TINT = 14,
 
-  GP_BRUSH_PRESET_VERTEX_DRAW = 15,
-  GP_BRUSH_PRESET_VERTEX_BLUR = 16,
-  GP_BRUSH_PRESET_VERTEX_AVERAGE = 17,
-  GP_BRUSH_PRESET_VERTEX_SMEAR = 18,
-  GP_BRUSH_PRESET_VERTEX_REPLACE = 19,
+  /* Vertex Paint 100-199. */
+  GP_BRUSH_PRESET_VERTEX_DRAW = 100,
+  GP_BRUSH_PRESET_VERTEX_BLUR = 101,
+  GP_BRUSH_PRESET_VERTEX_AVERAGE = 102,
+  GP_BRUSH_PRESET_VERTEX_SMEAR = 103,
+  GP_BRUSH_PRESET_VERTEX_REPLACE = 104,
 
-  GP_BRUSH_PRESET_SMOOTH_STROKE = 20,
-  GP_BRUSH_PRESET_STRENGTH_STROKE = 21,
-  GP_BRUSH_PRESET_THICKNESS_STROKE = 22,
-  GP_BRUSH_PRESET_GRAB_STROKE = 23,
-  GP_BRUSH_PRESET_PUSH_STROKE = 24,
-  GP_BRUSH_PRESET_TWIST_STROKE = 25,
-  GP_BRUSH_PRESET_PINCH_STROKE = 26,
-  GP_BRUSH_PRESET_RANDOMIZE_STROKE = 27,
-  GP_BRUSH_PRESET_CLONE_STROKE = 28,
+  /* Sculpt 200-299. */
+  GP_BRUSH_PRESET_SMOOTH_STROKE = 200,
+  GP_BRUSH_PRESET_STRENGTH_STROKE = 201,
+  GP_BRUSH_PRESET_THICKNESS_STROKE = 202,
+  GP_BRUSH_PRESET_GRAB_STROKE = 203,
+  GP_BRUSH_PRESET_PUSH_STROKE = 204,
+  GP_BRUSH_PRESET_TWIST_STROKE = 205,
+  GP_BRUSH_PRESET_PINCH_STROKE = 206,
+  GP_BRUSH_PRESET_RANDOMIZE_STROKE = 207,
+  GP_BRUSH_PRESET_CLONE_STROKE = 208,
 
-  GP_BRUSH_PRESET_DRAW_WEIGHT = 29,
+  /* Weight Paint 300-399. */
+  GP_BRUSH_PRESET_DRAW_WEIGHT = 300,
 } eGPBrush_Presets;
 
 /* BrushGpencilSettings->gp_flag */
@@ -670,6 +675,7 @@ typedef enum eBrushUVSculptTool {
         * \ \ \ \ \ \ \ \ \ \ \ \ \
         * \ \ \ \ \ \ \ \ \ \ \ \ \ \
         * \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
+        * \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \
         * \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ but user feedback indicates it's better not to */ \
        SCULPT_TOOL_SMOOTH, \
        SCULPT_TOOL_MASK) == 0)
