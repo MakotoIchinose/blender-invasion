@@ -239,7 +239,9 @@ void BKE_collection_copy_data(Main *bmain,
     CollectionLANPR *lanpr = MEM_callocN(sizeof(CollectionLANPR), "Duplicated CollectionLANPR");
     collection_dst->lanpr = lanpr;
   }
-  memcpy(collection_dst->lanpr, collection_src->lanpr, sizeof(CollectionLANPR));
+  if (collection_dst->lanpr != NULL) {
+    memcpy(collection_dst->lanpr, collection_src->lanpr, sizeof(CollectionLANPR));
+  }
 }
 
 static Collection *collection_duplicate_recursive(Main *bmain,
