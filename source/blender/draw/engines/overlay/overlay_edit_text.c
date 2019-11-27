@@ -192,6 +192,8 @@ void OVERLAY_edit_text_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
 
+  DRW_view_set_active(NULL);
+
   DRW_draw_pass(psl->edit_text_wire_ps[0]);
   DRW_draw_pass(psl->edit_text_wire_ps[1]);
 

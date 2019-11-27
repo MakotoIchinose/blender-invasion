@@ -204,6 +204,7 @@ void OVERLAY_paint_draw(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
 
   if (psl->paint_color_ps) {
+    DRW_view_set_active(NULL);
     DRW_draw_pass(psl->paint_color_ps);
   }
   DRW_draw_pass(psl->paint_overlay_ps);
