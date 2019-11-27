@@ -199,6 +199,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_armature_sphere(false);
       grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", pd->armature.transparent ? 0.4f : 1.0f);
       cb->point_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_point_get());
 
       sh = OVERLAY_shader_armature_sphere(true);
@@ -210,6 +211,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_armature_shape(false);
       cb->custom_solid = grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", pd->armature.transparent ? 0.6f : 1.0f);
       cb->box_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_box_get());
       cb->octa_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_get());
 
@@ -247,6 +249,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_bool_copy(grp, "isDistance", false);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", pd->armature.transparent ? 0.6f : 1.0f);
       cb->envelope_solid = BUF_INSTANCE(grp, format, DRW_cache_bone_envelope_solid_get());
 
       format = formats->instance_bone_envelope_outline;
