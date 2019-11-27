@@ -5055,7 +5055,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
           rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
           free_path = 1;
         }
-        /* Special for Grease Pencil Layer */
+        /* Special for Grease Pencil Layer. */
         else if (ale->type == ANIMTYPE_GPLAYER) {
           /* Add some offset to make it more pleasing to the eye. */
           offset += SLIDER_WIDTH / 2.1f;
@@ -5063,44 +5063,47 @@ void ANIM_channel_draw_widgets(const bContext *C,
           char *gp_rna_path = NULL;
           bGPDlayer *gpl = (bGPDlayer *)ale->data;
           const short width = SLIDER_WIDTH / 4;
-          /* create the RNA pointer */
+
+          /* Create the RNA pointers. */
           RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data, &ptr);
           RNA_id_pointer_create(ale->id, &id_ptr);
-          uiBut *but;
 
-          /* Get pointer to the property too and return path. */
+          /* Layer opacity. */
           prop = RNA_struct_find_property(&ptr, "opacity");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
-            but = uiDefAutoButR(block,
-                                &ptr,
-                                prop,
-                                array_index,
-                                "",
-                                ICON_NONE,
-                                offset,
-                                ymid,
-                                width * 3,
-                                channel_height);
+            uiDefAutoButR(block,
+                          &ptr,
+                          prop,
+                          array_index,
+                          "",
+                          ICON_NONE,
+                          offset,
+                          ymid,
+                          width * 3,
+                          channel_height);
           }
+
+          /* Layer onion skinning switch. */
           prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
             int icon = (gpl->onion_flag & GP_LAYER_ONIONSKIN) ? ICON_ONIONSKIN_ON :
                                                                 ICON_ONIONSKIN_OFF;
-            but = uiDefAutoButR(block,
-                                &ptr,
-                                prop,
-                                array_index,
-                                "",
-                                icon,
-                                offset + (width * 3),
-                                ymid,
-                                width,
-                                channel_height);
+            uiDefAutoButR(block,
+                          &ptr,
+                          prop,
+                          array_index,
+                          "",
+                          icon,
+                          offset + (width * 3),
+                          ymid,
+                          width,
+                          channel_height);
           }
         }
-        /* only if RNA-Path found */
+
+        /* Only if RNA-Path found. */
         if (rna_path) {
           /* get RNA pointer, and resolve the path */
           RNA_id_pointer_create(ale->id, &id_ptr);
