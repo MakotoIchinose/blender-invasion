@@ -69,11 +69,19 @@ class COLLECTION_PT_lanpr_collection(CollectionButtonsPanel, Panel):
     def poll(cls, context):
         return context.scene.render.engine == 'BLENDER_LANPR' or context.scene.lanpr.enabled
 
+    def draw_header(self, context):
+        layout = self.layout
+        collection = context.collection
+        layout.prop(collection, "configure_lanpr", text="")
+
     def draw(self,context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         collection = context.collection
+        if not collection.configure_lanpr:
+            return
+        
         lanpr = collection.lanpr
         row = layout.row()
         row.prop(lanpr,"usage")

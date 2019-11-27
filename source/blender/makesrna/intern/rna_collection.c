@@ -26,6 +26,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "RNA_define.h"
 
 #include "rna_internal.h"
@@ -311,6 +313,28 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
 
+/* LANPR */
+
+static bool rna_Collection_lanpr_configure_get(PointerRNA *ptr){
+  Collection* c = ptr->owner_id;
+  return (c->flag & COLLECTION_CONFIGURED_FOR_LANPR);
+}
+static void rna_Collection_lanpr_configure_set(PointerRNA *ptr, const bool value){
+  Collection* c = ptr->owner_id;
+  CollectionLANPR* lanpr = c->lanpr;
+
+  if(value){
+    c->flag |= COLLECTION_CONFIGURED_FOR_LANPR;
+    if(!lanpr){
+      lanpr = MEM_callocN(sizeof(CollectionLANPR), "CollectionLANPR");
+      c->lanpr = lanpr;
+    }
+  } else { /* !value */
+    c->flag &= ~COLLECTION_CONFIGURED_FOR_LANPR;
+    /* CollectionLANPR will be deleted when collection is deleted. */
+  }
+}
+
 #else
 
 /* collection.objects */
@@ -586,7 +610,14 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
+  prop = RNA_def_property(srna, "configure_lanpr", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop,"rna_Collection_lanpr_configure_get","rna_Collection_lanpr_configure_set");
+  RNA_def_property_ui_text(
+      prop, "Configure", "Configure this collection for LANPR");
+  RNA_def_property_update(prop, NC_SCENE, NULL);
+  
   rna_def_collection_lanpr(brna);
+  
   prop = RNA_def_property(srna, "lanpr", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CollectionLANPR");
   RNA_def_property_ui_text(prop, "LANPR", "LANPR settings for the collection");

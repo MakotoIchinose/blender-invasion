@@ -2383,6 +2383,10 @@ static void write_collection_nolib(WriteData *wd, Collection *collection)
   for (CollectionChild *child = collection->children.first; child; child = child->next) {
     writestruct(wd, DATA, CollectionChild, 1, child);
   }
+
+  if(collection->flag & COLLECTION_CONFIGURED_FOR_LANPR){
+    writestruct(wd, DATA, CollectionLANPR, 1, collection->lanpr);
+  }
 }
 
 static void write_collection(WriteData *wd, Collection *collection)

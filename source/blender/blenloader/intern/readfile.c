@@ -6277,7 +6277,10 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
     child->collection = newlibadr_us(fd, lib, child->collection);
   }
 
-  collection->lanpr.target = newlibadr_us(fd, lib, collection->lanpr.target);
+  collection->lanpr = newdataadr(fd,collection->lanpr);
+  if(collection->lanpr){
+    collection->lanpr->target = newlibadr_us(fd, lib, collection->lanpr->target);
+  }
 
   BKE_collection_parent_relations_rebuild(collection);
 }
@@ -10447,7 +10450,7 @@ static void expand_collection(FileData *fd, Main *mainvar, Collection *collectio
     expand_doit(fd, mainvar, child->collection);
   }
 
-  expand_doit(fd, mainvar, collection->lanpr.target);
+  expand_doit(fd, mainvar, collection->lanpr->target);
 
 #ifdef USE_COLLECTION_COMPAT_28
   if (collection->collection != NULL) {

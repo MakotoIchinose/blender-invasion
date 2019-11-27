@@ -3979,13 +3979,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
     
     if (!DNA_struct_find(fd->filesdna, "SceneLANPR")) {
-      for (Collection *co = bmain->collections.first; co; co = co->id.next) {
-        co->lanpr.contour.use = 1;
-        co->lanpr.crease.use = 1;
-        co->lanpr.material.use = 1;
-        co->lanpr.edge_mark.use = 1;
-        co->lanpr.intersection.use = 1;
-      }
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 
         scene->lanpr.crease_threshold = 0.7;
