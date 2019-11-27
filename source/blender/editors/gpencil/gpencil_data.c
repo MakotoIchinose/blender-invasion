@@ -1687,7 +1687,9 @@ static void gp_bruh_tag_mode_brushes(Main *bmain, Paint *paint, const enum eCont
       }
     }
 
-    brush->gpencil_settings->flag |= GP_BRUSH_TAG;
+    if (brush->gpencil_settings != NULL) {
+      brush->gpencil_settings->flag |= GP_BRUSH_TAG;
+    }
   }
 }
 
