@@ -203,6 +203,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   const bool has_surface = ELEM(ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_MBALL, OB_FONT);
   const bool draw_surface = !((ob->dt < OB_WIRE) || (!renderable && (ob->dt != OB_WIRE)));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION);
+  const bool draw_bones = (pd->overlay.flag & V3D_OVERLAY_HIDE_BONES) == 0;
   const bool draw_wires = draw_surface && has_surface &&
                           (pd->wireframe_mode || !pd->hide_overlays);
   const bool draw_outlines = !in_edit_mode && !in_paint_mode && renderable &&
@@ -240,7 +241,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_mesh_cache_populate(vedata, ob);
         break;
       case OB_ARMATURE:
-        OVERLAY_edit_armature_cache_populate(vedata, ob);
+        if (draw_bones) {
+          OVERLAY_edit_armature_cache_populate(vedata, ob);
+        }
         break;
       case OB_CURVE:
         OVERLAY_edit_curve_cache_populate(vedata, ob);
@@ -259,7 +262,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
     }
   }
-  else if (in_pose_mode) {
+  else if (in_pose_mode && draw_bones) {
     OVERLAY_pose_armature_cache_populate(vedata, ob);
   }
   else if (in_paint_mode) {
@@ -291,7 +294,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
   switch (ob->type) {
     case OB_ARMATURE:
-      if ((!in_edit_mode && !in_pose_mode) || is_select) {
+      if (draw_bones && (is_select || (!in_edit_mode && !in_pose_mode))) {
         OVERLAY_armature_cache_populate(vedata, ob);
       }
       break;
