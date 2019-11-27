@@ -64,19 +64,17 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
                                      OVERLAY_shader_wireframe();
 
   for (int xray = 0; xray < 2; xray++) {
-    DRWState state = DRW_STATE_FIRST_VERTEX_CONVENTION;
+    DRWState state = DRW_STATE_FIRST_VERTEX_CONVENTION | DRW_STATE_WRITE_COLOR |
+                     DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
     DRWPass *pass;
     uint stencil_mask;
 
     if (xray == 0) {
-      state |= DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-               DRW_STATE_STENCIL_EQUAL;
-      DRW_PASS_CREATE(psl->wireframe_ps, state | pd->clipping_state);
+      DRW_PASS_CREATE(psl->wireframe_ps, state | pd->clipping_state | DRW_STATE_STENCIL_EQUAL);
       pass = psl->wireframe_ps;
       stencil_mask = 0xFF;
     }
     else {
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
       DRW_PASS_CREATE(psl->wireframe_xray_ps, state | pd->clipping_state);
       pass = psl->wireframe_xray_ps;
       stencil_mask = 0x00;
