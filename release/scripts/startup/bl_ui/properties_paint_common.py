@@ -282,6 +282,7 @@ def brush_mask_texture_settings(layout, brush):
     col.prop(mask_tex_slot, "offset")
     col.prop(mask_tex_slot, "scale")
 
+
 # Basic Brush Options
 #
 # Share between topbar and brush panel.
@@ -345,8 +346,8 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
 
     ups = tool_settings.unified_paint_settings
     if (
-            (ups.use_unified_size and ups.use_locked_size == 'SCENE') or
-            ((not ups.use_unified_size) and brush.use_locked_size == 'SCENE')
+        (ups.use_unified_size and ups.use_locked_size == 'SCENE') or
+        ((not ups.use_unified_size) and brush.use_locked_size == 'SCENE')
     ):
         UnifiedPaintPanel.prop_unified_size(row, context, brush, "unprojected_radius", slider=True, text="Radius")
     else:
@@ -402,12 +403,12 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact
 
     # FIXME: tools must use their own UI drawing!
     if tool.idname in {
-            "builtin.arc",
-            "builtin.curve",
-            "builtin.line",
-            "builtin.box",
-            "builtin.circle",
-            "builtin.polyline",
+        "builtin.arc",
+        "builtin.curve",
+        "builtin.line",
+        "builtin.box",
+        "builtin.circle",
+        "builtin.polyline",
     }:
         settings = _context.tool_settings.gpencil_sculpt
         if is_toolbar:
@@ -487,11 +488,13 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compac
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
+
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
 )
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

@@ -2415,7 +2415,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = layout.column()
         col.prop(md, "vertex_mode")
 
-        col. separator()
+        col.separator()
         col.label(text="Object:")
         col.prop(md, "object", text="")
 
@@ -2464,5 +2464,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

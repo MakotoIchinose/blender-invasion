@@ -21,6 +21,7 @@ import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
 
+
 ###############################
 # Base-Classes (for shared stuff - e.g. poll, attributes, etc.)
 
@@ -110,7 +111,7 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        #layout.use_property_split = True
+        # layout.use_property_split = True
         layout.use_property_decorate = False
 
         gpd = context.gpencil
@@ -160,7 +161,6 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
         col = layout.column(align=True)
 
         if gpl:
-
             layout = self.layout
             layout.use_property_split = True
             layout.use_property_decorate = True
@@ -469,6 +469,7 @@ class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
     _property_type = bpy.types.GreasePencil
 
+
 ###############################
 
 
@@ -495,5 +496,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

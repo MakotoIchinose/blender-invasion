@@ -40,13 +40,13 @@ def kmi_to_string_or_none(kmi):
 
 
 def generate_from_enum_ex(
-        _context, *,
-        idname_prefix,
-        icon_prefix,
-        type,
-        attr,
-        cursor='DEFAULT',
-        tooldef_keywords={},
+    _context, *,
+    idname_prefix,
+    icon_prefix,
+    type,
+    attr,
+    cursor='DEFAULT',
+    tooldef_keywords={},
 ):
     tool_defs = []
     for enum in type.bl_rna.properties[attr].enum_items_static:
@@ -90,6 +90,7 @@ class _defs_view3d_generic:
             props = tool.operator_properties("view3d.cursor3d")
             layout.prop(props, "use_depth")
             layout.prop(props, "orientation")
+
         return dict(
             idname="builtin.cursor",
             label="Cursor",
@@ -130,6 +131,7 @@ class _defs_view3d_generic:
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_remove),
             )
+
         return dict(
             idname="builtin.measure",
             label="Measure",
@@ -220,6 +222,7 @@ class _defs_annotate:
             # TODO: Move this setting to tool_settings
             prefs = context.preferences
             layout.prop(prefs.edit, "grease_pencil_eraser_radius", text="Radius")
+
         return dict(
             idname="builtin.annotate_eraser",
             label="Annotate Eraser",
@@ -236,6 +239,7 @@ class _defs_transform:
     def translate():
         def draw_settings(context, layout, _tool):
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 1)
+
         return dict(
             idname="builtin.move",
             label="Move",
@@ -251,6 +255,7 @@ class _defs_transform:
     def rotate():
         def draw_settings(context, layout, _tool):
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 2)
+
         return dict(
             idname="builtin.rotate",
             label="Rotate",
@@ -266,6 +271,7 @@ class _defs_transform:
     def scale():
         def draw_settings(context, layout, _tool):
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 3)
+
         return dict(
             idname="builtin.scale",
             label="Scale",
@@ -281,6 +287,7 @@ class _defs_transform:
     def scale_cage():
         def draw_settings(context, layout, _tool):
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 3)
+
         return dict(
             idname="builtin.scale_cage",
             label="Scale Cage",
@@ -321,6 +328,7 @@ class _defs_view3d_select:
     def select():
         def draw_settings(_context, _layout, _tool):
             pass
+
         return dict(
             idname="builtin.select",
             label="Tweak",
@@ -337,6 +345,7 @@ class _defs_view3d_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -353,6 +362,7 @@ class _defs_view3d_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -493,6 +503,7 @@ class _defs_edit_mesh:
             props = tool.operator_properties("mesh.polybuild_face_at_cursor_move")
             props_macro = props.MESH_OT_polybuild_face_at_cursor
             layout.prop(props_macro, "create_quads")
+
         return dict(
             idname="builtin.poly_build",
             label="Poly Build",
@@ -625,6 +636,7 @@ class _defs_edit_mesh:
             props = tool.operator_properties("mesh.extrude_region_shrink_fatten")
             props_macro = props.TRANSFORM_OT_shrink_fatten
             layout.prop(props_macro, "use_even_offset")
+
         return dict(
             idname="builtin.extrude_along_normals",
             label="Extrude Along Normals",
@@ -662,7 +674,6 @@ class _defs_edit_mesh:
 
     @ToolDef.from_fn
     def loopcut_slide():
-
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("mesh.loopcut_slide")
             props_macro = props.MESH_OT_loopcut
@@ -694,6 +705,7 @@ class _defs_edit_mesh:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("mesh.vertices_smooth")
             layout.prop(props, "repeat")
+
         return dict(
             idname="builtin.smooth",
             label="Smooth",
@@ -710,6 +722,7 @@ class _defs_edit_mesh:
             layout.prop(props, "uniform")
             layout.prop(props, "normal")
             layout.prop(props, "seed")
+
         return dict(
             idname="builtin.randomize",
             label="Randomize",
@@ -724,6 +737,7 @@ class _defs_edit_mesh:
         def draw_settings(context, layout, _tool):
             # props = tool.operator_properties("transform.shear")
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 2)
+
         return dict(
             idname="builtin.shear",
             label="Shear",
@@ -793,6 +807,7 @@ class _defs_edit_mesh:
             layout.prop(props, "clear_inner")
             layout.prop(props, "clear_outer")
             layout.prop(props, "threshold")
+
         return dict(
             idname="builtin.bisect",
             label="Bisect",
@@ -886,6 +901,7 @@ class _defs_edit_curve:
             layout.prop(props, "uniform")
             layout.prop(props, "normal")
             layout.prop(props, "seed")
+
         return dict(
             idname="builtin.randomize",
             label="Randomize",
@@ -1139,6 +1155,7 @@ class _defs_image_generic:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("image.sample")
             layout.prop(props, "size")
+
         return dict(
             idname="builtin.sample",
             label="Sample",
@@ -1206,6 +1223,7 @@ class _defs_image_uv_select:
     def select():
         def draw_settings(_context, _layout, _tool):
             pass
+
         return dict(
             idname="builtin.select",
             label="Tweak",
@@ -1222,6 +1240,7 @@ class _defs_image_uv_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -1238,6 +1257,7 @@ class _defs_image_uv_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -1417,6 +1437,7 @@ class _defs_gpencil_paint:
                     panel="TOPBAR_PT_gpencil_eyedropper",
                     text="Palette",
                 )
+
         return dict(
             idname="builtin.eyedropper",
             label="Eyedropper",
@@ -1443,6 +1464,7 @@ class _defs_gpencil_edit:
     def select():
         def draw_settings(context, layout, _tool):
             layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
+
         return dict(
             idname="builtin.select",
             label="Tweak",
@@ -1460,6 +1482,7 @@ class _defs_gpencil_edit:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
+
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -1477,6 +1500,7 @@ class _defs_gpencil_edit:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
+
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -1560,10 +1584,10 @@ class _defs_gpencil_edit:
     @ToolDef.from_fn
     def transform_fill():
         def draw_settings(context, layout, tool):
-                props = tool.operator_properties("gpencil.transform_fill")
-                row = layout.row()
-                row.use_property_split = False
-                row.prop(props, "mode", expand=True)
+            props = tool.operator_properties("gpencil.transform_fill")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", expand=True)
 
         return dict(
             idname="builtin.transform_fill",
@@ -1620,7 +1644,6 @@ class _defs_gpencil_weight:
 
 class _defs_gpencil_vertex:
 
-
     @staticmethod
     def poll_select_mask(context):
         if context is None:
@@ -1652,6 +1675,7 @@ class _defs_node_select:
     def select():
         def draw_settings(_context, _layout, _tool):
             pass
+
         return dict(
             idname="builtin.select",
             label="Tweak",
@@ -1669,6 +1693,7 @@ class _defs_node_select:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             pass
+
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -1685,6 +1710,7 @@ class _defs_node_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -2180,5 +2206,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

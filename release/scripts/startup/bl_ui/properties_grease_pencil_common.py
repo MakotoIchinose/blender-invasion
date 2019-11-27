@@ -108,11 +108,6 @@ class AnnotationDrawingToolsPanel:
         sub.operator("gpencil.blank_frame_add", icon='FILE_NEW')
         sub.operator("gpencil.active_frames_delete_all", icon='X', text="Delete Frame(s)")
 
-        #sub = col.column(align=True)
-        #sub.prop(context.tool_settings, "use_gpencil_draw_additive", text="Additive Drawing")
-        #sub.prop(context.tool_settings, "use_gpencil_continuous_drawing", text="Continuous Drawing")
-        #sub.prop(context.tool_settings, "use_gpencil_draw_onback", text="Draw on Back")
-
         col.separator()
         col.separator()
 
@@ -183,9 +178,9 @@ class GreasePencilStrokeEditPanel:
 
         if not is_3d_view:
             col = layout.column(align=True)
-            col.operator("transform.translate")                # icon='MAN_TRANS'
-            col.operator("transform.rotate")                   # icon='MAN_ROT'
-            col.operator("transform.resize", text="Scale")     # icon='MAN_SCALE'
+            col.operator("transform.translate")  # icon='MAN_TRANS'
+            col.operator("transform.rotate")  # icon='MAN_ROT'
+            col.operator("transform.resize", text="Scale")  # icon='MAN_SCALE'
 
             layout.separator()
 
@@ -399,7 +394,7 @@ class GPENCIL_MT_move_to_layer(Menu):
             gpl_active = context.active_gpencil_layer
             tot_layers = len(gpd.layers)
             i = tot_layers - 1
-            while(i >= 0):
+            while (i >= 0):
                 gpl = gpd.layers[i]
                 if gpl.info == gpl_active.info:
                     icon = 'GREASEPENCIL'
@@ -687,7 +682,7 @@ class GreasePencilMaterialsPanel:
                     row.operator("gpencil.stroke_change_color", text="Assign")
                     row.operator("gpencil.color_select", text="Select").deselect = False
                     row.operator("gpencil.color_select", text="Deselect").deselect = True
-        # stroke color
+            # stroke color
             ma = None
             if is_view3d and brush is not None:
                 gp_settings = brush.gpencil_settings
@@ -700,9 +695,9 @@ class GreasePencilMaterialsPanel:
             if ma is not None and ma.grease_pencil is not None:
                 gpcolor = ma.grease_pencil
                 if (
-                        gpcolor.stroke_style == 'SOLID' or
-                        gpcolor.use_stroke_pattern or
-                        gpcolor.use_stroke_texture_mix
+                    gpcolor.stroke_style == 'SOLID' or
+                    gpcolor.use_stroke_pattern or
+                    gpcolor.use_stroke_texture_mix
                 ):
                     row = layout.row()
                     row.prop(gpcolor, "color", text="Stroke Base Color")
@@ -817,6 +812,7 @@ class GreasePencilSimplifyPanel:
         sub.active = rd.simplify_gpencil_view_fill
         sub.prop(rd, "simplify_gpencil_remove_lines", text="Lines")
 
+
 class GreasePencilFlipTintColors(Operator):
     bl_label = "Flip Colors"
     bl_idname = "gpencil.tint_flip"
@@ -841,7 +837,7 @@ class GreasePencilFlipTintColors(Operator):
 
         except Exception as e:
             utils_core.error_handlers(self, "gpencil.tint_flip", e,
-                                     "Flip Colors could not be completed")
+                                      "Flip Colors could not be completed")
 
             return {'CANCELLED'}
 
@@ -861,5 +857,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

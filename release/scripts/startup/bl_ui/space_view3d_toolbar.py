@@ -120,7 +120,6 @@ class View3DPanel:
 
 # Used by vertex & weight paint
 def draw_vpaint_symmetry(layout, vpaint):
-
     split = layout.split()
 
     col = split.column()
@@ -137,6 +136,7 @@ def draw_vpaint_symmetry(layout, vpaint):
     col.use_property_split = True
     col.use_property_decorate = False
     col.prop(vpaint, "radial_symmetry", text="Radial")
+
 
 # Most of these panels should not be visible in GP edit modes
 
@@ -251,6 +251,7 @@ class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
         col.prop(tool_settings, "use_mesh_automerge_and_split", toggle=False)
         col.prop(tool_settings, "double_threshold", text="Threshold")
 
+
 # ********** default tools for editmode_curve ****************
 
 
@@ -343,6 +344,7 @@ class VIEW3D_PT_tools_posemode_options(View3DPanel, Panel):
 
         layout.label(text="Affect Only")
         layout.prop(tool_settings, "use_transform_pivot_point_align", text="Locations")
+
 
 # ********** default tools for paint modes ****************
 
@@ -458,10 +460,10 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
                 row.prop(brush, "pose_smooth_iterations")
             elif brush.sculpt_tool == 'SCRAPE':
                 row = col.row()
-                row.prop(brush, "invert_to_scrape_fill", text = "Invert to Fill")
+                row.prop(brush, "invert_to_scrape_fill", text="Invert to Fill")
             elif brush.sculpt_tool == 'FILL':
                 row = col.row()
-                row.prop(brush, "invert_to_scrape_fill", text = "Invert to Scrape")
+                row.prop(brush, "invert_to_scrape_fill", text="Invert to Scrape")
             elif brush.sculpt_tool == 'GRAB':
                 col.separator()
                 row = col.row()
@@ -476,8 +478,8 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
             # topology_rake_factor
             if (
-                    capabilities.has_topology_rake and
-                    context.sculpt_object.use_dynamic_topology_sculpting
+                capabilities.has_topology_rake and
+                context.sculpt_object.use_dynamic_topology_sculpting
             ):
                 row = col.row()
                 row.prop(brush, "topology_rake_factor", slider=True)
@@ -809,6 +811,7 @@ class VIEW3D_PT_slots_projectpaint(View3DPanel, Panel):
         elif have_image:
             layout.separator()
             layout.operator("image.save_all_modified", text="Save All Images", icon='FILE_TICK')
+
 
 # TODO, move to space_view3d.py
 
@@ -1288,6 +1291,7 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         col.prop(mesh, "use_remesh_preserve_paint_mask")
         col.operator("object.voxel_remesh", text="Remesh")
 
+
 # TODO, move to space_view3d.py
 
 
@@ -1491,6 +1495,7 @@ class VIEW3D_PT_tools_brush_display_custom_icon(Panel, View3DPaintPanel):
         col.active = brush.use_custom_icon
         col.prop(brush, "icon_filepath", text="")
 
+
 # ********** default tools for weight-paint ****************
 
 
@@ -1559,6 +1564,7 @@ class VIEW3D_PT_tools_weightpaint_options_unified(Panel, View3DPaintPanel):
         layout.use_property_decorate = False
 
         self.unified_paint_settings(layout, context)
+
 
 # ********** default tools for vertex-paint ****************
 
@@ -2117,7 +2123,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         return True
 
-
     def draw_header(self, context):
         ts = context.tool_settings
         settings = ts.gpencil_paint
@@ -2125,8 +2130,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         if brush.gpencil_tool != 'TINT':
             self.layout.prop(settings, "use_vertex_color", text="",
-                toggle=False)
-
+                             toggle=False)
 
     def draw(self, context):
         layout = self.layout
@@ -2163,7 +2167,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
     bl_category = "Tool"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_mixcolor'
     bl_options = {'DEFAULT_CLOSED'}
-
 
     @classmethod
     def poll(cls, context):
@@ -2276,6 +2279,7 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
         layout.template_curve_mapping(gp_settings, "curve_jitter", brush=True,
                                       use_negative_slope=True)
 
+
 # Grease Pencil Fill
 class VIEW3D_PT_tools_grease_pencil_brush_fill(View3DPanel, Panel):
     bl_context = ".greasepencil_paint"
@@ -2309,6 +2313,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_fill(View3DPanel, Panel):
             row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
             row = layout.row(align=True)
             row.prop(gp_settings, "fill_threshold", text="Threshold")
+
 
 # Grease Pecil Vertex Paint tools
 class VIEW3D_PT_tools_grease_pencil_vertex_brush(View3DPanel, Panel):
@@ -2463,7 +2468,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
     bl_label = "Color Palette"
     bl_category = "Tool"
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex_color'
-
 
     @classmethod
     def poll(cls, context):
@@ -2772,5 +2776,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

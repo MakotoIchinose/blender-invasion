@@ -303,12 +303,12 @@ class _draw_tool_settings_context_mode:
         # is_paint = True
         # FIXME: tools must use their own UI drawing!
         if tool.idname in {
-                "builtin.line",
-                "builtin.box",
-                "builtin.circle",
-                "builtin.arc",
-                "builtin.curve",
-                "builtin.polyline",
+            "builtin.line",
+            "builtin.box",
+            "builtin.circle",
+            "builtin.arc",
+            "builtin.curve",
+            "builtin.polyline",
         }:
             # is_paint = False
             pass
@@ -358,7 +358,7 @@ class _draw_tool_settings_context_mode:
                 if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
                     row.separator(factor=0.4)
                     row.prop(settings, "use_vertex_color", text="",
-                                icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
+                             icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
                     sub_row = row.row(align=True)
                     sub_row.enabled = settings.use_vertex_color
                     sub_row.prop(brush, "color", text="")
@@ -535,8 +535,8 @@ class VIEW3D_HT_header(Header):
             show_snap = True
         else:
             if (object_mode not in {
-                    'SCULPT', 'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
-                    'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'
+                'SCULPT', 'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
+                'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'
             }) or has_pose_mode:
                 show_snap = True
             else:
@@ -800,7 +800,7 @@ class VIEW3D_MT_editor_menus(Menu):
         mode_string = context.mode
         edit_object = context.edit_object
         gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
-                                        'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
+                                       'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
         ts = context.scene.tool_settings
 
         layout.menu("VIEW3D_MT_view")
@@ -1848,7 +1848,6 @@ class VIEW3D_MT_select_gpencil(Menu):
             layout.separator()
 
             layout.operator("gpencil.select_color")
-
 
 
 class VIEW3D_MT_select_paint_mask(Menu):
@@ -2901,7 +2900,6 @@ class VIEW3D_MT_paint_weight(Menu):
     def draw_generic(layout, is_editmode=False):
 
         if not is_editmode:
-
             layout.operator("paint.weight_from_bones", text="Assign Automatic From Bones").type = 'AUTOMATIC'
             layout.operator("paint.weight_from_bones", text="Assign From Bone Envelopes").type = 'ENVELOPES'
 
@@ -4166,6 +4164,7 @@ class VIEW3D_MT_edit_gpencil_delete(Menu):
         layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
         layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
 
+
 # Edit Curve
 # draw_curve is used by VIEW3D_MT_edit_curve and VIEW3D_MT_edit_surface
 
@@ -4624,7 +4623,6 @@ class VIEW3D_MT_paint_gpencil(Menu):
     bl_label = "Draw"
 
     def draw(self, _context):
-
         layout = self.layout
 
         layout.menu("VIEW3D_MT_gpencil_animation")
@@ -5087,6 +5085,7 @@ class VIEW3D_PT_active_tool(Panel, ToolActivePanelHelper):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Tool"
+
     # See comment below.
     # bl_options = {'HIDE_HEADER'}
 
@@ -6671,7 +6670,6 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.dissolve", text="Dissolve Unselected").type = 'UNSELECT'
 
         if is_stroke_mode:
-
             col = row.column()
             col.label(text="Stroke Context Menu", icon='GP_SELECT_STROKES')
             col.separator()
@@ -6841,8 +6839,6 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
             row = layout.row(align=True)
             row.prop(gp_settings, "pen_strength", slider=True)
             row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
-
-
 
 
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
@@ -7203,8 +7199,8 @@ classes = (
     TOPBAR_PT_annotation_layers,
 )
 
-
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)
