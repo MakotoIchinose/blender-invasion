@@ -18,8 +18,6 @@
 # All rights reserved.
 # ***** END GPL LICENSE BLOCK *****
 
-include(${USD_ROOT_DIR}/pxrConfig.cmake)
-
 # This suppresses the warning "This file includes at least one deprecated or antiquated header which
 # may be removed without further notice at a future date", which is caused by the USD library
 # including <ext/hash_set>. Nothing we can do about that until they change what
@@ -42,7 +40,7 @@ set(INC
 )
 
 set(INC_SYS
-  ${PXR_INCLUDE_DIRS}
+  ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
 )
@@ -50,6 +48,7 @@ set(INC_SYS
 if(WIN32)
   add_definitions(-DNOMINMAX)
 endif()
+add_definitions(-DPXR_STATIC)
 
 set(SRC
   intern/abstract_hierarchy_iterator.cc
@@ -76,7 +75,9 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
-  ${PXR_LIBRARIES}
+  -Wl,--whole-archive
+  ${USD_LIBRARIES}
+  -Wl,--no-whole-archive
 )
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
