@@ -41,14 +41,53 @@ static void OVERLAY_engine_init(void *vedata)
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  const RegionView3D *rv3d = draw_ctx->rv3d;
+  const View3D *v3d = draw_ctx->v3d;
 
   if (!stl->pd) {
     /* Alloc transient pointers */
     stl->pd = MEM_callocN(sizeof(*stl->pd), __func__);
   }
 
-  stl->pd->ctx_mode = CTX_data_mode_enum_ex(
+  OVERLAY_PrivateData *pd = stl->pd;
+  View3DOverlay overlay;
+  short v3d_flag, v3d_gridflag;
+
+  pd->hide_overlays = (v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
+  pd->ctx_mode = CTX_data_mode_enum_ex(
       draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
+
+  if (!pd->hide_overlays) {
+    overlay = v3d->overlay;
+    v3d_flag = v3d->flag;
+    v3d_gridflag = v3d->gridflag;
+  }
+  else {
+    memset(&overlay, 0, sizeof(overlay));
+    v3d_flag = 0;
+    v3d_gridflag = 0;
+    overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS | V3D_OVERLAY_HIDE_BONES |
+                   V3D_OVERLAY_HIDE_OBJECT_XTRAS | V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
+  }
+
+  if (v3d->shading.type == OB_WIRE) {
+    overlay.flag |= V3D_OVERLAY_WIREFRAMES;
+  }
+
+  /* Check if anything changed, and if so, reset AA. */
+  if (v3d_flag != pd->v3d_flag || pd->v3d_gridflag != v3d_gridflag ||
+      memcmp(&pd->overlay, &overlay, sizeof(overlay))) {
+    pd->overlay = overlay;
+    pd->v3d_flag = v3d_flag;
+    pd->v3d_gridflag = v3d_gridflag;
+    OVERLAY_antialiasing_reset(vedata);
+  }
+
+  pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
+  pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
+  pd->xray_enabled = XRAY_ACTIVE(v3d);
+  pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
+  pd->clear_in_front = (v3d->shading.type != OB_SOLID);
 
   OVERLAY_antialiasing_init(vedata);
 
@@ -72,34 +111,6 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_Data *data = vedata;
   OVERLAY_StorageList *stl = data->stl;
   OVERLAY_PrivateData *pd = stl->pd;
-
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const RegionView3D *rv3d = draw_ctx->rv3d;
-  const View3D *v3d = draw_ctx->v3d;
-
-  pd->hide_overlays = (v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
-
-  if (!pd->hide_overlays) {
-    pd->overlay = v3d->overlay;
-    pd->v3d_flag = v3d->flag;
-  }
-  else {
-    memset(&pd->overlay, 0, sizeof(pd->overlay));
-    pd->v3d_flag = 0;
-    pd->overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS |
-                       V3D_OVERLAY_HIDE_BONES | V3D_OVERLAY_HIDE_OBJECT_XTRAS |
-                       V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
-  }
-
-  if (v3d->shading.type == OB_WIRE) {
-    pd->overlay.flag |= V3D_OVERLAY_WIREFRAMES;
-  }
-
-  pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
-  pd->clipping_state = (rv3d->rflag & RV3D_CLIPPING) ? DRW_STATE_CLIP_PLANES : 0;
-  pd->xray_enabled = XRAY_ACTIVE(v3d);
-  pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
-  pd->clear_in_front = (v3d->shading.type != OB_SOLID);
 
   switch (pd->ctx_mode) {
     case CTX_MODE_EDIT_MESH:

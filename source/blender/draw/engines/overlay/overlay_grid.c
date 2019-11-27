@@ -53,11 +53,11 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   Scene *scene = draw_ctx->scene;
   RegionView3D *rv3d = draw_ctx->rv3d;
 
-  const bool show_axis_x = (v3d->gridflag & V3D_SHOW_X) != 0;
-  const bool show_axis_y = (v3d->gridflag & V3D_SHOW_Y) != 0;
-  const bool show_axis_z = (v3d->gridflag & V3D_SHOW_Z) != 0;
-  const bool show_floor = (v3d->gridflag & V3D_SHOW_FLOOR) != 0;
-  const bool show_ortho_grid = (v3d->gridflag & V3D_SHOW_ORTHO_GRID) != 0;
+  const bool show_axis_x = (pd->v3d_gridflag & V3D_SHOW_X) != 0;
+  const bool show_axis_y = (pd->v3d_gridflag & V3D_SHOW_Y) != 0;
+  const bool show_axis_z = (pd->v3d_gridflag & V3D_SHOW_Z) != 0;
+  const bool show_floor = (pd->v3d_gridflag & V3D_SHOW_FLOOR) != 0;
+  const bool show_ortho_grid = (pd->v3d_gridflag & V3D_SHOW_ORTHO_GRID) != 0;
 
   shd->grid_flag = 0;
 

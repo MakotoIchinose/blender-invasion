@@ -272,7 +272,8 @@ typedef struct OVERLAY_PrivateData {
   bool hide_overlays;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
-  short v3d_flag;
+  short v3d_flag;     /* TODO move to View3DOverlay */
+  short v3d_gridflag; /* TODO move to View3DOverlay */
   DRWState clipping_state;
   OVERLAY_ShadingData shdata;
 
