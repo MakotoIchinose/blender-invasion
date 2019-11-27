@@ -50,7 +50,7 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
   pd->antialiasing.enabled = dtxl->multisample_color != NULL;
 
   if (pd->antialiasing.enabled) {
-    pd->antialiasing.target_sample = 3;
+    pd->antialiasing.target_sample = 4;
 
     bool valid_history = true;
     if (txl->overlay_color_history_tx == NULL || pd->antialiasing.sample == 0) {
@@ -98,13 +98,17 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
       const float *viewport_size = DRW_viewport_size_get();
       int nr = min_ii(pd->antialiasing.sample, pd->antialiasing.target_sample);
       /* x4 rotated grid. TODO(fclem) better patterns. */
-      const float samples_pos[4][2] = {{-2, 6}, {6, 2}, {-6, 2}, {2, 6}};
-      float ofs[2] = {0.5f + samples_pos[nr][0] / 8.0f, 0.5f + samples_pos[nr][1] / 8.0f};
+      const float samples_pos[5][2] = {{0, 0}, {-2, -6}, {6, -2}, {-6, 2}, {2, 6}};
+      /* For nr = 0,we should sample {0, 0} (goes through the FXAA branch). */
+      float ofs[2] = {samples_pos[nr][0] / 6.0f, samples_pos[nr][1] / 6.0f};
 
       window_translate_m4(winmat, persmat, ofs[0] / viewport_size[0], ofs[1] / viewport_size[1]);
 
       const DRWView *default_view = DRW_view_default_get();
       pd->view_default = DRW_view_create_sub(default_view, viewmat, winmat);
+
+      /* Avoid infinite sample count. */
+      CLAMP_MAX(pd->antialiasing.sample, pd->antialiasing.target_sample + 1);
     }
     else {
       /* FXAA */
@@ -162,7 +166,7 @@ void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata)
 
       /* TODO do not even render if not necessary. */
       float alpha = 0.0f;
-      if (pd->antialiasing.sample < pd->antialiasing.target_sample) {
+      if (pd->antialiasing.sample <= pd->antialiasing.target_sample) {
         alpha = 1.0f / (pd->antialiasing.sample + 1);
       }
 
@@ -228,7 +232,7 @@ void OVERLAY_antialiasing_end(OVERLAY_Data *vedata)
       GPU_framebuffer_bind(dfbl->default_fb);
       DRW_draw_pass(psl->antialiasing_ps);
 
-      if (pd->antialiasing.sample < pd->antialiasing.target_sample) {
+      if (pd->antialiasing.sample <= pd->antialiasing.target_sample) {
         pd->antialiasing.sample++;
         DRW_viewport_request_redraw();
       }
