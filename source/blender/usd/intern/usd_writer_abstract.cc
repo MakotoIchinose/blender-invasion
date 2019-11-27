@@ -28,6 +28,17 @@ extern "C" {
 #include "DNA_modifier_types.h"
 }
 
+/* TfToken objects are not cheap to construct, so we do it once. */
+namespace usdtokens {
+// Materials
+static const pxr::TfToken diffuse_color("diffuseColor", pxr::TfToken::Immortal);
+static const pxr::TfToken metallic("metallic", pxr::TfToken::Immortal);
+static const pxr::TfToken preview_shader("previewShader", pxr::TfToken::Immortal);
+static const pxr::TfToken preview_surface("UsdPreviewSurface", pxr::TfToken::Immortal);
+static const pxr::TfToken roughness("roughness", pxr::TfToken::Immortal);
+static const pxr::TfToken surface("surface", pxr::TfToken::Immortal);
+};  // namespace usdtokens
+
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
     : usd_export_context_(usd_export_context), frame_has_been_written_(false), is_animated_(false)
 {
@@ -114,18 +125,16 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(Material *material)
   usd_material = pxr::UsdShadeMaterial::Define(stage, usd_path);
 
   // Construct the shader.
-  pxr::SdfPath shader_path = usd_path.AppendChild(pxr::TfToken("previewShader"));
+  pxr::SdfPath shader_path = usd_path.AppendChild(usdtokens::preview_shader);
   pxr::UsdShadeShader shader = pxr::UsdShadeShader::Define(stage, shader_path);
-  shader.CreateIdAttr(pxr::VtValue(pxr::TfToken("UsdPreviewSurface")));
-  shader.CreateInput(pxr::TfToken("diffuseColor"), pxr::SdfValueTypeNames->Color3f)
+  shader.CreateIdAttr(pxr::VtValue(usdtokens::preview_surface));
+  shader.CreateInput(usdtokens::diffuse_color, pxr::SdfValueTypeNames->Color3f)
       .Set(pxr::GfVec3f(material->r, material->g, material->b));
-  shader.CreateInput(pxr::TfToken("roughness"), pxr::SdfValueTypeNames->Float)
-      .Set(material->roughness);
-  shader.CreateInput(pxr::TfToken("metallic"), pxr::SdfValueTypeNames->Float)
-      .Set(material->metallic);
+  shader.CreateInput(usdtokens::roughness, pxr::SdfValueTypeNames->Float).Set(material->roughness);
+  shader.CreateInput(usdtokens::metallic, pxr::SdfValueTypeNames->Float).Set(material->metallic);
 
   // Connect the shader and the material together.
-  usd_material.CreateSurfaceOutput().ConnectToSource(shader, pxr::TfToken("surface"));
+  usd_material.CreateSurfaceOutput().ConnectToSource(shader, usdtokens::surface);
 
   return usd_material;
 }
