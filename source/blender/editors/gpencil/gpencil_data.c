@@ -1615,7 +1615,7 @@ static int gp_brush_reset_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   /* notifiers */
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_BRUSH | NA_EDITED, NULL);
 
   return OPERATOR_FINISHED;
 }
@@ -1715,6 +1715,7 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
   /* notifiers */
   if (changed) {
     DEG_relations_tag_update(bmain);
+    WM_main_add_notifier(NC_BRUSH | NA_EDITED, NULL);
   }
 
   return OPERATOR_FINISHED;
