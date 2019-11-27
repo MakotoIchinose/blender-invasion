@@ -1668,6 +1668,9 @@ static void gp_bruh_delete_mode_brushes(Main *bmain, const enum eContextObjectMo
 
     /* Before delete, unpinn any material of the brush. */
     if ((brush->gpencil_settings) && (brush->gpencil_settings->material != NULL)) {
+      Material *ma = brush->gpencil_settings->material;
+      id_us_min(&ma->id);
+
       brush->gpencil_settings->material = NULL;
       brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
     }
