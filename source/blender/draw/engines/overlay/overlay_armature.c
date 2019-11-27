@@ -295,18 +295,26 @@ static void bone_instance_data_set_angle_minmax(BoneInstanceData *data,
   data->amax_b = amaxz;
 }
 
+/* Encode 2 units float with byte precision into a float. */
+static float encode_2f_to_float(float a, float b)
+{
+  CLAMP(a, 0.0f, 1.0f);
+  CLAMP(b, 0.0f, 2.0f); /* Can go up to 2. Needed for wire size. */
+  return (float)((int)(a * 255) | ((int)(b * 255) << 8));
+}
+
 void OVERLAY_bone_instance_data_set_color_hint(BoneInstanceData *data, const float hint_color[4])
 {
   /* Encoded color into 2 floats to be able to use the obmat to color the custom bones. */
-  data->color_hint_a = (hint_color[0] * 254.0f / 255.0f) + floorf(hint_color[1] * 255.0f);
-  data->color_hint_b = (hint_color[2] * 254.0f / 255.0f) + floorf(hint_color[3] * 255.0f);
+  data->color_hint_a = encode_2f_to_float(hint_color[0], hint_color[1]);
+  data->color_hint_b = encode_2f_to_float(hint_color[2], hint_color[3]);
 }
 
 void OVERLAY_bone_instance_data_set_color(BoneInstanceData *data, const float bone_color[4])
 {
   /* Encoded color into 2 floats to be able to use the obmat to color the custom bones. */
-  data->color_a = (bone_color[0] * 254.0f / 255.0f) + floorf(bone_color[1] * 255.0f);
-  data->color_b = (bone_color[2] * 254.0f / 255.0f) + floorf(bone_color[3] * 255.0f);
+  data->color_a = encode_2f_to_float(bone_color[0], bone_color[1]);
+  data->color_b = encode_2f_to_float(bone_color[2], bone_color[3]);
 }
 
 /* Octahedral */
