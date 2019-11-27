@@ -6279,7 +6279,7 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
     child->collection = newlibadr_us(fd, lib, child->collection);
   }
 
-  if(collection->lanpr){
+  if (collection->lanpr) {
     collection->lanpr->target = newlibadr_us(fd, lib, collection->lanpr->target);
   }
 

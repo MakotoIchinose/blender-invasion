@@ -615,7 +615,7 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
         found = 0;
       }
 #else
-      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_LANPR'"); 
+      BLI_assert(!"'WITH_LANPR' disabled - should not possible to access 'BCONTEXT_LANPR'");
 #endif
       break;
     case BCONTEXT_TOOL:

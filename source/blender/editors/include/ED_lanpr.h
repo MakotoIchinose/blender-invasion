@@ -25,7 +25,7 @@
 #define __ED_LANPR_H__
 
 #ifndef WITH_LANPR
-#    error LANPR code included in non-LANPR-enabled build
+#  error LANPR code included in non-LANPR-enabled build
 #endif
 
 #include "BLI_listbase.h"
@@ -341,7 +341,6 @@ typedef enum LANPR_CullState {
   LANPR_CULL_DISCARD = 2,
 } LANPR_CullState;
 
-
 /** Controls how many lines a worker thread is processing at one request.
  * There's no significant performance impact on choosing different values.
  * Don't make it too small so that the worker thread won't request too many times. */
@@ -367,14 +366,14 @@ typedef struct LANPR_RenderTaskInfo {
 
 } LANPR_RenderTaskInfo;
 
-/** Bounding area diagram: 
- * 
+/** Bounding area diagram:
+ *
  * +----+ <----U (Upper edge Y value)
  * |    |
  * +----+ <----B (Bottom edge Y value)
  * ^    ^
  * L    R (Left/Right edge X value)
- * 
+ *
  * Example structure when subdividing 1 bounding areas:
  * 1 area can be divided into 4 smaller children to
  * accomodate image areas with denser triangle distribution.
@@ -385,7 +384,7 @@ typedef struct LANPR_RenderTaskInfo {
  * +-----+-----+
  * lp/rp/up/bp is the list for
  * storing pointers to adjacent bounding areas.
-*/
+ */
 typedef struct LANPR_BoundingArea {
   double l, r, u, b;
   double cx, cy;
@@ -567,7 +566,9 @@ int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
 
 LANPR_BoundingArea *ED_lanpr_get_point_bounding_area(LANPR_RenderBuffer *rb, double x, double y);
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, double x, double y);
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb,
+                                                          double x,
+                                                          double y);
 
 void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 

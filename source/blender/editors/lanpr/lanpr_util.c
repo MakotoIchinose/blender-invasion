@@ -171,8 +171,13 @@ void tmat_make_perspective_matrix_44d(
   mProjection[3][2] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
   mProjection[3][3] = 0.0f;
 }
-void tmat_make_ortho_matrix_44d(
-    double (*mProjection)[4], double xMin, double xMax, double yMin, double yMax, double zMin, double zMax)
+void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
+                                double xMin,
+                                double xMax,
+                                double yMin,
+                                double yMax,
+                                double zMin,
+                                double zMax)
 {
   unit_m4_db(mProjection);
 

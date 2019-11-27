@@ -141,7 +141,7 @@ void DRW_scene_lanpr_freecache(Scene *sce)
       ll->batch = NULL;
     }
   }
-  if(lanpr_share.render_buffer_shared && lanpr_share.render_buffer_shared->scene == sce){
+  if (lanpr_share.render_buffer_shared && lanpr_share.render_buffer_shared->scene == sce) {
     ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
   }
 }

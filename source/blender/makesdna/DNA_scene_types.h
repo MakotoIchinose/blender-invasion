@@ -1706,7 +1706,7 @@ typedef struct SceneLANPR {
   float depth_alpha_curve;
 
   int gpu_cache_size; /* enum! */
-  
+
   /* CPU mode */
   ListBase line_layers;
   struct LANPR_LineLayer *active_layer;

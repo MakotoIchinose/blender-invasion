@@ -288,7 +288,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
                                                  DRW_STATE_DEPTH_LESS_EQUAL);
         rb = lanpr_share.render_buffer_shared;
         rb->chain_shgrp = DRW_shgroup_create(lanpr_share.software_chaining_shader,
-                                            psl->software_pass);
+                                             psl->software_pass);
 
         ED_lanpr_calculate_normal_object_vector(ll, normal_object_direction);
 
@@ -400,7 +400,8 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
             rb->chain_shgrp, "taper_r_strength", (lanpr->flags & LANPR_SAME_TAPER) ? tls : trs, 1);
 
         /*  need to add component enable/disable option. */
-        DRW_shgroup_call(rb->chain_shgrp, lanpr_share.render_buffer_shared->chain_draw_batch, NULL);
+        DRW_shgroup_call(
+            rb->chain_shgrp, lanpr_share.render_buffer_shared->chain_draw_batch, NULL);
         /*  debug purpose */
         /*  DRW_draw_pass(psl->color_pass); */
         /*  DRW_draw_pass(psl->color_pass); */

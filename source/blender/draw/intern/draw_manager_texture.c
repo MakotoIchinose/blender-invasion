@@ -164,8 +164,12 @@ void DRW_texture_ensure_fullscreen_2D_multisample(GPUTexture **tex,
   }
 }
 
-void DRW_texture_ensure_2D_multisample(
-    GPUTexture **tex, int w, int h, eGPUTextureFormat format, int samples, DRWTextureFlag UNUSED(flags))
+void DRW_texture_ensure_2D_multisample(GPUTexture **tex,
+                                       int w,
+                                       int h,
+                                       eGPUTextureFormat format,
+                                       int samples,
+                                       DRWTextureFlag UNUSED(flags))
 {
   if (*(tex) == NULL) {
     *(tex) = GPU_texture_create_2d_multisample(w, h, format, NULL, samples, NULL);

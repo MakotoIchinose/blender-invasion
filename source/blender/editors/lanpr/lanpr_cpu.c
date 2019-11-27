@@ -595,13 +595,13 @@ static void lanpr_calculate_single_line_occlusion(LANPR_RenderBuffer *rb,
   Object *c = rb->scene->camera;
   double l, r;
   double k = (rl->r->fbcoord[1] - rl->l->fbcoord[1]) /
-           (rl->r->fbcoord[0] - rl->l->fbcoord[0] + 1e-30);
+             (rl->r->fbcoord[0] - rl->l->fbcoord[0] + 1e-30);
   int positive_x = (rl->r->fbcoord[0] - rl->l->fbcoord[0]) > 0 ?
-                      1 :
-                      (rl->r->fbcoord[0] == rl->l->fbcoord[0] ? 0 : -1);
+                       1 :
+                       (rl->r->fbcoord[0] == rl->l->fbcoord[0] ? 0 : -1);
   int positive_y = (rl->r->fbcoord[1] - rl->l->fbcoord[1]) > 0 ?
-                      1 :
-                      (rl->r->fbcoord[1] == rl->l->fbcoord[1] ? 0 : -1);
+                       1 :
+                       (rl->r->fbcoord[1] == rl->l->fbcoord[1] ? 0 : -1);
 
   while (nba) {
 
@@ -770,10 +770,7 @@ static int lanpr_point_on_lined(double v[2], double v0[2], double v1[2])
 
   return 0;
 }
-static int lanpr_point_triangle_relation(double v[2],
-                                         double v0[2],
-                                         double v1[2],
-                                         double v2[2])
+static int lanpr_point_triangle_relation(double v[2], double v0[2], double v1[2], double v2[2])
 {
   double cl, c;
   double r;
@@ -812,10 +809,7 @@ static int lanpr_point_triangle_relation(double v[2],
 
   return 2;
 }
-static int lanpr_point_inside_triangle3de(double v[3],
-                                          double v0[3],
-                                          double v1[3],
-                                          double v2[3])
+static int lanpr_point_inside_triangle3de(double v[3], double v0[3], double v1[3], double v2[3])
 {
   double l[3], r[3];
   double N1[3], N2[3];
@@ -873,9 +867,8 @@ static LANPR_RenderElementLinkNode *lanpr_new_cull_point_space64(LANPR_RenderBuf
 {
   LANPR_RenderElementLinkNode *reln;
 
-  LANPR_RenderVert *render_vertices = mem_static_aquire(
-      &rb->render_data_pool,
-      sizeof(LANPR_RenderVert) * 64);
+  LANPR_RenderVert *render_vertices = mem_static_aquire(&rb->render_data_pool,
+                                                        sizeof(LANPR_RenderVert) * 64);
 
   reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
                                           &rb->render_data_pool,
@@ -927,11 +920,10 @@ static void lanpr_post_triangle(LANPR_RenderTriangle *rt, LANPR_RenderTriangle *
 
 #define RT_AT(head, rb, offset) ((unsigned char *)head + offset * rb->triangle_size)
 
-
-/** This function cuts triangles that are (partially or fully) behind near clipping plane. 
+/** This function cuts triangles that are (partially or fully) behind near clipping plane.
  * for triangles that crossing the near plane, it will generate new 1 or 2 triangles with
  * new topology that represents the trimmed triangle. (which then became a triangle or square)
-*/
+ */
 static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 {
   LANPR_RenderLine *rl;
@@ -939,7 +931,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
   LANPR_RenderVert *rv;
   LANPR_RenderElementLinkNode *reln, *veln, *teln;
   LANPR_RenderLineSegment *rls;
-  double (*vp)[4] = rb->view_projection;
+  double(*vp)[4] = rb->view_projection;
   int i;
   double a;
   int v_count = 0, t_count = 0;
@@ -976,19 +968,22 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
     }
     o = reln->object_ref;
     for (i = 0; i < reln->element_count; i++) {
-      
+
       /* These three represents points that are in the clipping range or not*/
       int in0 = 0, in1 = 0, in2 = 0;
-      
+
       /* Select the triangle in the array. */
       rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
 
 #ifdef DEBUG
       /* Debug purpose */
       printf("z%f w%f  z%f w%f  z%f w%f\n",
-        rt->v[0]->fbcoord[2], rt->v[0]->fbcoord[1],
-        rt->v[1]->fbcoord[2], rt->v[1]->fbcoord[1],
-        rt->v[2]->fbcoord[2], rt->v[2]->fbcoord[1]);
+             rt->v[0]->fbcoord[2],
+             rt->v[0]->fbcoord[1],
+             rt->v[1]->fbcoord[2],
+             rt->v[1]->fbcoord[1],
+             rt->v[2]->fbcoord[2],
+             rt->v[2]->fbcoord[1]);
 #endif
 
       /* Point inside near plane */
@@ -1039,9 +1034,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           /** Two points behind near plane, cut those and
            * generate 2 new points, 3 lines and 1 triangle */
           rt->cull_status = LANPR_CULL_USED;
-          
+
           /** (!in0) means "when point 0 is visible".
-           * conditons for point 1, 2 are the same idea. 
+           * conditons for point 1, 2 are the same idea.
            * 1-----|-------0
            * |     |   ---
            * |     |---
@@ -1055,7 +1050,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
            *       |
            *       |
            *     (near)---------->(far)
-          */
+           */
           if (!in0) {
 
             /* cut point for line 2---|-----0 */
@@ -1091,7 +1086,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
-            /** note: inverting rl->l/r (left/right point) doesn't matter as long as 
+            /** note: inverting rl->l/r (left/right point) doesn't matter as long as
              * rt->rl and rt->v has the same sequence. and the winding direction
              * can be either CW or CCW but needs to be consistent throughout the calculation.
              */
@@ -1196,9 +1191,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = o;
 
-            rt1->v[0] = &rv[0];/*&rv[1];*/
-            rt1->v[1] = &rv[1];/*rt->v[2];*/
-            rt1->v[2] = rt->v[2];/*&rv[0];*/
+            rt1->v[0] = &rv[0];   /*&rv[1];*/
+            rt1->v[1] = &rv[1];   /*rt->v[2];*/
+            rt1->v[2] = rt->v[2]; /*&rv[0];*/
 
             lanpr_post_triangle(rt1, rt);
 
@@ -1262,9 +1257,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
             rt1->rl[1] = rl;
             rl->object_ref = o;
 
-            rt1->v[0] = &rv[0];/*rt->v[1];*/
-            rt1->v[1] = rt->v[1];/*&rv[1];*/
-            rt1->v[2] = &rv[1];/*&rv[0];*/
+            rt1->v[0] = &rv[0];   /*rt->v[1];*/
+            rt1->v[1] = rt->v[1]; /*&rv[1];*/
+            rt1->v[2] = &rv[1];   /*&rv[0];*/
 
             lanpr_post_triangle(rt1, rt);
 
@@ -1277,9 +1272,9 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
           /** Two points behind near plane, cut those and
            * generate 2 new points, 4 lines and 2 triangles */
           rt->cull_status = LANPR_CULL_USED;
-          
+
           /** (in0) means "when point 0 is invisible".
-           * conditons for point 1, 2 are the same idea. 
+           * conditons for point 1, 2 are the same idea.
            * 0------|----------1
            *   --   |          |
            *     ---|          |
@@ -1297,7 +1292,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
            *        |     ***  |
            *        |        **2
            *      (near)---------->(far)
-          */
+           */
           if (in0) {
             /* Cut point for line 0---|------1 */
             sub_v3_v3v3_db(vv1, rt->v[1]->gloc, cam_pos);
@@ -1352,7 +1347,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 
             /** New line connects new point 1 and old point 1,
              * this is a inner line separating newly generated triangles.
-            */
+             */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1372,7 +1367,7 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
 
             /** New line connects new point 1 and old point 2,
              * this is also a border line.
-            */
+             */
             rl = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLine));
             rls = mem_static_aquire(&rb->render_data_pool, sizeof(LANPR_RenderLineSegment));
             BLI_addtail(&rl->segments, rls);
@@ -1608,8 +1603,11 @@ static void lanpr_transform_render_vert(BMVert *v,
   mul_v4_m4v3_db(rv->fbcoord, mvp_mat, co);
 }
 
-static void lanpr_make_render_geometry_buffers_object(
-    Object *o, double (*mv_mat)[4], double (*mvp_mat)[4], LANPR_RenderBuffer *rb, int override_usage)
+static void lanpr_make_render_geometry_buffers_object(Object *o,
+                                                      double (*mv_mat)[4],
+                                                      double (*mvp_mat)[4],
+                                                      LANPR_RenderBuffer *rb,
+                                                      int override_usage)
 {
   BMesh *bm;
   BMVert *v;
@@ -1621,7 +1619,7 @@ static void lanpr_make_render_geometry_buffers_object(
   double new_mvp[4][4], new_mv[4][4], normal[4][4];
   LANPR_RenderElementLinkNode *reln;
   Object *cam_object = rb->scene->camera;
-  Camera *c = cam_object?cam_object->data:NULL;
+  Camera *c = cam_object ? cam_object->data : NULL;
   LANPR_RenderVert *orv;
   LANPR_RenderLine *orl;
   LANPR_RenderTriangle *ort;
@@ -1765,7 +1763,7 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
   int object_is_used = (o->lanpr.usage == OBJECT_FEATURE_LINE_INCLUDE ||
                         o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT);
 
-  if (object_is_used && (c->flag & COLLECTION_CONFIGURED_FOR_LANPR) && 
+  if (object_is_used && (c->flag & COLLECTION_CONFIGURED_FOR_LANPR) &&
       (c->lanpr->flags & LANPR_LINE_LAYER_COLLECTION_FORCE) &&
       (c->lanpr->usage != COLLECTION_FEATURE_LINE_INCLUDE)) {
     if (BKE_collection_has_object_recursive(c, o)) {
@@ -1781,10 +1779,12 @@ int ED_lanpr_object_collection_usage_check(Collection *c, Object *o)
   if (c->children.first == NULL) {
     if (BKE_collection_has_object(c, o)) {
       if (o->lanpr.usage == OBJECT_FEATURE_LINE_INHERENT) {
-        if ((c->flag & COLLECTION_CONFIGURED_FOR_LANPR) && (c->lanpr->usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY)) {
+        if ((c->flag & COLLECTION_CONFIGURED_FOR_LANPR) &&
+            (c->lanpr->usage == COLLECTION_FEATURE_LINE_OCCLUSION_ONLY)) {
           return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
         }
-        else if ((c->flag & COLLECTION_CONFIGURED_FOR_LANPR) &&(c->lanpr->usage == COLLECTION_FEATURE_LINE_EXCLUDE)) {
+        else if ((c->flag & COLLECTION_CONFIGURED_FOR_LANPR) &&
+                 (c->lanpr->usage == COLLECTION_FEATURE_LINE_EXCLUDE)) {
           return OBJECT_FEATURE_LINE_EXCLUDE;
         }
         else {
@@ -1916,7 +1916,7 @@ static int lanpr_share_edge_direct(LANPR_RenderTriangle *rt, LANPR_RenderLine *r
  * if returned 1, then from/to will carry the occludded segments
  * in ratio from rl->l to rl->r. the line is later cutted with
  * these two values.
-*/
+ */
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
                                                           LANPR_RenderTriangle *rt,
                                                           LANPR_RenderLine *rl,
@@ -2248,7 +2248,7 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
   }
 
   if (!(lanpr_point_inside_triangle3de(
-            gloc, testing->v[0]->gloc, testing->v[1]->gloc, testing->v[2]->gloc))) {
+          gloc, testing->v[0]->gloc, testing->v[1]->gloc, testing->v[2]->gloc))) {
     return NULL;
   }
 
@@ -2256,9 +2256,9 @@ static LANPR_RenderVert *lanpr_triangle_line_intersection_test(LANPR_RenderBuffe
 
   result->edge_used = 1;
 
-  /** Caution! BMVert* result->v is reused to save a intersecting render vert. 
+  /** Caution! BMVert* result->v is reused to save a intersecting render vert.
    * this saves memory when the scene is very large.
-  */
+   */
   result->v = (void *)r;
 
   copy_v3_v3_db(result->gloc, gloc);
@@ -2303,7 +2303,8 @@ static LANPR_RenderLine *lanpr_triangle_generate_intersection_line_only(
     l = new_share = mem_static_aquire(&rb->render_data_pool, (sizeof(LANPR_RenderVert)));
 
     new_share->edge_used = 1;
-    new_share->v = (void *)r; /*  Caution!  BMVert* result->v is reused to save a intersecting render vert. */
+    new_share->v = (void *)
+        r; /*  Caution!  BMVert* result->v is reused to save a intersecting render vert. */
     copy_v3_v3_db(new_share->gloc, share->gloc);
 
     r = lanpr_triangle_line_intersection_test(rb, rl, rt, testing, 0);
@@ -2447,7 +2448,7 @@ static void lanpr_triangle_calculate_intersections_in_bounding_area(LANPR_Render
 
     testing_triangle->testing = rt;
     double *RFBC0 = testing_triangle->v[0]->fbcoord, *RFBC1 = testing_triangle->v[1]->fbcoord,
-         *RFBC2 = testing_triangle->v[2]->fbcoord;
+           *RFBC2 = testing_triangle->v[2]->fbcoord;
 
     if ((MIN3(FBC0[2], FBC1[2], FBC2[2]) > MAX3(RFBC0[2], RFBC1[2], RFBC2[2])) ||
         (MAX3(FBC0[2], FBC1[2], FBC2[2]) < MIN3(RFBC0[2], RFBC1[2], RFBC2[2])) ||
@@ -2685,7 +2686,7 @@ static int lanpr_max_occlusion_in_collections(Collection *c)
   CollectionChild *cc;
   int max_occ = 0;
   int max;
-  if(!(c->flag & COLLECTION_CONFIGURED_FOR_LANPR)){
+  if (!(c->flag & COLLECTION_CONFIGURED_FOR_LANPR)) {
     return 0;
   }
 
@@ -2922,7 +2923,7 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
   LANPR_BoundingArea *ba = root->child, *tba;
   LinkData *lip, *lip2, *next_lip;
   LANPR_StaticMemPool *mph = &rb->render_data_pool;
-  
+
   /* Inter-connection with newly created 4 child bounding areas. */
   list_append_pointer_static_pool(mph, &ba[1].rp, &ba[0]);
   list_append_pointer_static_pool(mph, &ba[0].lp, &ba[1]);
@@ -2936,10 +2937,10 @@ static void lanpr_connect_new_bounding_areas(LANPR_RenderBuffer *rb, LANPR_Bound
   /** Connect 4 child bounding areas to other areas that are
    * adjacent to their original parents */
   for (lip = root->lp.first; lip; lip = lip->next) {
-    
+
     /** For example, we are dealing with parent's left side
      * tba represents each adjacent neighbor of the parent.
-    */
+     */
     tba = lip->data;
 
     /** if this neighbor is adjacent to
@@ -3223,8 +3224,7 @@ static void lanpr_link_triangle_with_bounding_area(LANPR_RenderBuffer *rb,
     return;
   }
   if (root_ba->child == NULL) {
-    list_append_pointer_static_pool(
-        &rb->render_data_pool, &root_ba->linked_triangles, rt);
+    list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_triangles, rt);
     root_ba->triangle_count++;
     if (root_ba->triangle_count > 200 && recursive) {
       lanpr_split_bounding_area(rb, root_ba);
@@ -3266,20 +3266,16 @@ static void lanpr_link_line_with_bounding_area(LANPR_RenderBuffer *rb,
     list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_lines, rl);
   }
   else {
-    if (lanpr_line_crosses_bounding_area(
-            rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[0])) {
+    if (lanpr_line_crosses_bounding_area(rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[0])) {
       lanpr_link_line_with_bounding_area(rb, &root_ba->child[0], rl);
     }
-    if (lanpr_line_crosses_bounding_area(
-            rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[1])) {
+    if (lanpr_line_crosses_bounding_area(rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[1])) {
       lanpr_link_line_with_bounding_area(rb, &root_ba->child[1], rl);
     }
-    if (lanpr_line_crosses_bounding_area(
-            rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[2])) {
+    if (lanpr_line_crosses_bounding_area(rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[2])) {
       lanpr_link_line_with_bounding_area(rb, &root_ba->child[2], rl);
     }
-    if (lanpr_line_crosses_bounding_area(
-            rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[3])) {
+    if (lanpr_line_crosses_bounding_area(rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[3])) {
       lanpr_link_line_with_bounding_area(rb, &root_ba->child[3], rl);
     }
   }
@@ -3360,11 +3356,11 @@ static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
   (*rowbegin) = rb->tile_count_y - (int)((b[3] + 1.0) / sp_h) - 1;
 
   /* It's possible that the line stretches too much out to the side, resulting negative value */
-  if ((*rowend) < (*rowbegin)){
+  if ((*rowend) < (*rowbegin)) {
     (*rowend) = rb->tile_count_y - 1;
   }
 
-  if ((*colend) < (*colbegin)){
+  if ((*colend) < (*colbegin)) {
     (*colend) = rb->tile_count_x - 1;
   }
 
@@ -3428,7 +3424,9 @@ static LANPR_BoundingArea *lanpr_get_point_bounding_area_recursive(LANPR_Boundin
   }
   return NULL;
 }
-LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb, double x, double y)
+LANPR_BoundingArea *ED_lanpr_get_point_bounding_area_deep(LANPR_RenderBuffer *rb,
+                                                          double x,
+                                                          double y)
 {
   LANPR_BoundingArea *ba;
   if ((ba = ED_lanpr_get_point_bounding_area(rb, x, y)) != NULL) {
@@ -3460,7 +3458,7 @@ static void lanpr_add_triangles(LANPR_RenderBuffer *rb)
                 rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1);
           }
         }
-      }/* else throw away. */
+      } /* else throw away. */
       rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
     }
   }
@@ -3482,7 +3480,7 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *this
   double r1, r2;
   LANPR_BoundingArea *ba;
   LinkData *lip;
-  
+
   /* If we are marching towards the right */
   if (positive_x > 0) {
     rx = this->r;
@@ -3886,7 +3884,8 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_o
   lanpr_share.background_render_task = tp;
   BLI_spin_unlock(&lanpr_share.lock_render_status);
 
-  BLI_task_pool_push(tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
+  BLI_task_pool_push(
+      tp, (TaskRunFunction)lanpr_compute_feature_lines_worker, flw, true, TASK_PRIORITY_HIGH);
 }
 
 static bool lanpr_camera_exists(bContext *c)
@@ -3922,8 +3921,7 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
 
   return result;
 }
-static void lanpr_compute_feature_lines_cancel(bContext *UNUSED(C),
-                                               wmOperator *UNUSED(op))
+static void lanpr_compute_feature_lines_cancel(bContext *UNUSED(C), wmOperator *UNUSED(op))
 {
   return;
 }
@@ -4237,7 +4235,7 @@ static void lanpr_update_gp_strokes_collection(
     }
   }
 
-  if(col->flag & COLLECTION_CONFIGURED_FOR_LANPR){
+  if (col->flag & COLLECTION_CONFIGURED_FOR_LANPR) {
     if (col->lanpr->usage != COLLECTION_FEATURE_LINE_INCLUDE || !col->lanpr->target) {
       return;
     }
@@ -4248,85 +4246,86 @@ static void lanpr_update_gp_strokes_collection(
     CollectionLANPR *cl = &col->lanpr;
     int level_start = cl->level_start;
     int level_end = (cl->flags & LANPR_LINE_LAYER_USE_MULTIPLE_LEVELS) ? cl->level_end :
-                                                                        cl->level_start;
+                                                                         cl->level_start;
 
     if (cl->flags & LANPR_LINE_LAYER_USE_SAME_STYLE) {
       lanpr_update_gp_strokes_single(dg,
-                                    gpobj,
-                                    NULL,
-                                    frame,
-                                    level_start,
-                                    level_end,
-                                    cl->target_layer,
-                                    cl->target_material,
-                                    col,
-                                    lanpr_collection_types(col));
+                                     gpobj,
+                                     NULL,
+                                     frame,
+                                     level_start,
+                                     level_end,
+                                     cl->target_layer,
+                                     cl->target_material,
+                                     col,
+                                     lanpr_collection_types(col));
     }
     else {
       if (cl->contour.use) {
         lanpr_update_gp_strokes_single(dg,
-                                      gpobj,
-                                      NULL,
-                                      frame,
-                                      level_start,
-                                      level_end,
-                                      cl->contour.target_layer,
-                                      cl->contour.target_material,
-                                      col,
-                                      LANPR_EDGE_FLAG_CONTOUR);
+                                       gpobj,
+                                       NULL,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       cl->contour.target_layer,
+                                       cl->contour.target_material,
+                                       col,
+                                       LANPR_EDGE_FLAG_CONTOUR);
       }
       if (cl->crease.use) {
         lanpr_update_gp_strokes_single(dg,
-                                      gpobj,
-                                      NULL,
-                                      frame,
-                                      level_start,
-                                      level_end,
-                                      cl->crease.target_layer,
-                                      cl->crease.target_material,
-                                      col,
-                                      LANPR_EDGE_FLAG_CREASE);
+                                       gpobj,
+                                       NULL,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       cl->crease.target_layer,
+                                       cl->crease.target_material,
+                                       col,
+                                       LANPR_EDGE_FLAG_CREASE);
       }
       if (cl->material.use) {
         lanpr_update_gp_strokes_single(dg,
-                                      gpobj,
-                                      NULL,
-                                      frame,
-                                      level_start,
-                                      level_end,
-                                      cl->material.target_layer,
-                                      cl->material.target_material,
-                                      col,
-                                      LANPR_EDGE_FLAG_MATERIAL);
+                                       gpobj,
+                                       NULL,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       cl->material.target_layer,
+                                       cl->material.target_material,
+                                       col,
+                                       LANPR_EDGE_FLAG_MATERIAL);
       }
       if (cl->edge_mark.use) {
         lanpr_update_gp_strokes_single(dg,
-                                      gpobj,
-                                      NULL,
-                                      frame,
-                                      level_start,
-                                      level_end,
-                                      cl->edge_mark.target_layer,
-                                      cl->edge_mark.target_material,
-                                      col,
-                                      LANPR_EDGE_FLAG_EDGE_MARK);
+                                       gpobj,
+                                       NULL,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       cl->edge_mark.target_layer,
+                                       cl->edge_mark.target_material,
+                                       col,
+                                       LANPR_EDGE_FLAG_EDGE_MARK);
       }
       if (cl->intersection.use) {
         lanpr_update_gp_strokes_single(dg,
-                                      gpobj,
-                                      NULL,
-                                      frame,
-                                      level_start,
-                                      level_end,
-                                      cl->intersection.target_layer,
-                                      cl->intersection.target_material,
-                                      col,
-                                      LANPR_EDGE_FLAG_INTERSECTION);
+                                       gpobj,
+                                       NULL,
+                                       frame,
+                                       level_start,
+                                       level_end,
+                                       cl->intersection.target_layer,
+                                       cl->intersection.target_material,
+                                       col,
+                                       LANPR_EDGE_FLAG_INTERSECTION);
       }
     }
 
-    if(gpd){
-      DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    if (gpd) {
+      DEG_id_tag_update(&gpd->id,
+                        ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
     }
   }
 }

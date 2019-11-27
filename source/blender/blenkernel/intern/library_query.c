@@ -493,7 +493,7 @@ static void library_foreach_ID_link(Main *bmain,
           CALLBACK_INVOKE(child->collection, IDWALK_CB_USER);
         }
 
-        if(scene->master_collection->lanpr){
+        if (scene->master_collection->lanpr) {
           CALLBACK_INVOKE(scene->master_collection->lanpr->target, IDWALK_CB_USER);
         }
 

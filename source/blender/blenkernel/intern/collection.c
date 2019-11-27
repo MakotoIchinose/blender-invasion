@@ -127,7 +127,7 @@ void BKE_collection_free(Collection *collection)
   BKE_collection_object_cache_free(collection);
 
   /* Remove LANPR configurations */
-  if(collection->lanpr){
+  if (collection->lanpr) {
     MEM_freeN(collection->lanpr);
     collection->lanpr = NULL;
   }
@@ -235,9 +235,9 @@ void BKE_collection_copy_data(Main *bmain,
   }
 
   /* Copy LANPR configurations */
-  if((collection_src->lanpr != NULL) && (collection_dst->lanpr == NULL)){
-    CollectionLANPR* lanpr = MEM_callocN(sizeof(CollectionLANPR), "Duplicated CollectionLANPR");
-    collection_dst->lanpr = lanpr; 
+  if ((collection_src->lanpr != NULL) && (collection_dst->lanpr == NULL)) {
+    CollectionLANPR *lanpr = MEM_callocN(sizeof(CollectionLANPR), "Duplicated CollectionLANPR");
+    collection_dst->lanpr = lanpr;
   }
   memcpy(collection_dst->lanpr, collection_src->lanpr, sizeof(CollectionLANPR));
 }
@@ -380,9 +380,9 @@ Collection *BKE_collection_duplicate(Main *bmain,
   BKE_main_collection_sync(bmain);
 
   /* Copy LANPR configurations */
-  if((collection->lanpr != NULL) && (collection_new->lanpr == NULL)){
-    CollectionLANPR* lanpr = MEM_callocN(sizeof(CollectionLANPR), "Duplicated CollectionLANPR");
-    collection_new->lanpr = lanpr; 
+  if ((collection->lanpr != NULL) && (collection_new->lanpr == NULL)) {
+    CollectionLANPR *lanpr = MEM_callocN(sizeof(CollectionLANPR), "Duplicated CollectionLANPR");
+    collection_new->lanpr = lanpr;
   }
   memcpy(collection_new->lanpr, collection->lanpr, sizeof(CollectionLANPR));
 
