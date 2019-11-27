@@ -600,8 +600,4 @@ void OBJECT_OT_lanpr_update_gp_source(struct wmOperatorType *ot);
 
 void ED_operatortypes_lanpr(void);
 
-/* for rna */
-struct PointerRNA;
-static bool rna_lanpr_shader_error_get(struct PointerRNA *UNUSED(ptr));
-
 #endif /* __ED_LANPR_H__ */

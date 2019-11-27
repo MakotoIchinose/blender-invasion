@@ -317,12 +317,12 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
 
 static bool rna_Collection_lanpr_configure_get(PointerRNA *ptr)
 {
-  Collection *c = ptr->owner_id;
+  Collection *c = (Collection *)ptr->owner_id;
   return (c->flag & COLLECTION_CONFIGURED_FOR_LANPR);
 }
 static void rna_Collection_lanpr_configure_set(PointerRNA *ptr, const bool value)
 {
-  Collection *c = ptr->owner_id;
+  Collection *c = (Collection *)ptr->owner_id;
   CollectionLANPR *lanpr = c->lanpr;
 
   if (value) {
