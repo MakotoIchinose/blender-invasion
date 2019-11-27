@@ -2384,7 +2384,7 @@ static void write_collection_nolib(WriteData *wd, Collection *collection)
     writestruct(wd, DATA, CollectionChild, 1, child);
   }
 
-  if ((collection->flag & COLLECTION_CONFIGURED_FOR_LANPR) && (collection->lanpr != NULL)) {
+  if (collection->lanpr != NULL) {
     writestruct(wd, DATA, CollectionLANPR, 1, collection->lanpr);
   }
 }
