@@ -191,6 +191,10 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
+if(WITH_LANPR)
+  add_definitions(-DWITH_LANPR)
+endif()
+
 if(WITH_IMAGE_CINEON)
   add_definitions(-DWITH_CINEON)
 endif()
