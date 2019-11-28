@@ -243,6 +243,18 @@ class DOPESHEET_HT_editor_buttons(Header):
 
             layout.template_ID(st, "action", new="action.new", unlink="action.unlink")
 
+        # Layer management
+        if st.mode == 'GPENCIL':
+            row = layout.row(align=True)
+            row.operator("gpencil.layer_move", icon='TRIA_UP', text="").type = 'UP'
+            row.operator("gpencil.layer_move", icon='TRIA_DOWN', text="").type = 'DOWN'
+
+            row = layout.row(align=True)
+            row.operator("gpencil.layer_add", icon='ADD', text="")
+            row.operator("gpencil.layer_remove", icon='REMOVE', text="")
+
+            layout.separator_spacer()
+
         layout.separator_spacer()
 
         if st.mode == 'DOPESHEET':
