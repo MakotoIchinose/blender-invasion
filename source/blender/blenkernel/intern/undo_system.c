@@ -192,11 +192,15 @@ static void undosys_step_decode(
             /* Common case, we're already using the last memfile state. */
           }
           else {
+            GHash *depsgraphs = BKE_scene_undo_depsgraphs_extract(bmain);
+
             /* Load the previous memfile state so any ID's referenced in this
              * undo step will be correctly resolved, see: T56163. */
             undosys_step_decode(C, bmain, ustack, us_iter, dir, false);
             /* May have been freed on memfile read. */
-            bmain = G.main;
+            bmain = G_MAIN;
+
+            BKE_scene_undo_depsgraphs_restore(bmain, depsgraphs);
           }
           break;
         }
@@ -675,10 +679,6 @@ bool BKE_undosys_step_undo_with_data_ex(UndoStack *ustack,
   if (us != NULL) {
     CLOG_INFO(&LOG, 1, "addr=%p, name='%s', type='%s'", us, us->name, us->type->name);
 
-    Main *bmain = CTX_data_main(C);
-    GHash *depsgraphs = BKE_scene_undo_depsgraphs_extract(bmain);
-    bmain = NULL;
-
     /* Handle accumulate steps. */
     if (ustack->step_active) {
       UndoStep *us_iter = ustack->step_active;
@@ -716,9 +716,6 @@ bool BKE_undosys_step_undo_with_data_ex(UndoStack *ustack,
         ustack->step_active = us_iter;
       } while ((us_active != us_iter) && (us_iter = us_iter->prev));
     }
-
-    bmain = CTX_data_main(C);
-    BKE_scene_undo_depsgraphs_restore(bmain, depsgraphs);
 
     return true;
   }

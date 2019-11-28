@@ -1587,6 +1587,9 @@ void blo_filedata_free(FileData *fd)
     if (fd->libmap && !(fd->flags & FD_FLAGS_NOT_MY_LIBMAP)) {
       oldnewmap_free(fd->libmap);
     }
+    if (fd->libmap_undo) {
+      oldnewmap_free(fd->libmap_undo);
+    }
     if (fd->bheadmap) {
       MEM_freeN(fd->bheadmap);
     }
@@ -1802,6 +1805,13 @@ static void *newpackedadr(FileData *fd, const void *adr)
 /* only lib data */
 static void *newlibadr(FileData *fd, const void *lib, const void *adr)
 {
+  if (fd->memfile != NULL && fd->libmap_undo != NULL) {
+    void *ret = oldnewmap_liblookup(fd->libmap, adr, lib);
+    if (ret == NULL) {
+      ret = oldnewmap_liblookup(fd->libmap_undo, adr, lib);
+    }
+    return ret;
+  }
   return oldnewmap_liblookup(fd->libmap, adr, lib);
 }
 
@@ -6295,6 +6305,7 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
 {
   for (CollectionObject *cob = collection->gobject.first, *cob_next = NULL; cob; cob = cob_next) {
     cob_next = cob->next;
+    Object *ob_prev = cob->ob;
     cob->ob = newlibadr_us(fd, lib, cob->ob);
 
     if (cob->ob == NULL) {
@@ -9302,14 +9313,15 @@ static BHead *read_libblock(FileData *fd,
 
       if (fd->are_memchunks_identical && !ELEM(idcode, ID_WM, ID_SCR, ID_WS)) {
         BLI_assert(fd->memfile);
-        Main *old_main = fd->old_mainlist->first;
-        ID *old_id = NULL;
-        if ((old_id = BKE_libblock_find_name(old_main, idcode, id->name + 2)) != NULL) {
-          /* that would only match for basic undo step, redo and other history navigation cannot
-           * guarantee this at all. */
-          // BLI_assert(old_id == id_bhead->old);
+
+        /* Find the 'current' existing ID we want to reuse instead of the one we would read from
+         * the undo memfile. */
+        Main *old_bmain = fd->old_mainlist->first;
+        ListBase *old_lb = which_libbase(old_bmain, idcode);
+        BLI_assert(old_lb != NULL);
+        if (BLI_findindex(old_lb, id_bhead->old) != -1) {
           MEM_freeN(id);
-          id = old_id;
+          id = (ID *)id_bhead->old;
 
           id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
           id->lib = main->curlib;
@@ -9318,9 +9330,16 @@ static BHead *read_libblock(FileData *fd,
           id->newid = NULL; /* Needed because .blend may have been saved with crap value here... */
           id->orig_id = NULL;
 
+          if (GS(id->name) == ID_OB) {
+            printf("\t%s: Adding object to oldnewmap: old %p -> new %p    (%s)\n",
+                   __func__,
+                   id_bhead->old,
+                   id,
+                   id->name);
+          }
           oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
-          ListBase *old_lb = which_libbase(old_main, idcode);
+          ListBase *old_lb = which_libbase(old_bmain, idcode);
           ListBase *new_lb = which_libbase(main, idcode);
           BLI_remlink_safe(old_lb, id);
           BLI_addtail(new_lb, id);
@@ -9341,6 +9360,13 @@ static BHead *read_libblock(FileData *fd,
     lb = which_libbase(main, idcode);
     if (lb) {
       /* for ID_LINK_PLACEHOLDER check */
+      if (GS(id->name) == ID_OB) {
+        printf("\t%s: Adding object to oldnewmap: old %p -> new %p    (%s)\n",
+               __func__,
+               id_bhead->old,
+               id,
+               id->name);
+      }
       oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
       BLI_addtail(lb, id);
