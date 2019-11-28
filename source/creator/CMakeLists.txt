@@ -1064,13 +1064,12 @@ setup_liblinks(blender)
 
 # -----------------------------------------------------------------------------
 # USD registry.
-# USD requires a set of JSON files that define the standard schemas. On Windows
-# these files are required at runtime, whereas on other platforms these are
-# only required at build time.
-if (WIN32 AND WITH_USD)
+# USD requires a set of JSON files that define the standard schemas. These
+# files are required at runtime.
+if (WITH_USD)
   install(DIRECTORY
-   ${LIBDIR}/usd/lib/usd
-   DESTINATION "."
+    ${LIBDIR}/usd/lib/usd
+    DESTINATION "."
   )
 endif()
 
