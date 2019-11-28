@@ -469,8 +469,11 @@ function(setup_liblinks
   if(WITH_USD)
     # Source: https://github.com/PixarAnimationStudios/USD/blob/master/BUILDING.md#linking-whole-archives
     if(WIN32)
-      # whole-archive linking is handled in platform_win32.cmake.
       target_link_libraries(${target} ${USD_LIBRARIES})
+      set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS_DEBUG " /WHOLEARCHIVE:libusd_m_d.lib")
+      set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS_RELEASE " /WHOLEARCHIVE:libusd_m.lib")
+      set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS_RELWITHDEBINFO " /WHOLEARCHIVE:libusd_m.lib")
+      set_property(TARGET ${target} APPEND_STRING PROPERTY LINK_FLAGS_MINSIZEREL " /WHOLEARCHIVE:libusd_m.lib")
     elseif(CMAKE_COMPILER_IS_GNUCXX)
       target_link_libraries(${target} -Wl,--whole-archive ${USD_LIBRARIES} -Wl,--no-whole-archive)
     elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")

@@ -33,6 +33,9 @@ set(USD_EXTRA_ARGS
   -DPXR_BUILD_MONOLITHIC=ON
   -DPXR_BUILD_USD_TOOLS=OFF
   -DCMAKE_DEBUG_POSTFIX=_d
+  # USD is hellbound on making a shared lib, unless you point this variable to a valid cmake file
+  # doesn't have to make sense, but as long as it points somewhere valid it will skip the shared lib.
+  -DPXR_MONOLITHIC_IMPORT=${BUILD_DIR}/usd/src/external_usd/cmake/defaults/Version.cmake
 )
 
 ExternalProject_Add(external_usd
@@ -50,3 +53,29 @@ add_dependencies(
   external_tbb
   external_boost
 )
+
+if(WIN32)
+  # USD currently demands python be available at build time
+  # and then proceeds not to use it, but still checks that the
+  # version of the interpreter it is not going to use is atleast 2.7
+  # so we need this dep currently since there is no system python
+  # on windows.
+  add_dependencies(
+    external_usd
+    external_python
+  )
+  if(BUILD_MODE STREQUAL Release)
+    ExternalProject_Add_Step(external_usd after_install
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/usd/ ${HARVEST_TARGET}/usd
+      COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/usd/src/external_usd-build/pxr/Release/libusd_m.lib ${HARVEST_TARGET}/usd/lib/libusd_m.lib
+      DEPENDEES install
+    )
+  endif()
+  if(BUILD_MODE STREQUAL Debug)
+    ExternalProject_Add_Step(external_usd after_install
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/usd/lib ${HARVEST_TARGET}/usd/lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/usd/src/external_usd-build/pxr/Debug/libusd_m_d.lib ${HARVEST_TARGET}/usd/lib/libusd_m_d.lib
+      DEPENDEES install
+    )
+  endif()
+endif()
