@@ -209,8 +209,22 @@ class AbstractHierarchyIterator {
   virtual std::string path_concatenate(const std::string &parent_path,
                                        const std::string &child_path) const;
 
+  /* Return whether this object should be marked as 'weak export' or not.
+   *
+   * When this returns false, writers for the transform and data are created,
+   * and dupli-objects dupli-object generated from this object will be passed to
+   * should_visit_dupli_object().
+   *
+   * When this returns true, only a transform writer is created and marked as
+   * 'weak export'. In this case, the transform writer will be removed before
+   * exporting starts, unless a decendant of this object is to be exported.
+   * Dupli-object generated from this object will also be skipped.
+   *
+   * See HierarchyContext::weak_export.
+   */
+  virtual bool mark_as_weak_export(const Object *object) const;
+
   virtual bool should_visit_dupli_object(const DupliObject *dupli_object) const;
-  virtual bool should_export_object(const Object *object) const;
 
   /* These functions should create an AbstractHierarchyWriter subclass instance, or return
    * nullptr if the object or its data should not be exported. Returning a nullptr for

@@ -49,15 +49,15 @@ USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph,
 {
 }
 
-bool USDHierarchyIterator::should_export_object(const Object *object) const
+bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
 {
   if (params.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
-    return false;
+    return true;
   }
   if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE_VIEWLAYER) == 0) {
-    return false;
+    return true;
   }
-  return true;
+  return false;
 }
 
 void USDHierarchyIterator::delete_object_writer(AbstractHierarchyWriter *writer)

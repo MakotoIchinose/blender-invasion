@@ -177,7 +177,7 @@ void AbstractHierarchyIterator::export_graph_construct()
     }
 
     // Non-instanced objects always have their object-parent as export-parent.
-    const bool weak_export = !should_export_object(object);
+    const bool weak_export = mark_as_weak_export(object);
     visit_object(object, object->parent, weak_export);
 
     if (weak_export) {
@@ -547,12 +547,12 @@ std::string AbstractHierarchyIterator::path_concatenate(const std::string &paren
   return parent_path + "/" + child_path;
 }
 
+bool AbstractHierarchyIterator::mark_as_weak_export(const Object * /*object*/) const
+{
+  return false;
+}
 bool AbstractHierarchyIterator::should_visit_dupli_object(const DupliObject *dupli_object) const
 {
   // Removing dupli_object->no_draw hides things like custom bone shapes.
   return !dupli_object->no_draw;
-}
-bool AbstractHierarchyIterator::should_export_object(const Object * /*object*/) const
-{
-  return true;
 }
