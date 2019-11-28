@@ -1996,12 +1996,12 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
     interp_v3_v3v3_db(gloc, rl->l->gloc, rl->r->gloc, cut);
     mul_v4_m4v3_db(trans, vp, gloc);
     mul_v3db_db(trans, (1 / trans[3]));
-    trans[0] -= cam_shift_x * 2;
-    trans[1] -= cam_shift_y * 2;
   }
   else {
     interp_v3_v3v3_db(trans, rl->l->fbcoord, rl->r->fbcoord, cut);
   }
+  trans[0] -= cam_shift_x * 2;
+  trans[1] -= cam_shift_y * 2;
 
   /* To accomodate k=0 and k=inf (vertical) lines. */
   if (ABS(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > ABS(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
