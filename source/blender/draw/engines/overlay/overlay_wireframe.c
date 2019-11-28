@@ -56,6 +56,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   pd->shdata.wire_step_param = pd->overlay.wireframe_threshold - 254.0f / 255.0f;
 
   bool is_wire_shmode = (shading->type == OB_WIRE);
+  bool is_material_shmode = (shading->type > OB_SOLID);
   bool is_object_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_OBJECT_COLOR);
   bool is_random_color = is_wire_shmode && (shading->wire_color_type == V3D_SHADING_RANDOM_COLOR);
 
@@ -64,13 +65,15 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
                                      OVERLAY_shader_wireframe();
 
   for (int xray = 0; xray < 2; xray++) {
+    /* Only do stencil test if stencil buffer is written by the render engine. */
+    DRWState stencil_state = is_material_shmode ? 0 : DRW_STATE_STENCIL_EQUAL;
     DRWState state = DRW_STATE_FIRST_VERTEX_CONVENTION | DRW_STATE_WRITE_COLOR |
                      DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
     DRWPass *pass;
     uint stencil_mask;
 
     if (xray == 0) {
-      DRW_PASS_CREATE(psl->wireframe_ps, state | pd->clipping_state | DRW_STATE_STENCIL_EQUAL);
+      DRW_PASS_CREATE(psl->wireframe_ps, state | stencil_state | pd->clipping_state);
       pass = psl->wireframe_ps;
       stencil_mask = 0xFF;
     }
@@ -181,13 +184,13 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
     DRW_object_wire_theme_get(ob, draw_ctx->view_layer, &color);
 
     /* Draw loose geometry. */
-    if (me->totedge > 0 || has_edit_mesh_cage) {
+    if ((me->totpoly == 0 && me->totedge > 0) || has_edit_mesh_cage) {
       struct GPUBatch *geom = DRW_cache_mesh_loose_edges_get(ob);
       if (geom) {
         OVERLAY_extra_wire(cb, geom, ob->obmat, color);
       }
     }
-    else if (me->totedge == 0) {
+    else if (me->totedge == 0 && me->totvert > 0) {
       struct GPUBatch *geom = DRW_cache_mesh_all_verts_get(ob);
       if (geom) {
         OVERLAY_extra_loose_points(cb, geom, ob->obmat, color);
