@@ -216,8 +216,8 @@ int lanpr_feed_atlas_data_obj(void *vedata,
                               float *AtlasFaceNormalL,
                               float *AtlasFaceNormalR,
                               float *AtlasEdgeMask,
-                              Object *ob,
-                              int begin_index);
+                              const Object *ob,
+                              const int begin_index);
 
 int lanpr_feed_atlas_data_intersection_cache(void *vedata,
                                              float *AtlasPointsL,
@@ -225,10 +225,10 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
                                              float *AtlasFaceNormalL,
                                              float *AtlasFaceNormalR,
                                              float *AtlasEdgeMask,
-                                             int begin_index);
+                                             const int begin_index);
 
-int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, int begin_index);
-void lanpr_create_atlas_intersection_preview(void *vedata, int begin_index);
+int lanpr_feed_atlas_trigger_preview_obj(void *vedata, const Object *ob, const int begin_index);
+void lanpr_create_atlas_intersection_preview(void *vedata, const int begin_index);
 
 void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
                            LANPR_FramebufferList *fbl,
@@ -238,9 +238,9 @@ void lanpr_dpix_draw_scene(LANPR_TextureList *txl,
                            GPUFrameBuffer *DefaultFB,
                            int is_render);
 
-void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render);
+void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_render);
 
-int lanpr_dpix_texture_size(SceneLANPR *lanpr);
+int lanpr_dpix_texture_size(const SceneLANPR *lanpr);
 
 void lanpr_chain_generate_draw_command(struct LANPR_RenderBuffer *rb);
 

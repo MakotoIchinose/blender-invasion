@@ -90,13 +90,13 @@ static LANPR_BoundingArea *lanpr_get_next_bounding_area(LANPR_BoundingArea *This
                                                         double *next_x,
                                                         double *next_y);
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *spl,
-                                                          LANPR_RenderTriangle *rt,
-                                                          LANPR_RenderLine *rl,
-                                                          Object *cam,
-                                                          double *override_camera_loc,
-                                                          char override_cam_is_persp,
-                                                          double vp[4][4],
-                                                          double *camera_dir,
+                                                          const LANPR_RenderTriangle *rt,
+                                                          const LANPR_RenderLine *rl,
+                                                          const Object *cam,
+                                                          const double *override_camera_loc,
+                                                          const char override_cam_is_persp,
+                                                          const double vp[4][4],
+                                                          const double *camera_dir,
                                                           double *from,
                                                           double *to);
 static int lanpr_get_line_bounding_areas(LANPR_RenderBuffer *rb,
@@ -1890,7 +1890,8 @@ static void lanpr_make_render_geometry_buffers(Depsgraph *depsgraph,
                  (num > is[order[1]] ? order[1] : (num > is[order[0]] ? order[0] : order[0]))); \
   }
 
-static LANPR_RenderLine *lanpr_another_edge(LANPR_RenderTriangle *rt, LANPR_RenderVert *rv)
+static LANPR_RenderLine *lanpr_another_edge(const LANPR_RenderTriangle *rt,
+                                            const LANPR_RenderVert *rv)
 {
   if (rt->v[0] == rv) {
     return rt->rl[1];
@@ -1903,7 +1904,7 @@ static LANPR_RenderLine *lanpr_another_edge(LANPR_RenderTriangle *rt, LANPR_Rend
   }
   return 0;
 }
-static int lanpr_share_edge_direct(LANPR_RenderTriangle *rt, LANPR_RenderLine *rl)
+static int lanpr_share_edge_direct(const LANPR_RenderTriangle *rt, const LANPR_RenderLine *rl)
 {
   if (rt->rl[0] == rl || rt->rl[1] == rl || rt->rl[2] == rl) {
     return 1;
@@ -1918,13 +1919,13 @@ static int lanpr_share_edge_direct(LANPR_RenderTriangle *rt, LANPR_RenderLine *r
  * these two values.
  */
 static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
-                                                          LANPR_RenderTriangle *rt,
-                                                          LANPR_RenderLine *rl,
-                                                          Object *cam,
-                                                          double *override_cam_loc,
-                                                          char override_cam_is_persp,
-                                                          double vp[4][4],
-                                                          double *camera_dir,
+                                                          const LANPR_RenderTriangle *rt,
+                                                          const LANPR_RenderLine *rl,
+                                                          const Object *cam,
+                                                          const double *override_cam_loc,
+                                                          const char override_cam_is_persp,
+                                                          const double vp[4][4],
+                                                          const double *camera_dir,
                                                           double *from,
                                                           double *to)
 {
@@ -2140,8 +2141,8 @@ static int lanpr_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl),
   return 1;
 }
 
-static LANPR_RenderLine *lanpr_triangle_share_edge(LANPR_RenderTriangle *l,
-                                                   LANPR_RenderTriangle *r)
+static LANPR_RenderLine *lanpr_triangle_share_edge(const LANPR_RenderTriangle *l,
+                                                   const LANPR_RenderTriangle *r)
 {
   if (l->rl[0] == r->rl[0]) {
     return r->rl[0];
@@ -2172,8 +2173,8 @@ static LANPR_RenderLine *lanpr_triangle_share_edge(LANPR_RenderTriangle *l,
   }
   return 0;
 }
-static LANPR_RenderVert *lanpr_triangle_share_point(LANPR_RenderTriangle *l,
-                                                    LANPR_RenderTriangle *r)
+static LANPR_RenderVert *lanpr_triangle_share_point(const LANPR_RenderTriangle *l,
+                                                    const LANPR_RenderTriangle *r)
 {
   if (l->v[0] == r->v[0]) {
     return r->v[0];
@@ -2487,7 +2488,7 @@ static void lanpr_compute_view_vector(LANPR_RenderBuffer *rb)
   copy_v3db_v3fl(rb->view_vector, trans);
 }
 
-static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, float threshold)
+static void lanpr_compute_scene_contours(LANPR_RenderBuffer *rb, const float threshold)
 {
   double *view_vector = rb->view_vector;
   double dot_1 = 0, dot_2 = 0;
@@ -2759,7 +2760,7 @@ static int lanpr_get_render_triangle_size(LANPR_RenderBuffer *rb)
   return sizeof(LANPR_RenderTriangle) + (sizeof(LANPR_RenderLine *) * rb->thread_count);
 }
 
-int ED_lanpr_count_leveled_edge_segment_count(ListBase *line_list, LANPR_LineLayer *ll)
+int ED_lanpr_count_leveled_edge_segment_count(const ListBase *line_list, const LANPR_LineLayer *ll)
 {
   LinkData *lip;
   LANPR_RenderLine *rl;
@@ -2794,12 +2795,12 @@ int lanpr_count_intersection_segment_count(LANPR_RenderBuffer *rb)
   return count;
 }
 void *ED_lanpr_make_leveled_edge_vertex_array(LANPR_RenderBuffer *UNUSED(rb),
-                                              ListBase *line_list,
+                                              const ListBase *line_list,
                                               float *vertexArray,
                                               float *normal_array,
                                               float **next_normal,
-                                              LANPR_LineLayer *ll,
-                                              float componet_id)
+                                              const LANPR_LineLayer *ll,
+                                              const float componet_id)
 {
   LinkData *lip;
   LANPR_RenderLine *rl;
@@ -3756,7 +3757,7 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
 
 /* Calculations */
 
-int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, int intersectons_only)
+int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int intersectons_only)
 {
   LANPR_RenderBuffer *rb;
   Scene *s = DEG_get_evaluated_scene(depsgraph);
@@ -3854,7 +3855,7 @@ static void lanpr_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool)
   ED_lanpr_compute_feature_lines_internal(worker_data->dg, worker_data->intersection_only);
 }
 
-void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, int intersection_only)
+void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersection_only)
 {
   TaskPool *tp_read;
   BLI_spin_lock(&lanpr_share.lock_render_status);

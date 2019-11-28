@@ -58,7 +58,7 @@ extern char datatoc_lanpr_dpix_project_clip_frag_glsl[];
 extern char datatoc_lanpr_dpix_preview_geom_glsl[];
 extern char datatoc_lanpr_dpix_preview_frag_glsl[];
 
-int lanpr_dpix_texture_size(SceneLANPR *lanpr)
+int lanpr_dpix_texture_size(const SceneLANPR *lanpr)
 {
   switch (lanpr->gpu_cache_size) {
     case LANPR_GPU_CACHE_SIZE_512:
@@ -170,8 +170,8 @@ int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
                               float *AtlasFaceNormalL,
                               float *AtlasFaceNormalR,
                               float *AtlasEdgeMask,
-                              Object *ob,
-                              int begin_index)
+                              const Object *ob,
+                              const int begin_index)
 {
   if (!DRW_object_is_renderable(ob)) {
     return begin_index;
@@ -294,7 +294,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
                                              float *AtlasFaceNormalL,
                                              float *AtlasFaceNormalR,
                                              float *AtlasEdgeMask,
-                                             int begin_index)
+                                             const int begin_index)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   LinkData *lip;
@@ -346,7 +346,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
   return begin_index + i;
 }
 
-static void lanpr_dpix_index_to_coord(int index, float *x, float *y)
+static void lanpr_dpix_index_to_coord(const int index, float *x, float *y)
 {
   int texture_size = lanpr_share.texture_size;
   (*x) = interpf(1, -1, (float)(index % texture_size + 0.5) / (float)texture_size);
@@ -360,7 +360,9 @@ static void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
   (*y) = (float)(index / texture_size) + 0.5;
 }
 
-int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata), Object *ob, int begin_index)
+int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata),
+                                         const Object *ob,
+                                         const int begin_index)
 {
   Mesh *me = ob->data;
   if (ob->type != OB_MESH) {
@@ -419,7 +421,7 @@ int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata), Object *ob, int b
   return begin_index + edge_count;
 }
 
-void lanpr_create_atlas_intersection_preview(void *UNUSED(vedata), int begin_index)
+void lanpr_create_atlas_intersection_preview(void *UNUSED(vedata), const int begin_index)
 {
   LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
   float co[2];

@@ -583,7 +583,7 @@ static void lanpr_connect_two_chains(LANPR_RenderBuffer *UNUSED(rb),
 
 /*  this only does head-tail connection. */
 /*  overlapping / tiny isolated segment / loop reduction not implemented here yet. */
-void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space)
+void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space)
 {
   LANPR_RenderLineChain *rlc;
   LANPR_RenderLineChainItem *rlci;
@@ -728,7 +728,7 @@ float ED_lanpr_compute_chain_length(LANPR_RenderLineChain *rlc)
   return offset_accum;
 }
 
-void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
+void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, const float threshold)
 {
   LANPR_RenderLineChain *rlc, *next_rlc;
   for (rlc = rb->chains.first; rlc; rlc = next_rlc) {
@@ -739,7 +739,7 @@ void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold)
   }
 }
 
-int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc)
+int ED_lanpr_count_chain(const LANPR_RenderLineChain *rlc)
 {
   LANPR_RenderLineChainItem *rlci;
   int count = 0;

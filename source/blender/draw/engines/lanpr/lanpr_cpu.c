@@ -209,7 +209,7 @@ void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_
   }
 }
 
-void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, int is_render)
+void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_render)
 {
   LANPR_LineLayer *ll;
   LANPR_PassList *psl = ((LANPR_Data *)vedata)->psl;

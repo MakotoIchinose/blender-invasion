@@ -536,26 +536,28 @@ int ED_lanpr_object_collection_usage_check(struct Collection *c, struct Object *
 
 void ED_lanpr_NO_THREAD_chain_feature_lines(LANPR_RenderBuffer *rb);
 void ED_lanpr_split_chains_for_fixed_occlusion(LANPR_RenderBuffer *rb);
-void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, int do_geometry_space);
-void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, float threshold);
-int ED_lanpr_count_chain(LANPR_RenderLineChain *rlc);
+void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space);
+void ED_lanpr_discard_short_chains(LANPR_RenderBuffer *rb, const float threshold);
+int ED_lanpr_count_chain(const LANPR_RenderLineChain *rlc);
 void ED_lanpr_chain_clear_picked_flag(struct LANPR_RenderBuffer *rb);
 
-int ED_lanpr_count_leveled_edge_segment_count(ListBase *line_list, struct LANPR_LineLayer *ll);
+int ED_lanpr_count_leveled_edge_segment_count(const ListBase *line_list,
+                                              const struct LANPR_LineLayer *ll);
 void *ED_lanpr_make_leveled_edge_vertex_array(struct LANPR_RenderBuffer *rb,
-                                              ListBase *line_list,
+                                              const ListBase *line_list,
                                               float *vertex_array,
                                               float *normal_array,
                                               float **next_normal,
-                                              LANPR_LineLayer *ll,
-                                              float componet_id);
+                                              const LANPR_LineLayer *ll,
+                                              const float componet_id);
 
 void ED_lanpr_calculation_set_flag(LANPR_RenderStatus flag);
 bool ED_lanpr_calculation_flag_check(LANPR_RenderStatus flag);
 
-int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph, int instersections_only);
+int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph,
+                                            const int instersections_only);
 
-void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, int intersection_only);
+void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, const int intersection_only);
 
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);

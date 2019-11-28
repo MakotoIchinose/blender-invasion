@@ -52,9 +52,9 @@
 
 #include <math.h>
 
-static float ED_lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc,
-                                                float *lengths,
-                                                int begin_index)
+static float lanpr_compute_chain_length_draw(const LANPR_RenderLineChain *rlc,
+                                             float *lengths,
+                                             const int begin_index)
 {
   LANPR_RenderLineChainItem *rlci;
   int i = 0;
@@ -74,7 +74,7 @@ static float ED_lanpr_compute_chain_length_draw(LANPR_RenderLineChain *rlc,
   return offset_accum;
 }
 
-static int lanpr_get_gpu_line_type(LANPR_RenderLineChainItem *rlci)
+static int lanpr_get_gpu_line_type(const LANPR_RenderLineChainItem *rlci)
 {
   switch (rlci->line_type) {
     case LANPR_EDGE_FLAG_CONTOUR:
@@ -138,7 +138,7 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
 
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
 
-    total_length = ED_lanpr_compute_chain_length_draw(rlc, lengths, i);
+    total_length = lanpr_compute_chain_length_draw(rlc, lengths, i);
 
     for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
 
