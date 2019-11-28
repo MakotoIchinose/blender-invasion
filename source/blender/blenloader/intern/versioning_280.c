@@ -4245,3 +4245,4 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
   }
+}
