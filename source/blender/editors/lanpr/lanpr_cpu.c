@@ -965,17 +965,6 @@ static void lanpr_cull_triangles(LANPR_RenderBuffer *rb)
       /* Select the triangle in the array. */
       rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
 
-#ifdef DEBUG
-      /* Debug purpose */
-      printf("z%f w%f  z%f w%f  z%f w%f\n",
-             rt->v[0]->fbcoord[2],
-             rt->v[0]->fbcoord[1],
-             rt->v[1]->fbcoord[2],
-             rt->v[1]->fbcoord[1],
-             rt->v[2]->fbcoord[2],
-             rt->v[2]->fbcoord[1]);
-#endif
-
       /* Point inside near plane */
       if (rt->v[0]->fbcoord[2] < 0) {
         in0 = 1;
