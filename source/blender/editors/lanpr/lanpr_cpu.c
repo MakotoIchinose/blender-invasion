@@ -2597,6 +2597,8 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
     return;
   }
 
+  ED_lanpr_render_buffer_cache_free(rb);
+
   rb->scene = NULL;
 
   rb->contour_count = 0;
@@ -2625,8 +2627,6 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
   BLI_spin_end(&rb->lock_task);
   BLI_spin_end(&rb->render_data_pool.lock_mem);
 
-  BLI_spin_end(&lanpr_share.lock_render_status);
-
   mem_static_destroy(&rb->render_data_pool);
 }
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
@@ -2649,8 +2649,6 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
-
-  BLI_spin_init(&lanpr_share.lock_render_status);
 
   return rb;
 }
@@ -3753,6 +3751,7 @@ static LANPR_BoundingArea *lanpr_get_first_possible_bounding_area(LANPR_RenderBu
 
 /* Calculations */
 
+/** Parent thread locking should be done before this very function is called. */
 int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int intersectons_only)
 {
   LANPR_RenderBuffer *rb;
@@ -3761,6 +3760,8 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
   int is_lanpr_engine = !strcmp(s->r.engine, RE_engine_id_BLENDER_LANPR);
 
   if (!is_lanpr_engine && (lanpr->flags & LANPR_ENABLED) == 0) {
+    /* Release lock when early return. */
+    BLI_spin_unlock(&lanpr_share.lock_loader);
     return OPERATOR_CANCELLED;
   }
 
@@ -3781,6 +3782,10 @@ int ED_lanpr_compute_feature_lines_internal(Depsgraph *depsgraph, const int inte
   ED_lanpr_update_render_progress("LANPR: Loading geometries.");
 
   lanpr_make_render_geometry_buffers(depsgraph, rb->scene, rb->scene->camera, rb);
+
+  /** We had everything we need,
+   * Unlock parent thread, it's safe to run independently from now. */
+  BLI_spin_unlock(&lanpr_share.lock_loader);
 
   lanpr_compute_view_vector(rb);
   lanpr_cull_triangles(rb);
@@ -3860,6 +3865,8 @@ void ED_lanpr_compute_feature_lines_background(Depsgraph *dg, const int intersec
 
   /* If the calculation is already started then bypass it. */
   if (!ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
+    /* Release lock when early return. */
+    BLI_spin_unlock(&lanpr_share.lock_loader);
     return;
   }
 
@@ -3908,6 +3915,12 @@ static int lanpr_compute_feature_lines_exec(bContext *C, wmOperator *op)
   }
 
   int intersections_only = (is_lanpr_engine && lanpr->master_mode != LANPR_MASTER_MODE_SOFTWARE);
+
+  /** Lock caller thread before calling feature line computation.
+   * This worker is not a background task, so we don't need to try another lock
+   * to wait for the worker to finish. The lock will be released in the compute function.
+   */
+  BLI_spin_lock(&lanpr_share.lock_loader);
 
   result = ED_lanpr_compute_feature_lines_internal(CTX_data_depsgraph_pointer(C),
                                                    intersections_only);

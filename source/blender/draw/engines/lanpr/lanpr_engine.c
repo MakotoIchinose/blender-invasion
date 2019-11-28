@@ -128,6 +128,9 @@ static void lanpr_engine_init(void *ved)
                                 {GPU_ATTACHMENT_TEXTURE(txl->ms_resolve_depth),
                                  GPU_ATTACHMENT_TEXTURE(txl->ms_resolve_color)});
 
+  BLI_spin_init(&lanpr_share.lock_loader);
+  BLI_spin_init(&lanpr_share.lock_render_status);
+
   lanpr_share.init_complete = 1;
 }
 
@@ -184,6 +187,9 @@ static void lanpr_engine_free(void)
 
   lanpr_dpix_batch_free();
   lanpr_chain_batch_free();
+
+  BLI_spin_end(&lanpr_share.lock_loader);
+  BLI_spin_end(&lanpr_share.lock_render_status);
 
   if (lanpr_share.render_buffer_shared) {
     LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
@@ -445,6 +451,10 @@ static void lanpr_cache_init(void *vedata)
 
   /* Intersection cache must be calculated before drawing. */
   if (draw_ctx->scene->lanpr.flags & LANPR_AUTO_UPDATE) {
+
+    /** This will be released by compute function when loading is finished. */
+    BLI_spin_lock(&lanpr_share.lock_loader);
+
     if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_SOFTWARE) {
       if (is_render) {
         ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 0);
@@ -462,6 +472,10 @@ static void lanpr_cache_init(void *vedata)
       }
     }
   }
+
+  /** Important: This ensures we don't proceed beyond this point until everything is loaded. */
+  BLI_spin_lock(&lanpr_share.lock_loader);
+  BLI_spin_unlock(&lanpr_share.lock_loader);
 
   if (ED_lanpr_calculation_flag_check(LANPR_RENDER_FINISHED) ||
       ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {

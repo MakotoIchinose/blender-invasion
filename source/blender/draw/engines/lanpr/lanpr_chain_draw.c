@@ -201,3 +201,10 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
                                              GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO |
                                                  GPU_BATCH_OWNS_INDEX);
 }
+
+void ED_lanpr_render_buffer_cache_free(LANPR_RenderBuffer *rb)
+{
+  if (rb->chain_draw_batch) {
+    GPU_BATCH_DISCARD_SAFE(rb->chain_draw_batch);
+  }
+}

@@ -310,10 +310,18 @@ typedef struct LANPR_SharedResource {
   int init_complete;
 
   /** To bypass or cancel rendering.
-   * This status flag should be kept in lanpr_share not render_buffer.
+   * This status flag should be kept in lanpr_share not render_buffer,
+   * because render_buffer will get re-initialized every frame.
    */
   SpinLock lock_render_status;
   LANPR_RenderStatus flag_render_status;
+
+  /** Geometry loading is done in the worker thread,
+   * Lock the render thread until loading is done, so that
+   * we can avoid depsgrapgh deleting the scene before
+   * LANPR finishes loading. Also keep this in lanpr_share.
+   */
+  SpinLock lock_loader;
 
   /** Set before rendering and cleared upon finish! */
   struct RenderEngine *re_render;
@@ -565,6 +573,8 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
 bool ED_lanpr_dpix_shader_error(void);
+
+void ED_lanpr_render_buffer_cache_free(struct LANPR_RenderBuffer *rb);
 
 int ED_lanpr_max_occlusion_in_line_layers(struct SceneLANPR *lanpr);
 LANPR_LineLayer *ED_lanpr_new_line_layer(struct SceneLANPR *lanpr);
