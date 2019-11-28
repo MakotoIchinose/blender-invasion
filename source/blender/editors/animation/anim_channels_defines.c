@@ -5059,6 +5059,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         else if (ale->type == ANIMTYPE_GPLAYER) {
           /* Add some offset to make it more pleasing to the eye. */
           offset += SLIDER_WIDTH / 2.1f;
+          UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
           char *gp_rna_path = NULL;
           bGPDlayer *gpl = (bGPDlayer *)ale->data;
