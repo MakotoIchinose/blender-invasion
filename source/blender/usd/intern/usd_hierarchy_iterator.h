@@ -49,7 +49,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   virtual std::string make_valid_name(const std::string &name) const override;
 
  protected:
-  virtual bool should_export_object(const Object *object) const override;
+  virtual bool mark_as_weak_export(const Object *object) const override;
 
   virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) override;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) override;
