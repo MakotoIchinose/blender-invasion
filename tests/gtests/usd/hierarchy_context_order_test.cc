@@ -36,8 +36,14 @@ static Object *fake_pointer(int value)
 
 TEST_F(HierarchyContextOrderTest, ObjectPointerTest)
 {
-  HierarchyContext ctx_a = {.object = fake_pointer(1), .duplicator = nullptr};
-  HierarchyContext ctx_b = {.object = fake_pointer(2), .duplicator = nullptr};
+  HierarchyContext ctx_a;
+  ctx_a.object = fake_pointer(1);
+  ctx_a.duplicator = nullptr;
+
+  HierarchyContext ctx_b;
+  ctx_b.object = fake_pointer(2);
+  ctx_b.duplicator = nullptr;
+
   EXPECT_EQ(true, ctx_a < ctx_b);
   EXPECT_EQ(false, ctx_b < ctx_a);
   EXPECT_EQ(false, ctx_a < ctx_a);
@@ -45,10 +51,16 @@ TEST_F(HierarchyContextOrderTest, ObjectPointerTest)
 
 TEST_F(HierarchyContextOrderTest, DuplicatorPointerTest)
 {
-  HierarchyContext ctx_a = {
-      .object = fake_pointer(1), .duplicator = fake_pointer(1), .export_name = "A"};
-  HierarchyContext ctx_b = {
-      .object = fake_pointer(1), .duplicator = fake_pointer(1), .export_name = "B"};
+  HierarchyContext ctx_a;
+  ctx_a.object = fake_pointer(1);
+  ctx_a.duplicator = fake_pointer(1);
+  ctx_a.export_name = "A";
+
+  HierarchyContext ctx_b;
+  ctx_b.object = fake_pointer(1);
+  ctx_b.duplicator = fake_pointer(1);
+  ctx_b.export_name = "B";
+
   EXPECT_EQ(true, ctx_a < ctx_b);
   EXPECT_EQ(false, ctx_b < ctx_a);
   EXPECT_EQ(false, ctx_a < ctx_a);
@@ -56,8 +68,14 @@ TEST_F(HierarchyContextOrderTest, DuplicatorPointerTest)
 
 TEST_F(HierarchyContextOrderTest, ExportParentTest)
 {
-  HierarchyContext ctx_a = {.object = fake_pointer(1), .export_parent = fake_pointer(1)};
-  HierarchyContext ctx_b = {.object = fake_pointer(1), .export_parent = fake_pointer(2)};
+  HierarchyContext ctx_a;
+  ctx_a.object = fake_pointer(1);
+  ctx_a.export_parent = fake_pointer(1);
+
+  HierarchyContext ctx_b;
+  ctx_b.object = fake_pointer(1);
+  ctx_b.export_parent = fake_pointer(2);
+
   EXPECT_EQ(true, ctx_a < ctx_b);
   EXPECT_EQ(false, ctx_b < ctx_a);
   EXPECT_EQ(false, ctx_a < ctx_a);
