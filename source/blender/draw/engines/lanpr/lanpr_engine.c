@@ -144,9 +144,6 @@ void DRW_scene_lanpr_freecache(Scene *sce)
       ll->batch = NULL;
     }
   }
-  if (lanpr_share.render_buffer_shared && lanpr_share.render_buffer_shared->scene == sce) {
-    ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-  }
 }
 
 static void lanpr_dpix_batch_free(void)
@@ -479,7 +476,7 @@ static void lanpr_cache_init(void *vedata)
 
   if (ED_lanpr_calculation_flag_check(LANPR_RENDER_FINISHED) ||
       ED_lanpr_calculation_flag_check(LANPR_RENDER_IDLE)) {
-    ED_lanpr_rebuild_all_command(&draw_ctx->scene->lanpr);
+    ED_lanpr_rebuild_all_command(draw_ctx->scene);
     ED_lanpr_calculation_set_flag(LANPR_RENDER_IDLE);
   }
   else if (!is_render) {

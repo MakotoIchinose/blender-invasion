@@ -151,8 +151,9 @@ static void lanpr_rebuild_render_draw_command(LANPR_RenderBuffer *rb, LANPR_Line
 
   ll->batch = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, 0, GPU_USAGE_DYNAMIC | GPU_BATCH_OWNS_VBO);
 }
-void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
+void ED_lanpr_rebuild_all_command(Scene *s)
 {
+  SceneLANPR *lanpr = &s->lanpr;
   LANPR_LineLayer *ll;
   if (!lanpr || !lanpr_share.render_buffer_shared) {
     return;
@@ -170,7 +171,7 @@ void ED_lanpr_rebuild_all_command(SceneLANPR *lanpr)
     }
   }
 
-  DEG_id_tag_update(&lanpr_share.render_buffer_shared->scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&s->id, ID_RECALC_COPY_ON_WRITE);
 }
 
 void ED_lanpr_calculate_normal_object_vector(LANPR_LineLayer *ll, float *normal_object_direction)
@@ -227,7 +228,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_r
   static float camdx, camdy, camzoom;
 
   if (is_render) {
-    ED_lanpr_rebuild_all_command(lanpr);
+    ED_lanpr_rebuild_all_command(scene);
   }
 
   float clear_depth = 1.0f;

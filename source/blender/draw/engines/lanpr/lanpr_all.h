@@ -227,7 +227,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *vedata,
                                              float *AtlasEdgeMask,
                                              const int begin_index);
 
-int lanpr_feed_atlas_trigger_preview_obj(void *vedata, const Object *ob, const int begin_index);
+int lanpr_feed_atlas_trigger_preview_obj(void *vedata, Object *ob, const int begin_index);
 void lanpr_create_atlas_intersection_preview(void *vedata, const int begin_index);
 
 void lanpr_dpix_draw_scene(LANPR_TextureList *txl,

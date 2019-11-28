@@ -256,16 +256,17 @@ typedef struct LANPR_RenderBuffer {
   int show_material;
   int override_display;
 
-  struct Scene *scene;
-  struct Object *camera;
-
   int use_intersections;
   int _pad;
 
-  int viewport_override;
-  char viewport_is_persp;
+  /** Keep an copy of these data so the scene can be freed when lanpr is runnning. */
+  char cam_is_persp;
+  float cam_obmat[4][4];
   double camera_pos[3];
   double near_clip, far_clip;
+  double shift_x, shift_y;
+  double chaining_image_threshold;
+  double chaining_geometry_threshold;
 } LANPR_RenderBuffer;
 
 typedef enum LANPR_RenderStatus {
@@ -569,7 +570,9 @@ int ED_lanpr_compute_feature_lines_internal(struct Depsgraph *depsgraph,
 
 void ED_lanpr_compute_feature_lines_background(struct Depsgraph *dg, const int intersection_only);
 
-LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void);
+struct Scene;
+
+LANPR_RenderBuffer *ED_lanpr_create_render_buffer(struct Scene *s);
 void ED_lanpr_destroy_render_data(struct LANPR_RenderBuffer *rb);
 
 bool ED_lanpr_dpix_shader_error(void);
@@ -588,7 +591,7 @@ void ED_lanpr_post_frame_update_external(struct Scene *s, struct Depsgraph *dg);
 
 struct SceneLANPR;
 
-void ED_lanpr_rebuild_all_command(struct SceneLANPR *lanpr);
+void ED_lanpr_rebuild_all_command(struct Scene *s);
 
 void ED_lanpr_update_render_progress(const char *text);
 

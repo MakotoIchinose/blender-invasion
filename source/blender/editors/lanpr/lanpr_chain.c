@@ -593,8 +593,8 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
   int occlusion;
   ListBase swap = {0};
 
-  if ((!do_geometry_space && rb->scene->lanpr.chaining_image_threshold < 0.0001) ||
-      (do_geometry_space && rb->scene->lanpr.chaining_geometry_threshold < 0.0001)) {
+  if ((!do_geometry_space && rb->chaining_image_threshold < 0.0001) ||
+      (do_geometry_space && rb->chaining_geometry_threshold < 0.0001)) {
     return;
   }
 
@@ -616,8 +616,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
 
     rlci = rlc->chain.last;
     while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
-      dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
-                                 rb->scene->lanpr.chaining_image_threshold;
+      dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
@@ -663,8 +662,7 @@ void ED_lanpr_connect_chains(LANPR_RenderBuffer *rb, const int do_geometry_space
 
     rlci = rlc->chain.first;
     while ((ba = lanpr_get_end_point_bounding_area(rb, rlci)) != NULL) {
-      dist = do_geometry_space ? rb->scene->lanpr.chaining_geometry_threshold :
-                                 rb->scene->lanpr.chaining_image_threshold;
+      dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
         break;

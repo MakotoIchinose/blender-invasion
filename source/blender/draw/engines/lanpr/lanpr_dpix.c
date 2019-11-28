@@ -360,9 +360,7 @@ static void lanpr_dpix_index_to_coord_absolute(int index, float *x, float *y)
   (*y) = (float)(index / texture_size) + 0.5;
 }
 
-int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata),
-                                         const Object *ob,
-                                         const int begin_index)
+int lanpr_feed_atlas_trigger_preview_obj(void *UNUSED(vedata), Object *ob, const int begin_index)
 {
   Mesh *me = ob->data;
   if (ob->type != OB_MESH) {
