@@ -1634,6 +1634,39 @@ void GPENCIL_OT_brush_reset(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+static Brush *gp_brush_get_first_by_mode(Main *bmain,
+                                         Paint *paint,
+                                         const enum eContextObjectMode mode,
+                                         char tool)
+{
+  Brush *brush_next = NULL;
+  for (Brush *brush = bmain->brushes.first; brush; brush = brush_next) {
+    brush_next = brush->id.next;
+
+    if (brush->gpencil_settings == NULL) {
+      continue;
+    }
+
+    if ((mode == CTX_MODE_PAINT_GPENCIL) && (brush->gpencil_tool == tool)) {
+      return brush;
+    }
+
+    if ((mode == CTX_MODE_SCULPT_GPENCIL) && (brush->gpencil_sculpt_tool == tool)) {
+      return brush;
+    }
+
+    if ((mode == CTX_MODE_WEIGHT_GPENCIL) && (brush->gpencil_weight_tool == tool)) {
+      return brush;
+    }
+
+    if ((mode == CTX_MODE_VERTEX_GPENCIL) && (brush->gpencil_vertex_tool == tool)) {
+      return brush;
+    }
+  }
+
+  return NULL;
+}
+
 static void gp_brush_delete_mode_brushes(Main *bmain,
                                          Paint *paint,
                                          const enum eContextObjectMode mode)
@@ -1689,6 +1722,12 @@ static void gp_brush_delete_mode_brushes(Main *bmain,
       }
     }
 
+    /* Before delete, unpinn any material of the brush. */
+    if ((brush->gpencil_settings) && (brush->gpencil_settings->material != NULL)) {
+      brush->gpencil_settings->material = NULL;
+      brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
+    }
+
     BKE_brush_delete(bmain, brush);
   }
 }
@@ -1722,10 +1761,42 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
   }
 
   if (paint) {
+    Brush *brush_active = paint->brush;
+    char tool = '0';
+    if (brush_active) {
+      switch (mode) {
+        case CTX_MODE_PAINT_GPENCIL: {
+          tool = brush_active->gpencil_tool;
+          break;
+        }
+        case CTX_MODE_SCULPT_GPENCIL: {
+          tool = brush_active->gpencil_sculpt_tool;
+          break;
+        }
+        case CTX_MODE_WEIGHT_GPENCIL: {
+          tool = brush_active->gpencil_weight_tool;
+          break;
+        }
+        case CTX_MODE_VERTEX_GPENCIL: {
+          tool = brush_active->gpencil_vertex_tool;
+          break;
+        }
+        default: {
+          tool = brush_active->gpencil_tool;
+          break;
+        }
+      }
+    }
+
     gp_brush_delete_mode_brushes(bmain, paint, mode);
     BKE_brush_gpencil_paint_presets(bmain, ts);
     BKE_paint_toolslots_brush_validate(bmain, paint);
 
+    /* Set Again the first brush of the mode. */
+    Brush *deft_brush = gp_brush_get_first_by_mode(bmain, paint, mode, tool);
+    if (deft_brush) {
+      BKE_paint_brush_set(paint, deft_brush);
+    }
     /* notifiers */
     DEG_relations_tag_update(bmain);
     WM_main_add_notifier(NC_BRUSH | NA_EDITED, NULL);
