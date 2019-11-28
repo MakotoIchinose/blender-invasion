@@ -75,9 +75,6 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf_blenlib
-  -Wl,--whole-archive
-  ${USD_LIBRARIES}
-  -Wl,--no-whole-archive
 )
 
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

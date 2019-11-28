@@ -1,7 +1,20 @@
-diff -Naur usd.orig/cmake/defaults/Packages.cmake external_usd/cmake/defaults/Packages.cmake
---- usd.orig/cmake/defaults/Packages.cmake	2019-06-17 16:56:45 -0600
-+++ external_usd/cmake/defaults/Packages.cmake	2019-07-19 14:58:06 -0600
-@@ -64,7 +64,7 @@
+diff --git a/cmake/defaults/Options.cmake b/cmake/defaults/Options.cmake
+index bcda89885..3cb541885 100644
+--- a/cmake/defaults/Options.cmake
++++ b/cmake/defaults/Options.cmake
+@@ -25,6 +25,7 @@ option(PXR_STRICT_BUILD_MODE "Turn on additional warnings. Enforce all warnings
+ option(PXR_VALIDATE_GENERATED_CODE "Validate script generated code" OFF)
+ option(PXR_HEADLESS_TEST_MODE "Disallow GUI based tests, useful for running under headless CI systems." OFF)
+ option(PXR_BUILD_TESTS "Build tests" ON)
++option(PXR_BUILD_USD_TOOLS "Build commandline tools" ON)
+ option(PXR_BUILD_IMAGING "Build imaging components" ON)
+ option(PXR_BUILD_EMBREE_PLUGIN "Build embree imaging plugin" OFF)
+ option(PXR_BUILD_OPENIMAGEIO_PLUGIN "Build OpenImageIO plugin" OFF)
+diff --git a/cmake/defaults/Packages.cmake b/cmake/defaults/Packages.cmake
+index 9be215b36..0ce6e6fd5 100644
+--- a/cmake/defaults/Packages.cmake
++++ b/cmake/defaults/Packages.cmake
+@@ -64,7 +64,7 @@ else()
  endif()
  
  # --TBB
@@ -10,9 +23,37 @@ diff -Naur usd.orig/cmake/defaults/Packages.cmake external_usd/cmake/defaults/Pa
  add_definitions(${TBB_DEFINITIONS})
  
  # --math
-diff -Naur usd.orig/pxr/usd/CMakeLists.txt external_usd/pxr/usd/CMakeLists.txt
---- usd.orig/pxr/usd/CMakeLists.txt	2019-06-17 16:56:45 -0600
-+++ external_usd/pxr/usd/CMakeLists.txt	2019-07-19 15:08:15 -0600
+diff --git a/pxr/base/lib/plug/initConfig.cpp b/pxr/base/lib/plug/initConfig.cpp
+index 91d01cadc..8b29aa493 100644
+--- a/pxr/base/lib/plug/initConfig.cpp
++++ b/pxr/base/lib/plug/initConfig.cpp
+@@ -33,6 +33,7 @@
+ #include "pxr/base/arch/symbols.h"
+ 
+ #include <boost/preprocessor/stringize.hpp>
++#include <boost/dll/runtime_symbol_info.hpp>
+ 
+ PXR_NAMESPACE_OPEN_SCOPE
+ 
+@@ -83,6 +84,14 @@ ARCH_CONSTRUCTOR(Plug_InitConfig, 2, void)
+ 
+     sharedLibPath = TfGetPathName(sharedLibPath);
+ 
++    // Executable location, which is relevant when using static linking.
++    boost::filesystem::path executablePath = boost::dll::program_location();
++    if (!executablePath.empty()) {
++        // The path MUST end in a slash, or symlinks will not be treated as directory.
++        boost::filesystem::path pluginPath = executablePath.parent_path() / "usd/";
++        result.push_back(pluginPath.string());
++    }
++
+     // Environment locations.
+     _AppendPathList(&result, TfGetenv(pathEnvVarName), sharedLibPath);
+ 
+diff --git a/pxr/usd/CMakeLists.txt b/pxr/usd/CMakeLists.txt
+index c894cca37..df087a418 100644
+--- a/pxr/usd/CMakeLists.txt
++++ b/pxr/usd/CMakeLists.txt
 @@ -1,6 +1,5 @@
  set(DIRS
      lib
@@ -20,3 +61,12 @@ diff -Naur usd.orig/pxr/usd/CMakeLists.txt external_usd/pxr/usd/CMakeLists.txt
      plugin
  )
  
+@@ -8,3 +7,8 @@ foreach(d ${DIRS})
+     add_subdirectory(${d})
+ endforeach()
+ 
++if (PXR_BUILD_USD_TOOLS)
++    add_subdirectory(bin)
++else()
++    message(STATUS "Skipping commandline tools because PXR_BUILD_USD_TOOLS=OFF")
++endif()

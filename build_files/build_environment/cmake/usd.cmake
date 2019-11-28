@@ -30,6 +30,8 @@ set(USD_EXTRA_ARGS
   -DPXR_BUILD_TESTS=OFF
   -DBUILD_SHARED_LIBS=OFF
   -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
+  -DPXR_BUILD_MONOLITHIC=ON
+  -DPXR_BUILD_USD_TOOLS=OFF
   -DCMAKE_DEBUG_POSTFIX=_d
 )
 
@@ -48,20 +50,3 @@ add_dependencies(
   external_tbb
   external_boost
 )
-
-if(WIN32)
-  if(BUILD_MODE STREQUAL Release)
-    ExternalProject_Add_Step(external_usd after_install
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/usd/ ${HARVEST_TARGET}/usd
-      DEPENDEES install
-    )
-  endif()
-  if(BUILD_MODE STREQUAL Debug)
-    ExternalProject_Add_Step(external_usd after_install
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/usd/lib ${HARVEST_TARGET}/usd/lib
-      DEPENDEES install
-    )
-  endif()
-
-endif()
-
