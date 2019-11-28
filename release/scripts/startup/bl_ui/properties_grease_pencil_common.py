@@ -767,8 +767,6 @@ class GPENCIL_UL_layer(UIList):
                      icon='MOD_MASK' if gpl.mask_layer else 'LAYER_ACTIVE',
                      emboss=False)
 
-            row.prop(gpl, "lock", text="", emboss=False)
-            row.prop(gpl, "hide", text="", emboss=False)
             subrow = row.row(align=True)
             subrow.prop(
                 gpl,
@@ -777,6 +775,8 @@ class GPENCIL_UL_layer(UIList):
                 icon='ONIONSKIN_ON' if gpl.use_onion_skinning else 'ONIONSKIN_OFF',
                 emboss=False,
             )
+            row.prop(gpl, "hide", text="", emboss=False)
+            row.prop(gpl, "lock", text="", emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(
