@@ -42,7 +42,7 @@ if(WIN32)
   endif()
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(external_openxr_sdk after_install
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader-1_0.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader-1_0_d.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openxr_sdk/lib/openxr_loader.lib ${HARVEST_TARGET}/openxr_sdk/lib/openxr_loader_d.lib
       DEPENDEES install
     )
   endif()
