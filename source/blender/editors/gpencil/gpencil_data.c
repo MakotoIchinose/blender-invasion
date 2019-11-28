@@ -1634,7 +1634,9 @@ void GPENCIL_OT_brush_reset(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static void gp_bruh_tag_mode_brushes(Main *bmain, Paint *paint, const enum eContextObjectMode mode)
+static void gp_brush_delete_mode_brushes(Main *bmain,
+                                         Paint *paint,
+                                         const enum eContextObjectMode mode)
 {
   Brush *brush_active = paint->brush;
   Brush *brush_next = NULL;
@@ -1687,28 +1689,6 @@ static void gp_bruh_tag_mode_brushes(Main *bmain, Paint *paint, const enum eCont
       }
     }
 
-    if (brush->gpencil_settings != NULL) {
-      brush->gpencil_settings->flag |= GP_BRUSH_TAG;
-    }
-  }
-}
-
-static void gp_bruh_delete_tagged_brushes(Main *bmain, const enum eContextObjectMode mode)
-{
-  Brush *brush_next = NULL;
-  for (Brush *brush = bmain->brushes.first; brush; brush = brush_next) {
-    brush_next = brush->id.next;
-
-    if ((brush->gpencil_settings == NULL) ||
-        ((brush->gpencil_settings->flag & GP_BRUSH_TAG) == 0)) {
-      continue;
-    }
-    /* Before delete, unpinn any material of the brush. */
-    if ((brush->gpencil_settings) && (brush->gpencil_settings->material != NULL)) {
-      brush->gpencil_settings->material = NULL;
-      brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
-    }
-
     BKE_brush_delete(bmain, brush);
   }
 }
@@ -1718,47 +1698,35 @@ static int gp_brush_reset_all_exec(bContext *C, wmOperator *UNUSED(op))
   Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   const enum eContextObjectMode mode = CTX_data_mode_enum(C);
-  bool changed = false;
+  Paint *paint = NULL;
 
   switch (mode) {
     case CTX_MODE_PAINT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, &ts->gp_paint->paint, mode);
-      BKE_brush_gpencil_paint_presets(bmain, ts);
-      gp_bruh_delete_tagged_brushes(bmain, mode);
-      BKE_paint_toolslots_brush_validate(bmain, &ts->gp_paint->paint);
-      changed = true;
+      paint = &ts->gp_paint->paint;
       break;
     }
     case CTX_MODE_SCULPT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, &ts->gp_sculptpaint->paint, mode);
-      BKE_brush_gpencil_sculpt_presets(bmain, ts);
-      gp_bruh_delete_tagged_brushes(bmain, mode);
-      BKE_paint_toolslots_brush_validate(bmain, &ts->gp_sculptpaint->paint);
-      changed = true;
+      paint = &ts->gp_sculptpaint->paint;
       break;
     }
     case CTX_MODE_WEIGHT_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, &ts->gp_weightpaint->paint, mode);
-      BKE_brush_gpencil_weight_presets(bmain, ts);
-      gp_bruh_delete_tagged_brushes(bmain, mode);
-      BKE_paint_toolslots_brush_validate(bmain, &ts->gp_weightpaint->paint);
-      changed = true;
+      paint = &ts->gp_weightpaint->paint;
       break;
     }
     case CTX_MODE_VERTEX_GPENCIL: {
-      gp_bruh_tag_mode_brushes(bmain, &ts->gp_vertexpaint->paint, mode);
-      BKE_brush_gpencil_vertex_presets(bmain, ts);
-      gp_bruh_delete_tagged_brushes(bmain, mode);
-      BKE_paint_toolslots_brush_validate(bmain, &ts->gp_vertexpaint->paint);
-      changed = true;
+      paint = &ts->gp_vertexpaint->paint;
       break;
     }
     default:
       break;
   }
 
-  /* notifiers */
-  if (changed) {
+  if (paint) {
+    gp_brush_delete_mode_brushes(bmain, paint, mode);
+    BKE_brush_gpencil_paint_presets(bmain, ts);
+    BKE_paint_toolslots_brush_validate(bmain, paint);
+
+    /* notifiers */
     DEG_relations_tag_update(bmain);
     WM_main_add_notifier(NC_BRUSH | NA_EDITED, NULL);
   }
