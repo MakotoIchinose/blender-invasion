@@ -88,8 +88,17 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   // For restoring the current frame after exporting animation is done.
   const int orig_frame = CFRA;
 
-  // Create a stage and set up the metadata.
   pxr::UsdStageRefPtr usd_stage = pxr::UsdStage::CreateNew(data->filename);
+  if (!usd_stage) {
+    /* This happens when the USD JSON files cannot be found. When that happens,
+     * the USD library doesn't know it has the functionality to write USDA and
+     * USDC files, and creating a new UsdStage fails. */
+    WM_reportf(
+        RPT_ERROR, "USD Export: unable to find suitable USD plugin to write %s", data->filename);
+    data->export_ok = false;
+    return;
+  }
+
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
   usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit,
                          pxr::VtValue(scene->unit.scale_length));
