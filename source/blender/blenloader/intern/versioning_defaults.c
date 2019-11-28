@@ -227,6 +227,11 @@ static void blo_update_defaults_screen(bScreen *screen,
           /* Enable Sliders. */
           saction->flag |= SACTION_SLIDERS;
         }
+        else if (sa->spacetype == SPACE_VIEW3D) {
+          View3D *v3d = sa->spacedata.first;
+          /* Set Vertex Color by default. */
+          v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
+        }
       }
     }
   }

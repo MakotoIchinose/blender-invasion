@@ -32,6 +32,7 @@ struct Object;
 struct RenderEngine;
 struct RenderLayer;
 struct bGPDstroke;
+struct View3D;
 
 struct GPUBatch;
 struct GPUVertBuf;
@@ -464,6 +465,7 @@ struct tGPencilObjectCache *gpencil_object_cache_add(struct tGPencilObjectCache 
                                                      int *gp_cache_used);
 
 bool gpencil_onion_active(struct bGPdata *gpd);
+float gpencil_get_vertex_paint_factor(struct View3D *v3d);
 
 /* shading groups cache functions */
 struct GpencilBatchGroup *gpencil_group_cache_add(struct GpencilBatchGroup *cache_array,
