@@ -647,6 +647,117 @@ class DOPESHEET_MT_snap_pie(Menu):
         pie.operator("action.snap", text="Nearest Second").type = 'NEAREST_SECOND'
         pie.operator("action.snap", text="Nearest Marker").type = 'NEAREST_MARKER'
 
+class LayersDopeSheetPanel:
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "View"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        ob = context.object
+        if st.mode != 'GPENCIL' or ob is None or ob.type != 'GPENCIL':
+            return False
+
+        gpd = ob.data
+        gpl = gpd.layers.active
+        if gpl:
+            return True
+
+        return False
+
+
+class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
+    # bl_space_type = 'DOPESHEET_EDITOR'
+    # bl_region_type = 'UI'
+    # bl_category = "View"
+    bl_label = "Layer"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        ob = context.object
+        gpd = ob.data
+        gpl = gpd.layers.active
+        if gpl:
+            row = layout.row(align=True)
+            row.prop(gpl, "blend_mode", text="Blend")
+
+            row = layout.row(align=True)
+            row.prop(gpl, "opacity", text="Opacity", slider=True)
+
+            row = layout.row(align=True)
+            row.prop(gpl, "channel_color")
+
+            row = layout.row(align=True)
+            row.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
+
+
+class DOPESHEET_PT_gpencil_layer_adjustments(LayersDopeSheetPanel, Panel):
+    bl_label = "Adjustments"
+    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        scene = context.scene
+
+        ob = context.object
+        gpd = ob.data
+        gpl = gpd.layers.active
+        layout.active = not gpl.lock
+
+        # Layer options
+        # Offsets - Color Tint
+        layout.enabled = not gpl.lock
+        col = layout.column(align=True)
+        col.prop(gpl, "tint_color")
+        col.prop(gpl, "tint_factor", text="Factor", slider=True)
+
+        # Vertex Paint Opacity
+        col = layout.row(align=True)
+        col.prop(gpl, "vertex_paint_opacity", text="Vertex Paint Opacity")
+
+        # Offsets - Thickness
+        col = layout.row(align=True)
+        col.prop(gpl, "line_change", text="Stroke Thickness")
+
+        col = layout.row(align=True)
+        col.prop(gpl, "pass_index")
+
+        col = layout.row(align=True)
+        col.prop_search(gpl, "viewlayer_render", scene, "view_layers", text="View Layer")
+
+        col = layout.row(align=True)
+        col.prop(gpl, "lock_material")
+
+
+class DOPESHEET_PT_gpencil_layer_relations(LayersDopeSheetPanel, Panel):
+    bl_label = "Relations"
+    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        ob = context.object
+        gpd = ob.data
+        gpl = gpd.layers.active
+
+        col = layout.column()
+        col.active = not gpl.lock
+        col.prop(gpl, "parent")
+        col.prop(gpl, "parent_type", text="Type")
+        parent = gpl.parent
+
+        if parent and gpl.parent_type == 'BONE' and parent.type == 'ARMATURE':
+            col.prop_search(gpl, "parent_bone", parent.data, "bones", text="Bone")
+
 
 classes = (
     DOPESHEET_HT_header,
@@ -665,6 +776,9 @@ classes = (
     DOPESHEET_MT_channel_context_menu,
     DOPESHEET_MT_snap_pie,
     DOPESHEET_PT_filters,
+    DOPESHEET_PT_gpencil_mode,
+    DOPESHEET_PT_gpencil_layer_adjustments,
+    DOPESHEET_PT_gpencil_layer_relations,
 )
 
 if __name__ == "__main__":  # only for live edit.
