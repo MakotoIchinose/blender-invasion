@@ -65,30 +65,30 @@ TEST_F(HierarchyContextOrderTest, ExportParentTest)
 
 TEST_F(HierarchyContextOrderTest, TransitiveTest)
 {
-  HierarchyContext ctx_a = {
-      .object = fake_pointer(1),
-      .export_parent = fake_pointer(1),
-      .duplicator = nullptr,
-      .export_name = "A",
-  };
-  HierarchyContext ctx_b = {
-      .object = fake_pointer(2),
-      .export_parent = nullptr,
-      .duplicator = fake_pointer(1),
-      .export_name = "B",
-  };
-  HierarchyContext ctx_c = {
-      .object = fake_pointer(2),
-      .export_parent = fake_pointer(2),
-      .duplicator = fake_pointer(1),
-      .export_name = "C",
-  };
-  HierarchyContext ctx_d = {
-      .object = fake_pointer(2),
-      .export_parent = fake_pointer(3),
-      .duplicator = nullptr,
-      .export_name = "D",
-  };
+  HierarchyContext ctx_a;
+  ctx_a.object = fake_pointer(1);
+  ctx_a.export_parent = fake_pointer(1);
+  ctx_a.duplicator = nullptr;
+  ctx_a.export_name = "A";
+
+  HierarchyContext ctx_b;
+  ctx_b.object = fake_pointer(2);
+  ctx_b.export_parent = nullptr;
+  ctx_b.duplicator = fake_pointer(1);
+  ctx_b.export_name = "B";
+
+  HierarchyContext ctx_c;
+  ctx_c.object = fake_pointer(2);
+  ctx_c.export_parent = fake_pointer(2);
+  ctx_c.duplicator = fake_pointer(1);
+  ctx_c.export_name = "C";
+
+  HierarchyContext ctx_d;
+  ctx_d.object = fake_pointer(2);
+  ctx_d.export_parent = fake_pointer(3);
+  ctx_d.duplicator = nullptr;
+  ctx_d.export_name = "D";
+
   EXPECT_EQ(true, ctx_a < ctx_b);
   EXPECT_EQ(true, ctx_a < ctx_c);
   EXPECT_EQ(true, ctx_a < ctx_d);
