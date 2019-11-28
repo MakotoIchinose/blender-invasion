@@ -658,10 +658,8 @@ if(WITH_USD)
     set(USD_INCLUDE_DIRS ${LIBDIR}/usd/include)
     set(USD_LIBRARIES
         debug ${LIBDIR}/usd/lib/libusd_m_d.lib
-        optimized ${LIBDIR}/usd/lib/usd_m.lib
+        optimized ${LIBDIR}/usd/lib/libusd_m.lib
     )
-    set(USD_LINKFLAGS_DEBUG "/WHOLEARCHIVE:libusd_m_d.lib")
-    set(USD_LINKFLAGS_RELEASE "/WHOLEARCHIVE:libusd_m.lib")
   endif()
 endif()
 
