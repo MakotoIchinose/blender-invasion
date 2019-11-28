@@ -5059,7 +5059,6 @@ void ANIM_channel_draw_widgets(const bContext *C,
         else if (ale->type == ANIMTYPE_GPLAYER) {
           /* Add some offset to make it more pleasing to the eye. */
           offset += SLIDER_WIDTH / 2.1f;
-          UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
           char *gp_rna_path = NULL;
           bGPDlayer *gpl = (bGPDlayer *)ale->data;
@@ -5071,6 +5070,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
           int icon;
 
           /* Mask Layer. */
+          UI_block_emboss_set(block, UI_EMBOSS_NONE);
           prop = RNA_struct_find_property(&ptr, "mask_layer");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
@@ -5079,6 +5079,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                 block, &ptr, prop, array_index, "", icon, offset, ymid, width, channel_height);
           }
           /* Layer opacity. */
+          UI_block_emboss_set(block, UI_EMBOSS);
           prop = RNA_struct_find_property(&ptr, "opacity");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
@@ -5095,6 +5096,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
           }
 
           /* Layer onion skinning switch. */
+          UI_block_emboss_set(block, UI_EMBOSS_NONE);
           prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
