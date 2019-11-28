@@ -5073,7 +5073,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
           prop = RNA_struct_find_property(&ptr, "mask_layer");
           gp_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
           if (RNA_path_resolve_property(&id_ptr, gp_rna_path, &ptr, &prop)) {
-            icon = (gpl->onion_flag & GP_LAYER_USE_MASK) ? ICON_MOD_MASK : ICON_LAYER_ACTIVE;
+            icon = (gpl->flag & GP_LAYER_USE_MASK) ? ICON_MOD_MASK : ICON_LAYER_ACTIVE;
             uiDefAutoButR(
                 block, &ptr, prop, array_index, "", icon, offset, ymid, width, channel_height);
           }
