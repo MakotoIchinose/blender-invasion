@@ -2631,15 +2631,11 @@ void ED_lanpr_destroy_render_data(LANPR_RenderBuffer *rb)
 }
 LANPR_RenderBuffer *ED_lanpr_create_render_buffer(void)
 {
+  /* Re-init render_buffer_shared */
   if (lanpr_share.render_buffer_shared) {
     LANPR_RenderBuffer *rb = lanpr_share.render_buffer_shared;
-    ED_lanpr_destroy_render_data(lanpr_share.render_buffer_shared);
-    rb->viewport_override = lanpr_share.viewport_camera_override;
-    copy_v3db_v3fl(rb->camera_pos, lanpr_share.camera_pos);
-    rb->viewport_is_persp = lanpr_share.camera_is_persp;
-    rb->near_clip = lanpr_share.near_clip;
-    rb->far_clip = lanpr_share.far_clip;
-    return rb;
+    ED_lanpr_destroy_render_data(rb);
+    MEM_freeN(rb);
   }
 
   LANPR_RenderBuffer *rb = MEM_callocN(sizeof(LANPR_RenderBuffer), "LANPR render buffer");

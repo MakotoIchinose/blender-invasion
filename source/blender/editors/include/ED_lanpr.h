@@ -309,7 +309,9 @@ typedef struct LANPR_SharedResource {
 
   int init_complete;
 
-  /** To bypass or cancel rendering. */
+  /** To bypass or cancel rendering.
+   * This status flag should be kept in lanpr_share not render_buffer.
+   */
   SpinLock lock_render_status;
   LANPR_RenderStatus flag_render_status;
 
