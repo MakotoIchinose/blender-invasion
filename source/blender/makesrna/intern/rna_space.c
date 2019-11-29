@@ -987,6 +987,9 @@ static void rna_3DViewShading_type_update(Main *bmain, Scene *scene, PointerRNA 
     }
   }
 
+  /* Update Gpencil. */
+  rna_GPencil_update(bmain, scene, ptr);
+
   bScreen *screen = (bScreen *)ptr->owner_id;
   for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
     for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
