@@ -25,6 +25,12 @@
 #include "ED_screen.h"
 
 #include "overlay_private.h"
+#include "smaa_textures.h"
+
+struct {
+  GPUTexture *smaa_search_tx;
+  GPUTexture *smaa_area_tx;
+} e_data = {NULL};
 
 void OVERLAY_antialiasing_reset(OVERLAY_Data *vedata)
 {
@@ -50,6 +56,38 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
   pd->antialiasing.enabled = dtxl->multisample_color != NULL;
 
   if (pd->antialiasing.enabled) {
+
+    if (e_data.smaa_search_tx == NULL) {
+      e_data.smaa_search_tx = GPU_texture_create_nD(SEARCHTEX_WIDTH,
+                                                    SEARCHTEX_HEIGHT,
+                                                    0,
+                                                    2,
+                                                    searchTexBytes,
+                                                    GPU_R8,
+                                                    GPU_DATA_UNSIGNED_BYTE,
+                                                    0,
+                                                    false,
+                                                    NULL);
+
+      e_data.smaa_area_tx = GPU_texture_create_nD(AREATEX_WIDTH,
+                                                  AREATEX_HEIGHT,
+                                                  0,
+                                                  2,
+                                                  areaTexBytes,
+                                                  GPU_RG8,
+                                                  GPU_DATA_UNSIGNED_BYTE,
+                                                  0,
+                                                  false,
+                                                  NULL);
+      GPU_texture_bind(e_data.smaa_area_tx, 0);
+      GPU_texture_filter_mode(e_data.smaa_area_tx, true);
+      GPU_texture_unbind(e_data.smaa_area_tx);
+
+      GPU_texture_bind(e_data.smaa_search_tx, 0);
+      GPU_texture_filter_mode(e_data.smaa_search_tx, true);
+      GPU_texture_unbind(e_data.smaa_search_tx);
+    }
+
     pd->antialiasing.target_sample = 4;
 
     bool valid_history = true;
@@ -57,8 +95,11 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
       valid_history = false;
     }
 
+    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH24_STENCIL8, 0);
     DRW_texture_ensure_fullscreen_2d(&txl->overlay_color_tx, GPU_RGBA8, DRW_TEX_FILTER);
     DRW_texture_ensure_fullscreen_2d(&txl->overlay_color_history_tx, GPU_RGBA8, DRW_TEX_FILTER);
+    DRW_texture_ensure_fullscreen_2d(&txl->smaa_edge_tx, GPU_RG8, DRW_TEX_FILTER);
+    DRW_texture_ensure_fullscreen_2d(&txl->smaa_blend_tx, GPU_RGBA8, DRW_TEX_FILTER);
 
     GPU_framebuffer_ensure_config(
         &fbl->overlay_color_only_fb,
@@ -73,6 +114,12 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
     GPU_framebuffer_ensure_config(
         &fbl->overlay_color_history_fb,
         {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->overlay_color_history_tx)});
+    GPU_framebuffer_ensure_config(
+        &fbl->smaa_edge_fb,
+        {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(txl->smaa_edge_tx)});
+    GPU_framebuffer_ensure_config(
+        &fbl->smaa_blend_fb,
+        {GPU_ATTACHMENT_TEXTURE(txl->temp_depth_tx), GPU_ATTACHMENT_TEXTURE(txl->smaa_blend_tx)});
 
     /* Test if we can do TAA */
     if (valid_history) {
@@ -102,7 +149,8 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata)
       /* For nr = 0,we should sample {0, 0} (goes through the FXAA branch). */
       float ofs[2] = {samples_pos[nr][0] / 6.0f, samples_pos[nr][1] / 6.0f};
 
-      window_translate_m4(winmat, persmat, ofs[0] / viewport_size[0], ofs[1] / viewport_size[1]);
+      // window_translate_m4(winmat, persmat, ofs[0] / viewport_size[0], ofs[1] /
+      // viewport_size[1]);
 
       const DRWView *default_view = DRW_view_default_get();
       pd->view_default = DRW_view_create_sub(default_view, viewmat, winmat);
@@ -143,48 +191,33 @@ void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata)
   DRWShadingGroup *grp;
 
   if (pd->antialiasing.enabled) {
-    bool do_fxaa = (pd->antialiasing.sample == 0);
-    if (do_fxaa) {
-      DRW_PASS_CREATE(psl->antialiasing_merge_ps,
-                      DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_UNDER_PREMUL);
+    DRW_PASS_CREATE(psl->smaa_edge_detect_ps,
+                    DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
+    DRW_PASS_CREATE(psl->smaa_blend_weight_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL);
+    DRW_PASS_CREATE(psl->smaa_resolve_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
 
-      sh = OVERLAY_shader_antialiasing_merge();
-      grp = DRW_shgroup_create(sh, psl->antialiasing_merge_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "srcTexture", &dtxl->color);
-      DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    sh = OVERLAY_shader_antialiasing(0);
+    grp = DRW_shgroup_create(sh, psl->smaa_edge_detect_ps);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_texture_ref(grp, "colorTex", &txl->overlay_color_tx);
+    DRW_shgroup_stencil_mask(grp, 0xFF);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
-      DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR);
+    sh = OVERLAY_shader_antialiasing(1);
+    grp = DRW_shgroup_create(sh, psl->smaa_blend_weight_ps);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_texture_ref(grp, "edgesTex", &txl->smaa_edge_tx);
+    DRW_shgroup_uniform_texture(grp, "areaTex", e_data.smaa_area_tx);
+    DRW_shgroup_uniform_texture(grp, "searchTex", e_data.smaa_search_tx);
+    DRW_shgroup_stencil_mask(grp, 0xFF);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
-      sh = OVERLAY_shader_antialiasing();
-      grp = DRW_shgroup_create(sh, psl->antialiasing_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "srcTexture", &txl->overlay_color_tx);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-    }
-    else {
-      DRW_PASS_CREATE(psl->antialiasing_merge_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
-
-      /* TODO do not even render if not necessary. */
-      float alpha = 0.0f;
-      if (pd->antialiasing.sample <= pd->antialiasing.target_sample) {
-        alpha = 1.0f / (pd->antialiasing.sample + 1);
-      }
-
-      sh = OVERLAY_shader_antialiasing_accum();
-      grp = DRW_shgroup_create(sh, psl->antialiasing_merge_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "srcTexture", &txl->overlay_color_tx);
-      DRW_shgroup_uniform_float_copy(grp, "alpha", alpha);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-
-      DRW_PASS_CREATE(psl->antialiasing_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
-
-      /* Reuse merge shader. */
-      sh = OVERLAY_shader_antialiasing_merge();
-      grp = DRW_shgroup_create(sh, psl->antialiasing_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "srcTexture", &txl->overlay_color_history_tx);
-      DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
-      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-    }
+    sh = OVERLAY_shader_antialiasing(2);
+    grp = DRW_shgroup_create(sh, psl->smaa_resolve_ps);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_texture_ref(grp, "blendTex", &txl->smaa_blend_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "colorTex", &txl->overlay_color_tx);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }
 
@@ -208,34 +241,24 @@ void OVERLAY_antialiasing_end(OVERLAY_Data *vedata)
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
 
   if (pd->antialiasing.enabled) {
-    if (pd->antialiasing.sample == 0) {
-      /* First sample: Copy to history buffer and apply FXAA. */
-      GPU_framebuffer_blit(
-          fbl->overlay_color_only_fb, 0, fbl->overlay_color_history_fb, 0, GPU_COLOR_BIT);
-      /* We merge default framebuffer with the overlay framebuffer to apply
-       * FXAA pass on the final image */
-      GPU_framebuffer_bind(fbl->overlay_color_only_fb);
-      DRW_draw_pass(psl->antialiasing_merge_ps);
-      /* Do FXAA */
-      GPU_framebuffer_bind(dfbl->default_fb);
-      DRW_draw_pass(psl->antialiasing_ps);
+    float clear_col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-      pd->antialiasing.sample++;
+    GPU_framebuffer_bind(fbl->smaa_edge_fb);
+    GPU_framebuffer_clear_color(fbl->smaa_edge_fb, clear_col);
+    GPU_framebuffer_clear_stencil(fbl->smaa_edge_fb, 0x00);
+    DRW_draw_pass(psl->smaa_edge_detect_ps);
 
-      DRW_viewport_request_redraw();
-    }
-    else {
-      /* We merge into history buffer with the right weight. */
-      GPU_framebuffer_bind(fbl->overlay_color_history_fb);
-      DRW_draw_pass(psl->antialiasing_merge_ps);
-      /* Composite the AA'ed overlays on top of the default framebuffer  */
-      GPU_framebuffer_bind(dfbl->default_fb);
-      DRW_draw_pass(psl->antialiasing_ps);
+    GPU_framebuffer_bind(fbl->smaa_blend_fb);
+    GPU_framebuffer_clear_color(fbl->smaa_blend_fb, clear_col);
+    DRW_draw_pass(psl->smaa_blend_weight_ps);
 
-      if (pd->antialiasing.sample <= pd->antialiasing.target_sample) {
-        pd->antialiasing.sample++;
-        DRW_viewport_request_redraw();
-      }
-    }
+    GPU_framebuffer_bind(dfbl->default_fb);
+    DRW_draw_pass(psl->smaa_resolve_ps);
   }
+}
+
+void OVERLAY_antialiasing_free(void)
+{
+  DRW_TEXTURE_FREE_SAFE(e_data.smaa_area_tx);
+  DRW_TEXTURE_FREE_SAFE(e_data.smaa_search_tx);
 }

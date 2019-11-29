@@ -38,7 +38,7 @@ void OVERLAY_outline_init(OVERLAY_Data *vedata)
     /* XXX TODO GPU_R16UI can overflow, it would cause no harm
      * (only bad colored or missing outlines) but we should
      * use 32bits only if the scene have that many objects */
-    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH_COMPONENT24, 0);
+    DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH24_STENCIL8, 0);
     DRW_texture_ensure_fullscreen_2d(&txl->outlines_id_tx, GPU_R16UI, 0);
     GPU_framebuffer_ensure_config(
         &fbl->outlines_prepass_fb,

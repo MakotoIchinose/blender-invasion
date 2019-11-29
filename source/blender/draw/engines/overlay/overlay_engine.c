@@ -458,6 +458,7 @@ static void OVERLAY_draw_scene(void *vedata)
 static void OVERLAY_engine_free(void)
 {
   OVERLAY_shader_free();
+  OVERLAY_antialiasing_free();
 }
 
 /** \} */

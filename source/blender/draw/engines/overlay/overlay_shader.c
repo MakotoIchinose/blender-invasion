@@ -29,6 +29,7 @@
 #include "overlay_private.h"
 
 extern char datatoc_antialiasing_frag_glsl[];
+extern char datatoc_antialiasing_vert_glsl[];
 extern char datatoc_armature_dof_vert_glsl[];
 extern char datatoc_armature_envelope_distance_frag_glsl[];
 extern char datatoc_armature_envelope_outline_vert_glsl[];
@@ -112,13 +113,12 @@ extern char datatoc_gpu_shader_common_obinfos_lib_glsl[];
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_fullscreen_vert_glsl[];
 extern char datatoc_common_fxaa_lib_glsl[];
+extern char datatoc_common_smaa_lib_glsl[];
 extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
-  GPUShader *antialiasing;
-  GPUShader *antialiasing_accum;
-  GPUShader *antialiasing_merge;
+  GPUShader *antialiasing[3];
   GPUShader *armature_dof;
   GPUShader *armature_envelope_outline;
   GPUShader *armature_envelope_solid;
@@ -182,54 +182,35 @@ typedef struct OVERLAY_Shaders {
 
 static struct {
   OVERLAY_Shaders sh_data[GPU_SHADER_CFG_LEN];
-} e_data = {{{NULL}}};
+} e_data = {{{{NULL}}}};
 
-GPUShader *OVERLAY_shader_antialiasing(void)
+GPUShader *OVERLAY_shader_antialiasing(int step)
 {
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->antialiasing) {
-    sh_data->antialiasing = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
-        .frag =
-            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define USE_FXAA\n", NULL},
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->antialiasing[step]) {
+    char defines[64];
+    BLI_snprintf(defines, sizeof(defines), "#define STEP %d\n", step);
+    sh_data->antialiasing[step] = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){"#define SMAA_INCLUDE_VS 1\n",
+                                 "#define SMAA_INCLUDE_PS 0\n",
+                                 "#define SMAA_PRESET_ULTRA\n",
+                                 "#define SMAA_RT_METRICS (sizeViewport.zwxy)\n",
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_smaa_lib_glsl,
+                                 datatoc_antialiasing_vert_glsl,
+                                 NULL},
+        .frag = (const char *[]){"#define SMAA_INCLUDE_VS 0\n",
+                                 "#define SMAA_INCLUDE_PS 1\n",
+                                 "#define SMAA_PRESET_ULTRA\n",
+                                 "#define SMAA_RT_METRICS (sizeViewport.zwxy)\n",
+                                 datatoc_common_globals_lib_glsl,
+                                 datatoc_common_smaa_lib_glsl,
+                                 datatoc_antialiasing_frag_glsl,
+                                 NULL},
+        .defs = (const char *[]){defines, "#define SMAA_GLSL_3\n", NULL},
     });
   }
-  return sh_data->antialiasing;
-}
-
-GPUShader *OVERLAY_shader_antialiasing_accum(void)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->antialiasing_accum) {
-    sh_data->antialiasing_accum = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
-        .frag =
-            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, "#define USE_ACCUM\n", NULL},
-    });
-  }
-  return sh_data->antialiasing_accum;
-}
-
-GPUShader *OVERLAY_shader_antialiasing_merge(void)
-{
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const GPUShaderConfigData *sh_cfg = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
-  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
-  if (!sh_data->antialiasing_merge) {
-    sh_data->antialiasing_merge = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg->lib, datatoc_common_fullscreen_vert_glsl, NULL},
-        .frag =
-            (const char *[]){datatoc_common_fxaa_lib_glsl, datatoc_antialiasing_frag_glsl, NULL},
-        .defs = (const char *[]){sh_cfg->def, NULL},
-    });
-  }
-  return sh_data->antialiasing_merge;
+  return sh_data->antialiasing[step];
 }
 
 GPUShader *OVERLAY_shader_depth_only(void)

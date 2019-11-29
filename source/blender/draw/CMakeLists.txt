@@ -153,6 +153,7 @@ set(SRC
   intern/draw_manager_profiling.h
   intern/draw_manager_text.h
   intern/draw_view.h
+  intern/smaa_textures.h
   engines/basic/basic_engine.h
   engines/eevee/eevee_engine.h
   engines/eevee/eevee_lightcache.h
@@ -267,6 +268,7 @@ data_to_c_simple(intern/shaders/common_hair_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_hair_refine_vert.glsl SRC)
 data_to_c_simple(intern/shaders/common_view_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_fxaa_lib.glsl SRC)
+data_to_c_simple(intern/shaders/common_smaa_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_fullscreen_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_vert.glsl SRC)
@@ -304,6 +306,7 @@ data_to_c_simple(engines/select/shaders/selection_id_3D_vert.glsl SRC)
 data_to_c_simple(engines/select/shaders/selection_id_frag.glsl SRC)
 
 data_to_c_simple(engines/overlay/shaders/antialiasing_frag.glsl SRC)
+data_to_c_simple(engines/overlay/shaders/antialiasing_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_dof_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_envelope_outline_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/armature_envelope_solid_frag.glsl SRC)

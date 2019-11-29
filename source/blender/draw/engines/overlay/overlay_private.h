@@ -30,6 +30,8 @@
 #endif
 
 typedef struct OVERLAY_FramebufferList {
+  struct GPUFrameBuffer *smaa_blend_fb;
+  struct GPUFrameBuffer *smaa_edge_fb;
   struct GPUFrameBuffer *overlay_default_fb;
   struct GPUFrameBuffer *overlay_color_only_fb;
   struct GPUFrameBuffer *overlay_in_front_fb;
@@ -45,6 +47,8 @@ typedef struct OVERLAY_TextureList {
   struct GPUTexture *outlines_color_tx[2];
   struct GPUTexture *overlay_color_tx;
   struct GPUTexture *overlay_color_history_tx;
+  struct GPUTexture *smaa_edge_tx;
+  struct GPUTexture *smaa_blend_tx;
   struct GPUTexture *edit_mesh_occlude_wire_tx;
 } OVERLAY_TextureList;
 
@@ -52,8 +56,9 @@ typedef struct OVERLAY_TextureList {
 #define IN_FRONT 1
 
 typedef struct OVERLAY_PassList {
-  DRWPass *antialiasing_ps;
-  DRWPass *antialiasing_merge_ps;
+  DRWPass *smaa_edge_detect_ps;
+  DRWPass *smaa_blend_weight_ps;
+  DRWPass *smaa_resolve_ps;
   DRWPass *armature_ps[2];
   DRWPass *armature_bone_select_ps;
   DRWPass *armature_transp_ps;
@@ -393,6 +398,7 @@ void OVERLAY_antialiasing_init(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_start(OVERLAY_Data *vedata);
 void OVERLAY_antialiasing_end(OVERLAY_Data *vedata);
+void OVERLAY_antialiasing_free(void);
 
 bool OVERLAY_armature_is_pose_mode(Object *ob, const struct DRWContextState *draw_ctx);
 void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
@@ -526,9 +532,7 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *vedata);
 
-GPUShader *OVERLAY_shader_antialiasing(void);
-GPUShader *OVERLAY_shader_antialiasing_accum(void);
-GPUShader *OVERLAY_shader_antialiasing_merge(void);
+GPUShader *OVERLAY_shader_antialiasing(int step);
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom(void);
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);
 GPUShader *OVERLAY_shader_armature_shape(bool use_outline);

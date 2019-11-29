@@ -1,25 +1,48 @@
 
-uniform sampler2D srcTexture;
-uniform float alpha;
+in vec2 uvs;
 
-in vec4 uvcoordsvar;
+#if STEP == 0
 
-#ifdef USE_ACCUM
-layout(location = 0, index = 0) out vec4 fragColor;
-layout(location = 0, index = 1) out vec4 historyWeight;
-#else
+uniform sampler2D colorTex;
+
+in vec4 offsets[3];
+
 out vec4 fragColor;
-#endif
 
 void main()
 {
-#ifdef USE_ACCUM
-  fragColor = texture(srcTexture, uvcoordsvar.st) * alpha;
-  historyWeight = vec4(1.0 - alpha);
-#elif defined(USE_FXAA)
-  vec2 invSize = 1.0 / vec2(textureSize(srcTexture, 0).xy);
-  fragColor = FxaaPixelShader(uvcoordsvar.st, srcTexture, invSize, 0.75, 0.063, 0.0312);
-#else
-  fragColor = texture(srcTexture, uvcoordsvar.st) * alpha;
-#endif
+  fragColor = SMAALumaEdgeDetectionPS(uvs, offsets, colorTex).xyxy;
 }
+
+#elif STEP == 1
+
+uniform sampler2D edgesTex;
+uniform sampler2D areaTex;
+uniform sampler2D searchTex;
+
+in vec2 pixcoord;
+in vec4 offsets[3];
+
+out vec4 fragColor;
+
+void main()
+{
+  fragColor = SMAABlendingWeightCalculationPS(
+      uvs, pixcoord, offsets, edgesTex, areaTex, searchTex, vec4(0));
+}
+
+#elif STEP == 2
+
+uniform sampler2D colorTex;
+uniform sampler2D blendTex;
+
+in vec4 offset;
+
+out vec4 fragColor;
+
+void main()
+{
+  fragColor = SMAANeighborhoodBlendingPS(uvs, offset, colorTex, blendTex);
+}
+
+#endif
