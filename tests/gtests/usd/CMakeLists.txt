@@ -69,4 +69,12 @@ BLENDER_SRC_GTEST_EX(
   EXTRA_LIBS "${LIB}"
   COMMAND_ARGS --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests")
 
+# When the PXR_PLUGINPATH_NAME environment variable is defined, the USD library uses it to find its JSON files.
+# This allows the unit tests to run without having to 'make install' Blender.
+get_property(_usd_TEST_ENV
+  TEST usd_test
+  PROPERTY ENVIRONMENT)
+set_tests_properties(usd_test PROPERTIES ENVIRONMENT "${_usd_TEST_ENV};PXR_PLUGINPATH_NAME=${LIBDIR}/usd/lib/usd")
+unset(_usd_TEST_ENV)
+
 setup_liblinks(usd_test)
