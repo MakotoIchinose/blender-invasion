@@ -1587,6 +1587,9 @@ void blo_filedata_free(FileData *fd)
     if (fd->libmap && !(fd->flags & FD_FLAGS_NOT_MY_LIBMAP)) {
       oldnewmap_free(fd->libmap);
     }
+    if (fd->libmap_undo) {
+      oldnewmap_free(fd->libmap_undo);
+    }
     if (fd->bheadmap) {
       MEM_freeN(fd->bheadmap);
     }
@@ -1802,6 +1805,13 @@ static void *newpackedadr(FileData *fd, const void *adr)
 /* only lib data */
 static void *newlibadr(FileData *fd, const void *lib, const void *adr)
 {
+  if (fd->memfile != NULL && fd->libmap_undo != NULL) {
+    void *ret = oldnewmap_liblookup(fd->libmap, adr, lib);
+    if (ret == NULL) {
+      ret = oldnewmap_liblookup(fd->libmap_undo, adr, lib);
+    }
+    return ret;
+  }
   return oldnewmap_liblookup(fd->libmap, adr, lib);
 }
 
@@ -6295,6 +6305,7 @@ static void lib_link_collection_data(FileData *fd, Library *lib, Collection *col
 {
   for (CollectionObject *cob = collection->gobject.first, *cob_next = NULL; cob; cob = cob_next) {
     cob_next = cob->next;
+    Object *ob_prev = cob->ob;
     cob->ob = newlibadr_us(fd, lib, cob->ob);
 
     if (cob->ob == NULL) {
