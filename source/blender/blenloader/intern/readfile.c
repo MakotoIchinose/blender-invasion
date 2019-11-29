@@ -9299,14 +9299,15 @@ static BHead *read_libblock(FileData *fd,
 
       if (fd->are_memchunks_identical && !ELEM(idcode, ID_WM, ID_SCR, ID_WS)) {
         BLI_assert(fd->memfile);
-        Main *old_main = fd->old_mainlist->first;
-        ID *old_id = NULL;
-        if ((old_id = BKE_libblock_find_name(old_main, idcode, id->name + 2)) != NULL) {
-          /* that would only match for basic undo step, redo and other history navigation cannot
-           * guarantee this at all. */
-          // BLI_assert(old_id == id_bhead->old);
+
+        /* Find the 'current' existing ID we want to reuse instead of the one we would read from
+         * the undo memfile. */
+        Main *old_bmain = fd->old_mainlist->first;
+        ListBase *old_lb = which_libbase(old_bmain, idcode);
+        BLI_assert(old_lb != NULL);
+        if (BLI_findindex(old_lb, id_bhead->old) != -1) {
           MEM_freeN(id);
-          id = old_id;
+          id = (ID *)id_bhead->old;
 
           id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
           id->lib = main->curlib;
@@ -9317,9 +9318,8 @@ static BHead *read_libblock(FileData *fd,
 
           oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
-          ListBase *old_lb = which_libbase(old_main, idcode);
           ListBase *new_lb = which_libbase(main, idcode);
-          BLI_remlink_safe(old_lb, id);
+          BLI_remlink(old_lb, id);
           BLI_addtail(new_lb, id);
 
           if (r_id) {
