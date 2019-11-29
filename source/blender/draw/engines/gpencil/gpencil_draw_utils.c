@@ -975,7 +975,8 @@ static DRWShadingGroup *gpencil_shgroup_point_create(GPENCIL_e_data *e_data,
 float gpencil_get_vertex_paint_factor(View3D *v3d)
 {
   if (v3d) {
-    float vpaint_mix = (v3d->shading.color_type == V3D_SHADING_MATERIAL_COLOR) ?
+    float vpaint_mix = ((v3d->shading.type < OB_MATERIAL) &&
+                        (v3d->shading.color_type == V3D_SHADING_MATERIAL_COLOR)) ?
                            0.0f :
                            v3d->overlay.gpencil_vertex_paint_opacity;
     return vpaint_mix;
