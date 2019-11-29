@@ -1048,11 +1048,12 @@ setup_liblinks(blender)
 # -----------------------------------------------------------------------------
 # USD registry.
 # USD requires a set of JSON files that define the standard schemas. These
-# files are required at runtime.
+# files are required at runtime, and will be installed into 'lib/usd' next
+# to the Blender executable.
 if (WITH_USD)
   install(DIRECTORY
     ${LIBDIR}/usd/lib/usd
-    DESTINATION "."
+    DESTINATION "lib"
   )
 endif()
 
