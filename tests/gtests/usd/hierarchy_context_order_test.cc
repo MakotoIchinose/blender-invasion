@@ -21,9 +21,7 @@
 #include "testing/testing.h"
 
 extern "C" {
-#include "BLI_math.h"
-#include "DEG_depsgraph.h"
-#include "DNA_object_types.h"
+#include "BLI_utildefines.h"
 }
 
 class HierarchyContextOrderTest : public testing::Test {
