@@ -398,29 +398,7 @@ BlendFileData *BLO_read_from_memfile(Main *oldmain,
 
     /* removed packed data from this trick - it's internal data that needs saves */
 
-    printf("BEFORE readfile:\n");
-    for (Collection *coll = oldmain->collections.first; coll != NULL; coll = coll->id.next) {
-      for (CollectionObject *cob = coll->gobject.first; cob != NULL; cob = cob->next) {
-        printf("\t%s: Collection %s (%p) has object %s\n",
-               __func__,
-               coll->id.name,
-               coll,
-               cob->ob->id.name);
-      }
-    }
-
     bfd = blo_read_file_internal(fd, filename);
-
-    printf("AFTER readfile:\n");
-    for (Collection *coll = bfd->main->collections.first; coll != NULL; coll = coll->id.next) {
-      for (CollectionObject *cob = coll->gobject.first; cob != NULL; cob = cob->next) {
-        printf("\t%s: Collection %s (%p) has object %s\n",
-               __func__,
-               coll->id.name,
-               coll,
-               cob->ob->id.name);
-      }
-    }
 
     /* ensures relinked light caches are not freed */
     blo_end_scene_pointer_map(fd, oldmain);

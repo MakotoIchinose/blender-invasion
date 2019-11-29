@@ -113,20 +113,6 @@ typedef struct FileData {
   struct OldNewMap *datamap;
   struct OldNewMap *globmap;
   struct OldNewMap *libmap;
-  /* We need a different mapping in undo case, when we are re-using some datablocks while getting
-   * new-from-file data for others, after the first step there is no way to tell where is that new
-   * ID from current, unchanged data (because we now have to deal with three different pointers
-   * for that new ID: the original one before any undo [stored in mem .blend file], the one after
-   * the first undo step [which is now used by other IDs from current bmain, that we want to
-   * re-use], and the new one from current undo step).
-   *
-   * `libmap` will only have the `original -> new` pointers, so we need to store the
-   * `from_previous_undostep -> new` pointers in another mapping.
-   *
-   * There is a little risk of collision here,
-   * will have to investigate wthere we can avoid that, or at the very least detect it and swicth
-   * back to a full proper read from memfile then... */
-  struct OldNewMap *libmap_undo;
   struct OldNewMap *imamap;
   struct OldNewMap *movieclipmap;
   struct OldNewMap *scenemap;
