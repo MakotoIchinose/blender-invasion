@@ -461,12 +461,8 @@ static void lanpr_cache_init(void *vedata)
       }
     }
     else if (draw_ctx->scene->lanpr.master_mode == LANPR_MASTER_MODE_DPIX) {
-      if (is_render) {
-        ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
-      }
-      else {
-        ED_lanpr_compute_feature_lines_background(draw_ctx->depsgraph, 1);
-      }
+      /* Don't do threaded intersection calculation. It's pointless in GPU mode anyway. */
+      ED_lanpr_compute_feature_lines_internal(draw_ctx->depsgraph, 1);
     }
   }
 
@@ -532,7 +528,9 @@ static void lanpr_cache_populate(void *vedata, Object *ob)
                                                   pd->atlas_edge_mask,
                                                   ob,
                                                   idx);
-      lanpr_feed_atlas_trigger_preview_obj(vedata, ob, idx);
+      if (idx != pd->begin_index) { /* Which means we are actually able to feed object data */
+        lanpr_feed_atlas_trigger_preview_obj(vedata, ob, idx);
+      }
     }
   }
 }
