@@ -34,7 +34,7 @@ set(INC
   ../../../source/blender/depsgraph
   ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
-  ${OPENEXR_INCLUDE_DIRS}
+  ${TBB_INCLUDE_DIR}
 )
 
 set(LIB
