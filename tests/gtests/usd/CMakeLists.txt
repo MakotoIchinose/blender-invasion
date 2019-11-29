@@ -18,6 +18,12 @@
 # All rights reserved.
 # ***** END GPL LICENSE BLOCK *****
 
+# This suppresses the warning "This file includes at least one deprecated or antiquated header which
+# may be removed without further notice at a future date", which is caused by the USD library
+# including <ext/hash_set>. Nothing we can do about that until they change what
+# they include, so this just suppresses it.
+add_definitions(-D_GLIBCXX_PERMIT_BACKWARD_HASH)
+
 set(INC
   .
   ..
@@ -34,8 +40,11 @@ set(INC
 set(LIB
   bf_blenloader_test
   bf_blenloader
-  bf_intern_opencolorio # Should not be needed but gives windows linker errors if the ocio libs are linked before this
-  bf_gpu # Should not be needed but gives windows linker errors if the ocio libs are linked before this
+
+  # Should not be needed but gives windows linker errors if the ocio libs are linked before this:
+  bf_intern_opencolorio
+  bf_gpu
+
   bf_usd
 )
 
@@ -47,6 +56,7 @@ get_property(BLENDER_SORTED_LIBS GLOBAL PROPERTY BLENDER_SORTED_LIBS_PROP)
 set(SRC
   abstract_hierarchy_iterator_test.cc
   hierarchy_context_order_test.cc
+  usd_stage_creation_test.cc
 )
 
 if(WITH_BUILDINFO)
