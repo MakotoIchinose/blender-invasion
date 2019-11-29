@@ -9204,7 +9204,6 @@ static BHead *read_libblock(FileData *fd,
   /* this routine reads a libblock and its direct data. Use link functions to connect it all
    */
   ID *id;
-  ListBase *lb;
   const char *allocname;
   bool wrong_id = false;
 
@@ -9278,10 +9277,22 @@ static BHead *read_libblock(FileData *fd,
                id ? id->name : "NONE",
                fd->are_memchunks_identical);
 
+  Main *old_bmain = fd->old_mainlist != NULL ? fd->old_mainlist->first : NULL;
+  ID *old_id = NULL;
+  bool do_swap_id_with_old_pointer = false;
+
   BHead *id_bhead = bhead;
 
   if (id) {
     const short idcode = GS(id->name);
+    ListBase *new_lb = which_libbase(main, idcode);
+
+    if (new_lb == NULL) {
+      /* unknown ID type */
+      printf("%s: unknown id code '%c%c'\n", __func__, (idcode & 0xff), (idcode >> 8));
+      MEM_freeN(id);
+      id = NULL;
+    }
 
     if (id_bhead->code != ID_LINK_PLACEHOLDER) {
       /* need a name for the mallocN, just for debugging and sane prints on leaks */
@@ -9297,56 +9308,77 @@ static BHead *read_libblock(FileData *fd,
                    id->name,
                    fd->are_memchunks_identical);
 
-      if (fd->are_memchunks_identical && !ELEM(idcode, ID_WM, ID_SCR, ID_WS)) {
-        BLI_assert(fd->memfile);
-
+      if (fd->memfile != NULL && !ELEM(idcode, ID_WM, ID_SCR, ID_WS)) {
         /* Find the 'current' existing ID we want to reuse instead of the one we would read from
          * the undo memfile. */
-        Main *old_bmain = fd->old_mainlist->first;
         ListBase *old_lb = which_libbase(old_bmain, idcode);
         BLI_assert(old_lb != NULL);
         if (BLI_findindex(old_lb, id_bhead->old) != -1) {
-          MEM_freeN(id);
-          id = (ID *)id_bhead->old;
+          old_id = (ID *)id_bhead->old;
+        }
 
-          id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
-          id->lib = main->curlib;
-          id->us = ID_FAKE_USERS(id);
-          id->icon_id = 0;
-          id->newid = NULL; /* Needed because .blend may have been saved with crap value here... */
-          id->orig_id = NULL;
+        if (old_id != NULL) {
+          /* If identical, we can simply re-use existing memory, MEM_freeN the read ID (as we did
+           * not do any direct link, nothing else has been linked to it yet), and move old id from
+           * old bmain to new bmain. */
+          if (fd->are_memchunks_identical) {
+            MEM_freeN(id);
+            id = (ID *)id_bhead->old;
 
+            id->tag = tag | LIB_TAG_NEED_LINK | LIB_TAG_NEW;
+            id->lib = main->curlib;
+            id->us = ID_FAKE_USERS(id);
+            id->icon_id = 0;
+            id->newid =
+                NULL; /* Needed because .blend may have been saved with crap value here... */
+            id->orig_id = NULL;
+
+            oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
+
+            BLI_remlink(old_lb, id);
+            BLI_addtail(new_lb, id);
+
+            if (r_id) {
+              *r_id = id;
+            }
+
+            oldnewmap_free_unused(fd->datamap);
+            oldnewmap_clear(fd->datamap);
+
+            return bhead;
+          }
+          /* ID are not identical, we need to do proper full read, and once everything is done to
+           * swap content of new id and old id, so that we can keep using old id pointer
+           * everywhere, but with updated content from read file. */
+          else {
+            oldnewmap_insert(fd->libmap, id_bhead->old, old_id, id_bhead->code);
+
+            BLI_remlink(old_lb, old_id);
+            BLI_addtail(new_lb, old_id);
+            BLI_addtail(old_lb, id);
+
+            do_swap_id_with_old_pointer = true;
+          }
+        }
+        /* We did not find a matching ID pointer in current bmain, no choice but to do full
+         * reading... In theory this should only happen for created/deleted IDs? */
+        else {
           oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
-          ListBase *new_lb = which_libbase(main, idcode);
-          BLI_remlink(old_lb, id);
           BLI_addtail(new_lb, id);
-
-          if (r_id) {
-            *r_id = id;
-          }
-
-          oldnewmap_free_unused(fd->datamap);
-          oldnewmap_clear(fd->datamap);
-
-          return bhead;
         }
       }
-    }
+      else {
+        oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
-    /* do after read_struct, for dna reconstruct */
-    lb = which_libbase(main, idcode);
-    if (lb) {
+        BLI_addtail(new_lb, id);
+      }
+    }
+    else {
       /* for ID_LINK_PLACEHOLDER check */
       oldnewmap_insert(fd->libmap, id_bhead->old, id, id_bhead->code);
 
-      BLI_addtail(lb, id);
-    }
-    else {
-      /* unknown ID type */
-      printf("%s: unknown id code '%c%c'\n", __func__, (idcode & 0xff), (idcode >> 8));
-      MEM_freeN(id);
-      id = NULL;
+      BLI_addtail(new_lb, id);
     }
   }
 
@@ -9514,7 +9546,20 @@ static BHead *read_libblock(FileData *fd,
   oldnewmap_clear(fd->datamap);
 
   if (wrong_id) {
-    BKE_id_free(main, id);
+    if (do_swap_id_with_old_pointer) {
+      BKE_id_free(old_bmain, id);
+    }
+    else {
+      BKE_id_free(main, id);
+    }
+  }
+  else if (do_swap_id_with_old_pointer) {
+    /* We need to do the swapping after all sub-data has been properly read, that way old_id now
+     * contains the full up-to-date data from .blend read, and id contains all old 'current' data
+     * that will be freed together with old bmain.
+     * Note that we do not care about internal self-ID pointers remapping here, this wil be take
+     * care of by liblinking process later on in the reading code. */
+    BKE_id_swap(NULL, id, old_id);
   }
 
   return (bhead);
