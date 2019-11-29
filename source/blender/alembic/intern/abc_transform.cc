@@ -132,9 +132,9 @@ Imath::Box3d AbcTransformWriter::bounds()
   return Imath::transform(bounds, m_matrix);
 }
 
-bool AbcTransformWriter::hasAnimation(Object *ob) const
+bool AbcTransformWriter::hasAnimation(Object * /*ob*/) const
 {
-  return !BLI_listbase_is_empty(&ob->constraints) || BKE_animdata_id_is_animated(&ob->id);
+  return true;
 }
 
 /* ************************************************************************** */
