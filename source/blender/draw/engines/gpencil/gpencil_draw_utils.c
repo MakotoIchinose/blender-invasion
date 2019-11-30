@@ -972,13 +972,19 @@ static DRWShadingGroup *gpencil_shgroup_point_create(GPENCIL_e_data *e_data,
 }
 
 /* Get vertex Paint factor */
-float gpencil_get_vertex_paint_factor(View3D *v3d)
+float gpencil_get_vertex_paint_factor(Object *ob, View3D *v3d)
 {
   if (v3d) {
+    /* If Object mode always use Vertex Paint mix. */
+    if ((ob) && (ob->mode == OB_MODE_OBJECT)) {
+      return 1.0f;
+    }
+
     float vpaint_mix = ((v3d->shading.type < OB_MATERIAL) &&
                         (v3d->shading.color_type == V3D_SHADING_MATERIAL_COLOR)) ?
                            0.0f :
                            v3d->overlay.gpencil_vertex_paint_opacity;
+
     return vpaint_mix;
   }
 
@@ -1001,7 +1007,7 @@ static void gpencil_add_fill_vertexdata(GpencilBatchCache *cache,
   View3D *v3d = draw_ctx->v3d;
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
 
-  const float vpaint_mix = gpencil_get_vertex_paint_factor(v3d);
+  const float vpaint_mix = gpencil_get_vertex_paint_factor(ob, v3d);
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
