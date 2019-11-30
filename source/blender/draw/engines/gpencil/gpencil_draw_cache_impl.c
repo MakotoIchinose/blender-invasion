@@ -160,7 +160,7 @@ void gpencil_get_point_geom(GpencilBatchCacheElem *be,
   int totvertex = gps->totpoints;
   float mix_color[4];
 
-  const float vpaint_mix = gpencil_get_vertex_paint_factor(ob, v3d);
+  const float vpaint_mix = gpencil_get_vertex_paint_factor(v3d);
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
@@ -272,7 +272,7 @@ void gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
   Object *ob = draw_ctx->obact;
   bGPdata *gpd = ob ? (bGPdata *)ob->data : NULL;
 
-  const float vpaint_mix = gpencil_get_vertex_paint_factor(ob, v3d);
+  const float vpaint_mix = gpencil_get_vertex_paint_factor(v3d);
   const bool attenuate = (GPENCIL_VERTEX_MODE(gpd) &&
                           GPENCIL_ANY_VERTEX_MASK(ts->gpencil_selectmode_vertex));
 
