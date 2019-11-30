@@ -1405,6 +1405,14 @@ static void rna_def_gpencil_sculpt(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
+  prop = RNA_def_property(srna, "use_scale_thickness", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_SCULPT_SETT_FLAG_SCALE_THICKNESS);
+  RNA_def_property_ui_text(prop,
+                           "Scale Stroke Thickness",
+                           "Scale the stroke thickness when transforming strokes in edit mode");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
   /* custom falloff curve */
   prop = RNA_def_property(srna, "multiframe_falloff_curve", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "cur_falloff");

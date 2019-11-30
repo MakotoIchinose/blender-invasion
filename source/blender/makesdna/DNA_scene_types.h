@@ -1096,6 +1096,8 @@ typedef enum eGP_Sculpt_SettingsFlag {
   GP_SCULPT_SETT_FLAG_FRAME_FALLOFF = (1 << 0),
   /* apply primitive curve */
   GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 1),
+  /* Scale thickness. */
+  GP_SCULPT_SETT_FLAG_SCALE_THICKNESS = (1 << 3),
 } eGP_Sculpt_SettingsFlag;
 
 /* GP_Sculpt_Settings.gpencil_selectmode_sculpt */

@@ -80,7 +80,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
 
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   const bool is_prop_edit_connected = (t->flag & T_PROP_CONNECTED) != 0;
-
+  const bool is_scale_thickness = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_SCALE_THICKNESS);
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
   /* == Grease Pencil Strokes to Transform Data ==
@@ -311,7 +311,7 @@ void createTransGPencil(bContext *C, TransInfo *t)
                   /* for other transform modes (e.g. shrink-fatten), need to additional data
                    * but never for mirror
                    */
-                  if (t->mode != TFM_MIRROR) {
+                  if ((t->mode != TFM_MIRROR) && (is_scale_thickness)) {
                     if (t->mode != TFM_GPENCIL_OPACITY) {
                       td->val = &pt->pressure;
                       td->ival = pt->pressure;
