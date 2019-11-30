@@ -6434,6 +6434,8 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         layout = self.layout
         view = context.space_data
         overlay = view.overlay
+        view = context.space_data
+        shading = view.shading
 
         layout.prop(overlay, "use_gpencil_onion_skin", text="Onion Skin")
 
@@ -6464,9 +6466,17 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
 
-        if context.object.mode in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
-            layout.label(text="Vertex Paint")
-            layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
+        if context.object.mode in {'OBJECT', 'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
+            show_vertex = True
+
+            if shading.type == 'WIREFRAME':
+                show_vertex = False
+            elif shading.type == 'SOLID' and  shading.color_type in  {'MATERIAL', 'OBJECT', 'SINGLE', 'RANDOM'}:
+                show_vertex = False
+
+            if show_vertex is True:
+                layout.label(text="Vertex Paint")
+                layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
