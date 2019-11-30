@@ -4240,10 +4240,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-  }
-
-  {
-    /* Versioning code until next subversion bump goes here. */
 
     /* Init new Grease Pencil Paint tools. */
     {
@@ -4268,7 +4264,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       BKE_paint_toolslots_init_from_main(bmain);
     }
 
-    /* Init default Vertex paint mix factor for Viewport. */
+    /* Init default Grease Pencil Vertex paint mix factor for Viewport. */
     {
       if (!DNA_struct_elem_find(
               fd->filesdna, "View3DOverlay", "float", "gpencil_vertex_paint_opacity")) {
@@ -4285,7 +4281,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Init default Vertex paint layer mix factor. */
+    /* Init default Grease Pencil Vertex paint layer mix factor. */
     {
       if (!DNA_struct_elem_find(fd->filesdna, "bGPDlayer", "float", "vertex_paint_opacity")) {
         for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
@@ -4295,5 +4291,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+  }
+
+  {
+    /* Versioning code until next subversion bump goes here. */
   }
 }
