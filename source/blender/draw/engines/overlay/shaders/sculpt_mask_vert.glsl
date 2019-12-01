@@ -12,7 +12,7 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   float mask = 1.0 - (msk * maskOpacity);
-  finalColor = vec4(mask, mask, mask, 1.0);
+  finalColor = vec4(0.0, 0.0, 0.0, mask);
 
 #ifdef USE_WORLD_CLIP_PLANES
   world_clip_planes_calc_clip_distance(world_pos);
