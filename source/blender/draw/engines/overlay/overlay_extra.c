@@ -1552,10 +1552,21 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
 void OVERLAY_extra_draw(OVERLAY_Data *vedata)
 {
+  OVERLAY_FramebufferList *fbl = vedata->fbl;
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
   OVERLAY_PassList *psl = vedata->psl;
 
   DRW_draw_pass(psl->extra_blend_ps);
+
+  if (pd->antialiasing.enabled) {
+    GPU_framebuffer_bind(fbl->overlay_line_fb);
+  }
+
   DRW_draw_pass(psl->extra_ps[0]);
+
+  if (pd->antialiasing.enabled) {
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
+  }
 }
 
 void OVERLAY_extra_in_front_draw(OVERLAY_Data *vedata)

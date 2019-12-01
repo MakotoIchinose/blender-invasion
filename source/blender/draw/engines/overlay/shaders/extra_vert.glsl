@@ -43,6 +43,8 @@ in vec4 color;
 #define VCLASS_EMPTY_SIZE (1 << 14)
 
 flat out vec4 finalColor;
+flat out vec2 edgeStart;
+noperspective out vec2 edgePos;
 
 void main()
 {
@@ -215,6 +217,9 @@ void main()
   }
 
   gl_Position = point_world_to_ndc(world_pos);
+
+  /* Convert to screen position [0..sizeVp]. */
+  edgePos = edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;
 
 #ifdef USE_WORLD_CLIP_PLANES
   world_clip_planes_calc_clip_distance(world_pos);

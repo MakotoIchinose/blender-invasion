@@ -361,6 +361,7 @@ static void OVERLAY_cache_finish(void *vedata)
         {GPU_ATTACHMENT_TEXTURE(dtxl->depth_in_front), GPU_ATTACHMENT_TEXTURE(dtxl->color)});
   }
 
+  OVERLAY_antialiasing_cache_finish(vedata);
   OVERLAY_armature_cache_finish(vedata);
   OVERLAY_image_cache_finish(vedata);
 }
@@ -458,36 +459,6 @@ static void OVERLAY_draw_scene(void *vedata)
 static void OVERLAY_engine_free(void)
 {
   OVERLAY_shader_free();
-  OVERLAY_antialiasing_free();
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Updates
- * \{ */
-
-static void OVERLAY_view_update(void *vedata)
-{
-  OVERLAY_Data *data = vedata;
-  if (data->stl && data->stl->pd) {
-    OVERLAY_antialiasing_reset(data);
-  }
-}
-
-static void OVERLAY_id_update(void *vedata, ID *id)
-{
-  OVERLAY_Data *data = vedata;
-  if (data->stl && data->stl->pd) {
-    if (GS(id->name) == ID_OB) {
-      DrawData *dd = DRW_drawdata_ensure(
-          id, &draw_engine_overlay_type, sizeof(DrawData), NULL, NULL);
-      if (dd->recalc != 0) {
-        OVERLAY_antialiasing_reset(data);
-        dd->recalc = 0;
-      }
-    }
-  }
 }
 
 /** \} */
@@ -510,8 +481,8 @@ DrawEngineType draw_engine_overlay_type = {
     &OVERLAY_cache_finish,
     NULL,
     &OVERLAY_draw_scene,
-    &OVERLAY_view_update,
-    &OVERLAY_id_update,
+    NULL,
+    NULL,
     NULL,
 };
 

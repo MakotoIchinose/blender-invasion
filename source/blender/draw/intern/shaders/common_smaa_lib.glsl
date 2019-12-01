@@ -319,7 +319,7 @@
 #  define SMAA_THRESHOLD 0.05
 #  define SMAA_MAX_SEARCH_STEPS 32
 #  define SMAA_MAX_SEARCH_STEPS_DIAG 16
-#  define SMAA_CORNER_ROUNDING 50
+#  define SMAA_CORNER_ROUNDING 25
 #endif
 
 //-----------------------------------------------------------------------------

@@ -201,13 +201,22 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 
 void OVERLAY_wireframe_draw(OVERLAY_Data *data)
 {
+  OVERLAY_FramebufferList *fbl = data->fbl;
   OVERLAY_PassList *psl = data->psl;
   OVERLAY_PrivateData *pd = data->stl->pd;
+
+  if (pd->antialiasing.enabled) {
+    GPU_framebuffer_bind(fbl->overlay_line_fb);
+  }
 
   DRW_view_set_active(pd->view_wires);
   DRW_draw_pass(psl->wireframe_ps);
 
   DRW_view_set_active(pd->view_default);
+
+  if (pd->antialiasing.enabled) {
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
+  }
 }
 
 void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *data)

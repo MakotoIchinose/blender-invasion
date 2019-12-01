@@ -62,6 +62,7 @@ extern char datatoc_edit_mesh_analysis_vert_glsl[];
 extern char datatoc_edit_mesh_analysis_frag_glsl[];
 extern char datatoc_edit_particle_strand_vert_glsl[];
 extern char datatoc_edit_particle_point_vert_glsl[];
+extern char datatoc_extra_frag_glsl[];
 extern char datatoc_extra_vert_glsl[];
 extern char datatoc_extra_groundline_vert_glsl[];
 extern char datatoc_extra_loose_point_vert_glsl[];
@@ -118,7 +119,7 @@ extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 typedef struct OVERLAY_Shaders {
-  GPUShader *antialiasing[3];
+  GPUShader *antialiasing;
   GPUShader *armature_dof;
   GPUShader *armature_envelope_outline;
   GPUShader *armature_envelope_solid;
@@ -182,35 +183,23 @@ typedef struct OVERLAY_Shaders {
 
 static struct {
   OVERLAY_Shaders sh_data[GPU_SHADER_CFG_LEN];
-} e_data = {{{{NULL}}}};
+} e_data = {{{NULL}}};
 
-GPUShader *OVERLAY_shader_antialiasing(int step)
+GPUShader *OVERLAY_shader_antialiasing(void)
 {
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
-  if (!sh_data->antialiasing[step]) {
-    char defines[64];
-    BLI_snprintf(defines, sizeof(defines), "#define STEP %d\n", step);
-    sh_data->antialiasing[step] = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){"#define SMAA_INCLUDE_VS 1\n",
-                                 "#define SMAA_INCLUDE_PS 0\n",
-                                 "#define SMAA_PRESET_ULTRA\n",
-                                 "#define SMAA_RT_METRICS (sizeViewport.zwxy)\n",
-                                 datatoc_common_globals_lib_glsl,
-                                 datatoc_common_smaa_lib_glsl,
+  if (!sh_data->antialiasing) {
+    sh_data->antialiasing = GPU_shader_create_from_arrays({
+        .vert = (const char *[]){datatoc_common_globals_lib_glsl,
                                  datatoc_antialiasing_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){"#define SMAA_INCLUDE_VS 0\n",
-                                 "#define SMAA_INCLUDE_PS 1\n",
-                                 "#define SMAA_PRESET_ULTRA\n",
-                                 "#define SMAA_RT_METRICS (sizeViewport.zwxy)\n",
-                                 datatoc_common_globals_lib_glsl,
-                                 datatoc_common_smaa_lib_glsl,
+        .frag = (const char *[]){datatoc_common_globals_lib_glsl,
                                  datatoc_antialiasing_frag_glsl,
                                  NULL},
-        .defs = (const char *[]){defines, "#define SMAA_GLSL_3\n", NULL},
+        .defs = (const char *[]){NULL},
     });
   }
-  return sh_data->antialiasing[step];
+  return sh_data->antialiasing;
 }
 
 GPUShader *OVERLAY_shader_depth_only(void)
@@ -699,7 +688,7 @@ GPUShader *OVERLAY_shader_extra(void)
                                  datatoc_common_view_lib_glsl,
                                  datatoc_extra_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def, NULL},
     });
   }
@@ -718,7 +707,7 @@ GPUShader *OVERLAY_shader_extra_groundline(void)
                                  datatoc_common_view_lib_glsl,
                                  datatoc_extra_groundline_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){datatoc_gpu_shader_flat_color_frag_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def, NULL},
     });
   }
@@ -751,7 +740,7 @@ GPUShader *OVERLAY_shader_extra_wire(bool use_object)
                                  datatoc_common_view_lib_glsl,
                                  datatoc_extra_wire_vert_glsl,
                                  NULL},
-        .frag = (const char *[]){datatoc_extra_wire_frag_glsl, NULL},
+        .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_extra_wire_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg->def,
                                  colorids,
                                  (use_object) ? "#define OBJECT_WIRE \n" : NULL,
@@ -1251,7 +1240,7 @@ GPUShader *OVERLAY_shader_wireframe(void)
                                datatoc_gpu_shader_common_obinfos_lib_glsl,
                                datatoc_wireframe_vert_glsl,
                                NULL},
-      .frag = (const char *[]){datatoc_wireframe_frag_glsl, NULL},
+      .frag = (const char *[]){datatoc_common_view_lib_glsl, datatoc_wireframe_frag_glsl, NULL},
       /* Apple drivers does not support wide wires. Use geometry shader as a workaround. */
 #if USE_GEOM_SHADER_WORKAROUND
       .geom = (const char *[]){sh_cfg->lib,

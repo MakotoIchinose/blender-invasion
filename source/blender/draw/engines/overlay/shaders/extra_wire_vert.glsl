@@ -9,8 +9,7 @@ flat out vec4 finalColor;
 
 vec2 screen_position(vec4 p)
 {
-  vec2 s = p.xy / p.w;
-  return s * sizeViewport.xy * 0.5;
+  return ((p.xy / p.w) * 0.5 + 0.5) * sizeViewport.xy;
 }
 
 void main()
@@ -18,7 +17,7 @@ void main()
   vec3 world_pos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(world_pos);
 
-  stipple_coord = stipple_start = vec2(0.0);
+  stipple_coord = stipple_start = screen_position(gl_Position);
 
 #ifdef OBJECT_WIRE
   /* Extract data packed inside the unused mat4 members. */
@@ -27,10 +26,11 @@ void main()
 
   if (colorid == TH_CAMERA_PATH) {
     finalColor = colorCameraPath;
+    finalColor.a = 0.0; /* No Stipple */
   }
   else {
     finalColor = color;
-    stipple_coord = stipple_start = screen_position(gl_Position);
+    finalColor.a = 1.0; /* Stipple */
   }
 #endif
 

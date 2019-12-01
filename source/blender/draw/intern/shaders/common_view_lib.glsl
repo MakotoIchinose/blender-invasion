@@ -48,6 +48,26 @@ mat4 extract_matrix_packed_data(mat4 mat, out vec4 dataA, out vec4 dataB)
   return mat;
 }
 
+/* Same here, Not the right place but need to be common to all overlay's.
+ * TODO Split to an overlay lib. */
+/* edge_start and edge_pos needs to be in the range [0..sizeViewport]. */
+vec4 pack_line_data(vec2 frag_co, vec2 edge_start, vec2 edge_pos)
+{
+  vec2 edge = edge_start - edge_pos;
+  float len = length(edge);
+  if (len > 0.0) {
+    edge /= len;
+    vec2 perp = vec2(-edge.y, edge.x);
+    float dist = dot(perp, frag_co - edge_start);
+    /* Add 0.1 to diffenrentiate with cleared pixels. */
+    return vec4(perp * 0.5 + 0.5, dist * 0.25 + 0.5 + 0.1, 0.0);
+  }
+  else {
+    /* Default line if the origin is perfectly aligned with a pixel. */
+    return vec4(1.0, 0.0, 0.5 + 0.1, 0.0);
+  }
+}
+
 uniform int resourceChunk;
 
 #ifdef GPU_VERTEX_SHADER

@@ -10,11 +10,16 @@ in float edgeSharpness_g[];
 #ifndef SELECT_EDGES
 out vec3 finalColor;
 flat out float edgeSharpness;
+
+flat out vec2 edgeStart;
+noperspective out vec2 edgePos;
 #endif
 
 void do_vertex(const int i, float coord, vec2 offset)
 {
 #ifndef SELECT_EDGES
+  /* TODO */
+  edgePos = edgeStart = vec2(0);
   edgeSharpness = edgeSharpness_g[i];
   finalColor = finalColor_g[i];
 #endif

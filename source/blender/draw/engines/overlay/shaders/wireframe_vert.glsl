@@ -16,6 +16,10 @@ out vec3 finalColor_g;
 out float edgeSharpness_g;
 
 #else /* USE_GEOM */
+
+flat out vec2 edgeStart;
+noperspective out vec2 edgePos;
+
 out vec3 finalColor;
 flat out float edgeSharpness;
 #  define finalColor_g finalColor
@@ -110,6 +114,11 @@ void main()
 {
   vec3 wpos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(wpos);
+
+#if !(defined(SELECT_EDGES) || defined(USE_GEOM))
+  /* Convert to screen position [0..sizeVp]. */
+  edgePos = edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;
+#endif
 
   edgeSharpness_g = get_edge_sharpness(wd);
 
