@@ -5085,6 +5085,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                           width * 3,
                           channel_height);
           }
+          MEM_freeN(gp_rna_path);
 
           /* Mask Layer. */
           UI_block_emboss_set(block, UI_EMBOSS_NONE);
@@ -5103,6 +5104,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                           width,
                           channel_height);
           }
+          MEM_freeN(gp_rna_path);
 
           /* Layer onion skinning switch. */
           prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
@@ -5120,6 +5122,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
                           width,
                           channel_height);
           }
+          MEM_freeN(gp_rna_path);
         }
 
         /* Only if RNA-Path found. */
