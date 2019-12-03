@@ -25,6 +25,12 @@ from bpy.types import (
     Panel,
 )
 
+from bl_ui.properties_grease_pencil_common import (
+    GreasePencilLayerAdjustmentsPanel,
+    GreasePencilLayerRelationsPanel,
+    GreasePencilLayerDisplayPanel,
+)
+
 #######################################
 # DopeSheet Filtering - Header Buttons
 
@@ -672,9 +678,6 @@ class LayersDopeSheetPanel:
 
 
 class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
-    # bl_space_type = 'DOPESHEET_EDITOR'
-    # bl_region_type = 'UI'
-    # bl_category = "View"
     bl_label = "Layer"
 
     def draw(self, context):
@@ -692,75 +695,23 @@ class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
             row = layout.row(align=True)
             row.prop(gpl, "opacity", text="Opacity", slider=True)
 
-            row = layout.row(align=True)
-            row.prop(gpl, "channel_color")
 
-            row = layout.row(align=True)
-            row.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
-
-
-class DOPESHEET_PT_gpencil_layer_adjustments(LayersDopeSheetPanel, Panel):
+class DOPESHEET_PT_gpencil_layer_adjustments(LayersDopeSheetPanel, GreasePencilLayerAdjustmentsPanel, Panel):
     bl_label = "Adjustments"
     bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
     bl_options = {'DEFAULT_CLOSED'}
 
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        scene = context.scene
 
-        ob = context.object
-        gpd = ob.data
-        gpl = gpd.layers.active
-        layout.active = not gpl.lock
-
-        # Layer options
-        # Offsets - Color Tint
-        layout.enabled = not gpl.lock
-        col = layout.column(align=True)
-        col.prop(gpl, "tint_color")
-        col.prop(gpl, "tint_factor", text="Factor", slider=True)
-
-        # Vertex Paint Opacity
-        col = layout.row(align=True)
-        col.prop(gpl, "vertex_paint_opacity", text="Vertex Paint Opacity")
-
-        # Offsets - Thickness
-        col = layout.row(align=True)
-        col.prop(gpl, "line_change", text="Stroke Thickness")
-
-        col = layout.row(align=True)
-        col.prop(gpl, "pass_index")
-
-        col = layout.row(align=True)
-        col.prop_search(gpl, "viewlayer_render", scene, "view_layers", text="View Layer")
-
-        col = layout.row(align=True)
-        col.prop(gpl, "lock_material")
-
-
-class DOPESHEET_PT_gpencil_layer_relations(LayersDopeSheetPanel, Panel):
+class DOPESHEET_PT_gpencil_layer_relations(LayersDopeSheetPanel, GreasePencilLayerRelationsPanel, Panel):
     bl_label = "Relations"
     bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
     bl_options = {'DEFAULT_CLOSED'}
 
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
 
-        ob = context.object
-        gpd = ob.data
-        gpl = gpd.layers.active
-
-        col = layout.column()
-        col.active = not gpl.lock
-        col.prop(gpl, "parent")
-        col.prop(gpl, "parent_type", text="Type")
-        parent = gpl.parent
-
-        if parent and gpl.parent_type == 'BONE' and parent.type == 'ARMATURE':
-            col.prop_search(gpl, "parent_bone", parent.data, "bones", text="Bone")
+class DOPESHEET_PT_gpencil_layer_display(LayersDopeSheetPanel, GreasePencilLayerDisplayPanel, Panel):
+    bl_label = "Display"
+    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
+    bl_options = {'DEFAULT_CLOSED'}
 
 
 classes = (
@@ -783,6 +734,7 @@ classes = (
     DOPESHEET_PT_gpencil_mode,
     DOPESHEET_PT_gpencil_layer_adjustments,
     DOPESHEET_PT_gpencil_layer_relations,
+    DOPESHEET_PT_gpencil_layer_display,
 )
 
 if __name__ == "__main__":  # only for live edit.
