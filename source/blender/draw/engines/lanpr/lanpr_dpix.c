@@ -199,6 +199,7 @@ int lanpr_feed_atlas_data_obj(void *UNUSED(vedata),
 
   /* Don't overflow the cache. */
   if ((edge_count + begin_index) > (cache_total - 1)) {
+    WM_report(RPT_WARNING, "LANPR: GPU Cache too small for displaying some of the objects.");
     return begin_index;
   }
 
@@ -311,6 +312,7 @@ int lanpr_feed_atlas_data_intersection_cache(void *UNUSED(vedata),
 
   /* Don't overflow the cache. */
   if ((rb->intersection_count + begin_index) > (cache_total - 1)) {
+    WM_report(RPT_WARNING, "LANPR: GPU Cache too small for displaying intersections.");
     return 0;
   }
 
