@@ -276,6 +276,11 @@ typedef enum LANPR_RenderStatus {
   LANPR_RENDER_FINISHED = 3,
 } LANPR_RenderStatus;
 
+typedef enum LANPR_INIT_STATUS {
+  LANPR_INIT_ENGINE = (1 << 0),
+  LANPR_INIT_LOCKS = (1 << 1),
+} LANPR_INIT_STATUS;
+
 typedef struct LANPR_SharedResource {
 
   /* We only allocate once for all */
@@ -308,7 +313,7 @@ typedef struct LANPR_SharedResource {
   void *ved_viewport;
   void *ved_render;
 
-  int init_complete;
+  LANPR_INIT_STATUS init_complete;
 
   /** To bypass or cancel rendering.
    * This status flag should be kept in lanpr_share not render_buffer,

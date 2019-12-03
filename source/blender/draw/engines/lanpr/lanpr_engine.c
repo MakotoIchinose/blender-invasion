@@ -128,10 +128,13 @@ static void lanpr_engine_init(void *ved)
                                 {GPU_ATTACHMENT_TEXTURE(txl->ms_resolve_depth),
                                  GPU_ATTACHMENT_TEXTURE(txl->ms_resolve_color)});
 
-  BLI_spin_init(&lanpr_share.lock_loader);
-  BLI_spin_init(&lanpr_share.lock_render_status);
+  if (!(lanpr_share.init_complete & LANPR_INIT_LOCKS)) {
+    BLI_spin_init(&lanpr_share.lock_loader);
+    BLI_spin_init(&lanpr_share.lock_render_status);
+    lanpr_share.init_complete |= LANPR_INIT_LOCKS;
+  }
 
-  lanpr_share.init_complete = 1;
+  lanpr_share.init_complete |= LANPR_INIT_ENGINE;
 }
 
 void DRW_scene_lanpr_freecache(Scene *sce)

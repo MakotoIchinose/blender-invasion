@@ -2610,6 +2610,12 @@ LANPR_RenderBuffer *ED_lanpr_create_render_buffer(Scene *s)
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
 
+  if (!(lanpr_share.init_complete & LANPR_INIT_LOCKS)) {
+    BLI_spin_init(&lanpr_share.lock_loader);
+    BLI_spin_init(&lanpr_share.lock_render_status);
+    lanpr_share.init_complete |= LANPR_INIT_LOCKS;
+  }
+
   return rb;
 }
 
