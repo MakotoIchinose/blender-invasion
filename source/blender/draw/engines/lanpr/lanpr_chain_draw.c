@@ -134,7 +134,8 @@ void lanpr_chain_generate_draw_command(LANPR_RenderBuffer *rb)
   lengths = MEM_callocN(sizeof(float) * vert_count, "chain lengths");
 
   GPUIndexBufBuilder elb;
-  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES_ADJ, vert_count * 4, vert_count + 1);
+  /* We don't need a dummy vert for the end point. Thus no "+1" here */
+  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES_ADJ, vert_count * 4, vert_count);
 
   for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
 
