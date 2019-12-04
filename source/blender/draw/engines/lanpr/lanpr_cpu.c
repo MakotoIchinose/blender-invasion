@@ -260,9 +260,9 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_r
     }
 
     unit_m4(indentity_mat);
-    copy_m4_m4(win_mat, indentity_mat);
-    /* win_mat needs to be negative */
-    swap_v3_v3(win_mat[0], win_mat[1]);
+
+    const DRWView *default_view = DRW_view_default_get();
+    DRW_view_winmat_get(default_view, win_mat, false);
 
     DRWView *view = DRW_view_create(indentity_mat, win_mat, NULL, NULL, NULL);
     if (is_render) {
