@@ -222,7 +222,7 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_r
   Scene *scene = DEG_get_evaluated_scene(draw_ctx->depsgraph);
   SceneLANPR *lanpr = &scene->lanpr;
   View3D *v3d = draw_ctx->v3d;
-  float indentity_mat[4][4], win_mat[4][4];
+  float identity_mat[4][4], win_mat[4][4];
   static float normal_object_direction[3] = {0, 0, 1};
   float use_background_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   static float camdx, camdy, camzoom;
@@ -259,12 +259,12 @@ void lanpr_software_draw_scene(void *vedata, GPUFrameBuffer *dfb, const int is_r
       pd->output_viewport[3] = texh;
     }
 
-    unit_m4(indentity_mat);
+    unit_m4(identity_mat);
 
     const DRWView *default_view = DRW_view_default_get();
     DRW_view_winmat_get(default_view, win_mat, false);
 
-    DRWView *view = DRW_view_create(indentity_mat, win_mat, NULL, NULL, NULL);
+    DRWView *view = DRW_view_create(identity_mat, win_mat, NULL, NULL, NULL);
     if (is_render) {
       DRW_view_set_active(view);
     }
