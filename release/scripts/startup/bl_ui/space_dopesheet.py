@@ -678,6 +678,9 @@ class LayersDopeSheetPanel:
 
 
 class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
+    # bl_space_type = 'DOPESHEET_EDITOR'
+    # bl_region_type = 'UI'
+    # bl_category = "View"
     bl_label = "Layer"
 
     def draw(self, context):

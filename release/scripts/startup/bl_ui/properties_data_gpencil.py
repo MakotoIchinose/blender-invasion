@@ -158,8 +158,8 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
                 col.separator()
 
                 sub = col.column(align=True)
-                sub.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
                 sub.operator("gpencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
+                sub.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
 
         # Layer main properties
         row = layout.row()

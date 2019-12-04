@@ -664,8 +664,8 @@ class GreasePencilMaterialsPanel:
                 col.separator()
 
                 sub = col.column(align=True)
-                sub.operator("gpencil.color_isolate", icon='LOCKED', text="").affect_visibility = False
                 sub.operator("gpencil.color_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
+                sub.operator("gpencil.color_isolate", icon='LOCKED', text="").affect_visibility = False
 
             if show_full_ui:
                 row = layout.row()
@@ -814,9 +814,6 @@ class GreasePencilSimplifyPanel:
 
 
 class GreasePencilLayerAdjustmentsPanel:
-    bl_label = "Adjustments"
-    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -854,9 +851,6 @@ class GreasePencilLayerAdjustmentsPanel:
 
 
 class GreasePencilLayerRelationsPanel:
-    bl_label = "Relations"
-    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -878,9 +872,6 @@ class GreasePencilLayerRelationsPanel:
 
 
 class GreasePencilLayerDisplayPanel:
-    bl_label = "Display"
-    bl_parent_id = 'DOPESHEET_PT_gpencil_mode'
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
