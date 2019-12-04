@@ -1494,6 +1494,7 @@ typedef struct SpaceConsole {
   /** Multiple consoles are possible, not just python. */
   char language[32];
 
+  /** Selection offset in bytes. */
   int sel_start;
   int sel_end;
 } SpaceConsole;
