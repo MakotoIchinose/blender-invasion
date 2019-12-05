@@ -164,8 +164,13 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_usd_export_draw;
 
-  WM_operator_properties_filesel(
-      ot, 0, FILE_BLENDER, FILE_SAVE, WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY, FILE_SORT_ALPHA);
+  WM_operator_properties_filesel(ot,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_USD,
+                                 FILE_BLENDER,
+                                 FILE_SAVE,
+                                 WM_FILESEL_FILEPATH,
+                                 FILE_DEFAULTDISPLAY,
+                                 FILE_SORT_ALPHA);
 
   RNA_def_boolean(ot->srna,
                   "selected_objects_only",

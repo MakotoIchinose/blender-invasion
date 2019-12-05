@@ -441,7 +441,7 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
-            self.layout.operator("wm.usd_export", text="Universal Scene Description (.usdc, .usda)")
+            self.layout.operator("wm.usd_export", text="Universal Scene Description (.usd, .usdc, .usda)")
 
 
 class TOPBAR_MT_file_external_data(Menu):
