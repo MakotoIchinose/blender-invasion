@@ -173,26 +173,27 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     return;
   }
 
-  /* Set the default value of the attributes to the first-time values. This will make the USD
-   * library deduplicate values that we write on every frame but don't actually change. */
-  pxr::UsdAttribute attr_points = usd_mesh.CreatePointsAttr(pxr::VtValue(usd_mesh_data.points),
-                                                            true);
-  pxr::UsdAttribute attr_face_vertex_counts = usd_mesh.CreateFaceVertexCountsAttr(
-      pxr::VtValue(usd_mesh_data.face_vertex_counts), true);
-  pxr::UsdAttribute attr_face_vertex_indices = usd_mesh.CreateFaceVertexIndicesAttr(
-      pxr::VtValue(usd_mesh_data.face_indices), true);
+  pxr::UsdAttribute attr_points = usd_mesh.CreatePointsAttr();
+  pxr::UsdAttribute attr_face_vertex_counts = usd_mesh.CreateFaceVertexCountsAttr();
+  pxr::UsdAttribute attr_face_vertex_indices = usd_mesh.CreateFaceVertexIndicesAttr();
+
+  usd_value_writer.SetAttribute(attr_points, pxr::VtValue(usd_mesh_data.points), timecode);
+  usd_value_writer.SetAttribute(
+      attr_face_vertex_counts, pxr::VtValue(usd_mesh_data.face_vertex_counts), timecode);
+  usd_value_writer.SetAttribute(
+      attr_face_vertex_indices, pxr::VtValue(usd_mesh_data.face_indices), timecode);
 
   if (!usd_mesh_data.crease_lengths.empty()) {
-    pxr::UsdAttribute attr_crease_lengths = usd_mesh.CreateCreaseLengthsAttr(
-        pxr::VtValue(usd_mesh_data.crease_lengths), true);
-    pxr::UsdAttribute attr_crease_indices = usd_mesh.CreateCreaseIndicesAttr(
-        pxr::VtValue(usd_mesh_data.crease_vertex_indices), true);
-    pxr::UsdAttribute attr_crease_sharpness = usd_mesh.CreateCreaseSharpnessesAttr(
-        pxr::VtValue(usd_mesh_data.crease_sharpnesses), true);
+    pxr::UsdAttribute attr_crease_lengths = usd_mesh.CreateCreaseLengthsAttr();
+    pxr::UsdAttribute attr_crease_indices = usd_mesh.CreateCreaseIndicesAttr();
+    pxr::UsdAttribute attr_crease_sharpness = usd_mesh.CreateCreaseSharpnessesAttr();
 
-    attr_crease_lengths.Set(usd_mesh_data.crease_lengths, timecode);
-    attr_crease_indices.Set(usd_mesh_data.crease_vertex_indices, timecode);
-    attr_crease_sharpness.Set(usd_mesh_data.crease_sharpnesses, timecode);
+    usd_value_writer.SetAttribute(
+        attr_crease_lengths, pxr::VtValue(usd_mesh_data.crease_lengths), timecode);
+    usd_value_writer.SetAttribute(
+        attr_crease_indices, pxr::VtValue(usd_mesh_data.crease_vertex_indices), timecode);
+    usd_value_writer.SetAttribute(
+        attr_crease_sharpness, pxr::VtValue(usd_mesh_data.crease_sharpnesses), timecode);
   }
 
   if (usd_export_context_.export_params.export_uvmaps) {

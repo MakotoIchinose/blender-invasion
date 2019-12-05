@@ -40,7 +40,10 @@ static const pxr::TfToken surface("surface", pxr::TfToken::Immortal);
 };  // namespace usdtokens
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
-    : usd_export_context_(usd_export_context), frame_has_been_written_(false), is_animated_(false)
+    : usd_export_context_(usd_export_context),
+      usd_value_writer(),
+      frame_has_been_written_(false),
+      is_animated_(false)
 {
 }
 
