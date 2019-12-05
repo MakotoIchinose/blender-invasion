@@ -25,6 +25,7 @@
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdShade/material.h>
+#include <pxr/usd/usdUtils/sparseValueWriter.h>
 
 #include <vector>
 
@@ -40,6 +41,7 @@ struct Object;
 class USDAbstractWriter : public AbstractHierarchyWriter {
  protected:
   const USDExporterContext usd_export_context_;
+  pxr::UsdUtilsSparseValueWriter usd_value_writer;
 
   bool frame_has_been_written_;
   bool is_animated_;
