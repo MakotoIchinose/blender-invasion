@@ -29,6 +29,8 @@
 #include "BKE_paint.h"
 #include "BKE_shader_fx.h"
 
+#include "BKE_global.h" /* for G.debug */
+
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
@@ -268,8 +270,18 @@ static void GPENCIL_create_shaders(void)
   }
 }
 
+void GPENCIL_engine_init_new(void *ved)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+}
+
 void GPENCIL_engine_init(void *vedata)
 {
+  if (G.debug_value == 50) {
+    GPENCIL_engine_init_new(vedata);
+    return;
+  }
+
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   /* init storage */
   if (!stl->storage) {
@@ -342,8 +354,17 @@ static void gpencil_check_screen_switches(const DRWContextState *draw_ctx,
   }
 }
 
+void GPENCIL_cache_init_new(void *ved)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+}
+
 void GPENCIL_cache_init(void *vedata)
 {
+  if (G.debug_value == 50) {
+    GPENCIL_cache_init_new(vedata);
+  }
+
   GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   GPENCIL_TextureList *txl = ((GPENCIL_Data *)vedata)->txl;
@@ -676,8 +697,18 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
   }
 }
 
+void GPENCIL_cache_populate_new(void *ved, Object *ob)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+}
+
 void GPENCIL_cache_populate(void *vedata, Object *ob)
 {
+  if (G.debug_value == 50) {
+    GPENCIL_cache_populate_new(vedata, ob);
+    return;
+  }
+
   /* object must be visible */
   if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
     return;
@@ -753,12 +784,21 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
   }
 }
 
+void GPENCIL_cache_finish_new(void *ved)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+}
+
 void GPENCIL_cache_finish(void *vedata)
 {
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   tGPencilObjectCache *cache_ob = NULL;
   Object *ob = NULL;
 
+  if (G.debug_value == 50) {
+    GPENCIL_cache_finish_new(vedata);
+    return;
+  }
   /* create data for instances */
   if (stl->g_data->do_instances) {
     GHash *gh_objects = BLI_ghash_str_new(__func__);
@@ -940,11 +980,21 @@ static void drw_gpencil_select_render(GPENCIL_StorageList *stl, GPENCIL_PassList
   }
 }
 
+void GPENCIL_draw_scene_new(void *ved)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+}
+
 /* draw scene */
 void GPENCIL_draw_scene(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
+
+  if (G.debug_value == 50) {
+    GPENCIL_draw_scene_new(ved);
+    return;
+  }
 
   GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
   GPENCIL_FramebufferList *fbl = ((GPENCIL_Data *)vedata)->fbl;
