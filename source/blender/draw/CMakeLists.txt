@@ -116,6 +116,7 @@ set(SRC
   engines/gpencil/gpencil_engine.c
   engines/gpencil/gpencil_engine.h
   engines/gpencil/gpencil_render.c
+  engines/gpencil/gpencil_shader.c
   engines/gpencil/gpencil_shader_fx.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
@@ -272,6 +273,10 @@ data_to_c_simple(intern/shaders/common_view_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_fxaa_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_smaa_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_fullscreen_vert.glsl SRC)
+
+data_to_c_simple(engines/gpencil/shaders/gpencil_frag.glsl SRC)
+data_to_c_simple(engines/gpencil/shaders/gpencil_vert.glsl SRC)
+data_to_c_simple(engines/gpencil/shaders/gpencil_common_lib.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_vert.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_frag.glsl SRC)

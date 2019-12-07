@@ -106,6 +106,34 @@ typedef struct tGPencilObjectCache {
 
 } tGPencilObjectCache;
 
+/* *********** GPencil  *********** */
+
+typedef struct GPENCIL_tVfx {
+  /** Linklist */
+  struct GPENCIL_tVfx *next;
+  /* List of passes for this fx. */
+  DRWPass *vfx_ps[4];
+} GPENCIL_tVfx;
+
+typedef struct GPENCIL_tLayer {
+  /** Linklist */
+  struct GPENCIL_tLayer *next;
+  /** Geometry pass (draw all strokes). */
+  DRWPass *geom_ps;
+  /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
+  DRWPass *blend_ps;
+} GPENCIL_tLayer;
+
+typedef struct GPENCIL_tObject {
+  struct {
+    GPENCIL_tLayer *first, *last;
+  } layers;
+
+  struct {
+    GPENCIL_tVfx *first, *last;
+  } vfx;
+} GPENCIL_tObject;
+
 /* *********** LISTS *********** */
 typedef struct GPENCIL_shgroup {
   int s_clamp;
@@ -192,6 +220,8 @@ typedef enum eGpencilFramebuffer_Flag {
 } eGpencilFramebuffer_Flag;
 
 typedef struct GPENCIL_StorageList {
+  struct GPENCIL_PrivateData *pd;
+  /* TODO remove all below. */
   struct GPENCIL_Storage *storage;
   struct g_data *g_data;
   struct GPENCIL_shgroup *shgroups;
@@ -290,6 +320,19 @@ typedef struct g_data {
 
 } g_data; /* Transient data */
 
+/* TODO Should replace g_data in the end. */
+typedef struct GPENCIL_PrivateData {
+  /* TODO Put that in a place where they can be persistent. For now, reset ever redraw. */
+  /* GPENCIL_tObject */
+  struct BLI_memblock *gp_object_pool;
+  /* GPENCIL_tLayer */
+  struct BLI_memblock *gp_layer_pool;
+  /* GPENCIL_tVfx */
+  struct BLI_memblock *gp_vfx_pool;
+  /* Current frame */
+  int cfra;
+} GPENCIL_PrivateData;
+
 /* flags for fast drawing support */
 typedef enum eGPsession_Flag {
   GP_DRW_PAINT_HOLD = (1 << 0),
@@ -302,6 +345,9 @@ typedef enum eGPsession_Flag {
 typedef struct GPENCIL_e_data {
   /* textures */
   struct GPUTexture *gpencil_blank_texture;
+
+  /* GPencil Object rendering */
+  struct GPUShader *gpencil_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -331,7 +377,12 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *gpencil_fx_swirl_sh;
   struct GPUShader *gpencil_fx_wave_sh;
 
+  /* Dummy vbos. */
+  struct GPUVertBuf *quad;
+
 } GPENCIL_e_data; /* Engine data */
+
+extern GPENCIL_e_data en_data;
 
 /* GPUBatch Cache Element */
 typedef struct GpencilBatchCacheElem {
@@ -389,7 +440,21 @@ typedef struct GpencilBatchCache {
   int grp_size;
   /** Array of cache elements */
   struct GpencilBatchGroup *grp_cache;
+
+  /* Refactor */
+  GPUVertBuf *vbo;
+  GPUIndexBuf *ibo;
+  GPUBatch *stroke_batch;
+  GPUBatch *fill_batch;
 } GpencilBatchCache;
+
+/* Iterator */
+typedef void (*gpIterCb)(struct bGPDlayer *layer,
+                         struct bGPDframe *frame,
+                         struct bGPDstroke *stroke,
+                         void *thunk);
+
+void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *thunk);
 
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,
@@ -453,6 +518,9 @@ void gpencil_get_edlin_geom(struct GpencilBatchCacheElem *be,
                             float alpha,
                             const bool hide_select);
 
+struct GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra);
+struct GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra);
+
 struct GPUBatch *gpencil_get_buffer_stroke_geom(struct bGPdata *gpd, short thickness);
 struct GPUBatch *gpencil_get_buffer_fill_geom(struct bGPdata *gpd);
 struct GPUBatch *gpencil_get_buffer_point_geom(struct bGPdata *gpd, short thickness);
@@ -482,6 +550,11 @@ struct GpencilBatchGroup *gpencil_group_cache_add(struct GpencilBatchGroup *cach
 /* geometry batch cache functions */
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
+GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_Data *vedata, Object *ob);
+GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_Data *vedata,
+                                            Object *ob,
+                                            struct bGPDlayer *layer);
+
 /* effects */
 void GPENCIL_create_fx_shaders(struct GPENCIL_e_data *e_data);
 void GPENCIL_delete_fx_shaders(struct GPENCIL_e_data *e_data);
@@ -493,6 +566,9 @@ void gpencil_fx_prepare(struct GPENCIL_e_data *e_data,
 void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
                      struct GPENCIL_Data *vedata,
                      struct tGPencilObjectCache *cache_ob);
+
+/* Shaders */
+struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);

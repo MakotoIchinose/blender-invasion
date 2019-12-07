@@ -33,11 +33,40 @@
 #include "BKE_gpencil.h"
 #include "BKE_object.h"
 
+#include "BLI_memblock.h"
+
 #include "gpencil_engine.h"
 
 #include "draw_cache_impl.h"
 
 #include "DEG_depsgraph.h"
+
+/* TODO remove the _new suffix. */
+GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_Data *vedata, Object *UNUSED(ob))
+{
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
+
+  tgp_ob->layers.first = tgp_ob->layers.last = NULL;
+  tgp_ob->vfx.first = tgp_ob->vfx.last = NULL;
+
+  return tgp_ob;
+}
+
+/* TODO remove the _new suffix. */
+GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_Data *vedata,
+                                            Object *UNUSED(ob),
+                                            bGPDlayer *UNUSED(layer))
+{
+  // bGPdata *gpd = (bGPdata *)ob->data;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
+
+  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+  tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
+
+  return tgp_layer;
+}
 
 /* verify if exist a non instanced version of the object */
 static bool gpencil_has_noninstanced_object(Object *ob_instance)
@@ -302,6 +331,12 @@ static void gpencil_batch_cache_clear(GpencilBatchCache *cache)
   MEM_SAFE_FREE(cache->grp_cache);
   cache->grp_size = 0;
   cache->grp_used = 0;
+
+  /* New code */
+  GPU_BATCH_DISCARD_SAFE(cache->fill_batch);
+  GPU_BATCH_DISCARD_SAFE(cache->stroke_batch);
+  GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
+  GPU_INDEXBUF_DISCARD_SAFE(cache->ibo);
 }
 
 /* get cache */

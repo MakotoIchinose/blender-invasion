@@ -31,6 +31,9 @@
 
 #include "BKE_global.h" /* for G.debug */
 
+#include "BLI_link_utils.h"
+#include "BLI_memblock.h"
+
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
@@ -69,7 +72,9 @@ extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 /* *********** STATIC *********** */
-static GPENCIL_e_data e_data = {NULL}; /* Engine data */
+GPENCIL_e_data en_data = {NULL}; /* Engine data */
+/* TODO remove this. This is only to avoid loads of warnings in other files. */
+#define e_data en_data
 
 /* *********** FUNCTIONS *********** */
 
@@ -270,9 +275,22 @@ static void GPENCIL_create_shaders(void)
   }
 }
 
-void GPENCIL_engine_init_new(void *ved)
+static void GPENCIL_engine_init_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
+
+  if (!stl->pd) {
+    stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
+  }
+
+  BLI_assert(stl->pd->gp_object_pool == NULL);
+  BLI_assert(stl->pd->gp_layer_pool == NULL);
+  BLI_assert(stl->pd->gp_vfx_pool == NULL);
+
+  stl->pd->gp_object_pool = BLI_memblock_create(sizeof(GPENCIL_tObject));
+  stl->pd->gp_layer_pool = BLI_memblock_create(sizeof(GPENCIL_tLayer));
+  stl->pd->gp_vfx_pool = BLI_memblock_create(sizeof(GPENCIL_tVfx));
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -311,7 +329,11 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_background_sh);
   DRW_SHADER_FREE_SAFE(e_data.gpencil_paper_sh);
 
+  DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
+
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
+
+  GPU_VERTBUF_DISCARD_SAFE(e_data.quad);
 
   /* effects */
   GPENCIL_delete_fx_shaders(&e_data);
@@ -354,15 +376,20 @@ static void gpencil_check_screen_switches(const DRWContextState *draw_ctx,
   }
 }
 
-void GPENCIL_cache_init_new(void *ved)
+static void GPENCIL_cache_init_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
 }
 
 void GPENCIL_cache_init(void *vedata)
 {
   if (G.debug_value == 50) {
     GPENCIL_cache_init_new(vedata);
+    return;
   }
 
   GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
@@ -697,9 +724,34 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
   }
 }
 
-void GPENCIL_cache_populate_new(void *ved, Object *ob)
+static void GPENCIL_cache_populate_new(void *ved, Object *ob)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+
+  /* object must be visible */
+  if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
+    return;
+  }
+
+  if (ob->type == OB_GPENCIL && ob->data) {
+    bGPdata *gpd = (bGPdata *)ob->data;
+    GPENCIL_tObject *tgp_ob = gpencil_object_cache_add_new(vedata, ob);
+
+    GPUBatch *geom = GPENCIL_batch_cache_strokes(ob, pd->cfra);
+
+    /* TODO Use iterator. */
+    LISTBASE_FOREACH (bGPDlayer *, layer, &gpd->layers) {
+      GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(vedata, ob, layer);
+      BLI_LINKS_APPEND(&tgp_ob->layers, tgp_layer);
+
+      struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
+      DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+      DRW_shgroup_call(grp, geom, ob);
+    }
+
+    /* TODO VFX */
+  }
 }
 
 void GPENCIL_cache_populate(void *vedata, Object *ob)
@@ -784,9 +836,12 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
   }
 }
 
-void GPENCIL_cache_finish_new(void *ved)
+static void GPENCIL_cache_finish_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+
+  /* TODO sort */
+  UNUSED_VARS(vedata);
 }
 
 void GPENCIL_cache_finish(void *vedata)
@@ -980,9 +1035,52 @@ static void drw_gpencil_select_render(GPENCIL_StorageList *stl, GPENCIL_PassList
   }
 }
 
-void GPENCIL_draw_scene_new(void *ved)
+static void GPENCIL_draw_scene_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+
+  /* TODO iter in the right order. */
+  BLI_memblock_iter iter;
+  BLI_memblock_iternew(pd->gp_object_pool, &iter);
+  GPENCIL_tObject *ob;
+
+  while ((ob = (GPENCIL_tObject *)BLI_memblock_iterstep(&iter))) {
+    DRW_stats_group_start("GPencil Object");
+
+    if (ob->vfx.first) {
+      /* TODO vfx */
+      // GPU_framebuffer_bind(fbl->object_fb);
+    }
+
+    for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+      if (layer->blend_ps) {
+        /* TODO blending */
+        // GPU_framebuffer_bind(fbl->layer_fb);
+      }
+
+      DRW_draw_pass(layer->geom_ps);
+
+      if (layer->blend_ps) {
+        /* TODO blending */
+        // GPU_framebuffer_bind(fbl->object_fb);
+        // DRW_draw_pass(layer->blend_ps);
+      }
+    }
+
+    if (ob->vfx.first) {
+      /* TODO vfx */
+    }
+
+    DRW_stats_group_end();
+  }
+
+  /* TODO keep persistent. */
+  BLI_memblock_destroy(pd->gp_object_pool, NULL);
+  BLI_memblock_destroy(pd->gp_layer_pool, NULL);
+  BLI_memblock_destroy(pd->gp_vfx_pool, NULL);
+
+  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 }
 
 /* draw scene */

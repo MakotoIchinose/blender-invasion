@@ -41,6 +41,190 @@
 
 #include "gpencil_engine.h"
 
+/* -------------------------------------------------------------------- */
+/** \name Dummy vbos
+ *
+ * We need a dummy vbo containing the vertex count to draw instances ranges.
+ *
+ * \{ */
+
+static GPUVertBuf *gpencil_dummy_buffer_get(void)
+{
+  if (en_data.quad == NULL) {
+    GPUVertFormat format = {0};
+    GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_U8, 1, GPU_FETCH_INT);
+    en_data.quad = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(en_data.quad, 4);
+  }
+  return en_data.quad;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Formats.
+ * \{ */
+
+/* MUST match the format below. */
+typedef struct gpStrokeVert {
+  int mat;
+  float pos[3];
+  float color[4];
+  float thickness;
+  float uvdata[2];
+} gpStrokeVert;
+
+static GPUVertFormat *gpencil_stroke_format(void)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    /* TODO Try reducing format size. */
+    GPU_vertformat_attr_add(&format, "mat", GPU_COMP_U32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  }
+  return &format;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Buffers.
+ * \{ */
+
+typedef struct gpIterData {
+  gpStrokeVert *verts;
+  GPUIndexBufBuilder ibo;
+  int vert_len;
+  int tri_len;
+  /** Index during vbo filling. */
+  int vidx;
+} gpIterData;
+
+static void gpencil_buffer_add_point(gpStrokeVert *verts, const bGPDspoint *pt)
+{
+  /* TODO other attribs */
+  copy_v3_v3(verts->pos, &pt->x);
+}
+
+static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *stroke)
+{
+  const bGPDspoint *pts = stroke->points;
+  int pts_len = stroke->totpoints;
+  bool is_cyclic = ((stroke->flag & GP_STROKE_CYCLIC) != 0) && (pts_len > 2);
+  int v = 0;
+
+  /* First point for adjacency (not drawn). */
+  int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
+  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx]);
+
+  for (int i = 0; i < pts_len; i++) {
+    gpencil_buffer_add_point(&verts[v++], &pts[i]);
+  }
+  /* Draw line to first point to complete the loop for cyclic strokes. */
+  if (is_cyclic) {
+    gpencil_buffer_add_point(&verts[v++], &pts[0]);
+  }
+  /* Last adjacency point (not drawn). */
+  adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
+  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx]);
+}
+
+static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo,
+                                    int start_idx,
+                                    const bGPDstroke *stroke)
+{
+  /* TODO ibo filling. */
+  UNUSED_VARS(ibo, start_idx, stroke);
+}
+
+static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
+                                   bGPDframe *UNUSED(frame),
+                                   bGPDstroke *stroke,
+                                   void *thunk)
+{
+  gpIterData *iter = (gpIterData *)thunk;
+  bool is_fill = true; /* TODO */
+
+  gpencil_buffer_add_stroke(&iter->verts[iter->vidx], stroke);
+
+  if (is_fill) {
+    gpencil_buffer_add_fill(&iter->ibo, iter->vidx, stroke);
+  }
+
+  /* Consider strokes always cyclic, hence the +1. */
+  iter->vidx += stroke->totpoints + 2 + 1;
+  BLI_assert(iter->vidx <= iter->vert_len);
+}
+
+static void gp_object_verts_count_cb(bGPDlayer *UNUSED(layer),
+                                     bGPDframe *UNUSED(frame),
+                                     bGPDstroke *stroke,
+                                     void *thunk)
+{
+  gpIterData *iter = (gpIterData *)thunk;
+  /* Consider strokes always cyclic, hence the +1. */
+  iter->vert_len += stroke->totpoints + 2 + 1;
+  iter->tri_len += stroke->totpoints - 1;
+}
+
+static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
+{
+  if (cache->vbo == NULL) {
+    /* Should be discarded together. */
+    BLI_assert(cache->vbo == NULL && cache->ibo == NULL);
+    BLI_assert(cache->stroke_batch == NULL && cache->stroke_batch == NULL);
+
+    /* First count how many vertices and triangles are needed for the whole object. */
+    gpIterData iter = {
+        .verts = NULL,
+        .ibo = {0},
+        .vert_len = 0,
+        .tri_len = 0,
+        .vidx = 0,
+    };
+    gpencil_object_visible_stroke_iter(ob, gp_object_verts_count_cb, &iter);
+
+    /* Create VBO. */
+    GPUVertFormat *format = gpencil_stroke_format();
+    cache->vbo = GPU_vertbuf_create_with_format(format);
+    GPU_vertbuf_data_alloc(cache->vbo, iter.vert_len);
+    iter.verts = (gpStrokeVert *)cache->vbo->data;
+    /* Create IBO. */
+    GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
+
+    /* Fill buffers with data. */
+    gpencil_object_visible_stroke_iter(ob, gpencil_stroke_iter_cb, &iter);
+
+    /* Finish the IBO. */
+    cache->ibo = GPU_indexbuf_build(&iter.ibo);
+
+    /* Create the batches */
+    cache->fill_batch = GPU_batch_create(GPU_PRIM_TRIS, cache->vbo, cache->ibo);
+    cache->stroke_batch = GPU_batch_create(GPU_PRIM_LINE_STRIP, cache->vbo, NULL);
+  }
+}
+
+GPUBatch *GPENCIL_batch_cache_strokes(Object *ob, int cfra)
+{
+  GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
+  gpencil_batches_ensure(ob, cache);
+
+  return cache->stroke_batch;
+}
+
+GPUBatch *GPENCIL_batch_cache_fills(Object *ob, int cfra)
+{
+  GpencilBatchCache *cache = gpencil_batch_cache_get(ob, cfra);
+  gpencil_batches_ensure(ob, cache);
+
+  return cache->fill_batch;
+}
+
+/* ----------- End of new code ----------- */
+
 /* Helper to add stroke point to vbo */
 static void gpencil_set_stroke_point(GPUVertBuf *vbo,
                                      const bGPDspoint *pt,

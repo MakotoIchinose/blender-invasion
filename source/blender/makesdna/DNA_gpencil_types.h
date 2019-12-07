@@ -494,7 +494,7 @@ typedef struct bGPdata {
   struct AnimData *adt;
 
   /* Grease-Pencil data */
-  /** BGPDlayers. */
+  /** bGPDlayer. */
   ListBase layers;
   /** Settings for this data-block. */
   int flag;

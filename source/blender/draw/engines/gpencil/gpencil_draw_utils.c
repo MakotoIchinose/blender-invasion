@@ -50,6 +50,126 @@
 
 #include "UI_resources.h"
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Iterators
+ *
+ * Iterate over all visible stroke of all visible layers inside a gpObject.
+ * Also take into account onion skining.
+ *
+ * \{ */
+
+typedef void (*gpIterCb)(bGPDlayer *layer, bGPDframe *frame, bGPDstroke *stroke, void *thunk);
+
+void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *thunk)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+  const bool main_onion = false; /* TODO */  // stl->storage->is_main_onion;
+  const bool playing = false; /* TODO */     // stl->storage->is_playing;
+  const bool overlay = false; /* TODO */     // stl->storage->is_main_overlay;
+  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
+                        main_onion && !playing && gpencil_onion_active(gpd);
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+
+  /* Onion skinning. */
+  const int step = gpd->gstep;
+  const int mode = gpd->onion_mode;
+  const short onion_keytype = gpd->onion_keytype;
+
+  int idx_eval = 0;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    bGPDframe *init_gpf = NULL;
+    const bool is_onion = ((do_onion) && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
+    if (gpl->flag & GP_LAYER_HIDE) {
+      idx_eval++;
+      continue;
+    }
+
+    /* Relative onion mode needs to find the frame range before. */
+    int frame_from = -INT_MAX;
+    int frame_to = INT_MAX;
+    if ((is_onion) && (mode == GP_ONION_MODE_RELATIVE)) {
+      /* 1) Found first Frame. */
+      int idx = 0;
+      if (gpl->actframe) {
+        for (bGPDframe *gf = gpl->actframe->prev; gf; gf = gf->prev) {
+          idx++;
+          frame_from = gf->framenum;
+          if (idx >= step) {
+            break;
+          }
+        }
+        /* 2) Found last Frame. */
+        idx = 0;
+        for (bGPDframe *gf = gpl->actframe->next; gf; gf = gf->next) {
+          idx++;
+          frame_to = gf->framenum;
+          if (idx >= gpd->gstep_next) {
+            break;
+          }
+        }
+      }
+    }
+
+    /* If multiedit or onion skin need to count all frames of the layer. */
+    if ((is_multiedit) || (is_onion)) {
+      init_gpf = gpl->frames.first;
+    }
+    else {
+      init_gpf = &ob->runtime.gpencil_evaluated_frames[idx_eval];
+    }
+
+    if (init_gpf == NULL) {
+      continue;
+    }
+
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        if (!is_onion) {
+          if ((!is_multiedit) ||
+              ((is_multiedit) && ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)))) {
+            stroke_cb(gpl, gpf, gps, thunk);
+          }
+        }
+        else {
+          bool select = ((is_multiedit) &&
+                         ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)));
+
+          if (!select) {
+            bool is_wrong_keytype = (onion_keytype > -1) && (gpf->key_type != onion_keytype);
+            bool is_in_range;
+            if (mode == GP_ONION_MODE_ABSOLUTE) {
+              is_in_range = gpl->actframe && abs(gpl->actframe->framenum - gpf->framenum) <= step;
+            }
+            else if (mode == GP_ONION_MODE_RELATIVE) {
+              is_in_range = (gpf->framenum >= frame_from) && (gpf->framenum <= frame_to);
+            }
+            else /* GP_ONION_MODE_SELECTED */ {
+              is_in_range = (gpf->flag & GP_FRAME_SELECT) != 0;
+            }
+
+            if (is_wrong_keytype || !is_in_range) {
+              continue;
+            }
+          }
+          stroke_cb(gpl, gpf, gps, thunk);
+        }
+      }
+      /* If not multiframe nor Onion skin, don't need follow counting. */
+      if ((!is_multiedit) && (!is_onion)) {
+        break;
+      }
+    }
+    idx_eval++;
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+
 /* fill type to communicate to shader */
 #define SOLID 0
 #define GRADIENT 1
