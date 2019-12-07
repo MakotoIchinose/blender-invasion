@@ -99,45 +99,49 @@ typedef struct gpIterData {
   GPUIndexBufBuilder ibo;
   int vert_len;
   int tri_len;
-  /** Index during vbo filling. */
-  int vidx;
 } gpIterData;
 
-static void gpencil_buffer_add_point(gpStrokeVert *verts, const bGPDspoint *pt)
+static int gpencil_stroke_is_cyclic(const bGPDstroke *stroke)
+{
+  return ((stroke->flag & GP_STROKE_CYCLIC) != 0) && (stroke->totpoints > 2);
+}
+
+static void gpencil_buffer_add_point(gpStrokeVert *verts, const bGPDspoint *pt, bool is_endpoint)
 {
   /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
+  /* Tag endpoint material to -1 so they get discarded by vertex shader. */
+  verts->mat = (is_endpoint) ? -1 : 0;
 }
 
 static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *stroke)
 {
   const bGPDspoint *pts = stroke->points;
   int pts_len = stroke->totpoints;
-  bool is_cyclic = ((stroke->flag & GP_STROKE_CYCLIC) != 0) && (pts_len > 2);
-  int v = 0;
+  bool is_cyclic = gpencil_stroke_is_cyclic(stroke);
+  int v = stroke->runtime.stroke_start;
 
   /* First point for adjacency (not drawn). */
   int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
-  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx]);
+  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx], true);
 
   for (int i = 0; i < pts_len; i++) {
-    gpencil_buffer_add_point(&verts[v++], &pts[i]);
+    gpencil_buffer_add_point(&verts[v++], &pts[i], false);
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
   if (is_cyclic) {
-    gpencil_buffer_add_point(&verts[v++], &pts[0]);
+    gpencil_buffer_add_point(&verts[v++], &pts[0], false);
   }
   /* Last adjacency point (not drawn). */
   adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
-  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx]);
+  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx], true);
 }
 
-static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo,
-                                    int start_idx,
-                                    const bGPDstroke *stroke)
+static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *stroke)
 {
+  int v = stroke->runtime.fill_start;
   /* TODO ibo filling. */
-  UNUSED_VARS(ibo, start_idx, stroke);
+  UNUSED_VARS(v, ibo);
 }
 
 static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
@@ -146,17 +150,11 @@ static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
                                    void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
-  bool is_fill = true; /* TODO */
+  gpencil_buffer_add_stroke(iter->verts, stroke);
 
-  gpencil_buffer_add_stroke(&iter->verts[iter->vidx], stroke);
-
-  if (is_fill) {
-    gpencil_buffer_add_fill(&iter->ibo, iter->vidx, stroke);
+  if (true) { /* TODO */
+    gpencil_buffer_add_fill(&iter->ibo, stroke);
   }
-
-  /* Consider strokes always cyclic, hence the +1. */
-  iter->vidx += stroke->totpoints + 2 + 1;
-  BLI_assert(iter->vidx <= iter->vert_len);
 }
 
 static void gp_object_verts_count_cb(bGPDlayer *UNUSED(layer),
@@ -165,13 +163,18 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(layer),
                                      void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
-  /* Consider strokes always cyclic, hence the +1. */
-  iter->vert_len += stroke->totpoints + 2 + 1;
+
+  /* Store first index offset */
+  stroke->runtime.stroke_start = iter->vert_len;
+  stroke->runtime.fill_start = iter->tri_len;
+  iter->vert_len += stroke->totpoints + 2 + gpencil_stroke_is_cyclic(stroke);
   iter->tri_len += stroke->totpoints - 1;
 }
 
 static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
 {
+  bGPdata *gpd = (bGPdata *)ob->data;
+
   if (cache->vbo == NULL) {
     /* Should be discarded together. */
     BLI_assert(cache->vbo == NULL && cache->ibo == NULL);
@@ -183,9 +186,8 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
         .ibo = {0},
         .vert_len = 0,
         .tri_len = 0,
-        .vidx = 0,
     };
-    gpencil_object_visible_stroke_iter(ob, gp_object_verts_count_cb, &iter);
+    gpencil_object_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter);
 
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
@@ -196,7 +198,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
 
     /* Fill buffers with data. */
-    gpencil_object_visible_stroke_iter(ob, gpencil_stroke_iter_cb, &iter);
+    gpencil_object_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter);
 
     /* Finish the IBO. */
     cache->ibo = GPU_indexbuf_build(&iter.ibo);
@@ -204,6 +206,9 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     /* Create the batches */
     cache->fill_batch = GPU_batch_create(GPU_PRIM_TRIS, cache->vbo, cache->ibo);
     cache->stroke_batch = GPU_batch_create(GPU_PRIM_LINE_STRIP, cache->vbo, NULL);
+
+    gpd->flag &= ~GP_DATA_CACHE_IS_DIRTY;
+    cache->is_dirty = false;
   }
 }
 

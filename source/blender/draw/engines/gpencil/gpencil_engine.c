@@ -724,6 +724,42 @@ static void gpencil_add_draw_data(void *vedata, Object *ob)
   }
 }
 
+typedef struct gpIterPopulateData {
+  Object *ob;
+  GPENCIL_tObject *tgp_ob;
+  GPENCIL_PrivateData *pd;
+  DRWShadingGroup *grp;
+} gpIterPopulateData;
+
+static void gp_layer_cache_populate(bGPDlayer *layer,
+                                    bGPDframe *UNUSED(frame),
+                                    bGPDstroke *UNUSED(stroke),
+                                    void *thunk)
+{
+  gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
+
+  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, layer);
+  BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
+
+  struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
+  iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+}
+
+static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
+                                     bGPDframe *UNUSED(frame),
+                                     bGPDstroke *stroke,
+                                     void *thunk)
+{
+  gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
+
+  GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
+  /* Don't skip start adjacent vert. */
+  int vfirst = stroke->runtime.stroke_start;
+  /* Include "potential" cyclic vertex and start adj vertex (see shader). */
+  int vcount = stroke->totpoints + 1 + 1;
+  DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
+}
+
 static void GPENCIL_cache_populate_new(void *ved, Object *ob)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -735,20 +771,15 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
   }
 
   if (ob->type == OB_GPENCIL && ob->data) {
-    bGPdata *gpd = (bGPdata *)ob->data;
-    GPENCIL_tObject *tgp_ob = gpencil_object_cache_add_new(vedata, ob);
+    GPENCIL_tObject *tgp_ob = gpencil_object_cache_add_new(pd, ob);
 
-    GPUBatch *geom = GPENCIL_batch_cache_strokes(ob, pd->cfra);
-
-    /* TODO Use iterator. */
-    LISTBASE_FOREACH (bGPDlayer *, layer, &gpd->layers) {
-      GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(vedata, ob, layer);
-      BLI_LINKS_APPEND(&tgp_ob->layers, tgp_layer);
-
-      struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
-      DRW_shgroup_call(grp, geom, ob);
-    }
+    gpIterPopulateData iter = {
+        .ob = ob,
+        .pd = pd,
+        .tgp_ob = tgp_ob,
+    };
+    gpencil_object_visible_stroke_iter(
+        ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
 
     /* TODO VFX */
   }

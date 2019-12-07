@@ -60,9 +60,10 @@
  *
  * \{ */
 
-typedef void (*gpIterCb)(bGPDlayer *layer, bGPDframe *frame, bGPDstroke *stroke, void *thunk);
-
-void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *thunk)
+void gpencil_object_visible_stroke_iter(Object *ob,
+                                        gpIterCb layer_cb,
+                                        gpIterCb stroke_cb,
+                                        void *thunk)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   const bool main_onion = false; /* TODO */  // stl->storage->is_main_onion;
@@ -81,7 +82,7 @@ void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *th
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *init_gpf = NULL;
-    const bool is_onion = ((do_onion) && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
+    const bool is_onion = (do_onion && (gpl->onion_flag & GP_LAYER_ONIONSKIN));
     if (gpl->flag & GP_LAYER_HIDE) {
       idx_eval++;
       continue;
@@ -90,7 +91,7 @@ void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *th
     /* Relative onion mode needs to find the frame range before. */
     int frame_from = -INT_MAX;
     int frame_to = INT_MAX;
-    if ((is_onion) && (mode == GP_ONION_MODE_RELATIVE)) {
+    if (is_onion && (mode == GP_ONION_MODE_RELATIVE)) {
       /* 1) Found first Frame. */
       int idx = 0;
       if (gpl->actframe) {
@@ -114,7 +115,7 @@ void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *th
     }
 
     /* If multiedit or onion skin need to count all frames of the layer. */
-    if ((is_multiedit) || (is_onion)) {
+    if (is_multiedit || is_onion) {
       init_gpf = gpl->frames.first;
     }
     else {
@@ -125,16 +126,20 @@ void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *th
       continue;
     }
 
+    if (layer_cb) {
+      layer_cb(gpl, NULL, NULL, thunk);
+    }
+
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (!is_onion) {
           if ((!is_multiedit) ||
-              ((is_multiedit) && ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)))) {
+              (is_multiedit && ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)))) {
             stroke_cb(gpl, gpf, gps, thunk);
           }
         }
         else {
-          bool select = ((is_multiedit) &&
+          bool select = (is_multiedit &&
                          ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)));
 
           if (!select) {

@@ -42,9 +42,8 @@
 #include "DEG_depsgraph.h"
 
 /* TODO remove the _new suffix. */
-GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_Data *vedata, Object *UNUSED(ob))
+GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *UNUSED(ob))
 {
-  GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
 
   tgp_ob->layers.first = tgp_ob->layers.last = NULL;
@@ -54,12 +53,11 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_Data *vedata, Object *UNUS
 }
 
 /* TODO remove the _new suffix. */
-GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_Data *vedata,
+GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
                                             Object *UNUSED(ob),
                                             bGPDlayer *UNUSED(layer))
 {
   // bGPdata *gpd = (bGPdata *)ob->data;
-  GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
@@ -269,9 +267,12 @@ static bool gpencil_batch_cache_valid(GpencilBatchCache *cache, bGPdata *gpd, in
     valid = false;
   }
   else if (cache->is_editmode) {
-    valid = false;
+    /* XXX FIXME This is bad as it means we cannot call gpencil_batch_cache_get twice in a row.
+     * Disabling for now. Edit: seems to work without it... */
+    // valid = false;
   }
   else if (cache->is_dirty) {
+    /* TODO, maybe get rid of the other dirty flags. */
     valid = false;
   }
 

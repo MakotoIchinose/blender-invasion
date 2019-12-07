@@ -449,12 +449,16 @@ typedef struct GpencilBatchCache {
 } GpencilBatchCache;
 
 /* Iterator */
+/* frame & stroke are NULL if it is a layer callback. */
 typedef void (*gpIterCb)(struct bGPDlayer *layer,
                          struct bGPDframe *frame,
                          struct bGPDstroke *stroke,
                          void *thunk);
 
-void gpencil_object_visible_stroke_iter(Object *ob, gpIterCb stroke_cb, void *thunk);
+void gpencil_object_visible_stroke_iter(Object *ob,
+                                        gpIterCb layer_cb,
+                                        gpIterCb stroke_cb,
+                                        void *thunk);
 
 /* general drawing functions */
 struct DRWShadingGroup *gpencil_shgroup_stroke_create(struct GPENCIL_e_data *e_data,
@@ -550,8 +554,8 @@ struct GpencilBatchGroup *gpencil_group_cache_add(struct GpencilBatchGroup *cach
 /* geometry batch cache functions */
 struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
-GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_Data *vedata, Object *ob);
-GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_Data *vedata,
+GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *ob);
+GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
                                             Object *ob,
                                             struct bGPDlayer *layer);
 
