@@ -3613,7 +3613,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
         int pix = ((row * img_x) + col);
         BKE_gpencil_get_pixel(ibuf, pix, color);
         pt = &gps->points[col];
-        pt->pressure = 1.2f; /* expand the point to avoid gaps. */
+        pt->pressure = 1.0f;
         pt->x = col * size;
         pt->z = row * size;
         if (!mask) {
