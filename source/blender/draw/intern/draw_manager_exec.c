@@ -1112,6 +1112,7 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
                                 DRWResourceHandle handle,
                                 int vert_first,
                                 int vert_count,
+                                int inst_first,
                                 int inst_count,
                                 bool do_base_instance)
 {
@@ -1140,7 +1141,7 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
                         batch,
                         vert_first,
                         vert_count,
-                        do_base_instance ? DRW_handle_id_get(&handle) : 0,
+                        do_base_instance ? DRW_handle_id_get(&handle) : inst_first,
                         inst_count,
                         state->baseinst_loc);
 }
@@ -1314,7 +1315,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         case DRW_CMD_DRAW:
           if (!USE_BATCHING || state.obmats_loc == -1 || (G.f & G_FLAG_PICKSEL) ||
               cmd->draw.batch->inst) {
-            draw_call_single_do(shgroup, &state, cmd->draw.batch, cmd->draw.handle, 0, 0, 0, true);
+            draw_call_single_do(
+                shgroup, &state, cmd->draw.batch, cmd->draw.handle, 0, 0, 0, 0, true);
           }
           else {
             draw_call_batching_do(shgroup, &state, &cmd->draw);
@@ -1327,6 +1329,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                               cmd->procedural.handle,
                               0,
                               cmd->procedural.vert_count,
+                              0,
                               1,
                               true);
           break;
@@ -1335,6 +1338,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                               &state,
                               cmd->instance.batch,
                               cmd->instance.handle,
+                              0,
                               0,
                               0,
                               cmd->instance.inst_count,
@@ -1347,8 +1351,20 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
                               (DRWResourceHandle)0,
                               cmd->range.vert_first,
                               cmd->range.vert_count,
+                              0,
                               1,
                               true);
+          break;
+        case DRW_CMD_DRAW_INSTANCE_RANGE:
+          draw_call_single_do(shgroup,
+                              &state,
+                              cmd->instance_range.batch,
+                              (DRWResourceHandle)0,
+                              0,
+                              0,
+                              cmd->instance_range.inst_first,
+                              cmd->instance_range.inst_count,
+                              false);
           break;
       }
     }

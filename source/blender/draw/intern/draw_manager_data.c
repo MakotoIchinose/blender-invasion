@@ -659,6 +659,17 @@ static void drw_command_draw_instance(DRWShadingGroup *shgroup,
   cmd->use_attribs = use_attrib;
 }
 
+static void drw_command_draw_intance_range(DRWShadingGroup *shgroup,
+                                           GPUBatch *batch,
+                                           uint start,
+                                           uint count)
+{
+  DRWCommandDrawInstanceRange *cmd = drw_command_create(shgroup, DRW_CMD_DRAW_INSTANCE_RANGE);
+  cmd->batch = batch;
+  cmd->inst_first = start;
+  cmd->inst_count = count;
+}
+
 static void drw_command_draw_procedural(DRWShadingGroup *shgroup,
                                         GPUBatch *batch,
                                         DRWResourceHandle handle,
@@ -751,6 +762,18 @@ void DRW_shgroup_call_range(DRWShadingGroup *shgroup, struct GPUBatch *geom, uin
     drw_command_set_select_id(shgroup, NULL, DST.select_id);
   }
   drw_command_draw_range(shgroup, geom, v_sta, v_ct);
+}
+
+void DRW_shgroup_call_instance_range(DRWShadingGroup *shgroup,
+                                     struct GPUBatch *geom,
+                                     uint i_sta,
+                                     uint i_ct)
+{
+  BLI_assert(geom != NULL);
+  if (G.f & G_FLAG_PICKSEL) {
+    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+  }
+  drw_command_draw_intance_range(shgroup, geom, i_sta, i_ct);
 }
 
 static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
