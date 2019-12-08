@@ -762,6 +762,14 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
   }
 
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
+  bool show_fill = (stroke->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+
+  if (show_fill) {
+    GPUBatch *geom = GPENCIL_batch_cache_fills(iter->ob, iter->pd->cfra);
+    int vfirst = stroke->runtime.fill_start * 3;
+    int vcount = stroke->tot_triangles * 3;
+    DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
+  }
 
   if (show_stroke) {
     GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);

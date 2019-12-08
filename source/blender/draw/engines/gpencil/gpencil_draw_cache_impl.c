@@ -97,6 +97,7 @@ static GPUVertFormat *gpencil_stroke_format(void)
  * \{ */
 
 typedef struct gpIterData {
+  bGPdata *gpd;
   gpStrokeVert *verts;
   GPUIndexBufBuilder ibo;
   int vert_len;
@@ -141,9 +142,11 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *str
 
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *stroke)
 {
-  int v = stroke->runtime.fill_start;
-  /* TODO ibo filling. */
-  UNUSED_VARS(v, ibo);
+  int tri_len = stroke->tot_triangles;
+  for (int i = 0; i < tri_len; i++) {
+    uint *tri = stroke->triangles[i].verts;
+    GPU_indexbuf_add_tri_verts(ibo, tri[0], tri[1], tri[2]);
+  }
 }
 
 static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
@@ -153,8 +156,7 @@ static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
 {
   gpIterData *iter = (gpIterData *)thunk;
   gpencil_buffer_add_stroke(iter->verts, stroke);
-
-  if (true) { /* TODO */
+  if (stroke->tot_triangles > 0) {
     gpencil_buffer_add_fill(&iter->ibo, stroke);
   }
 }
@@ -166,11 +168,23 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(layer),
 {
   gpIterData *iter = (gpIterData *)thunk;
 
+  /* Calculate triangles cache for filling area (must be done only after changes) */
+  if ((stroke->flag & GP_STROKE_RECALC_GEOMETRY) || (stroke->tot_triangles == 0) ||
+      (stroke->triangles == NULL)) {
+    if (stroke->totpoints >= 3) {
+      /* TODO OPTI only do this if the fill is actually displayed. */
+      BKE_gpencil_triangulate_stroke_fill(iter->gpd, stroke);
+    }
+    else {
+      stroke->tot_triangles = 0;
+    }
+  }
+
   /* Store first index offset */
   stroke->runtime.stroke_start = iter->vert_len;
   stroke->runtime.fill_start = iter->tri_len;
   iter->vert_len += stroke->totpoints + 2 + gpencil_stroke_is_cyclic(stroke);
-  iter->tri_len += stroke->totpoints - 1;
+  iter->tri_len += stroke->tot_triangles;
 }
 
 static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
@@ -184,6 +198,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
 
     /* First count how many vertices and triangles are needed for the whole object. */
     gpIterData iter = {
+        .gpd = gpd,
         .verts = NULL,
         .ibo = {0},
         .vert_len = 1, /* Start at 1 for the gl_InstanceID trick to work (see vert shader). */
