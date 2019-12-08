@@ -3633,8 +3633,6 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
           pt->flag |= GP_SPOINT_SELECT;
         }
       }
-      /* Dissolve any selected point. */
-      BKE_gpencil_dissolve_points(gpf, gps, GP_SPOINT_SELECT);
     }
   }
 

@@ -1792,6 +1792,13 @@ static int image_to_gpencil_exec(bContext *C, wmOperator *op)
   done = BKE_gpencil_from_image(sima, gpf, size, is_mask);
 
   if (done) {
+    /* Delete any selected point. */
+    bGPDstroke *gps, *gpsn;
+    for (gps = gpf->strokes.first; gps; gps = gpsn) {
+      gpsn = gps->next;
+      gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+    }
+
     BKE_reportf(op->reports, RPT_INFO, "Object created");
   }
 
