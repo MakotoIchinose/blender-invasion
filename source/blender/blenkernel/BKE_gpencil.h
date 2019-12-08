@@ -34,6 +34,7 @@ struct Main;
 struct Material;
 struct Object;
 struct Scene;
+struct SpaceImage;
 struct ToolSettings;
 struct bDeformGroup;
 struct bGPDframe;
@@ -295,6 +296,11 @@ void BKE_gpencil_convert_curve(struct Main *bmain,
                                const bool only_stroke);
 
 void BKE_gpencil_palette_ensure(struct Main *bmain, struct Scene *scene);
+
+bool BKE_gpencil_from_image(struct SpaceImage *sima,
+                            struct bGPDframe *gpf,
+                            const float size,
+                            const bool mask);
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
