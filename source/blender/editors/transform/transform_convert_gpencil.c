@@ -80,7 +80,8 @@ void createTransGPencil(bContext *C, TransInfo *t)
 
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
   const bool is_prop_edit_connected = (t->flag & T_PROP_CONNECTED) != 0;
-  const bool is_scale_thickness = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_SCALE_THICKNESS);
+  const bool is_scale_thickness = ((t->mode == TFM_GPENCIL_SHRINKFATTEN) ||
+                                   (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_SCALE_THICKNESS));
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
