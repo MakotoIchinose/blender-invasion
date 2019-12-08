@@ -743,6 +743,8 @@ static void gp_layer_cache_populate(bGPDlayer *layer,
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+  DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
+  DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
@@ -752,12 +754,23 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
 
-  GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
-  /* Don't skip start adjacent vert. */
-  int vfirst = stroke->runtime.stroke_start;
-  /* Include "potential" cyclic vertex and start adj vertex (see shader). */
-  int vcount = stroke->totpoints + 1 + 1;
-  DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
+  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, stroke->mat_nr + 1);
+  /* if the user switch used material from data to object,
+   * the material could not be available */
+  if (gp_style == NULL) {
+    return;
+  }
+
+  bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
+
+  if (show_stroke) {
+    GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
+    /* Start one vert before to have gl_InstanceID > 0 (see shader). */
+    int vfirst = stroke->runtime.stroke_start - 1;
+    /* Include "potential" cyclic vertex and start adj vertex (see shader). */
+    int vcount = stroke->totpoints + 1 + 1;
+    DRW_shgroup_call_instance_range(iter->grp, geom, vfirst, vcount);
+  }
 }
 
 static void GPENCIL_cache_populate_new(void *ved, Object *ob)

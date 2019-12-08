@@ -69,9 +69,9 @@ static GPUVertBuf *gpencil_dummy_buffer_get(void)
 typedef struct gpStrokeVert {
   int mat;
   float pos[3];
-  float color[4];
-  float thickness;
-  float uvdata[2];
+  // float col[4];
+  // float rad;
+  // float uv[2];
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
@@ -79,11 +79,13 @@ static GPUVertFormat *gpencil_stroke_format(void)
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* TODO Try reducing format size. */
-    GPU_vertformat_attr_add(&format, "mat", GPU_COMP_U32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "ma", GPU_COMP_I32, 1, GPU_FETCH_INT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "uvdata", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    // GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    // GPU_vertformat_attr_add(&format, "rad", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    // GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
+    GPU_vertformat_multiload_enable(&format, 4);
   }
   return &format;
 }
@@ -184,7 +186,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     gpIterData iter = {
         .verts = NULL,
         .ibo = {0},
-        .vert_len = 0,
+        .vert_len = 1, /* Start at 1 for the gl_InstanceID trick to work (see vert shader). */
         .tri_len = 0,
     };
     gpencil_object_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter);
@@ -192,7 +194,8 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
     /* Create VBO. */
     GPUVertFormat *format = gpencil_stroke_format();
     cache->vbo = GPU_vertbuf_create_with_format(format);
-    GPU_vertbuf_data_alloc(cache->vbo, iter.vert_len);
+    /* Add extra space at the end of the buffer because of quad load. */
+    GPU_vertbuf_data_alloc(cache->vbo, iter.vert_len + 2);
     iter.verts = (gpStrokeVert *)cache->vbo->data;
     /* Create IBO. */
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
@@ -205,7 +208,8 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)
 
     /* Create the batches */
     cache->fill_batch = GPU_batch_create(GPU_PRIM_TRIS, cache->vbo, cache->ibo);
-    cache->stroke_batch = GPU_batch_create(GPU_PRIM_LINE_STRIP, cache->vbo, NULL);
+    cache->stroke_batch = GPU_batch_create(GPU_PRIM_TRI_STRIP, gpencil_dummy_buffer_get(), NULL);
+    GPU_batch_instbuf_add_ex(cache->stroke_batch, cache->vbo, 0);
 
     gpd->flag &= ~GP_DATA_CACHE_IS_DIRTY;
     cache->is_dirty = false;
