@@ -3,12 +3,21 @@
 uniform vec2 sizeViewport;
 uniform vec2 sizeViewportInv;
 
+/* Per Object */
+uniform float thicknessScale;
+uniform float thicknessWorldScale;
+#define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
+
+/* Per Layer */
+uniform float thicknessOffset;
+
 in int ma1;
 in int ma2;
-in vec3 pos;  /* Prev adj vert */
-in vec3 pos1; /* Current edge */
-in vec3 pos2; /* Current edge */
-in vec3 pos3; /* Next adj vert */
+/* Position contains thickness in 4th component. */
+in vec4 pos;  /* Prev adj vert */
+in vec4 pos1; /* Current edge */
+in vec4 pos2; /* Current edge */
+in vec4 pos3; /* Next adj vert */
 
 out vec4 finalColor;
 
@@ -38,13 +47,18 @@ void stroke_vertex()
   }
 
   /* Avoid using a vertex attrib for quad positioning. */
-  float x = float((gl_VertexID & 1));
-  float y = float((gl_VertexID & 2) >> 1);
+  float x = float(gl_VertexID & 1);       /* [0..1] */
+  float y = float(gl_VertexID & 2) - 1.0; /* [-1..1] */
 
-  vec3 pos_adj = (x == 0.0) ? pos : pos3;
-  vec4 ndc_adj = point_world_to_ndc(pos_adj);
-  vec4 ndc1 = point_world_to_ndc(pos1);
-  vec4 ndc2 = point_world_to_ndc(pos2);
+  vec3 wpos_adj = (x == 0.0) ? pos.xyz : pos3.xyz;
+  vec3 wpos1 = pos1.xyz;
+  vec3 wpos2 = pos2.xyz;
+
+  vec4 ndc_adj = point_world_to_ndc(wpos_adj);
+  vec4 ndc1 = point_world_to_ndc(wpos1);
+  vec4 ndc2 = point_world_to_ndc(wpos2);
+
+  gl_Position = (x == 0.0) ? ndc1 : ndc2;
 
   /* TODO case where ndc1 & ndc2 is behind camera */
   vec2 ss_adj = project_to_screenspace(ndc_adj);
@@ -59,8 +73,26 @@ void stroke_vertex()
 
   vec2 miter = rotate_90deg(miter_tan / miter_dot);
 
-  gl_Position = (x == 0.0) ? ndc1 : ndc2;
-  gl_Position.xy += miter * (y - 0.5) * sizeViewportInv.xy * gl_Position.w * 10.0;
+  /* Position contains thickness in 4th component. */
+  float thickness = (x == 0.0) ? pos1.w : pos2.w;
+  /* Modify stroke thickness by object and layer factors.-*/
+  thickness *= thicknessScale;
+  thickness += thicknessOffset;
+  thickness = max(1.0, thickness);
+
+  if (thicknessIsScreenSpace) {
+    /* Multiply offset by view Z so that offset is constant in screenspace.
+     * (e.i: does not change with the distance to camera) */
+    thickness *= gl_Position.w;
+  }
+  else {
+    /* World space point size. */
+    thickness *= thicknessWorldScale * ProjectionMatrix[1][1] * sizeViewport.y;
+  }
+  /* Multiply scalars first. */
+  y *= thickness;
+
+  gl_Position.xy += miter * sizeViewportInv.xy * y;
 
   finalColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
@@ -72,7 +104,8 @@ void dots_vertex()
 
 void fill_vertex()
 {
-  gl_Position = point_world_to_ndc(pos1);
+  vec3 wpos = pos1.xyz;
+  gl_Position = point_world_to_ndc(wpos);
   gl_Position.z += 1e-2;
 
   finalColor = vec4(1.0);

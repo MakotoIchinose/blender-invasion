@@ -737,14 +737,25 @@ static void gp_layer_cache_populate(bGPDlayer *layer,
                                     void *thunk)
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
+  bGPdata *gpd = (bGPdata *)iter->ob->data;
 
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, layer);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
+
+  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
+
+  float object_scale = mat4_to_scale(iter->ob->obmat);
+  /* Negate thickness sign to tag that strokes are in screen space.
+   * Convert to world units (by default, 1 meter = 2000 px). */
+  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / 2000.0f);
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
+  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);
+  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)layer->line_change);
+  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),

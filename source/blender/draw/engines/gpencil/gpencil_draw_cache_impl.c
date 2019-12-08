@@ -68,7 +68,8 @@ static GPUVertBuf *gpencil_dummy_buffer_get(void)
 /* MUST match the format below. */
 typedef struct gpStrokeVert {
   int mat;
-  float pos[3];
+  /** Position and thickness packed in the same attribute. */
+  float pos[3], thickness;
   // float col[4];
   // float rad;
   // float uv[2];
@@ -80,9 +81,8 @@ static GPUVertFormat *gpencil_stroke_format(void)
   if (format.attr_len == 0) {
     /* TODO Try reducing format size. */
     GPU_vertformat_attr_add(&format, "ma", GPU_COMP_I32, 1, GPU_FETCH_INT);
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     // GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    // GPU_vertformat_attr_add(&format, "rad", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
     // GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
@@ -109,10 +109,16 @@ static int gpencil_stroke_is_cyclic(const bGPDstroke *stroke)
   return ((stroke->flag & GP_STROKE_CYCLIC) != 0) && (stroke->totpoints > 2);
 }
 
-static void gpencil_buffer_add_point(gpStrokeVert *verts, const bGPDspoint *pt, bool is_endpoint)
+static void gpencil_buffer_add_point(gpStrokeVert *verts,
+                                     const bGPDstroke *stroke,
+                                     const bGPDspoint *pt,
+                                     bool is_endpoint)
 {
+  // float obscale = mat4_to_scale(ob->obmat);
+  // short lthick = brush->size * obscale;
   /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
+  verts->thickness = stroke->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   verts->mat = (is_endpoint) ? -1 : 0;
 }
@@ -126,18 +132,18 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *str
 
   /* First point for adjacency (not drawn). */
   int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
-  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], stroke, &pts[adj_idx], true);
 
   for (int i = 0; i < pts_len; i++) {
-    gpencil_buffer_add_point(&verts[v++], &pts[i], false);
+    gpencil_buffer_add_point(&verts[v++], stroke, &pts[i], false);
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
   if (is_cyclic) {
-    gpencil_buffer_add_point(&verts[v++], &pts[0], false);
+    gpencil_buffer_add_point(&verts[v++], stroke, &pts[0], false);
   }
   /* Last adjacency point (not drawn). */
   adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
-  gpencil_buffer_add_point(&verts[v++], &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], stroke, &pts[adj_idx], true);
 }
 
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *stroke)
