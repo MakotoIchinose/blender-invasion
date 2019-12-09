@@ -2326,6 +2326,18 @@ static int rna_FileBrowser_FSMenuEntry_name_get_editable(PointerRNA *ptr,
   return fsm->save ? PROP_EDITABLE : 0;
 }
 
+static int rna_FileBrowser_FSMenuEntry_icon_get(PointerRNA *ptr)
+{
+  FSMenuEntry *fsm = ptr->data;
+  return ED_fsmenu_entry_get_icon(fsm);
+}
+
+static void rna_FileBrowser_FSMenuEntry_icon_set(PointerRNA *ptr, int value)
+{
+  FSMenuEntry *fsm = ptr->data;
+  ED_fsmenu_entry_set_icon(fsm, value);
+}
+
 static bool rna_FileBrowser_FSMenuEntry_use_save_get(PointerRNA *ptr)
 {
   FSMenuEntry *fsm = ptr->data;
@@ -4968,7 +4980,7 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceGraph");
   RNA_def_struct_ui_text(srna, "Space Graph Editor", "Graph Editor space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
 
   /* mode */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
@@ -5586,6 +5598,11 @@ static void rna_def_filemenu_entry(BlenderRNA *brna)
   RNA_def_property_editable_func(prop, "rna_FileBrowser_FSMenuEntry_name_get_editable");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
+
+  prop = RNA_def_property(srna, "icon", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(
+      prop, "rna_FileBrowser_FSMenuEntry_icon_get", "rna_FileBrowser_FSMenuEntry_icon_set", NULL);
+  RNA_def_property_ui_text(prop, "Icon", "");
 
   prop = RNA_def_property(srna, "use_save", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_FileBrowser_FSMenuEntry_use_save_get", NULL);
