@@ -149,9 +149,11 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *str
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *stroke)
 {
   int tri_len = stroke->tot_triangles;
+  /* Add one for the adjacency index. */
+  int v = stroke->runtime.stroke_start;
   for (int i = 0; i < tri_len; i++) {
     uint *tri = stroke->triangles[i].verts;
-    GPU_indexbuf_add_tri_verts(ibo, tri[0], tri[1], tri[2]);
+    GPU_indexbuf_add_tri_verts(ibo, v + tri[0], v + tri[1], v + tri[2]);
   }
 }
 
