@@ -49,6 +49,17 @@ vec3 transform_point(mat4 m, vec3 v)
   return (m * vec4(v, 1.0)).xyz;
 }
 
+vec2 safe_normalize(vec2 v)
+{
+  float len_sqr = dot(v, v);
+  if (len_sqr > 0.0) {
+    return v / sqrt(len_sqr);
+  }
+  else {
+    return vec2(0.0);
+  }
+}
+
 void stroke_vertex()
 {
   /* Enpoints, we discard the vertices. */
@@ -78,10 +89,10 @@ void stroke_vertex()
   vec2 ss1 = project_to_screenspace(ndc1);
   vec2 ss2 = project_to_screenspace(ndc2);
   /* Screenspace Lines tangents. */
-  vec2 line = normalize(ss2 - ss1);
-  vec2 line_adj = normalize((x == 0.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
+  vec2 line = safe_normalize(ss2 - ss1);
+  vec2 line_adj = safe_normalize((x == 0.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
   /* Mitter tangent vector. */
-  vec2 miter_tan = normalize(line_adj + line);
+  vec2 miter_tan = safe_normalize(line_adj + line);
   float miter_dot = dot(miter_tan, line_adj);
   /* Break corners after a certain angle to avoid really thick corners. */
   const float miter_limit = 0.7071; /* cos(45°) */
