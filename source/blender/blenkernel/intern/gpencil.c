@@ -40,6 +40,7 @@
 #include "BLT_translation.h"
 
 #include "IMB_imbuf_types.h"
+#include "IMB_imbuf.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_meshdata_types.h"
@@ -3592,8 +3593,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
       bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, 0, img_x, size * 1000);
       done = true;
       for (int col = 0; col < img_x; col++) {
-        int pix = ((row * img_x) + col);
-        BKE_image_buffer_pixel_get(ibuf, pix, color);
+        IMB_sampleImageAtLocation(ibuf, col, row, false, color);
         pt = &gps->points[col];
         pt->pressure = 1.0f;
         pt->x = col * size;

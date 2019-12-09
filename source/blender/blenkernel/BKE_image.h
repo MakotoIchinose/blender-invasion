@@ -338,8 +338,6 @@ bool BKE_image_has_loaded_ibuf(struct Image *image);
 struct ImBuf *BKE_image_get_ibuf_with_name(struct Image *image, const char *name);
 struct ImBuf *BKE_image_get_first_ibuf(struct Image *image);
 
-void BKE_image_buffer_pixel_get(struct ImBuf *ibuf, const int index, float r_col[4]);
-
 struct RenderSlot *BKE_image_add_renderslot(struct Image *ima, const char *name);
 bool BKE_image_remove_renderslot(struct Image *ima, struct ImageUser *iuser, int slot);
 struct RenderSlot *BKE_image_get_renderslot(struct Image *ima, int slot);
