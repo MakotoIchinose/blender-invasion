@@ -83,8 +83,11 @@ void stroke_vertex()
   /* Mitter tangent vector. */
   vec2 miter_tan = normalize(line_adj + line);
   float miter_dot = dot(miter_tan, line_adj);
+  /* Break corners after a certain angle to avoid really thick corners. */
+  const float miter_limit = 0.7071; /* cos(45°) */
+  miter_tan = (miter_dot < miter_limit) ? line : (miter_tan / miter_dot);
 
-  vec2 miter = rotate_90deg(miter_tan / miter_dot);
+  vec2 miter = rotate_90deg(miter_tan);
 
   /* Position contains thickness in 4th component. */
   float thickness = (x == 0.0) ? pos1.w : pos2.w;
