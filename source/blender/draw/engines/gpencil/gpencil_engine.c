@@ -751,6 +751,10 @@ static void gp_layer_cache_populate(bGPDlayer *layer,
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[3]", iter->ob->obmat[3]);
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);

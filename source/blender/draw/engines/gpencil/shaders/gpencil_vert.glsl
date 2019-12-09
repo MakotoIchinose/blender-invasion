@@ -4,6 +4,7 @@ uniform vec2 sizeViewport;
 uniform vec2 sizeViewportInv;
 
 /* Per Object */
+uniform vec4 gpModelMatrix[4];
 uniform float thicknessScale;
 uniform float thicknessWorldScale;
 #define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
@@ -38,6 +39,16 @@ vec2 rotate_90deg(vec2 v)
   return vec2(-v.y, v.x);
 }
 
+mat4 model_matrix_get()
+{
+  return mat4(gpModelMatrix[0], gpModelMatrix[1], gpModelMatrix[2], gpModelMatrix[3]);
+}
+
+vec3 transform_point(mat4 m, vec3 v)
+{
+  return (m * vec4(v, 1.0)).xyz;
+}
+
 void stroke_vertex()
 {
   /* Enpoints, we discard the vertices. */
@@ -46,13 +57,15 @@ void stroke_vertex()
     return;
   }
 
+  mat4 model_mat = model_matrix_get();
+
   /* Avoid using a vertex attrib for quad positioning. */
   float x = float(gl_VertexID & 1);       /* [0..1] */
   float y = float(gl_VertexID & 2) - 1.0; /* [-1..1] */
 
-  vec3 wpos_adj = (x == 0.0) ? pos.xyz : pos3.xyz;
-  vec3 wpos1 = pos1.xyz;
-  vec3 wpos2 = pos2.xyz;
+  vec3 wpos_adj = transform_point(model_mat, (x == 0.0) ? pos.xyz : pos3.xyz);
+  vec3 wpos1 = transform_point(model_mat, pos1.xyz);
+  vec3 wpos2 = transform_point(model_mat, pos2.xyz);
 
   vec4 ndc_adj = point_world_to_ndc(wpos_adj);
   vec4 ndc1 = point_world_to_ndc(wpos1);
@@ -104,7 +117,9 @@ void dots_vertex()
 
 void fill_vertex()
 {
-  vec3 wpos = pos1.xyz;
+  mat4 model_mat = model_matrix_get();
+
+  vec3 wpos = transform_point(model_mat, pos1.xyz);
   gl_Position = point_world_to_ndc(wpos);
   gl_Position.z += 1e-2;
 
