@@ -54,13 +54,17 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *U
 
 /* TODO remove the _new suffix. */
 GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
-                                            Object *UNUSED(ob),
+                                            Object *ob,
                                             bGPDlayer *UNUSED(layer))
 {
-  // bGPdata *gpd = (bGPdata *)ob->data;
+  bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
 
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  /* TODO better 3D mode. */
+  if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
+    state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+  }
   tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
 
   return tgp_layer;
