@@ -5442,3 +5442,22 @@ RenderSlot *BKE_image_get_renderslot(Image *ima, int index)
   /* Can be NULL for images without render slots. */
   return BLI_findlink(&ima->renderslots, index);
 }
+
+/* Get RGBA pixel from image at index. */
+void BKE_image_buffer_pixel_get(ImBuf *ibuf, const int index, float r_col[4])
+{
+  if (ibuf->rect_float) {
+    const float *frgba = &ibuf->rect_float[index * 4];
+    copy_v4_v4(r_col, frgba);
+  }
+  else if (ibuf->rect) {
+    unsigned char *cp = (unsigned char *)(ibuf->rect + index);
+    r_col[0] = (float)cp[0] / 255.0f;
+    r_col[1] = (float)cp[1] / 255.0f;
+    r_col[2] = (float)cp[2] / 255.0f;
+    r_col[3] = (float)cp[3] / 255.0f;
+  }
+  else {
+    zero_v4(r_col);
+  }
+}

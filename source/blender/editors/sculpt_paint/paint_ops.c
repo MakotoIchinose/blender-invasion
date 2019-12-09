@@ -299,28 +299,6 @@ static void PALETTE_OT_color_delete(wmOperatorType *ot)
 }
 
 /* --- Extract Palette from Image. */
-
-/* Return pixel data (rgba) at index. */
-static void get_image_pixel(const ImBuf *ibuf, const int idx, float r_col[3])
-{
-  if (ibuf->rect_float) {
-    const float *frgba = &ibuf->rect_float[idx * 4];
-    copy_v3_v3(r_col, frgba);
-  }
-  else if (ibuf->rect) {
-    float r, g, b;
-    uint *cp = &ibuf->rect[idx];
-    uint a = *cp;
-    cpack_to_rgb(a, &r, &g, &b);
-    r_col[0] = r;
-    r_col[1] = g;
-    r_col[2] = b;
-  }
-  else {
-    zero_v4(r_col);
-  }
-}
-
 static bool palette_extract_img_poll(bContext *C)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
@@ -353,8 +331,8 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
 
     /* Extract all colors. */
     for (int v = maxpixel; v != 0; v--) {
-      float col[3];
-      get_image_pixel(ibuf, v, col);
+      float col[4];
+      BKE_image_buffer_pixel_get(ibuf, v, col);
 
       const float range = pow(10.0f, threshold);
       col[0] = truncf(col[0] * range) / range;
