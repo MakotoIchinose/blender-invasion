@@ -1749,4 +1749,94 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
-/* ************************************************ */
+/* Generate Grease Pencil from Image. */
+static bool image_to_gpencil_poll(bContext *C)
+{
+  SpaceLink *sl = CTX_wm_space_data(C);
+  if (sl->spacetype == SPACE_IMAGE) {
+    return true;
+  }
+
+  return false;
+}
+
+static int image_to_gpencil_exec(bContext *C, wmOperator *op)
+{
+  const float size = RNA_float_get(op->ptr, "size");
+  const bool is_mask = RNA_boolean_get(op->ptr, "mask");
+
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  bool done = false;
+
+  if (sima->image == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Create Object. */
+  const float *cur = scene->cursor.location;
+  ushort local_view_bits = 0;
+  Object *ob = ED_gpencil_add_object(C, cur, local_view_bits);
+  DEG_relations_tag_update(bmain); /* added object */
+
+  /* Create material slot. */
+  Material *ma = BKE_gpencil_object_material_new(bmain, ob, "Image Material", NULL);
+  MaterialGPencilStyle *gp_style = ma->gp_style;
+  gp_style->mode = GP_STYLE_MODE_BOX;
+
+  /* Add layer and frame. */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl = BKE_gpencil_layer_addnew(gpd, "Image Layer", true);
+  bGPDframe *gpf = BKE_gpencil_frame_addnew(gpl, CFRA);
+  done = BKE_gpencil_from_image(sima, gpf, size, is_mask);
+
+  if (done) {
+    /* Delete any selected point. */
+    bGPDstroke *gps, *gpsn;
+    for (gps = gpf->strokes.first; gps; gps = gpsn) {
+      gpsn = gps->next;
+      gp_stroke_delete_tagged_points(gpf, gps, gpsn, GP_SPOINT_SELECT, false, 0);
+    }
+
+    BKE_reportf(op->reports, RPT_INFO, "Object created");
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_image_to_grease_pencil(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Generate Grease Pencil Object using image as source";
+  ot->idname = "GPENCIL_OT_image_to_grease_pencil";
+  ot->description = "Generate a Grease Pencil Object using Image as source";
+
+  /* api callbacks */
+  ot->exec = image_to_gpencil_exec;
+  ot->poll = image_to_gpencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_float(ot->srna,
+                           "size",
+                           0.005f,
+                           0.0001f,
+                           10.0f,
+                           "Point Size",
+                           "Size used for graese pencil points",
+                           0.001f,
+                           1.0f);
+  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "mask",
+                         false,
+                         "Generate Mask",
+                         "Create an inverted image for masking using alpha channel");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}

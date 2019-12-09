@@ -254,6 +254,7 @@ class IMAGE_MT_image(Menu):
         if ima:
             layout.separator()
             layout.operator("palette.extract_from_image", text="Extract Palette")
+            layout.operator("gpencil.image_to_grease_pencil", text="Generate Grease Pencil")
 
 
 class IMAGE_MT_image_invert(Menu):

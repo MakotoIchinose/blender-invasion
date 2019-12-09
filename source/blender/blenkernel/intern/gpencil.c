@@ -39,12 +39,15 @@
 
 #include "BLT_translation.h"
 
+#include "IMB_imbuf_types.h"
+
 #include "DNA_anim_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_material_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_space_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_action.h"
@@ -55,6 +58,7 @@
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_icons.h"
+#include "BKE_image.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -3559,4 +3563,81 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
       }
     }
   }
+}
+
+static void BKE_gpencil_get_pixel(const ImBuf *ibuf, const int idx, float r_col[4])
+{
+  if (ibuf->rect_float) {
+    const float *frgba = &ibuf->rect_float[idx * 4];
+    copy_v4_v4(r_col, frgba);
+  }
+  else if (ibuf->rect) {
+    unsigned char *cp = (unsigned char *)(ibuf->rect + idx);
+    r_col[0] = (float)cp[0] / 255.0f;
+    r_col[1] = (float)cp[1] / 255.0f;
+    r_col[2] = (float)cp[2] / 255.0f;
+    r_col[3] = (float)cp[3] / 255.0f;
+  }
+  else {
+    zero_v4(r_col);
+  }
+}
+
+bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, const bool mask)
+{
+  Image *image = sima->image;
+  bool done = false;
+
+  if (image == NULL) {
+    return false;
+  }
+
+  ImageUser iuser = sima->iuser;
+  void *lock;
+  ImBuf *ibuf;
+
+  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
+
+  if (ibuf->rect) {
+    int img_x = ibuf->x;
+    int img_y = ibuf->y;
+
+    // space = 0.005 pixels = image.pixels
+    float color[4];
+    bGPDspoint *pt;
+    for (int row = 0; row < img_y; row++) {
+      /* Create new stroke */
+      bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, 0, img_x, size * 1000);
+      done = true;
+      for (int col = 0; col < img_x; col++) {
+        int pix = ((row * img_x) + col);
+        BKE_gpencil_get_pixel(ibuf, pix, color);
+        pt = &gps->points[col];
+        pt->pressure = 1.0f;
+        pt->x = col * size;
+        pt->z = row * size;
+        if (!mask) {
+          copy_v3_v3(pt->mix_color, color);
+          pt->mix_color[3] = 1.0f;
+          pt->strength = color[3];
+        }
+        else {
+          zero_v3(pt->mix_color);
+          pt->mix_color[3] = 1.0f;
+          pt->strength = 1.0f - color[3];
+        }
+
+        /* Selet Alpha points. */
+        if (pt->strength < 0.03f) {
+          gps->flag |= GP_STROKE_SELECT;
+          pt->flag |= GP_SPOINT_SELECT;
+        }
+      }
+    }
+  }
+
+  /* Free memory. */
+  BKE_image_release_ibuf(image, ibuf, lock);
+
+  return done;
 }

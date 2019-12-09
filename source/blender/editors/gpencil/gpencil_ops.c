@@ -595,6 +595,8 @@ void ED_operatortypes_gpencil(void)
 
   WM_operatortype_append(GPENCIL_OT_convert);
 
+  WM_operatortype_append(GPENCIL_OT_image_to_grease_pencil);
+
   WM_operatortype_append(GPENCIL_OT_stroke_arrange);
   WM_operatortype_append(GPENCIL_OT_stroke_change_color);
   WM_operatortype_append(GPENCIL_OT_stroke_lock_color);

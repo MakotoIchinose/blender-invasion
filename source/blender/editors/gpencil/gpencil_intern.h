@@ -465,6 +465,7 @@ void GPENCIL_OT_frame_clean_fill(struct wmOperatorType *ot);
 void GPENCIL_OT_frame_clean_loose(struct wmOperatorType *ot);
 
 void GPENCIL_OT_convert(struct wmOperatorType *ot);
+void GPENCIL_OT_image_to_grease_pencil(struct wmOperatorType *ot);
 
 enum {
   GP_STROKE_JOIN = -1,
