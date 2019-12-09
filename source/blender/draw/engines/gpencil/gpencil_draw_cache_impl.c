@@ -104,13 +104,13 @@ typedef struct gpIterData {
   int tri_len;
 } gpIterData;
 
-static int gpencil_stroke_is_cyclic(const bGPDstroke *stroke)
+static int gpencil_stroke_is_cyclic(const bGPDstroke *gps)
 {
-  return ((stroke->flag & GP_STROKE_CYCLIC) != 0) && (stroke->totpoints > 2);
+  return ((gps->flag & GP_STROKE_CYCLIC) != 0) && (gps->totpoints > 2);
 }
 
 static void gpencil_buffer_add_point(gpStrokeVert *verts,
-                                     const bGPDstroke *stroke,
+                                     const bGPDstroke *gps,
                                      const bGPDspoint *pt,
                                      bool is_endpoint)
 {
@@ -118,81 +118,81 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
   // short lthick = brush->size * obscale;
   /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
-  verts->thickness = stroke->thickness * pt->pressure;
+  verts->thickness = gps->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   verts->mat = (is_endpoint) ? -1 : 0;
 }
 
-static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *stroke)
+static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps)
 {
-  const bGPDspoint *pts = stroke->points;
-  int pts_len = stroke->totpoints;
-  bool is_cyclic = gpencil_stroke_is_cyclic(stroke);
-  int v = stroke->runtime.stroke_start;
+  const bGPDspoint *pts = gps->points;
+  int pts_len = gps->totpoints;
+  bool is_cyclic = gpencil_stroke_is_cyclic(gps);
+  int v = gps->runtime.stroke_start;
 
   /* First point for adjacency (not drawn). */
   int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
-  gpencil_buffer_add_point(&verts[v++], stroke, &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], true);
 
   for (int i = 0; i < pts_len; i++) {
-    gpencil_buffer_add_point(&verts[v++], stroke, &pts[i], false);
+    gpencil_buffer_add_point(&verts[v++], gps, &pts[i], false);
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
   if (is_cyclic) {
-    gpencil_buffer_add_point(&verts[v++], stroke, &pts[0], false);
+    gpencil_buffer_add_point(&verts[v++], gps, &pts[0], false);
   }
   /* Last adjacency point (not drawn). */
   adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
-  gpencil_buffer_add_point(&verts[v++], stroke, &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], true);
 }
 
-static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *stroke)
+static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *gps)
 {
-  int tri_len = stroke->tot_triangles;
+  int tri_len = gps->tot_triangles;
   /* Add one for the adjacency index. */
-  int v = stroke->runtime.stroke_start;
+  int v = gps->runtime.stroke_start;
   for (int i = 0; i < tri_len; i++) {
-    uint *tri = stroke->triangles[i].verts;
+    uint *tri = gps->triangles[i].verts;
     GPU_indexbuf_add_tri_verts(ibo, v + tri[0], v + tri[1], v + tri[2]);
   }
 }
 
-static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(layer),
-                                   bGPDframe *UNUSED(frame),
-                                   bGPDstroke *stroke,
+static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
+                                   bGPDframe *UNUSED(gpf),
+                                   bGPDstroke *gps,
                                    void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
-  gpencil_buffer_add_stroke(iter->verts, stroke);
-  if (stroke->tot_triangles > 0) {
-    gpencil_buffer_add_fill(&iter->ibo, stroke);
+  gpencil_buffer_add_stroke(iter->verts, gps);
+  if (gps->tot_triangles > 0) {
+    gpencil_buffer_add_fill(&iter->ibo, gps);
   }
 }
 
-static void gp_object_verts_count_cb(bGPDlayer *UNUSED(layer),
-                                     bGPDframe *UNUSED(frame),
-                                     bGPDstroke *stroke,
+static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
+                                     bGPDframe *UNUSED(gpf),
+                                     bGPDstroke *gps,
                                      void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
 
   /* Calculate triangles cache for filling area (must be done only after changes) */
-  if ((stroke->flag & GP_STROKE_RECALC_GEOMETRY) || (stroke->tot_triangles == 0) ||
-      (stroke->triangles == NULL)) {
-    if (stroke->totpoints >= 3) {
+  if ((gps->flag & GP_STROKE_RECALC_GEOMETRY) || (gps->tot_triangles == 0) ||
+      (gps->triangles == NULL)) {
+    if (gps->totpoints >= 3) {
       /* TODO OPTI only do this if the fill is actually displayed. */
-      BKE_gpencil_triangulate_stroke_fill(iter->gpd, stroke);
+      BKE_gpencil_triangulate_stroke_fill(iter->gpd, gps);
     }
     else {
-      stroke->tot_triangles = 0;
+      gps->tot_triangles = 0;
     }
   }
 
   /* Store first index offset */
-  stroke->runtime.stroke_start = iter->vert_len;
-  stroke->runtime.fill_start = iter->tri_len;
-  iter->vert_len += stroke->totpoints + 2 + gpencil_stroke_is_cyclic(stroke);
-  iter->tri_len += stroke->tot_triangles;
+  gps->runtime.stroke_start = iter->vert_len;
+  gps->runtime.fill_start = iter->tri_len;
+  iter->vert_len += gps->totpoints + 2 + gpencil_stroke_is_cyclic(gps);
+  iter->tri_len += gps->tot_triangles;
 }
 
 static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache)

@@ -731,15 +731,15 @@ typedef struct gpIterPopulateData {
   DRWShadingGroup *grp;
 } gpIterPopulateData;
 
-static void gp_layer_cache_populate(bGPDlayer *layer,
-                                    bGPDframe *UNUSED(frame),
-                                    bGPDstroke *UNUSED(stroke),
+static void gp_layer_cache_populate(bGPDlayer *gpl,
+                                    bGPDframe *UNUSED(gpf),
+                                    bGPDstroke *UNUSED(gps),
                                     void *thunk)
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
-  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, layer);
+  GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
 
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
@@ -758,18 +758,18 @@ static void gp_layer_cache_populate(bGPDlayer *layer,
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewportInv", DRW_viewport_invert_size_get());
   DRW_shgroup_uniform_vec2_copy(iter->grp, "sizeViewport", DRW_viewport_size_get());
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);
-  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)layer->line_change);
+  DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
 }
 
-static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
-                                     bGPDframe *UNUSED(frame),
-                                     bGPDstroke *stroke,
+static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
+                                     bGPDframe *UNUSED(gpf),
+                                     bGPDstroke *gps,
                                      void *thunk)
 {
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
 
-  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, stroke->mat_nr + 1);
+  MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, gps->mat_nr + 1);
   /* if the user switch used material from data to object,
    * the material could not be available */
   if (gp_style == NULL) {
@@ -777,21 +777,21 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(layer),
   }
 
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
-  bool show_fill = (stroke->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+  bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
 
   if (show_fill) {
     GPUBatch *geom = GPENCIL_batch_cache_fills(iter->ob, iter->pd->cfra);
-    int vfirst = stroke->runtime.fill_start * 3;
-    int vcount = stroke->tot_triangles * 3;
+    int vfirst = gps->runtime.fill_start * 3;
+    int vcount = gps->tot_triangles * 3;
     DRW_shgroup_call_range(iter->grp, geom, vfirst, vcount);
   }
 
   if (show_stroke) {
     GPUBatch *geom = GPENCIL_batch_cache_strokes(iter->ob, iter->pd->cfra);
     /* Start one vert before to have gl_InstanceID > 0 (see shader). */
-    int vfirst = stroke->runtime.stroke_start - 1;
+    int vfirst = gps->runtime.stroke_start - 1;
     /* Include "potential" cyclic vertex and start adj vertex (see shader). */
-    int vcount = stroke->totpoints + 1 + 1;
+    int vcount = gps->totpoints + 1 + 1;
     DRW_shgroup_call_instance_range(iter->grp, geom, vfirst, vcount);
   }
 }
