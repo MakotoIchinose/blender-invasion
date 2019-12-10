@@ -121,7 +121,7 @@ void stroke_vertex()
 
   gl_Position.xy += miter * sizeViewportInv.xy * y;
 
-  finalColor = vec4(0.0, 0.0, 0.0, 1.0);
+  finalColor = materials[ma1].stroke_color;
 }
 
 void dots_vertex()
@@ -137,7 +137,7 @@ void fill_vertex()
   gl_Position = point_world_to_ndc(wpos);
   gl_Position.z += 1e-2;
 
-  finalColor = vec4(1.0);
+  finalColor = materials[ma1].fill_color;
 }
 
 void main()

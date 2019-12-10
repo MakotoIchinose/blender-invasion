@@ -39,6 +39,7 @@
 #include "DNA_view3d_types.h"
 
 #include "GPU_texture.h"
+#include "GPU_uniformbuffer.h"
 
 #include "gpencil_engine.h"
 
@@ -284,13 +285,19 @@ static void GPENCIL_engine_init_new(void *ved)
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
   }
 
-  BLI_assert(stl->pd->gp_object_pool == NULL);
-  BLI_assert(stl->pd->gp_layer_pool == NULL);
-  BLI_assert(stl->pd->gp_vfx_pool == NULL);
+  GPENCIL_ViewLayerData *vldata = GPENCIL_view_layer_data_ensure();
 
-  stl->pd->gp_object_pool = BLI_memblock_create(sizeof(GPENCIL_tObject));
-  stl->pd->gp_layer_pool = BLI_memblock_create(sizeof(GPENCIL_tLayer));
-  stl->pd->gp_vfx_pool = BLI_memblock_create(sizeof(GPENCIL_tVfx));
+  /* Resize and reset memblocks. */
+  BLI_memblock_clear(vldata->gp_material_pool, gpencil_material_pool_free);
+  BLI_memblock_clear(vldata->gp_object_pool, NULL);
+  BLI_memblock_clear(vldata->gp_layer_pool, NULL);
+  BLI_memblock_clear(vldata->gp_vfx_pool, NULL);
+
+  stl->pd->gp_material_pool = vldata->gp_material_pool;
+  stl->pd->gp_object_pool = vldata->gp_object_pool;
+  stl->pd->gp_layer_pool = vldata->gp_layer_pool;
+  stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
+  stl->pd->last_material_pool = NULL;
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -728,7 +735,12 @@ typedef struct gpIterPopulateData {
   Object *ob;
   GPENCIL_tObject *tgp_ob;
   GPENCIL_PrivateData *pd;
+  GPENCIL_MaterialPool *matpool;
   DRWShadingGroup *grp;
+  /* Offset in the material pool to the first material of this object. */
+  int mat_ofs;
+  /* Index of last material pool used for drawing. Used to avoid uneeded buffer binding. */
+  int mat_pool_nr;
 } gpIterPopulateData;
 
 static void gp_layer_cache_populate(bGPDlayer *gpl,
@@ -742,6 +754,9 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
 
+  GPUUniformBuffer *ubo_mat = gpencil_material_ubo_get(iter->matpool, 0);
+  iter->mat_pool_nr = 0;
+
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
   float object_scale = mat4_to_scale(iter->ob->obmat);
@@ -751,6 +766,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
+  DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);
@@ -774,6 +790,15 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
    * the material could not be available */
   if (gp_style == NULL) {
     return;
+  }
+
+  int mat_pool_nr = gps->mat_nr / GPENCIL_MATERIAL_BUFFER_LEN;
+  if (mat_pool_nr != iter->mat_pool_nr) {
+    /* Change ubo because material is not from the same pool as previous material. */
+    GPUUniformBuffer *ubo_mat = gpencil_material_ubo_get(iter->matpool, gps->mat_nr);
+    iter->grp = DRW_shgroup_create_sub(iter->grp);
+    DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
+    iter->mat_pool_nr = mat_pool_nr;
   }
 
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
@@ -807,13 +832,12 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
   }
 
   if (ob->type == OB_GPENCIL && ob->data) {
-    GPENCIL_tObject *tgp_ob = gpencil_object_cache_add_new(pd, ob);
+    gpIterPopulateData iter = {0};
+    iter.ob = ob;
+    iter.pd = pd;
+    iter.tgp_ob = gpencil_object_cache_add_new(pd, ob);
+    iter.matpool = gpencil_material_pool_create(pd, ob, &iter.mat_ofs);
 
-    gpIterPopulateData iter = {
-        .ob = ob,
-        .pd = pd,
-        .tgp_ob = tgp_ob,
-    };
     gpencil_object_visible_stroke_iter(
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
 
@@ -906,9 +930,18 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
 static void GPENCIL_cache_finish_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+
+  /* Upload UBO data. */
+  BLI_memblock_iter iter;
+  BLI_memblock_iternew(pd->gp_material_pool, &iter);
+  GPENCIL_MaterialPool *pool;
+
+  while ((pool = (GPENCIL_MaterialPool *)BLI_memblock_iterstep(&iter))) {
+    GPU_uniformbuffer_update(pool->ubo, pool->mat_data);
+  }
 
   /* TODO sort */
-  UNUSED_VARS(vedata);
 }
 
 void GPENCIL_cache_finish(void *vedata)
@@ -1141,11 +1174,6 @@ static void GPENCIL_draw_scene_new(void *ved)
 
     DRW_stats_group_end();
   }
-
-  /* TODO keep persistent. */
-  BLI_memblock_destroy(pd->gp_object_pool, NULL);
-  BLI_memblock_destroy(pd->gp_layer_pool, NULL);
-  BLI_memblock_destroy(pd->gp_vfx_pool, NULL);
 
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 }

@@ -46,6 +46,11 @@ struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
                 datatoc_gpencil_frag_glsl,
                 NULL,
             },
+        .defs =
+            (const char *[]){
+                "#define GPENCIL_MATERIAL_BUFFER_LEN " STRINGIFY(GPENCIL_MATERIAL_BUFFER_LEN) "\n",
+                NULL,
+            },
     });
   }
   return e_data->gpencil_sh;

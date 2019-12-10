@@ -53,6 +53,18 @@ struct GPUVertFormat;
 
 #define GP_IS_CAMERAVIEW ((rv3d != NULL) && (rv3d->persp == RV3D_CAMOB && v3d->camera))
 
+/* TODO(fclem) grow this number back when grouping different objects' material together
+ * is implemented. */
+#define GPENCIL_MATERIAL_BUFFER_LEN 16
+
+/* UBO structure. Watch out for padding. Must match GLSL declaration. */
+typedef struct gpMaterial {
+  float stroke_color[4];
+  float fill_color[4];
+} gpMaterial;
+
+BLI_STATIC_ASSERT_ALIGN(gpMaterial, 16)
+
 /* *********** OBJECTS CACHE *********** */
 typedef struct tGPencilObjectCache_shgrp {
   /** type of blend (regular, add, mult, etc...) */
@@ -105,6 +117,28 @@ typedef struct tGPencilObjectCache {
   tGPencilObjectCache_shgrp *shgrp_array;
 
 } tGPencilObjectCache;
+
+/* *********** Draw Datas *********** */
+
+typedef struct GPENCIL_MaterialPool {
+  /* Linklist. */
+  struct GPENCIL_MaterialPool *next;
+  /* GPU representatin of materials. */
+  gpMaterial mat_data[GPENCIL_MATERIAL_BUFFER_LEN];
+  /* Matching ubo. */
+  struct GPUUniformBuffer *ubo;
+} GPENCIL_MaterialPool;
+
+typedef struct GPENCIL_ViewLayerData {
+  /* GPENCIL_tObject */
+  struct BLI_memblock *gp_object_pool;
+  /* GPENCIL_tLayer */
+  struct BLI_memblock *gp_layer_pool;
+  /* GPENCIL_tVfx */
+  struct BLI_memblock *gp_vfx_pool;
+  /* GPENCIL_MaterialPool */
+  struct BLI_memblock *gp_material_pool;
+} GPENCIL_ViewLayerData;
 
 /* *********** GPencil  *********** */
 
@@ -322,13 +356,13 @@ typedef struct g_data {
 
 /* TODO Should replace g_data in the end. */
 typedef struct GPENCIL_PrivateData {
-  /* TODO Put that in a place where they can be persistent. For now, reset ever redraw. */
-  /* GPENCIL_tObject */
+  /* Pointers copied from GPENCIL_ViewLayerData. */
   struct BLI_memblock *gp_object_pool;
-  /* GPENCIL_tLayer */
   struct BLI_memblock *gp_layer_pool;
-  /* GPENCIL_tVfx */
   struct BLI_memblock *gp_vfx_pool;
+  struct BLI_memblock *gp_material_pool;
+  /* Last used material pool. */
+  GPENCIL_MaterialPool *last_material_pool;
   /* Current frame */
   int cfra;
 } GPENCIL_PrivateData;
@@ -558,6 +592,8 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *o
 GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
                                             Object *ob,
                                             struct bGPDlayer *layer);
+GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Object *ob, int *ofs);
+struct GPUUniformBuffer *gpencil_material_ubo_get(GPENCIL_MaterialPool *first_pool, int mat_id);
 
 /* effects */
 void GPENCIL_create_fx_shaders(struct GPENCIL_e_data *e_data);
@@ -590,8 +626,12 @@ void GPENCIL_render_to_image(void *vedata,
                              struct RenderLayer *render_layer,
                              const rcti *rect);
 
-/* TODO: GPXX workaround function to call free memory from draw manager while draw manager support
- * scene finish callback. */
+/* Draw Data. */
+void gpencil_material_pool_free(void *storage);
+GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void);
+
+/* TODO: GPXX workaround function to call free memory from draw manager while draw manager
+ * support scene finish callback. */
 void DRW_gpencil_free_runtime_data(void *ved);
 
 /* Use of multisample framebuffers. */

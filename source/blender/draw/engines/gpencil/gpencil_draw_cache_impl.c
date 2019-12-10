@@ -114,13 +114,11 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
                                      const bGPDspoint *pt,
                                      bool is_endpoint)
 {
-  // float obscale = mat4_to_scale(ob->obmat);
-  // short lthick = brush->size * obscale;
   /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
   verts->thickness = gps->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
-  verts->mat = (is_endpoint) ? -1 : 0;
+  verts->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);
 }
 
 static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps)
