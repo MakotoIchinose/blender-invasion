@@ -261,7 +261,6 @@ void ED_gpencil_tpoint_to_point(struct ARegion *ar,
                                 float origin[3],
                                 const struct tGPspoint *tpt,
                                 struct bGPDspoint *pt);
-void ED_gpencil_calc_stroke_uv(struct Object *ob, struct bGPDstroke *gps);
 void ED_gpencil_update_color_uv(struct Main *bmain, struct Material *mat);
 
 /* extend selection to stroke intersections

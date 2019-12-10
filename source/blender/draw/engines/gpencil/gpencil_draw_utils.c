@@ -407,30 +407,6 @@ static bool gpencil_can_draw_stroke(struct MaterialGPencilStyle *gp_style,
   return true;
 }
 
-/* recalc the internal geometry caches for fill and uvs */
-static void gpencil_recalc_geometry_caches(Object *ob,
-                                           bGPDlayer *gpl,
-                                           MaterialGPencilStyle *gp_style,
-                                           bGPDstroke *gps)
-{
-  if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-    /* Calculate triangles cache for filling area (must be done only after changes) */
-    if ((gps->tot_triangles == 0) || (gps->triangles == NULL)) {
-      if ((gps->totpoints > 2) && (gp_style->flag & GP_STYLE_FILL_SHOW) &&
-          ((gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) || (gp_style->fill_style > 0) ||
-           (gpl->blend_mode != eGplBlendMode_Regular))) {
-        BKE_gpencil_triangulate_stroke_fill((bGPdata *)ob->data, gps);
-      }
-    }
-
-    /* calc uv data along the stroke */
-    ED_gpencil_calc_stroke_uv(ob, gps);
-
-    /* clear flag */
-    gps->flag &= ~GP_STROKE_RECALC_GEOMETRY;
-  }
-}
-
 static void set_wireframe_color(Object *ob,
                                 bGPDlayer *gpl,
                                 View3D *v3d,
@@ -1360,7 +1336,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
 
     /* be sure recalc all cache in source stroke to avoid recalculation when frame change
      * and improve fps */
-    gpencil_recalc_geometry_caches(
+    BKE_gpencil_recalc_geometry_caches(
         ob, gpl, gp_style, (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps);
 
     /* if the fill has any value, it's considered a fill and is not drawn if simplify fill is
@@ -1394,7 +1370,7 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
              (gpl->blend_mode == eGplBlendMode_Regular))) {
           /* recalc strokes uv (geometry can be changed by modifiers) */
           if (gps->flag & GP_STROKE_RECALC_GEOMETRY) {
-            ED_gpencil_calc_stroke_uv(ob, gps);
+            BKE_gpencil_calc_stroke_uv(ob, gps);
           }
 
           gpencil_add_stroke_vertexdata(

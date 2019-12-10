@@ -42,7 +42,7 @@ struct bGPDlayer;
 struct bGPDspoint;
 struct bGPDstroke;
 struct bGPdata;
-
+struct MaterialGPencilStyle;
 struct MDeformVert;
 
 #define GPENCIL_SIMPLIFY(scene) ((scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_ENABLE))
@@ -260,6 +260,11 @@ void BKE_gpencil_stroke_2d_flat_ref(const struct bGPDspoint *ref_points,
                                     const float scale,
                                     int *r_direction);
 void BKE_gpencil_triangulate_stroke_fill(struct bGPdata *gpd, struct bGPDstroke *gps);
+void BKE_gpencil_recalc_geometry_caches(struct Object *ob,
+                                        struct bGPDlayer *gpl,
+                                        struct MaterialGPencilStyle *gp_style,
+                                        struct bGPDstroke *gps);
+void BKE_gpencil_calc_stroke_uv(struct Object *ob, struct bGPDstroke *gps);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 

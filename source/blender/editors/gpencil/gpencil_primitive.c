@@ -1347,7 +1347,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
     gps->tot_triangles = 0;
 
     /* calculate UVs along the stroke */
-    ED_gpencil_calc_stroke_uv(tgpi->ob, gps);
+    BKE_gpencil_calc_stroke_uv(tgpi->ob, gps);
   }
 
   /* transfer stroke from temporary buffer to the actual frame */

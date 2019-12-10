@@ -1241,7 +1241,7 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
   }
 
   /* calculate UVs along the stroke */
-  ED_gpencil_calc_stroke_uv(obact, gps);
+  BKE_gpencil_calc_stroke_uv(obact, gps);
 
   /* add stroke to frame, usually on tail of the listbase, but if on back is enabled the stroke
    * is added on listbase head because the drawing order is inverse and the head stroke is the
