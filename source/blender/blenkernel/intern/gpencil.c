@@ -40,6 +40,7 @@
 #include "BLT_translation.h"
 
 #include "IMB_imbuf_types.h"
+#include "IMB_imbuf.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_meshdata_types.h"
@@ -3565,24 +3566,6 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
   }
 }
 
-static void BKE_gpencil_get_pixel(const ImBuf *ibuf, const int idx, float r_col[4])
-{
-  if (ibuf->rect_float) {
-    const float *frgba = &ibuf->rect_float[idx * 4];
-    copy_v4_v4(r_col, frgba);
-  }
-  else if (ibuf->rect) {
-    unsigned char *cp = (unsigned char *)(ibuf->rect + idx);
-    r_col[0] = (float)cp[0] / 255.0f;
-    r_col[1] = (float)cp[1] / 255.0f;
-    r_col[2] = (float)cp[2] / 255.0f;
-    r_col[3] = (float)cp[3] / 255.0f;
-  }
-  else {
-    zero_v4(r_col);
-  }
-}
-
 bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, const bool mask)
 {
   Image *image = sima->image;
@@ -3610,8 +3593,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
       bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, 0, img_x, size * 1000);
       done = true;
       for (int col = 0; col < img_x; col++) {
-        int pix = ((row * img_x) + col);
-        BKE_gpencil_get_pixel(ibuf, pix, color);
+        IMB_sampleImageAtLocation(ibuf, col, row, false, color);
         pt = &gps->points[col];
         pt->pressure = 1.0f;
         pt->x = col * size;

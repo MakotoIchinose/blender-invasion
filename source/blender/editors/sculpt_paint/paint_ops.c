@@ -27,6 +27,7 @@
 #include "BLI_string.h"
 
 #include "IMB_imbuf_types.h"
+#include "IMB_imbuf.h"
 
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
@@ -299,28 +300,6 @@ static void PALETTE_OT_color_delete(wmOperatorType *ot)
 }
 
 /* --- Extract Palette from Image. */
-
-/* Return pixel data (rgba) at index. */
-static void get_image_pixel(const ImBuf *ibuf, const int idx, float r_col[3])
-{
-  if (ibuf->rect_float) {
-    const float *frgba = &ibuf->rect_float[idx * 4];
-    copy_v3_v3(r_col, frgba);
-  }
-  else if (ibuf->rect) {
-    float r, g, b;
-    uint *cp = &ibuf->rect[idx];
-    uint a = *cp;
-    cpack_to_rgb(a, &r, &g, &b);
-    r_col[0] = r;
-    r_col[1] = g;
-    r_col[2] = b;
-  }
-  else {
-    zero_v4(r_col);
-  }
-}
-
 static bool palette_extract_img_poll(bContext *C)
 {
   SpaceLink *sl = CTX_wm_space_data(C);
@@ -337,7 +316,6 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
 
   Main *bmain = CTX_data_main(C);
   bool done = false;
-  int totpal = 0;
 
   SpaceImage *sima = CTX_wm_space_image(C);
   Image *image = sima->image;
@@ -349,21 +327,20 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
   ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
   if (ibuf->rect) {
-    const int maxpixel = (ibuf->x * ibuf->y) - 1;
-
     /* Extract all colors. */
-    for (int v = maxpixel; v != 0; v--) {
-      float col[3];
-      get_image_pixel(ibuf, v, col);
+    for (int row = 0; row < ibuf->y; row++) {
+      for (int col = 0; col < ibuf->x; col++) {
+        float color[4];
+        IMB_sampleImageAtLocation(ibuf, (float)col, (float)row, false, color);
+        const float range = pow(10.0f, threshold);
+        color[0] = truncf(color[0] * range) / range;
+        color[1] = truncf(color[1] * range) / range;
+        color[2] = truncf(color[2] * range) / range;
 
-      const float range = pow(10.0f, threshold);
-      col[0] = truncf(col[0] * range) / range;
-      col[1] = truncf(col[1] * range) / range;
-      col[2] = truncf(col[2] * range) / range;
-
-      uint key = rgb_to_cpack(col[0], col[1], col[2]);
-      if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
-        BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+        uint key = rgb_to_cpack(color[0], color[1], color[2]);
+        if (!BLI_ghash_haskey(color_table, POINTER_FROM_INT(key))) {
+          BLI_ghash_insert(color_table, POINTER_FROM_INT(key), POINTER_FROM_INT(key));
+        }
       }
     }
 
@@ -375,7 +352,7 @@ static int palette_extract_img_exec(bContext *C, wmOperator *op)
   BKE_image_release_ibuf(image, ibuf, lock);
 
   if (done) {
-    BKE_reportf(op->reports, RPT_INFO, "Palette created with %d swatches", totpal);
+    BKE_reportf(op->reports, RPT_INFO, "Palette created");
   }
 
   return OPERATOR_FINISHED;
