@@ -295,11 +295,6 @@ static void GPENCIL_engine_init_new(void *ved)
 
 void GPENCIL_engine_init(void *vedata)
 {
-  if (G.debug_value == 50) {
-    GPENCIL_engine_init_new(vedata);
-    return;
-  }
-
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   /* init storage */
   if (!stl->storage) {
@@ -309,6 +304,11 @@ void GPENCIL_engine_init(void *vedata)
   }
 
   stl->storage->multisamples = U.gpencil_multisamples;
+
+  if (G.debug_value == 50) {
+    GPENCIL_engine_init_new(vedata);
+    return;
+  }
 
   /* create shaders */
   GPENCIL_create_shaders();
