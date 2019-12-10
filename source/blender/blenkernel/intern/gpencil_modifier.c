@@ -900,6 +900,14 @@ void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
       continue;
     }
 
+    /* Loop all strokes and generate triangulation for filling. */
+    for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+      if (gp_style) {
+        BKE_gpencil_recalc_geometry_caches(ob, gpl, gp_style, gps);
+      }
+    }
+
     /* Create a duplicate data set of stroke to modify. */
     bGPDframe *gpf_eval = NULL;
     gpencil_evaluated_frame_ensure(idx, ob, gpf, &gpf_eval);

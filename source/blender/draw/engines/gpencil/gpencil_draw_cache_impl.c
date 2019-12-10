@@ -174,6 +174,7 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
 {
   gpIterData *iter = (gpIterData *)thunk;
 
+#if 0 /* TODO: Remove as the calc is in evaluated modules (gpencil_modifier.c). */
   /* Calculate triangles cache for filling area (must be done only after changes) */
   if ((gps->flag & GP_STROKE_RECALC_GEOMETRY) || (gps->tot_triangles == 0) ||
       (gps->triangles == NULL)) {
@@ -185,6 +186,7 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
       gps->tot_triangles = 0;
     }
   }
+#endif
 
   /* Store first index offset */
   gps->runtime.stroke_start = iter->vert_len;
