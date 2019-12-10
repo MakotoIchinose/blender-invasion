@@ -111,8 +111,8 @@ set(SRC
   engines/workbench/workbench_volume.c
   engines/external/external_engine.c
   engines/gpencil/gpencil_cache_utils.c
-  engines/gpencil/gpencil_data.c
   engines/gpencil/gpencil_draw_cache_impl.c
+  engines/gpencil/gpencil_draw_data.c
   engines/gpencil/gpencil_draw_utils.c
   engines/gpencil/gpencil_engine.c
   engines/gpencil/gpencil_engine.h
