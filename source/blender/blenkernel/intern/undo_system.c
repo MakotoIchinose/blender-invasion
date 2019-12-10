@@ -192,15 +192,11 @@ static void undosys_step_decode(
             /* Common case, we're already using the last memfile state. */
           }
           else {
-            GHash *depsgraphs = BKE_scene_undo_depsgraphs_extract(bmain);
-
             /* Load the previous memfile state so any ID's referenced in this
              * undo step will be correctly resolved, see: T56163. */
             undosys_step_decode(C, bmain, ustack, us_iter, dir, false);
             /* May have been freed on memfile read. */
             bmain = G_MAIN;
-
-            BKE_scene_undo_depsgraphs_restore(bmain, depsgraphs);
           }
           break;
         }
@@ -212,9 +208,17 @@ static void undosys_step_decode(
     us->type->step_foreach_ID_ref(us, undosys_id_ref_resolve, bmain);
   }
 
+  /* Extract depsgraphs from current bmain (which may be freed during undo step reading),
+   * and store them for re-use. */
+  GHash *depsgraphs = BKE_scene_undo_depsgraphs_extract(bmain);
+
   UNDO_NESTED_CHECK_BEGIN;
   us->type->step_decode(C, bmain, us, dir, is_final);
   UNDO_NESTED_CHECK_END;
+
+  /* Restore previous depsgraphs into current bmain. */
+  bmain = G_MAIN;
+  BKE_scene_undo_depsgraphs_restore(bmain, depsgraphs);
 
 #ifdef WITH_GLOBAL_UNDO_CORRECT_ORDER
   if (us->type == BKE_UNDOSYS_TYPE_MEMFILE) {
