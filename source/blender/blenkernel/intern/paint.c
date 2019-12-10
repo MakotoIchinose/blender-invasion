@@ -918,9 +918,9 @@ bool BKE_paint_ensure(ToolSettings *ts, struct Paint **r_paint)
       BLI_assert(ELEM(*r_paint,
                       /* Cast is annoying, but prevent NULL-pointer access. */
                       (Paint *)ts->gp_paint,
-                      (Paint *)ts->gp_vertexpaint->paint,
-                      (Paint *)ts->gp_sculptpaint->paint,
-                      (Paint *)ts->gp_weightpaint->paint,
+                      (Paint *)ts->gp_vertexpaint,
+                      (Paint *)ts->gp_sculptpaint,
+                      (Paint *)ts->gp_weightpaint,
                       (Paint *)ts->sculpt,
                       (Paint *)ts->vpaint,
                       (Paint *)ts->wpaint,
