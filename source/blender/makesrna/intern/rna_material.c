@@ -413,7 +413,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   static EnumPropertyItem gpcolordata_mode_types_items[] = {
       {GP_STYLE_MODE_LINE, "LINE", 0, "Line", "Draw strokes using a continuous line"},
       {GP_STYLE_MODE_DOTS, "DOTS", 0, "Dots", "Draw strokes using separated dots"},
-      {GP_STYLE_MODE_BOX, "BOX", 0, "Boxes", "Draw strokes using separated rectangle boxes"},
+      {GP_STYLE_MODE_BOX, "BOX", 0, "Squares", "Draw strokes using separated squares"},
       {0, NULL, 0, NULL, NULL},
   };
 
