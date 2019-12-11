@@ -7,9 +7,9 @@ struct gpMaterial {
   vec4 fill_uv_rot_scale;
   vec4 fill_uv_offset;
   /* Put float/int at the end to avoid padding error */
-  float stroke_uv_factor;
+  float stroke_texture_mix;
+  float stroke_u_scale;
   float fill_texture_mix;
-  float fill_uv_y_scale;
   int flag;
   /* Please ensure 16 byte alignment (multiple of vec4). */
 };

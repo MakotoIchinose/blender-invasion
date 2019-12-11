@@ -118,11 +118,13 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->flag |= GP_STROKE_TEXTURE_USE;
       mat_data->flag |= premul ? GP_STROKE_TEXTURE_PREMUL : 0;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
+      mat_data->stroke_texture_mix = 1.0f - gp_style->mix_stroke_factor;
     }
     else /* if (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_SOLID) */ {
       pool->tex_stroke[mat_id] = NULL;
       mat_data->flag &= ~GP_STROKE_TEXTURE_USE;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
+      mat_data->stroke_texture_mix = 0.0f;
     }
 
     /* Fill Style */
@@ -137,24 +139,21 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
                                gp_style->texture_scale,
                                gp_style->texture_angle,
                                mat_data->fill_uv_transform);
-      copy_v4_fl4(mat_data->fill_color, 1.0f, 1.0f, 1.0f, gp_style->texture_opacity);
-      if (gp_style->flag & GP_STYLE_FILL_TEX_MIX) {
-        copy_v4_v4(mat_data->fill_mix_color, gp_style->mix_rgba);
-      }
-      else {
-        copy_v4_fl(mat_data->fill_mix_color, 0.0f);
-      }
+      copy_v4_v4(mat_data->fill_color, gp_style->mix_rgba);
+      mat_data->fill_texture_mix = 1.0f - gp_style->texture_opacity;
     }
     else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) {
       /* TODO implement gradient as a texture. */
       pool->tex_fill[mat_id] = NULL;
       mat_data->flag &= ~GP_FILL_TEXTURE_USE;
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+      mat_data->fill_texture_mix = 0.0f;
     }
     else /* if (gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) */ {
       pool->tex_fill[mat_id] = NULL;
       mat_data->flag &= ~GP_FILL_TEXTURE_USE;
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+      mat_data->fill_texture_mix = 0.0f;
     }
   }
 

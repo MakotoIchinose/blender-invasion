@@ -28,10 +28,10 @@ in vec4 uv2;
 in vec4 col1;
 in vec4 col2;
 
-out vec4 finalColor;
+out vec4 finalColorMul;
+out vec4 finalColorAdd;
 out vec2 finalUvs;
 flat out int matFlag;
-flat out vec4 finalMixColor;
 
 void discard_vert()
 {
@@ -69,6 +69,29 @@ vec2 safe_normalize(vec2 v)
   else {
     return vec2(0.0);
   }
+}
+
+void stroke_color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, float mix_tex)
+{
+  /* Mix stroke with vertex color. */
+  vec4 mixed_col;
+  mixed_col.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a);
+  mixed_col.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
+  /**
+   * This is what the fragment shader looks like.
+   * out = col * finalColorMul + col.a * finalColorAdd.
+   * finalColorMul is how much of the texture color to keep.
+   * finalColorAdd is how much of the mixed color to add.
+   * Note that we never add alpha. This is to keep the texture act as a stencil.
+   * We do however, modulate the alpha (reduce it).
+   **/
+  /* We add the mixed color. This is 100% mix (no texture visible). */
+  finalColorMul = vec4(mixed_col.aaa, mixed_col.a);
+  finalColorAdd = vec4(mixed_col.rgb * mixed_col.a, 0.0);
+  /* Then we blend according to the texture mix factor.
+   * Note that we keep the alpha modulation. */
+  finalColorMul.rgb *= mix_tex;
+  finalColorAdd.rgb *= 1.0 - mix_tex;
 }
 
 void stroke_vertex()
@@ -132,15 +155,14 @@ void stroke_vertex()
 
   gl_Position.xy += miter * sizeViewportInv.xy * thickness;
 
-  vec4 vert_col = (x == 0.0) ? col1 : col2;
-  float vert_strength = (x == 0.0) ? strength1 : strength2;
-
   int m = int(ma1.x);
 
+  vec4 vert_col = (x == 0.0) ? col1 : col2;
+  float vert_strength = (x == 0.0) ? strength1 : strength2;
   vec4 stroke_col = materials[m].stroke_color;
-  finalColor.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a);
-  finalColor.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
-  finalMixColor = vec4(0.0);
+  float mix_tex = materials[m].stroke_texture_mix;
+
+  stroke_color_output(stroke_col, vert_col, vert_strength, mix_tex);
 
   matFlag = materials[m].flag & ~GP_FILL_FLAGS;
 
@@ -163,8 +185,17 @@ void fill_vertex()
 
   int m = int(ma1.x);
 
-  finalColor = materials[m].fill_color;
-  finalMixColor = materials[m].fill_mix_color;
+  vec4 fill_col = materials[m].fill_color;
+  float mix_tex = materials[m].fill_texture_mix;
+
+  /* We add the mixed color. This is 100% mix (no texture visible). */
+  finalColorMul = vec4(fill_col.aaa, fill_col.a);
+  finalColorAdd = vec4(fill_col.rgb * fill_col.a, 0.0);
+  /* Then we blend according to the texture mix factor.
+   * Note that we keep the alpha modulation. */
+  finalColorMul.rgb *= mix_tex;
+  finalColorAdd.rgb *= 1.0 - mix_tex;
+
   matFlag = materials[m].flag & GP_FILL_FLAGS;
 
   vec2 loc = materials[m].fill_uv_offset.xy;
