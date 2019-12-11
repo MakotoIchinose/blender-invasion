@@ -298,7 +298,7 @@ void AbstractHierarchyIterator::visit_dupli_object(DupliObject *dupli_object,
   context->export_path = "";
   context->original_export_path = "";
 
-  /* If the dupli-object's scene parent is also instanced by this object, use that as the
+  /* If the dupli-object's parent is also instanced by this object, use that as the
    * export parent. Otherwise use the dupli-parent as export parent. */
   Object *parent = dupli_object->ob->parent;
   if (parent != nullptr && dupli_set.find(parent) != dupli_set.end()) {
