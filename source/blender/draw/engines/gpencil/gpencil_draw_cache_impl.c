@@ -67,22 +67,23 @@ static GPUVertBuf *gpencil_dummy_buffer_get(void)
 
 /* MUST match the format below. */
 typedef struct gpStrokeVert {
-  int mat;
+  /** Mat is float because we need to pack other float attribs with it. */
+  float mat, strength;
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
   float col[4];
   /** UV and strength packed in the same attribute. */
-  float uv[2], strength;
+  float uv[2], u_stroke, v_rot;
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "ma", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "ma", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
   }
@@ -117,6 +118,10 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
   copy_v2_v2(verts->uv, pt->uv_fill);
   copy_v4_v4(verts->col, pt->mix_color);
   verts->strength = pt->strength;
+  verts->u_stroke = pt->uv_fac;
+  /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
+   * because the cosine will always be positive. */
+  verts->v_rot = cosf(pt->uv_rot) * signf(pt->uv_rot);
   verts->thickness = gps->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   verts->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);

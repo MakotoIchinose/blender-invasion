@@ -12,16 +12,18 @@ uniform float thicknessWorldScale;
 /* Per Layer */
 uniform float thicknessOffset;
 
-in int ma1;
-in int ma2;
+in vec2 ma1;
+in vec2 ma2;
+#define strength1 ma1.y
+#define strength2 ma2.y
 /* Position contains thickness in 4th component. */
 in vec4 pos;  /* Prev adj vert */
 in vec4 pos1; /* Current edge */
 in vec4 pos2; /* Current edge */
 in vec4 pos3; /* Next adj vert */
-
-in vec3 uv1;
-in vec3 uv2;
+/* xy is UV for fills, z is U of stroke, w is cosine of UV angle with sign of sine.  */
+in vec4 uv1;
+in vec4 uv2;
 
 in vec4 col1;
 in vec4 col2;
@@ -72,7 +74,7 @@ vec2 safe_normalize(vec2 v)
 void stroke_vertex()
 {
   /* Enpoints, we discard the vertices. */
-  if (ma1 == -1 || ma2 == -1) {
+  if (ma1.x == -1.0 || ma2.x == -1.0) {
     discard_vert();
     return;
   }
@@ -126,19 +128,24 @@ void stroke_vertex()
     thickness *= thicknessWorldScale * ProjectionMatrix[1][1] * sizeViewport.y;
   }
   /* Multiply scalars first. */
-  y *= thickness;
+  thickness *= y;
 
-  gl_Position.xy += miter * sizeViewportInv.xy * y;
+  gl_Position.xy += miter * sizeViewportInv.xy * thickness;
 
   vec4 vert_col = (x == 0.0) ? col1 : col2;
-  float vert_strength = (x == 0.0) ? uv1.z : uv2.z;
-  vec4 stroke_col = materials[ma1].stroke_color;
+  float vert_strength = (x == 0.0) ? strength1 : strength2;
+
+  int m = int(ma1.x);
+
+  vec4 stroke_col = materials[m].stroke_color;
   finalColor.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a);
   finalColor.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
-  // finalColor *= vert_col;
   finalMixColor = vec4(0.0);
-  matFlag = materials[ma1].flag & ~GP_FILL_FLAGS;
-  finalUvs = (x == 0.0) ? uv1.xy : uv2.xy;
+
+  matFlag = materials[m].flag & ~GP_FILL_FLAGS;
+
+  finalUvs.x = (x == 0.0) ? uv1.z : uv2.z;
+  finalUvs.y = y * 0.5 + 0.5;
 }
 
 void dots_vertex()
@@ -154,13 +161,14 @@ void fill_vertex()
   gl_Position = point_world_to_ndc(wpos);
   gl_Position.z += 1e-2;
 
-  finalColor = materials[ma1].fill_color;
-  finalMixColor = materials[ma1].fill_mix_color;
-  matFlag = materials[ma1].flag & GP_FILL_FLAGS;
+  int m = int(ma1.x);
 
-  vec2 loc = materials[ma1].fill_uv_offset.xy;
-  mat2x2 rot_scale = mat2x2(materials[ma1].fill_uv_rot_scale.xy,
-                            materials[ma1].fill_uv_rot_scale.zw);
+  finalColor = materials[m].fill_color;
+  finalMixColor = materials[m].fill_mix_color;
+  matFlag = materials[m].flag & GP_FILL_FLAGS;
+
+  vec2 loc = materials[m].fill_uv_offset.xy;
+  mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);
   finalUvs = rot_scale * uv1.xy + loc;
 }
 
