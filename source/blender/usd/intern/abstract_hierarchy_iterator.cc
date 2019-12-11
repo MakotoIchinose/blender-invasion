@@ -404,7 +404,7 @@ void AbstractHierarchyIterator::determine_duplication_references(
 
 void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_context)
 {
-  AbstractHierarchyWriter *xform_writer = nullptr;
+  AbstractHierarchyWriter *transform_writer = nullptr;
   float parent_matrix_inv_world[4][4];
 
   if (parent_context) {
@@ -420,8 +420,8 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_cont
     copy_m4_m4(context->parent_matrix_inv_world, parent_matrix_inv_world);
 
     // Get or create the transform writer.
-    xform_writer = ensure_writer(context, &AbstractHierarchyIterator::create_xform_writer);
-    if (xform_writer == nullptr) {
+    transform_writer = ensure_writer(context, &AbstractHierarchyIterator::create_transform_writer);
+    if (transform_writer == nullptr) {
       // Unable to export, so there is nothing to attach any children to; just abort this entire
       // branch of the export hierarchy.
       return;
@@ -431,7 +431,7 @@ void AbstractHierarchyIterator::make_writers(const HierarchyContext *parent_cont
     /* XXX This can lead to too many XForms being written. For example, a camera writer can refuse
      * to write an orthographic camera. By the time that this is known, the XForm has already been
      * written. */
-    xform_writer->write(*context);
+    transform_writer->write(*context);
 
     if (!context->weak_export) {
       make_writers_particle_systems(context);
@@ -474,17 +474,17 @@ void AbstractHierarchyIterator::make_writer_object_data(const HierarchyContext *
 }
 
 void AbstractHierarchyIterator::make_writers_particle_systems(
-    const HierarchyContext *xform_context)
+    const HierarchyContext *transform_context)
 {
-  Object *object = xform_context->object;
+  Object *object = transform_context->object;
   ParticleSystem *psys = static_cast<ParticleSystem *>(object->particlesystem.first);
   for (; psys; psys = psys->next) {
     if (!psys_check_enabled(object, psys, true)) {
       continue;
     }
 
-    HierarchyContext hair_context = *xform_context;
-    hair_context.export_path = path_concatenate(xform_context->export_path,
+    HierarchyContext hair_context = *transform_context;
+    hair_context.export_path = path_concatenate(transform_context->export_path,
                                                 get_id_name(&psys->part->id));
     hair_context.particle_system = psys;
 
