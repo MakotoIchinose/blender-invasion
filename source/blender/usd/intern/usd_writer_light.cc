@@ -36,9 +36,9 @@ USDLightWriter::USDLightWriter(const USDExporterContext &ctx) : USDAbstractWrite
 {
 }
 
-bool USDLightWriter::is_supported(const Object *object) const
+bool USDLightWriter::is_supported(const HierarchyContext *context) const
 {
-  Light *light = static_cast<Light *>(object->data);
+  Light *light = static_cast<Light *>(context->object->data);
   return ELEM(light->type, LA_AREA, LA_LOCAL, LA_SUN);
 }
 

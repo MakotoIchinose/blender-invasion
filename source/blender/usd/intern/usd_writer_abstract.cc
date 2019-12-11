@@ -51,7 +51,7 @@ USDAbstractWriter::~USDAbstractWriter()
 {
 }
 
-bool USDAbstractWriter::is_supported(const Object * /*object*/) const
+bool USDAbstractWriter::is_supported(const HierarchyContext * /*context*/) const
 {
   return true;
 }
