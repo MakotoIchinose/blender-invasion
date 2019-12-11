@@ -198,10 +198,10 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   pxr::UsdAttribute attr_face_vertex_counts = usd_mesh.CreateFaceVertexCountsAttr();
   pxr::UsdAttribute attr_face_vertex_indices = usd_mesh.CreateFaceVertexIndicesAttr();
 
-  usd_value_writer.SetAttribute(attr_points, pxr::VtValue(usd_mesh_data.points), timecode);
-  usd_value_writer.SetAttribute(
+  usd_value_writer_.SetAttribute(attr_points, pxr::VtValue(usd_mesh_data.points), timecode);
+  usd_value_writer_.SetAttribute(
       attr_face_vertex_counts, pxr::VtValue(usd_mesh_data.face_vertex_counts), timecode);
-  usd_value_writer.SetAttribute(
+  usd_value_writer_.SetAttribute(
       attr_face_vertex_indices, pxr::VtValue(usd_mesh_data.face_indices), timecode);
 
   if (!usd_mesh_data.crease_lengths.empty()) {
@@ -209,11 +209,11 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     pxr::UsdAttribute attr_crease_indices = usd_mesh.CreateCreaseIndicesAttr();
     pxr::UsdAttribute attr_crease_sharpness = usd_mesh.CreateCreaseSharpnessesAttr();
 
-    usd_value_writer.SetAttribute(
+    usd_value_writer_.SetAttribute(
         attr_crease_lengths, pxr::VtValue(usd_mesh_data.crease_lengths), timecode);
-    usd_value_writer.SetAttribute(
+    usd_value_writer_.SetAttribute(
         attr_crease_indices, pxr::VtValue(usd_mesh_data.crease_vertex_indices), timecode);
-    usd_value_writer.SetAttribute(
+    usd_value_writer_.SetAttribute(
         attr_crease_sharpness, pxr::VtValue(usd_mesh_data.crease_sharpnesses), timecode);
   }
 

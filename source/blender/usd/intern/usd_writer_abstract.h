@@ -43,7 +43,7 @@ namespace USD {
 class USDAbstractWriter : public AbstractHierarchyWriter {
  protected:
   const USDExporterContext usd_export_context_;
-  pxr::UsdUtilsSparseValueWriter usd_value_writer;
+  pxr::UsdUtilsSparseValueWriter usd_value_writer_;
 
   bool frame_has_been_written_;
   bool is_animated_;

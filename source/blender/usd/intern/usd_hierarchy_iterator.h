@@ -36,9 +36,9 @@ namespace USD {
 
 class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
-  const pxr::UsdStageRefPtr stage;
-  pxr::UsdTimeCode export_time;
-  const USDExportParams &params;
+  const pxr::UsdStageRefPtr stage_;
+  pxr::UsdTimeCode export_time_;
+  const USDExportParams &params_;
 
  public:
   USDHierarchyIterator(Depsgraph *depsgraph,
