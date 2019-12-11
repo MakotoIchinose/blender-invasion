@@ -64,7 +64,7 @@ const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
 
-static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   /* Mark this operator call as 'invoked', so that it'll run as a background job. */
   op->customdata = POINTER_FROM_INT(AS_BACKGROUND_JOB);
@@ -88,8 +88,6 @@ static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *even
   WM_event_add_fileselect(C, op);
 
   return OPERATOR_RUNNING_MODAL;
-
-  UNUSED_VARS(event);
 }
 
 static int wm_usd_export_exec(bContext *C, wmOperator *op)
