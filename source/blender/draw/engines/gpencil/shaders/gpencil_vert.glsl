@@ -20,7 +20,12 @@ in vec4 pos1; /* Current edge */
 in vec4 pos2; /* Current edge */
 in vec4 pos3; /* Next adj vert */
 
+in vec2 uv1;
+in vec2 uv2;
+
 out vec4 finalColor;
+out vec2 finalUvs;
+flat out int matFlag;
 
 void discard_vert()
 {
@@ -122,6 +127,8 @@ void stroke_vertex()
   gl_Position.xy += miter * sizeViewportInv.xy * y;
 
   finalColor = materials[ma1].stroke_color;
+  matFlag = materials[ma1].flag & ~GP_FILL_FLAGS;
+  finalUvs = (x == 0.0) ? uv1 : uv2;
 }
 
 void dots_vertex()
@@ -138,11 +145,19 @@ void fill_vertex()
   gl_Position.z += 1e-2;
 
   finalColor = materials[ma1].fill_color;
+  matFlag = materials[ma1].flag & GP_FILL_FLAGS;
+
+  vec2 loc = materials[ma1].fill_uv_offset.xy;
+  mat2x2 rot_scale = mat2x2(materials[ma1].fill_uv_rot_scale.xy,
+                            materials[ma1].fill_uv_rot_scale.zw);
+  finalUvs = rot_scale * uv1 + loc;
 }
 
 void main()
 {
-  /* Trick to detect if a drawcall is stroke or fill. */
+  /* Trick to detect if a drawcall is stroke or fill.
+   * This does mean that we need to draw an empty stroke segment before starting
+   * to draw the real stroke segments. */
   bool is_fill = (gl_InstanceID == 0);
 
   if (!is_fill) {

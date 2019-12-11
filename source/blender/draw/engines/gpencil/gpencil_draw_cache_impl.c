@@ -71,8 +71,7 @@ typedef struct gpStrokeVert {
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
   // float col[4];
-  // float rad;
-  // float uv[2];
+  float uv[2];
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
@@ -83,7 +82,7 @@ static GPUVertFormat *gpencil_stroke_format(void)
     GPU_vertformat_attr_add(&format, "ma", GPU_COMP_I32, 1, GPU_FETCH_INT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     // GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    // GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
   }
@@ -116,6 +115,7 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
 {
   /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
+  copy_v2_v2(verts->uv, pt->uv_fill);
   verts->thickness = gps->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   verts->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);
@@ -173,20 +173,6 @@ static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
                                      void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
-
-#if 0 /* TODO: Remove as the calc is in evaluated modules (gpencil_modifier.c). */
-  /* Calculate triangles cache for filling area (must be done only after changes) */
-  if ((gps->flag & GP_STROKE_RECALC_GEOMETRY) || (gps->tot_triangles == 0) ||
-      (gps->triangles == NULL)) {
-    if (gps->totpoints >= 3) {
-      /* TODO OPTI only do this if the fill is actually displayed. */
-      BKE_gpencil_triangulate_stroke_fill(iter->gpd, gps);
-    }
-    else {
-      gps->tot_triangles = 0;
-    }
-  }
-#endif
 
   /* Store first index offset */
   gps->runtime.stroke_start = iter->vert_len;

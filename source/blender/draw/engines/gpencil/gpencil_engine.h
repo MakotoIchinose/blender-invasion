@@ -61,7 +61,26 @@ struct GPUVertFormat;
 typedef struct gpMaterial {
   float stroke_color[4];
   float fill_color[4];
+  float fill_uv_transform[3][2], _pad0[2];
+  float stroke_texture_mix;
+  float stroke_uv_factor;
+  float fill_texture_mix;
+  int flag;
 } gpMaterial;
+
+/* gpMaterial->flag */
+/* WATCH Keep in sync with GLSL declaration. */
+#define GP_STROKE_ALIGNMENT_STROKE 1
+#define GP_STROKE_ALIGNMENT_OBJECT 2
+#define GP_STROKE_ALIGNMENT_FIXED 3
+#define GP_STROKE_ALIGNMENT 0x3
+#define GP_STROKE_OVERLAP (1 << 2)
+#define GP_STROKE_TEXTURE_USE (1 << 3)
+#define GP_STROKE_TEXTURE_STENCIL (1 << 4)
+#define GP_STROKE_TEXTURE_PREMUL (1 << 5)
+#define GP_FILL_TEXTURE_USE (1 << 10)
+#define GP_FILL_TEXTURE_PREMUL (1 << 11)
+#define GP_FILL_TEXTURE_CLIP (1 << 12)
 
 BLI_STATIC_ASSERT_ALIGN(gpMaterial, 16)
 
@@ -127,6 +146,9 @@ typedef struct GPENCIL_MaterialPool {
   gpMaterial mat_data[GPENCIL_MATERIAL_BUFFER_LEN];
   /* Matching ubo. */
   struct GPUUniformBuffer *ubo;
+  /* Texture per material. NULL means none. */
+  struct GPUTexture *tex_fill[GPENCIL_MATERIAL_BUFFER_LEN];
+  struct GPUTexture *tex_stroke[GPENCIL_MATERIAL_BUFFER_LEN];
 } GPENCIL_MaterialPool;
 
 typedef struct GPENCIL_ViewLayerData {
@@ -290,7 +312,8 @@ typedef struct GPENCIL_FramebufferList {
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {
-  struct GPUTexture *texture;
+  /* Dummy texture to avoid errors cause by empty sampler. */
+  struct GPUTexture *dummy_texture;
 
   /* multisample textures */
   struct GPUTexture *multisample_color;
@@ -593,7 +616,11 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
                                             Object *ob,
                                             struct bGPDlayer *layer);
 GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Object *ob, int *ofs);
-struct GPUUniformBuffer *gpencil_material_ubo_get(GPENCIL_MaterialPool *first_pool, int mat_id);
+void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
+                                    int mat_id,
+                                    struct GPUTexture **r_tex_stroke,
+                                    struct GPUTexture **r_tex_fill,
+                                    struct GPUUniformBuffer **r_ubo_mat);
 
 /* effects */
 void GPENCIL_create_fx_shaders(struct GPENCIL_e_data *e_data);

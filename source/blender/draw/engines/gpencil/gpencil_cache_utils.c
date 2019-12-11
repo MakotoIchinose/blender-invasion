@@ -60,7 +60,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
 
-  DRWState state = DRW_STATE_WRITE_COLOR;
+  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
   /* TODO better 3D mode. */
   if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
     state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;

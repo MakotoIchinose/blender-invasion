@@ -27,6 +27,7 @@ extern char datatoc_gpencil_common_lib_glsl[];
 extern char datatoc_gpencil_frag_glsl[];
 extern char datatoc_gpencil_vert_glsl[];
 
+extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
@@ -42,6 +43,7 @@ struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data)
             },
         .frag =
             (const char *[]){
+                datatoc_common_colormanagement_lib_glsl,
                 datatoc_gpencil_common_lib_glsl,
                 datatoc_gpencil_frag_glsl,
                 NULL,

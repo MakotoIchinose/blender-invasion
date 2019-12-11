@@ -22,9 +22,13 @@
 
 #include "DRW_render.h"
 
+#include "BKE_image.h"
+
 #include "BLI_memblock.h"
 
 #include "GPU_uniformbuffer.h"
+
+#include "IMB_imbuf_types.h"
 
 #include "gpencil_engine.h"
 
@@ -37,6 +41,47 @@ static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
   }
   pd->last_material_pool = matpool;
   return matpool;
+}
+
+static struct GPUTexture *gpencil_image_texture_get(Image *image, bool *r_alpha_premult)
+{
+  ImBuf *ibuf;
+  ImageUser iuser = {NULL};
+  struct GPUTexture *gpu_tex = NULL;
+  void *lock;
+
+  iuser.ok = true;
+  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
+
+  if (ibuf != NULL && ibuf->rect != NULL) {
+    gpu_tex = GPU_texture_from_blender(image, &iuser, GL_TEXTURE_2D);
+    *r_alpha_premult = (image->alpha_mode == IMA_ALPHA_PREMUL);
+  }
+  BKE_image_release_ibuf(image, ibuf, lock);
+
+  return gpu_tex;
+}
+
+static void gpencil_uv_transform_get(const float ofs[2],
+                                     const float scale[2],
+                                     const float rotation,
+                                     float r_uvmat[3][2])
+{
+  /* OPTI this could use 3x2 matrices and reduce the number of operations drastically. */
+  float mat[4][4];
+  float scale_v3[3] = {scale[0], scale[1], 0.0};
+  /* Scale */
+  size_to_mat4(mat, scale_v3);
+  /* Offset to center. */
+  translate_m4(mat, 0.5f + ofs[0], 0.5f + ofs[1], 0.0f);
+  /* Rotation; */
+  rotate_m4(mat, 'Z', -rotation);
+  /* Translate. */
+  translate_m4(mat, -0.5f, -0.5f, 0.0f);
+  /* Convert to 3x2 */
+  copy_v2_v2(r_uvmat[0], mat[0]);
+  copy_v2_v2(r_uvmat[1], mat[1]);
+  copy_v2_v2(r_uvmat[2], mat[3]);
 }
 
 /**
@@ -55,14 +100,60 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
 
   GPENCIL_MaterialPool *pool = matpool;
   for (int i = 0; i < ob->totcol; i++) {
-    if ((i > 0) && (i % GPENCIL_MATERIAL_BUFFER_LEN) == 0) {
+    int mat_id = (i % GPENCIL_MATERIAL_BUFFER_LEN);
+    if ((i > 0) && (mat_id == 0)) {
       pool->next = gpencil_material_pool_add(pd);
       pool = pool->next;
     }
-    gpMaterial *mat_data = &pool->mat_data[i % GPENCIL_MATERIAL_BUFFER_LEN];
+    gpMaterial *mat_data = &pool->mat_data[mat_id];
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, i + 1);
-    copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
-    copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+
+    mat_data->flag = 0;
+
+    if ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
+      /* TODO finish. */
+      bool premul;
+      pool->tex_stroke[mat_id] = gpencil_image_texture_get(gp_style->sima, &premul);
+      mat_data->flag |= GP_STROKE_TEXTURE_USE;
+      mat_data->flag |= premul ? GP_STROKE_TEXTURE_PREMUL : 0;
+      copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
+    }
+    else /* if (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) */ {
+      pool->tex_stroke[mat_id] = NULL;
+      mat_data->flag &= ~GP_STROKE_TEXTURE_USE;
+      copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
+    }
+
+    if ((gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) && (gp_style->ima)) {
+      bool use_clip = (gp_style->flag & GP_STYLE_COLOR_TEX_CLAMP) != 0;
+      bool premul;
+      pool->tex_fill[mat_id] = gpencil_image_texture_get(gp_style->ima, &premul);
+      mat_data->flag |= GP_FILL_TEXTURE_USE;
+      mat_data->flag |= premul ? GP_FILL_TEXTURE_PREMUL : 0;
+      mat_data->flag |= use_clip ? GP_FILL_TEXTURE_CLIP : 0;
+      gpencil_uv_transform_get(gp_style->texture_offset,
+                               gp_style->texture_scale,
+                               gp_style->texture_angle,
+                               mat_data->fill_uv_transform);
+      copy_v4_fl4(mat_data->fill_color, 1.0f, 1.0f, 1.0f, gp_style->texture_opacity);
+    }
+    else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) {
+      /* TODO implement gradient as a texture. */
+      pool->tex_fill[mat_id] = NULL;
+      mat_data->flag &= ~GP_FILL_TEXTURE_USE;
+      copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+    }
+    else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_CHECKER) {
+      /* TODO implement checker as a texture. */
+      pool->tex_fill[mat_id] = NULL;
+      mat_data->flag &= ~GP_FILL_TEXTURE_USE;
+      copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+    }
+    else /* if (gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) */ {
+      pool->tex_fill[mat_id] = NULL;
+      mat_data->flag &= ~GP_FILL_TEXTURE_USE;
+      copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+    }
   }
 
   *ofs = 0;
@@ -70,14 +161,25 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
   return matpool;
 }
 
-GPUUniformBuffer *gpencil_material_ubo_get(GPENCIL_MaterialPool *first_pool, int mat_id)
+void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
+                                    int mat_id,
+                                    GPUTexture **r_tex_stroke,
+                                    GPUTexture **r_tex_fill,
+                                    GPUUniformBuffer **r_ubo_mat)
 {
   GPENCIL_MaterialPool *matpool = first_pool;
   int pool_id = mat_id / GPENCIL_MATERIAL_BUFFER_LEN;
   for (int i = 0; i < pool_id; i++) {
     matpool = matpool->next;
   }
-  return matpool->ubo;
+  mat_id = mat_id % GPENCIL_MATERIAL_BUFFER_LEN;
+  *r_ubo_mat = matpool->ubo;
+  if (r_tex_fill) {
+    *r_tex_fill = matpool->tex_fill[mat_id];
+  }
+  if (r_tex_stroke) {
+    *r_tex_stroke = matpool->tex_stroke[mat_id];
+  }
 }
 
 void gpencil_material_pool_free(void *storage)

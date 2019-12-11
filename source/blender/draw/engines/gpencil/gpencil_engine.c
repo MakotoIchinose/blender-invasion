@@ -279,11 +279,14 @@ static void GPENCIL_create_shaders(void)
 static void GPENCIL_engine_init_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
-  GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
+  GPENCIL_StorageList *stl = vedata->stl;
+  GPENCIL_TextureList *txl = vedata->txl;
 
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
   }
+
+  DRW_texture_ensure_2d(&txl->dummy_texture, 1, 1, GPU_R8, 0);
 
   GPENCIL_ViewLayerData *vldata = GPENCIL_view_layer_data_ensure();
 
@@ -739,8 +742,11 @@ typedef struct gpIterPopulateData {
   DRWShadingGroup *grp;
   /* Offset in the material pool to the first material of this object. */
   int mat_ofs;
-  /* Index of last material pool used for drawing. Used to avoid uneeded buffer binding. */
-  int mat_pool_nr;
+  /* Last material UBO bound. Used to avoid uneeded buffer binding. */
+  GPUUniformBuffer *ubo_mat;
+  /* Last texture bound. */
+  GPUTexture *tex_fill;
+  GPUTexture *tex_stroke;
 } gpIterPopulateData;
 
 static void gp_layer_cache_populate(bGPDlayer *gpl,
@@ -754,8 +760,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
 
-  GPUUniformBuffer *ubo_mat = gpencil_material_ubo_get(iter->matpool, 0);
-  iter->mat_pool_nr = 0;
+  GPUUniformBuffer *ubo_mat;
+  gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
 
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
@@ -767,6 +773,8 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
+  DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
+  DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);
@@ -792,17 +800,37 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
     return;
   }
 
-  int mat_pool_nr = gps->mat_nr / GPENCIL_MATERIAL_BUFFER_LEN;
-  if (mat_pool_nr != iter->mat_pool_nr) {
-    /* Change ubo because material is not from the same pool as previous material. */
-    GPUUniformBuffer *ubo_mat = gpencil_material_ubo_get(iter->matpool, gps->mat_nr);
-    iter->grp = DRW_shgroup_create_sub(iter->grp);
-    DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
-    iter->mat_pool_nr = mat_pool_nr;
-  }
-
+  bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;
   bool show_fill = (gps->tot_triangles > 0) && (gp_style->flag & GP_STYLE_FILL_SHOW) != 0;
+
+  if (hide_material || (!show_stroke && !show_fill)) {
+    return;
+  }
+
+  GPUUniformBuffer *ubo_mat;
+  GPUTexture *tex_stroke, *tex_fill;
+  gpencil_material_resources_get(iter->matpool, gps->mat_nr, &tex_stroke, &tex_fill, &ubo_mat);
+
+  bool resource_changed = (iter->ubo_mat != ubo_mat) ||
+                          (tex_fill && (iter->tex_fill != tex_fill)) ||
+                          (tex_stroke && (iter->tex_stroke != tex_stroke));
+
+  if (resource_changed) {
+    iter->grp = DRW_shgroup_create_sub(iter->grp);
+    if (iter->ubo_mat != ubo_mat) {
+      DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
+      iter->ubo_mat = ubo_mat;
+    }
+    if (tex_fill) {
+      DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", tex_fill);
+      iter->tex_fill = tex_fill;
+    }
+    if (tex_stroke) {
+      DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", tex_stroke);
+      iter->tex_stroke = tex_stroke;
+    }
+  }
 
   if (show_fill) {
     GPUBatch *geom = GPENCIL_batch_cache_fills(iter->ob, iter->pd->cfra);
@@ -825,6 +853,7 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_TextureList *txl = vedata->txl;
 
   /* object must be visible */
   if (!(DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF)) {
@@ -837,6 +866,8 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
     iter.pd = pd;
     iter.tgp_ob = gpencil_object_cache_add_new(pd, ob);
     iter.matpool = gpencil_material_pool_create(pd, ob, &iter.mat_ofs);
+    iter.tex_fill = txl->dummy_texture;
+    iter.tex_stroke = txl->dummy_texture;
 
     gpencil_object_visible_stroke_iter(
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
