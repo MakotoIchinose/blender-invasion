@@ -48,6 +48,8 @@ struct Object;
 struct ParticleSystem;
 struct ViewLayer;
 
+namespace USD {
+
 class AbstractHierarchyWriter;
 
 /* HierarchyContext structs are created by the AbstractHierarchyIterator. Each HierarchyContext
@@ -242,5 +244,7 @@ class AbstractHierarchyIterator {
   /* Called by release_writers() to free what the create_XXX_writer() functions allocated. */
   virtual void delete_object_writer(AbstractHierarchyWriter *writer) = 0;
 };
+
+}  // namespace USD
 
 #endif /* __USD__ABSTRACT_HIERARCHY_ITERATOR_H__ */

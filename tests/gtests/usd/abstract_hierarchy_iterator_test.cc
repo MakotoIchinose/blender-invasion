@@ -32,6 +32,8 @@ extern "C" {
  * multiple times, hence the set. */
 typedef std::map<std::string, std::set<std::string>> created_writers;
 
+using namespace USD;
+
 class TestHierarchyWriter : public AbstractHierarchyWriter {
  public:
   created_writers &writers_map;

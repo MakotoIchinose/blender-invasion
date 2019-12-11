@@ -32,6 +32,8 @@ extern "C" {
 #include "DNA_object_types.h"
 }
 
+namespace USD {
+
 USDLightWriter::USDLightWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -106,3 +108,5 @@ void USDLightWriter::do_write(HierarchyContext &context)
   usd_light.CreateColorAttr().Set(pxr::GfVec3f(light->r, light->g, light->b), timecode);
   usd_light.CreateSpecularAttr().Set(light->spec_fac, timecode);
 }
+
+}  // namespace USD

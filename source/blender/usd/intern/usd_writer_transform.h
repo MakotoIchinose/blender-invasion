@@ -23,6 +23,8 @@
 
 #include <pxr/usd/usdGeom/xform.h>
 
+namespace USD {
+
 class USDTransformWriter : public USDAbstractWriter {
  private:
   pxr::UsdGeomXformOp xformOp_;
@@ -34,5 +36,7 @@ class USDTransformWriter : public USDAbstractWriter {
   void do_write(HierarchyContext &context) override;
   bool check_is_animated(const HierarchyContext &context) const override;
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_WRITER_TRANSFORM_H__ */

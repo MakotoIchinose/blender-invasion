@@ -38,6 +38,8 @@ struct Main;
 struct Material;
 struct Object;
 
+namespace USD {
+
 class USDAbstractWriter : public AbstractHierarchyWriter {
  protected:
   const USDExporterContext usd_export_context_;
@@ -70,5 +72,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
 
   pxr::UsdShadeMaterial ensure_usd_material(Material *material);
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_WRITER_ABSTRACT_H__ */

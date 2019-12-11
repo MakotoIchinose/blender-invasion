@@ -21,6 +21,8 @@
 
 #include "usd_writer_abstract.h"
 
+namespace USD {
+
 class USDLightWriter : public USDAbstractWriter {
  public:
   USDLightWriter(const USDExporterContext &ctx);
@@ -29,5 +31,7 @@ class USDLightWriter : public USDAbstractWriter {
   virtual bool is_supported(const HierarchyContext *context) const override;
   virtual void do_write(HierarchyContext &context) override;
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_WRITER_LIGHT_H__ */

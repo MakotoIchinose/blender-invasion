@@ -42,6 +42,8 @@ extern "C" {
 #include "DNA_object_types.h"
 }
 
+namespace USD {
+
 USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph,
                                            pxr::UsdStageRefPtr stage,
                                            const USDExportParams &params)
@@ -143,3 +145,5 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(const Hier
 {
   return nullptr;
 }
+
+}  // namespace USD

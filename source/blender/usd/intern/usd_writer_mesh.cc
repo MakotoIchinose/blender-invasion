@@ -45,6 +45,8 @@ extern "C" {
 #include "DNA_particle_types.h"
 }
 
+namespace USD {
+
 USDGenericMeshWriter::USDGenericMeshWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -457,3 +459,5 @@ Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool & /*r_needsfree*/
 {
   return object_eval->runtime.mesh_eval;
 }
+
+}  // namespace USD

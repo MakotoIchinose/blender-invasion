@@ -28,6 +28,8 @@ extern "C" {
 #include "DNA_particle_types.h"
 }
 
+namespace USD {
+
 USDHairWriter::USDHairWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -78,3 +80,5 @@ bool USDHairWriter::check_is_animated(const HierarchyContext &) const
 {
   return true;
 }
+
+}  // namespace USD
