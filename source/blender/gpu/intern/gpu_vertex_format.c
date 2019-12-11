@@ -226,8 +226,8 @@ void GPU_vertformat_multiload_enable(GPUVertFormat *format, int load_count)
     VertexFormat_pack(format);
   }
 
-  BLI_assert(format->name_len + format->attr_len * (load_count - 1) < GPU_VERT_FORMAT_MAX_NAMES);
-  BLI_assert(format->attr_len + format->attr_len * (load_count - 1) < GPU_VERT_ATTR_MAX_LEN);
+  BLI_assert((format->name_len + 1) * load_count < GPU_VERT_FORMAT_MAX_NAMES);
+  BLI_assert(format->attr_len * load_count <= GPU_VERT_ATTR_MAX_LEN);
   BLI_assert(format->name_offset * load_count < GPU_VERT_ATTR_NAMES_BUF_LEN);
 
   const GPUVertAttr *attr = format->attrs;
