@@ -687,7 +687,6 @@ class AddPresetGpencilMaterial(AddPresetBase, Operator):
         "gpcolor.pattern_scale",
         "gpcolor.pattern_radius",
         "gpcolor.pattern_angle",
-        "gpcolor.pattern_gridsize",
         "gpcolor.use_fill_pattern",
         "gpcolor.texture_offset",
         "gpcolor.texture_scale",

@@ -179,9 +179,8 @@ void gpencil_object_visible_stroke_iter(Object *ob,
 #define SOLID 0
 #define GRADIENT 1
 #define RADIAL 2
-#define CHECKER 3
-#define TEXTURE 4
-#define PATTERN 5
+#define TEXTURE 3
+#define PATTERN 4
 
 /* Verify if must fade object or not. */
 static bool gpencil_fade_object_check(GPENCIL_StorageList *stl, Object *ob)
@@ -542,9 +541,6 @@ static DRWShadingGroup *gpencil_shgroup_fill_create(GPENCIL_e_data *e_data,
         stl->shgroups[id].fill_style = RADIAL;
       }
       break;
-    case GP_STYLE_FILL_STYLE_CHECKER:
-      stl->shgroups[id].fill_style = CHECKER;
-      break;
     case GP_STYLE_FILL_STYLE_TEXTURE:
       if (gp_style->flag & GP_STYLE_FILL_PATTERN) {
         stl->shgroups[id].fill_style = PATTERN;
@@ -563,7 +559,6 @@ static DRWShadingGroup *gpencil_shgroup_fill_create(GPENCIL_e_data *e_data,
 
   DRW_shgroup_uniform_float(grp, "gradient_angle", &gp_style->gradient_angle, 1);
   DRW_shgroup_uniform_float(grp, "gradient_radius", &gp_style->gradient_radius, 1);
-  DRW_shgroup_uniform_float(grp, "pattern_gridsize", &gp_style->pattern_gridsize, 1);
   DRW_shgroup_uniform_vec2(grp, "gradient_scale", gp_style->gradient_scale, 1);
   DRW_shgroup_uniform_vec2(grp, "gradient_shift", gp_style->gradient_shift, 1);
 

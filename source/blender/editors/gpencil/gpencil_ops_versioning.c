@@ -130,7 +130,6 @@ static int gpencil_convert_old_files_exec(bContext *C, wmOperator *op)
         copy_v4_v4(gp_style->fill_rgba, palcolor->fill);
 
         /* set basic settings */
-        gp_style->pattern_gridsize = 0.1f;
         gp_style->gradient_radius = 0.5f;
         ARRAY_SET_ITEMS(gp_style->mix_rgba, 1.0f, 1.0f, 1.0f, 0.2f);
         ARRAY_SET_ITEMS(gp_style->gradient_scale, 1.0f, 1.0f);

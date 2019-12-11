@@ -4309,5 +4309,15 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    /* Set Checker material as Solid for Grease Pencil. This fill mode has been removed
+     * and replaced by textures. */
+    {
+      for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+        if ((mat->gp_style) && (mat->gp_style->fill_style == GP_STYLE_FILL_STYLE_CHECKER)) {
+          mat->gp_style->fill_style = GP_STYLE_FILL_STYLE_SOLID;
+        }
+      }
+    }
   }
 }

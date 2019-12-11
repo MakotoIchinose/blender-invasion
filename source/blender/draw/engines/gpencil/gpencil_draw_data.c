@@ -151,19 +151,6 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       mat_data->flag &= ~GP_FILL_TEXTURE_USE;
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
     }
-    else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_CHECKER) {
-      pool->tex_fill[mat_id] = pd->checker_tex;
-      mat_data->flag |= GP_FILL_TEXTURE_USE;
-      gpencil_uv_transform_get(gp_style->gradient_shift,
-                               gp_style->gradient_scale,
-                               gp_style->gradient_angle,
-                               mat_data->fill_uv_transform);
-      copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
-      copy_v4_v4(mat_data->fill_mix_color, gp_style->mix_rgba);
-      if (gp_style->flag & GP_STYLE_COLOR_FLIP_FILL) {
-        swap_v4_v4(mat_data->fill_color, mat_data->fill_mix_color);
-      }
-    }
     else /* if (gp_style->fill_style == GP_STYLE_FILL_STYLE_SOLID) */ {
       pool->tex_fill[mat_id] = NULL;
       mat_data->flag &= ~GP_FILL_TEXTURE_USE;

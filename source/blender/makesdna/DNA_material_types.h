@@ -75,8 +75,7 @@ typedef struct MaterialGPencilStyle {
   float gradient_angle;
   /** Radius for radial gradients. */
   float gradient_radius;
-  /** Cheesboard size. */
-  float pattern_gridsize;
+  char _pad2[4];
   /** Uv coordinates scale. */
   float gradient_scale[2];
   /** Factor to shift filling in 2d space. */
@@ -340,7 +339,7 @@ enum {
 enum {
   GP_STYLE_FILL_STYLE_SOLID = 0,
   GP_STYLE_FILL_STYLE_GRADIENT,
-  GP_STYLE_FILL_STYLE_CHECKER,
+  GP_STYLE_FILL_STYLE_CHECKER, /* DEPRECATED (only for convert old files) */
   GP_STYLE_FILL_STYLE_TEXTURE,
 };
 

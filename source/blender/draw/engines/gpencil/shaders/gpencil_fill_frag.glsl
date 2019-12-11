@@ -4,7 +4,6 @@ uniform float mix_factor;
 
 uniform float gradient_angle;
 uniform float gradient_radius;
-uniform float pattern_gridsize;
 uniform vec2 gradient_scale;
 uniform vec2 gradient_shift;
 
@@ -36,9 +35,8 @@ uniform float fade_ob_factor;
 #define SOLID 0
 #define GRADIENT 1
 #define RADIAL 2
-#define CHECKER 3
-#define TEXTURE 4
-#define PATTERN 5
+#define TEXTURE 3
+#define PATTERN 4
 
 #define GP_XRAY_FRONT 0
 #define GP_XRAY_3DSPACE 1
@@ -110,7 +108,6 @@ void main()
                   texture_read_as_srgb(
                       myTexture, myTexturePremultiplied, clamp(rot_tex * texture_scale, 0.0, 1.0));
   vec4 text_color = vec4(tmp_color[0], tmp_color[1], tmp_color[2], tmp_color[3] * texture_opacity);
-  vec4 checker_color;
 
   /* wireframe with x-ray discard */
   if ((viewport_xray == 1) && (shading_type[0] == OB_WIRE)) {
@@ -158,20 +155,6 @@ void main()
                 texture_mix,
                 texture_flip,
                 fragColor);
-    }
-    /* Checkerboard */
-    if (fill_type == CHECKER) {
-      vec2 pos = rot / pattern_gridsize;
-      if ((fract(pos.x) < 0.5 && fract(pos.y) < 0.5) ||
-          (fract(pos.x) > 0.5 && fract(pos.y) > 0.5)) {
-        checker_color = (texture_flip == 0) ? finalColor : color2;
-      }
-      else {
-        checker_color = (texture_flip == 0) ? color2 : finalColor;
-      }
-      /* mix with texture */
-      fragColor = (texture_mix == 1) ? mix(checker_color, text_color, mix_factor) : checker_color;
-      fragColor.a *= layer_opacity;
     }
     /* texture */
     if (fill_type == TEXTURE) {

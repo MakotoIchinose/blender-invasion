@@ -428,11 +428,6 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   static EnumPropertyItem fill_style_items[] = {
       {GP_STYLE_FILL_STYLE_SOLID, "SOLID", 0, "Solid", "Fill area with solid color"},
       {GP_STYLE_FILL_STYLE_GRADIENT, "GRADIENT", 0, "Gradient", "Fill area with gradient color"},
-      {GP_STYLE_FILL_STYLE_CHECKER,
-       "CHECKER",
-       0,
-       "Checker Board",
-       "Fill area with checkerboard pattern"},
       {GP_STYLE_FILL_STYLE_TEXTURE, "TEXTURE", 0, "Texture", "Fill area with image texture"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -521,13 +516,6 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "gradient_radius");
   RNA_def_property_range(prop, 0.0001f, 10.0f);
   RNA_def_property_ui_text(prop, "Radius", "Pattern Radius");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
-
-  /* Box size */
-  prop = RNA_def_property(srna, "pattern_gridsize", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "pattern_gridsize");
-  RNA_def_property_range(prop, 0.0001f, 10.0f);
-  RNA_def_property_ui_text(prop, "Size", "Box Size");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* Texture angle */

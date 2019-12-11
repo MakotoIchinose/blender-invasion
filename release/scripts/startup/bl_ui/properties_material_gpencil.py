@@ -198,26 +198,23 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
         if gpcolor.fill_style != 'TEXTURE':
             col.prop(gpcolor, "fill_color", text="Base Color")
 
-            if gpcolor.fill_style in {'GRADIENT', 'CHECKER'}:
+            if gpcolor.fill_style == 'GRADIENT':
                 col.prop(gpcolor, "mix_color", text="Secondary Color")
 
             if gpcolor.fill_style == 'GRADIENT':
                 col.prop(gpcolor, "mix_factor", text="Mix Factor", slider=True)
 
-            if gpcolor.fill_style in {'GRADIENT', 'CHECKER'}:
+            if gpcolor.fill_style == 'GRADIENT':
                 col.prop(gpcolor, "flip", text="Flip Colors")
 
                 col.prop(gpcolor, "pattern_shift", text="Location")
                 col.prop(gpcolor, "pattern_scale", text="Scale")
 
-            if gpcolor.gradient_type == 'RADIAL' and gpcolor.fill_style not in {'SOLID', 'CHECKER'}:
+            if gpcolor.gradient_type == 'RADIAL' and gpcolor.fill_style == 'SOLID':
                 col.prop(gpcolor, "pattern_radius", text="Radius")
             else:
                 if gpcolor.fill_style != 'SOLID':
                     col.prop(gpcolor, "pattern_angle", text="Angle")
-
-            if gpcolor.fill_style == 'CHECKER':
-                col.prop(gpcolor, "pattern_gridsize", text="Box Size")
 
         # Texture
         if gpcolor.fill_style == 'TEXTURE' or (gpcolor.use_fill_texture_mix is True and gpcolor.fill_style == 'SOLID'):

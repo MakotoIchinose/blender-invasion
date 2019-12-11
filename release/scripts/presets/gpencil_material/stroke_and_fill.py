@@ -22,7 +22,6 @@ gpcolor.pattern_shift = (0.0, 0.0)
 gpcolor.pattern_scale = (1.0, 1.0)
 gpcolor.pattern_radius = 0.5
 gpcolor.pattern_angle = 0.0
-gpcolor.pattern_gridsize = 0.1
 gpcolor.use_fill_pattern = False
 gpcolor.texture_offset = (0.0, 0.0)
 gpcolor.texture_scale = (1.0, 1.0)
