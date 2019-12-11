@@ -28,6 +28,7 @@ extern "C" {
 #include "BKE_particle.h"
 
 #include "BLI_assert.h"
+#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 
 #include "DNA_ID.h"
@@ -193,18 +194,14 @@ void AbstractHierarchyIterator::export_graph_construct()
       // Construct the set of duplicated objects, so that later we can determine whether a parent
       // is also duplicated itself.
       std::set<Object *> dupli_set;
-      for (DupliObject *dupli_object = static_cast<DupliObject *>(lb->first);
-           dupli_object != nullptr;
-           dupli_object = dupli_object->next) {
+      LISTBASE_FOREACH (DupliObject *, dupli_object, lb) {
         if (!should_visit_dupli_object(dupli_object)) {
           continue;
         }
         dupli_set.insert(dupli_object->ob);
       }
 
-      for (DupliObject *dupli_object = static_cast<DupliObject *>(lb->first);
-           dupli_object != nullptr;
-           dupli_object = dupli_object->next) {
+      LISTBASE_FOREACH (DupliObject *, dupli_object, lb) {
         if (!should_visit_dupli_object(dupli_object)) {
           continue;
         }
