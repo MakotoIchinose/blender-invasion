@@ -31,7 +31,11 @@ typedef struct bXrSessionSettings {
   /** Clipping distance. */
   float clip_start, clip_end;
 
-  char _pad2[4];
+  int flag;
 } bXrSessionSettings;
+
+typedef enum eXrSessionFlag {
+  XR_SESSION_USE_POSITION_TRACKING = (1 << 0),
+} eXrSessionFlag;
 
 #endif /* __DNA_XR_TYPES_H__ */

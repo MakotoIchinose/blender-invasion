@@ -629,7 +629,8 @@ typedef struct {
   int ofsx, ofsy;
   int width, height;
 
-  GHOST_XrPose pose;
+  GHOST_XrPose eye_pose;
+  GHOST_XrPose local_pose;
 
   struct {
     float angle_left, angle_right;

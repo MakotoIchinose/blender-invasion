@@ -125,7 +125,12 @@ typedef struct ReportTimerInfo {
 typedef struct wmXrData {
   void *context; /* GHOST_XrContextHandle */
 
+  /** Permanent session settings (draw mode, feature toggles, etc). Stored in files and accessible
+   * even before the session runs. */
   bXrSessionSettings session_settings;
+
+  /** Runtime state information for managing Blender specific behaviors. Not stored in files. */
+  struct bXrRuntimeSessionState *session_state;
 } wmXrData;
 //#endif
 

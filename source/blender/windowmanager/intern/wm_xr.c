@@ -58,7 +58,24 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
-static wmSurface *g_xr_surface = NULL;
+void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
+void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
+void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
+wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
+
+/* -------------------------------------------------------------------- */
+
+typedef struct bXrRuntimeSessionState {
+  /** The pose (location + rotation) that acts as the basis for view transforms (world space). */
+  GHOST_XrPose reference_pose;
+  /** The pose (location + rotation) to which eye deltas will be applied to when drawing (world
+   * space). With positional tracking enabled, it should be the same as `base_pose`, when disabled
+   * it also contains a location delta from the moment the option was toggled. */
+  GHOST_XrPose final_reference_pose;
+
+  /** Copy of bXrSessionSettings.flag created on the last draw call,  */
+  int prev_settings_flag;
+} bXrRuntimeSessionState;
 
 typedef struct {
   GHOST_TXrGraphicsBinding gpu_binding_type;
@@ -76,10 +93,9 @@ typedef struct {
   bContext *evil_C;
 } wmXrErrorHandlerData;
 
-void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
-void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
-void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
-wmSurface *wm_xr_session_surface_create(wmWindowManager *, unsigned int);
+/* -------------------------------------------------------------------- */
+
+static wmSurface *g_xr_surface = NULL;
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Context
@@ -162,6 +178,68 @@ void wm_xr_context_destroy(wmWindowManager *wm)
 /** \} */ /* XR-Context */
 
 /* -------------------------------------------------------------------- */
+/** \name XR Runtime Session State
+ *
+ * \{ */
+
+static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(const Scene *scene)
+{
+  bXrRuntimeSessionState *state = MEM_callocN(sizeof(*state), __func__);
+
+  if (scene->camera) {
+    copy_v3_v3(state->reference_pose.position, scene->camera->loc);
+    if (scene->camera->rotmode == ROT_MODE_AXISANGLE) {
+      axis_angle_to_quat(
+          state->reference_pose.orientation_quat, scene->camera->rotAxis, scene->camera->rotAngle);
+    }
+    else if (scene->camera->rotmode == ROT_MODE_QUAT) {
+      copy_v4_v4(state->reference_pose.orientation_quat, scene->camera->quat);
+    }
+    else {
+      eul_to_quat(state->reference_pose.orientation_quat, scene->camera->rot);
+    }
+  }
+  else {
+    copy_v3_fl(state->reference_pose.position, 0.0f);
+    unit_qt(state->reference_pose.orientation_quat);
+  }
+
+  return state;
+}
+
+static void wm_xr_runtime_session_state_free(bXrRuntimeSessionState *state)
+{
+  MEM_SAFE_FREE(state);
+}
+
+static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
+                                               const GHOST_XrDrawViewInfo *draw_view,
+                                               const bXrSessionSettings *settings)
+{
+  const bool position_tracking_toggled = (state->prev_settings_flag &
+                                          XR_SESSION_USE_POSITION_TRACKING) !=
+                                         (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
+
+  if (position_tracking_toggled) {
+    copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
+    copy_v4_v4(state->final_reference_pose.orientation_quat,
+               state->reference_pose.orientation_quat);
+
+    /* Update reference pose to the current position. */
+    if ((settings->flag & XR_SESSION_USE_POSITION_TRACKING) == 0) {
+      /* OpenXR/Ghost-XR returns the local pose in local space, we need it in world space. */
+      state->final_reference_pose.position[0] -= draw_view->local_pose.position[0];
+      state->final_reference_pose.position[1] -= draw_view->local_pose.position[2];
+      state->final_reference_pose.position[2] += draw_view->local_pose.position[1];
+    }
+  }
+
+  state->prev_settings_flag = settings->flag;
+}
+
+/** \} */ /* XR Runtime Session State */
+
+/* -------------------------------------------------------------------- */
 /** \name XR-Session
  *
  * \{ */
@@ -186,39 +264,27 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   wm_window_reset_drawable();
 }
 
-static void wm_xr_session_begin_info_create(const Scene *scene,
-                                            GHOST_XrSessionBeginInfo *begin_info)
+static void wm_xr_session_begin_info_create(const bXrRuntimeSessionState *state,
+                                            GHOST_XrSessionBeginInfo *r_begin_info)
 {
-  if (scene->camera) {
-    copy_v3_v3(begin_info->base_pose.position, scene->camera->loc);
-    if (ELEM(scene->camera->rotmode, ROT_MODE_AXISANGLE, ROT_MODE_QUAT)) {
-      axis_angle_to_quat(
-          begin_info->base_pose.orientation_quat, scene->camera->rotAxis, scene->camera->rotAngle);
-    }
-    else if (scene->camera->rotmode == ROT_MODE_QUAT) {
-      copy_v4_v4(begin_info->base_pose.orientation_quat, scene->camera->quat);
-    }
-    else {
-      eul_to_quat(begin_info->base_pose.orientation_quat, scene->camera->rot);
-    }
-  }
-  else {
-    copy_v3_fl(begin_info->base_pose.position, 0.0f);
-    unit_qt(begin_info->base_pose.orientation_quat);
-  }
+  copy_v3_v3(r_begin_info->base_pose.position, state->reference_pose.position);
+  copy_v4_v4(r_begin_info->base_pose.orientation_quat, state->reference_pose.orientation_quat);
 }
 
 void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 {
   GHOST_XrContextHandle xr_context = xr_context_ptr;
+  wmWindowManager *wm = CTX_wm_manager(C);
 
   if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
+    wm_xr_runtime_session_state_free(wm->xr.session_state);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
 
-    wm_xr_session_begin_info_create(CTX_data_scene(C), &begin_info);
+    wm->xr.session_state = wm_xr_runtime_session_state_create(CTX_data_scene(C));
+    wm_xr_session_begin_info_create(wm->xr.session_state, &begin_info);
 
     GHOST_XrSessionStart(xr_context, &begin_info);
   }
@@ -404,39 +470,36 @@ wmSurface *wm_xr_session_surface_create(wmWindowManager *UNUSED(wm), unsigned in
  * reference space and apply its pose onto the active camera matrix to get a basic viewing
  * experience going. If there's no active camera with stick to the world origin.
  */
-static void wm_xr_draw_matrices_create(const Scene *scene,
-                                       const GHOST_XrDrawViewInfo *draw_view,
-                                       const float clip_start,
-                                       const float clip_end,
+static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
+                                       const bXrSessionSettings *session_settings,
+                                       const bXrRuntimeSessionState *session_state,
                                        float r_view_mat[4][4],
                                        float r_proj_mat[4][4])
 {
-  float scalemat[4][4], quat[4];
-  float temp[4][4];
-
   perspective_m4_fov(r_proj_mat,
                      draw_view->fov.angle_left,
                      draw_view->fov.angle_right,
                      draw_view->fov.angle_up,
                      draw_view->fov.angle_down,
-                     clip_start,
-                     clip_end);
+                     session_settings->clip_start,
+                     session_settings->clip_end);
 
-  scale_m4_fl(scalemat, 1.0f);
-  invert_qt_qt_normalized(quat, draw_view->pose.orientation_quat);
-  quat_to_mat4(temp, quat);
-  translate_m4(temp,
-               -draw_view->pose.position[0],
-               -draw_view->pose.position[1],
-               -draw_view->pose.position[2]);
+  float eye_mat[4][4];
+  float quat[4];
+  invert_qt_qt_normalized(quat, draw_view->eye_pose.orientation_quat);
+  quat_to_mat4(eye_mat, quat);
+  if (session_settings->flag & XR_SESSION_USE_POSITION_TRACKING) {
+    translate_m4(eye_mat,
+                 -draw_view->eye_pose.position[0],
+                 -draw_view->eye_pose.position[1],
+                 -draw_view->eye_pose.position[2]);
+  }
 
-  if (scene->camera) {
-    invert_m4_m4(scene->camera->imat, scene->camera->obmat);
-    mul_m4_m4m4(r_view_mat, temp, scene->camera->imat);
-  }
-  else {
-    copy_m4_m4(r_view_mat, temp);
-  }
+  float base_mat[4][4];
+  quat_to_mat4(base_mat, session_state->final_reference_pose.orientation_quat);
+  translate_m4(base_mat, UNPACK3(session_state->final_reference_pose.position));
+
+  mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }
 
 /**
@@ -451,6 +514,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   wmWindowManager *wm = CTX_wm_manager(C);
   wmXrSurfaceData *surface_data = g_xr_surface->customdata;
   bXrSessionSettings *settings = &wm->xr.session_settings;
+  Scene *scene = CTX_data_scene(C);
+
   const float display_flags = V3D_OFSDRAW_OVERRIDE_SCENE_SETTINGS | settings->draw_flags;
   const rcti rect = {
       .xmin = 0, .ymin = 0, .xmax = draw_view->width - 1, .ymax = draw_view->height - 1};
@@ -460,8 +525,8 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   View3DShading shading;
   float viewmat[4][4], winmat[4][4];
 
-  wm_xr_draw_matrices_create(
-      CTX_data_scene(C), draw_view, settings->clip_start, settings->clip_end, viewmat, winmat);
+  wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings);
+  wm_xr_draw_matrices_create(draw_view, settings, wm->xr.session_state, viewmat, winmat);
 
   if (!wm_xr_session_surface_offscreen_ensure(draw_view)) {
     return;
@@ -477,7 +542,7 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   shading.flag &= ~V3D_SHADING_SPECULAR_HIGHLIGHT;
   shading.background_type = V3D_SHADING_BACKGROUND_WORLD;
   ED_view3d_draw_offscreen_simple(CTX_data_ensure_evaluated_depsgraph(C),
-                                  CTX_data_scene(C),
+                                  scene,
                                   &shading,
                                   wm->xr.session_settings.shading_type,
                                   draw_view->width,

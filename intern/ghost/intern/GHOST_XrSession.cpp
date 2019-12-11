@@ -42,6 +42,7 @@ struct OpenXRSessionData {
   /* Only stereo rendering supported now. */
   const XrViewConfigurationType view_type{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
   XrSpace reference_space;
+  XrSpace view_space;
   std::vector<XrView> views;
   std::vector<XrSwapchain> swapchains;
   std::map<XrSwapchain, std::vector<XrSwapchainImageBaseHeader *>> swapchain_images;
@@ -110,7 +111,7 @@ void GHOST_XrSession::initSystem()
  *
  * \{ */
 
-static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *base_pose)
+static void create_reference_spaces(OpenXRSessionData *oxr, const GHOST_XrPose *base_pose)
 {
   XrReferenceSpaceCreateInfo create_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
   create_info.poseInReferenceSpace.orientation.w = 1.0f;
@@ -141,6 +142,10 @@ static void create_reference_space(OpenXRSessionData *oxr, const GHOST_XrPose *b
 
   CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space),
            "Failed to create reference space.");
+
+  create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+  CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->view_space),
+           "Failed to create view reference space.");
 }
 
 void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
@@ -187,7 +192,7 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
            "detailed error information to the command line.");
 
   prepareDrawing();
-  create_reference_space(m_oxr.get(), &begin_info->base_pose);
+  create_reference_spaces(m_oxr.get(), &begin_info->base_pose);
 }
 
 void GHOST_XrSession::requestEnd()
@@ -406,16 +411,22 @@ void GHOST_XrSession::draw(void *draw_customdata)
   endFrameDrawing(&layers);
 }
 
+static void copy_openxr_pose_to_ghost_pose(const XrPosef &oxr_pose, GHOST_XrPose &r_ghost_pose)
+{
+  /* Set and convert to Blender coodinate space. */
+  r_ghost_pose.position[0] = oxr_pose.position.x;
+  r_ghost_pose.position[1] = oxr_pose.position.y;
+  r_ghost_pose.position[2] = oxr_pose.position.z;
+  r_ghost_pose.orientation_quat[0] = oxr_pose.orientation.w;
+  r_ghost_pose.orientation_quat[1] = oxr_pose.orientation.x;
+  r_ghost_pose.orientation_quat[2] = oxr_pose.orientation.y;
+  r_ghost_pose.orientation_quat[3] = oxr_pose.orientation.z;
+}
+
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)
 {
   /* Set and convert to Blender coodinate space. */
-  r_info.pose.position[0] = view.pose.position.x;
-  r_info.pose.position[1] = view.pose.position.y;
-  r_info.pose.position[2] = view.pose.position.z;
-  r_info.pose.orientation_quat[0] = view.pose.orientation.w;
-  r_info.pose.orientation_quat[1] = view.pose.orientation.x;
-  r_info.pose.orientation_quat[2] = view.pose.orientation.y;
-  r_info.pose.orientation_quat[3] = view.pose.orientation.z;
+  copy_openxr_pose_to_ghost_pose(view.pose, r_info.eye_pose);
 
   r_info.fov.angle_left = view.fov.angleLeft;
   r_info.fov.angle_right = view.fov.angleRight;
@@ -433,6 +444,7 @@ static bool ghost_xr_draw_view_expects_srgb_buffer(const GHOST_XrContext *contex
 
 void GHOST_XrSession::drawView(XrSwapchain swapchain,
                                XrCompositionLayerProjectionView &proj_layer_view,
+                               XrSpaceLocation &view_location,
                                XrView &view,
                                void *draw_customdata)
 {
@@ -464,6 +476,7 @@ void GHOST_XrSession::drawView(XrSwapchain swapchain,
   draw_view_info.ofsy = proj_layer_view.subImage.imageRect.offset.y;
   draw_view_info.width = proj_layer_view.subImage.imageRect.extent.width;
   draw_view_info.height = proj_layer_view.subImage.imageRect.extent.height;
+  copy_openxr_pose_to_ghost_pose(view_location.pose, draw_view_info.local_pose);
   ghost_xr_draw_view_info_from_view(view, draw_view_info);
 
   m_context->getCustomFuncs()->draw_view_fn(&draw_view_info, draw_customdata);
@@ -479,6 +492,7 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
   XrViewLocateInfo viewloc_info{XR_TYPE_VIEW_LOCATE_INFO};
   XrViewState view_state{XR_TYPE_VIEW_STATE};
   XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+  XrSpaceLocation view_location{XR_TYPE_SPACE_LOCATION};
   uint32_t view_count;
 
   viewloc_info.viewConfigurationType = m_oxr->view_type;
@@ -494,11 +508,17 @@ XrCompositionLayerProjection GHOST_XrSession::drawLayer(
            "Failed to query frame view and projection state.");
   assert(m_oxr->swapchains.size() == view_count);
 
+  CHECK_XR(
+      xrLocateSpace(
+          m_oxr->view_space, m_oxr->reference_space, viewloc_info.displayTime, &view_location),
+      "Failed to query frame view space");
+
   proj_layer_views.resize(view_count);
 
   for (uint32_t view_idx = 0; view_idx < view_count; view_idx++) {
     drawView(m_oxr->swapchains[view_idx],
              proj_layer_views[view_idx],
+             view_location,
              m_oxr->views[view_idx],
              draw_customdata);
   }

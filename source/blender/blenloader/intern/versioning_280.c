@@ -3990,6 +3990,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                                               V3D_OFSDRAW_SHOW_ANNOTATION);
         wm->xr.session_settings.clip_start = v3d_default->clip_start;
         wm->xr.session_settings.clip_end = v3d_default->clip_end;
+
+        wm->xr.session_settings.flag = XR_SESSION_USE_POSITION_TRACKING;
       }
     }
 #endif

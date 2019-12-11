@@ -69,6 +69,7 @@ class GHOST_XrSession {
       std::vector<XrCompositionLayerProjectionView> &proj_layer_views, void *draw_customdata);
   void drawView(XrSwapchain swapchain,
                 XrCompositionLayerProjectionView &proj_layer_view,
+                XrSpaceLocation &view_location,
                 XrView &view,
                 void *draw_customdata);
   void beginFrameDrawing();

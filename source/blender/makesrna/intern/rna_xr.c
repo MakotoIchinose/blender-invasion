@@ -19,6 +19,7 @@
  */
 
 #include "DNA_view3d_types.h"
+#include "DNA_xr_types.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -63,6 +64,12 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_ui_text(prop, "Clip End", "VR View far clipping distance");
+
+  prop = RNA_def_property(srna, "use_positional_tracking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", XR_SESSION_USE_POSITION_TRACKING);
+  RNA_def_property_ui_text(prop,
+                           "Positional Tracking",
+                           "Limit view movements to rotation only (three degrees of freedom)");
 }
 
 void RNA_def_xr(BlenderRNA *brna)
