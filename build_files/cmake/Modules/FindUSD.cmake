@@ -52,20 +52,20 @@ FIND_LIBRARY(USD_LIBRARY
   DOC "Universal Scene Description (USD) monolithic library"
 )
 
-if (${USD_LIBRARY} STREQUAL "USD_LIBRARY-NOTFOUND")
-  message(FATAL_ERROR "USD library not found")
-endif()
+IF(${USD_LIBRARY_NOTFOUND})
+  set(USD_FOUND FALSE)
+ELSE()
+  # handle the QUIETLY and REQUIRED arguments and set USD_FOUND to TRUE if
+  # all listed variables are TRUE
+  INCLUDE(FindPackageHandleStandardArgs)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(USD DEFAULT_MSG USD_LIBRARY USD_INCLUDE_DIR)
 
-# handle the QUIETLY and REQUIRED arguments and set USD_FOUND to TRUE if
-# all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(USD DEFAULT_MSG USD_LIBRARY USD_INCLUDE_DIR)
-
-IF(USD_FOUND)
-  get_filename_component(USD_LIBRARY_DIR ${USD_LIBRARY} DIRECTORY)
-  SET(USD_INCLUDE_DIRS ${USD_INCLUDE_DIR})
-  set(USD_LIBRARIES ${USD_LIBRARY})
-ENDIF(USD_FOUND)
+  IF(USD_FOUND)
+    get_filename_component(USD_LIBRARY_DIR ${USD_LIBRARY} DIRECTORY)
+    SET(USD_INCLUDE_DIRS ${USD_INCLUDE_DIR})
+    set(USD_LIBRARIES ${USD_LIBRARY})
+  ENDIF(USD_FOUND)
+ENDIF()
 
 MARK_AS_ADVANCED(
   USD_INCLUDE_DIR
