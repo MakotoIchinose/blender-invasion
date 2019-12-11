@@ -158,7 +158,7 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                 if gpcolor.use_stroke_pattern is False:
                     col.prop(gpcolor, "use_stroke_texture_mix", text="Mix Color")
                     if gpcolor.use_stroke_texture_mix is True:
-                        col.prop(gpcolor, "mix_stroke_factor", text="Factor")
+                        col.prop(gpcolor, "mix_stroke_factor", text="Factor", slider=True)
 
             if (gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern or gpcolor.use_stroke_texture_mix):
                 col.prop(gpcolor, "color", text="Base Color")
@@ -222,8 +222,6 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
 
             if gpcolor.fill_style == 'TEXTURE':
                 col.prop(gpcolor, "use_fill_pattern", text="Use as Stencil Mask")
-                if gpcolor.use_fill_pattern is True:
-                    col.prop(gpcolor, "fill_color", text="Base Color")
 
             col.prop(gpcolor, "texture_offset", text="Offset")
             col.prop(gpcolor, "texture_scale", text="Scale")
@@ -232,11 +230,14 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
             col.prop(gpcolor, "texture_clamp", text="Clip Image")
 
             if gpcolor.use_fill_pattern is False:
-                col.prop(gpcolor, "use_fill_texture_mix", text="Mix with Color")
+                col.prop(gpcolor, "use_fill_texture_mix", text="Mix Color")
 
                 if gpcolor.use_fill_texture_mix is True:
-                    col.prop(gpcolor, "fill_color", text="Mix Color")
-                    col.prop(gpcolor, "mix_factor", text="Mix Factor", slider=True)
+                    col.prop(gpcolor, "mix_factor", text="Factor", slider=True)
+                    col.prop(gpcolor, "fill_color", text="Base Color")
+
+            if gpcolor.fill_style == 'TEXTURE' and gpcolor.use_fill_pattern is True:
+                col.prop(gpcolor, "fill_color", text="Base Color")
 
 
 class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
