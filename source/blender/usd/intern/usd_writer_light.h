@@ -26,7 +26,7 @@ class USDLightWriter : public USDAbstractWriter {
   USDLightWriter(const USDExporterContext &ctx);
 
  protected:
-  virtual bool is_supported(const Object *object) const override;
+  virtual bool is_supported(const HierarchyContext *context) const override;
   virtual void do_write(HierarchyContext &context) override;
 };
 

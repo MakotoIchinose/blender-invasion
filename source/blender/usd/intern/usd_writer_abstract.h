@@ -59,7 +59,7 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
    * being exported. Returning false from a data writer (object data, hair, or particles) will
    * only prevent that data from being written (and thus cause the object to be exported as an
    * Empty). */
-  virtual bool is_supported(const Object *object) const;
+  virtual bool is_supported(const HierarchyContext *context) const;
 
   const pxr::SdfPath &usd_path() const;
 

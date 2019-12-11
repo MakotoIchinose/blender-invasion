@@ -34,9 +34,9 @@ USDCameraWriter::USDCameraWriter(const USDExporterContext &ctx) : USDAbstractWri
 {
 }
 
-bool USDCameraWriter::is_supported(const Object *object) const
+bool USDCameraWriter::is_supported(const HierarchyContext *context) const
 {
-  Camera *camera = static_cast<Camera *>(object->data);
+  Camera *camera = static_cast<Camera *>(context->object->data);
   return camera->type == CAM_PERSP;
 }
 

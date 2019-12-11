@@ -123,7 +123,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       return nullptr;
   }
 
-  if (!data_writer->is_supported(context->object)) {
+  if (!data_writer->is_supported(context)) {
     delete data_writer;
     return nullptr;
   }
