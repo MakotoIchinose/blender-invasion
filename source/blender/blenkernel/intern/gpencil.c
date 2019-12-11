@@ -2672,17 +2672,40 @@ static void gpencil_calc_2d_bounding_box(const float (*points2d)[2],
 
 /* calc texture coordinates using flat projected points */
 static void gpencil_calc_stroke_fill_uv(const float (*points2d)[2],
-                                        int totpoints,
+                                        bGPDstroke *gps,
                                         const float minv[2],
                                         float maxv[2],
                                         float (*r_uv)[2])
 {
+  const float s = sin(gps->uv_rotation);
+  const float c = cos(gps->uv_rotation);
+
+  /* Calc center for rotation. */
+  float center[2] = {0.5f, 0.5f};
   float d[2];
   d[0] = maxv[0] - minv[0];
   d[1] = maxv[1] - minv[1];
-  for (int i = 0; i < totpoints; i++) {
+  for (int i = 0; i < gps->totpoints; i++) {
     r_uv[i][0] = (points2d[i][0] - minv[0]) / d[0];
     r_uv[i][1] = (points2d[i][1] - minv[1]) / d[1];
+
+    /* Apply translation. */
+    add_v2_v2(r_uv[i], gps->uv_translation);
+
+    /* Apply Rotation. */
+    r_uv[i][0] -= center[0];
+    r_uv[i][1] -= center[1];
+
+    float x = r_uv[i][0] * c - r_uv[i][1] * s;
+    float y = r_uv[i][0] * s + r_uv[i][1] * c;
+
+    r_uv[i][0] = x + center[0];
+    r_uv[i][1] = y + center[1];
+
+    /* Apply scale. */
+    if (gps->uv_scale != 0.0f) {
+      mul_v2_fl(r_uv[i], 1.0f / gps->uv_scale);
+    }
   }
 }
 
@@ -2719,7 +2742,7 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
   }
 
   /* calc uv data */
-  gpencil_calc_stroke_fill_uv(points2d, gps->totpoints, minv, maxv, uv);
+  gpencil_calc_stroke_fill_uv(points2d, gps, minv, maxv, uv);
 
   /* Number of triangles */
   gps->tot_triangles = gps->totpoints - 2;
