@@ -26,8 +26,6 @@
 #ifndef __DEG_DEPSGRAPH_QUERY_H__
 #define __DEG_DEPSGRAPH_QUERY_H__
 
-#include "BLI_iterator.h"
-
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
