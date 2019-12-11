@@ -375,7 +375,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   }
 
 #ifdef WITH_OPENXR
-  wm_xr_context_destroy(wm);
+  wm_xr_data_destroy(wm);
 #endif
 
   BLI_freelistN(&wm->paintcursors);
