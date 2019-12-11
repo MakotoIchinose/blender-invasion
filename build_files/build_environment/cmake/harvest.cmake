@@ -200,11 +200,6 @@ harvest(embree/lib embree/lib "*.a")
 harvest(usd/include usd/include "*.h")
 harvest(usd/lib/usd usd/lib/usd "*")
 harvest(usd/plugin usd/plugin "*")
-# Because 'make install' doesn't install the monolithic static library.
-# See https://groups.google.com/d/msg/usd-interest/JgbM0RD8KnY/uHLghBA3BAAJ
-install(
-  FILES ${BUILD_DIR}/usd/src/external_usd-build/pxr/libusd_m.a
-  DESTINATION ${HARVEST_TARGET}/usd/lib/)
 
 if(UNIX AND NOT APPLE)
   harvest(libglu/lib mesa/lib "*.so*")

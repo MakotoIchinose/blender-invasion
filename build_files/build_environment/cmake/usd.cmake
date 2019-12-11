@@ -78,4 +78,15 @@ if(WIN32)
       DEPENDEES install
     )
   endif()
+else()
+  # USD has two build options. The default build creates lots of small libraries,
+  # whereas the 'monolithic' build produces only a single library. The latter
+  # makes linking simpler, so that's what we use in Blender. However, running
+  # 'make install' in the USD sources doesn't install the static library in that
+  # case (only the shared library). As a result, we need to grab the `libusd_m.a`
+  # file from the build directory instead of from the install directory.
+  ExternalProject_Add_Step(external_usd after_install
+    COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/usd/src/external_usd-build/pxr/libusd_m.a ${HARVEST_TARGET}/usd/lib/libusd_m.a
+    DEPENDEES install
+  )
 endif()
