@@ -1,5 +1,5 @@
 diff -x .git -ur usd.orig/cmake/defaults/Options.cmake external_usd/cmake/defaults/Options.cmake
---- usd.orig/cmake/defaults/Options.cmake	2019-11-29 12:10:36.860162516 +0100
+--- usd.orig/cmake/defaults/Options.cmake	2019-10-24 22:39:53.000000000 +0200
 +++ external_usd/cmake/defaults/Options.cmake	2019-11-28 13:00:33.197957712 +0100
 @@ -25,6 +25,7 @@
  option(PXR_VALIDATE_GENERATED_CODE "Validate script generated code" OFF)
@@ -10,7 +10,7 @@ diff -x .git -ur usd.orig/cmake/defaults/Options.cmake external_usd/cmake/defaul
  option(PXR_BUILD_EMBREE_PLUGIN "Build embree imaging plugin" OFF)
  option(PXR_BUILD_OPENIMAGEIO_PLUGIN "Build OpenImageIO plugin" OFF)
 diff -x .git -ur usd.orig/cmake/defaults/Packages.cmake external_usd/cmake/defaults/Packages.cmake
---- usd.orig/cmake/defaults/Packages.cmake	2019-11-29 12:10:36.860162516 +0100
+--- usd.orig/cmake/defaults/Packages.cmake	2019-10-24 22:39:53.000000000 +0200
 +++ external_usd/cmake/defaults/Packages.cmake	2019-11-28 13:00:33.185957483 +0100
 @@ -64,7 +64,7 @@
  endif()
@@ -22,53 +22,76 @@ diff -x .git -ur usd.orig/cmake/defaults/Packages.cmake external_usd/cmake/defau
  
  # --math
 diff -x .git -ur usd.orig/pxr/base/lib/plug/initConfig.cpp external_usd/pxr/base/lib/plug/initConfig.cpp
---- usd.orig/pxr/base/lib/plug/initConfig.cpp	2019-11-29 12:10:36.860162516 +0100
-+++ external_usd/pxr/base/lib/plug/initConfig.cpp	2019-11-29 11:16:29.716256692 +0100
-@@ -33,6 +33,7 @@
- #include "pxr/base/arch/symbols.h"
+--- usd.orig/pxr/base/lib/plug/initConfig.cpp	2019-10-24 22:39:53.000000000 +0200
++++ external_usd/pxr/base/lib/plug/initConfig.cpp	2019-12-11 11:00:37.643323127 +0100
+@@ -69,8 +69,38 @@
  
- #include <boost/preprocessor/stringize.hpp>
-+#include <boost/dll/runtime_symbol_info.hpp>
- 
- PXR_NAMESPACE_OPEN_SCOPE
- 
-@@ -83,6 +84,20 @@
- 
-     sharedLibPath = TfGetPathName(sharedLibPath);
- 
-+    // Executable location, which is relevant when using static linking.
-+    boost::filesystem::path executablePath = boost::dll::program_location();
-+    if (!executablePath.empty()) {
-+        boost::filesystem::path pluginPath;
+ ARCH_CONSTRUCTOR(Plug_InitConfig, 2, void)
+ {
++    /* The contents of this constructor have been moved to usd_initialise_plugin_path(...) */
++}
 +
-+        // The path MUST end in a slash, or symlinks will not be treated as directory.
-+        // Two paths are added, one for relative to Blender, one for relative to unit tests.
-+        pluginPath = executablePath.parent_path() / "lib/usd/";
-+        result.push_back(pluginPath.string());
++}; // end of anonymous namespace
 +
-+        pluginPath = executablePath.parent_path().parent_path() / "lib/usd/";
-+        result.push_back(pluginPath.string());
++/**
++ * The contents of this function used to be in the static constructor Plug_InitConfig.
++ * This static constructor made it impossible for Blender to pass a path to the USD
++ * library at runtime, as the constructor would run before Blender's main() function.
++ *
++ * This function is wrapped in a C function of the same name (defined below),
++ * so that it can be called from Blender's main() function.
++ *
++ * The datafiles_usd_path path is used to point to the USD plugin path when Blender
++ * has been installed. The fallback_usd_path path should point to the build-time
++ * location of the USD plugin files so that Blender can be run on a development machine
++ * without requiring an installation step.
++ */
++void
++usd_initialise_plugin_path(const char *datafiles_usd_path)
++{
+     std::vector<std::string> result;
+ 
++    // Add Blender-specific paths. They MUST end in a slash, or symlinks will not be treated as directory.
++    if (datafiles_usd_path != NULL && datafiles_usd_path[0] != '\0') {
++        std::string datafiles_usd_path_str(datafiles_usd_path);
++        if (datafiles_usd_path_str.back() != '/') {
++            datafiles_usd_path_str += "/";
++        }
++        result.push_back(datafiles_usd_path_str);
 +    }
 +
-     // Environment locations.
-     _AppendPathList(&result, TfGetenv(pathEnvVarName), sharedLibPath);
- 
-@@ -94,6 +109,13 @@
+     // Determine the absolute path to the Plug shared library.
+     // Any relative paths specified in the plugin search path will be
+     // anchored to this directory, to allow for relocatability.
+@@ -94,9 +124,24 @@
      _AppendPathList(&result, installLocation, sharedLibPath);
  #endif // PXR_INSTALL_LOCATION
  
+-    Plug_SetPaths(result);
+-}
 +    if (!TfGetenv("PXR_PATH_DEBUG").empty()) {
 +        printf("USD Plugin paths: (%zu in total):\n", result.size());
 +        for(const std::string &path : result) {
 +            printf("    %s\n", path.c_str());
 +        }
 +    }
-+
-     Plug_SetPaths(result);
+ 
++    Plug_SetPaths(result);
  }
  
+ PXR_NAMESPACE_CLOSE_SCOPE
++
++/* Workaround to make it possible to pass a path at runtime to USD. */
++extern "C" {
++void
++usd_initialise_plugin_path(
++    const char *datafiles_usd_path)
++{
++    PXR_NS::usd_initialise_plugin_path(datafiles_usd_path);
++}
++}
 diff -x .git -ur usd.orig/pxr/usd/CMakeLists.txt external_usd/pxr/usd/CMakeLists.txt
---- usd.orig/pxr/usd/CMakeLists.txt	2019-11-29 12:10:36.860162516 +0100
+--- usd.orig/pxr/usd/CMakeLists.txt	2019-10-24 22:39:53.000000000 +0200
 +++ external_usd/pxr/usd/CMakeLists.txt	2019-11-28 13:00:33.197957712 +0100
 @@ -1,6 +1,5 @@
  set(DIRS

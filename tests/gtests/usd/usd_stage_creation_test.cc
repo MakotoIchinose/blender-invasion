@@ -23,6 +23,11 @@
 
 extern "C" {
 #include "BLI_utildefines.h"
+
+#include "BKE_appdir.h"
+
+/* Workaround to make it possible to pass a path at runtime to USD. See creator.c. */
+void usd_initialise_plugin_path(const char *datafiles_usd_path);
 }
 
 class USDStageCreationTest : public testing::Test {
@@ -31,6 +36,8 @@ class USDStageCreationTest : public testing::Test {
 TEST_F(USDStageCreationTest, JSONFileLoadingTest)
 {
   std::string filename = "usd-stage-creation-test.usdc";
+
+  usd_initialise_plugin_path(BKE_appdir_folder_id(BLENDER_DATAFILES, "usd"));
 
   /* Simply the ability to create a USD Stage for a specific filename means that the extension has
    * been recognised by the USD library, and that a USD plugin has been loaded to write such files.
