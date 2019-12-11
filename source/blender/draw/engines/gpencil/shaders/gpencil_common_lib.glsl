@@ -3,6 +3,7 @@
 struct gpMaterial {
   vec4 stroke_color;
   vec4 fill_color;
+  vec4 fill_mix_color;
   vec4 fill_uv_rot_scale;
   vec4 fill_uv_offset;
   /* Put float/int at the end to avoid padding error */
@@ -26,7 +27,10 @@ struct gpMaterial {
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
 
+/* Multiline defines can crash blender with certain GPU drivers. */
+/* clang-format off */
 #define GP_FILL_FLAGS (GP_FILL_TEXTURE_USE | GP_FILL_TEXTURE_PREMUL | GP_FILL_TEXTURE_CLIP)
+/* clang-format on */
 
 #define GP_FLAG_TEST(flag, val) (((flag) & (val)) != 0)
 

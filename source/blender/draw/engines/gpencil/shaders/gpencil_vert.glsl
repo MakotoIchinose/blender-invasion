@@ -26,6 +26,7 @@ in vec2 uv2;
 out vec4 finalColor;
 out vec2 finalUvs;
 flat out int matFlag;
+flat out vec4 finalMixColor;
 
 void discard_vert()
 {
@@ -127,6 +128,7 @@ void stroke_vertex()
   gl_Position.xy += miter * sizeViewportInv.xy * y;
 
   finalColor = materials[ma1].stroke_color;
+  finalMixColor = vec4(0.0);
   matFlag = materials[ma1].flag & ~GP_FILL_FLAGS;
   finalUvs = (x == 0.0) ? uv1 : uv2;
 }
@@ -145,6 +147,7 @@ void fill_vertex()
   gl_Position.z += 1e-2;
 
   finalColor = materials[ma1].fill_color;
+  finalMixColor = materials[ma1].fill_mix_color;
   matFlag = materials[ma1].flag & GP_FILL_FLAGS;
 
   vec2 loc = materials[ma1].fill_uv_offset.xy;

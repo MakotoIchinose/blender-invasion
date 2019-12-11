@@ -5,6 +5,7 @@ uniform sampler2D gpStrokeTexture;
 in vec4 finalColor;
 in vec2 finalUvs;
 flat in int matFlag;
+flat in vec4 finalMixColor;
 
 out vec4 fragColor;
 
@@ -19,6 +20,7 @@ void main()
     vec2 uvs = (use_clip) ? clamp(finalUvs, 0.0, 1.0) : finalUvs;
     bool premul = GP_FLAG_TEST(matFlag, GP_FILL_TEXTURE_PREMUL);
     fragColor = texture_read_as_srgb(gpFillTexture, premul, uvs) * finalColor;
+    fragColor = fragColor + (1.0 - fragColor.a) * finalMixColor;
   }
   else {
     fragColor = finalColor;

@@ -61,6 +61,7 @@ struct GPUVertFormat;
 typedef struct gpMaterial {
   float stroke_color[4];
   float fill_color[4];
+  float fill_mix_color[4];
   float fill_uv_transform[3][2], _pad0[2];
   float stroke_texture_mix;
   float stroke_uv_factor;
@@ -314,6 +315,8 @@ typedef struct GPENCIL_FramebufferList {
 typedef struct GPENCIL_TextureList {
   /* Dummy texture to avoid errors cause by empty sampler. */
   struct GPUTexture *dummy_texture;
+  /* Checker texture used in checkerboard fill type. */
+  struct GPUTexture *checker_texture;
 
   /* multisample textures */
   struct GPUTexture *multisample_color;
@@ -386,6 +389,8 @@ typedef struct GPENCIL_PrivateData {
   struct BLI_memblock *gp_material_pool;
   /* Last used material pool. */
   GPENCIL_MaterialPool *last_material_pool;
+  /* Copy of txl pointer. */
+  struct GPUTexture *checker_tex;
   /* Current frame */
   int cfra;
 } GPENCIL_PrivateData;
