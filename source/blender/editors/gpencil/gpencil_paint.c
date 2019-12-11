@@ -270,11 +270,6 @@ static void gp_update_cache(bGPdata *gpd)
   }
 }
 
-static bool UNUSED_FUNCTION(gp_stroke_added_check)(tGPsdata *p)
-{
-  return (p->gpf && p->gpf->strokes.last && p->flags & GP_PAINTFLAG_STROKEADDED);
-}
-
 static void gp_stroke_added_enable(tGPsdata *p)
 {
   BLI_assert(p->gpf->strokes.last != NULL);
@@ -2225,7 +2220,6 @@ static void gp_paint_cleanup(tGPsdata *p)
     p->gpf->flag &= ~GP_FRAME_PAINT;
   }
 }
-
 /* ------------------------------- */
 
 /* Helper callback for drawing the cursor itself */
@@ -2404,23 +2398,6 @@ static int gpencil_draw_init(bContext *C, wmOperator *op, const wmEvent *event)
 }
 
 /* ------------------------------- */
-
-/* ensure that the correct cursor icon is set */
-static void gpencil_draw_cursor_set(tGPsdata *p)
-{
-  UNUSED_VARS(p);
-  return;
-  /* Disable while we get a better cursor handling for direct input devices (Cintiq/Ipad)*/
-#if 0
-  Brush *brush = p->brush;
-  if ((p->paintmode == GP_PAINTMODE_ERASER) || (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
-    WM_cursor_modal_set(p->win, WM_CURSOR_CROSS); /* XXX need a better cursor */
-  }
-  else {
-    WM_cursor_modal_set(p->win, WM_CURSOR_NONE);
-  }
-#endif
-}
 
 /* update UI indicators of status, including cursor and header prints */
 static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
@@ -3163,11 +3140,6 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   else {
     ED_gpencil_toggle_brush_cursor(C, true, NULL);
   }
-  /* set cursor
-   * NOTE: This may change later (i.e. intentionally via brush toggle,
-   *       or unintentionally if the user scrolls outside the area)...
-   */
-  gpencil_draw_cursor_set(p);
 
   /* only start drawing immediately if we're allowed to do so... */
   if (RNA_boolean_get(op->ptr, "wait_for_input") == false) {
@@ -3242,24 +3214,6 @@ static tGPsdata *gpencil_stroke_begin(bContext *C, wmOperator *op)
   }
 
   return op->customdata;
-}
-
-static void UNUSED_FUNCTION(gpencil_stroke_end)(wmOperator *op)
-{
-  tGPsdata *p = op->customdata;
-
-  gp_paint_cleanup(p);
-
-  gpencil_undo_push(p->gpd);
-
-  gp_session_cleanup(p);
-
-  p->status = GP_STATUS_IDLING;
-  op->flag |= OP_IS_MODAL_CURSOR_REGION;
-
-  p->gpd = NULL;
-  p->gpl = NULL;
-  p->gpf = NULL;
 }
 
 /* Add arc points between two mouse events using the previous segment to determine the vertice of
@@ -3771,7 +3725,6 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   else {
     /* update status indicators - cursor, header, etc. */
     gpencil_draw_status_indicators(C, p);
-    gpencil_draw_cursor_set(p); /* cursor may have changed outside our control - T44084 */
   }
 
   /* process last operations before exiting */
