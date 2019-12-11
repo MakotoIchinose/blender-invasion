@@ -270,7 +270,7 @@ static void gp_update_cache(bGPdata *gpd)
   }
 }
 
-static bool gp_stroke_added_check(tGPsdata *p)
+static bool UNUSED_FUNCTION(gp_stroke_added_check)(tGPsdata *p)
 {
   return (p->gpf && p->gpf->strokes.last && p->flags & GP_PAINTFLAG_STROKEADDED);
 }
@@ -482,48 +482,26 @@ static void gp_stroke_convertcoords(tGPsdata *p, const float mval[2], float out[
   }
 }
 
-/* apply jitter to stroke */
-static void gp_brush_jitter(bGPdata *gpd,
-                            Brush *brush,
-                            tGPspoint *pt,
-                            const float mval[2],
-                            const float pressure,
-                            float r_mval[2],
-                            RNG *rng)
+/* Apply jitter to stroke point. */
+static void gp_brush_jitter(bGPdata *gpd, tGPspoint *pt, const float amplitude)
 {
-  float tmp_pressure = pressure;
-  if (brush->gpencil_settings->draw_jitter > 0.0f) {
-    tmp_pressure = BKE_curvemapping_evaluateF(brush->gpencil_settings->curve_jitter, 0, pressure);
-  }
-  /* exponential value */
-  const float exfactor = (brush->gpencil_settings->draw_jitter + 2.0f) *
-                         (brush->gpencil_settings->draw_jitter + 2.0f);
-  const float fac = BLI_rng_get_float(rng) * exfactor * tmp_pressure;
-  /* Jitter is applied perpendicular to the mouse movement vector (2D space) */
-  float mvec[2], svec[2];
-  /* mouse movement in ints -> floats */
+  /* Jitter is applied perpendicular to the mouse movement vector (2D space). */
+  float mvec[2];
+  /* Mouse movement in ints -> floats. */
   if (gpd->runtime.sbuffer_used > 1) {
-    mvec[0] = (mval[0] - (pt - 1)->x);
-    mvec[1] = (mval[1] - (pt - 1)->y);
+    tGPspoint *pt_prev = pt - 1;
+    sub_v2_v2v2(mvec, &pt->x, &pt_prev->x);
     normalize_v2(mvec);
   }
   else {
     mvec[0] = 0.0f;
     mvec[1] = 0.0f;
   }
-  /* rotate mvec by 90 degrees... */
-  svec[0] = -mvec[1];
-  svec[1] = mvec[0];
-  /* scale the displacement by the random, and apply */
-  if (BLI_rng_get_float(rng) > 0.5f) {
-    mul_v2_fl(svec, -fac);
-  }
-  else {
-    mul_v2_fl(svec, fac);
-  }
-
-  r_mval[0] = mval[0] + svec[0];
-  r_mval[1] = mval[1] + svec[1];
+  /* Rotate mvec by 90 degrees... */
+  SWAP(float, mvec[0], mvec[1]);
+  mvec[0] -= mvec[0];
+  /* Scale by displacement amount, and apply. */
+  madd_v2_v2fl(&pt->x, mvec, amplitude);
 }
 
 /* apply pressure change depending of the angle of the stroke to simulate a pen with shape */
@@ -712,6 +690,7 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
 {
   bGPdata *gpd = p->gpd;
   Brush *brush = p->brush;
+  BrushGpencilSettings *brush_settings = p->brush->gpencil_settings;
   tGPspoint *pt;
   Object *obact = (Object *)p->ownerPtr.data;
   RegionView3D *rv3d = p->ar->regiondata;
@@ -768,88 +747,56 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
 
     /* store settings */
+    pt->strength = brush_settings->draw_strength;
+    pt->pressure = 1.0f;
+    pt->uv_rot = 0.0f;
+    copy_v2_v2(&pt->x, mval);
+
     /* pressure */
-    if (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) {
-      pt->pressure = BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_sensitivity, 0, pressure);
-    }
-    else {
-      pt->pressure = 1.0f;
-    }
-
-    /* Apply jitter to position */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_jitter > 0.0f)) {
-      float r_mval[2];
-      const float jitpress = (brush->gpencil_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) ?
-                                 pressure :
-                                 1.0f;
-      gp_brush_jitter(gpd, brush, pt, mval, jitpress, r_mval, p->rng);
-      copy_v2_v2(&pt->x, r_mval);
-    }
-    else {
-      copy_v2_v2(&pt->x, mval);
-    }
-    /* apply randomness to pressure */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_random_press > 0.0f)) {
-      float tmp_pressure = BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_sensitivity, 0, pressure);
-      if (BLI_rng_get_float(p->rng) > 0.5f) {
-        pt->pressure -= tmp_pressure * (brush->gpencil_settings->draw_random_press * 2.0f) *
-                        BLI_rng_get_float(p->rng);
-      }
-      else {
-        pt->pressure += tmp_pressure * (brush->gpencil_settings->draw_random_press * 2.0f) *
-                        BLI_rng_get_float(p->rng);
-      }
-      CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
-    }
-
-    /* apply randomness to uv texture rotation */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->uv_random > 0.0f)) {
-      if (BLI_rng_get_float(p->rng) > 0.5f) {
-        pt->uv_rot = (BLI_rng_get_float(p->rng) * M_PI * -1) * brush->gpencil_settings->uv_random;
-      }
-      else {
-        pt->uv_rot = (BLI_rng_get_float(p->rng) * M_PI) * brush->gpencil_settings->uv_random;
-      }
-      CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
-    }
-    else {
-      pt->uv_rot = 0.0f;
-    }
-
-    /* apply angle of stroke to brush size */
-    if (brush->gpencil_settings->draw_angle_factor != 0.0f) {
-      gp_brush_angle(gpd, brush, pt, mval);
+    if (brush_settings->flag & GP_BRUSH_USE_PRESSURE) {
+      pt->pressure *= BKE_curvemapping_evaluateF(brush_settings->curve_sensitivity, 0, pressure);
     }
 
     /* color strength */
-    if (brush->gpencil_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
-      float tmp_pressure = BKE_curvemapping_evaluateF(
-          brush->gpencil_settings->curve_strength, 0, pressure);
-
-      pt->strength = tmp_pressure * brush->gpencil_settings->draw_strength;
-    }
-    else {
-      pt->strength = brush->gpencil_settings->draw_strength;
-    }
-    CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
-
-    /* apply randomness to color strength */
-    if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_RANDOM) &&
-        (brush->gpencil_settings->draw_random_strength > 0.0f)) {
-      if (BLI_rng_get_float(p->rng) > 0.5f) {
-        pt->strength -= pt->strength * brush->gpencil_settings->draw_random_strength *
-                        BLI_rng_get_float(p->rng);
-      }
-      else {
-        pt->strength += pt->strength * brush->gpencil_settings->draw_random_strength *
-                        BLI_rng_get_float(p->rng);
-      }
+    if (brush_settings->flag & GP_BRUSH_USE_STENGTH_PRESSURE) {
+      pt->strength *= BKE_curvemapping_evaluateF(brush_settings->curve_strength, 0, pressure);
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+    }
+
+    if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
+      /* Random number from [-1..1]*/
+      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
+      /* Apply jitter to position */
+      if (brush_settings->draw_jitter > 0.0f) {
+        float jitpress = 1.0f;
+        if (brush_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
+          jitpress = BKE_curvemapping_evaluateF(brush_settings->curve_jitter, 0, pressure);
+        }
+        /* FIXME the +2 means minimum jitter is 4 which is a bit strange for UX. */
+        const float exp_factor = brush_settings->draw_jitter + 2.0f;
+        const float fac = rand * SQUARE(exp_factor) * jitpress;
+        gp_brush_jitter(gpd, pt, fac);
+      }
+      /* apply randomness to pressure */
+      if (brush_settings->draw_random_press > 0.0f) {
+        pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
+        CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
+      }
+      /* apply randomness to uv texture rotation */
+      if (brush_settings->uv_random > 0.0f) {
+        pt->uv_rot += rand * M_PI * brush_settings->uv_random;
+        CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
+      }
+      /* apply randomness to color strength */
+      if (brush_settings->draw_random_strength) {
+        pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
+        CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
+      }
+    }
+
+    /* apply angle of stroke to brush size */
+    if (brush_settings->draw_angle_factor != 0.0f) {
+      gp_brush_angle(gpd, brush, pt, mval);
     }
 
     /* point time */
@@ -3207,7 +3154,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
   }
 
   /* TODO: set any additional settings that we can take from the events?
-  /* if eraser is on, draw radial aid */
+   * if eraser is on, draw radial aid */
   if (p->paintmode == GP_PAINTMODE_ERASER) {
     gpencil_draw_toggle_eraser_cursor(C, p, true);
   }
@@ -3295,7 +3242,7 @@ static tGPsdata *gpencil_stroke_begin(bContext *C, wmOperator *op)
   return op->customdata;
 }
 
-static void gpencil_stroke_end(wmOperator *op)
+static void UNUSED_FUNCTION(gpencil_stroke_end)(wmOperator *op)
 {
   tGPsdata *p = op->customdata;
 
@@ -3315,7 +3262,7 @@ static void gpencil_stroke_end(wmOperator *op)
 
 /* Add arc points between two mouse events using the previous segment to determine the vertice of
  * the arc.
- *        /* CTL
+ *        /+ CTL
  *       / |
  *      /  |
  * PtA +...|...+ PtB
