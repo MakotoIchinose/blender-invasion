@@ -70,19 +70,19 @@ typedef struct gpStrokeVert {
   int mat;
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
-  // float col[4];
-  float uv[2];
+  float col[4];
+  /** UV and strength packed in the same attribute. */
+  float uv[2], strength;
 } gpStrokeVert;
 
 static GPUVertFormat *gpencil_stroke_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    /* TODO Try reducing format size. */
     GPU_vertformat_attr_add(&format, "ma", GPU_COMP_I32, 1, GPU_FETCH_INT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    // GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     /* IMPORTANT: This means having only 4 attributes to fit into opengl limit of 16 attrib. */
     GPU_vertformat_multiload_enable(&format, 4);
   }
@@ -113,9 +113,10 @@ static void gpencil_buffer_add_point(gpStrokeVert *verts,
                                      const bGPDspoint *pt,
                                      bool is_endpoint)
 {
-  /* TODO other attribs */
   copy_v3_v3(verts->pos, &pt->x);
   copy_v2_v2(verts->uv, pt->uv_fill);
+  copy_v4_v4(verts->col, pt->mix_color);
+  verts->strength = pt->strength;
   verts->thickness = gps->thickness * pt->pressure;
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   verts->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);

@@ -20,8 +20,11 @@ in vec4 pos1; /* Current edge */
 in vec4 pos2; /* Current edge */
 in vec4 pos3; /* Next adj vert */
 
-in vec2 uv1;
-in vec2 uv2;
+in vec3 uv1;
+in vec3 uv2;
+
+in vec4 col1;
+in vec4 col2;
 
 out vec4 finalColor;
 out vec2 finalUvs;
@@ -127,10 +130,15 @@ void stroke_vertex()
 
   gl_Position.xy += miter * sizeViewportInv.xy * y;
 
-  finalColor = materials[ma1].stroke_color;
+  vec4 vert_col = (x == 0.0) ? col1 : col2;
+  float vert_strength = (x == 0.0) ? uv1.z : uv2.z;
+  vec4 stroke_col = materials[ma1].stroke_color;
+  finalColor.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a);
+  finalColor.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
+  // finalColor *= vert_col;
   finalMixColor = vec4(0.0);
   matFlag = materials[ma1].flag & ~GP_FILL_FLAGS;
-  finalUvs = (x == 0.0) ? uv1 : uv2;
+  finalUvs = (x == 0.0) ? uv1.xy : uv2.xy;
 }
 
 void dots_vertex()
@@ -153,7 +161,7 @@ void fill_vertex()
   vec2 loc = materials[ma1].fill_uv_offset.xy;
   mat2x2 rot_scale = mat2x2(materials[ma1].fill_uv_rot_scale.xy,
                             materials[ma1].fill_uv_rot_scale.zw);
-  finalUvs = rot_scale * uv1 + loc;
+  finalUvs = rot_scale * uv1.xy + loc;
 }
 
 void main()
