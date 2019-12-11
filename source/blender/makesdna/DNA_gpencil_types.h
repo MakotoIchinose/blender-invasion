@@ -78,6 +78,8 @@ typedef struct bGPDspoint {
   float uv_fac;
   /** Uv rotation for dot mode. */
   float uv_rot;
+  /** Uv for fill mode */
+  float uv_fill[2];
 
   /** Mix color RGBA (A=mix factor) */
   float mix_color[4];

@@ -2741,6 +2741,11 @@ void BKE_gpencil_triangulate_stroke_fill(bGPdata *gpd, bGPDstroke *gps)
       copy_v2_v2(stroke_triangle->uv[1], uv[tmp_triangles[i][1]]);
       copy_v2_v2(stroke_triangle->uv[2], uv[tmp_triangles[i][2]]);
     }
+
+    /* Copy UVs to bGPDspoint. (might not be the right place for that) */
+    for (int i = 0; i < gps->totpoints; i++) {
+      copy_v2_v2(gps->points[i].uv_fill, uv[i]);
+    }
   }
   else {
     /* No triangles needed - Free anything allocated previously */
