@@ -32,6 +32,8 @@
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
 
+#  include "MEM_guardedalloc.h"
+
 #  include "RNA_access.h"
 #  include "RNA_define.h"
 
@@ -63,11 +65,15 @@ const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 enum { AS_BACKGROUND_JOB = 1 };
+typedef struct eUSDOperatorOptions {
+  bool as_background_job;
+} eUSDOperatorOptions;
 
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  /* Mark this operator call as 'invoked', so that it'll run as a background job. */
-  op->customdata = POINTER_FROM_INT(AS_BACKGROUND_JOB);
+  eUSDOperatorOptions *options = MEM_callocN(sizeof(eUSDOperatorOptions), "eUSDOperatorOptions");
+  options->as_background_job = true;
+  op->customdata = options;
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     Main *bmain = CTX_data_main(C);
@@ -100,7 +106,10 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
-  const bool as_background_job = (POINTER_AS_INT(op->customdata) & AS_BACKGROUND_JOB) != 0;
+  eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
+  const bool as_background_job = (options != NULL && options->as_background_job);
+  MEM_SAFE_FREE(op->customdata);
+
   const bool selected_objects_only = RNA_boolean_get(op->ptr, "selected_objects_only");
   const bool visible_objects_only = RNA_boolean_get(op->ptr, "visible_objects_only");
   const bool export_animation = RNA_boolean_get(op->ptr, "export_animation");
