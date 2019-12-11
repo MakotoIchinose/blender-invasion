@@ -65,7 +65,7 @@ void debug_print_writers(const char *label, const created_writers &writers_map)
 
 class TestingHierarchyIterator : public AbstractHierarchyIterator {
  public: /* Public so that the test cases can directly inspect the created writers. */
-  created_writers xform_writers;
+  created_writers transform_writers;
   created_writers data_writers;
   created_writers hair_writers;
   created_writers particle_writers;
@@ -79,9 +79,9 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   }
 
  protected:
-  AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) override
+  AbstractHierarchyWriter *create_transform_writer(const HierarchyContext *context) override
   {
-    return new TestHierarchyWriter(xform_writers);
+    return new TestHierarchyWriter(transform_writers);
   }
   AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) override
   {
@@ -146,7 +146,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
   iterator->iterate_and_write();
 
   // Mapping from object name to set of export paths.
-  created_writers expected_xforms = {
+  created_writers expected_transforms = {
       {"OBCamera", {"/Camera"}},
       {"OBDupli1", {"/Dupli1"}},
       {"OBDupli2", {"/ParentOfDupli2/Dupli2"}},
@@ -170,7 +170,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
       {"OBOutsideDupliGrandParent", {"/Ground plane/OutsideDupliGrandParent"}},
       {"OBOutsideDupliParent", {"/Ground plane/OutsideDupliGrandParent/OutsideDupliParent"}},
       {"OBParentOfDupli2", {"/ParentOfDupli2"}}};
-  EXPECT_EQ(expected_xforms, iterator->xform_writers);
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
 
   created_writers expected_data = {
       {"OBCamera", {"/Camera/Camera"}},

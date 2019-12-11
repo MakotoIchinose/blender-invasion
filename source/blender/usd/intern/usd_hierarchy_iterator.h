@@ -53,7 +53,8 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
  protected:
   virtual bool mark_as_weak_export(const Object *object) const override;
 
-  virtual AbstractHierarchyWriter *create_xform_writer(const HierarchyContext *context) override;
+  virtual AbstractHierarchyWriter *create_transform_writer(
+      const HierarchyContext *context) override;
   virtual AbstractHierarchyWriter *create_data_writer(const HierarchyContext *context) override;
   virtual AbstractHierarchyWriter *create_hair_writer(const HierarchyContext *context) override;
   virtual AbstractHierarchyWriter *create_particle_writer(
