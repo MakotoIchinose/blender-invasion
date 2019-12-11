@@ -764,10 +764,9 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
     }
 
     if (brush_settings->flag & GP_BRUSH_GROUP_RANDOM) {
-      /* Random number from [-1..1]*/
-      float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
       /* Apply jitter to position */
       if (brush_settings->draw_jitter > 0.0f) {
+        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
         float jitpress = 1.0f;
         if (brush_settings->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
           jitpress = BKE_curvemapping_evaluateF(brush_settings->curve_jitter, 0, pressure);
@@ -779,16 +778,19 @@ static short gp_stroke_addpoint(tGPsdata *p, const float mval[2], float pressure
       }
       /* apply randomness to pressure */
       if (brush_settings->draw_random_press > 0.0f) {
+        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
         pt->pressure *= 1.0 + rand * 2.0 * brush_settings->draw_random_press;
         CLAMP(pt->pressure, GPENCIL_STRENGTH_MIN, 1.0f);
       }
       /* apply randomness to uv texture rotation */
       if (brush_settings->uv_random > 0.0f) {
+        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
         pt->uv_rot += rand * M_PI * brush_settings->uv_random;
         CLAMP(pt->uv_rot, -M_PI_2, M_PI_2);
       }
       /* apply randomness to color strength */
       if (brush_settings->draw_random_strength) {
+        float rand = BLI_rng_get_float(p->rng) * 2.0f - 1.0f;
         pt->strength *= 1.0 + rand * brush_settings->draw_random_strength;
         CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       }
