@@ -25,6 +25,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 
@@ -188,16 +189,8 @@ static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(const Scene *s
 
   if (scene->camera) {
     copy_v3_v3(state->reference_pose.position, scene->camera->loc);
-    if (scene->camera->rotmode == ROT_MODE_AXISANGLE) {
-      axis_angle_to_quat(
-          state->reference_pose.orientation_quat, scene->camera->rotAxis, scene->camera->rotAngle);
-    }
-    else if (scene->camera->rotmode == ROT_MODE_QUAT) {
-      copy_v4_v4(state->reference_pose.orientation_quat, scene->camera->quat);
-    }
-    else {
-      eul_to_quat(state->reference_pose.orientation_quat, scene->camera->rot);
-    }
+    add_v3_v3(state->reference_pose.position, scene->camera->dloc);
+    BKE_object_rot_to_quat(scene->camera, state->reference_pose.orientation_quat);
   }
   else {
     copy_v3_fl(state->reference_pose.position, 0.0f);
@@ -220,15 +213,15 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
                                           XR_SESSION_USE_POSITION_TRACKING) !=
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
 
+  copy_v4_v4(state->final_reference_pose.orientation_quat, state->reference_pose.orientation_quat);
+
   if (position_tracking_toggled) {
     copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
-    copy_v4_v4(state->final_reference_pose.orientation_quat,
-               state->reference_pose.orientation_quat);
 
     /* Update reference pose to the current position. */
     if ((settings->flag & XR_SESSION_USE_POSITION_TRACKING) == 0) {
       /* OpenXR/Ghost-XR returns the local pose in local space, we need it in world space. */
-      state->final_reference_pose.position[0] -= draw_view->local_pose.position[0];
+      state->final_reference_pose.position[0] += draw_view->local_pose.position[0];
       state->final_reference_pose.position[1] -= draw_view->local_pose.position[2];
       state->final_reference_pose.position[2] += draw_view->local_pose.position[1];
     }
@@ -496,8 +489,12 @@ static void wm_xr_draw_matrices_create(const GHOST_XrDrawViewInfo *draw_view,
   }
 
   float base_mat[4][4];
-  quat_to_mat4(base_mat, session_state->final_reference_pose.orientation_quat);
-  translate_m4(base_mat, UNPACK3(session_state->final_reference_pose.position));
+  invert_qt_qt_normalized(quat, session_state->final_reference_pose.orientation_quat);
+  quat_to_mat4(base_mat, quat);
+  translate_m4(base_mat,
+               -session_state->final_reference_pose.position[0],
+               -session_state->final_reference_pose.position[1],
+               -session_state->final_reference_pose.position[2]);
 
   mul_m4_m4m4(r_view_mat, eye_mat, base_mat);
 }
