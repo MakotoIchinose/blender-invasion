@@ -32,6 +32,8 @@ struct Depsgraph;
 struct ID;
 struct Object;
 
+namespace USD {
+
 class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
   const pxr::UsdStageRefPtr stage;
@@ -62,5 +64,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
   USDExporterContext create_usd_export_context(const HierarchyContext *context);
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_HIERARCHY_ITERATOR_H__ */

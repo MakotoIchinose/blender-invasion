@@ -38,6 +38,8 @@ extern "C" {
 #include "DEG_depsgraph_query.h"
 }
 
+namespace USD {
+
 const HierarchyContext *HierarchyContext::root()
 {
   return nullptr;
@@ -556,3 +558,5 @@ bool AbstractHierarchyIterator::should_visit_dupli_object(const DupliObject *dup
   // Removing dupli_object->no_draw hides things like custom bone shapes.
   return !dupli_object->no_draw;
 }
+
+}  // namespace USD

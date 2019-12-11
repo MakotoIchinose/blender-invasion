@@ -21,6 +21,8 @@
 
 #include "usd_writer_abstract.h"
 
+namespace USD {
+
 /* Writer for writing camera data to UsdGeomCamera. */
 class USDCameraWriter : public USDAbstractWriter {
  public:
@@ -30,5 +32,7 @@ class USDCameraWriter : public USDAbstractWriter {
   virtual bool is_supported(const HierarchyContext *context) const override;
   virtual void do_write(HierarchyContext &context) override;
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_WRITER_CAMERA_H__ */

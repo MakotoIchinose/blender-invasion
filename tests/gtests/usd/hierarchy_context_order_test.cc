@@ -24,6 +24,8 @@ extern "C" {
 #include "BLI_utildefines.h"
 }
 
+using namespace USD;
+
 class HierarchyContextOrderTest : public testing::Test {
 };
 

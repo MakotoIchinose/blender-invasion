@@ -30,6 +30,8 @@ extern "C" {
 #include "DNA_layer_types.h"
 }
 
+namespace USD {
+
 USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -58,3 +60,5 @@ bool USDTransformWriter::check_is_animated(const HierarchyContext &context) cons
   }
   return BKE_object_moves_in_time(context.object, context.animation_check_include_parent);
 }
+
+}  // namespace USD

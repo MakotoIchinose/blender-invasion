@@ -30,6 +30,8 @@ extern "C" {
 #include "DNA_scene_types.h"
 }
 
+namespace USD {
+
 USDCameraWriter::USDCameraWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
@@ -105,3 +107,5 @@ void USDCameraWriter::do_write(HierarchyContext &context)
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
 }
+
+}  // namespace USD

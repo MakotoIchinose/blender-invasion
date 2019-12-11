@@ -45,6 +45,8 @@ extern "C" {
 #include "WM_types.h"
 }
 
+namespace USD {
+
 struct ExportJobData {
   ViewLayer *view_layer;
   Main *bmain;
@@ -175,6 +177,8 @@ static void export_endjob(void *customdata)
   WM_set_locked_interface(data->wm, false);
 }
 
+}  // namespace USD
+
 bool USD_export(bContext *C,
                 const char *filepath,
                 const USDExportParams *params,
@@ -183,8 +187,8 @@ bool USD_export(bContext *C,
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
 
-  ExportJobData *job = static_cast<ExportJobData *>(
-      MEM_mallocN(sizeof(ExportJobData), "ExportJobData"));
+  USD::ExportJobData *job = static_cast<USD::ExportJobData *>(
+      MEM_mallocN(sizeof(USD::ExportJobData), "ExportJobData"));
 
   job->bmain = CTX_data_main(C);
   job->wm = CTX_wm_manager(C);
@@ -202,7 +206,7 @@ bool USD_export(bContext *C,
     /* setup job */
     WM_jobs_customdata_set(wm_job, job, MEM_freeN);
     WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_FRAME, NC_SCENE | ND_FRAME);
-    WM_jobs_callbacks(wm_job, export_startjob, NULL, NULL, export_endjob);
+    WM_jobs_callbacks(wm_job, USD::export_startjob, NULL, NULL, USD::export_endjob);
 
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
@@ -211,8 +215,8 @@ bool USD_export(bContext *C,
     short stop = 0, do_update = 0;
     float progress = 0.f;
 
-    export_startjob(job, &stop, &do_update, &progress);
-    export_endjob(job);
+    USD::export_startjob(job, &stop, &do_update, &progress);
+    USD::export_endjob(job);
     export_ok = job->export_ok;
 
     MEM_freeN(job);

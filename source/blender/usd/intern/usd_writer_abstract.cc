@@ -37,7 +37,9 @@ static const pxr::TfToken preview_shader("previewShader", pxr::TfToken::Immortal
 static const pxr::TfToken preview_surface("UsdPreviewSurface", pxr::TfToken::Immortal);
 static const pxr::TfToken roughness("roughness", pxr::TfToken::Immortal);
 static const pxr::TfToken surface("surface", pxr::TfToken::Immortal);
-};  // namespace usdtokens
+}  // namespace usdtokens
+
+namespace USD {
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
     : usd_export_context_(usd_export_context),
@@ -141,3 +143,5 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(Material *material)
 
   return usd_material;
 }
+
+}  // namespace USD

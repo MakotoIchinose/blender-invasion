@@ -26,6 +26,9 @@
 
 struct Depsgraph;
 struct Object;
+
+namespace USD {
+
 class USDHierarchyIterator;
 
 struct USDExporterContext {
@@ -35,5 +38,7 @@ struct USDExporterContext {
   const USDHierarchyIterator *hierarchy_iterator;
   const USDExportParams &export_params;
 };
+
+}  // namespace USD
 
 #endif /* __USD__USD_EXPORTER_CONTEXT_H__ */
