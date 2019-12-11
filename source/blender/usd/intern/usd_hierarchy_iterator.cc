@@ -47,16 +47,16 @@ namespace USD {
 USDHierarchyIterator::USDHierarchyIterator(Depsgraph *depsgraph,
                                            pxr::UsdStageRefPtr stage,
                                            const USDExportParams &params)
-    : AbstractHierarchyIterator(depsgraph), stage(stage), params(params)
+    : AbstractHierarchyIterator(depsgraph), stage_(stage), params_(params)
 {
 }
 
 bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
 {
-  if (params.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
+  if (params_.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
     return true;
   }
-  if (params.visible_objects_only && (object->base_flag & BASE_VISIBLE_VIEWLAYER) == 0) {
+  if (params_.visible_objects_only && (object->base_flag & BASE_VISIBLE_VIEWLAYER) == 0) {
     return true;
   }
   return false;
@@ -75,17 +75,17 @@ std::string USDHierarchyIterator::make_valid_name(const std::string &name) const
 void USDHierarchyIterator::set_export_frame(float frame_nr)
 {
   // The USD stage is already set up to have FPS timecodes per frame.
-  export_time = pxr::UsdTimeCode(frame_nr);
+  export_time_ = pxr::UsdTimeCode(frame_nr);
 }
 
 const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
 {
-  return export_time;
+  return export_time_;
 }
 
 USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext *context)
 {
-  return USDExporterContext{depsgraph_, stage, pxr::SdfPath(context->export_path), this, params};
+  return USDExporterContext{depsgraph_, stage_, pxr::SdfPath(context->export_path), this, params_};
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_transform_writer(
@@ -136,7 +136,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_hair_writer(const HierarchyContext *context)
 {
-  if (!params.export_hair) {
+  if (!params_.export_hair) {
     return nullptr;
   }
   return new USDHairWriter(create_usd_export_context(context));
