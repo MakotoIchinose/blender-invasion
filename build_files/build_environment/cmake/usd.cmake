@@ -25,6 +25,11 @@ set(USD_EXTRA_ARGS
   -DTBB_INCLUDE_DIRS=${LIBDIR}/tbb/include
   -DTBB_LIBRARIES=${LIBDIR}/tbb/lib/${LIBPREFIX}tbb_static${LIBEXT}
   -DTbb_TBB_LIBRARY=${LIBDIR}/tbb/lib/${LIBPREFIX}tbb_static${LIBEXT}
+
+  # This is a preventative measure that avoids possible conflicts when add-ons
+  # try to load another USD library into the same process space.
+  -DPXR_SET_INTERNAL_NAMESPACE=usdBlender
+
   -DPXR_ENABLE_PYTHON_SUPPORT=OFF
   -DPXR_BUILD_IMAGING=OFF
   -DPXR_BUILD_TESTS=OFF
