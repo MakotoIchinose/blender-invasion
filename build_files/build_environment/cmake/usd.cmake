@@ -36,7 +36,11 @@ set(USD_EXTRA_ARGS
   -DBUILD_SHARED_LIBS=OFF
   -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
   -DPXR_BUILD_MONOLITHIC=ON
+
+  # The PXR_BUILD_USD_TOOLS argument is patched-in by usd.diff. An upstream pull request
+  # can be found at https://github.com/PixarAnimationStudios/USD/pull/1048.
   -DPXR_BUILD_USD_TOOLS=OFF
+
   -DCMAKE_DEBUG_POSTFIX=_d
   # USD is hellbound on making a shared lib, unless you point this variable to a valid cmake file
   # doesn't have to make sense, but as long as it points somewhere valid it will skip the shared lib.
