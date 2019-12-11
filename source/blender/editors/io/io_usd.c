@@ -72,12 +72,13 @@ static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     Main *bmain = CTX_data_main(C);
     char filepath[FILE_MAX];
+    const char *main_blendfile_path = BKE_main_blendfile_path(bmain);
 
-    if (BKE_main_blendfile_path(bmain)[0] == '\0') {
+    if (main_blendfile_path[0] == '\0') {
       BLI_strncpy(filepath, "untitled", sizeof(filepath));
     }
     else {
-      BLI_strncpy(filepath, BKE_main_blendfile_path(bmain), sizeof(filepath));
+      BLI_strncpy(filepath, main_blendfile_path, sizeof(filepath));
     }
 
     BLI_path_extension_replace(filepath, sizeof(filepath), ".usdc");
