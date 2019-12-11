@@ -83,8 +83,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   DEG_graph_build_from_view_layer(data->depsgraph, data->bmain, scene, view_layer);
   BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
 
-  // Constructing & evaluating the depsgraph counts as 10% of the work.
-  *progress = 0.1f;
+  *progress = 0.0f;
   *do_update = true;
 
   // For restoring the current frame after exporting animation is done.
@@ -116,8 +115,8 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   USDHierarchyIterator iter(data->depsgraph, usd_stage, data->params);
 
   if (data->params.export_animation) {
-    // Writing the animated frames is 80% of the work.
-    float progress_per_frame = 0.8f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
+    // Writing the animated frames is not 100% of the work, but it's our best guess.
+    float progress_per_frame = 1.0f / std::max(1, (scene->r.efra - scene->r.sfra + 1));
 
     for (float frame = scene->r.sfra; frame <= scene->r.efra; frame++) {
       if (G.is_break || (stop != nullptr && *stop)) {
@@ -142,16 +141,9 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
   }
 
   iter.release_writers();
-
-  // Writing the final file is the other 10% of the work.
-  *progress = 0.9f;
-  *do_update = true;
   usd_stage->GetRootLayer()->Save();
 
   // Finish up by going back to the keyframe that was current before we started.
-  *progress = 0.99f;
-  *do_update = true;
-
   if (CFRA != orig_frame) {
     CFRA = orig_frame;
     BKE_scene_graph_update_for_newframe(data->depsgraph, data->bmain);
