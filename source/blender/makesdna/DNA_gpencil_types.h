@@ -111,8 +111,6 @@ typedef enum eGPDspoint_Flag {
 typedef struct bGPDtriangle {
   /* indices for tessellated triangle used for GP Fill */
   unsigned int verts[3];
-  /* texture coordinates for verts */
-  float uv[3][2];
 } bGPDtriangle;
 
 /* ***************************************** */

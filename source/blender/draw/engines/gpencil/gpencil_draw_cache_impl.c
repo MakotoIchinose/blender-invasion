@@ -318,14 +318,13 @@ static void gpencil_set_fill_point(GPUVertBuf *vbo,
                                    int idx,
                                    bGPDspoint *pt,
                                    const float fcolor[4],
-                                   const float uv[2],
                                    uint pos_id,
                                    uint color_id,
                                    uint text_id)
 {
   GPU_vertbuf_attr_set(vbo, pos_id, idx, &pt->x);
   GPU_vertbuf_attr_set(vbo, color_id, idx, fcolor);
-  GPU_vertbuf_attr_set(vbo, text_id, idx, uv);
+  GPU_vertbuf_attr_set(vbo, text_id, idx, pt->uv_fill);
 }
 
 static void gpencil_vbo_ensure_size(GpencilBatchCacheElem *be, int totvertex)
@@ -628,7 +627,6 @@ void gpencil_get_fill_geom(struct GpencilBatchCacheElem *be,
                              be->vbo_len,
                              &gps->points[stroke_triangle->verts[j]],
                              color,
-                             stroke_triangle->uv[j],
                              be->pos_id,
                              be->color_id,
                              be->uvdata_id);

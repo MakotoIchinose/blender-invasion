@@ -322,14 +322,14 @@ static void gp_triangulate_stroke_fill(bGPDstroke *gps)
     else {
       gps->triangles = MEM_recallocN(gps->triangles, sizeof(*gps->triangles) * gps->tot_triangles);
     }
+    /* Copy UVs to bGPDspoint. */
+    for (int i = 0; i < gps->totpoints; i++) {
+      copy_v2_v2(gps->points[i].uv_fill, uv[i]);
+    }
 
     for (int i = 0; i < gps->tot_triangles; i++) {
       bGPDtriangle *stroke_triangle = &gps->triangles[i];
       memcpy(stroke_triangle->verts, tmp_triangles[i], sizeof(uint[3]));
-      /* copy texture coordinates */
-      copy_v2_v2(stroke_triangle->uv[0], uv[tmp_triangles[i][0]]);
-      copy_v2_v2(stroke_triangle->uv[1], uv[tmp_triangles[i][1]]);
-      copy_v2_v2(stroke_triangle->uv[2], uv[tmp_triangles[i][2]]);
     }
   }
   else {
@@ -354,7 +354,6 @@ static void gp_triangulate_stroke_fill(bGPDstroke *gps)
 
 /* add a new fill point and texture coordinates to vertex buffer */
 static void gp_add_filldata_tobuffer(const bGPDspoint *pt,
-                                     const float uv[2],
                                      uint pos,
                                      uint texcoord,
                                      short flag,
@@ -375,8 +374,8 @@ static void gp_add_filldata_tobuffer(const bGPDspoint *pt,
     fpt[2] = 0.0f; /* 2d always is z=0.0f */
   }
 
-  immAttr2f(texcoord, uv[0], uv[1]); /* texture coordinates */
-  immVertex3fv(pos, fpt);            /* position */
+  immAttr2f(texcoord, pt->uv_fill[0], pt->uv_fill[1]); /* texture coordinates */
+  immVertex3fv(pos, fpt);                              /* position */
 }
 
 #if 0 /* GPXX disabled, not used in annotations */
@@ -477,7 +476,6 @@ static void gp_draw_stroke_fill(bGPdata *gpd,
   for (int i = 0; i < gps->tot_triangles; i++, stroke_triangle++) {
     for (int j = 0; j < 3; j++) {
       gp_add_filldata_tobuffer(&gps->points[stroke_triangle->verts[j]],
-                               stroke_triangle->uv[j],
                                pos,
                                texcoord,
                                gps->flag,
