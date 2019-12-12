@@ -263,7 +263,7 @@ void fill_vertex()
     depth = -1.0;
   }
   else {
-    /* Use the index of first point of the stroke as depth.
+    /* Use the index of first point of the stroke as depth. */
     depth = stroke_id1 * 0.0000002;
   }
 }
@@ -273,12 +273,12 @@ void main()
   /* Trick to detect if a drawcall is stroke or fill.
    * This does mean that we need to draw an empty stroke segment before starting
    * to draw the real stroke segments. */
-    bool is_fill = (gl_InstanceID == 0);
+  bool is_fill = (gl_InstanceID == 0);
 
-    if (!is_fill) {
-      stroke_vertex();
-    }
-    else {
-      fill_vertex();
-    }
+  if (!is_fill) {
+    stroke_vertex();
   }
+  else {
+    fill_vertex();
+  }
+}
