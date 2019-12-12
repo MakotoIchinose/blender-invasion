@@ -578,19 +578,9 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Clamp", "Do not repeat texture and clamp to one instance only");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
-  prop = RNA_def_property(srna, "use_fill_texture_mix", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_FILL_TEX_MIX);
-  RNA_def_property_ui_text(prop, "Mix Texture", "Mix texture image with filling color");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
-
   prop = RNA_def_property(srna, "flip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_COLOR_FLIP_FILL);
   RNA_def_property_ui_text(prop, "Flip", "Flip filling colors");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
-
-  prop = RNA_def_property(srna, "use_fill_pattern", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STYLE_FILL_PATTERN);
-  RNA_def_property_ui_text(prop, "Pattern", "Use Fill Texture as a pattern to apply color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   prop = RNA_def_property(srna, "use_overlap_strokes", PROP_BOOLEAN, PROP_NONE);

@@ -151,8 +151,6 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                 row.enabled = not gpcolor.lock
                 col = row.column(align=True)
                 col.template_ID(gpcolor, "stroke_image", open="image.open")
-                if gpcolor.mode == 'LINE':
-                    col.prop(gpcolor, "pixel_size", text="UV Factor")
 
             row = col.row()
             row.prop(gpcolor, "color", text="Base Color")
@@ -160,6 +158,8 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
             if gpcolor.stroke_style == 'TEXTURE':
                 row = col.row()
                 row.prop(gpcolor, "mix_stroke_factor", text="Factor", slider=True)
+                if gpcolor.mode == 'LINE':
+                    col.prop(gpcolor, "pixel_size", text="UV Factor")
 
             if gpcolor.mode in {'DOTS', 'BOX'}:
                 col.prop(gpcolor, "alignment_mode")
@@ -215,27 +215,17 @@ class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
                     col.prop(gpcolor, "pattern_angle", text="Angle")
 
         # Texture
-        if gpcolor.fill_style == 'TEXTURE' or (gpcolor.use_fill_texture_mix is True and gpcolor.fill_style == 'SOLID'):
+        if gpcolor.fill_style == 'TEXTURE':
             col.template_ID(gpcolor, "fill_image", open="image.open")
 
-            if gpcolor.fill_style == 'TEXTURE':
-                col.prop(gpcolor, "use_fill_pattern", text="Use as Stencil Mask")
+            col.prop(gpcolor, "fill_color", text="Base Color")
+            col.prop(gpcolor, "mix_factor", text="Factor", slider=True)
 
             col.prop(gpcolor, "texture_offset", text="Offset")
             col.prop(gpcolor, "texture_scale", text="Scale")
             col.prop(gpcolor, "texture_angle")
             col.prop(gpcolor, "texture_opacity")
             col.prop(gpcolor, "texture_clamp", text="Clip Image")
-
-            if gpcolor.use_fill_pattern is False:
-                col.prop(gpcolor, "use_fill_texture_mix", text="Mix Color")
-
-                if gpcolor.use_fill_texture_mix is True:
-                    col.prop(gpcolor, "mix_factor", text="Factor", slider=True)
-                    col.prop(gpcolor, "fill_color", text="Base Color")
-
-            if gpcolor.fill_style == 'TEXTURE' and gpcolor.use_fill_pattern is True:
-                col.prop(gpcolor, "fill_color", text="Base Color")
 
 
 class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
