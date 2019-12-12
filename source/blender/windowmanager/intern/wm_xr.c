@@ -59,7 +59,7 @@
 #include "wm_surface.h"
 #include "wm_window.h"
 
-void wm_xr_runtime_session_state_free(struct bXrRuntimeSessionState *state);
+void wm_xr_runtime_session_state_free(struct bXrRuntimeSessionState **state);
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *, void *);
 void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding);
 void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding, void *);
@@ -176,7 +176,7 @@ void wm_xr_data_destroy(wmWindowManager *wm)
     GHOST_XrContextDestroy(wm->xr.context);
   }
   if (wm->xr.session_state != NULL) {
-    wm_xr_runtime_session_state_free(wm->xr.session_state);
+    wm_xr_runtime_session_state_free(&wm->xr.session_state);
   }
 }
 
@@ -204,9 +204,9 @@ static bXrRuntimeSessionState *wm_xr_runtime_session_state_create(const Scene *s
   return state;
 }
 
-void wm_xr_runtime_session_state_free(bXrRuntimeSessionState *state)
+void wm_xr_runtime_session_state_free(bXrRuntimeSessionState **state)
 {
-  MEM_SAFE_FREE(state);
+  MEM_SAFE_FREE(*state);
 }
 
 static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
@@ -275,7 +275,7 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 
   if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
     GHOST_XrSessionEnd(xr_context);
-    wm_xr_runtime_session_state_free(wm->xr.session_state);
+    wm_xr_runtime_session_state_free(&wm->xr.session_state);
   }
   else {
     GHOST_XrSessionBeginInfo begin_info;
@@ -525,6 +525,11 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
   GPUViewport *viewport;
   View3DShading shading;
   float viewmat[4][4], winmat[4][4];
+
+  /* The runtime may still trigger drawing while a session-end request is pending. */
+  if (!wm->xr.session_state || !wm->xr.context) {
+    return;
+  }
 
   wm_xr_runtime_session_state_update(wm->xr.session_state, draw_view, settings);
   wm_xr_draw_matrices_create(draw_view, settings, wm->xr.session_state, viewmat, winmat);
