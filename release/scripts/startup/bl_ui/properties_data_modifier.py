@@ -1481,6 +1481,11 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
         col.prop(md, "material_offset", text="Material Offset")
 
+    def WELD(self, layout, ob, md):
+        layout.prop(md, "merge_threshold", text="Distance")
+        layout.prop(md, "max_interactions")
+        layout.prop_search(md, "vertex_group", ob, "vertex_groups")
+
     def DATA_TRANSFER(self, layout, ob, md):
         row = layout.row(align=True)
         row.prop(md, "object")

@@ -333,16 +333,12 @@ class _defs_view3d_select:
 
     @ToolDef.from_fn
     def select():
-        def draw_settings(_context, _layout, _tool):
-            pass
-
         return dict(
             idname="builtin.select",
             label="Tweak",
             icon="ops.generic.select",
             widget=None,
             keymap="3D View Tool: Tweak",
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -417,7 +413,7 @@ class _defs_edit_armature:
             idname="builtin.roll",
             label="Roll",
             icon="ops.armature.bone.roll",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -427,7 +423,7 @@ class _defs_edit_armature:
             idname="builtin.bone_envelope",
             label="Bone Envelope",
             icon="ops.transform.bone_envelope",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -437,7 +433,7 @@ class _defs_edit_armature:
             idname="builtin.bone_size",
             label="Bone Size",
             icon="ops.transform.bone_size",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -500,7 +496,7 @@ class _defs_edit_mesh:
             idname="builtin.rip_edge",
             label="Rip Edge",
             icon="ops.mesh.rip_edge",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -884,7 +880,7 @@ class _defs_edit_curve:
             idname="builtin.tilt",
             label="Tilt",
             icon="ops.transform.tilt",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -897,7 +893,7 @@ class _defs_edit_curve:
                 "Expand or contract the radius of the selected curve points"
             ),
             icon="ops.curve.radius",
-            widget=None,
+            widget="VIEW3D_GGT_tool_generic_handle_free",
             keymap=(),
         )
 
@@ -1228,16 +1224,12 @@ class _defs_image_uv_select:
 
     @ToolDef.from_fn
     def select():
-        def draw_settings(_context, _layout, _tool):
-            pass
-
         return dict(
             idname="builtin.select",
             label="Tweak",
             icon="ops.generic.select",
             widget=None,
             keymap=(),
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1680,16 +1672,12 @@ class _defs_node_select:
 
     @ToolDef.from_fn
     def select():
-        def draw_settings(_context, _layout, _tool):
-            pass
-
         return dict(
             idname="builtin.select",
             label="Tweak",
             icon="ops.generic.select",
             widget=None,
             keymap="Node Tool: Tweak",
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1699,8 +1687,6 @@ class _defs_node_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
-            pass
-
         return dict(
             idname="builtin.select_box",
             label="Select Box",
