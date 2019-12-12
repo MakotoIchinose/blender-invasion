@@ -4339,7 +4339,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         /* Stroke stencil mask to mix = 1. */
         if (gp_style->flag & GP_STYLE_STROKE_PATTERN) {
           gp_style->mix_stroke_factor = 1.0f;
+#if 0 /* TODO: This is disabled for testing only. */
           gp_style->flag &= ~GP_STYLE_STROKE_PATTERN;
+#endif
         }
         /* Mix disabled, set mix factor to 0. */
         else if ((gp_style->flag & GP_STYLE_STROKE_TEX_MIX) == 0) {
