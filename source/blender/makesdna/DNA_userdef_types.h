@@ -904,6 +904,7 @@ typedef enum eUserPref_SpaceData_Flag {
   USER_SPACEDATA_ADDONS_SHOW_ONLY_ENABLED = (1 << 1),
 } eUserPref_SpaceData_Flag;
 
+  USER_EXPERIMENTAL_USD_EXPORT = (1 << 1),
 /** #UserDef.flag */
 typedef enum eUserPref_Flag {
   USER_AUTOSAVE = (1 << 0),

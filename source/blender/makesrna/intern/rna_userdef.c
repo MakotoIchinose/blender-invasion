@@ -5863,6 +5863,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_userdef_experimental_use_tool_fallback_get", NULL);
   RNA_def_property_ui_text(prop, "Fallback Tool Support", "Allow selection with an active tool");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_usd_exporter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_EXPERIMENTAL_ALL);
+  RNA_def_property_ui_text(prop, "USD Exporter", "Enable the USD exporter in the user interface");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
