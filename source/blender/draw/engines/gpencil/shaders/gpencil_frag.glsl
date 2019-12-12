@@ -6,6 +6,7 @@ in vec4 finalColorMul;
 in vec4 finalColorAdd;
 in vec2 finalUvs;
 flat in int matFlag;
+flat in float depth;
 
 out vec4 fragColor;
 
@@ -43,5 +44,16 @@ void main()
 
   if (fragColor.a < 0.001) {
     discard;
+  }
+
+  /* We override the fragment depth using the fragment shader to ensure a constant value.
+   * This has a cost as the depth test cannot happen early.
+   * We could do this in the vertex shader but then perspective interpolation of uvs and
+   * fragment clipping gets really complicated. */
+  if (depth >= 0.0) {
+    gl_FragDepth = depth;
+  }
+  else {
+    gl_FragDepth = gl_FragCoord.z;
   }
 }

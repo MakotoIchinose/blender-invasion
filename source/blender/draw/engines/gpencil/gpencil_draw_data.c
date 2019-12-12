@@ -130,6 +130,10 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       }
     }
 
+    if ((gp_style->mode != GP_STYLE_MODE_LINE) || (gp_style->flag & GP_STYLE_DISABLE_STENCIL)) {
+      mat_data->flag |= GP_STROKE_OVERLAP;
+    }
+
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
       /* TODO finish. */

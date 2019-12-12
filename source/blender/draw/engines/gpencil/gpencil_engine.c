@@ -768,6 +768,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
 
+  const bool is_stroke_order_3D = (gpd->draw_mode == GP_DRAWMODE_3D);
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
   float object_scale = mat4_to_scale(iter->ob->obmat);
@@ -780,6 +781,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
+  DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3D", is_stroke_order_3D);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);
@@ -791,6 +793,9 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
+  /* Should do this clear for the whole object. */
+  float clear_depth = is_stroke_order_3D ? 1.0f : 0.0f;
+  DRW_shgroup_clear_framebuffer(iter->grp, GPU_DEPTH_BIT, 0, 0, 0, 0, clear_depth, 0);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
@@ -801,11 +806,6 @@ static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
 
   MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(iter->ob, gps->mat_nr + 1);
-  /* if the user switch used material from data to object,
-   * the material could not be available */
-  if (gp_style == NULL) {
-    return;
-  }
 
   bool hide_material = (gp_style->flag & GP_STYLE_COLOR_HIDE) != 0;
   bool show_stroke = (gp_style->flag & GP_STYLE_STROKE_SHOW) != 0;

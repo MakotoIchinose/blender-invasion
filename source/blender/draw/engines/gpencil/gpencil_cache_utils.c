@@ -65,6 +65,9 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
   if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
     state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
   }
+  else {
+    state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
+  }
   tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
 
   return tgp_layer;

@@ -5,6 +5,7 @@ uniform vec2 sizeViewportInv;
 
 /* Per Object */
 uniform vec4 gpModelMatrix[4];
+uniform bool strokeOrder3D;
 uniform float thicknessScale;
 uniform float thicknessWorldScale;
 #define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
@@ -14,10 +15,12 @@ uniform float thicknessOffset;
 uniform float vertexColorOpacity;
 uniform vec4 layerTint;
 
-in vec2 ma1;
-in vec2 ma2;
+in vec4 ma1;
+in vec4 ma2;
 #define strength1 ma1.y
 #define strength2 ma2.y
+#define stroke_id1 ma1.z
+#define point_id1 ma1.w
 /* Position contains thickness in 4th component. */
 in vec4 pos;  /* Prev adj vert */
 in vec4 pos1; /* Current edge */
@@ -36,6 +39,7 @@ out vec4 finalColorMul;
 out vec4 finalColorAdd;
 out vec2 finalUvs;
 flat out int matFlag;
+flat out float depth;
 
 void discard_vert()
 {
@@ -213,6 +217,24 @@ void stroke_vertex()
   if (!is_dot) {
     finalUvs.x = (use_curr) ? uv1.z : uv2.z;
   }
+
+  if (strokeOrder3D) {
+    /* Use the fragment depth (see fragment shader). */
+    depth = -1.0;
+  }
+  else if (GP_FLAG_TEST(materials[m].flag, GP_STROKE_OVERLAP)) {
+    /* Use the index of the point as depth.
+     * This means the stroke can overlap itself. */
+    depth = (point_id1 + 1.0) * 0.0000002;
+  }
+  else {
+    /* Use the index of first point of the stroke as depth.
+     * We render using a greater depth test this means the stroke
+     * cannot overlap itself.
+     * We offset by one so that the fill can be overlapped by its stroke.
+     * The offset is ok since we pad the strokes data because of adjacency infos. */
+    depth = (stroke_id1 + 1.0) * 0.0000002;
+  }
 }
 
 void fill_vertex()
@@ -235,6 +257,15 @@ void fill_vertex()
   vec2 loc = materials[m].fill_uv_offset.xy;
   mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);
   finalUvs = rot_scale * uv1.xy + loc;
+
+  if (strokeOrder3D) {
+    /* Use the fragment depth (see fragment shader). */
+    depth = -1.0;
+  }
+  else {
+    /* Use the index of first point of the stroke as depth.
+    depth = stroke_id1 * 0.0000002;
+  }
 }
 
 void main()
@@ -242,12 +273,12 @@ void main()
   /* Trick to detect if a drawcall is stroke or fill.
    * This does mean that we need to draw an empty stroke segment before starting
    * to draw the real stroke segments. */
-  bool is_fill = (gl_InstanceID == 0);
+    bool is_fill = (gl_InstanceID == 0);
 
-  if (!is_fill) {
-    stroke_vertex();
+    if (!is_fill) {
+      stroke_vertex();
+    }
+    else {
+      fill_vertex();
+    }
   }
-  else {
-    fill_vertex();
-  }
-}

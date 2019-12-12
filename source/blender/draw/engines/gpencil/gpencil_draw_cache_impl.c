@@ -68,7 +68,7 @@ static GPUVertBuf *gpencil_dummy_buffer_get(void)
 /* MUST match the format below. */
 typedef struct gpStrokeVert {
   /** Mat is float because we need to pack other float attribs with it. */
-  float mat, strength;
+  float mat, strength, stroke_id, point_id;
   /** Position and thickness packed in the same attribute. */
   float pos[3], thickness;
   float col[4];
@@ -80,7 +80,7 @@ static GPUVertFormat *gpencil_stroke_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "ma", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "ma", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "col", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "uv", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
@@ -109,16 +109,16 @@ static int gpencil_stroke_is_cyclic(const bGPDstroke *gps)
   return ((gps->flag & GP_STROKE_CYCLIC) != 0) && (gps->totpoints > 2);
 }
 
-static void gpencil_buffer_add_point(gpStrokeVert *verts,
-                                     const bGPDstroke *gps,
-                                     const bGPDspoint *pt,
-                                     bool is_endpoint)
+static void gpencil_buffer_add_point(
+    gpStrokeVert *verts, const bGPDstroke *gps, const bGPDspoint *pt, int v, bool is_endpoint)
 {
   copy_v3_v3(verts->pos, &pt->x);
   copy_v2_v2(verts->uv, pt->uv_fill);
   copy_v4_v4(verts->col, pt->mix_color);
   verts->strength = pt->strength;
   verts->u_stroke = pt->uv_fac;
+  verts->stroke_id = gps->runtime.stroke_start;
+  verts->point_id = v;
   /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
    * because the cosine will always be positive. */
   verts->v_rot = cosf(pt->uv_rot) * signf(pt->uv_rot);
@@ -136,18 +136,18 @@ static void gpencil_buffer_add_stroke(gpStrokeVert *verts, const bGPDstroke *gps
 
   /* First point for adjacency (not drawn). */
   int adj_idx = (is_cyclic) ? (pts_len - 1) : 1;
-  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], v, true);
 
   for (int i = 0; i < pts_len; i++) {
-    gpencil_buffer_add_point(&verts[v++], gps, &pts[i], false);
+    gpencil_buffer_add_point(&verts[v++], gps, &pts[i], v, false);
   }
   /* Draw line to first point to complete the loop for cyclic strokes. */
   if (is_cyclic) {
-    gpencil_buffer_add_point(&verts[v++], gps, &pts[0], false);
+    gpencil_buffer_add_point(&verts[v++], gps, &pts[0], v, false);
   }
   /* Last adjacency point (not drawn). */
   adj_idx = (is_cyclic) ? 1 : (pts_len - 2);
-  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], true);
+  gpencil_buffer_add_point(&verts[v++], gps, &pts[adj_idx], v, true);
 }
 
 static void gpencil_buffer_add_fill(GPUIndexBufBuilder *ibo, const bGPDstroke *gps)
