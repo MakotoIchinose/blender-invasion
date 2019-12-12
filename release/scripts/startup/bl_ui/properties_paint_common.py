@@ -368,7 +368,7 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
         layout.row().prop(brush, "direction", expand=True, **({"text": ""} if compact else {}))
 
 
-def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact=True, is_toolbar=False):
+def brush_basic_gpencil_paint_settings(layout, context, brush, tool, *, compact=True, is_toolbar=False):
     gp_settings = brush.gpencil_settings
 
     # Brush details
@@ -410,7 +410,7 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact
         "builtin.circle",
         "builtin.polyline",
     }:
-        settings = _context.tool_settings.gpencil_sculpt
+        settings = context.tool_settings.gpencil_sculpt
         if is_toolbar:
             row = layout.row(align=True)
             row.prop(settings, "use_thickness_curve", text="", icon='CURVE_DATA')
