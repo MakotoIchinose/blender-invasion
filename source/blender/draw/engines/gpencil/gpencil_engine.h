@@ -183,6 +183,9 @@ typedef struct GPENCIL_tLayer {
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {
+  /** Linklist */
+  struct GPENCIL_tObject *next;
+
   struct {
     GPENCIL_tLayer *first, *last;
   } layers;
@@ -190,6 +193,9 @@ typedef struct GPENCIL_tObject {
   struct {
     GPENCIL_tVfx *first, *last;
   } vfx;
+
+  /* Distance to camera. Used for sorting. */
+  float camera_z;
 } GPENCIL_tObject;
 
 /* *********** LISTS *********** */
@@ -388,8 +394,14 @@ typedef struct GPENCIL_PrivateData {
   struct BLI_memblock *gp_material_pool;
   /* Last used material pool. */
   GPENCIL_MaterialPool *last_material_pool;
+  /* Linked list of tObjects. */
+  struct {
+    GPENCIL_tObject *first, *last;
+  } tobjects;
   /* Current frame */
   int cfra;
+  /* Used for computing object distance to camera. */
+  float camera_z_axis[3];
 } GPENCIL_PrivateData;
 
 /* flags for fast drawing support */

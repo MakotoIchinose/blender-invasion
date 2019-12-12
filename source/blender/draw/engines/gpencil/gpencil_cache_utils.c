@@ -34,6 +34,7 @@
 #include "BKE_object.h"
 
 #include "BLI_memblock.h"
+#include "BLI_link_utils.h"
 
 #include "gpencil_engine.h"
 
@@ -42,12 +43,15 @@
 #include "DEG_depsgraph.h"
 
 /* TODO remove the _new suffix. */
-GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *UNUSED(ob))
+GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *ob)
 {
   GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
 
   tgp_ob->layers.first = tgp_ob->layers.last = NULL;
   tgp_ob->vfx.first = tgp_ob->vfx.last = NULL;
+  tgp_ob->camera_z = dot_v3v3(pd->camera_z_axis, ob->obmat[3]);
+
+  BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
 
   return tgp_ob;
 }

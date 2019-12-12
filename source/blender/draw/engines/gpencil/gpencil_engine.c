@@ -306,6 +306,12 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
   stl->pd->last_material_pool = NULL;
+  stl->pd->tobjects.first = NULL;
+  stl->pd->tobjects.last = NULL;
+
+  float viewmatinv[4][4];
+  DRW_view_viewmat_get(NULL, viewmatinv, true);
+  copy_v3_v3(stl->pd->camera_z_axis, viewmatinv[2]);
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -965,6 +971,30 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
   }
 }
 
+#define SORT_IMPL_LINKTYPE GPENCIL_tObject
+
+#define SORT_IMPL_FUNC gpencil_tobject_sort_fn_r
+#include "../../blenlib/intern/list_sort_impl.h"
+#undef SORT_IMPL_FUNC
+
+#undef SORT_IMPL_LINKTYPE
+
+static int gpencil_tobject_dist_sort(const void *a, const void *b)
+{
+  const GPENCIL_tObject *ob_a = (const GPENCIL_tObject *)a;
+  const GPENCIL_tObject *ob_b = (const GPENCIL_tObject *)b;
+  /* Reminder, camera_z is negative in front of the camera. */
+  if (ob_a->camera_z > ob_b->camera_z) {
+    return 1;
+  }
+  else if (ob_a->camera_z < ob_b->camera_z) {
+    return -1;
+  }
+  else {
+    return 0;
+  }
+}
+
 static void GPENCIL_cache_finish_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -979,7 +1009,8 @@ static void GPENCIL_cache_finish_new(void *ved)
     GPU_uniformbuffer_update(pool->ubo, pool->mat_data);
   }
 
-  /* TODO sort */
+  /* Sort object by distance to the camera. */
+  pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
 }
 
 void GPENCIL_cache_finish(void *vedata)
@@ -1178,12 +1209,7 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
 
-  /* TODO iter in the right order. */
-  BLI_memblock_iter iter;
-  BLI_memblock_iternew(pd->gp_object_pool, &iter);
-  GPENCIL_tObject *ob;
-
-  while ((ob = (GPENCIL_tObject *)BLI_memblock_iterstep(&iter))) {
+  for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     DRW_stats_group_start("GPencil Object");
 
     if (ob->vfx.first) {
