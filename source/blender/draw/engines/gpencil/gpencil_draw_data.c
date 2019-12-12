@@ -159,8 +159,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
                                gp_style->texture_scale,
                                gp_style->texture_angle,
                                mat_data->fill_uv_transform);
-      copy_v4_v4(mat_data->fill_color, gp_style->mix_rgba);
-      mat_data->fill_texture_mix = 1.0f - gp_style->texture_opacity;
+      copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
+      mat_data->fill_texture_mix = 1.0f - gp_style->mix_factor;
     }
     else if (gp_style->fill_style == GP_STYLE_FILL_STYLE_TEXTURE) {
       /* TODO implement gradient as a texture. */

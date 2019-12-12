@@ -93,7 +93,7 @@ float stroke_thickness_modulate(float thickness)
   return thickness;
 }
 
-void stroke_color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, float mix_tex)
+void color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, float mix_tex)
 {
   /* Mix stroke with vertex color. */
   vec4 mixed_col;
@@ -202,7 +202,7 @@ void stroke_vertex()
   vec4 stroke_col = materials[m].stroke_color;
   float mix_tex = materials[m].stroke_texture_mix;
 
-  stroke_color_output(stroke_col, vert_col, vert_strength, mix_tex);
+  color_output(stroke_col, vert_col, vert_strength, mix_tex);
 
   matFlag = materials[m].flag & ~GP_FILL_FLAGS;
 
@@ -226,13 +226,7 @@ void fill_vertex()
   vec4 fill_col = materials[m].fill_color;
   float mix_tex = materials[m].fill_texture_mix;
 
-  /* We add the mixed color. This is 100% mix (no texture visible). */
-  finalColorMul = vec4(fill_col.aaa, fill_col.a);
-  finalColorAdd = vec4(fill_col.rgb * fill_col.a, 0.0);
-  /* Then we blend according to the texture mix factor.
-   * Note that we keep the alpha modulation. */
-  finalColorMul.rgb *= mix_tex;
-  finalColorAdd.rgb *= 1.0 - mix_tex;
+  color_output(fill_col, vec4(0.0), 1.0, mix_tex);
 
   matFlag = materials[m].flag & GP_FILL_FLAGS;
 
