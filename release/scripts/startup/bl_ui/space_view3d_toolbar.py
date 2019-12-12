@@ -2096,9 +2096,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
             else:
                 ma = gp_settings.material
 
-        if ma and ma.grease_pencil.stroke_style == 'TEXTURE' and ma.grease_pencil.use_stroke_pattern is False:
-            return False
-
         return True
 
     def draw_header(self, context):
@@ -2168,9 +2165,6 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
                 ma = ob.material_slots[ob.active_material_index].material
             else:
                 ma = gp_settings.material
-
-        if ma and ma.grease_pencil.stroke_style == 'TEXTURE' and ma.grease_pencil.use_stroke_pattern is False:
-            return False
 
         return True
 

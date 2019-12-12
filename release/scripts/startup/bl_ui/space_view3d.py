@@ -351,7 +351,7 @@ class _draw_tool_settings_context_mode:
 
             if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
                 gp_style = ma.grease_pencil
-                if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
+                if gp_style.stroke_style != 'TEXTURE':
                     row.separator(factor=0.4)
                     row.prop(settings, "use_vertex_color", text="",
                              icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')

@@ -154,14 +154,12 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
                 if gpcolor.mode == 'LINE':
                     col.prop(gpcolor, "pixel_size", text="UV Factor")
 
-                col.prop(gpcolor, "use_stroke_pattern", text="Use As Stencil Mask")
-                if gpcolor.use_stroke_pattern is False:
-                    col.prop(gpcolor, "use_stroke_texture_mix", text="Mix Color")
-                    if gpcolor.use_stroke_texture_mix is True:
-                        col.prop(gpcolor, "mix_stroke_factor", text="Factor", slider=True)
+            row = col.row()
+            row.prop(gpcolor, "color", text="Base Color")
 
-            if (gpcolor.stroke_style == 'SOLID' or gpcolor.use_stroke_pattern or gpcolor.use_stroke_texture_mix):
-                col.prop(gpcolor, "color", text="Base Color")
+            if gpcolor.stroke_style == 'TEXTURE':
+                row = col.row()
+                row.prop(gpcolor, "mix_stroke_factor", text="Factor", slider=True)
 
             if gpcolor.mode in {'DOTS', 'BOX'}:
                 col.prop(gpcolor, "alignment_mode")

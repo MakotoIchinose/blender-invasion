@@ -694,11 +694,7 @@ class GreasePencilMaterialsPanel:
 
             if ma is not None and ma.grease_pencil is not None:
                 gpcolor = ma.grease_pencil
-                if (
-                    gpcolor.stroke_style == 'SOLID' or
-                    gpcolor.use_stroke_pattern or
-                    gpcolor.use_stroke_texture_mix
-                ):
+                if gpcolor.stroke_style == 'SOLID':
                     row = layout.row()
                     row.prop(gpcolor, "color", text="Stroke Base Color")
 
