@@ -79,6 +79,7 @@ typedef struct gpMaterial {
 #define GP_STROKE_TEXTURE_USE (1 << 3)
 #define GP_STROKE_TEXTURE_STENCIL (1 << 4)
 #define GP_STROKE_TEXTURE_PREMUL (1 << 5)
+#define GP_STROKE_DOTS (1 << 6)
 #define GP_FILL_TEXTURE_USE (1 << 10)
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
@@ -315,8 +316,6 @@ typedef struct GPENCIL_FramebufferList {
 typedef struct GPENCIL_TextureList {
   /* Dummy texture to avoid errors cause by empty sampler. */
   struct GPUTexture *dummy_texture;
-  /* Checker texture used in checkerboard fill type. */
-  struct GPUTexture *checker_texture;
 
   /* multisample textures */
   struct GPUTexture *multisample_color;
@@ -389,8 +388,6 @@ typedef struct GPENCIL_PrivateData {
   struct BLI_memblock *gp_material_pool;
   /* Last used material pool. */
   GPENCIL_MaterialPool *last_material_pool;
-  /* Copy of txl pointer. */
-  struct GPUTexture *checker_tex;
   /* Current frame */
   int cfra;
 } GPENCIL_PrivateData;

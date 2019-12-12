@@ -108,14 +108,34 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     gpMaterial *mat_data = &pool->mat_data[mat_id];
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, i + 1);
 
-    mat_data->flag = 0;
+    if (gp_style->mode == GP_STYLE_MODE_LINE) {
+      mat_data->flag = 0;
+    }
+    else {
+      switch (gp_style->alignment_mode) {
+        case GP_STYLE_FOLLOW_PATH:
+          mat_data->flag = GP_STROKE_ALIGNMENT_STROKE;
+          break;
+        case GP_STYLE_FOLLOW_OBJ:
+          mat_data->flag = GP_STROKE_ALIGNMENT_OBJECT;
+          break;
+        case GP_STYLE_FOLLOW_FIXED:
+        default:
+          mat_data->flag = GP_STROKE_ALIGNMENT_FIXED;
+          break;
+      }
+
+      if (gp_style->mode == GP_STYLE_MODE_DOTS) {
+        mat_data->flag |= GP_STROKE_DOTS;
+      }
+    }
 
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
       /* TODO finish. */
       bool premul;
       pool->tex_stroke[mat_id] = gpencil_image_texture_get(gp_style->sima, &premul);
-      mat_data->flag |= GP_STROKE_TEXTURE_USE;
+      mat_data->flag |= pool->tex_stroke[mat_id] ? GP_STROKE_TEXTURE_USE : 0;
       mat_data->flag |= premul ? GP_STROKE_TEXTURE_PREMUL : 0;
       copy_v4_v4(mat_data->stroke_color, gp_style->stroke_rgba);
       mat_data->stroke_texture_mix = 1.0f - gp_style->mix_stroke_factor;
@@ -132,7 +152,7 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       bool use_clip = (gp_style->flag & GP_STYLE_COLOR_TEX_CLAMP) != 0;
       bool premul;
       pool->tex_fill[mat_id] = gpencil_image_texture_get(gp_style->ima, &premul);
-      mat_data->flag |= GP_FILL_TEXTURE_USE;
+      mat_data->flag |= pool->tex_fill[mat_id] ? GP_FILL_TEXTURE_USE : 0;
       mat_data->flag |= premul ? GP_FILL_TEXTURE_PREMUL : 0;
       mat_data->flag |= use_clip ? GP_FILL_TEXTURE_CLIP : 0;
       gpencil_uv_transform_get(gp_style->texture_offset,

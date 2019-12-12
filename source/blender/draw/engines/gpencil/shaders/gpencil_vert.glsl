@@ -11,6 +11,7 @@ uniform float thicknessWorldScale;
 
 /* Per Layer */
 uniform float thicknessOffset;
+uniform float vertexColorOpacity;
 
 in vec2 ma1;
 in vec2 ma2;
@@ -21,6 +22,8 @@ in vec4 pos;  /* Prev adj vert */
 in vec4 pos1; /* Current edge */
 in vec4 pos2; /* Current edge */
 in vec4 pos3; /* Next adj vert */
+#define thickness1 pos1.w
+#define thickness2 pos2.w
 /* xy is UV for fills, z is U of stroke, w is cosine of UV angle with sign of sine.  */
 in vec4 uv1;
 in vec4 uv2;
@@ -71,11 +74,30 @@ vec2 safe_normalize(vec2 v)
   }
 }
 
+float stroke_thickness_modulate(float thickness)
+{
+  /* Modify stroke thickness by object and layer factors.-*/
+  thickness *= thicknessScale;
+  thickness += thicknessOffset;
+  thickness = max(1.0, thickness);
+
+  if (thicknessIsScreenSpace) {
+    /* Multiply offset by view Z so that offset is constant in screenspace.
+     * (e.i: does not change with the distance to camera) */
+    thickness *= gl_Position.w;
+  }
+  else {
+    /* World space point size. */
+    thickness *= thicknessWorldScale * ProjectionMatrix[1][1] * sizeViewport.y;
+  }
+  return thickness;
+}
+
 void stroke_color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, float mix_tex)
 {
   /* Mix stroke with vertex color. */
   vec4 mixed_col;
-  mixed_col.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a);
+  mixed_col.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a * vertexColorOpacity);
   mixed_col.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
   /**
    * This is what the fragment shader looks like.
@@ -96,8 +118,15 @@ void stroke_color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, fl
 
 void stroke_vertex()
 {
+  int m = int(ma1.x);
+  bool is_dot = false;
+
+  if (m != -1.0) {
+    is_dot = GP_FLAG_TEST(materials[m].flag, GP_STROKE_ALIGNMENT);
+  }
+
   /* Enpoints, we discard the vertices. */
-  if (ma1.x == -1.0 || ma2.x == -1.0) {
+  if (ma1.x == -1.0 || (!is_dot && ma2.x == -1.0)) {
     discard_vert();
     return;
   }
@@ -105,10 +134,12 @@ void stroke_vertex()
   mat4 model_mat = model_matrix_get();
 
   /* Avoid using a vertex attrib for quad positioning. */
-  float x = float(gl_VertexID & 1);       /* [0..1] */
-  float y = float(gl_VertexID & 2) - 1.0; /* [-1..1] */
+  float x = float(gl_VertexID & 1) * 2.0 - 1.0; /* [-1..1] */
+  float y = float(gl_VertexID & 2) - 1.0;       /* [-1..1] */
 
-  vec3 wpos_adj = transform_point(model_mat, (x == 0.0) ? pos.xyz : pos3.xyz);
+  bool use_curr = is_dot || (x == -1.0);
+
+  vec3 wpos_adj = transform_point(model_mat, (use_curr) ? pos.xyz : pos3.xyz);
   vec3 wpos1 = transform_point(model_mat, pos1.xyz);
   vec3 wpos2 = transform_point(model_mat, pos2.xyz);
 
@@ -116,7 +147,7 @@ void stroke_vertex()
   vec4 ndc1 = point_world_to_ndc(wpos1);
   vec4 ndc2 = point_world_to_ndc(wpos2);
 
-  gl_Position = (x == 0.0) ? ndc1 : ndc2;
+  gl_Position = (use_curr) ? ndc1 : ndc2;
 
   /* TODO case where ndc1 & ndc2 is behind camera */
   vec2 ss_adj = project_to_screenspace(ndc_adj);
@@ -124,41 +155,50 @@ void stroke_vertex()
   vec2 ss2 = project_to_screenspace(ndc2);
   /* Screenspace Lines tangents. */
   vec2 line = safe_normalize(ss2 - ss1);
-  vec2 line_adj = safe_normalize((x == 0.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
-  /* Mitter tangent vector. */
-  vec2 miter_tan = safe_normalize(line_adj + line);
-  float miter_dot = dot(miter_tan, line_adj);
-  /* Break corners after a certain angle to avoid really thick corners. */
-  const float miter_limit = 0.7071; /* cos(45°) */
-  miter_tan = (miter_dot < miter_limit) ? line : (miter_tan / miter_dot);
+  vec2 line_adj = safe_normalize((x == -1.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
 
-  vec2 miter = rotate_90deg(miter_tan);
+  float thickness = (use_curr) ? thickness1 : thickness2;
+  thickness = stroke_thickness_modulate(thickness);
 
-  /* Position contains thickness in 4th component. */
-  float thickness = (x == 0.0) ? pos1.w : pos2.w;
-  /* Modify stroke thickness by object and layer factors.-*/
-  thickness *= thicknessScale;
-  thickness += thicknessOffset;
-  thickness = max(1.0, thickness);
+  if (is_dot) {
+    vec2 x_axis;
+    vec2 y_axis;
+    int alignement = materials[m].flag & GP_STROKE_ALIGNMENT;
+    if (alignement == GP_STROKE_ALIGNMENT_STROKE) {
+      /* TODO case where ndc1 & ndc2 is behind camera */
+      vec2 ss1 = project_to_screenspace(ndc1);
+      vec2 ss2 = project_to_screenspace(ndc2);
+      /* Screenspace Lines tangents. */
+      x_axis = safe_normalize(ss2 - ss1);
+      y_axis = rotate_90deg(x_axis);
+    }
+    else if (alignement == GP_STROKE_ALIGNMENT_OBJECT) {
+      /* TODO */
+      x_axis = vec2(1.0, 0.0);
+      y_axis = vec2(0.0, 1.0);
+    }
+    else /* GP_STROKE_ALIGNMENT_FIXED*/ {
+      x_axis = vec2(1.0, 0.0);
+      y_axis = vec2(0.0, 1.0);
+    }
 
-  if (thicknessIsScreenSpace) {
-    /* Multiply offset by view Z so that offset is constant in screenspace.
-     * (e.i: does not change with the distance to camera) */
-    thickness *= gl_Position.w;
+    gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
   }
   else {
-    /* World space point size. */
-    thickness *= thicknessWorldScale * ProjectionMatrix[1][1] * sizeViewport.y;
+    /* Mitter tangent vector. */
+    vec2 miter_tan = safe_normalize(line_adj + line);
+    float miter_dot = dot(miter_tan, line_adj);
+    /* Break corners after a certain angle to avoid really thick corners. */
+    const float miter_limit = 0.7071; /* cos(45°) */
+    miter_tan = (miter_dot < miter_limit) ? line : (miter_tan / miter_dot);
+
+    vec2 miter = rotate_90deg(miter_tan);
+
+    gl_Position.xy += miter * sizeViewportInv.xy * (thickness * y);
   }
-  /* Multiply scalars first. */
-  thickness *= y;
 
-  gl_Position.xy += miter * sizeViewportInv.xy * thickness;
-
-  int m = int(ma1.x);
-
-  vec4 vert_col = (x == 0.0) ? col1 : col2;
-  float vert_strength = (x == 0.0) ? strength1 : strength2;
+  vec4 vert_col = (use_curr) ? col1 : col2;
+  float vert_strength = (use_curr) ? strength1 : strength2;
   vec4 stroke_col = materials[m].stroke_color;
   float mix_tex = materials[m].stroke_texture_mix;
 
@@ -166,13 +206,11 @@ void stroke_vertex()
 
   matFlag = materials[m].flag & ~GP_FILL_FLAGS;
 
-  finalUvs.x = (x == 0.0) ? uv1.z : uv2.z;
-  finalUvs.y = y * 0.5 + 0.5;
-}
+  finalUvs = vec2(x, y) * 0.5 + 0.5;
 
-void dots_vertex()
-{
-  /* TODO */
+  if (!is_dot) {
+    finalUvs.x = (use_curr) ? uv1.z : uv2.z;
+  }
 }
 
 void fill_vertex()

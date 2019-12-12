@@ -288,12 +288,9 @@ static void GPENCIL_engine_init_new(void *ved)
 
   DRW_texture_ensure_2d(&txl->dummy_texture, 1, 1, GPU_R8, 0);
 
-  if (txl->checker_texture == NULL) {
-    float pixels[4][4] = {{1.0f, 1.0f, 1.0f, 1.0f},
-                          {0.0f, 0.0f, 0.0f, 0.0f},
-                          {0.0f, 0.0f, 0.0f, 0.0f},
-                          {1.0f, 1.0f, 1.0f, 1.0f}};
-    txl->checker_texture = DRW_texture_create_2d(2, 2, GPU_RGBA8, DRW_TEX_WRAP, (float *)pixels);
+  if (txl->dummy_texture == NULL) {
+    float pixels[1][4] = {{1.0f, 0.0f, 1.0f, 1.0f}};
+    txl->dummy_texture = DRW_texture_create_2d(1, 1, GPU_RGBA8, DRW_TEX_WRAP, (float *)pixels);
   }
 
   GPENCIL_ViewLayerData *vldata = GPENCIL_view_layer_data_ensure();
@@ -309,7 +306,6 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
   stl->pd->last_material_pool = NULL;
-  stl->pd->checker_tex = txl->checker_texture;
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -793,6 +789,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessScale", object_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
+  DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
