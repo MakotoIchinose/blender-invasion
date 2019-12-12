@@ -3742,7 +3742,7 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
 
   /* vertex opacity */
-  prop = RNA_def_property(srna, "vertex_opacity", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "vertex_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "vertex_opacity");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Vertex Opacity", "Opacity for edit vertices");
@@ -3750,7 +3750,7 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, "rna_GPencil_update");
 
   /* Vertex Paint opacity factor */
-  prop = RNA_def_property(srna, "gpencil_vertex_paint_opacity", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "gpencil_vertex_paint_opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "overlay.gpencil_vertex_paint_opacity");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);
