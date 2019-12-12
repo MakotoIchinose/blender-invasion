@@ -12,6 +12,7 @@ uniform float thicknessWorldScale;
 /* Per Layer */
 uniform float thicknessOffset;
 uniform float vertexColorOpacity;
+uniform vec4 layerTint;
 
 in vec2 ma1;
 in vec2 ma2;
@@ -95,10 +96,11 @@ float stroke_thickness_modulate(float thickness)
 
 void color_output(vec4 stroke_col, vec4 vert_col, float vert_strength, float mix_tex)
 {
-  /* Mix stroke with vertex color. */
-  vec4 mixed_col;
-  mixed_col.rgb = mix(stroke_col.rgb, vert_col.rgb, vert_col.a * vertexColorOpacity);
-  mixed_col.a = clamp(stroke_col.a * vert_strength, 0.0, 1.0);
+  /* Mix stroke with other colors. */
+  vec4 mixed_col = stroke_col;
+  mixed_col.rgb = mix(mixed_col.rgb, vert_col.rgb, vert_col.a * vertexColorOpacity);
+  mixed_col.rgb = mix(mixed_col.rgb, layerTint.rgb, layerTint.a);
+  mixed_col.a *= vert_strength;
   /**
    * This is what the fragment shader looks like.
    * out = col * finalColorMul + col.a * finalColorAdd.

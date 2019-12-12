@@ -790,6 +790,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
