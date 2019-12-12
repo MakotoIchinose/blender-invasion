@@ -848,6 +848,11 @@ void WM_generic_callback_free(struct wmGenericCallback *callback);
 
 void WM_generic_user_data_free(struct wmGenericUserData *user_data);
 
+#ifdef WITH_OPENXR
+/* wm_xr.c */
+bool WM_xr_is_session_running(const struct wmXrData *xr);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

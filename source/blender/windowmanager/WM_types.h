@@ -311,6 +311,7 @@ typedef struct wmNotifier {
 #define ND_HISTORY (4 << 16)
 #define ND_JOB (5 << 16)
 #define ND_UNDO (6 << 16)
+#define ND_XR_DATA_CHANGED (7 << 17)
 
 /* NC_SCREEN */
 #define ND_LAYOUTBROWSE (1 << 16)

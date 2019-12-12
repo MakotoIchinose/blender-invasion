@@ -24,6 +24,8 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "WM_types.h"
+
 #include "rna_internal.h"
 
 #ifndef WITH_OPENXR
@@ -31,6 +33,14 @@ BLI_STATIC_ASSERT(false, "Tried to compile rna_xr.c even though WITH_OPENXR is n
 #endif
 
 #ifdef RNA_RUNTIME
+
+#  include "WM_api.h"
+
+static bool rna_XrSessionState_is_running(bContext *C)
+{
+  const wmWindowManager *wm = CTX_wm_manager(C);
+  return WM_xr_is_session_running(&wm->xr);
+}
 
 #else /* RNA_RUNTIME */
 
@@ -46,30 +56,55 @@ static void rna_def_xr_session_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "shading_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_shading_type_items);
   RNA_def_property_ui_text(prop, "Shading Type", "Method to display/shade objects in the VR View");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "show_floor", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_GRIDFLOOR);
   RNA_def_property_ui_text(prop, "Display Grid Floor", "Show the ground plane grid");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "draw_flags", V3D_OFSDRAW_SHOW_ANNOTATION);
   RNA_def_property_ui_text(prop, "Show Annotation", "Show annotations for this view");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "clip_start", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_ui_text(prop, "Clip Start", "VR View near clipping distance");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "clip_end", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 1e-6f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.001f, FLT_MAX, 10, 3);
   RNA_def_property_ui_text(prop, "Clip End", "VR View far clipping distance");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
 
   prop = RNA_def_property(srna, "use_positional_tracking", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", XR_SESSION_USE_POSITION_TRACKING);
   RNA_def_property_ui_text(prop,
                            "Positional Tracking",
                            "Limit view movements to rotation only (three degrees of freedom)");
+  RNA_def_property_update(prop, NC_WM | ND_XR_DATA_CHANGED, NULL);
+}
+
+static void rna_def_xr_session_state(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  srna = RNA_def_struct(brna, "XrSessionState", NULL);
+  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
+  RNA_def_struct_ui_text(srna, "Session State", "Runtime state information about the VR session");
+
+  func = RNA_def_function(srna, "is_running", "rna_XrSessionState_is_running");
+  RNA_def_function_ui_description(func, "Query if the VR session is currently running");
+  RNA_def_function_flag(func, FUNC_NO_SELF);
+  parm = RNA_def_pointer(func, "context", "Context", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_boolean(func, "result", 0, "Result", "");
+  RNA_def_function_return(func, parm);
 }
 
 void RNA_def_xr(BlenderRNA *brna)
@@ -77,6 +112,7 @@ void RNA_def_xr(BlenderRNA *brna)
   RNA_define_animate_sdna(false);
 
   rna_def_xr_session_settings(brna);
+  rna_def_xr_session_state(brna);
 
   RNA_define_animate_sdna(true);
 }

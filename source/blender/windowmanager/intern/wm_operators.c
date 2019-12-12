@@ -3509,6 +3509,8 @@ static int wm_xr_session_toggle_exec(bContext *C, wmOperator *UNUSED(op))
 
   wm_xr_session_toggle(C, wm->xr.context);
 
+  WM_event_add_notifier(C, NC_WM | ND_XR_DATA_CHANGED, NULL);
+
   return OPERATOR_FINISHED;
 }
 

@@ -1365,6 +1365,11 @@ static void view3d_buttons_region_listener(wmWindow *UNUSED(win),
         ED_region_tag_redraw(ar);
       }
       break;
+    case NC_WM:
+      if (wmn->data == ND_XR_DATA_CHANGED) {
+        ED_region_tag_redraw(ar);
+      }
+      break;
   }
 }
 

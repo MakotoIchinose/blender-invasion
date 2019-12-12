@@ -248,6 +248,10 @@ void *wm_xr_session_gpu_binding_context_create(GHOST_TXrGraphicsBinding graphics
 
   wm_surface_add(surface);
 
+  /* Some regions may need to redraw with updated session state after the session is entirely up
+   * and running. */
+  WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
+
   return data->secondary_ghost_ctx ? data->secondary_ghost_ctx : surface->ghost_ctx;
 }
 
@@ -259,6 +263,10 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_TXrGraphicsBinding UNUSED(g
   }
 
   wm_window_reset_drawable();
+
+  /* Some regions may need to redraw with updated session state after the session is entirely
+   * stopped. */
+  WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, NULL);
 }
 
 static void wm_xr_session_begin_info_create(const bXrRuntimeSessionState *state,
@@ -273,7 +281,7 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
   GHOST_XrContextHandle xr_context = xr_context_ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
 
-  if (xr_context && GHOST_XrSessionIsRunning(xr_context)) {
+  if (WM_xr_is_session_running(&wm->xr)) {
     GHOST_XrSessionEnd(xr_context);
     wm_xr_runtime_session_state_free(&wm->xr.session_state);
   }
@@ -285,6 +293,13 @@ void wm_xr_session_toggle(bContext *C, void *xr_context_ptr)
 
     GHOST_XrSessionStart(xr_context, &begin_info);
   }
+}
+
+bool WM_xr_is_session_running(const wmXrData *xr)
+{
+  /* wmXrData.session_state will be NULL if session end was requested. In that case, pretend like
+   * it's already  */
+  return xr->context && GHOST_XrSessionIsRunning(xr->context);
 }
 
 /** \} */ /* XR-Session */
