@@ -6760,9 +6760,10 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
     bl_label = "Sculpt Context Menu"
 
     def draw(self, context):
-        brush = context.tool_settings.gpencil_sculpt.brush
-
         layout = self.layout
+        ts = context.tool_settings
+        settings = ts.gpencil_sculpt_paint
+        brush = settings.brush
 
         if context.mode == 'WEIGHT_GPENCIL':
             layout.prop(brush, "weight")
