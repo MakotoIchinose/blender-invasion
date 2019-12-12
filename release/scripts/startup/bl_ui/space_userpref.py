@@ -2194,6 +2194,20 @@ class USERPREF_PT_experimental_virtual_reality(ExperimentalPanel, Panel):
 """
 
 
+class USERPREF_PT_experimental_usd(ExperimentalPanel, Panel):
+    bl_label = "Universal Scene Description"
+
+    def draw_props(self, context, layout):
+        prefs = context.preferences
+
+        split = layout.split(factor=0.66)
+        col = split.split()
+        col.prop(prefs.experimental, "use_usd_exporter", text="USD Exporter")
+        col = split.split()
+        # TODO(Sybren): before merging to master, create the feedback thread and update this link.
+        col.operator("wm.url_open", text='Give Feedback', icon='URL').url = "https://devtalk.blender.org/usd-feedback-thread"
+
+
 # Order of registration defines order in UI,
 # so dynamically generated classes are 'injected' in the intended order.
 classes = (
@@ -2277,6 +2291,7 @@ classes = (
     USERPREF_PT_studiolight_world,
 
     USERPREF_PT_experimental_all,
+    USERPREF_PT_experimental_usd,
 
     # Add dynamically generated editor theme panels last,
     # so they show up last in the theme section.
