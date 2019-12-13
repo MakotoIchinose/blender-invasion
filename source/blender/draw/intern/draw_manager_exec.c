@@ -233,11 +233,11 @@ void drw_state_set(DRWState state)
   /* Blending (all buffer) */
   {
     int test;
-    if (CHANGED_ANY_STORE_VAR(DRW_STATE_BLEND_ALPHA | DRW_STATE_BLEND_ALPHA_PREMUL |
-                                  DRW_STATE_BLEND_ADD | DRW_STATE_BLEND_MUL |
-                                  DRW_STATE_BLEND_ADD_FULL | DRW_STATE_BLEND_OIT |
-                                  DRW_STATE_BLEND_ALPHA_UNDER_PREMUL | DRW_STATE_BLEND_CUSTOM,
-                              test)) {
+    if (CHANGED_ANY_STORE_VAR(
+            DRW_STATE_BLEND_ALPHA | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_BLEND_ADD |
+                DRW_STATE_BLEND_MUL | DRW_STATE_BLEND_ADD_FULL | DRW_STATE_BLEND_OIT |
+                DRW_STATE_BLEND_ALPHA_UNDER_PREMUL | DRW_STATE_BLEND_CUSTOM | DRW_STATE_BLEND_SUB,
+            test)) {
       if (test) {
         glEnable(GL_BLEND);
 
@@ -273,6 +273,9 @@ void drw_state_set(DRWState state)
           /* Let alpha accumulate. */
           glBlendFunc(GL_ONE, GL_ONE);
         }
+        else if ((state & DRW_STATE_BLEND_SUB) != 0) {
+          glBlendFunc(GL_ONE, GL_ONE);
+        }
         else if ((state & DRW_STATE_BLEND_CUSTOM) != 0) {
           /* Custom blend parameters using dual source blending.
            * Can only be used with one Draw Buffer. */
@@ -280,6 +283,13 @@ void drw_state_set(DRWState state)
         }
         else {
           BLI_assert(0);
+        }
+
+        if ((state & DRW_STATE_BLEND_SUB) != 0) {
+          glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+        }
+        else {
+          glBlendEquation(GL_FUNC_ADD);
         }
       }
       else {
