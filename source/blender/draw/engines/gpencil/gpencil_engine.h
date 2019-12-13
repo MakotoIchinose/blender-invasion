@@ -418,6 +418,8 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *reveal_tx;
   GPUTexture *reveal_layer_tx;
   GPUTexture *reveal_object_tx;
+  /* Pointer to dtxl->depth */
+  GPUTexture *scene_depth_tx;
   /* Current frame */
   int cfra;
   /* Used for computing object distance to camera. */

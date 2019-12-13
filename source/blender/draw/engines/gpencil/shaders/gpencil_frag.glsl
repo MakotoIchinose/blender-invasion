@@ -1,6 +1,7 @@
 
 uniform sampler2D gpFillTexture;
 uniform sampler2D gpStrokeTexture;
+uniform sampler2D gpSceneDepthTexture;
 
 in vec4 finalColorMul;
 in vec4 finalColorAdd;
@@ -50,6 +51,12 @@ void main()
   revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
 
   if (fragColor.a < 0.001) {
+    discard;
+  }
+
+  /* Manual depth test */
+  float scene_depth = texelFetch(gpSceneDepthTexture, ivec2(gl_FragCoord.xy), 0).r;
+  if (gl_FragCoord.z > scene_depth) {
     discard;
   }
 

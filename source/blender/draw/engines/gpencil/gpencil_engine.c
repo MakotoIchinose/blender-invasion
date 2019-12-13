@@ -281,6 +281,7 @@ static void GPENCIL_engine_init_new(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_StorageList *stl = vedata->stl;
   GPENCIL_TextureList *txl = vedata->txl;
+  DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
@@ -308,6 +309,7 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
   stl->pd->tobjects.last = NULL;
+  stl->pd->scene_depth_tx = dtxl->depth;
 
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
@@ -803,6 +805,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
+  DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
   DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3D", is_stroke_order_3D);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
