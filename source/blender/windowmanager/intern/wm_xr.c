@@ -75,6 +75,9 @@ typedef struct bXrRuntimeSessionState {
    * it also contains a location delta from the moment the option was toggled. */
   GHOST_XrPose final_reference_pose;
 
+  /** Last known viewer location (centroid of eyes, in world space) stored for queries. */
+  GHOST_XrPose viewer_pose;
+
   /** Copy of bXrSessionSettings.flag created on the last draw call,  */
   int prev_settings_flag;
 } bXrRuntimeSessionState;
@@ -216,6 +219,7 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
   const bool position_tracking_toggled = (state->prev_settings_flag &
                                           XR_SESSION_USE_POSITION_TRACKING) !=
                                          (settings->flag & XR_SESSION_USE_POSITION_TRACKING);
+  const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
 
   copy_v4_v4(state->final_reference_pose.orientation_quat, state->reference_pose.orientation_quat);
 
@@ -223,7 +227,7 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
     copy_v3_v3(state->final_reference_pose.position, state->reference_pose.position);
 
     /* Update reference pose to the current position. */
-    if ((settings->flag & XR_SESSION_USE_POSITION_TRACKING) == 0) {
+    if (use_position_tracking == false) {
       /* OpenXR/Ghost-XR returns the local pose in local space, we need it in world space. */
       state->final_reference_pose.position[0] += draw_view->local_pose.position[0];
       state->final_reference_pose.position[1] -= draw_view->local_pose.position[2];
@@ -231,7 +235,23 @@ static void wm_xr_runtime_session_state_update(bXrRuntimeSessionState *state,
     }
   }
 
+  copy_v3_v3(state->viewer_pose.position, state->final_reference_pose.position);
+  if (use_position_tracking) {
+    state->viewer_pose.position[0] += draw_view->local_pose.position[0];
+    state->viewer_pose.position[1] -= draw_view->local_pose.position[2];
+    state->viewer_pose.position[2] += draw_view->local_pose.position[1];
+  }
+
   state->prev_settings_flag = settings->flag;
+}
+
+void WM_xr_session_state_viewer_location_get(const wmXrData *xr, float location[3])
+{
+  if (!WM_xr_is_session_running(xr)) {
+    return;
+  }
+
+  copy_v3_v3(location, xr->session_state->viewer_pose.position);
 }
 
 /** \} */ /* XR Runtime Session State */

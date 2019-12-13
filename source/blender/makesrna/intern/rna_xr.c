@@ -42,6 +42,16 @@ static bool rna_XrSessionState_is_running(bContext *C)
   return WM_xr_is_session_running(&wm->xr);
 }
 
+static void rna_XrSessionState_viewer_location_get(PointerRNA *ptr, float *values)
+{
+  /* Could also get bXrSessionState pointer through ptr->data, but prefer if we just consistently
+   * pass wmXrData pointers to the WM_xr_xxx() API. */
+  const wmWindowManager *wm = (wmWindowManager *)ptr->owner_id;
+  BLI_assert(wm && (GS(wm->id.name) == ID_WM));
+
+  WM_xr_session_state_viewer_location_get(&wm->xr, values);
+}
+
 #else /* RNA_RUNTIME */
 
 static void rna_def_xr_session_settings(BlenderRNA *brna)
@@ -92,7 +102,7 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
 {
   StructRNA *srna;
   FunctionRNA *func;
-  PropertyRNA *parm;
+  PropertyRNA *parm, *prop;
 
   srna = RNA_def_struct(brna, "XrSessionState", NULL);
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
@@ -105,6 +115,15 @@ static void rna_def_xr_session_state(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_boolean(func, "result", 0, "Result", "");
   RNA_def_function_return(func, parm);
+
+  prop = RNA_def_property(srna, "viewer_location", PROP_FLOAT, PROP_TRANSLATION);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop, "rna_XrSessionState_viewer_location_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewer Location",
+      "Last known location of the viewer (centroid of the eyes) in world space");
 }
 
 void RNA_def_xr(BlenderRNA *brna)
