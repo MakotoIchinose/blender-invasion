@@ -196,6 +196,8 @@ typedef struct GPENCIL_tObject {
 
   /* Distance to camera. Used for sorting. */
   float camera_z;
+
+  bool is_drawmode3d;
 } GPENCIL_tObject;
 
 /* *********** LISTS *********** */
@@ -307,6 +309,10 @@ typedef struct GPENCIL_PassList {
   struct DRWPass *fx_shader_pass;
   struct DRWPass *fx_shader_pass_blend;
 
+  /* Refactored */
+
+  /* Composite the main GPencil buffer onto the rendered image. */
+  struct DRWPass *composite_ps;
 } GPENCIL_PassList;
 
 typedef struct GPENCIL_FramebufferList {
@@ -317,6 +323,9 @@ typedef struct GPENCIL_FramebufferList {
   struct GPUFrameBuffer *background_fb;
 
   struct GPUFrameBuffer *multisample_fb;
+
+  /* Refactored */
+  struct GPUFrameBuffer *gpencil_fb;
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {
@@ -398,6 +407,10 @@ typedef struct GPENCIL_PrivateData {
   struct {
     GPENCIL_tObject *first, *last;
   } tobjects;
+  /* Temp Textures (shared with other engines). */
+  GPUTexture *depth;
+  GPUTexture *color;
+  GPUTexture *alpha;
   /* Current frame */
   int cfra;
   /* Used for computing object distance to camera. */
@@ -419,6 +432,8 @@ typedef struct GPENCIL_e_data {
 
   /* GPencil Object rendering */
   struct GPUShader *gpencil_sh;
+  /* Final Compositing over rendered background. */
+  struct GPUShader *composite_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -650,6 +665,7 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
 
 /* Shaders */
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);

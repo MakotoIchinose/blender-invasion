@@ -45,11 +45,13 @@
 /* TODO remove the _new suffix. */
 GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *ob)
 {
+  bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tObject *tgp_ob = BLI_memblock_alloc(pd->gp_object_pool);
 
   tgp_ob->layers.first = tgp_ob->layers.last = NULL;
   tgp_ob->vfx.first = tgp_ob->vfx.last = NULL;
   tgp_ob->camera_z = dot_v3v3(pd->camera_z_axis, ob->obmat[3]);
+  tgp_ob->is_drawmode3d = (gpd->draw_mode == GP_DRAWMODE_3D);
 
   BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
 

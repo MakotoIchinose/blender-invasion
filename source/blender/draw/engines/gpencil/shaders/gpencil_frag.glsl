@@ -8,7 +8,8 @@ in vec2 finalUvs;
 flat in int matFlag;
 flat in float depth;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec4 alphaColor;
 
 float length_squared(vec2 v)
 {
@@ -41,6 +42,8 @@ void main()
     float dist = 1.0 - rad_sqr_inv * length_squared(finalUvs - 0.5);
     fragColor *= clamp(dist, 0.0, 1.0);
   }
+
+  alphaColor = vec4(fragColor.a);
 
   if (fragColor.a < 0.001) {
     discard;

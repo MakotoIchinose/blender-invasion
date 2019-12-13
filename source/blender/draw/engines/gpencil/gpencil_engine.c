@@ -400,10 +400,24 @@ static void gpencil_check_screen_switches(const DRWContextState *draw_ctx,
 static void GPENCIL_cache_init_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  DRWShadingGroup *grp;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
+
+  {
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
+
+    DRW_PASS_CREATE(psl->composite_ps, state);
+
+    GPUShader *sh = GPENCIL_shader_composite_get(&e_data);
+    grp = DRW_shgroup_create(sh, psl->composite_ps);
+    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color);
+    DRW_shgroup_uniform_texture_ref(grp, "alphaBuf", &pd->alpha);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
 }
 
 void GPENCIL_cache_init(void *vedata)
@@ -799,9 +813,6 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
-  /* Should do this clear for the whole object. */
-  float clear_depth = is_stroke_order_3D ? 1.0f : 0.0f;
-  DRW_shgroup_clear_framebuffer(iter->grp, GPU_DEPTH_BIT, 0, 0, 0, 0, clear_depth, 0);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
@@ -999,6 +1010,7 @@ static void GPENCIL_cache_finish_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
 
   /* Upload UBO data. */
   BLI_memblock_iter iter;
@@ -1011,6 +1023,24 @@ static void GPENCIL_cache_finish_new(void *ved)
 
   /* Sort object by distance to the camera. */
   pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
+
+  if (pd->tobjects.first) {
+    /* Create framebuffers only if needed. */
+    const float *size = DRW_viewport_size_get();
+    pd->depth = DRW_texture_pool_query_2d(
+        size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_gpencil_type);
+    pd->color = DRW_texture_pool_query_2d(
+        size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+    pd->alpha = DRW_texture_pool_query_2d(
+        size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+
+    GPU_framebuffer_ensure_config(&fbl->gpencil_fb,
+                                  {
+                                      GPU_ATTACHMENT_TEXTURE(pd->depth),
+                                      GPU_ATTACHMENT_TEXTURE(pd->color),
+                                      GPU_ATTACHMENT_TEXTURE(pd->alpha),
+                                  });
+  }
 }
 
 void GPENCIL_cache_finish(void *vedata)
@@ -1207,10 +1237,23 @@ static void drw_gpencil_select_render(GPENCIL_StorageList *stl, GPENCIL_PassList
 static void GPENCIL_draw_scene_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PassList *psl = vedata->psl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  float clear_col[4] = {0.0f};
+
+  if (pd->tobjects.first == NULL) {
+    return;
+  }
+
+  GPU_framebuffer_bind(fbl->gpencil_fb);
+  GPU_framebuffer_clear_color(fbl->gpencil_fb, clear_col);
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     DRW_stats_group_start("GPencil Object");
+
+    GPU_framebuffer_clear_depth(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f);
 
     if (ob->vfx.first) {
       /* TODO vfx */
@@ -1238,6 +1281,9 @@ static void GPENCIL_draw_scene_new(void *ved)
 
     DRW_stats_group_end();
   }
+
+  GPU_framebuffer_bind(dfbl->default_fb);
+  DRW_draw_pass(psl->composite_ps);
 
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 }
