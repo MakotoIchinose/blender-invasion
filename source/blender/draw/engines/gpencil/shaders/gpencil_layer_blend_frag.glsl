@@ -64,7 +64,7 @@ void main()
        **/
       color = mix(vec4(0.5), color, color.a * blendOpacity);
       vec4 s = step(0.5, color);
-      fragRevealage = fragColor = 2.0 * s + 2.0 * color * (s * 2.0 - 1.0);
+      fragRevealage = fragColor = 2.0 * s + 2.0 * color * (1.0 - s * 2.0);
       break;
     case MODE_OVERLAY_SECOND_PASS:
       /* Reminder: Blending func is additive blend (dst.rgba + src.rgba).*/
