@@ -94,6 +94,7 @@ typedef enum eGPUTextureFormat {
 #if 0
   GPU_RGB10_A2,
   GPU_RGB10_A2UI,
+  GPU_SRGB8_A8,
 #endif
   GPU_R11F_G11F_B10F,
   GPU_DEPTH32F_STENCIL8,
@@ -123,7 +124,6 @@ typedef enum eGPUTextureFormat {
 
 /* Special formats texture only */
 #if 0
-  GPU_SRGB8_A8,
   GPU_SRGB8,
   GPU_RGB9_E5,
   GPU_COMPRESSED_RG_RGTC2,
