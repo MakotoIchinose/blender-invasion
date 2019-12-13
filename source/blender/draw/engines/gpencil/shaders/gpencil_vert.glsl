@@ -171,22 +171,17 @@ void stroke_vertex()
     vec2 y_axis;
     int alignement = materials[m].flag & GP_STROKE_ALIGNMENT;
     if (alignement == GP_STROKE_ALIGNMENT_STROKE) {
-      /* TODO case where ndc1 & ndc2 is behind camera */
-      vec2 ss1 = project_to_screenspace(ndc1);
-      vec2 ss2 = project_to_screenspace(ndc2);
-      /* Screenspace Lines tangents. */
-      x_axis = safe_normalize(ss2 - ss1);
-      y_axis = rotate_90deg(x_axis);
+      x_axis = line;
     }
     else if (alignement == GP_STROKE_ALIGNMENT_OBJECT) {
       /* TODO */
       x_axis = vec2(1.0, 0.0);
-      y_axis = vec2(0.0, 1.0);
     }
     else /* GP_STROKE_ALIGNMENT_FIXED*/ {
       x_axis = vec2(1.0, 0.0);
-      y_axis = vec2(0.0, 1.0);
     }
+
+    y_axis = rotate_90deg(x_axis);
 
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
   }
