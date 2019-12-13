@@ -216,6 +216,8 @@ void stroke_vertex()
   if (strokeOrder3D) {
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
+    /* We still offset the fills a little to avoid overlaps */
+    gl_Position.z -= (stroke_id1 + 1) * 0.000002;
   }
   else if (GP_FLAG_TEST(materials[m].flag, GP_STROKE_OVERLAP)) {
     /* Use the index of the point as depth.
@@ -238,7 +240,6 @@ void fill_vertex()
 
   vec3 wpos = transform_point(model_mat, pos1.xyz);
   gl_Position = point_world_to_ndc(wpos);
-  gl_Position.z += 1e-2;
 
   int m = int(ma1.x);
 
@@ -256,6 +257,8 @@ void fill_vertex()
   if (strokeOrder3D) {
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
+    /* We still offset the fills a little to avoid overlaps */
+    gl_Position.z -= stroke_id1 * 0.000002;
   }
   else {
     /* Use the index of first point of the stroke as depth. */
