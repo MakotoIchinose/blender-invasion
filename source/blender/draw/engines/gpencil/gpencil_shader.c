@@ -27,6 +27,7 @@ extern char datatoc_gpencil_common_lib_glsl[];
 extern char datatoc_gpencil_frag_glsl[];
 extern char datatoc_gpencil_vert_glsl[];
 extern char datatoc_gpencil_composite_frag_glsl[];
+extern char datatoc_gpencil_layer_blend_frag_glsl[];
 
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
@@ -65,4 +66,13 @@ struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data)
     e_data->composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_composite_frag_glsl, NULL);
   }
   return e_data->composite_sh;
+}
+
+struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->layer_blend_sh) {
+    e_data->layer_blend_sh = DRW_shader_create_fullscreen(datatoc_gpencil_layer_blend_frag_glsl,
+                                                          NULL);
+  }
+  return e_data->layer_blend_sh;
 }

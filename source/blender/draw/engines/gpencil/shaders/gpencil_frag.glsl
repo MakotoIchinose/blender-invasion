@@ -9,7 +9,7 @@ flat in int matFlag;
 flat in float depth;
 
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 alphaColor;
+layout(location = 1) out vec4 revealColor;
 
 float length_squared(vec2 v)
 {
@@ -43,7 +43,11 @@ void main()
     fragColor *= clamp(dist, 0.0, 1.0);
   }
 
-  alphaColor = vec4(fragColor.a);
+  /* For compatibility with colored alpha buffer.
+   * Note that we are limited to mono-chromatic alpha blending here
+   * because of the blend equation and the limit of 1 color target
+   * when using custom color blending. */
+  revealColor = vec4(0.0, 0.0, 0.0, fragColor.a);
 
   if (fragColor.a < 0.001) {
     discard;

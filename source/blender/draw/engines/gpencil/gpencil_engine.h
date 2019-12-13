@@ -326,6 +326,8 @@ typedef struct GPENCIL_FramebufferList {
 
   /* Refactored */
   struct GPUFrameBuffer *gpencil_fb;
+  struct GPUFrameBuffer *layer_fb;
+  struct GPUFrameBuffer *object_fb;
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {
@@ -408,9 +410,14 @@ typedef struct GPENCIL_PrivateData {
     GPENCIL_tObject *first, *last;
   } tobjects;
   /* Temp Textures (shared with other engines). */
-  GPUTexture *depth;
-  GPUTexture *color;
-  GPUTexture *alpha;
+  GPUTexture *depth_tx;
+  GPUTexture *color_tx;
+  GPUTexture *color_layer_tx;
+  GPUTexture *color_object_tx;
+  /* Revealage is 1 - alpha */
+  GPUTexture *reveal_tx;
+  GPUTexture *reveal_layer_tx;
+  GPUTexture *reveal_object_tx;
   /* Current frame */
   int cfra;
   /* Used for computing object distance to camera. */
@@ -434,6 +441,8 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *gpencil_sh;
   /* Final Compositing over rendered background. */
   struct GPUShader *composite_sh;
+  /* All layer blend types in one shader! */
+  struct GPUShader *layer_blend_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -666,6 +675,7 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
 /* Shaders */
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);

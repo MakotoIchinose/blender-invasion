@@ -351,6 +351,8 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_paper_sh);
 
   DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
+  DRW_SHADER_FREE_SAFE(e_data.composite_sh);
+  DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
 
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
 
@@ -414,8 +416,8 @@ static void GPENCIL_cache_init_new(void *ved)
 
     GPUShader *sh = GPENCIL_shader_composite_get(&e_data);
     grp = DRW_shgroup_create(sh, psl->composite_ps);
-    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color);
-    DRW_shgroup_uniform_texture_ref(grp, "alphaBuf", &pd->alpha);
+    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }
@@ -1024,22 +1026,54 @@ static void GPENCIL_cache_finish_new(void *ved)
   /* Sort object by distance to the camera. */
   pd->tobjects.first = gpencil_tobject_sort_fn_r(pd->tobjects.first, gpencil_tobject_dist_sort);
 
+  /* Create framebuffers only if needed. */
   if (pd->tobjects.first) {
-    /* Create framebuffers only if needed. */
+    /* TODO(fclem) Detect use of layers and vfx. */
+    bool use_layer_fb = true;
+    bool use_object_fb = false;
+
     const float *size = DRW_viewport_size_get();
-    pd->depth = DRW_texture_pool_query_2d(
+    pd->depth_tx = DRW_texture_pool_query_2d(
         size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_gpencil_type);
-    pd->color = DRW_texture_pool_query_2d(
+    pd->color_tx = DRW_texture_pool_query_2d(
         size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
-    pd->alpha = DRW_texture_pool_query_2d(
+    pd->reveal_tx = DRW_texture_pool_query_2d(
         size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
 
     GPU_framebuffer_ensure_config(&fbl->gpencil_fb,
                                   {
-                                      GPU_ATTACHMENT_TEXTURE(pd->depth),
-                                      GPU_ATTACHMENT_TEXTURE(pd->color),
-                                      GPU_ATTACHMENT_TEXTURE(pd->alpha),
+                                      GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
+                                      GPU_ATTACHMENT_TEXTURE(pd->color_tx),
+                                      GPU_ATTACHMENT_TEXTURE(pd->reveal_tx),
                                   });
+
+    if (use_layer_fb) {
+      pd->color_layer_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+      pd->reveal_layer_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+
+      GPU_framebuffer_ensure_config(&fbl->layer_fb,
+                                    {
+                                        GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->color_layer_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->reveal_layer_tx),
+                                    });
+    };
+
+    if (use_object_fb) {
+      pd->color_object_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+      pd->reveal_object_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
+
+      GPU_framebuffer_ensure_config(&fbl->layer_fb,
+                                    {
+                                        GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->color_object_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->reveal_object_tx),
+                                    });
+    }
   }
 }
 
@@ -1241,14 +1275,14 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPENCIL_PrivateData *pd = vedata->stl->pd;
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-  float clear_col[4] = {0.0f};
+  float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
 
   if (pd->tobjects.first == NULL) {
     return;
   }
 
   GPU_framebuffer_bind(fbl->gpencil_fb);
-  GPU_framebuffer_clear_color(fbl->gpencil_fb, clear_col);
+  GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     DRW_stats_group_start("GPencil Object");
@@ -1262,16 +1296,15 @@ static void GPENCIL_draw_scene_new(void *ved)
 
     for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
       if (layer->blend_ps) {
-        /* TODO blending */
-        // GPU_framebuffer_bind(fbl->layer_fb);
+        GPU_framebuffer_bind(fbl->layer_fb);
+        GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
       }
 
       DRW_draw_pass(layer->geom_ps);
 
       if (layer->blend_ps) {
-        /* TODO blending */
-        // GPU_framebuffer_bind(fbl->object_fb);
-        // DRW_draw_pass(layer->blend_ps);
+        GPU_framebuffer_bind(fbl->gpencil_fb);
+        DRW_draw_pass(layer->blend_ps);
       }
     }
 

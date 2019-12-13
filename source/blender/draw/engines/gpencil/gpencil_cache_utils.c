@@ -59,22 +59,77 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *o
 }
 
 /* TODO remove the _new suffix. */
-GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd,
-                                            Object *ob,
-                                            bGPDlayer *UNUSED(layer))
+GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob, bGPDlayer *gpl)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
 
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-  /* TODO better 3D mode. */
-  if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
-    state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+  {
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
+    if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
+      /* TODO better 3D mode. */
+      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+    }
+    else {
+      /* We render all strokes with uniform depth (increasing with stroke id). */
+      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
+    }
+    tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
+  }
+
+  if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
+    DRWState state = DRW_STATE_WRITE_COLOR;
+    switch (gpl->blend_mode) {
+      case eGplBlendMode_Regular:
+        state |= DRW_STATE_BLEND_ALPHA_PREMUL;
+        break;
+      case eGplBlendMode_Add:
+        state |= DRW_STATE_BLEND_ADD;
+        break;
+      case eGplBlendMode_Subtract:
+        /* Caveat. This effect only propagates if target buffer has
+         * a signed floating point color buffer.
+         * i.e: This will not be conserved after this blending step.
+         * TODO(fclem) To make things consistent, we might create a dummy vfx
+         * for objects that use this blend type to always avoid the subtract
+         * affecting other objects. */
+        state |= DRW_STATE_BLEND_SUB;
+        break;
+      case eGplBlendMode_Multiply:
+      case eGplBlendMode_Divide:
+        /* Same Caveat as Subtract. This is conserved until there is a blend with a LDR buffer. */
+      case eGplBlendMode_Overlay:
+        state |= DRW_STATE_BLEND_MUL;
+        break;
+    }
+
+    tgp_layer->blend_ps = DRW_pass_create("GPencil Blend Layer", state);
+
+    GPUShader *sh = GPENCIL_shader_layer_blend_get(&en_data);
+    DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
+    DRW_shgroup_uniform_int_copy(grp, "blendMode", gpl->blend_mode);
+    DRW_shgroup_uniform_float_copy(grp, "blendOpacity", gpl->opacity);
+    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
+    DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
+    /* TODO only blend pixels that have been rendered. */
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+    if (gpl->blend_mode == eGplBlendMode_Overlay) {
+      /* We cannot do custom blending on MultiTarget framebuffers.
+       * Workaround by doing 2 passes. */
+      grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
+      DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
+      DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD);
+      DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
+      DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
+      DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
+      /* TODO only blend pixels that have been rendered. */
+      DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+    }
   }
   else {
-    state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
+    tgp_layer->blend_ps = NULL;
   }
-  tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
 
   return tgp_layer;
 }

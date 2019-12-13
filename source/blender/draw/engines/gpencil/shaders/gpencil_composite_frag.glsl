@@ -1,6 +1,6 @@
 
 uniform sampler2D colorBuf;
-uniform sampler2D alphaBuf;
+uniform sampler2D revealBuf;
 
 in vec4 uvcoordsvar;
 
@@ -10,8 +10,8 @@ layout(location = 0, index = 1) out vec4 fragRevealage;
 
 void main()
 {
-  /* Invert alpha to convert to revealage. */
-  fragRevealage.rgb = 1.0 - textureLod(alphaBuf, uvcoordsvar.xy, 0.0).rgb;
+  /* Revealage, how much light passes through. */
+  fragRevealage.rgb = textureLod(revealBuf, uvcoordsvar.xy, 0.0).rgb;
   /* Average for alpha channel. */
   fragRevealage.a = clamp(dot(fragRevealage.rgb, vec3(0.333334)), 0.0, 1.0);
   /* Color buf is already premultiplied. Just add it to the color. */
