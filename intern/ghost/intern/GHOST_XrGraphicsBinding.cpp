@@ -126,6 +126,8 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 
     /* Generate a framebuffer to use for blitting into the texture. */
     glGenFramebuffers(1, &m_fbo);
+
+    XFree(visual_info);
   }
 
   bool chooseSwapchainFormat(const std::vector<int64_t> &runtime_formats,
