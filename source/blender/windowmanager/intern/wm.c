@@ -354,6 +354,11 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
     wm_autosave_timer_ended(wm);
   }
 
+#ifdef WITH_OPENXR
+  /* May send notifier, so do before freeing notifier queue. */
+  wm_xr_data_destroy(wm);
+#endif
+
   while ((win = BLI_pophead(&wm->windows))) {
     /* prevent draw clear to use screen */
     BKE_workspace_active_set(win->workspace_hook, NULL);
@@ -373,10 +378,6 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
   if (wm->message_bus != NULL) {
     WM_msgbus_destroy(wm->message_bus);
   }
-
-#ifdef WITH_OPENXR
-  wm_xr_data_destroy(wm);
-#endif
 
   BLI_freelistN(&wm->paintcursors);
 
