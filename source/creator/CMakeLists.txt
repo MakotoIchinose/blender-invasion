@@ -1053,7 +1053,7 @@ if (WITH_USD)
   add_definitions(-DWITH_USD)
   install(DIRECTORY
     ${LIBDIR}/usd/lib/usd
-    DESTINATION "${TARGETDIR_VER}/datafiles/usd"
+    DESTINATION "${TARGETDIR_VER}/datafiles"
   )
 endif()
 
