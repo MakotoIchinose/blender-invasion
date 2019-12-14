@@ -58,7 +58,7 @@ endif()
 
 if(WITH_USD)
   find_package(USD)
-  if(not USD_FOUND)
+  if(NOT USD_FOUND)
     set(WITH_USD OFF)
   endif()
 endif()
