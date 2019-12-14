@@ -84,7 +84,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
         state |= DRW_STATE_BLEND_ALPHA_PREMUL;
         break;
       case eGplBlendMode_Add:
-        state |= DRW_STATE_BLEND_ADD;
+        state |= DRW_STATE_BLEND_ADD_FULL;
         break;
       case eGplBlendMode_Subtract:
         /* Caveat. This effect only propagates if target buffer has
