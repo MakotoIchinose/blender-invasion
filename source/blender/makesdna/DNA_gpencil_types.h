@@ -406,6 +406,8 @@ typedef enum eGPDlayer_Flag {
   GP_LAYER_ACTIVE = (1 << 2),
   /* draw points of stroke for debugging purposes */
   GP_LAYER_DRAWDEBUG = (1 << 3),
+  /* Flag used to display in Paint mode only layers with keyframe */
+  GP_LAYER_SOLO_MODE = (1 << 4),
   /* for editing in Action Editor */
   GP_LAYER_SELECT = (1 << 5),
   /* current frame for layer can't be changed */
@@ -418,8 +420,6 @@ typedef enum eGPDlayer_Flag {
   GP_LAYER_UNLOCK_COLOR = (1 << 12),
   /* Mask Layer */
   GP_LAYER_USE_MASK = (1 << 13),
-  /* Flag used to display in Paint mode only layers with keyframe */
-  GP_LAYER_SOLO_MODE = (1 << 4),
   /* Ruler Layer */
   GP_LAYER_IS_RULER = (1 << 14),
 } eGPDlayer_Flag;
