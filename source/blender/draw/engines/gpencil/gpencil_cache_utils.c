@@ -66,7 +66,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-    if (GPENCIL_3D_DRAWMODE(ob, gpd)) {
+    if (GPENCIL_3D_DRAWMODE(ob, gpd) || pd->draw_depth_only) {
       /* TODO better 3D mode. */
       state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
     }
@@ -75,11 +75,13 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
       state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
     }
 
-    if (gpl->flag & GP_LAYER_USE_MASK) {
-      state |= DRW_STATE_STENCIL_EQUAL;
-    }
-    else {
-      state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+    if (!pd->draw_depth_only) {
+      if (gpl->flag & GP_LAYER_USE_MASK) {
+        state |= DRW_STATE_STENCIL_EQUAL;
+      }
+      else {
+        state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+      }
     }
 
     tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);

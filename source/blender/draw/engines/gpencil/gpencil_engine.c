@@ -287,8 +287,6 @@ static void GPENCIL_engine_init_new(void *ved)
     stl->pd = MEM_callocN(sizeof(GPENCIL_PrivateData), "GPENCIL_PrivateData");
   }
 
-  DRW_texture_ensure_2d(&txl->dummy_texture, 1, 1, GPU_R8, 0);
-
   if (txl->dummy_texture == NULL) {
     float pixels[1][4] = {{1.0f, 0.0f, 1.0f, 1.0f}};
     txl->dummy_texture = DRW_texture_create_2d(1, 1, GPU_RGBA8, DRW_TEX_WRAP, (float *)pixels);
@@ -309,7 +307,8 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
   stl->pd->tobjects.last = NULL;
-  stl->pd->scene_depth_tx = dtxl->depth;
+  stl->pd->draw_depth_only = !DRW_state_is_fbo();
+  stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
 
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
@@ -804,7 +803,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
 
-  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D);
+  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
   float object_scale = mat4_to_scale(iter->ob->obmat);
@@ -1176,6 +1175,10 @@ void DRW_gpencil_free_runtime_data(void *ved)
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
 
+  if (stl->g_data == NULL) {
+    return;
+  }
+
   /* free gpu data */
   GPU_BATCH_DISCARD_SAFE(stl->g_data->batch_buffer_stroke);
   MEM_SAFE_FREE(stl->g_data->batch_buffer_stroke);
@@ -1284,6 +1287,20 @@ static void drw_gpencil_select_render(GPENCIL_StorageList *stl, GPENCIL_PassList
   }
 }
 
+static void GPENCIL_draw_scene_depth_only(void *ved)
+{
+  GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+
+  for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
+    for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
+      DRW_draw_pass(layer->geom_ps);
+    }
+  }
+
+  pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
+}
+
 static void GPENCIL_draw_scene_new(void *ved)
 {
   GPENCIL_Data *vedata = (GPENCIL_Data *)ved;
@@ -1292,6 +1309,11 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   float clear_cols[2][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}};
+
+  if (pd->draw_depth_only) {
+    GPENCIL_draw_scene_depth_only(vedata);
+    return;
+  }
 
   if (pd->tobjects.first == NULL) {
     return;

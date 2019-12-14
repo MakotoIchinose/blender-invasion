@@ -55,7 +55,8 @@ void main()
   }
 
   /* Manual depth test */
-  float scene_depth = texelFetch(gpSceneDepthTexture, ivec2(gl_FragCoord.xy), 0).r;
+  vec2 uvs = gl_FragCoord.xy / vec2(textureSize(gpSceneDepthTexture, 0).xy);
+  float scene_depth = texture(gpSceneDepthTexture, uvs).r;
   if (gl_FragCoord.z > scene_depth) {
     discard;
   }

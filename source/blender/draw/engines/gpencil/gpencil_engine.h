@@ -424,6 +424,8 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *scene_depth_tx;
   /* Current frame */
   int cfra;
+  /* True in selection and auto_depth drawing */
+  bool draw_depth_only;
   /* Used by the depth merge step. */
   float object_depth;
   int is_stroke_order_3d;
