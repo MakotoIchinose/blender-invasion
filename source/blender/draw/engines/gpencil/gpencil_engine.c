@@ -314,6 +314,7 @@ static void GPENCIL_engine_init_new(void *ved)
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
   copy_v3_v3(stl->pd->camera_z_axis, viewmatinv[2]);
+  stl->pd->camera_z_offset = dot_v3v3(viewmatinv[3], viewmatinv[2]);
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -355,6 +356,7 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
   DRW_SHADER_FREE_SAFE(e_data.composite_sh);
   DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
+  DRW_SHADER_FREE_SAFE(e_data.depth_merge_sh);
 
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
 
@@ -413,13 +415,23 @@ static void GPENCIL_cache_init_new(void *ved)
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
-
     DRW_PASS_CREATE(psl->composite_ps, state);
 
     GPUShader *sh = GPENCIL_shader_composite_get(&e_data);
     grp = DRW_shgroup_create(sh, psl->composite_ps);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_tx);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+  {
+    DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
+    DRW_PASS_CREATE(psl->merge_depth_ps, state);
+
+    GPUShader *sh = GPENCIL_shader_depth_merge_get(&e_data);
+    grp = DRW_shgroup_create(sh, psl->merge_depth_ps);
+    DRW_shgroup_uniform_texture_ref(grp, "depthBuf", &pd->depth_tx);
+    DRW_shgroup_uniform_float(grp, "strokeDepth2d", &pd->object_depth, 1);
+    DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }
@@ -1290,6 +1302,7 @@ static void GPENCIL_draw_scene_new(void *ved)
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     DRW_stats_group_start("GPencil Object");
 
+    GPU_framebuffer_bind(fbl->gpencil_fb);
     GPU_framebuffer_clear_depth(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f);
 
     if (ob->vfx.first) {
@@ -1314,6 +1327,12 @@ static void GPENCIL_draw_scene_new(void *ved)
     if (ob->vfx.first) {
       /* TODO vfx */
     }
+
+    pd->object_depth = ob->camera_z - pd->camera_z_offset;
+    pd->is_stroke_order_3d = ob->is_drawmode3d;
+
+    GPU_framebuffer_bind(dfbl->depth_only_fb);
+    DRW_draw_pass(psl->merge_depth_ps);
 
     DRW_stats_group_end();
   }

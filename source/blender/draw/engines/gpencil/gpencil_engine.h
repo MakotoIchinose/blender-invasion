@@ -313,6 +313,8 @@ typedef struct GPENCIL_PassList {
 
   /* Composite the main GPencil buffer onto the rendered image. */
   struct DRWPass *composite_ps;
+  /* Composite the object depth to the default depth buffer to occlude overlays. */
+  struct DRWPass *merge_depth_ps;
 } GPENCIL_PassList;
 
 typedef struct GPENCIL_FramebufferList {
@@ -422,8 +424,11 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *scene_depth_tx;
   /* Current frame */
   int cfra;
+  /* Used by the depth merge step. */
+  float object_depth;
+  int is_stroke_order_3d;
   /* Used for computing object distance to camera. */
-  float camera_z_axis[3];
+  float camera_z_axis[3], camera_z_offset;
 } GPENCIL_PrivateData;
 
 /* flags for fast drawing support */
@@ -445,6 +450,8 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *composite_sh;
   /* All layer blend types in one shader! */
   struct GPUShader *layer_blend_sh;
+  /* Merge the final object depth to the depth buffer. */
+  struct GPUShader *depth_merge_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -678,6 +685,7 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);
