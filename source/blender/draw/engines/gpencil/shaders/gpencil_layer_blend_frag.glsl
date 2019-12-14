@@ -18,7 +18,6 @@ layout(location = 1) out vec4 fragRevealage;
 #define MODE_SUB 3
 #define MODE_MULTIPLY 4
 #define MODE_DIVIDE 5
-#define MODE_MASK 333
 #define MODE_OVERLAY_SECOND_PASS 999
 
 void main()
@@ -78,11 +77,6 @@ void main()
       color *= blendOpacity;
       fragColor = color * color.a;
       fragRevealage = vec4(0.0);
-      break;
-    case MODE_MASK:
-      /* Reminder: Blending func is premult alpha blend (dst.rgba * (1 - src.a) + src.rgb).*/
-      fragColor = vec4(0.0, 0.0, 0.0, 1.0 - color.a);
-      fragRevealage = vec4(1.0 - color.aaa, 1.0 - color.a);
       break;
   }
 }

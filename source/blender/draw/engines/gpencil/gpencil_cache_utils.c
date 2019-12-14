@@ -76,26 +76,18 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
     }
 
     if (!pd->draw_depth_only) {
-      state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+      if (gpl->flag & GP_LAYER_USE_MASK) {
+        state |= DRW_STATE_STENCIL_EQUAL;
+      }
+      else {
+        state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+      }
     }
 
     tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
   }
 
-  if (gpl->flag & GP_LAYER_USE_MASK) {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
-                     DRW_STATE_BLEND_ALPHA_PREMUL;
-    tgp_layer->blend_ps = DRW_pass_create("GPencil Mask Layer", state);
-
-    GPUShader *sh = GPENCIL_shader_layer_blend_get(&en_data);
-    DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
-    DRW_shgroup_uniform_int_copy(grp, "blendMode", 333);
-    DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->reveal_layer_tx);
-    DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
-    DRW_shgroup_stencil_mask(grp, 0xFF);
-    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
-  }
-  else if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
+  if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
@@ -130,6 +122,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
     DRW_shgroup_stencil_mask(grp, 0xFF);
+    /* TODO only blend pixels that have been rendered. */
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
     if (gpl->blend_mode == eGplBlendMode_Overlay) {
@@ -140,6 +133,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD);
       DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
       DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
+      /* TODO only blend pixels that have been rendered. */
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
   }
