@@ -86,7 +86,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
   }
 
   if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
-    DRWState state = DRW_STATE_WRITE_COLOR;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
         state |= DRW_STATE_BLEND_ALPHA_PREMUL;
@@ -119,6 +119,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
     DRW_shgroup_uniform_float_copy(grp, "blendOpacity", gpl->opacity);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
+    DRW_shgroup_stencil_mask(grp, 0xFF);
     /* TODO only blend pixels that have been rendered. */
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
@@ -130,7 +131,6 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD);
       DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
       DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_layer_tx);
-      DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_layer_tx);
       /* TODO only blend pixels that have been rendered. */
       DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
     }
