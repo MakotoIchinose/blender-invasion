@@ -830,6 +830,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
+  DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
@@ -1049,7 +1050,7 @@ static void GPENCIL_cache_finish_new(void *ved)
 
     const float *size = DRW_viewport_size_get();
     pd->depth_tx = DRW_texture_pool_query_2d(
-        size[0], size[1], GPU_DEPTH_COMPONENT24, &draw_engine_gpencil_type);
+        size[0], size[1], GPU_DEPTH24_STENCIL8, &draw_engine_gpencil_type);
     pd->color_tx = DRW_texture_pool_query_2d(
         size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
     pd->reveal_tx = DRW_texture_pool_query_2d(
@@ -1303,7 +1304,7 @@ static void GPENCIL_draw_scene_new(void *ved)
     DRW_stats_group_start("GPencil Object");
 
     GPU_framebuffer_bind(fbl->gpencil_fb);
-    GPU_framebuffer_clear_depth(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f);
+    GPU_framebuffer_clear_depth_stencil(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
 
     if (ob->vfx.first) {
       /* TODO vfx */

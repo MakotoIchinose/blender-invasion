@@ -74,6 +74,14 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
       /* We render all strokes with uniform depth (increasing with stroke id). */
       state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
     }
+
+    if (gpl->flag & GP_LAYER_USE_MASK) {
+      state |= DRW_STATE_STENCIL_EQUAL;
+    }
+    else {
+      state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+    }
+
     tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
   }
 
