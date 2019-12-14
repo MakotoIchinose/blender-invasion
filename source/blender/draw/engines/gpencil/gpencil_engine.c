@@ -792,7 +792,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
 
-  const bool is_stroke_order_3D = (gpd->draw_mode == GP_DRAWMODE_3D);
+  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D);
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
   float object_scale = mat4_to_scale(iter->ob->obmat);
@@ -806,7 +806,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
-  DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3D", is_stroke_order_3D);
+  DRW_shgroup_uniform_bool_copy(iter->grp, "strokeOrder3d", is_stroke_order_3d);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[0]", iter->ob->obmat[0]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[1]", iter->ob->obmat[1]);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "gpModelMatrix[2]", iter->ob->obmat[2]);

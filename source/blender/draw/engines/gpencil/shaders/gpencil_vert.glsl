@@ -5,7 +5,7 @@ uniform vec2 sizeViewportInv;
 
 /* Per Object */
 uniform vec4 gpModelMatrix[4];
-uniform bool strokeOrder3D;
+uniform bool strokeOrder3d;
 uniform float thicknessScale;
 uniform float thicknessWorldScale;
 #define thicknessIsScreenSpace (thicknessWorldScale < 0.0)
@@ -213,7 +213,7 @@ void stroke_vertex()
     finalUvs.x = (use_curr) ? uv1.z : uv2.z;
   }
 
-  if (strokeOrder3D) {
+  if (strokeOrder3d) {
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
     /* We still offset the fills a little to avoid overlaps */
@@ -254,7 +254,7 @@ void fill_vertex()
   mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);
   finalUvs = rot_scale * uv1.xy + loc;
 
-  if (strokeOrder3D) {
+  if (strokeOrder3d) {
     /* Use the fragment depth (see fragment shader). */
     depth = -1.0;
     /* We still offset the fills a little to avoid overlaps */
