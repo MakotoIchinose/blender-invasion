@@ -617,6 +617,8 @@ void GPU_framebuffer_multi_clear(GPUFrameBuffer *fb, const float (*clear_cols)[4
 {
   CHECK_FRAMEBUFFER_IS_BOUND(fb);
 
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
   GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
   for (int i = 0; type < GPU_FB_MAX_ATTACHEMENT; i++, type++) {
     if (fb->attachments[type].tex != NULL) {
