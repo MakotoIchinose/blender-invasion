@@ -31,6 +31,7 @@ from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
     AnnotationOnionSkin,
     GreasePencilMaterialsPanel,
+    GreasePencilVertexcolorPanel,
 )
 from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
@@ -377,6 +378,20 @@ class _draw_tool_settings_context_mode:
 
             row.prop(gp_settings, "use_material_pin", text="")
 
+            if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
+                gp_style = ma.grease_pencil
+                if gp_style.stroke_style != 'TEXTURE':
+                    row.separator(factor=0.4)
+                    row.prop(settings, "use_vertex_color", text="",
+                             icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
+                    sub_row = row.row(align=True)
+                    sub_row.enabled = settings.use_vertex_color
+                    sub_row.prop(brush, "color", text="")
+                    sub_row.popover(
+                        panel="TOPBAR_PT_gpencil_vertexcolor",
+                        text="Vertex Color",
+                    )
+
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
@@ -384,6 +399,14 @@ class _draw_tool_settings_context_mode:
 
         if context.object and brush.gpencil_tool in {'FILL', 'DRAW'}:
             draw_color_selector()
+
+        if context.object and brush.gpencil_tool == 'TINT':
+            row.separator(factor=0.4)
+            row.prop(brush, "color", text="")
+            row.popover(
+                panel="TOPBAR_PT_gpencil_vertexcolor",
+                text="Vertex Color",
+            )
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
@@ -446,7 +469,7 @@ class _draw_tool_settings_context_mode:
             brush_basic_gpencil_vertex_settings,
         )
 
-        brush_basic_gpencil_vertex_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
+        brush_basic_gpencil_vertex_settings(layout, context, brush, compact=True)
 
     @staticmethod
     def PARTICLE(context, layout, tool):
@@ -779,7 +802,8 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}
+        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
+                                       'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
         ts = context.scene.tool_settings
 
         layout.menu("VIEW3D_MT_view")
@@ -793,6 +817,8 @@ class VIEW3D_MT_editor_menus(Menu):
                      ts.use_gpencil_select_mask_segment):
                     layout.menu("VIEW3D_MT_select_gpencil")
                 elif mode_string == 'EDIT_GPENCIL':
+                    layout.menu("VIEW3D_MT_select_gpencil")
+                elif mode_string == 'VERTEX_GPENCIL':
                     layout.menu("VIEW3D_MT_select_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             mesh = obj.data
@@ -6828,6 +6854,17 @@ class TOPBAR_PT_gpencil_materials(GreasePencilMaterialsPanel, Panel):
         return ob and ob.type == 'GPENCIL'
 
 
+class TOPBAR_PT_gpencil_vertexcolor(GreasePencilVertexcolorPanel, Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Vertex Color"
+    bl_ui_units_x = 10
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        return ob and ob.type == 'GPENCIL'
+
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -6953,6 +6990,7 @@ classes = (
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
     VIEW3D_MT_weight_gpencil,
+    VIEW3D_MT_vertex_gpencil, 
     VIEW3D_MT_gpencil_animation,
     VIEW3D_MT_gpencil_simplify,
     VIEW3D_MT_gpencil_copy_layer,
@@ -7040,6 +7078,7 @@ classes = (
     VIEW3D_PT_gpencil_draw_context_menu,
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,
+    TOPBAR_PT_gpencil_vertexcolor,
     TOPBAR_PT_annotation_layers,
 )
 

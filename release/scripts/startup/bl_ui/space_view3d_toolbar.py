@@ -21,6 +21,7 @@ from bpy.types import Menu, Panel, UIList
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilSculptOptionsPanel,
     GreasePencilDisplayPanel,
+    GreasePencilBrushFalloff,
 )
 from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
@@ -1694,6 +1695,24 @@ class VIEW3D_PT_tools_grease_pencil_brushcurves_jitter(View3DPanel, Panel):
                                       use_negative_slope=True)
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_paint_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+        if brush is None:
+            return False
+
+        tool = brush.gpencil_tool
+
+        return (settings and settings.brush and settings.brush.curve and tool == 'TINT')
+
+
 # Grease Pencil stroke interpolation tools
 class VIEW3D_PT_tools_grease_pencil_interpolate(Panel):
     bl_space_type = 'VIEW_3D'
@@ -1801,6 +1820,19 @@ class VIEW3D_PT_tools_grease_pencil_sculpt_settings(Panel, View3DPanel, GreasePe
             )
             brush_basic_gpencil_sculpt_settings(layout, context, brush)
 
+
+class VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_sculpt"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_sculpt_paint
+        return (settings and settings.brush and settings.brush.curve)
+
+
 # Grease Pencil weight painting tools
 class GreasePencilWeightPanel:
     bl_context = ".greasepencil_weight"
@@ -1862,6 +1894,19 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint_settings(Panel, View3DPanel, Gr
             brush_basic_gpencil_weight_settings(layout, context, brush)
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_weight_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_weight"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_weight_paint
+        brush = settings.brush
+        return (settings and settings.brush and settings.brush.curve)
+
+
 # Grease Pencil vertex painting tools
 class GreasePencilVertexPanel:
     bl_context = ".greasepencil_vertex"
@@ -1921,6 +1966,176 @@ class VIEW3D_PT_tools_grease_pencil_vertex_paint_settings(Panel, View3DPanel, Gr
                 brush_basic_gpencil_vertex_settings,
             )
             brush_basic_gpencil_vertex_settings(layout, context, brush)
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        return (settings and settings.brush and settings.brush.curve)
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Color Palette"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+
+        if brush.gpencil_vertex_tool in {'BLUR', 'AVERAGE', 'SMEAR'}:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        col = layout.column()
+
+        row = col.row(align=True)
+        row.template_ID(settings, "palette", new="palette.new")
+        if settings.palette:
+            col.template_palette(settings, "palette", color=True)
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Vertex Color"
+    bl_category = "Tool"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+
+        if context.region.type == 'TOOL_HEADER':
+            return False
+
+        if brush.gpencil_tool == 'TINT':
+            return True
+
+        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+            return False
+
+        gp_settings = brush.gpencil_settings
+        ma = None
+        if gp_settings.use_material_pin is False:
+            if ob.active_material_index >= 0:
+                ma = ob.material_slots[ob.active_material_index].material
+            else:
+                ma = gp_settings.material
+
+        return True
+
+    def draw_header(self, context):
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+
+        if brush.gpencil_tool != 'TINT':
+            self.layout.prop(settings, "use_vertex_color", text="",
+                             toggle=False)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+        gp_settings = brush.gpencil_settings
+
+        col = layout.column()
+        col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
+
+        if brush.gpencil_tool in {'DRAW', 'FILL'}:
+            col.prop(gp_settings, "vertex_mode", text="Mode")
+            col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+
+        if brush.gpencil_tool == 'TINT':
+            col.prop(gp_settings, "vertex_mode", text="Mode")
+
+        col.prop(brush, "color", text="")
+        col.template_color_picker(brush, "color", value_slider=True)
+
+        sub_row = col.row(align=True)
+        sub_row.prop(brush, "color", text="")
+        sub_row.prop(brush, "secondary_color", text="")
+
+        sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+
+class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Color Palette"
+    bl_category = "Tool"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_mixcolor'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+
+        if brush.gpencil_tool == 'TINT':
+            return True
+
+        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+            return False
+
+        gp_settings = brush.gpencil_settings
+        if gp_settings.use_material_pin is False:
+            if ob.active_material_index >= 0:
+                ma = ob.material_slots[ob.active_material_index].material
+            else:
+                ma = gp_settings.material
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_paint
+        brush = settings.brush
+
+        col = layout.column()
+        col.enabled = settings.use_vertex_color or brush.gpencil_tool == 'TINT'
+
+        row = col.row(align=True)
+        row.template_ID(settings, "palette", new="palette.new")
+        if settings.palette:
+            col.template_palette(settings, "palette", color=True)
 
 
 class VIEW3D_PT_tools_grease_pencil_sculpt_options(GreasePencilSculptOptionsPanel, Panel, View3DPanel):
@@ -2046,6 +2261,14 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_vertex_paint_settings,
     VIEW3D_PT_tools_grease_pencil_vertex_appearance,
     VIEW3D_PT_tools_grease_pencil_interpolate,
+    VIEW3D_PT_tools_grease_pencil_brush_mixcolor,
+    VIEW3D_PT_tools_grease_pencil_brush_mix_palette,
+
+    VIEW3D_PT_tools_grease_pencil_brush_paint_falloff,
+    VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff,
+    VIEW3D_PT_tools_grease_pencil_brush_weight_falloff,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff,
 )
 
 if __name__ == "__main__":  # only for live edit.

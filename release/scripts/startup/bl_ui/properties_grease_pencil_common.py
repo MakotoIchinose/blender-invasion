@@ -261,6 +261,58 @@ class GreasePencilDisplayPanel:
         sub.prop(brush, "icon_filepath", text="")
 
 
+class GreasePencilBrushFalloff:
+    bl_label = "Falloff"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        ts = context.tool_settings
+        settings = None
+        if context.mode == 'PAINT_GPENCIL':
+            settings = ts.gpencil_paint
+        if context.mode == 'SCULPT_GPENCIL':
+            settings = ts.gpencil_sculpt_paint
+        elif context.mode == 'WEIGHT_GPENCIL':
+            settings = ts.gpencil_weight_paint
+        elif context.mode == 'VERTEX_GPENCIL':
+            settings = ts.gpencil_vertex_paint
+
+        return (settings and settings.brush and settings.brush.curve)
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.tool_settings
+        settings = None
+        if context.mode == 'PAINT_GPENCIL':
+            settings = ts.gpencil_paint
+        if context.mode == 'SCULPT_GPENCIL':
+            settings = ts.gpencil_sculpt_paint
+        elif context.mode == 'WEIGHT_GPENCIL':
+            settings = ts.gpencil_weight_paint
+        elif context.mode == 'VERTEX_GPENCIL':
+            settings = ts.gpencil_vertex_paint
+
+        if settings:
+            brush = settings.brush
+
+            col = layout.column(align=True)
+            row = col.row(align=True)
+            row.prop(brush, "curve_preset", text="")
+
+            if brush.curve_preset == 'CUSTOM':
+                layout.template_curve_mapping(brush, "curve", brush=True)
+
+                col = layout.column(align=True)
+                row = col.row(align=True)
+                row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+                row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+                row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+                row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+                row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+                row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+
+
 class GPENCIL_MT_snap(Menu):
     bl_label = "Snap"
 
@@ -601,6 +653,45 @@ class GreasePencilMaterialsPanel:
             row.template_ID(space, "pin_id")
 
 
+class GreasePencilVertexcolorPanel:
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        ts = context.scene.tool_settings
+        is_vertex = context.mode == 'VERTEX_GPENCIL'
+        gpencil_paint = ts.gpencil_vertex_paint if is_vertex else ts.gpencil_paint
+        brush = gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+        tool = brush.gpencil_vertex_tool if is_vertex else brush.gpencil_tool
+
+        ob = context.object
+
+        if ob:
+            if tool in {'DRAW', 'FILL'} and is_vertex is False:
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_mode", text="Mode")
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
+
+            if tool == 'TINT' or is_vertex is True:
+                row = layout.row(align=True)
+                row.prop(gp_settings, "vertex_mode", text="Mode")
+
+            sub_row = layout.row(align=True)
+            sub_row.prop(brush, "color", text="")
+            sub_row.prop(brush, "secondary_color", text="")
+
+            sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+            row = layout.row(align=True)
+            row.template_ID(gpencil_paint, "palette", new="palette.new")
+            if gpencil_paint.palette:
+                layout.template_palette(gpencil_paint, "palette", color=True)
+
+
 class GPENCIL_UL_layer(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         # assert(isinstance(item, bpy.types.GPencilLayer)
@@ -740,6 +831,35 @@ class GreasePencilLayerDisplayPanel:
         col.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
 
 
+class GreasePencilFlipTintColors(Operator):
+    bl_label = "Flip Colors"
+    bl_idname = "gpencil.tint_flip"
+    bl_description = "Switch Tint colors"
+
+    def execute(self, context):
+        try:
+            ts = context.tool_settings
+            settings = ts.gpencil_paint
+            brush = settings.brush
+            if brush is not None:
+                color = brush.color
+                secondary_color = brush.secondary_color
+
+                orig_prim = color.hsv
+                orig_sec = secondary_color.hsv
+
+                color.hsv = orig_sec
+                secondary_color.hsv = orig_prim
+
+            return {'FINISHED'}
+
+        except Exception as e:
+            utils_core.error_handlers(self, "gpencil.tint_flip", e,
+                                      "Flip Colors could not be completed")
+
+            return {'CANCELLED'}
+
+
 classes = (
     GPENCIL_MT_snap,
     GPENCIL_MT_cleanup,
@@ -749,6 +869,8 @@ classes = (
 
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
+
+    GreasePencilFlipTintColors,
 )
 
 if __name__ == "__main__":  # only for live edit.
