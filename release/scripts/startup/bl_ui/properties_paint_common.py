@@ -87,8 +87,12 @@ class UnifiedPaintPanel:
         # Grease Pencil settings
         elif mode == 'PAINT_GPENCIL':
             return tool_settings.gpencil_paint
-        elif mode in ('SCULPT_GPENCIL', 'WEIGHT_GPENCIL'):
-            return tool_settings.gpencil_sculpt
+        elif mode == 'SCULPT_GPENCIL':
+            return tool_settings.gpencil_sculpt_paint
+        elif mode == 'WEIGHT_GPENCIL':
+            return tool_settings.gpencil_weight_paint
+        elif mode == 'VERTEX_GPENCIL':
+            return tool_settings.gpencil_vertex_paint
 
     @staticmethod
     def prop_unified(layout, context, brush, prop_name, unified_name=None, pressure_name=None, icon='NONE', text=None, slider=False, display_unified_toggle=True):
@@ -900,6 +904,8 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
 
 
 def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
+    tool_settings = context.tool_settings
+    settings = tool_settings.gpencil_paint
     gp_settings = brush.gpencil_settings
     tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
 
@@ -922,7 +928,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             row.prop(gp_settings, "eraser_thickness_factor")
 
         row = layout.row(align=True)
-        row.prop(gp_settings, "use_cursor", text="Show Brush")
+        row.prop(settings, "show_brush", text="Show Brush")
 
     # FIXME: tools must use their own UI drawing!
     elif brush.gpencil_tool == 'FILL':
@@ -932,6 +938,10 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(brush, "size", text="Thickness")
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")
@@ -968,7 +978,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
-def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compact=False, is_toolbar=False):
+def brush_basic_gpencil_sculpt_settings(layout, context, brush, *, compact=False):
     gp_settings = brush.gpencil_settings
     tool = brush.gpencil_sculpt_tool
 
@@ -976,7 +986,7 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compac
     row.prop(brush, "size", slider=True)
     sub = row.row(align=True)
     sub.enabled = tool not in {'GRAB', 'CLONE'}
-    sub.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+    sub.prop(gp_settings, "use_pressure", text="")
 
     row = layout.row(align=True)
     row.prop(brush, "strength", slider=True)
@@ -985,8 +995,7 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compac
     if compact:
         if tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             row.separator()
-            row.prop_enum(gp_settings, "direction", value='ADD', text="")
-            row.prop_enum(gp_settings, "direction", value='SUBTRACT', text="")
+            row.prop(gp_settings, "direction", expand=True, text="")
     else:
         use_property_split_prev = layout.use_property_split
         layout.use_property_split = False
@@ -1003,18 +1012,18 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, tool, *, compac
         layout.use_property_split = use_property_split_prev
 
 
-def brush_basic_gpencil_weight_settings(layout, _context, brush, tool, *, compact=False, is_toolbar=False):
+def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=False):
     gp_settings = brush.gpencil_settings
     layout.prop(brush, "size", slider=True)
 
     row = layout.row(align=True)
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
-    layout.prop(brush, "weight", slider=True)
-    layout.prop(brush, "use_falloff")
+
+    layout.prop(gp_settings, "weight", slider=True)
 
 
-def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compact=True, is_toolbar=False):
+def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=False):
     gp_settings = brush.gpencil_settings
 
     # Brush details
@@ -1027,13 +1036,11 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, tool, *, compac
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
-
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
 )
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
-
     for cls in classes:
         register_class(cls)

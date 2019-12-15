@@ -31,7 +31,6 @@ from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
     AnnotationOnionSkin,
     GreasePencilMaterialsPanel,
-    GreasePencilVertexcolorPanel,
 )
 from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
@@ -128,18 +127,16 @@ class VIEW3D_HT_tool_header(Header):
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brushcurves")
 
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
-        elif tool_mode == 'VERTEX_GPENCIL':
-            # TODO GPXX
-            if (tool is not None) and tool.has_datablock:
-                layout.popover_group(context=".greasepencil_vertex", **popover_kw)
         elif tool_mode == 'SCULPT_GPENCIL':
-            settings = context.tool_settings.gpencil_sculpt
-            tool = settings.sculpt_tool
+            brush = context.tool_settings.gpencil_sculpt_paint.brush
+            tool = brush.gpencil_tool
             if tool in ('SMOOTH', 'RANDOMIZE', 'SMOOTH'):
                 layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_options")
             layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'WEIGHT_GPENCIL':
             layout.popover("VIEW3D_PT_tools_grease_pencil_weight_appearance")
+        elif tool_mode == 'VERTEX_GPENCIL':
+            layout.popover("VIEW3D_PT_tools_grease_pencil_vertex_appearance")
 
     def draw_mode_settings(self, context):
         layout = self.layout
@@ -223,7 +220,7 @@ class VIEW3D_HT_tool_header(Header):
             layout.popover_group(context=".particlemode", **popover_kw)
         elif mode_string == 'OBJECT':
             layout.popover_group(context=".objectmode", **popover_kw)
-        elif mode_string in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+        elif mode_string in {'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
             # Grease pencil layer.
             gpl = context.active_gpencil_layer
             if gpl and gpl.info is not None:
@@ -332,12 +329,12 @@ class _draw_tool_settings_context_mode:
         # is_paint = True
         # FIXME: tools must use their own UI drawing!
         if tool.idname in {
-            "builtin.line",
-            "builtin.box",
-            "builtin.circle",
-            "builtin.arc",
-            "builtin.curve",
-            "builtin.polyline",
+                "builtin.line",
+                "builtin.box",
+                "builtin.circle",
+                "builtin.arc",
+                "builtin.curve",
+                "builtin.polyline",
         }:
             # is_paint = False
             pass
@@ -357,8 +354,6 @@ class _draw_tool_settings_context_mode:
 
         def draw_color_selector():
             ma = gp_settings.material
-            ts = context.tool_settings
-            settings = ts.gpencil_paint
             row = layout.row(align=True)
             if not gp_settings.use_material_pin:
                 ma = context.object.active_material
@@ -382,20 +377,6 @@ class _draw_tool_settings_context_mode:
 
             row.prop(gp_settings, "use_material_pin", text="")
 
-            if brush.gpencil_tool in {'DRAW', 'FILL'} and ma:
-                gp_style = ma.grease_pencil
-                if gp_style.stroke_style != 'TEXTURE' or gp_style.use_stroke_pattern:
-                    row.separator(factor=0.4)
-                    row.prop(settings, "use_vertex_color", text="",
-                             icon='CHECKBOX_HLT' if settings.use_vertex_color else 'CHECKBOX_DEHLT')
-                    sub_row = row.row(align=True)
-                    sub_row.enabled = settings.use_vertex_color
-                    sub_row.prop(brush, "color", text="")
-                    sub_row.popover(
-                        panel="TOPBAR_PT_gpencil_vertexcolor",
-                        text="Vertex Color",
-                    )
-
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
@@ -403,14 +384,6 @@ class _draw_tool_settings_context_mode:
 
         if context.object and brush.gpencil_tool in {'FILL', 'DRAW'}:
             draw_color_selector()
-
-        if context.object and brush.gpencil_tool == 'TINT':
-            row.separator(factor=0.4)
-            row.prop(brush, "color", text="")
-            row.popover(
-                panel="TOPBAR_PT_gpencil_vertexcolor",
-                text="Vertex Color",
-            )
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
@@ -421,43 +394,29 @@ class _draw_tool_settings_context_mode:
     def SCULPT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
             return
-
         paint = context.tool_settings.gpencil_sculpt_paint
         brush = paint.brush
         if brush is None:
             return
 
-        row = layout.row(align=True)
-        tool_settings = context.scene.tool_settings
-        settings = tool_settings.gpencil_sculpt_paint
-        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
-
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_sculpt_settings,
         )
-
-        brush_basic_gpencil_sculpt_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
+        brush_basic_gpencil_sculpt_settings(layout, context, brush, compact=True)
 
     @staticmethod
     def WEIGHT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
             return
-
         paint = context.tool_settings.gpencil_weight_paint
         brush = paint.brush
         if brush is None:
             return
 
-        row = layout.row(align=True)
-        tool_settings = context.scene.tool_settings
-        settings = tool_settings.gpencil_weight_paint
-        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
-
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_weight_settings,
         )
-
-        brush_basic_gpencil_weight_settings(layout, context, brush, tool, compact=True, is_toolbar=True)
+        brush_basic_gpencil_weight_settings(layout, context, brush, compact=True)
 
     @staticmethod
     def VERTEX_GPENCIL(context, layout, tool):
@@ -564,8 +523,8 @@ class VIEW3D_HT_header(Header):
             show_snap = True
         else:
             if (object_mode not in {
-                'SCULPT', 'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
-                'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'
+                    'SCULPT', 'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
+                    'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'
             }) or has_pose_mode:
                 show_snap = True
             else:
@@ -698,14 +657,7 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
 
-            # Select mode for Vertex Paint
-            if gpd.is_stroke_vertex_mode:
-                row = layout.row(align=True)
-                row.prop(tool_settings, "use_gpencil_vertex_select_mask_point", text="")
-                row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
-                row.prop(tool_settings, "use_gpencil_vertex_select_mask_segment", text="")
-
-            if gpd.use_stroke_edit_mode or gpd.is_stroke_sculpt_mode or gpd.is_stroke_weight_mode or gpd.is_stroke_vertex_mode:
+            if gpd.use_stroke_edit_mode or gpd.is_stroke_sculpt_mode or gpd.is_stroke_weight_mode:
                 row = layout.row(align=True)
                 row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
 
@@ -827,8 +779,7 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL',
-                                       'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}
+        gp_edit = obj and obj.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}
         ts = context.scene.tool_settings
 
         layout.menu("VIEW3D_MT_view")
@@ -842,8 +793,6 @@ class VIEW3D_MT_editor_menus(Menu):
                      ts.use_gpencil_select_mask_segment):
                     layout.menu("VIEW3D_MT_select_gpencil")
                 elif mode_string == 'EDIT_GPENCIL':
-                    layout.menu("VIEW3D_MT_select_gpencil")
-                elif mode_string == 'VERTEX_GPENCIL':
                     layout.menu("VIEW3D_MT_select_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             mesh = obj.data
@@ -878,8 +827,6 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_gpencil_point")
             elif obj and obj.mode == 'WEIGHT_GPENCIL':
                 layout.menu("VIEW3D_MT_weight_gpencil")
-            elif obj and obj.mode == 'VERTEX_GPENCIL':
-                layout.menu("VIEW3D_MT_vertex_gpencil")
 
         elif edit_object:
             layout.menu("VIEW3D_MT_edit_%s" % edit_object.type.lower())
@@ -1872,11 +1819,6 @@ class VIEW3D_MT_select_gpencil(Menu):
         layout.operator("gpencil.select_more")
         layout.operator("gpencil.select_less")
 
-        if _context.mode == 'VERTEX_GPENCIL':
-            layout.separator()
-
-            layout.operator("gpencil.select_color")
-
 
 class VIEW3D_MT_select_paint_mask(Menu):
     bl_label = "Select"
@@ -2812,42 +2754,6 @@ class VIEW3D_MT_paint_vertex(Menu):
         layout.operator("paint.vertex_color_brightness_contrast", text="Bright/Contrast")
 
 
-class VIEW3D_MT_join_palette(Menu):
-    bl_label = "Join Palette"
-
-    @classmethod
-    def poll(cls, context):
-        if bpy.data.palettes > 1:
-            return True
-
-        return False
-
-    def draw(self, context):
-        layout = self.layout
-        tool_settings = context.tool_settings
-        settings = None
-
-        if context.mode == 'PAINT_GPENCIL':
-            settings = tool_settings.gpencil_paint
-        elif context.mode == 'VERTEX_GPENCIL':
-            settings = tool_settings.gpencil_vertex_paint
-        elif context.sculpt_object:
-            settings = tool_settings.sculpt
-        elif context.vertex_paint_object:
-            settings = tool_settings.vertex_paint
-        elif context.weight_paint_object:
-            settings = tool_settings.weight_paint
-        elif context.image_paint_object:
-            if (tool_settings.image_paint and tool_settings.image_paint.detect_data()):
-                settings = tool_settings.image_paint
-
-        if settings:
-            pal_active = settings.palette
-            for pal in bpy.data.palettes:
-                if pal.name != pal_active.name and len(pal.colors) > 0:
-                    layout.operator("palette.join", text=pal.name).palette = pal.name
-
-
 class VIEW3D_MT_hook(Menu):
     bl_label = "Hooks"
 
@@ -2928,6 +2834,7 @@ class VIEW3D_MT_paint_weight(Menu):
     def draw_generic(layout, is_editmode=False):
 
         if not is_editmode:
+
             layout.operator("paint.weight_from_bones", text="Assign Automatic From Bones").type = 'AUTOMATIC'
             layout.operator("paint.weight_from_bones", text="Assign From Bone Envelopes").type = 'ENVELOPES'
 
@@ -4192,7 +4099,6 @@ class VIEW3D_MT_edit_gpencil_delete(Menu):
         layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
         layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
 
-
 # Edit Curve
 # draw_curve is used by VIEW3D_MT_edit_curve and VIEW3D_MT_edit_surface
 
@@ -4651,6 +4557,7 @@ class VIEW3D_MT_paint_gpencil(Menu):
     bl_label = "Draw"
 
     def draw(self, _context):
+
         layout = self.layout
 
         layout.menu("VIEW3D_MT_gpencil_animation")
@@ -4675,19 +4582,6 @@ class VIEW3D_MT_assign_material(Menu):
             if mat:
                 layout.operator("gpencil.stroke_change_color", text=mat.name,
                                 icon='LAYER_ACTIVE' if mat == mat_active else 'BLANK1').material = mat.name
-
-
-class VIEW3D_MT_gpencil_materials(Menu):
-    bl_label = "Materials"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator("gpencil.stroke_merge_material", text="Merge Similar")
-
-        layout.separator()
-
-        layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Vertex Color")
-        layout.operator("gpencil.extract_palette_vertex", text="Extract Palette from Vertex Color")
 
 
 class VIEW3D_MT_gpencil_copy_layer(Menu):
@@ -4758,7 +4652,6 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        settings = _context.tool_settings.gpencil_sculpt
 
         layout.operator("gpencil.stroke_subdivide", text="Subdivide").only_selected = False
         layout.menu("VIEW3D_MT_gpencil_simplify")
@@ -4771,14 +4664,9 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
 
         layout.menu("GPENCIL_MT_move_to_layer")
-        layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
-
-        layout.separator()
-
         layout.menu("VIEW3D_MT_assign_material")
         layout.operator("gpencil.set_active_material", text="Set as Active Material")
-
-        layout.menu("VIEW3D_MT_gpencil_materials")
+        layout.operator_menu_enum("gpencil.stroke_arrange", "direction", text="Arrange Strokes")
 
         layout.separator()
 
@@ -4789,10 +4677,6 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.operator("gpencil.stroke_cyclical_set", text="Toggle Cyclic").type = 'TOGGLE'
         layout.operator_menu_enum("gpencil.stroke_caps_set", text="Toggle Caps", property="type")
         layout.operator("gpencil.stroke_flip", text="Switch Direction")
-        layout.prop(settings, "use_scale_thickness")
-
-        layout.separator()
-        layout.operator("gpencil.reset_transform_fill", text="Reset Fill Transform")
 
 
 class VIEW3D_MT_edit_gpencil_point(Menu):
@@ -5115,7 +4999,6 @@ class VIEW3D_PT_active_tool(Panel, ToolActivePanelHelper):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Tool"
-
     # See comment below.
     # bl_options = {'HIDE_HEADER'}
 
@@ -6456,7 +6339,6 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
             'EDIT_GPENCIL': "Edit Grease Pencil",
             'SCULPT_GPENCIL': "Sculpt Grease Pencil",
             'WEIGHT_GPENCIL': "Weight Grease Pencil",
-            'VERTEX_GPENCIL': "Vertex Paint Grease Pencil",
             'OBJECT': "Grease Pencil",
         }[context.mode])
 
@@ -6464,8 +6346,6 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         layout = self.layout
         view = context.space_data
         overlay = view.overlay
-        view = context.space_data
-        shading = view.shading
 
         layout.prop(overlay, "use_gpencil_onion_skin", text="Onion Skin")
 
@@ -6489,24 +6369,10 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
         sub.prop(overlay, "gpencil_paper_opacity", text="Fade Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
             layout.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
             layout.prop(overlay, "use_gpencil_multiedit_line_only", text="Show Edit Lines only in multiframe")
-
-        if context.object.mode in {'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.prop(overlay, "vertex_opacity", text="Vertex Opacity", slider=True)
-
-        if context.object.mode in {'OBJECT', 'PAINT_GPENCIL', 'EDIT_GPENCIL', 'SCULPT_GPENCIL', 'VERTEX_GPENCIL'}:
-            show_vertex = True
-
-            if shading.type == 'WIREFRAME':
-                show_vertex = False
-            elif shading.type == 'SOLID' and  shading.color_type in  {'MATERIAL', 'OBJECT', 'SINGLE', 'RANDOM'}:
-                show_vertex = False
-
-            if show_vertex is True:
-                layout.label(text="Vertex Paint")
-                layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
@@ -6730,6 +6596,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.operator("gpencil.dissolve", text="Dissolve Unselected").type = 'UNSELECT'
 
         if is_stroke_mode:
+
             col = row.column()
             col.label(text="Stroke Context Menu", icon='GP_SELECT_STROKES')
             col.separator()
@@ -6788,10 +6655,9 @@ class VIEW3D_PT_gpencil_sculpt_context_menu(Panel):
     bl_label = "Sculpt Context Menu"
 
     def draw(self, context):
+        brush = context.tool_settings.gpencil_sculpt.brush
+
         layout = self.layout
-        ts = context.tool_settings
-        settings = ts.gpencil_sculpt_paint
-        brush = settings.brush
 
         if context.mode == 'WEIGHT_GPENCIL':
             layout.prop(brush, "weight")
@@ -6825,22 +6691,10 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
     bl_label = "Draw Context Menu"
 
     def draw(self, context):
-        ts = context.tool_settings
-        settings = ts.gpencil_paint
-        brush = settings.brush
+        brush = context.tool_settings.gpencil_paint.brush
         gp_settings = brush.gpencil_settings
 
         layout = self.layout
-
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and settings.use_vertex_color:
-            split = layout.split(factor=0.1)
-            split.prop(brush, "color", text="")
-            split.template_color_picker(brush, "color", value_slider=True)
-
-            col = layout.column()
-            col.separator()
-            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
-            col.separator()
 
         if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
@@ -6866,40 +6720,6 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
 
         layout.operator("gpencil.delete", text="Delete Active Layer", icon='REMOVE').type = 'FRAME'
         layout.operator("gpencil.active_frames_delete_all", text="Delete All Layers", icon='REMOVE')
-
-
-class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'WINDOW'
-    bl_label = "Vertex Paint Context Menu"
-
-    def draw(self, context):
-        layout = self.layout
-        ts = context.tool_settings
-        settings = ts.gpencil_vertex_paint
-        brush = settings.brush
-        gp_settings = brush.gpencil_settings
-
-        col = layout.column()
-
-        if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
-            split = layout.split(factor=0.1)
-            split.prop(brush, "color", text="")
-            split.template_color_picker(brush, "color", value_slider=True)
-
-            col = layout.column()
-            col.separator()
-            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
-            col.separator()
-
-        row = col.row(align=True)
-        row.prop(brush, "size", text="Radius")
-        row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
-
-        if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
-            row = layout.row(align=True)
-            row.prop(gp_settings, "pen_strength", slider=True)
-            row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
 
 
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
@@ -7008,39 +6828,6 @@ class TOPBAR_PT_gpencil_materials(GreasePencilMaterialsPanel, Panel):
         return ob and ob.type == 'GPENCIL'
 
 
-class TOPBAR_PT_gpencil_vertexcolor(GreasePencilVertexcolorPanel, Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Vertex Color"
-    bl_ui_units_x = 10
-
-    @classmethod
-    def poll(cls, context):
-        ob = context.object
-        return ob and ob.type == 'GPENCIL'
-
-
-class TOPBAR_PT_gpencil_eyedropper(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Vertex Color"
-    bl_ui_units_x = 10
-
-    @classmethod
-    def poll(cls, context):
-        ob = context.object
-        return ob and ob.type == 'GPENCIL'
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        ts = context.scene.tool_settings
-        gpencil_paint = ts.gpencil_paint
-        if gpencil_paint.palette:
-            layout.template_palette(gpencil_paint, "palette", color=True)
-
-
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -7113,7 +6900,6 @@ classes = (
     VIEW3D_MT_make_links,
     VIEW3D_MT_brush_paint_modes,
     VIEW3D_MT_paint_vertex,
-    VIEW3D_MT_join_palette,
     VIEW3D_MT_hook,
     VIEW3D_MT_vertex_group,
     VIEW3D_MT_gpencil_vertex_group,
@@ -7161,14 +6947,12 @@ classes = (
     VIEW3D_MT_edit_mesh_showhide,
     VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_assign_material,
-    VIEW3D_MT_gpencil_materials,
     VIEW3D_MT_edit_gpencil,
     VIEW3D_MT_edit_gpencil_stroke,
     VIEW3D_MT_edit_gpencil_point,
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
     VIEW3D_MT_weight_gpencil,
-    VIEW3D_MT_vertex_gpencil,
     VIEW3D_MT_gpencil_animation,
     VIEW3D_MT_gpencil_simplify,
     VIEW3D_MT_gpencil_copy_layer,
@@ -7254,16 +7038,13 @@ classes = (
     VIEW3D_PT_paint_weight_context_menu,
     VIEW3D_PT_gpencil_sculpt_context_menu,
     VIEW3D_PT_gpencil_draw_context_menu,
-    VIEW3D_PT_gpencil_vertex_context_menu,
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,
-    TOPBAR_PT_gpencil_vertexcolor,
-    TOPBAR_PT_gpencil_eyedropper,
     TOPBAR_PT_annotation_layers,
 )
 
+
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
-
     for cls in classes:
         register_class(cls)
