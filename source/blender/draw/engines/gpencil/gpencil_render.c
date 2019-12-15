@@ -106,12 +106,6 @@ void GPENCIL_render_init(GPENCIL_Data *ved, RenderEngine *engine, struct Depsgra
   DRW_view_set_active(view);
 
   DRW_view_persmat_get(NULL, persmat, false);
-
-  /* calculate pixel size for render */
-  stl->storage->render_pixsize = get_render_pixelsize(persmat, viewport_size[0], viewport_size[1]);
-
-  /* INIT CACHE */
-  GPENCIL_cache_init(vedata);
 }
 
 /* render all objects and select only grease pencil */
@@ -285,8 +279,10 @@ void GPENCIL_render_to_image(void *vedata,
     printf("Warning: To render grease pencil, enable Combined and Z passes.\n");
   }
 
-  GPENCIL_engine_init(vedata);
   GPENCIL_render_init(vedata, engine, draw_ctx->depsgraph);
+
+  GPENCIL_engine_init(vedata);
+  GPENCIL_cache_init(vedata);
 
   GPENCIL_StorageList *stl = ((GPENCIL_Data *)vedata)->stl;
   Object *camera = DEG_get_evaluated_object(draw_ctx->depsgraph, RE_GetCamera(engine->re));

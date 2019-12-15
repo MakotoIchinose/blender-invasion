@@ -1354,14 +1354,19 @@ static void GPENCIL_draw_scene_new(void *ved)
     pd->object_depth = ob->camera_z - pd->camera_z_offset;
     pd->is_stroke_order_3d = ob->is_drawmode3d;
 
-    GPU_framebuffer_bind(dfbl->depth_only_fb);
-    DRW_draw_pass(psl->merge_depth_ps);
+    /* TODO fix for render */
+    if (dfbl->depth_only_fb) {
+      GPU_framebuffer_bind(dfbl->depth_only_fb);
+      DRW_draw_pass(psl->merge_depth_ps);
+    }
 
     DRW_stats_group_end();
   }
 
-  GPU_framebuffer_bind(dfbl->default_fb);
-  DRW_draw_pass(psl->composite_ps);
+  if (dfbl->default_fb) {
+    GPU_framebuffer_bind(dfbl->default_fb);
+    DRW_draw_pass(psl->composite_ps);
+  }
 
   pd->gp_object_pool = pd->gp_layer_pool = pd->gp_vfx_pool = NULL;
 }
