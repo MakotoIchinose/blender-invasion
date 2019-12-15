@@ -63,32 +63,33 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
 {
   bGPdata *gpd = (bGPdata *)ob->data;
   GPENCIL_tLayer *tgp_layer = BLI_memblock_alloc(pd->gp_layer_pool);
+  tgp_layer->stencil_clear_value = -1;
+
+  bool is_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
 
   {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-    if (GPENCIL_3D_DRAWMODE(ob, gpd) || pd->draw_depth_only) {
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_WRITE_DEPTH |
+                     DRW_STATE_STENCIL_EQUAL;
+
+    if (is_mask) {
+      /* We only write the stencil. */
+      state = DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL;
+    }
+    else if (GPENCIL_3D_DRAWMODE(ob, gpd) || pd->draw_depth_only) {
       /* TODO better 3D mode. */
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
+      state |= DRW_STATE_DEPTH_LESS_EQUAL;
     }
     else {
       /* We render all strokes with uniform depth (increasing with stroke id). */
-      state |= DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER;
-    }
-
-    if (!pd->draw_depth_only) {
-      if (gpl->flag & GP_LAYER_USE_MASK) {
-        state |= DRW_STATE_STENCIL_EQUAL;
-      }
-      else {
-        state |= DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
-      }
+      state |= DRW_STATE_DEPTH_GREATER;
     }
 
     tgp_layer->geom_ps = DRW_pass_create("GPencil Layer", state);
   }
 
-  if ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f)) {
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL;
+  if (!is_mask && ((gpl->blend_mode != eGplBlendMode_Regular) || (gpl->opacity < 1.0f))) {
+    /* TODO add stencil opti */
+    DRWState state = DRW_STATE_WRITE_COLOR /* | DRW_STATE_STENCIL_NEQUAL*/;
     switch (gpl->blend_mode) {
       case eGplBlendMode_Regular:
         state |= DRW_STATE_BLEND_ALPHA_PREMUL;
@@ -109,6 +110,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
       case eGplBlendMode_Divide:
         /* Same Caveat as Subtract. This is conserved until there is a blend with a LDR buffer. */
       case eGplBlendMode_Overlay:
+        /* Same Caveat as Subtract. This is conserved until there is a blend with a LDR buffer. */
         state |= DRW_STATE_BLEND_MUL;
         break;
     }

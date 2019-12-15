@@ -180,6 +180,8 @@ typedef struct GPENCIL_tLayer {
   DRWPass *geom_ps;
   /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
   DRWPass *blend_ps;
+  /** Value to clear the stencil with before drawing. -1 is bypass. (used for masking) */
+  int stencil_clear_value;
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {
