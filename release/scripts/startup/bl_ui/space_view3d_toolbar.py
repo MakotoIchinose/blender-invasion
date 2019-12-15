@@ -1236,7 +1236,7 @@ class VIEW3D_PT_imagepaint_options(View3DPaintPanel):
     @classmethod
     def poll(cls, context):
         # This is currently unused, since there aren't any Vertex Paint mode specific options.
-        return False 
+        return False
         return (context.image_paint_object and context.tool_settings.image_paint)
 
     def draw(self, context):
@@ -1968,6 +1968,49 @@ class VIEW3D_PT_tools_grease_pencil_vertex_paint_settings(Panel, View3DPanel, Gr
             brush_basic_gpencil_vertex_settings(layout, context, brush)
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
+    bl_context = ".greasepencil_vertex"
+    bl_label = "Vertex Color"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+
+        if ob is None or brush is None:
+            return False
+
+        if context.region.type == 'TOOL_HEADER' or brush.gpencil_vertex_tool in {'BLUR', 'AVERAGE', 'SMEAR'}:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+        gp_settings = brush.gpencil_settings
+
+        col = layout.column()
+
+        col.prop(gp_settings, "vertex_mode", text="Mode")
+
+        col.prop(brush, "color", text="")
+        col.template_color_picker(brush, "color", value_slider=True)
+
+        sub_row = col.row(align=True)
+        sub_row.prop(brush, "color", text="")
+        sub_row.prop(brush, "secondary_color", text="")
+
+        sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+
 class VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff(GreasePencilBrushFalloff, Panel, View3DPaintPanel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Falloff"
@@ -1984,6 +2027,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
     bl_context = ".greasepencil_vertex"
     bl_label = "Color Palette"
     bl_category = "Tool"
+    bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_vertex_color'
 
     @classmethod
     def poll(cls, context):
@@ -2193,7 +2237,7 @@ classes = (
     VIEW3D_PT_tools_posemode_options,
 
     VIEW3D_PT_slots_projectpaint,
-    VIEW3D_PT_tools_brush_select, 
+    VIEW3D_PT_tools_brush_select,
     VIEW3D_PT_tools_brush_settings,
     VIEW3D_PT_tools_brush_color,
     VIEW3D_PT_tools_brush_swatches,
@@ -2267,6 +2311,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_paint_falloff,
     VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff,
     VIEW3D_PT_tools_grease_pencil_brush_weight_falloff,
+    VIEW3D_PT_tools_grease_pencil_brush_vertex_color,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_palette,
     VIEW3D_PT_tools_grease_pencil_brush_vertex_falloff,
 )
