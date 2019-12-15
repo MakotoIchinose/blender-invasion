@@ -432,6 +432,17 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *buffer, const void *attr[], uint 
 
 void DRW_shgroup_state_enable(DRWShadingGroup *shgroup, DRWState state);
 void DRW_shgroup_state_disable(DRWShadingGroup *shgroup, DRWState state);
+
+/* Reminders:
+ * - (compare_mask & reference) is what is tested against (compare_mask & stencil_value)
+ *   stencil_value being the value stored in the stencil buffer.
+ * - (writemask & reference) is what gets written if the test condition is fullfiled.
+ **/
+void DRW_shgroup_stencil_set(DRWShadingGroup *shgroup,
+                             uint write_mask,
+                             uint reference,
+                             uint comp_mask);
+/* TODO remove this function. Obsolete version. mask is actually reference value. */
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask);
 
 /* Issue a clear command. */

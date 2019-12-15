@@ -220,7 +220,6 @@ void drw_state_set(DRWState state)
   {
     int test;
     if (CHANGED_ANY_STORE_VAR(DRW_STATE_STENCIL_TEST_ENABLED, test)) {
-      DST.stencil_mask = STENCIL_UNDEFINED;
       if (test) {
         glEnable(GL_STENCIL_TEST);
       }
@@ -398,19 +397,23 @@ void drw_state_set(DRWState state)
   DST.state = state;
 }
 
-static void drw_stencil_set(uint mask)
+static void drw_stencil_state_set(uint write_mask, uint reference, uint compare_mask)
 {
-  if (DST.stencil_mask != mask) {
-    DST.stencil_mask = mask;
-    if ((DST.state & DRW_STATE_STENCIL_ALWAYS) != 0) {
-      glStencilFunc(GL_ALWAYS, mask, 0xFF);
-    }
-    else if ((DST.state & DRW_STATE_STENCIL_EQUAL) != 0) {
-      glStencilFunc(GL_EQUAL, mask, 0xFF);
-    }
-    else if ((DST.state & DRW_STATE_STENCIL_NEQUAL) != 0) {
-      glStencilFunc(GL_NOTEQUAL, mask, 0xFF);
-    }
+  /* Reminders:
+   * - (compare_mask & reference) is what is tested against (compare_mask & stencil_value)
+   *   stencil_value being the value stored in the stencil buffer.
+   * - (writemask & reference) is what gets written if the test condition is fullfiled.
+   **/
+  glStencilMask(write_mask);
+
+  if ((DST.state & DRW_STATE_STENCIL_ALWAYS) != 0) {
+    glStencilFunc(GL_ALWAYS, reference, compare_mask);
+  }
+  else if ((DST.state & DRW_STATE_STENCIL_EQUAL) != 0) {
+    glStencilFunc(GL_EQUAL, reference, compare_mask);
+  }
+  else if ((DST.state & DRW_STATE_STENCIL_NEQUAL) != 0) {
+    glStencilFunc(GL_NOTEQUAL, reference, compare_mask);
   }
 }
 
@@ -1316,7 +1319,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
           drw_state_set((pass_state & ~state.drw_state_disabled) | state.drw_state_enabled);
           break;
         case DRW_CMD_STENCIL:
-          drw_stencil_set(cmd->stencil.mask);
+          drw_stencil_state_set(cmd->stencil.write_mask, cmd->stencil.ref, cmd->stencil.comp_mask);
           break;
         case DRW_CMD_SELECTID:
           state.select_id = cmd->select_id.select_id;

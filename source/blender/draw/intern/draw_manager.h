@@ -231,7 +231,9 @@ typedef struct DRWCommandSetMutableState {
 } DRWCommandSetMutableState;
 
 typedef struct DRWCommandSetStencil {
-  uint mask;
+  uint write_mask;
+  uint comp_mask;
+  uint ref;
 } DRWCommandSetStencil;
 
 typedef struct DRWCommandSetSelectID {
@@ -475,7 +477,6 @@ typedef struct DRWManager {
   /* Managed by `DRW_state_set`, `DRW_state_reset` */
   DRWState state;
   DRWState state_lock;
-  uint stencil_mask;
 
   /* Per viewport */
   GPUViewport *viewport;

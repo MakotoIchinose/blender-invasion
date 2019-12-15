@@ -691,11 +691,18 @@ static void drw_command_set_select_id(DRWShadingGroup *shgroup, GPUVertBuf *buf,
   cmd->select_id = select_id;
 }
 
-static void drw_command_set_stencil_mask(DRWShadingGroup *shgroup, uint mask)
+static void drw_command_set_stencil_mask(DRWShadingGroup *shgroup,
+                                         uint write_mask,
+                                         uint reference,
+                                         uint comp_mask)
 {
-  BLI_assert(mask <= 0xFF);
+  BLI_assert(write_mask <= 0xFF);
+  BLI_assert(reference <= 0xFF);
+  BLI_assert(comp_mask <= 0xFF);
   DRWCommandSetStencil *cmd = drw_command_create(shgroup, DRW_CMD_STENCIL);
-  cmd->mask = mask;
+  cmd->write_mask = write_mask;
+  cmd->comp_mask = comp_mask;
+  cmd->ref = reference;
 }
 
 static void drw_command_clear(DRWShadingGroup *shgroup,
@@ -1329,9 +1336,18 @@ void DRW_shgroup_state_disable(DRWShadingGroup *shgroup, DRWState state)
   drw_command_set_mutable_state(shgroup, 0x0, state);
 }
 
+void DRW_shgroup_stencil_set(DRWShadingGroup *shgroup,
+                             uint write_mask,
+                             uint reference,
+                             uint comp_mask)
+{
+  drw_command_set_stencil_mask(shgroup, write_mask, reference, comp_mask);
+}
+
+/* TODO remove this function. */
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)
 {
-  drw_command_set_stencil_mask(shgroup, mask);
+  drw_command_set_stencil_mask(shgroup, 0xFF, mask, 0xFF);
 }
 
 void DRW_shgroup_clear_framebuffer(DRWShadingGroup *shgroup,
