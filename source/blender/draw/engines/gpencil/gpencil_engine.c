@@ -780,12 +780,6 @@ typedef struct gpIterPopulateData {
   GPENCIL_PrivateData *pd;
   GPENCIL_MaterialPool *matpool;
   DRWShadingGroup *grp;
-  /* Last mask layer encountered. This allow to render all masks before the masked layers. */
-  GPENCIL_tLayer *mask_layer_last;
-  /* First mask layer encountered. This allow to edit the clear stencil value. */
-  GPENCIL_tLayer *mask_layer_first;
-  /* Stencil id used for masks test. */
-  uint mask_id;
   /* Offset in the material pool to the first material of this object. */
   int mat_ofs;
   /* Last material UBO bound. Used to avoid uneeded buffer binding. */
@@ -803,33 +797,14 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
-  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;
-  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
-  const bool is_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
-  const bool is_mask_invert = false; /* TODO */
-
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
-
-  if (is_mask) {
-    /* We render all masks before other layers. */
-    if (iter->mask_layer_last) {
-      BLI_LINKS_INSERT_AFTER(&iter->tgp_ob->layers, iter->mask_layer_last, tgp_layer);
-    }
-    else {
-      BLI_LINKS_PREPEND(iter->tgp_ob->layers.first, tgp_layer);
-      iter->mask_layer_first = tgp_layer;
-      /* We follow alpha mask convention. 0 is masked, 1 is not masked.
-       * Unmask everything at first. Note that we only clear for the first layer. */
-      iter->mask_layer_first->stencil_clear_value = 0xFF;
-    }
-    iter->mask_layer_last = tgp_layer;
-  }
-  else {
-    BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
-  }
+  BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
 
   GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
+
+  const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;
+  const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
 
   float object_scale = mat4_to_scale(iter->ob->obmat);
   /* Negate thickness sign to tag that strokes are in screen space.
@@ -854,18 +829,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
   DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
-
-  /* We only test against/modify a single bit. */
-  /* TODO allow more than 8 masks. */
-  uint mask = (1u << iter->mask_id) & 0xFF;
-  if (is_mask) {
-    DRW_shgroup_stencil_set(iter->grp, mask, is_mask_invert ? 0x00 : 0xFF, mask);
-    SET_FLAG_FROM_TEST(iter->mask_layer_first->stencil_clear_value, is_mask_invert, mask);
-    iter->mask_id++;
-  }
-  else {
-    DRW_shgroup_stencil_set(iter->grp, 0x00, 0xFF, mask);
-  }
+  DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 }
 
 static void gp_stroke_cache_populate(bGPDlayer *UNUSED(gpl),
@@ -1362,7 +1326,7 @@ static void GPENCIL_draw_scene_new(void *ved)
     DRW_stats_group_start("GPencil Object");
 
     GPU_framebuffer_bind(fbl->gpencil_fb);
-    GPU_framebuffer_clear_depth_stencil(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f, 0xFF);
+    GPU_framebuffer_clear_depth_stencil(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
 
     if (ob->vfx.first) {
       /* TODO vfx */
@@ -1370,11 +1334,6 @@ static void GPENCIL_draw_scene_new(void *ved)
     }
 
     for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
-      if (layer->stencil_clear_value != -1) {
-        GPU_framebuffer_bind(fbl->gpencil_fb);
-        GPU_framebuffer_clear_stencil(fbl->gpencil_fb, layer->stencil_clear_value);
-      }
-
       if (layer->blend_ps) {
         GPU_framebuffer_bind(fbl->layer_fb);
         GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
