@@ -180,6 +180,9 @@ typedef struct GPENCIL_tLayer {
   DRWPass *geom_ps;
   /** Blend pass to composite onto the target buffer (blends modes). NULL if not needed. */
   DRWPass *blend_ps;
+  /** Used to identify which layers are masks and which are masked. */
+  bool is_mask;
+  bool is_masked;
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {
@@ -330,6 +333,7 @@ typedef struct GPENCIL_FramebufferList {
   struct GPUFrameBuffer *gpencil_fb;
   struct GPUFrameBuffer *layer_fb;
   struct GPUFrameBuffer *object_fb;
+  struct GPUFrameBuffer *masked_fb;
 } GPENCIL_FramebufferList;
 
 typedef struct GPENCIL_TextureList {
@@ -416,10 +420,12 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *color_tx;
   GPUTexture *color_layer_tx;
   GPUTexture *color_object_tx;
+  GPUTexture *color_masked_tx;
   /* Revealage is 1 - alpha */
   GPUTexture *reveal_tx;
   GPUTexture *reveal_layer_tx;
   GPUTexture *reveal_object_tx;
+  GPUTexture *reveal_masked_tx;
   /* Pointer to dtxl->depth */
   GPUTexture *scene_depth_tx;
   /* Current frame */
@@ -452,6 +458,8 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *composite_sh;
   /* All layer blend types in one shader! */
   struct GPUShader *layer_blend_sh;
+  /* To blend masked layer with other layers. */
+  struct GPUShader *layer_mask_sh;
   /* Merge the final object depth to the depth buffer. */
   struct GPUShader *depth_merge_sh;
 
@@ -687,6 +695,7 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_layer_mask_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data);
 
 /* main functions */

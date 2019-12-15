@@ -355,6 +355,7 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.gpencil_sh);
   DRW_SHADER_FREE_SAFE(e_data.composite_sh);
   DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
+  DRW_SHADER_FREE_SAFE(e_data.layer_mask_sh);
   DRW_SHADER_FREE_SAFE(e_data.depth_merge_sh);
 
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
@@ -1045,6 +1046,7 @@ static void GPENCIL_cache_finish_new(void *ved)
   if (pd->tobjects.first) {
     /* TODO(fclem) Detect use of layers and vfx. */
     bool use_layer_fb = true;
+    bool use_mask_fb = true;
     bool use_object_fb = false;
 
     const float *size = DRW_viewport_size_get();
@@ -1087,6 +1089,21 @@ static void GPENCIL_cache_finish_new(void *ved)
                                         GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
                                         GPU_ATTACHMENT_TEXTURE(pd->color_object_tx),
                                         GPU_ATTACHMENT_TEXTURE(pd->reveal_object_tx),
+                                    });
+    }
+
+    if (use_mask_fb) {
+      /* We need to separate all the masked layer together in order to correctly mix them. */
+      pd->color_masked_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_RGBA16F, &draw_engine_gpencil_type);
+      pd->reveal_masked_tx = DRW_texture_pool_query_2d(
+          size[0], size[1], GPU_RGBA16F, &draw_engine_gpencil_type);
+
+      GPU_framebuffer_ensure_config(&fbl->masked_fb,
+                                    {
+                                        GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->color_masked_tx),
+                                        GPU_ATTACHMENT_TEXTURE(pd->reveal_masked_tx),
                                     });
     }
   }
@@ -1323,6 +1340,8 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
+    bool masked_fb_in_use = false;
+
     DRW_stats_group_start("GPencil Object");
 
     GPU_framebuffer_bind(fbl->gpencil_fb);
@@ -1338,11 +1357,22 @@ static void GPENCIL_draw_scene_new(void *ved)
         GPU_framebuffer_bind(fbl->layer_fb);
         GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
       }
+      else {
+        GPU_framebuffer_bind((layer->is_masked) ? fbl->masked_fb : fbl->gpencil_fb);
+        if (layer->is_masked && !masked_fb_in_use) {
+          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
+          masked_fb_in_use = layer->is_masked;
+        }
+      }
 
       DRW_draw_pass(layer->geom_ps);
 
       if (layer->blend_ps) {
-        GPU_framebuffer_bind(fbl->gpencil_fb);
+        GPU_framebuffer_bind((layer->is_masked) ? fbl->masked_fb : fbl->gpencil_fb);
+        if (layer->is_masked && !masked_fb_in_use) {
+          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
+          masked_fb_in_use = layer->is_masked;
+        }
         DRW_draw_pass(layer->blend_ps);
       }
     }
