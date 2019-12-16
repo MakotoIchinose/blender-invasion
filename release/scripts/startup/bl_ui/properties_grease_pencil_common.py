@@ -108,11 +108,6 @@ class AnnotationDrawingToolsPanel:
         sub.operator("gpencil.blank_frame_add", icon='FILE_NEW')
         sub.operator("gpencil.active_frames_delete_all", icon='X', text="Delete Frame(s)")
 
-        #sub = col.column(align=True)
-        #sub.prop(context.tool_settings, "use_gpencil_draw_additive", text="Additive Drawing")
-        #sub.prop(context.tool_settings, "use_gpencil_continuous_drawing", text="Continuous Drawing")
-        #sub.prop(context.tool_settings, "use_gpencil_draw_onback", text="Draw on Back")
-
         col.separator()
         col.separator()
 
@@ -124,9 +119,6 @@ class AnnotationDrawingToolsPanel:
                 row.prop(context.tool_settings, "grease_pencil_source", expand=True)
             elif is_clip_editor:
                 row.prop(context.space_data, "grease_pencil_source", expand=True)
-
-        # col.separator()
-        # col.separator()
 
         gpencil_stroke_placement_settings(context, col)
 
@@ -151,17 +143,18 @@ class GreasePencilSculptOptionsPanel:
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_sculpt_paint
         brush = settings.brush
+        gp_settings = brush.gpencil_settings
         tool = brush.gpencil_sculpt_tool
 
         if tool in {'SMOOTH', 'RANDOMIZE'}:
-            layout.prop(settings, "use_edit_position", text="Affect Position")
-            layout.prop(settings, "use_edit_strength", text="Affect Strength")
-            layout.prop(settings, "use_edit_thickness", text="Affect Thickness")
+            layout.prop(gp_settings, "use_edit_position", text="Affect Position")
+            layout.prop(gp_settings, "use_edit_strength", text="Affect Strength")
+            layout.prop(gp_settings, "use_edit_thickness", text="Affect Thickness")
 
             if tool == 'SMOOTH':
-                layout.prop(brush, "use_edit_pressure")
+                layout.prop(gp_settings, "use_edit_pressure")
 
-            layout.prop(settings, "use_edit_uv", text="Affect UV")
+            layout.prop(gp_settings, "use_edit_uv", text="Affect UV")
 
 
 # GP Object Tool Settings
@@ -236,11 +229,9 @@ class GreasePencilDisplayPanel:
             col = layout.column(align=True)
             col.active = settings.show_brush
 
-            if brush.gpencil_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
-                col.prop(brush, "cursor_color_add", text="Add")
+            col.prop(brush, "cursor_color_add", text="Add")
+            if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
                 col.prop(brush, "cursor_color_subtract", text="Subtract")
-            else:
-                col.prop(brush, "cursor_color_add", text="Add")
 
         elif ob.mode == 'WEIGHT_GPENCIL':
             col = layout.column(align=True)

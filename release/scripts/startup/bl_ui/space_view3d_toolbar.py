@@ -1496,6 +1496,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
                 subcol.prop(gp_settings, "gradient_shape")
 
             elif brush.gpencil_tool == 'FILL':
+                row = col.row(align=True)
+                row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+                row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+                col.separator()
                 col.prop(gp_settings, "fill_factor", text="Resolution")
                 if gp_settings.fill_draw_mode != 'STROKE':
                     col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
