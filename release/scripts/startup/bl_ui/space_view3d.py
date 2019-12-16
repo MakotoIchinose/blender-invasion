@@ -120,9 +120,10 @@ class VIEW3D_HT_tool_header(Header):
             if (tool is not None) and tool.has_datablock:
                 brush = context.tool_settings.gpencil_paint.brush
                 if brush.gpencil_tool != 'ERASE':
-                    layout.popover("VIEW3D_PT_tools_grease_pencil_brush_advanced")
+                    if brush.gpencil_tool != 'TINT':
+                        layout.popover("VIEW3D_PT_tools_grease_pencil_brush_advanced")
 
-                    if brush.gpencil_tool != 'FILL':
+                    if brush.gpencil_tool not in {'FILL', 'TINT'}:
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stabilizer")
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brush_random")
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brushcurves")
