@@ -839,7 +839,16 @@ class GreasePencilFlipTintColors(Operator):
     def execute(self, context):
         try:
             ts = context.tool_settings
-            settings = ts.gpencil_paint
+            settings = None
+            if context.mode == 'PAINT_GPENCIL':
+                settings = ts.gpencil_paint
+            if context.mode == 'SCULPT_GPENCIL':
+                settings = ts.gpencil_sculpt_paint
+            elif context.mode == 'WEIGHT_GPENCIL':
+                settings = ts.gpencil_weight_paint
+            elif context.mode == 'VERTEX_GPENCIL':
+                settings = ts.gpencil_vertex_paint
+
             brush = settings.brush
             if brush is not None:
                 color = brush.color

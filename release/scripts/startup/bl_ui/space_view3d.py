@@ -6748,6 +6748,40 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
         layout.operator("gpencil.active_frames_delete_all", text="Delete All Layers", icon='REMOVE')
 
 
+class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Vertex Paint Context Menu"
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.tool_settings
+        settings = ts.gpencil_vertex_paint
+        brush = settings.brush
+        gp_settings = brush.gpencil_settings
+
+        col = layout.column()
+
+        if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
+            split = layout.split(factor=0.1)
+            split.prop(brush, "color", text="")
+            split.template_color_picker(brush, "color", value_slider=True)
+
+            col = layout.column()
+            col.separator()
+            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
+            col.separator()
+
+        row = col.row(align=True)
+        row.prop(brush, "size", text="Radius")
+        row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
+
+        if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
+            row = layout.row(align=True)
+            row.prop(gp_settings, "pen_strength", slider=True)
+            row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+
+
 class VIEW3D_PT_paint_vertex_context_menu(Panel):
     # Only for popover, these are dummy values.
     bl_space_type = 'VIEW_3D'
@@ -7074,6 +7108,7 @@ classes = (
     VIEW3D_PT_paint_vertex_context_menu,
     VIEW3D_PT_paint_texture_context_menu,
     VIEW3D_PT_paint_weight_context_menu,
+    VIEW3D_PT_gpencil_vertex_context_menu,
     VIEW3D_PT_gpencil_sculpt_context_menu,
     VIEW3D_PT_gpencil_draw_context_menu,
     VIEW3D_PT_sculpt_context_menu,
