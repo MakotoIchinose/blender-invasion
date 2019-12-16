@@ -1022,9 +1022,6 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
         row.prop(brush, "size", text="Thickness")
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_simplify_level", text="Simplify")
-        row = layout.row(align=True)
-        row.prop(gp_settings, "fill_draw_mode", text="Boundary")
-        row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
 
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
