@@ -255,13 +255,6 @@ class GreasePencilDisplayPanel:
 
             col.prop(brush, "cursor_color_add", text="Add")
 
-        col = layout.column()
-        col.prop(brush, "use_custom_icon")
-
-        sub = col.column()
-        sub.active = brush.use_custom_icon
-        sub.prop(brush, "icon_filepath", text="")
-
 
 class GreasePencilBrushFalloff:
     bl_label = "Falloff"
