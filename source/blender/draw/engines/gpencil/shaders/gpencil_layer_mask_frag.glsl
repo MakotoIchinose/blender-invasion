@@ -18,9 +18,8 @@ void main()
 
   if (isFirstPass) {
     /* Blend mode is multiply. */
-    fragColor = vec4(1.0);
-    fragRevealage.rgb = mix(vec3(1.0), masked_reveal, mask);
-    fragRevealage.a = 1.0;
+    fragColor.rgb = fragRevealage.rgb = mix(vec3(1.0), masked_reveal, mask);
+    fragColor.a = fragRevealage.a = 1.0;
   }
   else {
     /* Blend mode is additive. */
