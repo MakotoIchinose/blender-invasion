@@ -309,6 +309,7 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->tobjects.last = NULL;
   stl->pd->draw_depth_only = !DRW_state_is_fbo();
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
+  stl->pd->is_render = true; /* TODO */
 
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
@@ -357,6 +358,9 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.layer_blend_sh);
   DRW_SHADER_FREE_SAFE(e_data.layer_mask_sh);
   DRW_SHADER_FREE_SAFE(e_data.depth_merge_sh);
+
+  DRW_SHADER_FREE_SAFE(e_data.fx_blur_sh);
+  DRW_SHADER_FREE_SAFE(e_data.fx_composite_sh);
 
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
 
@@ -919,7 +923,7 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
     gpencil_object_visible_stroke_iter(
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
 
-    /* TODO VFX */
+    gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
   }
 }
 
@@ -1052,7 +1056,7 @@ static void GPENCIL_cache_finish_new(void *ved)
     /* TODO(fclem) Detect use of layers and vfx. */
     bool use_layer_fb = true;
     bool use_mask_fb = true;
-    bool use_object_fb = false;
+    bool use_object_fb = true;
 
     const float *size = DRW_viewport_size_get();
     pd->depth_tx = DRW_texture_pool_query_2d(
@@ -1089,7 +1093,7 @@ static void GPENCIL_cache_finish_new(void *ved)
       pd->reveal_object_tx = DRW_texture_pool_query_2d(
           size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_gpencil_type);
 
-      GPU_framebuffer_ensure_config(&fbl->layer_fb,
+      GPU_framebuffer_ensure_config(&fbl->object_fb,
                                     {
                                         GPU_ATTACHMENT_TEXTURE(pd->depth_tx),
                                         GPU_ATTACHMENT_TEXTURE(pd->color_object_tx),
@@ -1347,14 +1351,14 @@ static void GPENCIL_draw_scene_new(void *ved)
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
     DRW_stats_group_start("GPencil Object");
 
-    GPUFrameBuffer *fb_object = fbl->gpencil_fb;
-
-    if (ob->vfx.first) {
-      /* TODO vfx */
-    }
+    GPUFrameBuffer *fb_object = (ob->vfx.first) ? fbl->object_fb : fbl->gpencil_fb;
 
     GPU_framebuffer_bind(fb_object);
     GPU_framebuffer_clear_depth_stencil(fb_object, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
+
+    if (ob->vfx.first) {
+      GPU_framebuffer_multi_clear(fb_object, clear_cols);
+    }
 
     for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
       if (layer->blend_ps) {
@@ -1387,8 +1391,9 @@ static void GPENCIL_draw_scene_new(void *ved)
       }
     }
 
-    if (ob->vfx.first) {
-      /* TODO vfx */
+    for (GPENCIL_tVfx *vfx = ob->vfx.first; vfx; vfx = vfx->next) {
+      GPU_framebuffer_bind(*(vfx->target_fb));
+      DRW_draw_pass(vfx->vfx_ps);
     }
 
     pd->object_depth = ob->camera_z - pd->camera_z_offset;

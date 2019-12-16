@@ -26,6 +26,9 @@
 
 #include "BKE_gpencil.h"
 
+#include "BLI_link_utils.h"
+#include "BLI_memblock.h"
+
 #include "DRW_render.h"
 
 #include "BKE_camera.h"
@@ -1060,5 +1063,125 @@ void gpencil_fx_draw(GPENCIL_e_data *UNUSED(e_data),
           break;
       }
     }
+  }
+}
+
+/* ------------- Refactored Code ------------ */
+
+typedef struct gpIterVfxData {
+  GPENCIL_PrivateData *pd;
+  GPENCIL_tObject *tgp_ob;
+  GPUFrameBuffer **target_fb;
+  GPUFrameBuffer **source_fb;
+  GPUTexture **target_color_tx;
+  GPUTexture **source_color_tx;
+  GPUTexture **target_reveal_tx;
+  GPUTexture **source_reveal_tx;
+} gpIterVfxData;
+
+static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
+                                                DRWState state,
+                                                gpIterVfxData *iter,
+                                                GPUShader *sh)
+{
+  DRWPass *pass = DRW_pass_create(name, state);
+  DRWShadingGroup *grp = DRW_shgroup_create(sh, pass);
+  DRW_shgroup_uniform_texture_ref(grp, "colorBuf", iter->source_color_tx);
+  DRW_shgroup_uniform_texture_ref(grp, "revealBuf", iter->source_reveal_tx);
+
+  GPENCIL_tVfx *tgp_vfx = BLI_memblock_alloc(iter->pd->gp_vfx_pool);
+  tgp_vfx->target_fb = iter->target_fb;
+  tgp_vfx->vfx_ps = pass;
+
+  SWAP(GPUFrameBuffer **, iter->target_fb, iter->source_fb);
+  SWAP(GPUTexture **, iter->target_color_tx, iter->source_color_tx);
+  SWAP(GPUTexture **, iter->target_reveal_tx, iter->source_reveal_tx);
+
+  BLI_LINKS_APPEND(&iter->tgp_ob->vfx, tgp_vfx);
+
+  return grp;
+}
+
+static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  GPUShader *sh = GPENCIL_shader_fx_blur_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->radius[0], 0.0f});
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+  grp = gpencil_vfx_pass_create("Fx Blur V", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, fx->radius[1]});
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
+void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob)
+{
+  bGPdata *gpd = (bGPdata *)ob->data;
+  GPENCIL_FramebufferList *fbl = vedata->fbl;
+  GPENCIL_PrivateData *pd = vedata->stl->pd;
+  /* These may not be allocated yet, use adress of future pointer. */
+  gpIterVfxData iter = {
+      .pd = pd,
+      .tgp_ob = tgp_ob,
+      .target_fb = &fbl->layer_fb,
+      .source_fb = &fbl->object_fb,
+      .target_color_tx = &pd->color_layer_tx,
+      .source_color_tx = &pd->color_object_tx,
+      .target_reveal_tx = &pd->reveal_layer_tx,
+      .source_reveal_tx = &pd->reveal_object_tx,
+  };
+
+  LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
+    if (effect_is_active(gpd, fx, pd->is_render)) {
+      switch (fx->type) {
+        case eShaderFxType_Blur:
+          gpencil_vfx_blur((BlurShaderFxData *)fx, ob, &iter);
+          break;
+        case eShaderFxType_Colorize:
+          break;
+        case eShaderFxType_Flip:
+          break;
+        case eShaderFxType_Light:
+          break;
+        case eShaderFxType_Pixel:
+          break;
+        case eShaderFxType_Rim:
+          break;
+        case eShaderFxType_Shadow:
+          break;
+        case eShaderFxType_Glow:
+          break;
+        case eShaderFxType_Swirl:
+          break;
+        case eShaderFxType_Wave:
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  if (tgp_ob->vfx.first != NULL) {
+    /* We need an extra pass to combine result to main buffer. */
+    iter.target_fb = &fbl->gpencil_fb;
+
+    GPUShader *sh = GPENCIL_shader_fx_composite_get(&en_data);
+
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_MUL;
+    DRWShadingGroup *grp = gpencil_vfx_pass_create("GPencil Object Compose", state, &iter, sh);
+    DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+    /* We cannot do custom blending on MultiTarget framebuffers.
+     * Workaround by doing 2 passes. */
+    grp = DRW_shgroup_create_sub(grp);
+    DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
+    DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
+    DRW_shgroup_uniform_int_copy(grp, "isFirstPass", false);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 }

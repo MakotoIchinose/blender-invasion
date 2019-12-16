@@ -282,6 +282,7 @@ data_to_c_simple(engines/gpencil/shaders/gpencil_composite_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_layer_blend_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_layer_mask_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_depth_merge_frag.glsl SRC)
+data_to_c_simple(engines/gpencil/shaders/gpencil_vfx_frag.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_vert.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_fill_frag.glsl SRC)

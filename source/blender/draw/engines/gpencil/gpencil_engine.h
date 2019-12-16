@@ -169,8 +169,9 @@ typedef struct GPENCIL_ViewLayerData {
 typedef struct GPENCIL_tVfx {
   /** Linklist */
   struct GPENCIL_tVfx *next;
-  /* List of passes for this fx. */
-  DRWPass *vfx_ps[4];
+  DRWPass *vfx_ps;
+  /* Framebuffer reference since it may not be allocated yet. */
+  GPUFrameBuffer **target_fb;
 } GPENCIL_tVfx;
 
 typedef struct GPENCIL_tLayer {
@@ -431,6 +432,8 @@ typedef struct GPENCIL_PrivateData {
   GPUTexture *scene_depth_tx;
   /* Current frame */
   int cfra;
+  /* If we are rendering for final render (F12). */
+  bool is_render;
   /* True in selection and auto_depth drawing */
   bool draw_depth_only;
   /* Used by the depth merge step. */
@@ -463,6 +466,9 @@ typedef struct GPENCIL_e_data {
   struct GPUShader *layer_mask_sh;
   /* Merge the final object depth to the depth buffer. */
   struct GPUShader *depth_merge_sh;
+  /* Effects. */
+  struct GPUShader *fx_blur_sh;
+  struct GPUShader *fx_composite_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -692,12 +698,16 @@ void gpencil_fx_draw(struct GPENCIL_e_data *e_data,
                      struct GPENCIL_Data *vedata,
                      struct tGPencilObjectCache *cache_ob);
 
+void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob);
+
 /* Shaders */
 struct GPUShader *GPENCIL_shader_geometry_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_layer_mask_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);
