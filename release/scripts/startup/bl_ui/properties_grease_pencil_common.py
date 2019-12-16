@@ -229,22 +229,22 @@ class GreasePencilDisplayPanel:
             col = layout.column(align=True)
             col.active = settings.show_brush
 
-            col.prop(brush, "cursor_color_add", text="Add")
+            col.prop(brush, "cursor_color_add", text="Cursor Color")
             if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
-                col.prop(brush, "cursor_color_subtract", text="Subtract")
+                col.prop(brush, "cursor_color_subtract", text="Inverse Cursor Color")
 
         elif ob.mode == 'WEIGHT_GPENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 
-            col.prop(brush, "cursor_color_add", text="Add")
-            col.prop(brush, "cursor_color_subtract", text="Subtract")
+            col.prop(brush, "cursor_color_add", text="Cursor Color")
+            col.prop(brush, "cursor_color_subtract", text="Inverse Cursor Color")
 
         elif ob.mode == 'VERTEX_GPENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 
-            col.prop(brush, "cursor_color_add", text="Add")
+            col.prop(brush, "cursor_color_add", text="Cursor Color")
 
 
 class GreasePencilBrushFalloff:
