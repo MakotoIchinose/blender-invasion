@@ -66,6 +66,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
 
   const bool is_mask = (gpl->flag & GP_LAYER_USE_MASK) != 0;
   tgp_layer->is_mask = is_mask;
+  tgp_layer->do_masked_clear = false;
 
   if (!is_mask) {
     tgp_layer->is_masked = false;

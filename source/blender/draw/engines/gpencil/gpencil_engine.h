@@ -183,6 +183,7 @@ typedef struct GPENCIL_tLayer {
   /** Used to identify which layers are masks and which are masked. */
   bool is_mask;
   bool is_masked;
+  bool do_masked_clear;
 } GPENCIL_tLayer;
 
 typedef struct GPENCIL_tObject {

@@ -798,8 +798,13 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   gpIterPopulateData *iter = (gpIterPopulateData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
+  GPENCIL_tLayer *tgp_layer_prev = iter->tgp_ob->layers.last;
   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add_new(iter->pd, iter->ob, gpl);
   BLI_LINKS_APPEND(&iter->tgp_ob->layers, tgp_layer);
+
+  if (tgp_layer->is_masked && (tgp_layer_prev == NULL || !tgp_layer_prev->is_masked)) {
+    tgp_layer->do_masked_clear = true;
+  }
 
   GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
@@ -1340,38 +1345,43 @@ static void GPENCIL_draw_scene_new(void *ved)
   GPU_framebuffer_multi_clear(fbl->gpencil_fb, clear_cols);
 
   for (GPENCIL_tObject *ob = pd->tobjects.first; ob; ob = ob->next) {
-    bool masked_fb_in_use = false;
-
     DRW_stats_group_start("GPencil Object");
 
-    GPU_framebuffer_bind(fbl->gpencil_fb);
-    GPU_framebuffer_clear_depth_stencil(fbl->gpencil_fb, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
+    GPUFrameBuffer *fb_object = fbl->gpencil_fb;
 
     if (ob->vfx.first) {
       /* TODO vfx */
-      // GPU_framebuffer_bind(fbl->object_fb);
     }
+
+    GPU_framebuffer_bind(fb_object);
+    GPU_framebuffer_clear_depth_stencil(fb_object, ob->is_drawmode3d ? 1.0f : 0.0f, 0x00);
 
     for (GPENCIL_tLayer *layer = ob->layers.first; layer; layer = layer->next) {
       if (layer->blend_ps) {
         GPU_framebuffer_bind(fbl->layer_fb);
         GPU_framebuffer_multi_clear(fbl->layer_fb, clear_cols);
       }
-      else {
-        GPU_framebuffer_bind((layer->is_masked) ? fbl->masked_fb : fbl->gpencil_fb);
-        if (layer->is_masked && !masked_fb_in_use) {
+      else if (layer->is_masked) {
+        GPU_framebuffer_bind(fbl->masked_fb);
+        if (layer->do_masked_clear) {
           GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-          masked_fb_in_use = layer->is_masked;
         }
+      }
+      else {
+        GPU_framebuffer_bind(fb_object);
       }
 
       DRW_draw_pass(layer->geom_ps);
 
       if (layer->blend_ps) {
-        GPU_framebuffer_bind((layer->is_masked) ? fbl->masked_fb : fbl->gpencil_fb);
-        if (layer->is_masked && !masked_fb_in_use) {
-          GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
-          masked_fb_in_use = layer->is_masked;
+        if (layer->is_masked) {
+          GPU_framebuffer_bind(fbl->masked_fb);
+          if (layer->do_masked_clear) {
+            GPU_framebuffer_multi_clear(fbl->masked_fb, clear_cols);
+          }
+        }
+        else {
+          GPU_framebuffer_bind(fb_object);
         }
         DRW_draw_pass(layer->blend_ps);
       }
