@@ -124,8 +124,7 @@ class VIEW3D_HT_tool_header(Header):
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brush_advanced")
 
                     if brush.gpencil_tool not in {'FILL', 'TINT'}:
-                        layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stabilizer")
-                        layout.popover("VIEW3D_PT_tools_grease_pencil_brush_random")
+                        layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
                         layout.popover("VIEW3D_PT_tools_grease_pencil_brushcurves")
 
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
@@ -2708,7 +2707,7 @@ class VIEW3D_MT_object_quick_effects(Menu):
         layout.operator("object.quick_fur")
         layout.operator("object.quick_explode")
         layout.operator("object.quick_smoke")
-        layout.operator("object.quick_fluid")
+        layout.operator("object.quick_liquid")
 
 
 class VIEW3D_MT_object_showhide(Menu):

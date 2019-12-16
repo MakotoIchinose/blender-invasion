@@ -1012,7 +1012,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
             row.prop(gp_settings, "eraser_thickness_factor")
 
         row = layout.row(align=True)
-        row.prop(settings, "show_brush", text="Show Brush")
+        row.prop(settings, "show_brush", text="Display Cursor")
 
     # FIXME: tools must use their own UI drawing!
     elif brush.gpencil_tool == 'FILL':
