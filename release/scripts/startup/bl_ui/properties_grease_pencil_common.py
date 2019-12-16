@@ -222,7 +222,7 @@ class GreasePencilDisplayPanel:
             if brush.gpencil_tool == 'DRAW':
                 col.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
-            if brush.gpencil_tool == 'FILL':
+            if brush.gpencil_tool in {'FILL', 'TINT'}:
                 col.prop(brush, "cursor_color_add", text="Cursor Color")
 
         elif ob.mode == 'SCULPT_GPENCIL':
