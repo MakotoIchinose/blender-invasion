@@ -179,9 +179,11 @@ class GreasePencilDisplayPanel:
             else:
                 # GP Sculpt, Vertex and Weight Paint always have Brush Tip panel.
                 return True
+        return False
 
     def draw_header(self, context):
-        if self.is_popover: return
+        if self.is_popover:
+            return
 
         tool_settings = context.tool_settings
         if context.mode == 'PAINT_GPENCIL':
@@ -340,7 +342,7 @@ class GPENCIL_MT_move_to_layer(Menu):
             gpl_active = context.active_gpencil_layer
             tot_layers = len(gpd.layers)
             i = tot_layers - 1
-            while(i >= 0):
+            while i >= 0:
                 gpl = gpd.layers[i]
                 if gpl.info == gpl_active.info:
                     icon = 'GREASEPENCIL'
@@ -550,11 +552,10 @@ class GreasePencilToolsPanel:
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         # XXX - disabled in 2.8 branch.
+        # return (context.gpencil_data is not None)
         return False
-
-        return (context.gpencil_data is not None)
 
     def draw(self, context):
         layout = self.layout
