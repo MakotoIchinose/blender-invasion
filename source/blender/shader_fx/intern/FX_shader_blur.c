@@ -45,7 +45,7 @@ ShaderFxTypeInfo shaderfx_Type_Blur = {
     /* structName */ "BlurShaderFxData",
     /* structSize */ sizeof(BlurShaderFxData),
     /* type */ eShaderFxType_GpencilType,
-    /* flags */ eShaderFxTypeFlag_Single,
+    /* flags */ 0,
 
     /* copyData */ copyData,
 
