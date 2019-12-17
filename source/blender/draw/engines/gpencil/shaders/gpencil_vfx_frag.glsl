@@ -31,6 +31,12 @@ void main()
 #elif defined(BLUR)
 
 uniform vec2 offset;
+uniform int sampCount;
+
+float gaussian_weight(float x)
+{
+  return exp(-x * x / (2.0 * 0.35 * 0.35));
+}
 
 void main()
 {
@@ -41,16 +47,17 @@ void main()
   fragRevealage = vec4(0.0);
 
   /* No blending. */
-  fragColor.rgb += texture(colorBuf, uvcoordsvar.xy - ofs).rgb;
-  fragColor.rgb += texture(colorBuf, uvcoordsvar.xy).rgb;
-  fragColor.rgb += texture(colorBuf, uvcoordsvar.xy + ofs).rgb;
+  float weight_accum = 0.0;
+  for (int i = -sampCount; i <= sampCount; i++) {
+    float x = float(i) / float(sampCount);
+    float weight = gaussian_weight(x);
+    weight_accum += weight;
+    fragColor.rgb += texture(colorBuf, uvcoordsvar.xy - ofs * x).rgb * weight;
+    fragRevealage.rgb += texture(revealBuf, uvcoordsvar.xy - ofs * x).rgb * weight;
+  }
 
-  fragRevealage.rgb += texture(revealBuf, uvcoordsvar.xy - ofs).rgb;
-  fragRevealage.rgb += texture(revealBuf, uvcoordsvar.xy).rgb;
-  fragRevealage.rgb += texture(revealBuf, uvcoordsvar.xy + ofs).rgb;
-
-  fragColor *= (1.0 / 3.0);
-  fragRevealage *= (1.0 / 3.0);
+  fragColor /= weight_accum;
+  fragRevealage /= weight_accum;
 }
 
 #endif
