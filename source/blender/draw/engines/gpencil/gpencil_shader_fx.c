@@ -1174,6 +1174,43 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
   }
 }
 
+static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  GPUShader *sh = GPENCIL_shader_fx_glow_get(&en_data);
+
+  float ref_col[3], threshold_min, threshold_max;
+
+  if (fx->mode == eShaderFxGlowMode_Luminance) {
+    ref_col[0] = fx->threshold;
+    ref_col[1] = -1.0f;
+    ref_col[2] = -1.0f;
+  }
+  else {
+    copy_v3_v3(ref_col, fx->select_color);
+  }
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Glow H", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->blur[0], 0.0f});
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->blur[0])));
+  DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
+  DRW_shgroup_uniform_vec3_copy(grp, "glowColor", fx->glow_color);
+  DRW_shgroup_uniform_bool_copy(grp, "useAlphaMode", false);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+  ref_col[0] = -1.0f;
+
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL;
+  grp = gpencil_vfx_pass_create("Fx Glow V", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, fx->blur[0]});
+  DRW_shgroup_uniform_vec3_copy(grp, "threshold", ref_col);
+  DRW_shgroup_uniform_vec3_copy(grp, "glowColor", (float[3]){1.0f, 1.0f, 1.0f});
+  DRW_shgroup_uniform_bool_copy(grp, "useAlphaMode", (fx->flag & FX_GLOW_USE_ALPHA) != 0);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -1211,6 +1248,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
         case eShaderFxType_Shadow:
           break;
         case eShaderFxType_Glow:
+          gpencil_vfx_glow((GlowShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Swirl:
           break;

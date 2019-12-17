@@ -112,6 +112,15 @@ struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data)
 
 /* ------- FX Shaders --------- */
 
+struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_blur_sh) {
+    e_data->fx_blur_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                      "#define BLUR\n");
+  }
+  return e_data->fx_blur_sh;
+}
+
 struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_composite_sh) {
@@ -121,13 +130,13 @@ struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
   return e_data->fx_composite_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data)
+struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data)
 {
-  if (!e_data->fx_blur_sh) {
-    e_data->fx_blur_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                      "#define BLUR\n");
+  if (!e_data->fx_glow_sh) {
+    e_data->fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                      "#define GLOW\n");
   }
-  return e_data->fx_blur_sh;
+  return e_data->fx_glow_sh;
 }
 
 struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data)
