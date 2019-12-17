@@ -1120,6 +1120,60 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
+static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  float persmat[4][4], winmat[4][4], ob_center[3], pixsize_uniform[2];
+  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float *vp_size = DRW_viewport_size_get();
+  const float *vp_size_inv = DRW_viewport_invert_size_get();
+  float pixel_size[2] = {fx->size[0], fx->size[1]};
+  mul_v2_v2(pixel_size, vp_size_inv);
+
+  /* Fixed pixelisation center from object center. */
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
+  mul_v3_m4v3(ob_center, persmat, ob->obmat[3]);
+  mul_v3_fl(ob_center, 1.0f / w);
+
+  /* Convert to uvs. */
+  mul_v2_fl(ob_center, 0.5f);
+  add_v2_fl(ob_center, 0.5f);
+
+  /* Modify by distance to camera and object scale. */
+  float world_pixel_scale = 1.0f / 2000.0f;
+  float scale = mat4_to_scale(ob->obmat);
+  mul_v2_fl(pixel_size, (world_pixel_scale * scale * winmat[1][1] * vp_size[1]) / w);
+
+  /* Center to texel */
+  madd_v2_v2fl(ob_center, pixel_size, -0.5f);
+
+  GPUShader *sh = GPENCIL_shader_fx_pixelize_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+
+  /* Only if pixelated effect is bigger than 1px. */
+  if (pixel_size[0] > vp_size_inv[0]) {
+    copy_v2_fl2(pixsize_uniform, pixel_size[0], vp_size_inv[1]);
+    grp = gpencil_vfx_pass_create("Fx Pixelize X", state, iter, sh);
+    DRW_shgroup_uniform_vec2_copy(grp, "targetPixelSize", pixsize_uniform);
+    DRW_shgroup_uniform_vec2_copy(grp, "targetPixelOffset", ob_center);
+    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", (float[2]){pixel_size[0], 0.0f});
+    DRW_shgroup_uniform_int_copy(grp, "sampCount", (pixel_size[0] / vp_size_inv[0] > 3.0) ? 2 : 1);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+
+  if (pixel_size[1] > vp_size_inv[1]) {
+    copy_v2_fl2(pixsize_uniform, vp_size_inv[0], pixel_size[1]);
+    grp = gpencil_vfx_pass_create("Fx Pixelize Y", state, iter, sh);
+    DRW_shgroup_uniform_vec2_copy(grp, "targetPixelSize", pixsize_uniform);
+    DRW_shgroup_uniform_vec2_copy(grp, "accumOffset", (float[2]){0.0f, pixel_size[1]});
+    DRW_shgroup_uniform_int_copy(grp, "sampCount", (pixel_size[1] / vp_size_inv[1] > 3.0) ? 2 : 1);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+}
+
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -1150,6 +1204,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
         case eShaderFxType_Light:
           break;
         case eShaderFxType_Pixel:
+          gpencil_vfx_pixelize((PixelShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Rim:
           break;

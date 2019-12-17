@@ -52,12 +52,39 @@ void main()
     float x = float(i) / float(sampCount);
     float weight = gaussian_weight(x);
     weight_accum += weight;
-    fragColor.rgb += texture(colorBuf, uvcoordsvar.xy - ofs * x).rgb * weight;
-    fragRevealage.rgb += texture(revealBuf, uvcoordsvar.xy - ofs * x).rgb * weight;
+    vec2 uv = uvcoordsvar.xy + ofs * x;
+    fragColor.rgb += texture(colorBuf, uv).rgb * weight;
+    fragRevealage.rgb += texture(revealBuf, uv).rgb * weight;
   }
 
   fragColor /= weight_accum;
   fragRevealage /= weight_accum;
+}
+
+#elif defined(PIXELIZE)
+
+uniform vec2 targetPixelSize;
+uniform vec2 targetPixelOffset;
+uniform vec2 accumOffset;
+uniform int sampCount;
+
+void main()
+{
+  vec2 pixel = floor((uvcoordsvar.xy - targetPixelOffset) / targetPixelSize);
+  vec2 uv = (pixel + 0.5) * targetPixelSize + targetPixelOffset;
+
+  fragColor = vec4(0.0);
+  fragRevealage = vec4(0.0);
+
+  for (int i = -sampCount; i <= sampCount; i++) {
+    float x = float(i) / float(sampCount + 1);
+    vec2 uv_ofs = uv + accumOffset * 0.5 * x;
+    fragColor += texture(colorBuf, uv_ofs);
+    fragRevealage += texture(revealBuf, uv_ofs);
+  }
+
+  fragColor /= float(sampCount) * 2.0 + 1.0;
+  fragRevealage /= float(sampCount) * 2.0 + 1.0;
 }
 
 #endif
