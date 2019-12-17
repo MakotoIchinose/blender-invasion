@@ -2012,6 +2012,11 @@ static int gpencil_vertex_group_invert_exec(bContext *C, wmOperator *op)
   }
 
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    /* Verify the strokes has something to change. */
+    if ((gps->totpoints == 0) || (gps->dvert == NULL)) {
+      continue;
+    }
+
     for (int i = 0; i < gps->totpoints; i++) {
       dvert = &gps->dvert[i];
       MDeformWeight *dw = defvert_find_index(dvert, def_nr);
@@ -2079,7 +2084,8 @@ static int gpencil_vertex_group_smooth_exec(bContext *C, wmOperator *op)
   MDeformVert *dverta, *dvertb;
 
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
-    if (gps->dvert == NULL) {
+    /* Verify the strokes has something to change. */
+    if ((gps->totpoints == 0) || (gps->dvert == NULL)) {
       continue;
     }
 
@@ -2174,6 +2180,11 @@ static int gpencil_vertex_group_normalize_exec(bContext *C, wmOperator *op)
   }
 
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    /* Verify the strokes has something to change. */
+    if ((gps->totpoints == 0) || (gps->dvert == NULL)) {
+      continue;
+    }
+
     /* look for max value */
     float maxvalue = 0.0f;
     for (int i = 0; i < gps->totpoints; i++) {
@@ -2242,10 +2253,11 @@ static int gpencil_vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
   }
 
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
-    /* verify the strokes has something to change */
-    if (gps->totpoints == 0) {
+    /* Verify the strokes has something to change. */
+    if ((gps->totpoints == 0) || (gps->dvert == NULL)) {
       continue;
     }
+
     /* look for tot value */
     float *tot_values = MEM_callocN(gps->totpoints * sizeof(float), __func__);
 
