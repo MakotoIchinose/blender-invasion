@@ -3,6 +3,7 @@ uniform sampler2D colorBuf;
 uniform sampler2D revealBuf;
 uniform sampler2D maskBuf;
 uniform float maskOpacity;
+uniform bool maskInvert;
 uniform bool isFirstPass;
 
 in vec4 uvcoordsvar;
@@ -14,7 +15,13 @@ void main()
 {
   vec3 masked_color = texture(colorBuf, uvcoordsvar.xy).rgb;
   vec3 masked_reveal = texture(revealBuf, uvcoordsvar.xy).rgb;
-  float mask = 1.0 - maskOpacity * texture(maskBuf, uvcoordsvar.xy).r;
+  float mask = texture(maskBuf, uvcoordsvar.xy).r;
+
+  if (maskInvert) {
+    mask = 1.0 - mask;
+  }
+
+  mask = 1.0 - mask * maskOpacity;
 
   if (isFirstPass) {
     /* Blend mode is multiply. */

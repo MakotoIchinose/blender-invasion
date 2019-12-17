@@ -422,6 +422,8 @@ typedef enum eGPDlayer_Flag {
   GP_LAYER_USE_MASK = (1 << 13),
   /* Ruler Layer */
   GP_LAYER_IS_RULER = (1 << 14),
+  /* Invert masking behavior */
+  GP_LAYER_MASK_INVERT = (1 << 15),
 } eGPDlayer_Flag;
 
 /* bGPDlayer->onion_flag */

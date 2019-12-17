@@ -112,6 +112,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add_new(GPENCIL_PrivateData *pd, Object *ob,
     DRWShadingGroup *grp = DRW_shgroup_create(sh, tgp_layer->blend_ps);
     DRW_shgroup_uniform_int_copy(grp, "isFirstPass", true);
     DRW_shgroup_uniform_float_copy(grp, "maskOpacity", gpl->opacity);
+    DRW_shgroup_uniform_bool_copy(grp, "maskInvert", gpl->flag & GP_LAYER_MASK_INVERT);
     DRW_shgroup_uniform_texture_ref(grp, "colorBuf", &pd->color_masked_tx);
     DRW_shgroup_uniform_texture_ref(grp, "revealBuf", &pd->reveal_masked_tx);
     DRW_shgroup_uniform_texture_ref(grp, "maskBuf", &pd->reveal_layer_tx);
