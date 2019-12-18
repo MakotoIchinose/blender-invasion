@@ -1174,13 +1174,125 @@ static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxDat
   }
 }
 
+static void gpencil_vfx_shadow(ShadowShaderFxData *fx, Object *ob, gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  const bool use_obj_pivot = (fx->flag & FX_SHADOW_USE_OBJECT) != 0;
+  const bool use_wave = (fx->flag & FX_SHADOW_USE_WAVE) != 0;
+
+  float uv_mat[4][4], winmat[4][4], persmat[4][4], rot_center[3];
+  float wave_ofs[3], wave_dir[3], wave_phase, blur_dir[2], tmp[2];
+  float offset[2] = {fx->offset[0], fx->offset[1]};
+  float blur_size[2] = {fx->blur[0], fx->blur[1]};
+  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float *vp_size = DRW_viewport_size_get();
+  const float *vp_size_inv = DRW_viewport_invert_size_get();
+  const float ratio = vp_size_inv[1] / vp_size_inv[0];
+
+  copy_v3_v3(rot_center, (use_obj_pivot && fx->object) ? fx->object->obmat[3] : ob->obmat[3]);
+
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, rot_center));
+  mul_v3_m4v3(rot_center, persmat, rot_center);
+  mul_v3_fl(rot_center, 1.0f / w);
+
+  /* Modify by distance to camera and object scale. */
+  float world_pixel_scale = 1.0f / 2000.0f;
+  float scale = mat4_to_scale(ob->obmat);
+  float distance_factor = (world_pixel_scale * scale * winmat[1][1] * vp_size[1]) / w;
+  mul_v2_fl(offset, distance_factor);
+  mul_v2_v2(offset, vp_size_inv);
+  mul_v2_fl(blur_size, distance_factor);
+
+  rot_center[0] = rot_center[0] * 0.5f + 0.5f;
+  rot_center[1] = rot_center[1] * 0.5f + 0.5f;
+
+  /* UV transform matrix. (loc, rot, scale) Sent to shader as 2x3 matrix. */
+  unit_m4(uv_mat);
+  translate_m4(uv_mat, rot_center[0], rot_center[1], 0.0f);
+  rescale_m4(uv_mat, (float[3]){1.0f / fx->scale[0], 1.0f / fx->scale[1], 1.0f});
+  translate_m4(uv_mat, -offset[0], -offset[1], 0.0f);
+  rescale_m4(uv_mat, (float[3]){1.0f / ratio, 1.0f, 1.0f});
+  rotate_m4(uv_mat, 'Z', fx->rotation);
+  rescale_m4(uv_mat, (float[3]){ratio, 1.0f, 1.0f});
+  translate_m4(uv_mat, -rot_center[0], -rot_center[1], 0.0f);
+
+  if (use_wave) {
+    float dir[2];
+    if (fx->orientation == 0) {
+      /* Horizontal */
+      copy_v2_fl2(dir, 1.0f, 0.0f);
+    }
+    else {
+      /* Vertical */
+      copy_v2_fl2(dir, 0.0f, 1.0f);
+    }
+    /* This is applied after rotation. Counter the rotation to keep aligned with global axis. */
+    rotate_v2_v2fl(wave_dir, dir, fx->rotation);
+    /* Rotate 90°. */
+    copy_v2_v2(wave_ofs, wave_dir);
+    SWAP(float, wave_ofs[0], wave_ofs[1]);
+    wave_ofs[1] *= -1.0f;
+    /* Keep world space scalling and aspect ratio. */
+    mul_v2_fl(wave_dir, 1.0f / (max_ff(1e-8f, fx->period) * distance_factor));
+    mul_v2_v2(wave_dir, vp_size);
+    mul_v2_fl(wave_ofs, fx->amplitude * distance_factor);
+    mul_v2_v2(wave_ofs, vp_size_inv);
+    /* Phase start at shadow center. */
+    wave_phase = fx->phase - dot_v2v2(rot_center, wave_dir);
+  }
+  else {
+    zero_v2(wave_dir);
+    zero_v2(wave_ofs);
+    wave_phase = 0.0f;
+  }
+
+  GPUShader *sh = GPENCIL_shader_fx_shadow_get(&en_data);
+
+  copy_v2_fl2(blur_dir, blur_size[0] * vp_size_inv[0], 0.0f);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Shadow H", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", blur_dir);
+  DRW_shgroup_uniform_vec2_copy(grp, "waveDir", wave_dir);
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", wave_ofs);
+  DRW_shgroup_uniform_float_copy(grp, "wavePhase", wave_phase);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvRotX", uv_mat[0]);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvRotY", uv_mat[1]);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", uv_mat[3]);
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
+  DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", true);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+  unit_m4(uv_mat);
+  zero_v2(wave_ofs);
+
+  /* We reseted the uv_mat so we need to accound for the rotation in the  */
+  copy_v2_fl2(tmp, 0.0f, blur_size[1]);
+  rotate_v2_v2fl(blur_dir, tmp, -fx->rotation);
+  mul_v2_v2(blur_dir, vp_size_inv);
+
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
+  grp = gpencil_vfx_pass_create("Fx Shadow V", state, iter, sh);
+  DRW_shgroup_uniform_vec4_copy(grp, "shadowColor", fx->shadow_rgba);
+  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", blur_dir);
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", wave_ofs);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvRotX", uv_mat[0]);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvRotY", uv_mat[1]);
+  DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", uv_mat[3]);
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
+  DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", false);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
 static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
 
   GPUShader *sh = GPENCIL_shader_fx_glow_get(&en_data);
 
-  float ref_col[3], threshold_min, threshold_max;
+  float ref_col[3];
 
   if (fx->mode == eShaderFxGlowMode_Luminance) {
     ref_col[0] = fx->threshold;
@@ -1246,6 +1358,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
         case eShaderFxType_Rim:
           break;
         case eShaderFxType_Shadow:
+          gpencil_vfx_shadow((ShadowShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Glow:
           gpencil_vfx_glow((GlowShaderFxData *)fx, ob, &iter);

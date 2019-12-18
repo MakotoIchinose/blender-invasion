@@ -147,3 +147,12 @@ struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data)
   }
   return e_data->fx_pixel_sh;
 }
+
+struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_shadow_sh) {
+    e_data->fx_shadow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                        "#define SHADOW\n");
+  }
+  return e_data->fx_shadow_sh;
+}

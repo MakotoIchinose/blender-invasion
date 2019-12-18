@@ -467,10 +467,11 @@ typedef struct GPENCIL_e_data {
   /* Merge the final object depth to the depth buffer. */
   struct GPUShader *depth_merge_sh;
   /* Effects. */
-  struct GPUShader *fx_blur_sh;
-  struct GPUShader *fx_pixel_sh;
-  struct GPUShader *fx_glow_sh;
   struct GPUShader *fx_composite_sh;
+  struct GPUShader *fx_blur_sh;
+  struct GPUShader *fx_glow_sh;
+  struct GPUShader *fx_pixel_sh;
+  struct GPUShader *fx_shadow_sh;
 
   /* general drawing shaders */
   struct GPUShader *gpencil_fill_sh;
@@ -712,6 +713,7 @@ struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data);
 struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data);
+struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data);
 
 /* main functions */
 void GPENCIL_engine_init(void *vedata);
