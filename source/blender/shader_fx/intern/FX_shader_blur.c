@@ -30,8 +30,8 @@
 static void initData(ShaderFxData *fx)
 {
   BlurShaderFxData *gpfx = (BlurShaderFxData *)fx;
-  ARRAY_SET_ITEMS(gpfx->radius, 1, 1);
-  gpfx->samples = 4;
+  ARRAY_SET_ITEMS(gpfx->radius, 5, 5);
+  gpfx->samples = 2;
   gpfx->coc = 0.025f;
 }
 
