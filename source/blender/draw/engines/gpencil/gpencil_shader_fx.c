@@ -1135,6 +1135,78 @@ static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), g
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
+static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  float winmat[4][4], persmat[4][4];
+  float offset[2] = {fx->offset[0], fx->offset[1]};
+  float blur_size[2] = {fx->blur[0], fx->blur[1]};
+  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float *vp_size = DRW_viewport_size_get();
+  const float *vp_size_inv = DRW_viewport_invert_size_get();
+
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
+
+  /* Modify by distance to camera and object scale. */
+  float world_pixel_scale = 1.0f / 2000.0f;
+  float scale = mat4_to_scale(ob->obmat);
+  float distance_factor = (world_pixel_scale * scale * winmat[1][1] * vp_size[1]) / w;
+  mul_v2_fl(offset, distance_factor);
+  mul_v2_v2(offset, vp_size_inv);
+  mul_v2_fl(blur_size, distance_factor);
+
+  GPUShader *sh = GPENCIL_shader_fx_rim_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Rim H", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", (float[2]){blur_size[0] * vp_size_inv[0], 0.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", offset);
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
+  DRW_shgroup_uniform_vec3_copy(grp, "maskColor", fx->mask_rgb);
+  DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", true);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+  switch (fx->mode) {
+    case eShaderFxRimMode_Normal:
+      state |= DRW_STATE_BLEND_ALPHA_PREMUL;
+      break;
+    case eShaderFxRimMode_Add:
+      state |= DRW_STATE_BLEND_ADD_FULL;
+      break;
+    case eShaderFxRimMode_Subtract:
+      state |= DRW_STATE_BLEND_SUB;
+      break;
+    case eShaderFxRimMode_Multiply:
+    case eShaderFxRimMode_Divide:
+    case eShaderFxRimMode_Overlay:
+      state |= DRW_STATE_BLEND_MUL;
+      break;
+  }
+
+  zero_v2(offset);
+
+  grp = gpencil_vfx_pass_create("Fx Rim V", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "blurDir", (float[2]){0.0f, blur_size[1] * vp_size_inv[1]});
+  DRW_shgroup_uniform_vec2_copy(grp, "uvOffset", offset);
+  DRW_shgroup_uniform_vec3_copy(grp, "rimColor", fx->rim_rgb);
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
+  DRW_shgroup_uniform_int_copy(grp, "blendMode", fx->mode);
+  DRW_shgroup_uniform_bool_copy(grp, "isFirstPass", false);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+
+  if (fx->mode == eShaderFxRimMode_Overlay) {
+    /* We cannot do custom blending on MultiTarget framebuffers.
+     * Workaround by doing 2 passes. */
+    grp = DRW_shgroup_create_sub(grp);
+    DRW_shgroup_state_disable(grp, DRW_STATE_BLEND_MUL);
+    DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ADD_FULL);
+    DRW_shgroup_uniform_int_copy(grp, "blendMode", 999);
+    DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+}
+
 static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
@@ -1372,6 +1444,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
           gpencil_vfx_pixelize((PixelShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Rim:
+          gpencil_vfx_rim((RimShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Shadow:
           gpencil_vfx_shadow((ShadowShaderFxData *)fx, ob, &iter);

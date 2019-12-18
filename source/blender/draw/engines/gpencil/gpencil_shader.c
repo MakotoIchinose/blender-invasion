@@ -141,6 +141,31 @@ struct GPUShader *GPENCIL_shader_fx_colorize_get(GPENCIL_e_data *e_data)
   return e_data->fx_colorize_sh;
 }
 
+struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_rim_sh) {
+    e_data->fx_rim_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){
+                datatoc_common_fullscreen_vert_glsl,
+                NULL,
+            },
+        .frag =
+            (const char *[]){
+                datatoc_gpencil_common_lib_glsl,
+                datatoc_gpencil_vfx_frag_glsl,
+                NULL,
+            },
+        .defs =
+            (const char *[]){
+                "#define RIM\n",
+                NULL,
+            },
+    });
+  }
+  return e_data->fx_rim_sh;
+}
+
 struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_composite_sh) {

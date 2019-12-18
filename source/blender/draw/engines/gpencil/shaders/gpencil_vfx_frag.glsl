@@ -159,6 +159,56 @@ void main()
   }
 }
 
+#elif defined(RIM)
+
+uniform vec2 blurDir;
+uniform vec2 uvOffset;
+uniform vec3 rimColor;
+uniform vec3 maskColor;
+uniform int sampCount;
+uniform int blendMode;
+uniform bool isFirstPass;
+
+void main()
+{
+  /* Blur revealage buffer. */
+  fragRevealage = vec4(0.0);
+  float weight_accum = 0.0;
+  for (int i = -sampCount; i <= sampCount; i++) {
+    float x = float(i) / float(sampCount);
+    float weight = gaussian_weight(x);
+    weight_accum += weight;
+    vec2 uv = uvcoordsvar.xy + blurDir * x + uvOffset;
+    vec3 col = texture(revealBuf, uv).rgb;
+    if (any(not(equal(vec2(0.0), floor(uv))))) {
+      col = vec3(0.0);
+    }
+    fragRevealage.rgb += col * weight;
+  }
+  fragRevealage /= weight_accum;
+
+  if (isFirstPass) {
+    /* In first pass we copy the reveal buffer. This let us do alpha masking in second pass. */
+    fragColor = texture(revealBuf, uvcoordsvar.xy);
+    /* Also add the masked color to the reveal buffer. */
+    vec3 col = texture(colorBuf, uvcoordsvar.xy).rgb;
+    if (all(lessThan(abs(col - maskColor), vec3(0.05)))) {
+      fragColor = vec4(1.0);
+    }
+  }
+  else {
+    /* Premult by foreground alpha (alpha mask). */
+    float mask = 1.0 - clamp(dot(vec3(0.333334), texture(colorBuf, uvcoordsvar.xy).rgb), 0.0, 1.0);
+
+    /* fragRevealage is blurred shadow. */
+    float rim = clamp(dot(vec3(0.333334), fragRevealage.rgb), 0.0, 1.0);
+
+    vec4 color = vec4(rimColor, 1.0);
+
+    blend_mode_output(blendMode, color, rim * mask, fragColor, fragRevealage);
+  }
+}
+
 #elif defined(SHADOW)
 
 uniform vec4 shadowColor;
