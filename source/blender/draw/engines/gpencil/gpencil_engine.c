@@ -822,7 +822,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   float object_scale = mat4_to_scale(iter->ob->obmat);
   /* Negate thickness sign to tag that strokes are in screen space.
    * Convert to world units (by default, 1 meter = 2000 px). */
-  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / 2000.0f);
+  float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
 
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);

@@ -44,6 +44,9 @@ struct GPUVertFormat;
 #define GPENCIL_MAX_SHGROUPS 65536
 #define GPENCIL_GROUPS_BLOCK_SIZE 1024
 
+/* used to convert pixel scale. */
+#define GPENCIL_PIXEL_FACTOR 2000.0f
+
 /* used to expand VBOs. Size has a big impact in the speed */
 #define GPENCIL_VBO_BLOCK_SIZE 128
 
