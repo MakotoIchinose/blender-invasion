@@ -175,6 +175,15 @@ struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
   return e_data->fx_composite_sh;
 }
 
+struct GPUShader *GPENCIL_shader_fx_flip_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_flip_sh) {
+    e_data->fx_flip_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                      "#define FLIP\n");
+  }
+  return e_data->fx_flip_sh;
+}
+
 struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_glow_sh) {

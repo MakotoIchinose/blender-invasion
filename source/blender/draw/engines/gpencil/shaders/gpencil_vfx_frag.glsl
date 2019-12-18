@@ -106,6 +106,17 @@ void main()
   fragRevealage /= weight_accum;
 }
 
+#elif defined(FLIP)
+
+uniform vec2 axisFlip;
+
+void main()
+{
+  vec2 uv = (uvcoordsvar.xy - 0.5) * axisFlip + 0.5;
+  fragColor = texture(colorBuf, uv);
+  fragRevealage = texture(revealBuf, uv);
+}
+
 #elif defined(GLOW)
 
 uniform vec3 glowColor;

@@ -1135,6 +1135,22 @@ static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), g
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
+static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  float axis_flip[2];
+  axis_flip[0] = (fx->flag & FX_FLIP_HORIZONTAL) ? -1.0f : 1.0f;
+  axis_flip[1] = (fx->flag & FX_FLIP_VERTICAL) ? -1.0f : 1.0f;
+
+  GPUShader *sh = GPENCIL_shader_fx_flip_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", axis_flip);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
 static void gpencil_vfx_rim(RimShaderFxData *fx, Object *ob, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
@@ -1437,6 +1453,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
           gpencil_vfx_colorize((ColorizeShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Flip:
+          gpencil_vfx_flip((FlipShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Light:
           break;
@@ -1455,6 +1472,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
         case eShaderFxType_Swirl:
           break;
         case eShaderFxType_Wave:
+          // gpencil_vfx_wave((GlowShaderFxData *)fx, ob, &iter);
           break;
         default:
           break;
