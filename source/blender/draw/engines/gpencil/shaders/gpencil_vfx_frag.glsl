@@ -35,8 +35,8 @@ void main()
 
 #elif defined(COLORIZE)
 
-uniform vec3 low_color;
-uniform vec3 high_color;
+uniform vec3 lowColor;
+uniform vec3 highColor;
 uniform float factor;
 uniform int mode;
 
@@ -65,10 +65,10 @@ void main()
       fragColor.rgb = mix(fragColor.rgb, sepia_mat * fragColor.rgb, factor);
       break;
     case MODE_DUOTONE:
-      fragColor.rgb = luma * ((luma <= factor) ? low_color : high_color);
+      fragColor.rgb = luma * ((luma <= factor) ? lowColor : highColor);
       break;
     case MODE_CUSTOM:
-      fragColor.rgb = mix(fragColor.rgb, luma * low_color, factor);
+      fragColor.rgb = mix(fragColor.rgb, luma * lowColor, factor);
       break;
     case MODE_TRANSPARENT:
     default:
@@ -133,7 +133,7 @@ void main()
     vec3 col = texture(colorBuf, uv).rgb;
     if (threshold.x > -1.0) {
       if (threshold.y > -1.0) {
-        if (all(lessThan(vec3(0.05), abs(col - threshold)))) {
+        if (all(lessThan(abs(col - threshold), vec3(0.05)))) {
           weight = 0.0;
         }
       }

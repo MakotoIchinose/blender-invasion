@@ -1128,8 +1128,8 @@ static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), g
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Colorize", state, iter, sh);
-  DRW_shgroup_uniform_vec3_copy(grp, "low_color", fx->low_color);
-  DRW_shgroup_uniform_vec3_copy(grp, "high_color", fx->high_color);
+  DRW_shgroup_uniform_vec3_copy(grp, "lowColor", fx->low_color);
+  DRW_shgroup_uniform_vec3_copy(grp, "highColor", fx->high_color);
   DRW_shgroup_uniform_float_copy(grp, "factor", fx->factor);
   DRW_shgroup_uniform_int_copy(grp, "mode", fx->mode);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
