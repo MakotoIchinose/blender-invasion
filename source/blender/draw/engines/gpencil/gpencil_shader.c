@@ -141,6 +141,33 @@ struct GPUShader *GPENCIL_shader_fx_colorize_get(GPENCIL_e_data *e_data)
   return e_data->fx_colorize_sh;
 }
 
+struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_composite_sh) {
+    e_data->fx_composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                           "#define COMPOSITE\n");
+  }
+  return e_data->fx_composite_sh;
+}
+
+struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_glow_sh) {
+    e_data->fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                      "#define GLOW\n");
+  }
+  return e_data->fx_glow_sh;
+}
+
+struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_pixel_sh) {
+    e_data->fx_pixel_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                       "#define PIXELIZE\n");
+  }
+  return e_data->fx_pixel_sh;
+}
+
 struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_rim_sh) {
@@ -166,42 +193,6 @@ struct GPUShader *GPENCIL_shader_fx_rim_get(GPENCIL_e_data *e_data)
   return e_data->fx_rim_sh;
 }
 
-struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
-{
-  if (!e_data->fx_composite_sh) {
-    e_data->fx_composite_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                           "#define COMPOSITE\n");
-  }
-  return e_data->fx_composite_sh;
-}
-
-struct GPUShader *GPENCIL_shader_fx_flip_get(GPENCIL_e_data *e_data)
-{
-  if (!e_data->fx_flip_sh) {
-    e_data->fx_flip_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                      "#define FLIP\n");
-  }
-  return e_data->fx_flip_sh;
-}
-
-struct GPUShader *GPENCIL_shader_fx_glow_get(GPENCIL_e_data *e_data)
-{
-  if (!e_data->fx_glow_sh) {
-    e_data->fx_glow_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                      "#define GLOW\n");
-  }
-  return e_data->fx_glow_sh;
-}
-
-struct GPUShader *GPENCIL_shader_fx_pixelize_get(GPENCIL_e_data *e_data)
-{
-  if (!e_data->fx_pixel_sh) {
-    e_data->fx_pixel_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
-                                                       "#define PIXELIZE\n");
-  }
-  return e_data->fx_pixel_sh;
-}
-
 struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_shadow_sh) {
@@ -209,4 +200,13 @@ struct GPUShader *GPENCIL_shader_fx_shadow_get(GPENCIL_e_data *e_data)
                                                         "#define SHADOW\n");
   }
   return e_data->fx_shadow_sh;
+}
+
+struct GPUShader *GPENCIL_shader_fx_transform_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_transform_sh) {
+    e_data->fx_transform_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                           "#define TRANSFORM\n");
+  }
+  return e_data->fx_transform_sh;
 }

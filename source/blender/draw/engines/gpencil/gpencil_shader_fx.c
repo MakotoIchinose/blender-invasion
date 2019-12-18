@@ -1143,11 +1143,12 @@ static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   axis_flip[0] = (fx->flag & FX_FLIP_HORIZONTAL) ? -1.0f : 1.0f;
   axis_flip[1] = (fx->flag & FX_FLIP_VERTICAL) ? -1.0f : 1.0f;
 
-  GPUShader *sh = GPENCIL_shader_fx_flip_get(&en_data);
+  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
   DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", axis_flip);
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", (float[2]){0.0f, 0.0f});
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
@@ -1426,6 +1427,63 @@ static void gpencil_vfx_glow(GlowShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
+static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  float winmat[4][4], persmat[4][4], wave_center[3];
+  float wave_ofs[3], wave_dir[3], wave_phase;
+  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float *vp_size = DRW_viewport_size_get();
+  const float *vp_size_inv = DRW_viewport_invert_size_get();
+  const float ratio = vp_size_inv[1] / vp_size_inv[0];
+
+  copy_v3_v3(wave_center, ob->obmat[3]);
+
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, wave_center));
+  mul_v3_m4v3(wave_center, persmat, wave_center);
+  mul_v3_fl(wave_center, 1.0f / w);
+
+  /* Modify by distance to camera and object scale. */
+  float world_pixel_scale = 1.0f / 2000.0f;
+  float scale = mat4_to_scale(ob->obmat);
+  float distance_factor = (world_pixel_scale * scale * winmat[1][1] * vp_size[1]) / w;
+
+  wave_center[0] = wave_center[0] * 0.5f + 0.5f;
+  wave_center[1] = wave_center[1] * 0.5f + 0.5f;
+
+  if (fx->orientation == 0) {
+    /* Horizontal */
+    copy_v2_fl2(wave_dir, 1.0f, 0.0f);
+  }
+  else {
+    /* Vertical */
+    copy_v2_fl2(wave_dir, 0.0f, 1.0f);
+  }
+  /* Rotate 90°. */
+  copy_v2_v2(wave_ofs, wave_dir);
+  SWAP(float, wave_ofs[0], wave_ofs[1]);
+  wave_ofs[1] *= -1.0f;
+  /* Keep world space scalling and aspect ratio. */
+  mul_v2_fl(wave_dir, 1.0f / (max_ff(1e-8f, fx->period) * distance_factor));
+  mul_v2_v2(wave_dir, vp_size);
+  mul_v2_fl(wave_ofs, fx->amplitude * distance_factor);
+  mul_v2_v2(wave_ofs, vp_size_inv);
+  /* Phase start at shadow center. */
+  wave_phase = fx->phase - dot_v2v2(wave_center, wave_dir);
+
+  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Wave", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", (float[2]){1.0f, 1.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "waveDir", wave_dir);
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", wave_ofs);
+  DRW_shgroup_uniform_float_copy(grp, "wavePhase", wave_phase);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
 void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob)
 {
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -1472,7 +1530,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
         case eShaderFxType_Swirl:
           break;
         case eShaderFxType_Wave:
-          // gpencil_vfx_wave((GlowShaderFxData *)fx, ob, &iter);
+          gpencil_vfx_wave((WaveShaderFxData *)fx, ob, &iter);
           break;
         default:
           break;

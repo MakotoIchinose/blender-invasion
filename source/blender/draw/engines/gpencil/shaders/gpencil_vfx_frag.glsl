@@ -106,13 +106,21 @@ void main()
   fragRevealage /= weight_accum;
 }
 
-#elif defined(FLIP)
+#elif defined(TRANSFORM)
 
-uniform vec2 axisFlip;
+uniform vec2 axisFlip = vec2(1.0);
+uniform vec2 waveDir = vec2(0.0);
+uniform vec2 waveOffset = vec2(0.0);
+uniform float wavePhase = 0.0;
 
 void main()
 {
   vec2 uv = (uvcoordsvar.xy - 0.5) * axisFlip + 0.5;
+
+  /* Wave deform. */
+  float wave_time = dot(uv, waveDir.xy);
+  uv += sin(wave_time + wavePhase) * waveOffset;
+
   fragColor = texture(colorBuf, uv);
   fragRevealage = texture(revealBuf, uv);
 }

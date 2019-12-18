@@ -362,11 +362,11 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.fx_blur_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_colorize_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_composite_sh);
-  DRW_SHADER_FREE_SAFE(e_data.fx_flip_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_glow_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_pixel_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_rim_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_shadow_sh);
+  DRW_SHADER_FREE_SAFE(e_data.fx_transform_sh);
 
   DRW_TEXTURE_FREE_SAFE(e_data.gpencil_blank_texture);
 
