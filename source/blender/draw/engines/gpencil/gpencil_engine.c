@@ -360,6 +360,7 @@ static void GPENCIL_engine_free(void)
   DRW_SHADER_FREE_SAFE(e_data.depth_merge_sh);
 
   DRW_SHADER_FREE_SAFE(e_data.fx_blur_sh);
+  DRW_SHADER_FREE_SAFE(e_data.fx_colorize_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_composite_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_glow_sh);
   DRW_SHADER_FREE_SAFE(e_data.fx_pixel_sh);

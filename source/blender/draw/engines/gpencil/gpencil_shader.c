@@ -121,6 +121,15 @@ struct GPUShader *GPENCIL_shader_fx_blur_get(GPENCIL_e_data *e_data)
   return e_data->fx_blur_sh;
 }
 
+struct GPUShader *GPENCIL_shader_fx_colorize_get(GPENCIL_e_data *e_data)
+{
+  if (!e_data->fx_colorize_sh) {
+    e_data->fx_colorize_sh = DRW_shader_create_fullscreen(datatoc_gpencil_vfx_frag_glsl,
+                                                          "#define COLORIZE\n");
+  }
+  return e_data->fx_colorize_sh;
+}
+
 struct GPUShader *GPENCIL_shader_fx_composite_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->fx_composite_sh) {

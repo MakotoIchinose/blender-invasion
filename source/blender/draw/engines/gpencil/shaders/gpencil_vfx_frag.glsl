@@ -33,6 +33,51 @@ void main()
   }
 }
 
+#elif defined(COLORIZE)
+
+uniform vec3 low_color;
+uniform vec3 high_color;
+uniform float factor;
+uniform int mode;
+
+const mat3 sepia_mat = mat3(
+    vec3(0.393, 0.349, 0.272), vec3(0.769, 0.686, 0.534), vec3(0.189, 0.168, 0.131));
+
+#  define MODE_GRAYSCALE 0
+#  define MODE_SEPIA 1
+#  define MODE_DUOTONE 2
+#  define MODE_CUSTOM 3
+#  define MODE_TRANSPARENT 4
+
+void main()
+{
+  fragColor = texture(colorBuf, uvcoordsvar.xy);
+  fragRevealage = texture(revealBuf, uvcoordsvar.xy);
+
+  float luma = dot(fragColor.rgb, vec3(0.2126, 0.7152, 0.723));
+
+  /* No blending. */
+  switch (mode) {
+    case MODE_GRAYSCALE:
+      fragColor.rgb = mix(fragColor.rgb, vec3(luma), factor);
+      break;
+    case MODE_SEPIA:
+      fragColor.rgb = mix(fragColor.rgb, sepia_mat * fragColor.rgb, factor);
+      break;
+    case MODE_DUOTONE:
+      fragColor.rgb = luma * ((luma <= factor) ? low_color : high_color);
+      break;
+    case MODE_CUSTOM:
+      fragColor.rgb = mix(fragColor.rgb, luma * low_color, factor);
+      break;
+    case MODE_TRANSPARENT:
+    default:
+      fragColor.rgb *= factor;
+      fragRevealage.rgb = mix(vec3(1.0), fragRevealage.rgb, factor);
+      break;
+  }
+}
+
 #elif defined(BLUR)
 
 uniform vec2 offset;

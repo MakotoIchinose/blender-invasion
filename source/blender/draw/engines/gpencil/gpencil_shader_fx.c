@@ -1120,6 +1120,21 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
+static void gpencil_vfx_colorize(ColorizeShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  GPUShader *sh = GPENCIL_shader_fx_colorize_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Colorize", state, iter, sh);
+  DRW_shgroup_uniform_vec3_copy(grp, "low_color", fx->low_color);
+  DRW_shgroup_uniform_vec3_copy(grp, "high_color", fx->high_color);
+  DRW_shgroup_uniform_float_copy(grp, "factor", fx->factor);
+  DRW_shgroup_uniform_int_copy(grp, "mode", fx->mode);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
 static void gpencil_vfx_pixelize(PixelShaderFxData *fx, Object *ob, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
@@ -1347,6 +1362,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
           gpencil_vfx_blur((BlurShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Colorize:
+          gpencil_vfx_colorize((ColorizeShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Flip:
           break;
