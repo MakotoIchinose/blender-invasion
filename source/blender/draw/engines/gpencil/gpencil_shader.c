@@ -75,8 +75,19 @@ struct GPUShader *GPENCIL_shader_composite_get(GPENCIL_e_data *e_data)
 struct GPUShader *GPENCIL_shader_layer_blend_get(GPENCIL_e_data *e_data)
 {
   if (!e_data->layer_blend_sh) {
-    e_data->layer_blend_sh = DRW_shader_create_fullscreen(datatoc_gpencil_layer_blend_frag_glsl,
-                                                          NULL);
+    e_data->layer_blend_sh = GPU_shader_create_from_arrays({
+        .vert =
+            (const char *[]){
+                datatoc_common_fullscreen_vert_glsl,
+                NULL,
+            },
+        .frag =
+            (const char *[]){
+                datatoc_gpencil_common_lib_glsl,
+                datatoc_gpencil_layer_blend_frag_glsl,
+                NULL,
+            },
+    });
   }
   return e_data->layer_blend_sh;
 }
