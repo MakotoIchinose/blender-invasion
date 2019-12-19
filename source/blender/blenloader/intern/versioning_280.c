@@ -4381,12 +4381,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
           switch (fx->type) {
-            case eShaderFxType_Colorize:
+            case eShaderFxType_Colorize: {
               ColorizeShaderFxData *vfx = (ColorizeShaderFxData *)fx;
               if (ELEM(vfx->mode, eShaderFxColorizeMode_GrayScale, eShaderFxColorizeMode_Sepia)) {
                 vfx->factor = 1.0f;
               }
               break;
+            }
             default:
               break;
           }
