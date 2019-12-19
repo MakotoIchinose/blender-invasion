@@ -321,6 +321,12 @@ static void GPENCIL_engine_init_new(void *ved)
 
   gpencil_light_ambient_add(stl->pd->shadeless_light_pool, (float[3]){1.0f, 1.0f, 1.0f});
 
+  const DRWContextState *ctx = DRW_context_state_get();
+  World *world = ctx->scene->world;
+  if (world != NULL) {
+    gpencil_light_ambient_add(stl->pd->global_light_pool, &world->horr);
+  }
+
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
   copy_v3_v3(stl->pd->camera_z_axis, viewmatinv[2]);
