@@ -143,8 +143,6 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
         layout.prop(fx, "radius")
         layout.prop(fx, "angle")
 
-        layout.prop(fx, "use_transparent")
-
     def FX_FLIP(self, layout, fx):
         layout.prop(fx, "flip_horizontal")
         layout.prop(fx, "flip_vertical")
