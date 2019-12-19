@@ -75,8 +75,7 @@ class DATA_PT_shader_fx(ShaderFxButtonsPanel, Panel):
         if fx.mode == 'BITONE':
             layout.prop(fx, "high_color", text="High Color")
 
-        if fx.mode in {'BITONE', 'CUSTOM', 'TRANSPARENT'}:
-            layout.prop(fx, "factor")
+        layout.prop(fx, "factor")
 
     def FX_WAVE(self, layout, fx):
         row = layout.row(align=True)
