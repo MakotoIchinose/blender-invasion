@@ -314,9 +314,12 @@ static void GPENCIL_engine_init_new(void *ved)
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->is_render = true; /* TODO */
   stl->pd->global_light_pool = gpencil_light_pool_add(stl->pd);
+  stl->pd->shadeless_light_pool = gpencil_light_pool_add(stl->pd);
   /* Small HACK: we don't want the global pool to be reused,
    * so we set the last light pool to NULL. */
   stl->pd->last_light_pool = NULL;
+
+  gpencil_light_ambient_add(stl->pd->shadeless_light_pool, (float[3]){1.0f, 1.0f, 1.0f});
 
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
@@ -802,6 +805,7 @@ typedef struct gpIterPopulateData {
   int mat_ofs;
   /* Last material UBO bound. Used to avoid uneeded buffer binding. */
   GPUUniformBuffer *ubo_mat;
+  GPUUniformBuffer *ubo_lights;
   /* Last texture bound. */
   GPUTexture *tex_fill;
   GPUTexture *tex_stroke;
@@ -824,7 +828,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   }
 
   GPUUniformBuffer *ubo_mat;
-  gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &ubo_mat);
+  gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &iter->ubo_mat);
 
   const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
@@ -834,10 +838,14 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
    * Convert to world units (by default, 1 meter = 2000 px). */
   float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / GPENCIL_PIXEL_FACTOR);
 
+  const bool use_lights = (gpl->flag & GP_LAYER_USE_LIGHTS) != 0;
+  iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
+                                    iter->pd->shadeless_light_pool->ubo;
+
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
-  DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
-  DRW_shgroup_uniform_block(iter->grp, "gpLightBlock", iter->pd->global_light_pool->ubo);
+  DRW_shgroup_uniform_block(iter->grp, "gpLightBlock", iter->ubo_lights);
+  DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", iter->ubo_mat);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);

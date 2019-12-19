@@ -175,8 +175,6 @@ typedef struct GPENCIL_MaterialPool {
 } GPENCIL_MaterialPool;
 
 typedef struct GPENCIL_LightPool {
-  /* Linklist. */
-  struct GPENCIL_LightPool *next;
   /* GPU representatin of materials. */
   gpLight light_data[GPENCIL_LIGHT_BUFFER_LEN];
   /* Matching ubo. */
@@ -452,6 +450,8 @@ typedef struct GPENCIL_PrivateData {
   GPENCIL_LightPool *last_light_pool;
   /* Common lightpool containing all lights in the scene. */
   GPENCIL_LightPool *global_light_pool;
+  /* Common lightpool containing one ambient white light. */
+  GPENCIL_LightPool *shadeless_light_pool;
   /* Linked list of tObjects. */
   struct {
     GPENCIL_tObject *first, *last;
@@ -731,6 +731,7 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     struct GPUTexture **r_tex_fill,
                                     struct GPUUniformBuffer **r_ubo_mat);
 /*  Meh, TODO fix naming...*/
+void gpencil_light_ambient_add(GPENCIL_LightPool *lightpool, const float color[3]);
 void gpencil_light_pool_populate(GPENCIL_LightPool *matpool, Object *ob);
 GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd);
 GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *ob);

@@ -37,7 +37,6 @@
 GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd)
 {
   GPENCIL_LightPool *lightpool = BLI_memblock_alloc(pd->gp_light_pool);
-  lightpool->next = NULL;
   lightpool->light_used = 0;
   /* Tag light list end. */
   lightpool->light_data[0].color[0] = -1.0;
@@ -220,6 +219,23 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
   }
   if (r_tex_stroke) {
     *r_tex_stroke = matpool->tex_stroke[mat_id];
+  }
+}
+
+void gpencil_light_ambient_add(GPENCIL_LightPool *lightpool, const float color[3])
+{
+  if (lightpool->light_used >= GPENCIL_LIGHT_BUFFER_LEN) {
+    return;
+  }
+
+  gpLight *gp_light = &lightpool->light_data[lightpool->light_used];
+  gp_light->type = GP_LIGHT_TYPE_SUN;
+  copy_v3_v3(gp_light->color, color);
+  lightpool->light_used++;
+
+  if (lightpool->light_used < GPENCIL_LIGHT_BUFFER_LEN) {
+    /* Tag light list end. */
+    gp_light[1].color[0] = -1.0f;
   }
 }
 
