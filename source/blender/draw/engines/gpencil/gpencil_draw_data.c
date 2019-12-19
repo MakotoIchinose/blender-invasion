@@ -194,6 +194,10 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
       copy_v4_v4(mat_data->fill_color, gp_style->fill_rgba);
       mat_data->fill_texture_mix = 0.0f;
     }
+
+    /* TODO fix the color in the dna instead */
+    srgb_to_linearrgb_v4(mat_data->fill_color, mat_data->fill_color);
+    srgb_to_linearrgb_v4(mat_data->stroke_color, mat_data->stroke_color);
   }
 
   *ofs = 0;

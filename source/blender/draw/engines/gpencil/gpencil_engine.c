@@ -848,6 +848,10 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   iter->ubo_lights = (use_lights) ? iter->pd->global_light_pool->ubo :
                                     iter->pd->shadeless_light_pool->ubo;
 
+  /* TODO fix the color in the dna instead */
+  float tint_col[4];
+  srgb_to_linearrgb_v4(tint_col, gpl->tintcolor);
+
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block(iter->grp, "gpLightBlock", iter->ubo_lights);
@@ -866,7 +870,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessOffset", (float)gpl->line_change);
   DRW_shgroup_uniform_float_copy(iter->grp, "thicknessWorldScale", thickness_scale);
   DRW_shgroup_uniform_float_copy(iter->grp, "vertexColorOpacity", gpl->vertex_paint_opacity);
-  DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", gpl->tintcolor);
+  DRW_shgroup_uniform_vec4_copy(iter->grp, "layerTint", tint_col);
   DRW_shgroup_stencil_mask(iter->grp, 0xFF);
 }
 

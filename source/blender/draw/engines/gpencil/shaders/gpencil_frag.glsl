@@ -56,13 +56,13 @@ void main()
   vec4 col;
   if (GP_FLAG_TEST(matFlag, GP_STROKE_TEXTURE_USE)) {
     bool premul = GP_FLAG_TEST(matFlag, GP_STROKE_TEXTURE_PREMUL);
-    col = texture_read_as_srgb(gpStrokeTexture, premul, finalUvs);
+    col = texture_read_as_linearrgb(gpStrokeTexture, premul, finalUvs);
   }
   else if (GP_FLAG_TEST(matFlag, GP_FILL_TEXTURE_USE)) {
     bool use_clip = GP_FLAG_TEST(matFlag, GP_FILL_TEXTURE_CLIP);
     vec2 uvs = (use_clip) ? clamp(finalUvs, 0.0, 1.0) : finalUvs;
     bool premul = GP_FLAG_TEST(matFlag, GP_FILL_TEXTURE_PREMUL);
-    col = texture_read_as_srgb(gpFillTexture, premul, uvs);
+    col = texture_read_as_linearrgb(gpFillTexture, premul, uvs);
   }
   else /* SOLID */ {
     col = vec4(1.0);
