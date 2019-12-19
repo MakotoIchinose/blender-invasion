@@ -37,6 +37,7 @@ in vec4 col2;
 
 out vec4 finalColorMul;
 out vec4 finalColorAdd;
+out vec3 finalPos;
 out vec2 finalUvs;
 flat out int matFlag;
 flat out float depth;
@@ -154,6 +155,7 @@ void stroke_vertex()
   vec4 ndc2 = point_world_to_ndc(wpos2);
 
   gl_Position = (use_curr) ? ndc1 : ndc2;
+  finalPos = (use_curr) ? wpos1 : wpos2;
 
   /* TODO case where ndc1 & ndc2 is behind camera */
   vec2 ss_adj = project_to_screenspace(ndc_adj);
@@ -240,6 +242,7 @@ void fill_vertex()
 
   vec3 wpos = transform_point(model_mat, pos1.xyz);
   gl_Position = point_world_to_ndc(wpos);
+  finalPos = wpos;
 
   int m = int(ma1.x);
 

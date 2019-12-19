@@ -295,21 +295,28 @@ static void GPENCIL_engine_init_new(void *ved)
   GPENCIL_ViewLayerData *vldata = GPENCIL_view_layer_data_ensure();
 
   /* Resize and reset memblocks. */
+  BLI_memblock_clear(vldata->gp_light_pool, gpencil_light_pool_free);
   BLI_memblock_clear(vldata->gp_material_pool, gpencil_material_pool_free);
   BLI_memblock_clear(vldata->gp_object_pool, NULL);
   BLI_memblock_clear(vldata->gp_layer_pool, NULL);
   BLI_memblock_clear(vldata->gp_vfx_pool, NULL);
 
+  stl->pd->gp_light_pool = vldata->gp_light_pool;
   stl->pd->gp_material_pool = vldata->gp_material_pool;
   stl->pd->gp_object_pool = vldata->gp_object_pool;
   stl->pd->gp_layer_pool = vldata->gp_layer_pool;
   stl->pd->gp_vfx_pool = vldata->gp_vfx_pool;
+  stl->pd->last_light_pool = NULL;
   stl->pd->last_material_pool = NULL;
   stl->pd->tobjects.first = NULL;
   stl->pd->tobjects.last = NULL;
   stl->pd->draw_depth_only = !DRW_state_is_fbo();
   stl->pd->scene_depth_tx = stl->pd->draw_depth_only ? txl->dummy_texture : dtxl->depth;
   stl->pd->is_render = true; /* TODO */
+  stl->pd->global_light_pool = gpencil_light_pool_add(stl->pd);
+  /* Small HACK: we don't want the global pool to be reused,
+   * so we set the last light pool to NULL. */
+  stl->pd->last_light_pool = NULL;
 
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
@@ -830,6 +837,7 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
   struct GPUShader *sh = GPENCIL_shader_geometry_get(&en_data);
   iter->grp = DRW_shgroup_create(sh, tgp_layer->geom_ps);
   DRW_shgroup_uniform_block(iter->grp, "gpMaterialBlock", ubo_mat);
+  DRW_shgroup_uniform_block(iter->grp, "gpLightBlock", iter->pd->global_light_pool->ubo);
   DRW_shgroup_uniform_texture(iter->grp, "gpFillTexture", iter->tex_fill);
   DRW_shgroup_uniform_texture(iter->grp, "gpStrokeTexture", iter->tex_stroke);
   DRW_shgroup_uniform_texture(iter->grp, "gpSceneDepthTexture", iter->pd->scene_depth_tx);
@@ -930,6 +938,10 @@ static void GPENCIL_cache_populate_new(void *ved, Object *ob)
         ob, gp_layer_cache_populate, gp_stroke_cache_populate, &iter);
 
     gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
+  }
+
+  if (ob->type == OB_LAMP) {
+    gpencil_light_pool_populate(pd->global_light_pool, ob);
   }
 }
 
@@ -1049,9 +1061,14 @@ static void GPENCIL_cache_finish_new(void *ved)
   BLI_memblock_iter iter;
   BLI_memblock_iternew(pd->gp_material_pool, &iter);
   GPENCIL_MaterialPool *pool;
-
   while ((pool = (GPENCIL_MaterialPool *)BLI_memblock_iterstep(&iter))) {
     GPU_uniformbuffer_update(pool->ubo, pool->mat_data);
+  }
+
+  BLI_memblock_iternew(pd->gp_light_pool, &iter);
+  GPENCIL_LightPool *lpool;
+  while ((lpool = (GPENCIL_LightPool *)BLI_memblock_iterstep(&iter))) {
+    GPU_uniformbuffer_update(lpool->ubo, lpool->light_data);
   }
 
   /* Sort object by distance to the camera. */

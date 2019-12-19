@@ -22,6 +22,8 @@
 
 #include "DRW_render.h"
 
+#include "DNA_light_types.h"
+
 #include "BKE_image.h"
 
 #include "BLI_memblock.h"
@@ -31,6 +33,20 @@
 #include "IMB_imbuf_types.h"
 
 #include "gpencil_engine.h"
+
+GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd)
+{
+  GPENCIL_LightPool *lightpool = BLI_memblock_alloc(pd->gp_light_pool);
+  lightpool->next = NULL;
+  lightpool->light_used = 0;
+  /* Tag light list end. */
+  lightpool->light_data[0].color[0] = -1.0;
+  if (lightpool->ubo == NULL) {
+    lightpool->ubo = GPU_uniformbuffer_create(sizeof(lightpool->light_data), NULL, NULL);
+  }
+  pd->last_light_pool = lightpool;
+  return lightpool;
+}
 
 static GPENCIL_MaterialPool *gpencil_material_pool_add(GPENCIL_PrivateData *pd)
 {
@@ -207,16 +223,60 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
   }
 }
 
+void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
+{
+  Light *la = (Light *)ob->data;
+
+  if (lightpool->light_used >= GPENCIL_LIGHT_BUFFER_LEN) {
+    return;
+  }
+
+  gpLight *gp_light = &lightpool->light_data[lightpool->light_used];
+  copy_v3_v3(gp_light->position, ob->obmat[3]);
+  copy_v3_v3(gp_light->color, &la->r);
+  mul_v3_fl(gp_light->color, la->energy);
+
+  lightpool->light_used++;
+
+  if (lightpool->light_used < GPENCIL_LIGHT_BUFFER_LEN) {
+    /* Tag light list end. */
+    gp_light[1].color[0] = -1.0f;
+  }
+}
+
+/**
+ * Creates a single pool containing all lights assigned (light linked) for a given object.
+ **/
+GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *UNUSED(ob))
+{
+  GPENCIL_LightPool *lightpool = pd->last_light_pool;
+
+  if (lightpool == NULL) {
+    lightpool = gpencil_light_pool_add(pd);
+  }
+  /* TODO */
+  // gpencil_light_pool_populate(lightpool, ob);
+
+  return lightpool;
+}
+
 void gpencil_material_pool_free(void *storage)
 {
   GPENCIL_MaterialPool *matpool = (GPENCIL_MaterialPool *)storage;
   DRW_UBO_FREE_SAFE(matpool->ubo);
 }
 
+void gpencil_light_pool_free(void *storage)
+{
+  GPENCIL_LightPool *lightpool = (GPENCIL_LightPool *)storage;
+  DRW_UBO_FREE_SAFE(lightpool->ubo);
+}
+
 static void gpencil_view_layer_data_free(void *storage)
 {
   GPENCIL_ViewLayerData *vldata = (GPENCIL_ViewLayerData *)storage;
 
+  BLI_memblock_destroy(vldata->gp_light_pool, gpencil_light_pool_free);
   BLI_memblock_destroy(vldata->gp_material_pool, gpencil_material_pool_free);
   BLI_memblock_destroy(vldata->gp_object_pool, NULL);
   BLI_memblock_destroy(vldata->gp_layer_pool, NULL);
@@ -234,6 +294,7 @@ GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void)
   if (*vldata == NULL) {
     *vldata = MEM_callocN(sizeof(**vldata), "GPENCIL_ViewLayerData");
 
+    (*vldata)->gp_light_pool = BLI_memblock_create(sizeof(GPENCIL_LightPool));
     (*vldata)->gp_material_pool = BLI_memblock_create(sizeof(GPENCIL_MaterialPool));
     (*vldata)->gp_object_pool = BLI_memblock_create(sizeof(GPENCIL_tObject));
     (*vldata)->gp_layer_pool = BLI_memblock_create(sizeof(GPENCIL_tLayer));

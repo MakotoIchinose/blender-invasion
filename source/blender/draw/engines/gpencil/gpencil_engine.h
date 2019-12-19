@@ -87,7 +87,16 @@ typedef struct gpMaterial {
 #define GP_FILL_TEXTURE_PREMUL (1 << 11)
 #define GP_FILL_TEXTURE_CLIP (1 << 12)
 
+#define GPENCIL_LIGHT_BUFFER_LEN 128
+
+/* UBO structure. Watch out for padding. Must match GLSL declaration. */
+typedef struct gpLight {
+  float color[4];
+  float position[4];
+} gpLight;
+
 BLI_STATIC_ASSERT_ALIGN(gpMaterial, 16)
+BLI_STATIC_ASSERT_ALIGN(gpLight, 16)
 
 /* *********** OBJECTS CACHE *********** */
 typedef struct tGPencilObjectCache_shgrp {
@@ -156,6 +165,17 @@ typedef struct GPENCIL_MaterialPool {
   struct GPUTexture *tex_stroke[GPENCIL_MATERIAL_BUFFER_LEN];
 } GPENCIL_MaterialPool;
 
+typedef struct GPENCIL_LightPool {
+  /* Linklist. */
+  struct GPENCIL_LightPool *next;
+  /* GPU representatin of materials. */
+  gpLight light_data[GPENCIL_LIGHT_BUFFER_LEN];
+  /* Matching ubo. */
+  struct GPUUniformBuffer *ubo;
+  /* Number of light in the pool. */
+  int light_used;
+} GPENCIL_LightPool;
+
 typedef struct GPENCIL_ViewLayerData {
   /* GPENCIL_tObject */
   struct BLI_memblock *gp_object_pool;
@@ -165,6 +185,8 @@ typedef struct GPENCIL_ViewLayerData {
   struct BLI_memblock *gp_vfx_pool;
   /* GPENCIL_MaterialPool */
   struct BLI_memblock *gp_material_pool;
+  /* GPENCIL_LightPool */
+  struct BLI_memblock *gp_light_pool;
 } GPENCIL_ViewLayerData;
 
 /* *********** GPencil  *********** */
@@ -414,8 +436,13 @@ typedef struct GPENCIL_PrivateData {
   struct BLI_memblock *gp_layer_pool;
   struct BLI_memblock *gp_vfx_pool;
   struct BLI_memblock *gp_material_pool;
+  struct BLI_memblock *gp_light_pool;
   /* Last used material pool. */
   GPENCIL_MaterialPool *last_material_pool;
+  /* Last used light pool. */
+  GPENCIL_LightPool *last_light_pool;
+  /* Common lightpool containing all lights in the scene. */
+  GPENCIL_LightPool *global_light_pool;
   /* Linked list of tObjects. */
   struct {
     GPENCIL_tObject *first, *last;
@@ -694,6 +721,10 @@ void gpencil_material_resources_get(GPENCIL_MaterialPool *first_pool,
                                     struct GPUTexture **r_tex_stroke,
                                     struct GPUTexture **r_tex_fill,
                                     struct GPUUniformBuffer **r_ubo_mat);
+/*  Meh, TODO fix naming...*/
+void gpencil_light_pool_populate(GPENCIL_LightPool *matpool, Object *ob);
+GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd);
+GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *ob);
 
 /* effects */
 void GPENCIL_create_fx_shaders(struct GPENCIL_e_data *e_data);
@@ -741,6 +772,7 @@ void GPENCIL_render_to_image(void *vedata,
                              const rcti *rect);
 
 /* Draw Data. */
+void gpencil_light_pool_free(void *storage);
 void gpencil_material_pool_free(void *storage);
 GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void);
 

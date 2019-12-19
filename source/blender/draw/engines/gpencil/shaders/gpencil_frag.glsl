@@ -5,6 +5,7 @@ uniform sampler2D gpSceneDepthTexture;
 
 in vec4 finalColorMul;
 in vec4 finalColorAdd;
+in vec3 finalPos;
 in vec2 finalUvs;
 flat in int matFlag;
 flat in float depth;
@@ -15,6 +16,25 @@ layout(location = 1) out vec4 revealColor;
 float length_squared(vec2 v)
 {
   return dot(v, v);
+}
+float length_squared(vec3 v)
+{
+  return dot(v, v);
+}
+
+vec3 gpencil_lighting(void)
+{
+  vec3 light_accum = vec3(0.0);
+
+  for (int i = 0; i < GPENCIL_LIGHT_BUFFER_LEN; i++) {
+    if (lights[i].color.x == -1.0) {
+      break;
+    }
+    float len_sqr = length_squared(lights[i].position.xyz - finalPos);
+    light_accum += lights[i].color.rgb / len_sqr;
+  }
+
+  return light_accum;
 }
 
 void main()
@@ -34,9 +54,12 @@ void main()
     col = vec4(1.0);
   }
   col.rgb *= col.a;
+
   /* Composite all other colors on top of texture color.
    * Everything is premult by col.a to have the stencil effect. */
   fragColor = col * finalColorMul + col.a * finalColorAdd;
+
+  fragColor.rgb *= gpencil_lighting();
 
   if (GP_FLAG_TEST(matFlag, GP_STROKE_DOTS)) {
     const float rad_sqr_inv = 1.0 / 0.25;
