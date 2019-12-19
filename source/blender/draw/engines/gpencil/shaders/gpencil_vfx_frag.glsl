@@ -112,6 +112,9 @@ uniform vec2 axisFlip = vec2(1.0);
 uniform vec2 waveDir = vec2(0.0);
 uniform vec2 waveOffset = vec2(0.0);
 uniform float wavePhase = 0.0;
+uniform vec2 swirlCenter = vec2(0.0);
+uniform float swirlAngle = 0.0;
+uniform float swirlRadius = 0.0;
 
 void main()
 {
@@ -120,6 +123,18 @@ void main()
   /* Wave deform. */
   float wave_time = dot(uv, waveDir.xy);
   uv += sin(wave_time + wavePhase) * waveOffset;
+  /* Swirl deform. */
+  if (swirlRadius > 0.0) {
+    vec2 tex_size = vec2(textureSize(colorBuf, 0).xy);
+    vec2 pix_coord = uv * tex_size - swirlCenter;
+    float dist = length(pix_coord);
+    float percent = clamp((swirlRadius - dist) / swirlRadius, 0.0, 1.0);
+    float theta = percent * percent * swirlAngle;
+    float s = sin(theta);
+    float c = cos(theta);
+    mat2 rot = mat2(vec2(c, -s), vec2(s, c));
+    uv = (rot * pix_coord + swirlCenter) / tex_size;
+  }
 
   fragColor = texture(colorBuf, uv);
   fragRevealage = texture(revealBuf, uv);

@@ -1149,6 +1149,7 @@ static void gpencil_vfx_flip(FlipShaderFxData *fx, Object *UNUSED(ob), gpIterVfx
   grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
   DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", axis_flip);
   DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", (float[2]){0.0f, 0.0f});
+  DRW_shgroup_uniform_float_copy(grp, "swirlRadius", 0.0f);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
@@ -1437,12 +1438,9 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
   DRW_view_persmat_get(NULL, persmat, false);
   const float *vp_size = DRW_viewport_size_get();
   const float *vp_size_inv = DRW_viewport_invert_size_get();
-  const float ratio = vp_size_inv[1] / vp_size_inv[0];
 
-  copy_v3_v3(wave_center, ob->obmat[3]);
-
-  const float w = fabsf(mul_project_m4_v3_zfac(persmat, wave_center));
-  mul_v3_m4v3(wave_center, persmat, wave_center);
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
+  mul_v3_m4v3(wave_center, persmat, ob->obmat[3]);
   mul_v3_fl(wave_center, 1.0f / w);
 
   /* Modify by distance to camera and object scale. */
@@ -1481,6 +1479,52 @@ static void gpencil_vfx_wave(WaveShaderFxData *fx, Object *ob, gpIterVfxData *it
   DRW_shgroup_uniform_vec2_copy(grp, "waveDir", wave_dir);
   DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", wave_ofs);
   DRW_shgroup_uniform_float_copy(grp, "wavePhase", wave_phase);
+  DRW_shgroup_uniform_float_copy(grp, "swirlRadius", 0.0f);
+  DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+}
+
+static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+{
+  DRWShadingGroup *grp;
+
+  if (fx->object == NULL) {
+    return;
+  }
+
+  float winmat[4][4], persmat[4][4], swirl_center[3];
+  DRW_view_winmat_get(NULL, winmat, false);
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float *vp_size = DRW_viewport_size_get();
+
+  copy_v3_v3(swirl_center, fx->object->obmat[3]);
+
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, swirl_center));
+  mul_v3_m4v3(swirl_center, persmat, swirl_center);
+  mul_v3_fl(swirl_center, 1.0f / w);
+
+  /* Modify by distance to camera and object scale. */
+  float world_pixel_scale = 1.0f / 2000.0f;
+  float scale = mat4_to_scale(fx->object->obmat);
+  float distance_factor = (world_pixel_scale * scale * winmat[1][1] * vp_size[1]) / w;
+
+  mul_v2_fl(swirl_center, 0.5f);
+  add_v2_fl(swirl_center, 0.5f);
+  mul_v2_v2(swirl_center, vp_size);
+
+  float radius = fx->radius * distance_factor;
+  if (radius < 1.0f) {
+    return;
+  }
+
+  GPUShader *sh = GPENCIL_shader_fx_transform_get(&en_data);
+
+  DRWState state = DRW_STATE_WRITE_COLOR;
+  grp = gpencil_vfx_pass_create("Fx Flip", state, iter, sh);
+  DRW_shgroup_uniform_vec2_copy(grp, "axisFlip", (float[2]){1.0f, 1.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "waveOffset", (float[2]){0.0f, 0.0f});
+  DRW_shgroup_uniform_vec2_copy(grp, "swirlCenter", swirl_center);
+  DRW_shgroup_uniform_float_copy(grp, "swirlAngle", fx->angle);
+  DRW_shgroup_uniform_float_copy(grp, "swirlRadius", radius);
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 
@@ -1528,6 +1572,7 @@ void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObjec
           gpencil_vfx_glow((GlowShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Swirl:
+          gpencil_vfx_swirl((SwirlShaderFxData *)fx, ob, &iter);
           break;
         case eShaderFxType_Wave:
           gpencil_vfx_wave((WaveShaderFxData *)fx, ob, &iter);
