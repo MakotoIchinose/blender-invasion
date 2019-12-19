@@ -129,15 +129,18 @@ class VIEW3D_HT_tool_header(Header):
 
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'SCULPT_GPENCIL':
-            brush = context.tool_settings.gpencil_sculpt_paint.brush
-            tool = brush.gpencil_tool
-            if tool in ('SMOOTH', 'RANDOMIZE'):
-                layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_options")
-            layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
+            if is_valid_context:
+                brush = context.tool_settings.gpencil_sculpt_paint.brush
+                tool = brush.gpencil_tool
+                if tool in ('SMOOTH', 'RANDOMIZE'):
+                    layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_options")
+                layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'WEIGHT_GPENCIL':
-            layout.popover("VIEW3D_PT_tools_grease_pencil_weight_appearance")
+            if is_valid_context:
+                layout.popover("VIEW3D_PT_tools_grease_pencil_weight_appearance")
         elif tool_mode == 'VERTEX_GPENCIL':
-            layout.popover("VIEW3D_PT_tools_grease_pencil_vertex_appearance")
+            if is_valid_context:
+                layout.popover("VIEW3D_PT_tools_grease_pencil_vertex_appearance")
 
     def draw_mode_settings(self, context):
         layout = self.layout
@@ -455,7 +458,7 @@ class _draw_tool_settings_context_mode:
     @staticmethod
     def SCULPT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
-            return
+            return False
         paint = context.tool_settings.gpencil_sculpt_paint
         brush = paint.brush
 
@@ -469,7 +472,7 @@ class _draw_tool_settings_context_mode:
     @staticmethod
     def WEIGHT_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
-            return
+            return False
         paint = context.tool_settings.gpencil_weight_paint
         brush = paint.brush
 
@@ -483,7 +486,7 @@ class _draw_tool_settings_context_mode:
     @staticmethod
     def VERTEX_GPENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
-            return
+            return False
 
         paint = context.tool_settings.gpencil_vertex_paint
         brush = paint.brush

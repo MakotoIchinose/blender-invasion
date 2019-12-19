@@ -1833,10 +1833,11 @@ class VIEW3D_PT_tools_grease_pencil_sculpt_select(Panel, View3DPanel, GreasePenc
 
         if context.mode == 'SCULPT_GPENCIL':
             brush = tool_settings.gpencil_sculpt_paint.brush
-            col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
+            if brush is not None:
+                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
 
-            if(brush.use_custom_icon):
-                layout.row().prop(brush, "icon_filepath", text="")
+                if(brush.use_custom_icon):
+                    layout.row().prop(brush, "icon_filepath", text="")
 
 
 class VIEW3D_PT_tools_grease_pencil_sculpt_settings(Panel, View3DPanel, GreasePencilSculptPanel):
@@ -1906,10 +1907,11 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint_select(View3DPanel, Panel, Grea
 
         if context.mode == 'WEIGHT_GPENCIL':
             brush = tool_settings.gpencil_weight_paint.brush
-            col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
+            if brush is not None:
+                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
 
-            if(brush.use_custom_icon):
-                layout.row().prop(brush, "icon_filepath", text="")
+                if(brush.use_custom_icon):
+                    layout.row().prop(brush, "icon_filepath", text="")
 
 
 class VIEW3D_PT_tools_grease_pencil_weight_paint_settings(Panel, View3DPanel, GreasePencilWeightPanel):
@@ -1980,10 +1982,11 @@ class VIEW3D_PT_tools_grease_pencil_vertex_paint_select(View3DPanel, Panel, Grea
 
         if context.mode == 'VERTEX_GPENCIL':
             brush = tool_settings.gpencil_vertex_paint.brush
-            col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
+            if brush is not None:
+                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
 
-            if(brush.use_custom_icon):
-                layout.row().prop(brush, "icon_filepath", text="")
+                if(brush.use_custom_icon):
+                    layout.row().prop(brush, "icon_filepath", text="")
 
 
 class VIEW3D_PT_tools_grease_pencil_vertex_paint_settings(Panel, View3DPanel, GreasePencilVertexPanel):
