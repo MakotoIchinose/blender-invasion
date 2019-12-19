@@ -25,16 +25,30 @@ float length_squared(vec3 v)
 vec3 gpencil_lighting(void)
 {
   vec3 light_accum = vec3(0.0);
-
   for (int i = 0; i < GPENCIL_LIGHT_BUFFER_LEN; i++) {
-    if (lights[i].color.x == -1.0) {
+    if (lights[i].color_type.x == -1.0) {
       break;
     }
-    float len_sqr = length_squared(lights[i].position.xyz - finalPos);
-    light_accum += lights[i].color.rgb / len_sqr;
+    vec3 L = lights[i].position.xyz - finalPos;
+    float vis = 1.0;
+    /* Spot Attenuation. */
+    if (lights[i].color_type.w == GP_LIGHT_TYPE_SPOT) {
+      mat3 rot_scale = mat3(lights[i].right.xyz, lights[i].up.xyz, lights[i].forward.xyz);
+      vec3 local_L = rot_scale * L;
+      local_L /= abs(local_L.z);
+      float ellipse = inversesqrt(length_squared(local_L));
+      vis *= smoothstep(0.0, 1.0, (ellipse - lights[i].spot_size) / lights[i].spot_blend);
+      /* Also mask +Z cone. */
+      vis *= step(0.0, local_L.z);
+    }
+    /* Inverse square decay. Skip for suns. */
+    if (lights[i].color_type.w != GP_LIGHT_TYPE_SUN) {
+      vis /= length_squared(L);
+    }
+    light_accum += vis * lights[i].color_type.rgb;
   }
-
-  return light_accum;
+  /* Clamp to avoid NaNs. */
+  return clamp(light_accum, 0.0, 1e10);
 }
 
 void main()

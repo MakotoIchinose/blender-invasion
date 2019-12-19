@@ -91,9 +91,18 @@ typedef struct gpMaterial {
 
 /* UBO structure. Watch out for padding. Must match GLSL declaration. */
 typedef struct gpLight {
-  float color[4];
+  float color[3], type;
+  float right[3], spotsize;
+  float up[3], spotblend;
+  float forward[4];
   float position[4];
 } gpLight;
+
+/* gpLight->type */
+/* WATCH Keep in sync with GLSL declaration. */
+#define GP_LIGHT_TYPE_POINT 0.0
+#define GP_LIGHT_TYPE_SPOT 1.0
+#define GP_LIGHT_TYPE_SUN 2.0
 
 BLI_STATIC_ASSERT_ALIGN(gpMaterial, 16)
 BLI_STATIC_ASSERT_ALIGN(gpLight, 16)

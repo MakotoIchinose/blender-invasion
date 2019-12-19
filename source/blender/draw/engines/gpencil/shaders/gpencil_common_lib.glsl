@@ -14,13 +14,6 @@ struct gpMaterial {
   /* Please ensure 16 byte alignment (multiple of vec4). */
 };
 
-/* Must match C declaration. */
-struct gpLight {
-  vec4 color;
-  vec4 position;
-  /* Please ensure 16 byte alignment (multiple of vec4). */
-};
-
 /* flag */
 #define GP_STROKE_ALIGNMENT_STROKE 1
 #define GP_STROKE_ALIGNMENT_OBJECT 2
@@ -41,6 +34,23 @@ struct gpLight {
 /* clang-format on */
 
 #define GP_FLAG_TEST(flag, val) (((flag) & (val)) != 0)
+
+/* Must match C declaration. */
+struct gpLight {
+  vec4 color_type;
+  vec4 right;
+  vec4 up;
+  vec4 forward;
+  vec4 position;
+  /* Please ensure 16 byte alignment (multiple of vec4). */
+};
+
+#define spot_size right.w
+#define spot_blend up.w
+
+#define GP_LIGHT_TYPE_POINT 0.0
+#define GP_LIGHT_TYPE_SPOT 1.0
+#define GP_LIGHT_TYPE_SUN 2.0
 
 #ifdef GPENCIL_MATERIAL_BUFFER_LEN
 

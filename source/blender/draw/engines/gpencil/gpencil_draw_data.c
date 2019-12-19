@@ -232,9 +232,31 @@ void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
   }
 
   gpLight *gp_light = &lightpool->light_data[lightpool->light_used];
-  copy_v3_v3(gp_light->position, ob->obmat[3]);
+  float(*mat)[4] = (float(*)[4])gp_light->right;
+
+  if (la->type == LA_SPOT) {
+    copy_m4_m4(mat, ob->imat);
+    gp_light->type = GP_LIGHT_TYPE_SPOT;
+    gp_light->spotsize = cosf(la->spotsize * 0.5f);
+    gp_light->spotblend = (1.0f - gp_light->spotsize) * la->spotblend;
+  }
+  else if (la->type == LA_AREA) {
+    /* Simulate area lights using a spot light. */
+    normalize_m4_m4(mat, ob->obmat);
+    invert_m4(mat);
+    gp_light->type = GP_LIGHT_TYPE_SPOT;
+    gp_light->spotsize = cosf(M_PI * 0.5f);
+    gp_light->spotblend = (1.0f - gp_light->spotsize) * 1.0f;
+  }
+  else if (la->type == LA_SUN) {
+    gp_light->type = GP_LIGHT_TYPE_SUN;
+  }
+  else {
+    gp_light->type = GP_LIGHT_TYPE_POINT;
+  }
+  copy_v4_v4(gp_light->position, ob->obmat[3]);
   copy_v3_v3(gp_light->color, &la->r);
-  mul_v3_fl(gp_light->color, la->energy);
+  mul_v3_fl(gp_light->color, la->energy * M_1_PI);
 
   lightpool->light_used++;
 
