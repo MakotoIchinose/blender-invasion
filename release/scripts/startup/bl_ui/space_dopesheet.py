@@ -699,6 +699,9 @@ class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
             row = layout.row(align=True)
             row.prop(gpl, "opacity", text="Opacity", slider=True)
 
+            row = layout.row(align=True)
+            row.prop(gpl, "use_lights")
+
 
 class DOPESHEET_PT_gpencil_layer_adjustments(LayersDopeSheetPanel, GreasePencilLayerAdjustmentsPanel, Panel):
     bl_label = "Adjustments"

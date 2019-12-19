@@ -416,6 +416,8 @@ typedef enum eGPDlayer_Flag {
   GP_LAYER_NO_XRAY = (1 << 7),
   /* "volumetric" strokes */
   GP_LAYER_VOLUMETRIC = (1 << 10),
+  /* Use Scene lights */
+  GP_LAYER_USE_LIGHTS = (1 << 11),
   /* Unlock color */
   GP_LAYER_UNLOCK_COLOR = (1 << 12),
   /* Mask Layer */

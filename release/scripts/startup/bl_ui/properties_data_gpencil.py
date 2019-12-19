@@ -178,6 +178,9 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
             col = layout.row(align=True)
             col.prop(gpl, "opacity", text="Opacity", slider=True)
 
+            col = layout.row(align=True)
+            col.prop(gpl, "use_lights")
+
 
 class DATA_PT_gpencil_layer_adjustments(LayerDataButtonsPanel, GreasePencilLayerAdjustmentsPanel, Panel):
     bl_label = "Adjustments"
