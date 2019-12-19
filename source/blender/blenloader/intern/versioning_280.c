@@ -52,6 +52,7 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_shader_fx_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_genfile.h"
 #include "DNA_workspace_types.h"
@@ -4371,6 +4372,24 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         /* Mix disabled, set mix factor to 0. */
         else if ((gp_style->flag & GP_STYLE_STROKE_TEX_MIX) == 0) {
           gp_style->mix_stroke_factor = 0.0f;
+        }
+      }
+    }
+
+    /* Fix Grease Pencil VFX*/
+    {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
+          switch (fx->type) {
+            case eShaderFxType_Colorize:
+              ColorizeShaderFxData *vfx = (ColorizeShaderFxData *)fx;
+              if (ELEM(vfx->mode, eShaderFxColorizeMode_GrayScale, eShaderFxColorizeMode_Sepia)) {
+                vfx->factor = 1.0f;
+              }
+              break;
+            default:
+              break;
+          }
         }
       }
     }
