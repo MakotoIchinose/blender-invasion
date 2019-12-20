@@ -29,11 +29,13 @@
 #include "BKE_paint.h"
 #include "BKE_shader_fx.h"
 
+#include "BKE_camera.h"
 #include "BKE_global.h" /* for G.debug */
 
 #include "BLI_link_utils.h"
 #include "BLI_memblock.h"
 
+#include "DNA_camera_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
@@ -331,6 +333,13 @@ static void GPENCIL_engine_init_new(void *ved)
   DRW_view_viewmat_get(NULL, viewmatinv, true);
   copy_v3_v3(stl->pd->camera_z_axis, viewmatinv[2]);
   stl->pd->camera_z_offset = dot_v3v3(viewmatinv[3], viewmatinv[2]);
+
+  if (ctx && ctx->rv3d && ctx->v3d) {
+    stl->pd->camera = (ctx->rv3d->persp == RV3D_CAMOB) ? ctx->v3d->camera : NULL;
+  }
+  else {
+    stl->pd->camera = NULL;
+  }
 }
 
 void GPENCIL_engine_init(void *vedata)
@@ -459,6 +468,35 @@ static void GPENCIL_cache_init_new(void *ved)
     DRW_shgroup_uniform_float(grp, "strokeDepth2d", &pd->object_depth, 1);
     DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
+  }
+
+  Camera *cam = (pd->camera != NULL) ? pd->camera->data : NULL;
+
+  /* Pseudo DOF setup. */
+  if (cam && (cam->dof.flag & CAM_DOF_ENABLED)) {
+    const float *vp_size = DRW_viewport_size_get();
+    float fstop = cam->dof.aperture_fstop;
+    float sensor = BKE_camera_sensor_size(cam->sensor_fit, cam->sensor_x, cam->sensor_y);
+    float focus_dist = BKE_camera_object_dof_distance(pd->camera);
+    float focal_len = cam->lens;
+
+    const float scale_camera = 0.001f;
+    /* we want radius here for the aperture number  */
+    float aperture = 0.5f * scale_camera * focal_len / fstop;
+    float focal_len_scaled = scale_camera * focal_len;
+    float sensor_scaled = scale_camera * sensor;
+
+    if (draw_ctx->rv3d != NULL) {
+      sensor_scaled *= draw_ctx->rv3d->viewcamtexcofac[0];
+    }
+
+    pd->dof_params[1] = aperture * fabsf(focal_len_scaled / (focus_dist - focal_len_scaled));
+    pd->dof_params[1] *= vp_size[0] / sensor_scaled;
+    pd->dof_params[0] = -focus_dist * pd->dof_params[1];
+  }
+  else {
+    /* Disable DoF blur scalling. */
+    pd->camera = NULL;
   }
 }
 
@@ -833,7 +871,6 @@ static void gp_layer_cache_populate(bGPDlayer *gpl,
     tgp_layer->do_masked_clear = true;
   }
 
-  GPUUniformBuffer *ubo_mat;
   gpencil_material_resources_get(iter->matpool, 0, NULL, NULL, &iter->ubo_mat);
 
   const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D) || iter->pd->draw_depth_only;

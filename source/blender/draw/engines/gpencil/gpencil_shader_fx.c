@@ -1102,21 +1102,41 @@ static DRWShadingGroup *gpencil_vfx_pass_create(const char *name,
   return grp;
 }
 
-static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *UNUSED(ob), gpIterVfxData *iter)
+static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *iter)
 {
   DRWShadingGroup *grp;
+
+  float winmat[4][4], persmat[4][4];
+  float blur_size[2] = {fx->radius[0], fx->radius[1]};
+
+  if ((fx->flag & FX_BLUR_DOF_MODE) && iter->pd->camera != NULL) {
+    /* Compute circle of confusion size. */
+    float coc = (iter->pd->dof_params[0] / -w) - iter->pd->dof_params[1];
+    copy_v2_fl(blur_size, fabsf(coc));
+  }
+  else {
+    /* Modify by distance to camera and object scale. */
+    DRW_view_winmat_get(NULL, winmat, false);
+    DRW_view_persmat_get(NULL, persmat, false);
+    const float *vp_size = DRW_viewport_size_get();
+    const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
+    float world_pixel_scale = 1.0f / 2000.0f;
+    float scale = mat4_to_scale(ob->obmat);
+    float distance_factor = world_pixel_scale * scale * winmat[1][1] * vp_size[1] / w;
+    mul_v2_fl(blur_size, distance_factor);
+  }
 
   GPUShader *sh = GPENCIL_shader_fx_blur_get(&en_data);
 
   DRWState state = DRW_STATE_WRITE_COLOR;
   grp = gpencil_vfx_pass_create("Fx Blur H", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){fx->radius[0], 0.0f});
-  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->radius[0])));
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){blur_size[0], 0.0f});
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[0])));
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 
   grp = gpencil_vfx_pass_create("Fx Blur V", state, iter, sh);
-  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, fx->radius[1]});
-  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, fx->radius[1])));
+  DRW_shgroup_uniform_vec2_copy(grp, "offset", (float[2]){0.0f, blur_size[1]});
+  DRW_shgroup_uniform_int_copy(grp, "sampCount", max_ii(1, min_ii(fx->samples, blur_size[1])));
   DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
 }
 

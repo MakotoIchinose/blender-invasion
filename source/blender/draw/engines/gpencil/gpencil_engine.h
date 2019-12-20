@@ -480,6 +480,10 @@ typedef struct GPENCIL_PrivateData {
   int is_stroke_order_3d;
   /* Used for computing object distance to camera. */
   float camera_z_axis[3], camera_z_offset;
+  /* Pseudo depth of field parameter. Used to scale blur radius. */
+  float dof_params[2];
+  /* Used for DoF Setup. */
+  Object *camera;
 } GPENCIL_PrivateData;
 
 /* flags for fast drawing support */
