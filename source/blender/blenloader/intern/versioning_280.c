@@ -4347,12 +4347,17 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     /* Update Grease Pencil Materials */
+    /* TODO: This requires version bump!! (we keep as is for testing). */
     {
-      for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
         MaterialGPencilStyle *gp_style = mat->gp_style;
         if (gp_style == NULL) {
           continue;
         }
+        /* Fix Grease Pencil Material colors to Linear. */
+        srgb_to_linearrgb_v4(gp_style->stroke_rgba, gp_style->stroke_rgba);
+        srgb_to_linearrgb_v4(gp_style->fill_rgba, gp_style->fill_rgba);
+
         /* Set Checker material as Solid. This fill mode has been removed and replaced
          * by textures. */
         if (gp_style->fill_style == GP_STYLE_FILL_STYLE_CHECKER) {
@@ -4374,10 +4379,8 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           gp_style->mix_stroke_factor = 0.0f;
         }
       }
-    }
 
-    /* Fix Grease Pencil VFX*/
-    {
+      /* Fix Grease Pencil VFX*/
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
           switch (fx->type) {
@@ -4390,6 +4393,24 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
             }
             default:
               break;
+          }
+        }
+      }
+
+      /* Fix Layers Colors and Vertex Colors to Linear. */
+      LISTBASE_FOREACH (bGPdata *, gpd, &bmain->gpencils) {
+        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+          srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
+
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+              srgb_to_linearrgb_v4(gps->mix_color_fill, gps->mix_color_fill);
+              int i;
+              bGPDspoint *pt;
+              for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+                srgb_to_linearrgb_v4(pt->mix_color, pt->mix_color);
+              }
+            }
           }
         }
       }
