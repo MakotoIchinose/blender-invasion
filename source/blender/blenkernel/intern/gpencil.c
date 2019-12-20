@@ -3446,7 +3446,7 @@ static void gpencil_convert_spline(Main *bmain,
       if (ob_cu->totcol > 0) {
         mat_curve = give_current_material(ob_cu, 1);
         if (mat_curve) {
-          linearrgb_to_srgb_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
+          copy_v3_v3(mat_gp->gp_style->stroke_rgba, &mat_curve->r);
           mat_gp->gp_style->stroke_rgba[3] = mat_curve->a;
           /* Set fill and stroke depending of curve type (3D or 2D). */
           if ((cu->flag & CU_3D) || ((cu->flag & (CU_FRONT | CU_BACK)) == 0)) {
@@ -3690,7 +3690,6 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
     int img_x = ibuf->x;
     int img_y = ibuf->y;
 
-    // space = 0.005 pixels = image.pixels
     float color[4];
     bGPDspoint *pt;
     for (int row = 0; row < img_y; row++) {
@@ -3698,7 +3697,7 @@ bool BKE_gpencil_from_image(SpaceImage *sima, bGPDframe *gpf, const float size, 
       bGPDstroke *gps = BKE_gpencil_add_stroke(gpf, 0, img_x, size * 1000);
       done = true;
       for (int col = 0; col < img_x; col++) {
-        IMB_sampleImageAtLocation(ibuf, col, row, false, color);
+        IMB_sampleImageAtLocation(ibuf, col, row, true, color);
         pt = &gps->points[col];
         pt->pressure = 1.0f;
         pt->x = col * size;
