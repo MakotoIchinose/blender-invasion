@@ -1108,6 +1108,8 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
 
   float winmat[4][4], persmat[4][4];
   float blur_size[2] = {fx->radius[0], fx->radius[1]};
+  DRW_view_persmat_get(NULL, persmat, false);
+  const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
 
   if ((fx->flag & FX_BLUR_DOF_MODE) && iter->pd->camera != NULL) {
     /* Compute circle of confusion size. */
@@ -1117,9 +1119,7 @@ static void gpencil_vfx_blur(BlurShaderFxData *fx, Object *ob, gpIterVfxData *it
   else {
     /* Modify by distance to camera and object scale. */
     DRW_view_winmat_get(NULL, winmat, false);
-    DRW_view_persmat_get(NULL, persmat, false);
     const float *vp_size = DRW_viewport_size_get();
-    const float w = fabsf(mul_project_m4_v3_zfac(persmat, ob->obmat[3]));
     float world_pixel_scale = 1.0f / 2000.0f;
     float scale = mat4_to_scale(ob->obmat);
     float distance_factor = world_pixel_scale * scale * winmat[1][1] * vp_size[1] / w;
