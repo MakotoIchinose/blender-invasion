@@ -73,6 +73,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_modifier.h"
 #include "BKE_idprop.h"
 #include "BKE_key.h"
 #include "BKE_library.h"
@@ -4370,9 +4371,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         /* Stroke stencil mask to mix = 1. */
         if (gp_style->flag & GP_STYLE_STROKE_PATTERN) {
           gp_style->mix_stroke_factor = 1.0f;
-#if 0 /* TODO: This is disabled for testing only. */
           gp_style->flag &= ~GP_STYLE_STROKE_PATTERN;
-#endif
         }
         /* Mix disabled, set mix factor to 0. */
         else if ((gp_style->flag & GP_STYLE_STROKE_TEX_MIX) == 0) {
@@ -4380,8 +4379,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
 
-      /* Fix Grease Pencil VFX*/
+      /* Fix Grease Pencil VFX and modifiers. */
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+
+        /* VFX. */
         LISTBASE_FOREACH (ShaderFxData *, fx, &ob->shader_fx) {
           switch (fx->type) {
             case eShaderFxType_Colorize: {
@@ -4389,6 +4390,44 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (ELEM(vfx->mode, eShaderFxColorizeMode_GrayScale, eShaderFxColorizeMode_Sepia)) {
                 vfx->factor = 1.0f;
               }
+              srgb_to_linearrgb_v4(vfx->low_color, vfx->low_color);
+              srgb_to_linearrgb_v4(vfx->high_color, vfx->high_color);
+              break;
+            }
+            case eShaderFxType_Pixel: {
+              PixelShaderFxData *vfx = (PixelShaderFxData *)fx;
+              srgb_to_linearrgb_v4(vfx->rgba, vfx->rgba);
+              break;
+            }
+            case eShaderFxType_Rim: {
+              RimShaderFxData *vfx = (RimShaderFxData *)fx;
+              srgb_to_linearrgb_v3_v3(vfx->rim_rgb, vfx->rim_rgb);
+              srgb_to_linearrgb_v3_v3(vfx->mask_rgb, vfx->mask_rgb);
+              break;
+            }
+            case eShaderFxType_Shadow: {
+              ShadowShaderFxData *vfx = (ShadowShaderFxData *)fx;
+              srgb_to_linearrgb_v4(vfx->shadow_rgba, vfx->shadow_rgba);
+              break;
+            }
+            case eShaderFxType_Glow: {
+              GlowShaderFxData *vfx = (GlowShaderFxData *)fx;
+              srgb_to_linearrgb_v3_v3(vfx->glow_color, vfx->glow_color);
+              srgb_to_linearrgb_v3_v3(vfx->select_color, vfx->select_color);
+              break;
+            }
+            default:
+              break;
+          }
+        }
+
+        /* Modifiers. */
+        LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
+          const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
+          switch (mti->type) {
+            case eGpencilModifierTypeType_Gpencil: {
+              TintGpencilModifierData *mmd = (TintGpencilModifierData *)md;
+              srgb_to_linearrgb_v3_v3(mmd->rgb, mmd->rgb);
               break;
             }
             default:
@@ -4399,6 +4438,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
       /* Fix Layers Colors and Vertex Colors to Linear. */
       LISTBASE_FOREACH (bGPdata *, gpd, &bmain->gpencils) {
+        if (gpd->flag & GP_DATA_ANNOTATIONS) {
+          continue;
+        }
+        /* Onion colors. */
+        srgb_to_linearrgb_v3_v3(gpd->gcolor_prev, gpd->gcolor_prev);
+        srgb_to_linearrgb_v3_v3(gpd->gcolor_next, gpd->gcolor_next);
+
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
           srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
 
