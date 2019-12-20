@@ -171,9 +171,6 @@ class TOPBAR_PT_gpencil_layers(Panel):
             srow = col.row(align=True)
             srow.prop(gpl, "use_lights")
 
-            srow = col.row(align=True)
-            srow.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
-
         col = row.column()
 
         sub = col.column(align=True)
