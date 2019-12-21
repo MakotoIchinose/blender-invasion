@@ -332,6 +332,7 @@ static void GPENCIL_engine_init_new(void *ved)
   float viewmatinv[4][4];
   DRW_view_viewmat_get(NULL, viewmatinv, true);
   copy_v3_v3(stl->pd->camera_z_axis, viewmatinv[2]);
+  copy_v3_v3(stl->pd->camera_pos, viewmatinv[3]);
   stl->pd->camera_z_offset = dot_v3v3(viewmatinv[3], viewmatinv[2]);
 
   if (ctx && ctx->rv3d && ctx->v3d) {
@@ -465,8 +466,8 @@ static void GPENCIL_cache_init_new(void *ved)
     GPUShader *sh = GPENCIL_shader_depth_merge_get(&e_data);
     grp = DRW_shgroup_create(sh, psl->merge_depth_ps);
     DRW_shgroup_uniform_texture_ref(grp, "depthBuf", &pd->depth_tx);
-    DRW_shgroup_uniform_float(grp, "strokeDepth2d", &pd->object_depth, 1);
     DRW_shgroup_uniform_bool(grp, "strokeOrder3d", &pd->is_stroke_order_3d, 1);
+    DRW_shgroup_uniform_vec4(grp, "gpModelMatrix[0]", pd->object_bound_mat, 4);
     DRW_shgroup_call_procedural_triangles(grp, NULL, 1);
   }
 
@@ -1471,7 +1472,7 @@ static void GPENCIL_draw_scene_new(void *ved)
       DRW_draw_pass(vfx->vfx_ps);
     }
 
-    pd->object_depth = ob->camera_z - pd->camera_z_offset;
+    copy_m4_m4(pd->object_bound_mat, ob->plane_mat);
     pd->is_stroke_order_3d = ob->is_drawmode3d;
 
     /* TODO fix for render */

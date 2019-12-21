@@ -89,6 +89,17 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *o
   mul_mat3_m4_v3(mat, tgp_ob->plane_normal);
   normalize_v3(tgp_ob->plane_normal);
 
+  /* Define a matrix that will be used to render a triangle to merge the depth of the rendered
+   * gpencil object with the rest of the scene. */
+  unit_m4(tgp_ob->plane_mat);
+  copy_v3_v3(tgp_ob->plane_mat[2], tgp_ob->plane_normal);
+  orthogonalize_m4(tgp_ob->plane_mat, 2);
+  mul_mat3_m4_v3(ob->obmat, size);
+  float radius = len_v3(size);
+  mul_m4_v3(ob->obmat, center);
+  rescale_m4(tgp_ob->plane_mat, (float[3]){radius, radius, radius});
+  copy_v3_v3(tgp_ob->plane_mat[3], center);
+
   BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
 
   return tgp_ob;

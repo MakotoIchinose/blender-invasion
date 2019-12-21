@@ -236,6 +236,8 @@ typedef struct GPENCIL_tObject {
   float camera_z;
   /* Normal used for shading. Based on view angle. */
   float plane_normal[3];
+  /* Used for drawing depth merge pass. */
+  float plane_mat[4][4];
 
   bool is_drawmode3d;
 } GPENCIL_tObject;
@@ -479,8 +481,8 @@ typedef struct GPENCIL_PrivateData {
   /* True in selection and auto_depth drawing */
   bool draw_depth_only;
   /* Used by the depth merge step. */
-  float object_depth;
   int is_stroke_order_3d;
+  float object_bound_mat[4][4];
   /* Used for computing object distance to camera. */
   float camera_z_axis[3], camera_z_offset;
   float camera_pos[3];

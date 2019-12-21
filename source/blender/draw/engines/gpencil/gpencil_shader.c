@@ -30,6 +30,7 @@ extern char datatoc_gpencil_composite_frag_glsl[];
 extern char datatoc_gpencil_layer_blend_frag_glsl[];
 extern char datatoc_gpencil_layer_mask_frag_glsl[];
 extern char datatoc_gpencil_depth_merge_frag_glsl[];
+extern char datatoc_gpencil_depth_merge_vert_glsl[];
 extern char datatoc_gpencil_vfx_frag_glsl[];
 
 extern char datatoc_common_colormanagement_lib_glsl[];
@@ -108,12 +109,12 @@ struct GPUShader *GPENCIL_shader_depth_merge_get(GPENCIL_e_data *e_data)
     e_data->depth_merge_sh = GPU_shader_create_from_arrays({
         .vert =
             (const char *[]){
-                datatoc_common_fullscreen_vert_glsl,
+                datatoc_common_view_lib_glsl,
+                datatoc_gpencil_depth_merge_vert_glsl,
                 NULL,
             },
         .frag =
             (const char *[]){
-                datatoc_common_view_lib_glsl,
                 datatoc_gpencil_depth_merge_frag_glsl,
                 NULL,
             },
