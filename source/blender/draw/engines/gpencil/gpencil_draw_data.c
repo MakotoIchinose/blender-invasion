@@ -239,6 +239,19 @@ void gpencil_light_ambient_add(GPENCIL_LightPool *lightpool, const float color[3
   }
 }
 
+static float light_power_get(const Light *la)
+{
+  if (la->type == LA_AREA) {
+    return 1.0f / (4.0f * M_PI);
+  }
+  else if (la->type == LA_SPOT || la->type == LA_LOCAL) {
+    return 1.0f / (4.0f * M_PI * M_PI);
+  }
+  else {
+    return 1.0f / M_PI;
+  }
+}
+
 void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
 {
   Light *la = (Light *)ob->data;
@@ -265,7 +278,7 @@ void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
     gp_light->spotblend = (1.0f - gp_light->spotsize) * 1.0f;
   }
   else if (la->type == LA_SUN) {
-    copy_v4_v4(gp_light->forward, ob->obmat[2]);
+    normalize_v3_v3(gp_light->forward, ob->obmat[2]);
     gp_light->type = GP_LIGHT_TYPE_SUN;
   }
   else {
@@ -273,7 +286,7 @@ void gpencil_light_pool_populate(GPENCIL_LightPool *lightpool, Object *ob)
   }
   copy_v4_v4(gp_light->position, ob->obmat[3]);
   copy_v3_v3(gp_light->color, &la->r);
-  mul_v3_fl(gp_light->color, la->energy * M_1_PI);
+  mul_v3_fl(gp_light->color, la->energy * light_power_get(la));
 
   lightpool->light_used++;
 
