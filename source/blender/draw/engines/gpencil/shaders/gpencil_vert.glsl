@@ -15,8 +15,10 @@ uniform float thicknessOffset;
 uniform float vertexColorOpacity;
 uniform vec4 layerTint;
 
+in vec4 ma;
 in vec4 ma1;
 in vec4 ma2;
+in vec4 ma3;
 #define strength1 ma1.y
 #define strength2 ma2.y
 #define stroke_id1 ma1.z
@@ -39,6 +41,9 @@ out vec4 finalColorMul;
 out vec4 finalColorAdd;
 out vec3 finalPos;
 out vec2 finalUvs;
+noperspective out float strokeThickness;
+flat out vec2 strokePt1;
+flat out vec2 strokePt2;
 flat out int matFlag;
 flat out float depth;
 
@@ -74,6 +79,17 @@ vec2 safe_normalize(vec2 v)
   float len_sqr = dot(v, v);
   if (len_sqr > 0.0) {
     return v / sqrt(len_sqr);
+  }
+  else {
+    return vec2(0.0);
+  }
+}
+
+vec2 safe_normalize_len(vec2 v, out float len)
+{
+  len = sqrt(dot(v, v));
+  if (len > 0.0) {
+    return v / len;
   }
   else {
     return vec2(0.0);
@@ -162,11 +178,14 @@ void stroke_vertex()
   vec2 ss1 = project_to_screenspace(ndc1);
   vec2 ss2 = project_to_screenspace(ndc2);
   /* Screenspace Lines tangents. */
-  vec2 line = safe_normalize(ss2 - ss1);
+  float line_len;
+  vec2 line = safe_normalize_len(ss2 - ss1, line_len);
   vec2 line_adj = safe_normalize((x == -1.0) ? (ss1 - ss_adj) : (ss_adj - ss2));
 
-  float thickness = (use_curr) ? thickness1 : thickness2;
+  float thickness = abs((use_curr) ? thickness1 : thickness2);
   thickness = stroke_thickness_modulate(thickness);
+
+  finalUvs = vec2(x, y) * 0.5 + 0.5;
 
   if (is_dot) {
     vec2 x_axis;
@@ -186,6 +205,9 @@ void stroke_vertex()
     y_axis = rotate_90deg(x_axis);
 
     gl_Position.xy += (x * x_axis + y * y_axis) * sizeViewportInv.xy * thickness;
+
+    strokePt1 = strokePt2 = vec2(0.0);
+    strokeThickness = 1e18;
   }
   else {
     /* Mitter tangent vector. */
@@ -197,23 +219,33 @@ void stroke_vertex()
 
     vec2 miter = rotate_90deg(miter_tan);
 
-    gl_Position.xy += miter * sizeViewportInv.xy * (thickness * y);
+    strokePt1.xy = ss1;
+    strokePt2.xy = ss2;
+    strokeThickness = thickness / gl_Position.w;
+
+    /* Reminder: we packed the cap flag into the sign of stength and thickness sign. */
+    bool is_stroke_start = (ma.x == -1.0 && x == -1.0 && strength1 > 0.0);
+    bool is_stroke_end = (ma3.x == -1.0 && x == 1.0 && thickness1 > 0.0);
+
+    vec2 screen_ofs = miter * y;
+
+    if (is_stroke_start || is_stroke_end) {
+      screen_ofs += miter_tan * x * 2.0;
+    }
+
+    gl_Position.xy += screen_ofs * sizeViewportInv.xy * thickness;
+
+    finalUvs.x = (use_curr) ? uv1.z : uv2.z;
   }
 
   vec4 vert_col = (use_curr) ? col1 : col2;
-  float vert_strength = (use_curr) ? strength1 : strength2;
+  float vert_strength = abs((use_curr) ? strength1 : strength2);
   vec4 stroke_col = materials[m].stroke_color;
   float mix_tex = materials[m].stroke_texture_mix;
 
   color_output(stroke_col, vert_col, vert_strength, mix_tex);
 
   matFlag = materials[m].flag & ~GP_FILL_FLAGS;
-
-  finalUvs = vec2(x, y) * 0.5 + 0.5;
-
-  if (!is_dot) {
-    finalUvs.x = (use_curr) ? uv1.z : uv2.z;
-  }
 
   if (strokeOrder3d) {
     /* Use the fragment depth (see fragment shader). */
@@ -256,6 +288,9 @@ void fill_vertex()
   vec2 loc = materials[m].fill_uv_offset.xy;
   mat2x2 rot_scale = mat2x2(materials[m].fill_uv_rot_scale.xy, materials[m].fill_uv_rot_scale.zw);
   finalUvs = rot_scale * uv1.xy + loc;
+
+  strokeThickness = 1e18;
+  strokePt1 = strokePt2 = vec2(0.0);
 
   if (strokeOrder3d) {
     /* Use the fragment depth (see fragment shader). */

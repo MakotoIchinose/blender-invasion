@@ -112,18 +112,21 @@ static int gpencil_stroke_is_cyclic(const bGPDstroke *gps)
 static void gpencil_buffer_add_point(
     gpStrokeVert *verts, const bGPDstroke *gps, const bGPDspoint *pt, int v, bool is_endpoint)
 {
+  /* Note: we use the sign of stength and thickness to pass cap flag. */
+  const bool round_cap0 = (gps->caps[0] == GP_STROKE_CAP_ROUND);
+  const bool round_cap1 = (gps->caps[1] == GP_STROKE_CAP_ROUND);
   gpStrokeVert *vert = &verts[v];
   copy_v3_v3(vert->pos, &pt->x);
   copy_v2_v2(vert->uv, pt->uv_fill);
   copy_v4_v4(vert->col, pt->mix_color);
-  vert->strength = pt->strength;
+  vert->strength = (round_cap0) ? pt->strength : -pt->strength;
   vert->u_stroke = pt->uv_fac;
   vert->stroke_id = gps->runtime.stroke_start;
   vert->point_id = v;
   /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
    * because the cosine will always be positive. */
   vert->v_rot = cosf(pt->uv_rot) * signf(pt->uv_rot);
-  vert->thickness = gps->thickness * pt->pressure;
+  vert->thickness = gps->thickness * pt->pressure * (round_cap1 ? 1.0 : -1.0);
   /* Tag endpoint material to -1 so they get discarded by vertex shader. */
   vert->mat = (is_endpoint) ? -1 : (gps->mat_nr % GPENCIL_MATERIAL_BUFFER_LEN);
 }
