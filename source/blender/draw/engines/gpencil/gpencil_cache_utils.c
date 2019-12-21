@@ -53,6 +53,42 @@ GPENCIL_tObject *gpencil_object_cache_add_new(GPENCIL_PrivateData *pd, Object *o
   tgp_ob->camera_z = dot_v3v3(pd->camera_z_axis, ob->obmat[3]);
   tgp_ob->is_drawmode3d = (gpd->draw_mode == GP_DRAWMODE_3D);
 
+  /* Find the normal most likely to represent the gpObject. */
+  /* TODO: This does not work quite well if you use
+   * strokes not aligned with the object axes. Maybe we could try to
+   * compute the minimum axis of all strokes. But this would be more
+   * computationaly heavy and should go into the GPData evaluation. */
+  BoundBox *bbox = BKE_object_boundbox_get(ob);
+  /* Convert bbox to matrix */
+  float mat[4][4], size[3], center[3];
+  BKE_boundbox_calc_size_aabb(bbox, size);
+  BKE_boundbox_calc_center_aabb(bbox, center);
+  unit_m4(mat);
+  copy_v3_v3(mat[3], center);
+  /* Avoid division by 0.0 later. */
+  add_v3_fl(size, 1e-8f);
+  rescale_m4(mat, size);
+  /* BBox space to World. */
+  mul_m4_m4m4(mat, ob->obmat, mat);
+  if (DRW_view_is_persp_get(NULL)) {
+    /* BBox center to camera vector. */
+    sub_v3_v3v3(tgp_ob->plane_normal, pd->camera_pos, mat[3]);
+  }
+  else {
+    copy_v3_v3(tgp_ob->plane_normal, pd->camera_z_axis);
+  }
+  /* World to BBox space. */
+  invert_m4(mat);
+  /* Normalize the vector in BBox space. */
+  mul_mat3_m4_v3(mat, tgp_ob->plane_normal);
+  normalize_v3(tgp_ob->plane_normal);
+
+  transpose_m4(mat);
+  /* mat is now a "normal" matrix which will transform
+   * BBox space normal to world space.  */
+  mul_mat3_m4_v3(mat, tgp_ob->plane_normal);
+  normalize_v3(tgp_ob->plane_normal);
+
   BLI_LINKS_APPEND(&pd->tobjects, tgp_ob);
 
   return tgp_ob;

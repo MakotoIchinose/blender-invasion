@@ -2,6 +2,7 @@
 uniform sampler2D gpFillTexture;
 uniform sampler2D gpStrokeTexture;
 uniform sampler2D gpSceneDepthTexture;
+uniform vec3 gpNormal;
 
 in vec4 finalColorMul;
 in vec4 finalColorAdd;
@@ -42,8 +43,18 @@ vec3 gpencil_lighting(void)
       vis *= step(0.0, local_L.z);
     }
     /* Inverse square decay. Skip for suns. */
-    if (lights[i].color_type.w != GP_LIGHT_TYPE_SUN) {
-      vis /= length_squared(L);
+    float L_len_sqr = length_squared(L);
+    if (lights[i].color_type.w < GP_LIGHT_TYPE_SUN) {
+      vis /= L_len_sqr;
+    }
+    else {
+      L = lights[i].forward.xyz;
+      L_len_sqr = 1.0;
+    }
+    /* Lambertian falloff */
+    if (lights[i].color_type.w != GP_LIGHT_TYPE_AMBIENT) {
+      L /= sqrt(L_len_sqr);
+      vis *= clamp(dot(gpNormal, L), 0.0, 1.0);
     }
     light_accum += vis * lights[i].color_type.rgb;
   }

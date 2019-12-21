@@ -103,6 +103,7 @@ typedef struct gpLight {
 #define GP_LIGHT_TYPE_POINT 0.0
 #define GP_LIGHT_TYPE_SPOT 1.0
 #define GP_LIGHT_TYPE_SUN 2.0
+#define GP_LIGHT_TYPE_AMBIENT 3.0
 
 BLI_STATIC_ASSERT_ALIGN(gpMaterial, 16)
 BLI_STATIC_ASSERT_ALIGN(gpLight, 16)
@@ -233,6 +234,8 @@ typedef struct GPENCIL_tObject {
 
   /* Distance to camera. Used for sorting. */
   float camera_z;
+  /* Normal used for shading. Based on view angle. */
+  float plane_normal[3];
 
   bool is_drawmode3d;
 } GPENCIL_tObject;
@@ -480,6 +483,7 @@ typedef struct GPENCIL_PrivateData {
   int is_stroke_order_3d;
   /* Used for computing object distance to camera. */
   float camera_z_axis[3], camera_z_offset;
+  float camera_pos[3];
   /* Pseudo depth of field parameter. Used to scale blur radius. */
   float dof_params[2];
   /* Used for DoF Setup. */

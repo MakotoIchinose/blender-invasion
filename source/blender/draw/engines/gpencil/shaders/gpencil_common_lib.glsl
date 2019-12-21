@@ -51,6 +51,7 @@ struct gpLight {
 #define GP_LIGHT_TYPE_POINT 0.0
 #define GP_LIGHT_TYPE_SPOT 1.0
 #define GP_LIGHT_TYPE_SUN 2.0
+#define GP_LIGHT_TYPE_AMBIENT 3.0
 
 #ifdef GPENCIL_MATERIAL_BUFFER_LEN
 
