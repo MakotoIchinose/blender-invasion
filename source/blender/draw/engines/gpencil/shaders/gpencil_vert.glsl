@@ -214,7 +214,7 @@ void stroke_vertex()
     vec2 miter_tan = safe_normalize(line_adj + line);
     float miter_dot = dot(miter_tan, line_adj);
     /* Break corners after a certain angle to avoid really thick corners. */
-    const float miter_limit = 0.7071; /* cos(45°) */
+    const float miter_limit = 0.5; /* cos(60°) */
     miter_tan = (miter_dot < miter_limit) ? line : (miter_tan / miter_dot);
 
     vec2 miter = rotate_90deg(miter_tan);
@@ -230,7 +230,7 @@ void stroke_vertex()
     vec2 screen_ofs = miter * y;
 
     if (is_stroke_start || is_stroke_end) {
-      screen_ofs += miter_tan * x * 2.0;
+      screen_ofs += line * x * 2.0;
     }
 
     gl_Position.xy += screen_ofs * sizeViewportInv.xy * thickness;

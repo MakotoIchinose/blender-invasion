@@ -74,7 +74,7 @@ float stroke_round_cap_mask()
   float line_len = sqrt(length_squared(line));
   float half_line_len = line_len * 0.5;
   /* Normalize */
-  line /= line_len;
+  line = (line_len > 0.0) ? (line / line_len) : vec2(1.0, 0.0);
   /* Create a uv space that englobe the whole segment into a capsule. */
   vec2 uv_end;
   uv_end.x = max(abs(dot(line, pos) - half_line_len) - half_line_len, 0.0);
