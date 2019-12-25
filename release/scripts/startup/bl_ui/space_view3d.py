@@ -267,15 +267,16 @@ class _draw_tool_settings_context_mode:
         if size_owner.use_locked_size == 'SCENE':
             size = "unprojected_radius"
 
-        # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
         UnifiedPaintPanel.prop_unified(
             layout,
             context,
             brush,
             size,
             pressure_name="use_pressure_size",
+            unified_name="use_unified_size",
             text="Radius",
             slider=True,
+            header=True
         )
 
         # strength, use_strength_pressure
@@ -286,7 +287,9 @@ class _draw_tool_settings_context_mode:
             brush,
             "strength",
             pressure_name=pressure_name,
+            unified_name="use_unified_strength",
             text="Strength",
+            header=True
         )
 
         # direction
@@ -338,10 +341,17 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return False
 
-        # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
         capabilities = brush.weight_paint_capabilities
         if capabilities.has_weight:
-            UnifiedPaintPanel.prop_unified(layout, context, brush, "weight", slider=True)
+            UnifiedPaintPanel.prop_unified(
+                layout,
+                context,
+                brush,
+                "weight",
+                unified_name="use_unified_weight",
+                slider=True,
+                header=True
+            )
 
         UnifiedPaintPanel.prop_unified(
             layout,
@@ -349,8 +359,10 @@ class _draw_tool_settings_context_mode:
             brush,
             "size",
             pressure_name="use_pressure_size",
+            unified_name="use_unified_size",
             slider=True,
             text="Radius",
+            header=True
         )
         UnifiedPaintPanel.prop_unified(
             layout,
@@ -358,6 +370,8 @@ class _draw_tool_settings_context_mode:
             brush,
             "strength",
             pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            header=True
         )
 
         return True

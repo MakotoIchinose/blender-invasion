@@ -108,14 +108,14 @@ class UnifiedPaintPanel:
             icon='NONE',
             text=None,
             slider=False,
-            display_unified_toggle=True,
+            header=False,
     ):
         """ Generalized way of adding brush options to the UI,
             along with their pen pressure setting and global toggle, if they exist. """
         row = layout.row(align=True)
         ups = context.tool_settings.unified_paint_settings
         prop_owner = brush
-        if unified_name and getattr(ups, unified_name) and display_unified_toggle:
+        if unified_name and getattr(ups, unified_name):
             prop_owner = ups
 
         row.prop(prop_owner, prop_name, icon=icon, text=text, slider=slider)
@@ -123,7 +123,8 @@ class UnifiedPaintPanel:
         if pressure_name:
             row.prop(brush, pressure_name, text="")
 
-        if unified_name and display_unified_toggle:
+        if unified_name and not header:
+            # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
             row.prop(ups, unified_name, text="", icon="WORLD")
 
         return row
@@ -875,7 +876,7 @@ def draw_color_settings(context, layout, brush, color_type=False):
                 "secondary_color",
                 unified_name="use_unified_color",
                 text="Background Color",
-                display_unified_toggle=False,
+                header=True,
             )
 
             col.prop(brush, "gradient_stroke_mode", text="Gradient Mapping")
@@ -965,7 +966,6 @@ def brush_mask_texture_settings(layout, brush):
 
 def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
     """Draw Tool Settings header for Vertex Paint and 2D and 3D Texture Paint modes."""
-    # NOTE: We don't draw UnifiedPaintSettings in the header to reduce clutter. D5928#136281
     capabilities = brush.image_paint_capabilities
 
     if capabilities.has_color:
@@ -978,8 +978,10 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
         brush,
         "size",
         pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
         slider=True,
         text="Radius",
+        header=True
     )
     UnifiedPaintPanel.prop_unified(
         layout,
@@ -987,6 +989,8 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
         brush,
         "strength",
         pressure_name="use_pressure_strength",
+        unified_name="use_unified_strength",
+        header=True
     )
 
 
