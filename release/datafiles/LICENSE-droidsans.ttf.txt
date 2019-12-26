@@ -1,6 +1,6 @@
 Blender Main I18n font ("droidsans.ttf") includes glyphs imported from the following fonts:
 
-1. DejaVu Sans
+1. Roboto
 2. Droid Sans Regular
 3. Samyak-devanagari
 4. Droid Sans Hebrew Regular
@@ -15,14 +15,14 @@ a license of the font from which it was imported is applied.
 ----------------------------------------------------------------------
 Summary of Copyrights and Licenses
 
-(1) DejaVu Sans
+(1) Roboto
 
-Copyright: 2003 Bitstream, Inc. (Bitstream font glyphs)
-           2006 Tavmjong Bah (Arev font glyphs)
-           DejaVu changes are in public domain
+Copyright: 
+    Copyright © 2012 Google Corp.
+    Droid is a trademark of Google Corp.
 
-License:
- DejaVu font glyphs are same as bfont.ttf. See LICENSE-bfont.ttf.txt.
+License: Apache-2.0
+ See Appendix A.
 
 (2), (4), (5) Droid Sans Fonts family
 
